@@ -854,10 +854,15 @@ void gpio_sensor_select(int sensor)
 
 	switch (sensor) {
 	case 0:
+#ifdef CONFIG_MXC_CAMERA_MC521DA
+		temp = 0x100;
+		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_SET);
+#else
 		temp = PBC_BCTRL1_SENSOR2_ON;
 		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR);
 		temp = PBC_BCTRL1_SENSOR1_ON;
 		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_SET);
+#endif
 		break;
 	case 1:
 		temp = PBC_BCTRL1_SENSOR1_ON;
@@ -939,6 +944,18 @@ void gpio_sensor_active(void)
 }
 
 EXPORT_SYMBOL(gpio_sensor_active);
+
+void gpio_sensor_reset(bool flag)
+{
+	u16 temp = 0x200;
+
+	if (flag)
+		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR);
+	else
+		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_SET);
+}
+
+EXPORT_SYMBOL(gpio_sensor_reset);
 
 /*!
  * Setup GPIO for sensor to be inactive
