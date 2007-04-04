@@ -260,6 +260,7 @@ config ARCH_L7200
 config ARCH_MXC
 	bool "Freescale MXC/iMX-based"
 	select ISA
+	select ARCH_MTD_XIP
 	help
 	  Support for Freescale MXC/iMX-based family of processors
 
