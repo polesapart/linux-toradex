@@ -1010,21 +1010,19 @@ static int __init mxc_ide_init(void)
 	printk(KERN_INFO
 	       "MXC: IDE driver, (c) 2004-2006 Freescale Semiconductor\n");
 
-	ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B, MXC_IDE_ATA_CONTROL);
-
 	/* Select group B pins, and enable the interface */
-
 	PBC_ATA_SIGNAL_ACTIVE();
-	/* Configure the pads */
 
+	/* Configure the pads */
 	gpio_ata_active();
 
-	/* Set initial timing and mode */
+	/* Deassert the reset bit to enable the interface */
+	ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B, MXC_IDE_ATA_CONTROL);
 
+	/* Set initial timing and mode */
 	set_ata_bus_timing(4, PIO);
 
 	/* Reset the interface */
-
 	mxc_ide_resetproc(NULL);
 
 	/*
