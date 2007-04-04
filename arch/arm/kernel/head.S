@@ -23,6 +23,15 @@
 #include <asm/thread_info.h>
 #include <asm/system.h>
 
+#if defined(CONFIG_CPU_CACHE_L210)
+						@  RPSC
+						@  G
+						@  N
+#define SET_TTBR_ATTR(x)	orr x, x, #0x18 @ 11000
+#else
+#define SET_TTBR_ATTR(x)
+#endif
+
 #define KERNEL_RAM_ADDR	(PAGE_OFFSET + TEXT_OFFSET)
 
 /*
@@ -164,6 +173,7 @@ __enable_mmu:
 		      domain_val(DOMAIN_TABLE, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_IO, DOMAIN_CLIENT))
 	mcr	p15, 0, r5, c3, c0, 0		@ load domain access register
+	SET_TTBR_ATTR(r4)
 	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
 	b	__turn_mmu_on
 

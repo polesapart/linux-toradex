@@ -426,4 +426,14 @@ extern void flush_dcache_page(struct page *);
 
 #endif
 
+#ifndef CONFIG_CPU_CACHE_L210
+#define dmac_l2_inv_range(start, end)
+#define dmac_l2_clean_range(start, end)
+#define dmac_l2_flush_range(start, end)
+#else
+void dmac_l2_inv_range(dma_addr_t start, dma_addr_t end);
+void dmac_l2_clean_range(dma_addr_t start, dma_addr_t end);
+void dmac_l2_flush_range(dma_addr_t start, dma_addr_t end);
+#endif
+
 #endif

@@ -30,6 +30,61 @@
 #define TTB_RGN_WT	(2 << 3)
 #define TTB_RGN_WB	(3 << 3)
 
+#ifdef CONFIG_CPU_CACHE_L210
+							@  RPSC
+							@  G
+							@  N
+#define SET_TTBR_ATTR(x)	orr x, x, #TTB_RGN_WB	@ 11000
+
+	.macro ENABLE_L2_CACHE
+	mcr	p15, 0, r0, c7, c10, 4		@ drain write buffer
+
+	mov	r1, #L2CC_BASE_ADDR
+	ldr	r2, [r1, #0x100]		@ ARM L210 Control
+	bic	r2, r2, #0x1
+	str	r2, [r1, #0x100]		@ disable L2
+
+	mcr	p15, 0, r0, c7, c10, 4		@ drain write buffer
+
+	/*
+	 * Configure L2 Cache:
+	 * - 128k size(16k way)
+	 * - 8-way associativity
+	 * - 0 ws TAG/VALID/DIRTY
+	 * - 7 ws DATA R/W
+	 */
+	ldr	r2, [r1, #0x104]		@ ARM L210 Auxiliary Control
+	and	r2, r2, #0xFE000000
+	orr	r2, r2, #0x00030000
+	orr	r2, r2, #0x00000024
+	str	r2, [r1, #0x104]
+
+	mcr	p15, 0, r0, c7, c10, 4		@ drain write buffer
+
+	/* Invalidate By Way */
+	ldr	r2, =0xff
+	str	r2, [r1, #0x77C]		@ ARM L210 Invalidate By Way
+
+L2_inv_loop:
+	ldr	r3, [r1, #0x77C]
+	cmp	r3, #0
+	bne	L2_inv_loop
+
+	mcr	p15, 0, r0, c7, c10, 4		@ drain write buffer
+	/* Force L2 write through */
+	ldr	r2, =0x2
+	str	r2, [r1, #0xF40]
+	/* Enable L2 */
+	ldr	r2, [r1, #0x100]		@ ARM L210 Control
+	orr	r2, r2, #0x1
+	str	r2, [r1, #0x100]
+	.endm	/* ENABLE_L2_CACHE */
+
+#else
+#define SET_TTBR_ATTR(x)
+#define ENABLE_L2_CACHE
+#endif /* CONFIG_CPU_CACHE_L210 */
+
 ENTRY(cpu_v6_proc_init)
 	mov	pc, lr
 
@@ -66,7 +121,22 @@ ENTRY(cpu_v6_reset)
  *	IRQs are already disabled.
  */
 ENTRY(cpu_v6_do_idle)
+#ifdef CONFIG_MX3_DOZE_DURING_IDLE
+	ldr	r1, =(AIPS2_IO_ADDRESS(CCM_BASE_ADDR))
+	ldr	r2, [r1]                     @ get CCMR
+	bic	r2, r2, #(0x3 << 14)         @ LPM mask
+	orr	r2, r2, #(1 << 14)           @ Doze mode
+	str	r2, [r1]
+
+	mcr	p15, 0, r1, c7, c0, 4        @ wait for interrupt
+	nop
+	nop
+	nop
+	nop
+	nop
+#else
 	mcr	p15, 0, r1, c7, c0, 4		@ wait for interrupt
+#endif
 	mov	pc, lr
 
 ENTRY(cpu_v6_dcache_clean_area)
@@ -97,6 +167,7 @@ ENTRY(cpu_v6_switch_mm)
 #endif
 	mcr	p15, 0, r2, c7, c5, 6		@ flush BTAC/BTB
 	mcr	p15, 0, r2, c7, c10, 4		@ drain write buffer
+	SET_TTBR_ATTR(r0)
 	mcr	p15, 0, r0, c2, c0, 0		@ set TTB 0
 	mcr	p15, 0, r1, c13, c0, 1		@ set context ID
 #endif
@@ -205,6 +276,7 @@ __v6_setup:
 #ifdef CONFIG_SMP
 	orr	r4, r4, #TTB_RGN_WBWA|TTB_S	@ mark PTWs shared, outer cacheable
 #endif
+	SET_TTBR_ATTR(r4)
 	mcr	p15, 0, r4, c2, c0, 1		@ load TTB1
 #endif /* CONFIG_MMU */
 #ifdef CONFIG_VFP
@@ -217,6 +289,9 @@ __v6_setup:
 	mrc	p15, 0, r0, c1, c0, 0		@ read control register
 	bic	r0, r0, r5			@ clear bits them
 	orr	r0, r0, r6			@ set them
+
+	ENABLE_L2_CACHE
+
 	mov	pc, lr				@ return to head.S:__ret
 
 	/*

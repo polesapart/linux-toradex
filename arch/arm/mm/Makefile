@@ -30,6 +30,7 @@ obj-$(CONFIG_CPU_CACHE_V4)	+= cache-v4.o
 obj-$(CONFIG_CPU_CACHE_V4WT)	+= cache-v4wt.o
 obj-$(CONFIG_CPU_CACHE_V4WB)	+= cache-v4wb.o
 obj-$(CONFIG_CPU_CACHE_V6)	+= cache-v6.o
+obj-$(CONFIG_CPU_CACHE_L210)	+= cache-l210.o
 
 obj-$(CONFIG_CPU_COPY_V3)	+= copypage-v3.o
 obj-$(CONFIG_CPU_COPY_V4WT)	+= copypage-v4wt.o

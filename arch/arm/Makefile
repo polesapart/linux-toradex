@@ -125,6 +125,9 @@ endif
  machine-$(CONFIG_ARCH_EP93XX)     := ep93xx
  machine-$(CONFIG_ARCH_PNX4008)    := pnx4008
  machine-$(CONFIG_ARCH_NETX)       := netx
+  incdir-$(CONFIG_ARCH_MXC)        := mxc
+ machine-$(CONFIG_ARCH_MX3)	   := mx3
+ machine-$(CONFIG_ARCH_MX27)	   := mx27
 
 ifeq ($(CONFIG_ARCH_EBSA110),y)
 # This is what happens if you forget the IOCS16 line.
@@ -165,6 +168,7 @@ core-$(CONFIG_VFP)		+= arch/arm/vfp/
 # If we have a common platform directory, then include it in the build.
 core-$(CONFIG_PLAT_IOP)		+= arch/arm/plat-iop/
 core-$(CONFIG_ARCH_OMAP)	+= arch/arm/plat-omap/
+core-$(CONFIG_ARCH_MXC)		+= arch/arm/plat-mxc/
 
 drivers-$(CONFIG_OPROFILE)      += arch/arm/oprofile/
 drivers-$(CONFIG_ARCH_CLPS7500)	+= drivers/acorn/char/
