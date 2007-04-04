@@ -159,10 +159,6 @@ void __init mxc_init_time(void)
 
 	reg = __raw_readl(MXC_GPT_TCTL_TICK) | GPT_TCTL_TEN;
 	__raw_writel(reg, MXC_GPT_TCTL_TICK);
-
-#ifdef CONFIG_KFI
-	os_timer_initialized = 1;
-#endif
 }
 
 struct sys_timer mxc_timer = {

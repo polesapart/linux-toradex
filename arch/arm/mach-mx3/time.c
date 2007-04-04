@@ -46,35 +46,6 @@ unsigned long __noinstrument clock_to_usecs(unsigned long x)
 	return (unsigned long)(x * (tick_nsec / 1000)) / LATCH;
 }
 
-#ifdef CONFIG_KFI
-/*!
- * OS timer state flag
- */
-static int os_timer_initialized = 0;
-
-/*!
- * This function is needed by KFI to convert machine cycles to microseconds
- *
- * @param mputicks	number of machine cycles
- *
- * @return elapsed microseconds
- */
-unsigned long __noinstrument machinecycles_to_usecs(unsigned long mputicks)
-{
-	return clock_to_usecs(mputicks);
-}
-
-/*!
- * This function is needed by KFI to obtain current number of machine cycles elapsed
- *
- * @return elapsed machine cycles, or 0 if GPT timer is not initialized
- */
-unsigned long __noinstrument do_getmachinecycles(void)
-{
-	return os_timer_initialized ? __raw_readl(MXC_GPT_GPTCNT) : 0;
-}
-#endif
-
 /*
  * WatchDog
  */
@@ -267,10 +238,6 @@ void __init mxc_init_time(void)
 #endif
 
 	kick_wd();
-
-#ifdef CONFIG_KFI
-	os_timer_initialized = 1;
-#endif
 }
 
 EXPORT_SYMBOL(g_wdog1_enabled);
