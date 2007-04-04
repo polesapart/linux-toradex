@@ -11,6 +11,8 @@ config MTD_NAND
 	help
 	  This enables support for accessing all type of NAND flash
 	  devices. For further information see
+	  MXC NAND driver cannot be compiled for MX31ADS with XIP enabled.
+	  Refer Errata on EMI for using NOR (WEIM) and NAND simultaneously 
 	  <http://www.linux-mtd.infradead.org/doc/nand.html>.
 
 config MTD_NAND_VERIFY_WRITE
@@ -242,7 +244,7 @@ config MTD_NAND_NANDSIM
 config MTD_NAND_MXC
 	tristate "MXC NAND support"
 	depends on MTD_NAND
-	depends on ARCH_MXC
+	depends on ARCH_MXC && (!MACH_MX31ADS || !XIP_KERNEL)
 	help
 	  This enables the driver for the NAND flash controller on the
 	  MXC processors.
