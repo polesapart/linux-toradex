@@ -1,0 +1,33 @@
+if ARCH_MXC
+
+menu "Freescale MXC Implementations"
+
+choice
+	prompt "MXC/iMX System Type"
+	default 0
+
+config ARCH_MX3
+	bool "MX31-based"
+	help
+	  This enables support for systems based on Freescale i.MX31
+
+config ARCH_MX27
+	bool "MX27-based"
+	select MXC_EMMA
+	help
+	  This enables support for systems based on Freescale i.MX27
+
+endchoice
+
+source "arch/arm/mach-mx27/Kconfig"
+
+source "arch/arm/mach-mx3/Kconfig"
+
+endmenu
+
+config MXC_EMMA
+	bool
+	depends on ARCH_MXC
+
+endif
+
