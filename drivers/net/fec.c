@@ -274,6 +274,11 @@ static void __inline__ fec_dcache_flush_range(void * start, void * end);
  */
 static int fec_copy_threshold = 192;
 
+/*
+ * fec_device records the devices created for cleanup
+ */
+struct net_device *fec_device[FEC_MAX_PORTS];
+
 /* MII processing.  We keep this as simple as possible.  Requests are
  * placed on the list (if there is room).  When the request is finished
  * by the MII, an optional function may be called.
@@ -2041,6 +2046,15 @@ static void __inline__ fec_request_intrs(struct net_device *dev)
 	disable_irq(EXPIO_INT_FEC);
 }
 
+static void __inline__ fec_release_intrs(struct net_device *dev)
+{
+	disable_irq(EXPIO_INT_FEC);
+	disable_irq(INT_FEC);
+
+	free_irq(EXPIO_INT_FEC, dev);
+	free_irq(INT_FEC, dev);
+}
+
 static void __inline__ fec_set_mii(struct net_device *dev, struct fec_enet_private *fep)
 {
 	volatile fec_t *fecp;
@@ -3053,6 +3067,8 @@ static int __init fec_enet_module_init(void)
 			return -EIO;
 		}
 
+		fec_device[i] = dev;
+
 		printk("%s: ethernet ", dev->name);
 		for (j = 0; (j < 5); j++)
 			printk("%02x:", dev->dev_addr[j]);
@@ -3062,5 +3078,24 @@ static int __init fec_enet_module_init(void)
 }
 
 module_init(fec_enet_module_init);
+
+#ifdef CONFIG_ARCH_MXC
+static void __exit fec_enet_module_cleanup(void)
+{
+	struct net_device *dev;
+	int i;
+
+	for (i = 0; (i < FEC_MAX_PORTS); i++) {
+		dev = fec_device[i];
+		fec_release_intrs(dev);
+		unregister_netdev(dev);
+		free_netdev(dev);
+		fec_device[i] = NULL;
+	}
+
+	fec_arch_exit();
+}
+module_exit(fec_enet_module_cleanup);
+#endif
 
 MODULE_LICENSE("GPL");
