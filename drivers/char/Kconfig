@@ -114,7 +114,7 @@ config ROCKETPORT
 	tristate "Comtrol RocketPort support"
 	depends on SERIAL_NONSTANDARD
 	help
-	  This driver supports Comtrol RocketPort and RocketModem PCI boards.   
+	  This driver supports Comtrol RocketPort and RocketModem PCI boards.
           These boards provide 2, 4, 8, 16, or 32 high-speed serial ports or
           modems.  For information about the RocketPort/RocketModem  boards
           and this driver read <file:Documentation/rocket.txt>.
@@ -793,6 +793,13 @@ config DS1302
 	  will get access to the real time clock (or hardware clock) built
 	  into your computer.
 
+config MXC_RTC
+	bool "Freescale MXC Real Time Clock"
+	depends on ARCH_MXC
+	default y
+	---help---
+	  Support for Freescale MXC RTC
+
 config COBALT_LCD
 	bool "Support for Cobalt LCD"
 	depends on MIPS_COBALT
@@ -970,8 +977,8 @@ config RAW_DRIVER
 	tristate "RAW driver (/dev/raw/rawN) (OBSOLETE)"
 	depends on BLOCK
 	help
-	  The raw driver permits block devices to be bound to /dev/raw/rawN. 
-	  Once bound, I/O against /dev/raw/rawN uses efficient zero-copy I/O. 
+	  The raw driver permits block devices to be bound to /dev/raw/rawN.
+	  Once bound, I/O against /dev/raw/rawN uses efficient zero-copy I/O.
 	  See the raw(8) manpage for more details.
 
           The raw driver is deprecated and will be removed soon.
