@@ -1136,10 +1136,18 @@ static void serial8250_start_tx(struct uart_port *port)
 		serial_out(up, UART_IER, up->ier);
 
 		if (up->bugs & UART_BUG_TXEN) {
+#ifdef CONFIG_ARCH_MXC
+			unsigned char lsr;
+#else
 			unsigned char lsr, iir;
+#endif
 			lsr = serial_in(up, UART_LSR);
+#ifdef CONFIG_ARCH_MXC
+			if (lsr & UART_LSR_TEMT)
+#else
 			iir = serial_in(up, UART_IIR);
 			if (lsr & UART_LSR_TEMT && iir & UART_IIR_NO_INT)
+#endif
 				transmit_chars(up);
 		}
 	}
