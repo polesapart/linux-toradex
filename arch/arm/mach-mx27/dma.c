@@ -21,6 +21,9 @@
 #include <linux/init.h>
 #include <asm/dma.h>
 
+#define MXC_SOUND_PLAYBACK_CHAIN_DMA 1
+#define MXC_SOUND_CAPTURE_CHAIN_DMA 1
+
 /*!
  * @brief  the structure stored device_id and dma_info pointer
  */

@@ -438,19 +438,4 @@ enum mxc_card_no {
          __raw_writew(  \
                 PBC_BCTRL2_ATAFEC_EN |PBC_BCTRL2_ATAFEC_SEL | PBC_BCTRL2_ATA_EN,                PBC_BCTRL2_SET_REG)
 
-#define MXC_SOUND_PLAYBACK_CHAIN_DMA_EN
-#define MXC_SOUND_CAPTURE_CHAIN_DMA_EN
-
-#ifdef MXC_SOUND_PLAYBACK_CHAIN_DMA_EN
-#define MXC_SOUND_PLAYBACK_CHAIN_DMA  1
-#else
-#define MXC_SOUND_PLAYBACK_CHAIN_DMA  0
-#endif
-
-#ifdef MXC_SOUND_CAPTURE_CHAIN_DMA_EN
-#define MXC_SOUND_CAPTURE_CHAIN_DMA  1
-#else
-#define MXC_SOUND_CAPTURE_CHAIN_DMA  0
-#endif
-
 #endif				/* __ASM_ARCH_MXC_BOARD_MX27ADS_H__ */

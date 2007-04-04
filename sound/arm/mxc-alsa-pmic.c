@@ -84,6 +84,13 @@
 #define SOUND_CARD_NAME				"MXC"
 
 /*!
+ * These defines enable DMA chaining for playback
+ * and capture respectively.
+ */
+#define MXC_SOUND_PLAYBACK_CHAIN_DMA_EN 1
+#define MXC_SOUND_CAPTURE_CHAIN_DMA_EN 1
+
+/*!
   * ID for this card
   */
 static char *id = NULL;
@@ -1681,6 +1688,11 @@ static void audio_playback_dma(audio_stream_t * s)
 	memset(&dma_request, 0, sizeof(mxc_dma_requestbuf_t));
 
 	if (s->active) {
+		if (ssi_get_status(s->ssi) & ssi_transmitter_underrun_0) {
+			ssi_enable(s->ssi, false);
+			ssi_transmit_enable(s->ssi, false);
+			ssi_enable(s->ssi, true);
+		}
 		dma_size = frames_to_bytes(runtime, runtime->period_size);
 		pr_debug("s->period (%x) runtime->periods (%d)\n",
 			 s->period, runtime->periods);
@@ -1712,7 +1724,7 @@ static void audio_playback_dma(audio_stream_t * s)
 		mxc_dma_config(s->dma_wchannel, &dma_request, 1,
 			       MXC_DMA_MODE_WRITE);
 		ret = mxc_dma_enable(s->dma_wchannel);
-
+		ssi_transmit_enable(s->ssi, true);
 		s->tx_spin = 1;	/* FGA little trick to retrieve DMA pos */
 
 		if (ret) {
@@ -2167,7 +2179,9 @@ static int snd_mxc_audio_playback_prepare(snd_pcm_substream_t * substream)
 		pr_debug(KERN_ERR "MXC: PMIC Playback Config FAILED\n");
 
 	ssi_interrupt_enable(ssi, ssi_tx_fifo_0_empty);
-	ssi_transmit_enable(ssi, true);
+	/*
+	   ssi_transmit_enable(ssi, true);
+	 */
 
 	s->period = 0;
 	s->periods = 0;
