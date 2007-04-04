@@ -56,6 +56,16 @@
 
 #include <asm/unistd.h>
 
+#ifdef CONFIG_CODETEST
+/*
+ * CodeTEST mods
+ */
+extern void ct_thread_enter(struct task_struct *next);
+extern void ct_thread_exit(struct task_struct *prev);
+extern void ct_isr_enter(int irq);
+extern void ct_isr_exit(int irq);
+#endif /* CONFIG_CODETEST */
+
 /*
  * Convert user-nice values [ -20 ... 0 ... 19 ]
  * to static priority [ MAX_RT_PRIO..MAX_PRIO-1 ],
@@ -1844,6 +1854,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
 #endif
 
+#ifdef CONFIG_CODETEST
+	ct_thread_enter(next);
+#endif /* CONFIG_CODETEST */
+
 	/* Here we just switch the register state and the stack. */
 	switch_to(prev, next, prev);
 
@@ -3449,6 +3463,9 @@ switch_tasks:
 	sched_info_switch(prev, next);
 	if (likely(prev != next)) {
 		next->timestamp = now;
+#ifdef CONFIG_CODETEST
+		ct_thread_exit(prev);
+#endif /* CONFIG_CODETEST */
 		rq->nr_switches++;
 		rq->curr = next;
 		++*switch_count;

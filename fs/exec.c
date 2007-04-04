@@ -57,6 +57,13 @@
 #include <linux/kmod.h>
 #endif
 
+#ifdef CONFIG_CODETEST
+/*
+ * CodeTEST mods
+ */
+extern void ct_thread_create(struct task_struct *p);
+#endif /* CONFIG_CODETEST */
+
 int core_uses_pid;
 char core_pattern[128] = "core";
 int suid_dumpable = 0;
@@ -894,6 +901,10 @@ int flush_old_exec(struct linux_binprm * bprm)
 			
 	flush_signal_handlers(current, 0);
 	flush_old_files(current->files);
+
+#ifdef CONFIG_CODETEST
+	ct_thread_create(current);
+#endif /* CONFIG_CODETEST */
 
 	return 0;
 
