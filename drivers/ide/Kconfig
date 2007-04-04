@@ -843,6 +843,13 @@ config BLK_DEV_IDE_BAST
 	  Say Y here if you want to support the onboard IDE channels on the
 	  Simtec BAST or the Thorcom VR1000
 
+config BLK_DEV_IDE_MXC
+        tristate "Freescale MXC IDE support"
+        depends on ARM && ( ARCH_MX3 || ARCH_MX27 )
+        help
+          Say Y here if you want to support the IDE controller on the
+          Freescale iMX3 processor.
+
 config BLK_DEV_GAYLE
 	bool "Amiga Gayle IDE interface support"
 	depends on AMIGA
@@ -878,8 +885,8 @@ config BLK_DEV_BUDDHA
 	bool "Buddha/Catweasel/X-Surf IDE interface support (EXPERIMENTAL)"
 	depends on ZORRO && EXPERIMENTAL
 	help
-	  This is the IDE driver for the IDE interfaces on the Buddha, 
-	  Catweasel and X-Surf expansion boards.  It supports up to two interfaces 
+	  This is the IDE driver for the IDE interfaces on the Buddha,
+	  Catweasel and X-Surf expansion boards.  It supports up to two interfaces
 	  on the Buddha, three on the Catweasel and two on the X-Surf.
 
 	  Say Y if you have a Buddha or Catweasel expansion board and want to
@@ -1033,7 +1040,7 @@ config BLK_DEV_UMC8672
 endif
 
 config BLK_DEV_IDEDMA
-	def_bool BLK_DEV_IDEDMA_PCI || BLK_DEV_IDEDMA_PMAC || BLK_DEV_IDEDMA_ICS || BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA
+	def_bool BLK_DEV_IDEDMA_PCI || BLK_DEV_IDEDMA_PMAC || BLK_DEV_IDEDMA_ICS || BLK_DEV_IDE_AU1XXX_MDMA2_DBDMA || BLK_DEV_IDE_MXC
 
 config IDEDMA_IVB
 	bool "IGNORE word93 Validation BITS"
