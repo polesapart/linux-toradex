@@ -58,3 +58,5 @@ const struct fb_videomode mxcfb_modedb[] = {
 };
 
 int mxcfb_modedb_sz = ARRAY_SIZE(mxcfb_modedb);
+EXPORT_SYMBOL(mxcfb_modedb);
+EXPORT_SYMBOL(mxcfb_modedb_sz);
