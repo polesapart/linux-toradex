@@ -1099,7 +1099,7 @@ int irttp_connect_request(struct tsap_cb *self, __u8 dtsap_sel,
 			return -ENOMEM;
 
 		/* Reserve space for MUX_CONTROL and LAP header */
-		skb_reserve(tx_skb, TTP_MAX_HEADER + TTP_SAR_HEADER);
+		skb_reserve(tx_skb, TTP_MAX_HEADER + TTP_SAR_HEADER + TTP_SAR_HEADER);
 	} else {
 		tx_skb = userdata;
 		/*
