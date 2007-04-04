@@ -44,7 +44,9 @@ static int ts_thread(void *arg)
 {
 	t_touch_screen ts_sample;
 	s32 wait = 0;
+	daemonize("mxc_ts");
 	while (input_ts_installed) {
+		try_to_freeze();
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
 		pmic_adc_get_touch_sample(&ts_sample, !wait);
 

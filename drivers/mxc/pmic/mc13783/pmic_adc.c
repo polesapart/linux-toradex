@@ -562,7 +562,7 @@ PMIC_STATUS mc13783_adc_convert(t_adc_param * adc_param)
 			    (REG_ADC_1, adc_1_reg, PMIC_ALL_BITS));
 		pr_debug("wait tsi ....\n");
 		wait_ts = true;
-		wait_for_completion(&adc_tsi);
+		wait_for_completion_interruptible(&adc_tsi);
 		wait_ts = false;
 	}
 	use_bis = mc13783_adc_request();
@@ -643,7 +643,7 @@ PMIC_STATUS mc13783_adc_convert(t_adc_param * adc_param)
 					   ADC_NO_ADTRIG | ADC_EN |
 					   ADC_DELAY_MASK | ASC_ADC | ADC_BIS));
 		pr_debug("wait adc done \n");
-		wait_for_completion(&adcdone_it);
+		wait_for_completion_interruptible(&adcdone_it);
 		data_ready_adc_1 = false;
 	} else {
 		data_ready_adc_2 = false;
@@ -657,7 +657,7 @@ PMIC_STATUS mc13783_adc_convert(t_adc_param * adc_param)
 		pmic_write_reg(REG_ARBITRATION_PERIPHERAL_AUDIO, temp,
 			       0xFFFFFF);
 		pr_debug("wait adc done bis\n");
-		wait_for_completion(&adcbisdone_it);
+		wait_for_completion_interruptible(&adcbisdone_it);
 		data_ready_adc_2 = false;
 	}
 	/* read result and store in adc_param */
