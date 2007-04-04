@@ -1721,7 +1721,7 @@ PMIC_STATUS pmic_audio_digital_filter_reset(const PMIC_AUDIO_HANDLE handle)
 	} else if ((handle == vCodec.handle) &&
 		   (vCodec.handleState == HANDLE_IN_USE)) {
 		reg_mask = SET_BITS(regAUD_CODEC, CDCRESET, 1);
-		if (pmic_write_reg(REG_AUDIO_CODEC, 1,
+		if (pmic_write_reg(REG_AUDIO_CODEC, reg_mask,
 				   reg_mask) != PMIC_SUCCESS) {
 			rc = PMIC_ERROR;
 		} else {
@@ -4451,10 +4451,8 @@ PMIC_STATUS pmic_audio_output_set_pgaGain(const PMIC_AUDIO_HANDLE handle,
 			    SET_BITS(regAUDIO_RX_1, ARXINEN, 1);
 		} else if ((handle == vCodec.handle) &&
 			   (vCodec.handleState == HANDLE_IN_USE)) {
-			reg_mask = SET_BITS(regAUDIO_RX_1, PGARX, 15) |
-			    SET_BITS(regAUDIO_RX_1, PGARXEN, 1);
-			reg_write = SET_BITS(regAUDIO_RX_1, PGARX, reg_gain) |
-			    SET_BITS(regAUDIO_RX_1, PGARXEN, 1);
+			reg_mask = SET_BITS(regAUDIO_RX_1, PGARX, 15);
+			reg_write = SET_BITS(regAUDIO_RX_1, PGARX, reg_gain);
 		} else if ((handle == stDAC.handle) &&
 			   (stDAC.handleState == HANDLE_IN_USE)) {
 			reg_mask = SET_BITS(regAUDIO_RX_1, PGAST, 15) |
@@ -5356,7 +5354,6 @@ static PMIC_STATUS pmic_audio_close_handle(const PMIC_AUDIO_HANDLE handle)
 		 * else is still using it.
 		 */
 		rc = pmic_audio_reset_device(vCodec.handle);
-
 		if (rc == PMIC_SUCCESS) {
 			vCodec.handle = AUDIO_HANDLE_NULL;
 			vCodec.handleState = HANDLE_FREE;

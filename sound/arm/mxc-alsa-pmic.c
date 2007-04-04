@@ -1289,6 +1289,8 @@ void configure_codec(snd_pcm_substream_t * substream, int stream_id)
 				    pmic->sample_rate, NO_INVERT);
 	msleep(20);
 	pmic_audio_vcodec_set_config(handle, VCODEC_MASTER_CLOCK_OUTPUTS);
+	pmic_audio_digital_filter_reset(handle);
+	msleep(15);
 	if (stream_id == 2) {
 		pmic_audio_output_enable_mixer(handle);
 		set_mixer_output_device(handle, MIXER_OUT, OP_NODEV, 1);
@@ -1335,6 +1337,8 @@ void configure_stereodac(snd_pcm_substream_t * substream)
 	pmic_audio_stdac_set_rxtx_timeslot(handle, USE_TS0_TS1);
 	pmic_audio_stdac_enable_mixer(handle, USE_TS2_TS3, STDAC_NO_MIX,
 				      STDAC_MIX_OUT_0DB);
+	pmic_audio_digital_filter_reset(handle);
+	msleep(10);
 	pmic_audio_set_protocol(handle, ssi_bus, pmic->protocol, pmic->mode,
 				USE_2_TIMESLOTS);
 	pmic_audio_stdac_set_clock(handle, pmic->pll, pmic->pll_rate,
