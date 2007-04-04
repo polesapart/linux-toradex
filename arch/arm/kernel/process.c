@@ -117,7 +117,7 @@ EXPORT_SYMBOL_GPL(arm_pm_restart);
  * This is our default idle handler.  We need to disable
  * interrupts here to ensure we don't miss a wakeup call.
  */
-static void default_idle(void)
+void default_idle(void)
 {
 	if (hlt_counter)
 		cpu_relax();

@@ -108,6 +108,9 @@ struct device_driver {
 	int	(*resume)	(struct device * dev);
 
 	unsigned int multithread_probe:1;
+
+ 	int	(*scale)	(u32 level);
+ 	struct list_head	scale_entry;
 };
 
 
@@ -355,6 +358,8 @@ struct device {
 					     allocations such descriptors. */
 
 	struct list_head	dma_pools;	/* dma pools (if dma'ble) */
+
+	struct constraints	*constraints;
 
 	struct dma_coherent_mem	*dma_mem; /* internal for coherent mem
 					     override */

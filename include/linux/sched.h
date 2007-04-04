@@ -989,6 +989,7 @@ struct task_struct {
  * to a stack based synchronous wait) if its doing sync IO.
  */
 	wait_queue_t *io_wait;
+	int     dpm_state; /* DPM operating state to use for this task */
 /* i/o counters(bytes read/written, #syscalls */
 	u64 rchar, wchar, syscr, syscw;
 #if defined(CONFIG_TASK_XACCT)

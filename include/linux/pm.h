@@ -274,6 +274,33 @@ static inline void dpm_runtime_resume(struct device * dev)
 		device_set_wakeup_enable(dev,val); \
 	} while(0)
 
+struct constraint_param {
+	int id;
+	int min;
+	int max;
+};
+
+#define DPM_CONSTRAINT_PARAMS_MAX 20
+
+struct constraints {
+	int asserted;
+	int count;
+	int violations;
+	struct constraint_param param[DPM_CONSTRAINT_PARAMS_MAX];
+	struct list_head entry;
+};
+
+enum {
+	SCALE_PRECHANGE,
+	SCALE_POSTCHANGE,
+	SCALE_MAX
+};
+
+extern void assert_constraints(struct constraints *);
+extern void deassert_constraints(struct constraints *);
+extern void power_event(char *eventstr);
+extern void device_power_event(struct device * dev, char *eventstr);
+
 #endif /* __KERNEL__ */
 
 #endif /* _LINUX_PM_H */

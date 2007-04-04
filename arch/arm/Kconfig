@@ -857,6 +857,8 @@ config APM
 	  anything, try disabling/enabling this option (or disabling/enabling
 	  APM in your BIOS).
 
+source "drivers/dpm/Kconfig"
+
 endmenu
 
 source "net/Kconfig"
