@@ -46,6 +46,9 @@
 #ifdef CONFIG_MXC_SDMA_API
 #define MAX_DMA_CHANNELS 32
 #define MAX_BD_NUMBER    16
+#define MXC_SDMA_DEFAULT_PRIORITY 1
+#define MXC_SDMA_MIN_PRIORITY 1
+#define MXC_SDMA_MAX_PRIORITY 7
 #else
 #define MAX_DMA_CHANNELS 0
 #endif
@@ -257,6 +260,8 @@ typedef struct mxc_sdma_channel_params {
 	dma_channel_params chnl_params;
 	/*! Channel type (static channel number or dynamic channel) */
 	unsigned int channel_num;
+	/*! Channel priority [0x1(lowest) - 0x7(highest)] */
+	unsigned int chnl_priority;
 } mxc_sdma_channel_params_t;
 
 /*! Private SDMA data structure */
@@ -278,6 +283,17 @@ typedef struct mxc_dma_channel_private {
  * @return  0 on success, error code on fail
  */
 int mxc_dma_setup_channel(int channel, dma_channel_params * p);
+
+/*!
+ * Setup the channel priority. This can be used to change the default priority
+ * for the channel.
+ *
+ * @param   channel           channel number
+ * @param   priority          priority to be set for the channel
+ *
+ * @return  0 on success, error code on failure
+ */
+int mxc_dma_set_channel_priority(unsigned int channel, unsigned int priority);
 
 /*!
  * Allocates dma channel.

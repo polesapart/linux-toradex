@@ -526,12 +526,31 @@ descriptors (0x%x)\n", err);
 		}
 		if (err == 0) {
 			err = sdma_load_context(channel, p);
-			iapi_IoCtl(sdma_data[channel].cd,
-				   IAPI_CHANGE_PRIORITY, 0x1);
+			iapi_IoCtl(sdma_data[channel].cd, IAPI_CHANGE_PRIORITY,
+				   MXC_SDMA_DEFAULT_PRIORITY);
 		}
 	}
       setup_channel_fail:
 	return err;
+}
+
+/*!
+ * Setup the channel priority. This can be used to change the default priority
+ * for the channel.
+ *
+ * @param   channel           channel number
+ * @param   priority          priority to be set for the channel
+ *
+ * @return  0 on success, error code on failure
+ */
+int mxc_dma_set_channel_priority(unsigned int channel, unsigned int priority)
+{
+	if (priority < MXC_SDMA_MIN_PRIORITY
+	    || priority > MXC_SDMA_MAX_PRIORITY) {
+		return -EINVAL;
+	}
+	return iapi_IoCtl(sdma_data[channel].cd, IAPI_CHANGE_PRIORITY,
+			  priority);
 }
 
 /*!
@@ -1192,6 +1211,7 @@ arch_initcall(sdma_init);
 EXPORT_SYMBOL(mxc_request_dma);
 EXPORT_SYMBOL(mxc_free_dma);
 EXPORT_SYMBOL(mxc_dma_setup_channel);
+EXPORT_SYMBOL(mxc_dma_set_channel_priority);
 EXPORT_SYMBOL(mxc_dma_set_config);
 EXPORT_SYMBOL(mxc_dma_get_config);
 EXPORT_SYMBOL(mxc_dma_set_bd_intr);

@@ -145,6 +145,16 @@ int mxc_dma_request(mxc_dma_device_t channel_id, char *dev_name)
 	ret = mxc_dma_setup_channel(channel_num, &chnl->chnl_params);
 
 	if (ret == 0) {
+		if (chnl->chnl_priority != MXC_SDMA_DEFAULT_PRIORITY) {
+			ret =
+			    mxc_dma_set_channel_priority(channel_num,
+							 chnl->chnl_priority);
+			if (ret != 0) {
+				pr_info("Failed to set channel prority,\
+					  continue with the existing \
+					  priority\n");
+			}
+		}
 		mxc_sdma_channels[channel_num].lock = 1;
 		if ((chnl->chnl_params.transfer_type == per_2_emi)
 		    || (chnl->chnl_params.transfer_type == dsp_2_emi)) {
@@ -240,6 +250,7 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
 	int ret = 0, i = 0, prev_buf;
 	mxc_dma_channel_t *chnl_info;
 	mxc_dma_channel_private_t *data_priv;
+	mxc_sdma_channel_params_t *chnl;
 	dma_channel_params chnl_param;
 	dma_request_t request_t;
 
@@ -262,8 +273,8 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
 		return -EBUSY;
 	}
 
-	chnl_param =
-	    mxc_sdma_get_channel_params(chnl_info->channel)->chnl_params;
+	chnl = mxc_sdma_get_channel_params(chnl_info->channel);
+	chnl_param = chnl->chnl_params;
 
 	/* Re-setup the SDMA channel if the transfer direction is changed */
 	if ((chnl_param.peripheral_type != MEMORY) && (mode != chnl_info->mode)) {
@@ -285,6 +296,16 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
 		ret = mxc_dma_setup_channel(channel_num, &chnl_param);
 		if (ret != 0) {
 			return ret;
+		}
+		if (chnl->chnl_priority != MXC_SDMA_DEFAULT_PRIORITY) {
+			ret =
+			    mxc_dma_set_channel_priority(channel_num,
+							 chnl->chnl_priority);
+			if (ret != 0) {
+				pr_info("Failed to set channel prority,\
+					  continue with the existing \
+					  priority\n");
+			}
 		}
 		chnl_info->mode = mode;
 	}
@@ -528,6 +549,11 @@ int mxc_dma_setup_channel(int channel, dma_channel_params * p)
 	return -ENODEV;
 }
 
+int mxc_dma_set_channel_priority(unsigned int channel, unsigned int priority)
+{
+	return -ENODEV;
+}
+
 int mxc_dma_set_config(int channel, dma_request_t * p, int bd_index)
 {
 	return -ENODEV;
@@ -615,6 +641,7 @@ int mxc_dma_enable(int channel_num);
 
 EXPORT_SYMBOL(mxc_request_dma);
 EXPORT_SYMBOL(mxc_dma_setup_channel);
+EXPORT_SYMBOL(mxc_dma_set_channel_priority);
 EXPORT_SYMBOL(mxc_dma_set_config);
 EXPORT_SYMBOL(mxc_dma_get_config);
 EXPORT_SYMBOL(mxc_dma_start);

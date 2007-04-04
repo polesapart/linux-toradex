@@ -45,6 +45,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart1_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART1_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart1_tx_params = {
@@ -58,6 +59,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart1_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART1_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart2_rx_params = {
@@ -71,6 +73,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart2_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART2_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart2_tx_params = {
@@ -84,6 +87,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart2_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART2_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart3_rx_params = {
@@ -97,6 +101,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart3_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART3_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart3_tx_params = {
@@ -110,6 +115,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart3_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART3_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart4_rx_params = {
@@ -123,6 +129,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart4_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART4_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart4_tx_params = {
@@ -136,6 +143,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart4_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART4_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart5_rx_params = {
@@ -149,6 +157,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart5_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART5_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_uart5_tx_params = {
@@ -162,6 +171,7 @@ static mxc_sdma_channel_params_t mxc_sdma_uart5_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART5_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_mmc1_width1_params = {
@@ -176,6 +186,7 @@ static mxc_sdma_channel_params_t mxc_sdma_mmc1_width1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_MMC1,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_mmc1_width4_params = {
@@ -190,6 +201,7 @@ static mxc_sdma_channel_params_t mxc_sdma_mmc1_width4_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_MMC1,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_mmc2_width1_params = {
@@ -204,6 +216,7 @@ static mxc_sdma_channel_params_t mxc_sdma_mmc2_width1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_MMC2,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_mmc2_width4_params = {
@@ -218,6 +231,7 @@ static mxc_sdma_channel_params_t mxc_sdma_mmc2_width4_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_MMC2,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_rx0_params = {
@@ -231,6 +245,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_rx0_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_tx0_params = {
@@ -244,6 +259,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_tx0_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_rx0_params = {
@@ -257,6 +273,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_rx0_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_tx0_params = {
@@ -270,6 +287,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_tx0_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_rx0_params = {
@@ -283,6 +301,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_rx0_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_tx0_params = {
@@ -296,6 +315,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_tx0_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_rx1_params = {
@@ -309,6 +329,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_rx1_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_tx1_params = {
@@ -322,6 +343,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_8bit_tx1_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_rx1_params = {
@@ -335,6 +357,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_rx1_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_tx1_params = {
@@ -348,6 +371,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_16bit_tx1_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_rx1_params = {
@@ -361,6 +385,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_rx1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_tx1_params = {
@@ -374,6 +399,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi1_24bit_tx1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI1_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_rx0_params = {
@@ -387,6 +413,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_rx0_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx0_params = {
@@ -400,6 +427,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx0_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_rx0_params = {
@@ -413,6 +441,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_rx0_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx0_params = {
@@ -426,6 +455,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx0_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_rx0_params = {
@@ -439,6 +469,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_rx0_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx0_params = {
@@ -452,6 +483,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx0_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_rx1_params = {
@@ -465,6 +497,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_rx1_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx1_params = {
@@ -478,6 +511,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx1_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_rx1_params = {
@@ -491,6 +525,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_rx1_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx1_params = {
@@ -504,6 +539,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx1_params = {
 			.word_size = TRANSFER_16BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_rx1_params = {
@@ -517,6 +553,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_rx1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_RX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx1_params = {
@@ -530,6 +567,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_fir_rx_params = {
@@ -543,6 +581,7 @@ static mxc_sdma_channel_params_t mxc_sdma_fir_rx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_FIR_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_fir_tx_params = {
@@ -556,6 +595,7 @@ static mxc_sdma_channel_params_t mxc_sdma_fir_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_FIR_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_memory_params = {
@@ -566,6 +606,7 @@ static mxc_sdma_channel_params_t mxc_sdma_memory_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_MEMORY,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ata_rx_params = {
@@ -580,6 +621,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ata_rx_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_ATA_RX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_ata_tx_params = {
@@ -594,6 +636,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ata_tx_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_ATA_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 static mxc_sdma_info_entry_t mxc_sdma_active_dma_info[] = {
 	{MXC_DMA_UART1_RX, &mxc_sdma_uart1_rx_params},
