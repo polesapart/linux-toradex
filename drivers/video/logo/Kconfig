@@ -35,6 +35,16 @@ config LOGO_MAC_CLUT224
 	depends on LOGO && MAC
 	default y
 
+config LOGO_MX27ADS_CLUT224
+	bool "224-color Freescale i.MX27ADS Linux logo"
+	depends on LOGO && MACH_MX27ADS
+	default y
+
+config LOGO_MX31ADS_CLUT224
+	bool "224-color Freescale i.MX31ADS Linux logo"
+	depends on LOGO && MACH_MX31ADS
+	default y
+
 config LOGO_PARISC_CLUT224
 	bool "224-color PA-RISC Linux logo"
 	depends on LOGO && PARISC
@@ -71,4 +81,3 @@ config LOGO_M32R_CLUT224
 	default y
 
 endmenu
-

@@ -26,6 +26,8 @@ extern const struct linux_logo logo_linux_vga16;
 extern const struct linux_logo logo_linux_clut224;
 extern const struct linux_logo logo_dec_clut224;
 extern const struct linux_logo logo_mac_clut224;
+extern const struct linux_logo logo_mx27ads_clut224;
+extern const struct linux_logo logo_mx31ads_clut224;
 extern const struct linux_logo logo_parisc_clut224;
 extern const struct linux_logo logo_sgi_clut224;
 extern const struct linux_logo logo_sun_clut224;
@@ -33,7 +35,6 @@ extern const struct linux_logo logo_superh_mono;
 extern const struct linux_logo logo_superh_vga16;
 extern const struct linux_logo logo_superh_clut224;
 extern const struct linux_logo logo_m32r_clut224;
-
 
 const struct linux_logo *fb_find_logo(int depth)
 {
@@ -77,6 +78,14 @@ const struct linux_logo *fb_find_logo(int depth)
 		/* Macintosh Linux logo on m68k */
 		if (MACH_IS_MAC)
 			logo = &logo_mac_clut224;
+#endif
+#ifdef CONFIG_LOGO_MX27ADS_CLUT224
+		/* Freescale i.MX27ADS Linux logo */
+		logo = &logo_mx27ads_clut224;
+#endif
+#ifdef CONFIG_LOGO_MX31ADS_CLUT224
+		/* Freescale i.MX31ADS Linux logo */
+		logo = &logo_mx31ads_clut224;
 #endif
 #ifdef CONFIG_LOGO_PARISC_CLUT224
 		/* PA-RISC Linux logo */
