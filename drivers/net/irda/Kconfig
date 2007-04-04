@@ -431,7 +431,13 @@ config MCS_FIR
 	  speeds.
 
 	  To compile it as a module, choose M here: the module will be called
-	  mcs7780.
+
+config MXC_IRDA
+	tristate "Freescale MXC IrDA support"
+	depends on ARCH_MXC && IRDA
+	help
+	  Say Y or M here if you want to build support for the MXC built-in
+	  IrDA interface which can support SIR only or both SIR and FIR. 
+	  This driver may vary from on MXC target to another.
 
 endmenu
-
