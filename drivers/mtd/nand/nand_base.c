@@ -2272,6 +2272,11 @@ static struct nand_flash_dev *nand_get_flash_type(struct mtd_info *mtd,
 	if (mtd->writesize > 512 && chip->cmdfunc == nand_command)
 		chip->cmdfunc = nand_command_lp;
 
+	/*if boot from nor flash, and the card is 2k pagesize,then need enable this bit*/
+	if(mtd->writesize==NAND_PAGESIZE_2KB){
+		NFMS |= (1 << NFMS_BIT);
+		}
+
 	printk(KERN_INFO "NAND device: Manufacturer ID:"
 	       " 0x%02x, Chip ID: 0x%02x (%s %s)\n", *maf_id, dev_id,
 	       nand_manuf_ids[maf_idx].name, type->name);

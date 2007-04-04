@@ -1182,8 +1182,11 @@ int nand_default_bbt(struct mtd_info *mtd)
 		this->bbt_td = NULL;
 		this->bbt_md = NULL;
 		if (!this->badblock_pattern) {
-			this->badblock_pattern = (mtd->writesize > 512) ?
-			    &largepage_memorybased : &smallpage_memorybased;
+			if(mtd->writesize ==NAND_PAGESIZE_2KB)
+				this->badblock_pattern = &smallpage_memorybased;
+			else
+				this->badblock_pattern = (mtd->writesize > 512) ?
+			    	&largepage_memorybased : &smallpage_memorybased;
 		}
 	}
 	return nand_scan_bbt(mtd, this->badblock_pattern);

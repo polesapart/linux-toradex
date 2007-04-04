@@ -123,6 +123,11 @@ static int parse_redboot_partitions(struct mtd_info *master,
 	for (i = 0; i < numslots; i++) {
 		struct fis_list *new_fl, **prev;
 
+		/* Stop if we run into the Redboot Config partition */
+		if (((uint32_t *) (buf + i))[1] == 0x0badface ||
+		    ((uint32_t *) (buf + i))[1] == 0xcefaad0b)
+			break;
+
 		if (buf[i].name[0] == 0xff)
 			continue;
 		if (!redboot_checksum(&buf[i]))
