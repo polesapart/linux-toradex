@@ -33,6 +33,7 @@
 #include <asm/arch/pmic_power.h>
 
 #include "../core/pmic_config.h"
+#include "../core/pmic.h"
 #include "pmic_adc_defs.h"
 
 #define NB_ADC_REG      5

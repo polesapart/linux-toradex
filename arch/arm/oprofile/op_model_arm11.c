@@ -28,6 +28,7 @@
 #include <linux/sched.h>
 #include <linux/oprofile.h>
 #include <linux/interrupt.h>
+#include <linux/irq.h>
 #include <asm/hardware.h>
 #include <asm/irq.h>
 #include <asm/system.h>
@@ -259,7 +260,7 @@ static int arm11_setup_ctrs(void)
 			counter_config[i].event = 0;
 			pmu->int_enable &= ~pmu->int_mask[i];
 			pr_debug
-			    ("arm11_setup_ctrs: The counter event is %d for counter%d\n",
+			    ("arm11_setup_ctrs: The counter event is %ld for counter%d\n",
 			     counter_config[i].event, i);
 			continue;
 		}
@@ -288,7 +289,7 @@ static int arm11_setup_ctrs(void)
 /*!
  * function is the interrupt service handler for the ARM11 performance counters
  */
-static irqreturn_t arm11_pmu_interrupt(int irq, void *arg, struct pt_regs *regs)
+static irqreturn_t arm11_pmu_interrupt(int irq, void *arg)
 {
 	int i;
 	u32 pmnc, emcs;
@@ -340,7 +341,7 @@ static irqreturn_t arm11_pmu_interrupt(int irq, void *arg, struct pt_regs *regs)
 			write_l2counter(i - EMC0,
 					-(u32) counter_config[i].count);
 
-		oprofile_add_sample(regs, i);
+		oprofile_add_sample(get_irq_regs(), i);
 	}
 
 	/* Clear overflow flags */

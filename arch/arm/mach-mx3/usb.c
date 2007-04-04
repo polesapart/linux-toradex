@@ -755,7 +755,7 @@ static struct platform_device *host_pdev_register(struct resource *res,
 	pdev = platform_device_register_simple("fsl-ehci",
 					       instance_id, res, n_res);
 	if (IS_ERR(pdev)) {
-		pr_debug("can't register %s Host, %d\n",
+		pr_debug("can't register %s Host, %ld\n",
 			 config->name, PTR_ERR(pdev));
 		return NULL;
 	}

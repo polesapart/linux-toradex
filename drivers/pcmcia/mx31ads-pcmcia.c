@@ -374,8 +374,9 @@ mx31ads_common_pcmcia_set_io_map(struct pcmcia_socket *sock,
 	struct mx31ads_pcmcia_socket *skt = to_mx31ads_pcmcia_socket(sock);
 	unsigned short speed = map->speed;
 
-	pr_debug("map %u  speed %u start 0x%08x stop 0x%08x\n",
-		 map->map, map->speed, map->start, map->stop);
+	pr_debug("map %u  speed %u start 0x%08lx stop 0x%08lx\n",
+		 map->map, map->speed, (unsigned long int)map->start,
+                 (unsigned long int)map->stop);
 	pr_debug("flags: %s%s%s%s%s%s%s%s\n",
 		 (map->flags == 0) ? "<NONE>" : "",
 		 (map->flags & MAP_ACTIVE) ? "ACTIVE " : "",
@@ -439,7 +440,7 @@ mx31ads_common_pcmcia_set_mem_map(struct pcmcia_socket *sock,
 
 	pr_debug
 	    (KERN_INFO
-	     "map %u speed %u card_start %08x flags%08x static_start %08x\n",
+	     "map %u speed %u card_start %08x flags%08x static_start %08lx\n",
 	     map->map, map->speed, map->card_start, map->flags,
 	     map->static_start);
 	pr_debug(KERN_INFO "flags: %s%s%s%s%s%s%s%s\n",
@@ -575,7 +576,7 @@ mx31ads_pcmcia_socket_state(struct mx31ads_pcmcia_socket *skt,
 	unsigned long pins;
 
 	pins = _reg_PCMCIA_PIPR;
-	pr_debug(KERN_INFO "_reg_PCMCIA_PIPR = 0x%08x\n", pins);
+	pr_debug(KERN_INFO "_reg_PCMCIA_PIPR = 0x%08lx\n", pins);
 
 	state->ready = (pins & PCMCIA_PIPR_RDY) ? 1 : 0;
 	state->bvd2 = (pins & PCMCIA_PIPR_BVD2) ? 1 : 0;

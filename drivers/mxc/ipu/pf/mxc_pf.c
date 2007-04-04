@@ -780,7 +780,7 @@ static int mxc_pf_mmap(struct file *file, struct vm_area_struct *vma)
 	unsigned long size = vma->vm_end - vma->vm_start;
 	int res = 0;
 
-	pr_debug("pgoff=0x%x, start=0x%x, end=0x%x\n",
+	pr_debug("pgoff=0x%lx, start=0x%lx, end=0x%lx\n",
 		 vma->vm_pgoff, vma->vm_start, vma->vm_end);
 
 	/* make this _really_ smp-safe */
