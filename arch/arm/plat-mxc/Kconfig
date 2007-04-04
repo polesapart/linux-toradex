@@ -14,6 +14,7 @@ config ARCH_MX3
 config ARCH_MX27
 	bool "MX27-based"
 	select MXC_EMMA
+	select GENERIC_TIME
 	help
 	  This enables support for systems based on Freescale i.MX27
 
