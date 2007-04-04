@@ -2,6 +2,7 @@
  * Header for MultiMediaCard (MMC)
  *
  * Copyright 2002 Hewlett-Packard Company
+ * SDIO support Copyright 2006 Freescale Semiconductor, Inc.
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is
@@ -39,6 +40,9 @@
 #define MMC_STOP_TRANSMISSION    12   /* ac                      R1b */
 #define MMC_SEND_STATUS	         13   /* ac   [31:16] RCA        R1  */
 #define MMC_GO_INACTIVE_STATE    15   /* ac   [31:16] RCA            */
+#define SD_IO_SEND_OP_COND        5   /* bcr  [31:0] OCR         R4  */
+#define SD_IO_RW_DIRECT          52   /*                         R5  */
+#define SD_IO_RW_EXTENDED        53   /*                         R5  */
 
   /* class 2 */
 #define MMC_SET_BLOCKLEN         16   /* ac   [31:0] block len   R1  */
@@ -87,6 +91,19 @@
 #define SD_APP_OP_COND           41   /* bcr  [31:0] OCR         R3  */
 #define SD_APP_SEND_SCR          51   /* adtc                    R1  */
 
+#define IO_RW_DIRECT_ARG(rw,raw,fn,reg,dat) \
+	( ((rw & 0x1) << 31) | ((raw & 0x1) << 27) | ((fn & 0x7) << 28) | \
+	((reg & 0x1FFFF) << 9) | (dat & 0xFF) )
+
+#define IO_RW_EXTENDED_ARG(rw,mode,inc,fn,reg,cnt) \
+	( ((rw & 0x1) << 31) | ((mode & 0x1) << 27) | ((inc & 0x1) << 26) | \
+	((fn & 0x7) << 28) | ((reg & 0x1FFFF) << 9) | (cnt & 0x1FF) )
+
+#define SDIO_RW_READ		0
+#define SDIO_RW_WRITE		1
+#define SDIO_RW_RD_A_WR		1
+#define SDIO_RW_INC		1
+
 /*
   MMC status in R1
   Type
@@ -125,6 +142,13 @@
 #define R1_CURRENT_STATE(x)    	((x & 0x00001E00) >> 9)	/* sx, b (4 bits) */
 #define R1_READY_FOR_DATA	(1 << 8)	/* sx, a */
 #define R1_APP_CMD		(1 << 5)	/* sr, c */
+
+#define R4_NUM_IO_FUNC(x)	((x >> 28) & 0x7)
+#define R4_OCR(x)		(x & 0x00FFFF00)
+#define R4_MEM_PRESENT		(1 << 27)
+#define R4_CARD_READY		(1 << 31)
+
+#define R5_DATA(x)		(x & 0xFF)
 
 /* These are unpacked versions of the actual responses */
 
@@ -237,12 +261,60 @@ struct _mmc_csd {
 #define CSD_SPEC_VER_2      2           /* Implements system specification 2.0 - 2.2 */
 #define CSD_SPEC_VER_3      3           /* Implements system specification 3.1 */
 
+/*
+ * Card Command Classes (CCC)
+ */
+#define CCC_BASIC		(1<<0)	/* (0) Basic protocol functions */
+					/* (CMD0,1,2,3,4,7,9,10,12,13,15) */
+#define CCC_STREAM_READ		(1<<1)	/* (1) Stream read commands */
+					/* (CMD11) */
+#define CCC_BLOCK_READ		(1<<2)	/* (2) Block read commands */
+					/* (CMD16,17,18) */
+#define CCC_STREAM_WRITE	(1<<3)	/* (3) Stream write commands */
+					/* (CMD20) */
+#define CCC_BLOCK_WRITE		(1<<4)	/* (4) Block write commands */
+					/* (CMD16,24,25,26,27) */
+#define CCC_ERASE		(1<<5)	/* (5) Ability to erase blocks */
+					/* (CMD32,33,34,35,36,37,38,39) */
+#define CCC_WRITE_PROT		(1<<6)	/* (6) Able to write protect blocks */
+					/* (CMD28,29,30) */
+#define CCC_LOCK_CARD		(1<<7)	/* (7) Able to lock down card */
+					/* (CMD16,CMD42) */
+#define CCC_APP_SPEC		(1<<8)	/* (8) Application specific */
+					/* (CMD55,56,57,ACMD*) */
+#define CCC_IO_MODE		(1<<9)	/* (9) I/O mode */
+					/* (CMD5,39,40,52,53) */
+#define CCC_SWITCH		(1<<10)	/* (10) High speed switch */
+					/* (CMD6,34,35,36,37,50) */
+					/* (11) Reserved */
+					/* (CMD?) */
 
 /*
  * SD bus widths
  */
 #define SD_BUS_WIDTH_1      0
 #define SD_BUS_WIDTH_4      2
+
+/*
+ * SDIO CCCR register definitions
+ */
+#define CCCR_SDIO_REV		0
+#define CCCR_SD_REV		1
+#define CCCR_IO_ENABLE		2
+#define CCCR_IO_READY		3
+#define CCCR_INT_ENABLE		4
+#define CCCR_INT_PEND		5
+#define CCCR_IO_ABORT		6
+#define CCCR_BUS_CTRL		7
+#define CCCR_CARD_CAP		8
+#define CCCR_CIS_PTR		9
+#define CCCR_BUS_SUSP		0x0C
+#define CCCR_FUNC_SEL		0x0D
+#define CCCR_EXEC_FLAGS		0x0E
+#define CCCR_READY_FLAGS	0x0F
+#define CCCR_FN0_BLK_SZ0	0x10
+#define CCCR_FN0_BLK_SZ1	0x11
+#define CCCR_PWR_CTRL		0x12
 
 #endif  /* MMC_MMC_PROTOCOL_H */
 

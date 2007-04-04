@@ -4,6 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  SD support Copyright (C) 2005 Pierre Ossman, All Rights Reserved.
+ *  SDIO support Copyright (C) 2006 Freescale Semiconductor, Inc., All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -420,6 +421,20 @@ static int mmc_select_card(struct mmc_host *host, struct mmc_card *card)
 
 			err = mmc_wait_for_app_cmd(host, card->rca, &cmd,
 				CMD_RETRIES);
+			if (err != MMC_ERR_NONE)
+				return err;
+
+			host->ios.bus_width = MMC_BUS_WIDTH_4;
+		}
+		if (mmc_card_sdio(card)) {
+			struct mmc_command cmd;
+			cmd.opcode = SD_IO_RW_DIRECT;
+			cmd.arg = IO_RW_DIRECT_ARG(SDIO_RW_WRITE,0,0,
+						   CCCR_BUS_CTRL,
+						   SD_BUS_WIDTH_4);
+			cmd.flags = MMC_RSP_R5 | MMC_CMD_AC;
+
+			err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
 			if (err != MMC_ERR_NONE)
 				return err;
 
@@ -847,6 +862,35 @@ static int mmc_send_app_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
 	return err;
 }
 
+static int mmc_send_sdio_op_cond(struct mmc_host *host, u32 ocr, u32 *rocr)
+{
+	struct mmc_command cmd;
+	int i, err = 0;
+
+	cmd.opcode = SD_IO_SEND_OP_COND;
+	cmd.arg = ocr;
+	cmd.flags = MMC_RSP_R4 | MMC_CMD_BCR;
+
+	for (i = 100; i; i--) {
+		err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
+		if (err != MMC_ERR_NONE)
+			break;
+
+		if (cmd.resp[0] & MMC_CARD_BUSY || ocr == 0)
+			break;
+
+		err = MMC_ERR_TIMEOUT;
+
+		mmc_delay(10);
+	}
+
+	if (rocr)
+		*rocr = cmd.resp[0];
+
+	return err;
+}
+
+
 /*
  * Discover cards by requesting their CID.  If this command
  * times out, it is not an error; there are no further cards
@@ -862,20 +906,23 @@ static void mmc_discover_cards(struct mmc_host *host)
 
 	while (1) {
 		struct mmc_command cmd;
+		memset(&cmd, 0, sizeof(struct mmc_command));
 
-		cmd.opcode = MMC_ALL_SEND_CID;
-		cmd.arg = 0;
-		cmd.flags = MMC_RSP_R2 | MMC_CMD_BCR;
+		if (host->mode != MMC_MODE_SDIO) {
+			cmd.opcode = MMC_ALL_SEND_CID;
+			cmd.arg = 0;
+			cmd.flags = MMC_RSP_R2 | MMC_CMD_BCR;
 
-		err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
-		if (err == MMC_ERR_TIMEOUT) {
-			err = MMC_ERR_NONE;
-			break;
-		}
-		if (err != MMC_ERR_NONE) {
-			printk(KERN_ERR "%s: error requesting CID: %d\n",
-				mmc_hostname(host), err);
-			break;
+			err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
+			if (err == MMC_ERR_TIMEOUT) {
+				err = MMC_ERR_NONE;
+				break;
+			}
+			if (err != MMC_ERR_NONE) {
+				printk(KERN_ERR "%s: error requesting CID: %d\n",
+					mmc_hostname(host), err);
+				break;
+			}
 		}
 
 		card = mmc_find_card(host, cmd.resp);
@@ -890,8 +937,9 @@ static void mmc_discover_cards(struct mmc_host *host)
 
 		card->state &= ~MMC_STATE_DEAD;
 
-		if (host->mode == MMC_MODE_SD) {
-			mmc_card_set_sd(card);
+		if (host->mode != MMC_MODE_MMC) {
+			if (host->mode == MMC_MODE_SD)
+				mmc_card_set_sd(card);
 
 			cmd.opcode = SD_SEND_RELATIVE_ADDR;
 			cmd.arg = 0;
@@ -912,6 +960,10 @@ static void mmc_discover_cards(struct mmc_host *host)
 					if (host->ops->get_ro(host))
 						mmc_card_set_readonly(card);
 				}
+			}
+			if (host->mode == MMC_MODE_SDIO) {
+				mmc_card_set_sdio(card);
+				break;
 			}
 		} else {
 			cmd.opcode = MMC_SET_RELATIVE_ADDR;
@@ -1031,7 +1083,7 @@ static unsigned int mmc_calculate_clock(struct mmc_host *host)
 	unsigned int max_dtr = host->f_max;
 
 	list_for_each_entry(card, &host->cards, node)
-		if (!mmc_card_dead(card) && max_dtr > card->csd.max_dtr)
+		if (!mmc_card_dead(card) && !mmc_card_sdio(card) && max_dtr > card->csd.max_dtr)
 			max_dtr = card->csd.max_dtr;
 
 	pr_debug("%s: selected %d.%03dMHz transfer rate\n",
@@ -1083,18 +1135,35 @@ static void mmc_setup(struct mmc_host *host)
 		mmc_power_up(host);
 		mmc_idle_cards(host);
 
-		err = mmc_send_app_op_cond(host, 0, &ocr);
+		if (host->caps & MMC_CAP_SDIO) {
+			err = mmc_send_sdio_op_cond(host, 0, &ocr);
+			if (err == MMC_ERR_NONE) {
+				u32 cnt;
 
-		/*
-		 * If we fail to detect any SD cards then try
-		 * searching for MMC cards.
-		 */
-		if (err != MMC_ERR_NONE) {
-			host->mode = MMC_MODE_MMC;
+				host->mode = MMC_MODE_SDIO;
+				if (ocr & R4_MEM_PRESENT) {
+					printk(KERN_ERR"SDIO card is combo card, untested\n");
+				}
 
-			err = mmc_send_op_cond(host, 0, &ocr);
-			if (err != MMC_ERR_NONE)
-				return;
+				cnt = R4_NUM_IO_FUNC(ocr);
+				printk(KERN_INFO"mmc_setup - SDIO card supports %d I/O functions\n",cnt);
+			}
+		}
+
+		if (host->mode == MMC_MODE_SD) {
+			err = mmc_send_app_op_cond(host, 0, &ocr);
+
+			/*
+			 * If we fail to detect any SD cards then try
+			 * searching for MMC cards.
+			 */
+			if (err != MMC_ERR_NONE) {
+				host->mode = MMC_MODE_MMC;
+
+				err = mmc_send_op_cond(host, 0, &ocr);
+				if (err != MMC_ERR_NONE)
+					return;
+			}
 		}
 
 		host->ocr = mmc_select_voltage(host, ocr);
@@ -1105,7 +1174,7 @@ static void mmc_setup(struct mmc_host *host)
 		 * state.  We wait 1ms to give cards time to
 		 * respond.
 		 */
-		if (host->ocr)
+		if ((host->ocr) && (host->mode != MMC_MODE_SDIO))
 			mmc_idle_cards(host);
 	} else {
 		host->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
@@ -1135,7 +1204,9 @@ static void mmc_setup(struct mmc_host *host)
 	 * all get the idea that they should be ready for CMD2.
 	 * (My SanDisk card seems to need this.)
 	 */
-	if (host->mode == MMC_MODE_SD)
+	if (host->mode == MMC_MODE_SDIO)
+		mmc_send_sdio_op_cond(host, host->ocr, NULL);
+	else if (host->mode == MMC_MODE_SD)
 		mmc_send_app_op_cond(host, host->ocr, NULL);
 	else
 		mmc_send_op_cond(host, host->ocr, NULL);
@@ -1148,7 +1219,8 @@ static void mmc_setup(struct mmc_host *host)
 	host->ios.bus_mode = MMC_BUSMODE_PUSHPULL;
 	mmc_set_ios(host);
 
-	mmc_read_csds(host);
+	if (host->mode != MMC_MODE_SDIO)
+		mmc_read_csds(host);
 
 	if (host->mode == MMC_MODE_SD)
 		mmc_read_scrs(host);
@@ -1173,6 +1245,46 @@ void mmc_detect_change(struct mmc_host *host, unsigned long delay)
 
 EXPORT_SYMBOL(mmc_detect_change);
 
+/**
+ *	mmc_reset_card - reset one card
+ *	@card: the sd/mmc/sdio card to reset
+ *
+ *	Make sure the host is claimed and the card is selected
+ *  before this function is called.
+ *  The host should be released after this, so the rescan
+ *  function could be carried out.
+ */
+int mmc_reset_card(struct mmc_card *card)
+{
+  struct mmc_command cmd;
+  struct mmc_host* host = card->host;
+	int err;
+
+  /* reset the io function if it's a sdio card,to handle combo
+	card more consideration need to be added*/
+	if (mmc_card_sdio(card)){
+		cmd.opcode = SD_IO_RW_DIRECT;
+		cmd.arg = IO_RW_DIRECT_ARG(SDIO_RW_WRITE,SDIO_RW_RD_A_WR,0,
+					   CCCR_IO_ABORT,0x8);
+		cmd.flags = MMC_RSP_R5;
+		err = mmc_wait_for_cmd(host, &cmd, CMD_RETRIES);
+  }
+
+	/* since don't support combo card now, if it's not sdio card,
+	just reset as a memory card. Modification needed for combo card*/
+	if (!mmc_card_sdio(card) ){
+    mmc_idle_cards(host);
+	}
+
+	mmc_card_set_dead(card);
+
+  /*schedule the rescan function for card re-initial*/
+	mmc_detect_change(host, 0);
+
+	return 0;
+}
+
+EXPORT_SYMBOL(mmc_reset_card);
 
 static void mmc_rescan(void *data)
 {
