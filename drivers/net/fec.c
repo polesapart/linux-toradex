@@ -699,7 +699,7 @@ while (!((status = bdp->cbd_sc) & BD_ENET_RX_EMPTY)) {
 			eth_copy_and_sum(skb, (unsigned char *)data, 
 					pkt_len-4, 0);
 		} else {
-			struct skb_buff * pskb = fep->rx_skbuff[rx_index];
+			struct sk_buff *pskb = fep->rx_skbuff[rx_index];
 			
 			fep->rx_skbuff[rx_index] = skb;
 			skb->data = FEC_ADDR_ALIGNMENT(skb->data);

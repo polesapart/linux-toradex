@@ -480,10 +480,7 @@ int fs453_ioctl(unsigned int cmd, void *arg)
  */
 static int __init fs453_init(void)
 {
-	int err;
-
 	pr_info("FS453/4 driver, (c) 2005 Freescale Semiconductor, Inc.\n");
-
 
 	return 0;
 }

@@ -85,6 +85,7 @@ static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#ifndef CONFIG_GENERIC_TIME
 /*!
  * This function is used to obtain the number of microseconds since the last
  * timer interrupt. Note that interrupts is disabled by do_gettimeofday().
@@ -113,6 +114,7 @@ static unsigned long __noinstrument mxc_gettimeoffset(void)
 
 	return usec;
 }
+#endif /* CONFIG_GENERIC_TIME */
 
 cycle_t mx27_hrt_get_cycles(void)
 {
