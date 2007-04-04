@@ -203,4 +203,11 @@ config KEYBOARD_OMAP
 	  To compile this driver as a module, choose M here: the
 	  module will be called omap-keypad.
 
+config KEYBOARD_MXC
+	tristate "MXC Keypad Driver"
+	depends on ARCH_MXC
+	help
+	  This is the Keypad driver for the Freescale MXC application
+	  processors.
+
 endif
