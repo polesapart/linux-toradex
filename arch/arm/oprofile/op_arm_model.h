@@ -20,9 +20,7 @@ struct op_arm_model_spec {
 	char *name;
 };
 
-#ifdef CONFIG_CPU_XSCALE
-extern struct op_arm_model_spec op_xscale_spec;
-#endif
+extern struct op_arm_model_spec op_arm_spec;
 
 extern void arm_backtrace(struct pt_regs * const regs, unsigned int depth);
 

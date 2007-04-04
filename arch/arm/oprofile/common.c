@@ -76,6 +76,7 @@ static void op_arm_stop(void)
 	mutex_unlock(&op_arm_mutex);
 }
 
+#undef CONFIG_PM
 #ifdef CONFIG_PM
 static int op_arm_suspend(struct sys_device *dev, pm_message_t state)
 {
@@ -131,9 +132,7 @@ int __init oprofile_arch_init(struct oprofile_operations *ops)
 	struct op_arm_model_spec *spec = NULL;
 	int ret = -ENODEV;
 
-#ifdef CONFIG_CPU_XSCALE
-	spec = &op_xscale_spec;
-#endif
+	spec = &op_arm_spec;
 
 	if (spec) {
 		ret = spec->init();
