@@ -98,7 +98,7 @@ int opl_rotate270_u16(const u8 * src, int src_line_stride, int width,
 		      int height, u8 * dst, int dst_line_stride);
 
 /*!
- * @brief Mirror a 16bpp buffer horizontaly
+ * @brief Mirror a 16bpp buffer horizontally
  *
  * @param src             Pointer to the input buffer
  * @param src_line_stride Length in bytes of a raster line of the input buffer
@@ -126,5 +126,37 @@ int opl_hmirror_u16(const u8 * src, int src_line_stride, int width, int height,
  */
 int opl_vmirror_u16(const u8 * src, int src_line_stride, int width, int height,
 		    u8 * dst, int dst_line_stride);
+
+/*!
+ * @brief Rotate a 16bbp buffer 90 degrees clockwise and mirror vertically
+ *	  It is equivalent to rotate 270 degree and mirror horizontally
+ *
+ * @param src             Pointer to the input buffer
+ * @param src_line_stride Length in bytes of a raster line of the input buffer
+ * @param width           Width in pixels of the region in the input buffer
+ * @param height          Height in pixels of the region in the input buffer
+ * @param dst             Pointer to the output buffer
+ * @param dst_line_stride Length in bytes of a raster line of the output buffer
+ *
+ * @return Standard OPL error code. See enumeration for possible result codes.
+ */
+int opl_rotate90_vmirror_u16(const u8 * src, int src_line_stride, int width,
+			     int height, u8 * dst, int dst_line_stride);
+
+/*!
+ * @brief Rotate a 16bbp buffer 270 degrees clockwise and mirror vertically
+ *	  It is equivalent to rotate 90 degree and mirror horizontally
+ *
+ * @param src             Pointer to the input buffer
+ * @param src_line_stride Length in bytes of a raster line of the input buffer
+ * @param width           Width in pixels of the region in the input buffer
+ * @param height          Height in pixels of the region in the input buffer
+ * @param dst             Pointer to the output buffer
+ * @param dst_line_stride Length in bytes of a raster line of the output buffer
+ *
+ * @return Standard OPL error code. See enumeration for possible result codes.
+ */
+int opl_rotate270_vmirror_u16(const u8 * src, int src_line_stride, int width,
+			      int height, u8 * dst, int dst_line_stride);
 
 #endif				/* __OPL_H__ */

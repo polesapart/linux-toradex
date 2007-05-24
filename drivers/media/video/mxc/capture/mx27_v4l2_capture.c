@@ -263,6 +263,8 @@ static int verify_preview(cam_data * cam, struct v4l2_window *win)
 	 * width according to PrP limitations.
 	 */
 	if ((cam->rotation == V4L2_MXC_ROTATE_90_RIGHT)
+	    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_VFLIP)
+	    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_HFLIP)
 	    || (cam->rotation == V4L2_MXC_ROTATE_90_LEFT))
 		win->w.height &= ~0x1;
 	else
@@ -513,6 +515,8 @@ static int mxc_set_v42l_control(cam_data * cam, struct v4l2_control *c)
 		case V4L2_MXC_ROTATE_HORIZ_FLIP:
 		case V4L2_MXC_ROTATE_180:
 		case V4L2_MXC_ROTATE_90_RIGHT:
+		case V4L2_MXC_ROTATE_90_RIGHT_VFLIP:
+		case V4L2_MXC_ROTATE_90_RIGHT_HFLIP:
 		case V4L2_MXC_ROTATE_90_LEFT:
 			cam->rotation = c->value;
 			break;

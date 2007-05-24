@@ -123,6 +123,8 @@ static int set_ch1_addr(emma_prp_cfg * cfg, cam_data * cam)
 		cfg->ch1_ptr = (unsigned int)cam->rot_vf_bufs[0];
 		cfg->ch1_ptr2 = (unsigned int)cam->rot_vf_bufs[1];
 		if ((cam->rotation == V4L2_MXC_ROTATE_90_RIGHT)
+		    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_VFLIP)
+		    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_HFLIP)
 		    || (cam->rotation == V4L2_MXC_ROTATE_90_LEFT))
 			cfg->ch1_stride = cam->win.w.height;
 		else
@@ -199,6 +201,8 @@ static int prp_v4l2_cfg(emma_prp_cfg * cfg, cam_data * cam)
 			break;
 		}
 		if ((cam->rotation == V4L2_MXC_ROTATE_90_RIGHT)
+		    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_VFLIP)
+		    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_HFLIP)
 		    || (cam->rotation == V4L2_MXC_ROTATE_90_LEFT)) {
 			cfg->ch1_width = cam->win.w.height;
 			cfg->ch1_height = cam->win.w.width;
@@ -786,6 +790,8 @@ static void rotation(unsigned long private)
 	size = cam->rot_vf_buf_size[g_rotbuf];
 
 	if ((cam->rotation == V4L2_MXC_ROTATE_90_RIGHT)
+	    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_VFLIP)
+	    || (cam->rotation == V4L2_MXC_ROTATE_90_RIGHT_HFLIP)
 	    || (cam->rotation == V4L2_MXC_ROTATE_90_LEFT)) {
 		width = cam->win.w.height;
 		height = cam->win.w.width;
@@ -832,6 +838,15 @@ static void rotation(unsigned long private)
 		break;
 	case V4L2_MXC_ROTATE_90_RIGHT:
 		opl_rotate90_u16(src, s_stride, width, height, dst, d_stride);
+		break;
+	case V4L2_MXC_ROTATE_90_RIGHT_VFLIP:
+		opl_rotate90_vmirror_u16(src, s_stride, width, height, dst,
+					 d_stride);
+		break;
+	case V4L2_MXC_ROTATE_90_RIGHT_HFLIP:
+		/* ROTATE_90_RIGHT_HFLIP = ROTATE_270_RIGHT_VFLIP */
+		opl_rotate270_vmirror_u16(src, s_stride, width, height, dst,
+					  d_stride);
 		break;
 	case V4L2_MXC_ROTATE_90_LEFT:
 		opl_rotate270_u16(src, s_stride, width, height, dst, d_stride);
