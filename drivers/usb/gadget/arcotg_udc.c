@@ -2979,7 +2979,9 @@ static int __devinit arcotg_udc_probe(struct platform_device *pdev)
 	}
 
 	create_proc_file();
-	device_add(&udc_controller->gadget.dev);
+	if (device_add(&udc_controller->gadget.dev)) {
+		printk("device_add: Adding device failed\n");
+	}
 	VDBG("back from device_add ");
 
 	return 0;

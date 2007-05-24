@@ -176,8 +176,11 @@ static int vpu_ioctl(struct inode *inode, struct file *filp, u_int cmd,
 			if (!rec)
 				return -ENOMEM;
 
-			copy_from_user(&(rec->mem), (vpu_mem_desc *) arg,
-				       sizeof(vpu_mem_desc));
+			if (copy_from_user(&(rec->mem), (vpu_mem_desc *)arg,
+					sizeof(vpu_mem_desc))) {
+				kfree(rec);
+				return -EFAULT;
+			}
 			pr_debug("[ALLOC] mem alloc size = 0x%x\n",
 				 rec->mem.size);
 			rec->mem.cpu_addr = (unsigned long)
@@ -195,8 +198,11 @@ static int vpu_ioctl(struct inode *inode, struct file *filp, u_int cmd,
 				ret = -ENOMEM;
 				break;
 			}
-			copy_to_user((void __user *)arg, &(rec->mem),
-				     sizeof(vpu_mem_desc));
+			if (copy_to_user((void __user *)arg, &(rec->mem),
+				     sizeof(vpu_mem_desc))) {
+				kfree(rec);
+				return -EFAULT;
+			}
 
 			spin_lock_irqsave(&vpu_lock, flags);
 			list_add(&rec->list, &head);
@@ -209,8 +215,10 @@ static int vpu_ioctl(struct inode *inode, struct file *filp, u_int cmd,
 			struct memalloc_record *rec, *n;
 			vpu_mem_desc vpu_mem;
 
-			copy_from_user(&vpu_mem, (vpu_mem_desc *) arg,
-				       sizeof(vpu_mem_desc));
+			if (copy_from_user(&vpu_mem, (vpu_mem_desc *)arg,
+					sizeof(vpu_mem_desc))) {
+				return -EFAULT;
+			}
 			pr_debug("[FREE] mem freed cpu_addr = 0x%x\n",
 				 vpu_mem.cpu_addr);
 
