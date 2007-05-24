@@ -31,49 +31,24 @@
 
 #include "mx27_csi.h"
 
-#undef MX27_CSI_INT
-
 static csi_config_t g_csi_cfg;	/* csi hardware configuration */
-static csi_status_t g_csi_status;	/* cache copy of csi status register */
-
 static bool gcsi_mclk_on = false;
 static int gcsi_mclk_source = 0;
-
-#ifdef MX27_CSI_INT
-static void csihw_read_status(csi_status_t * cs)
-{
-	cs->sff_or_int = (__raw_readl(CSI_CSISR) & BIT_SFF_OR_INT) ? 1 : 0;
-	cs->rff_or_int = (__raw_readl(CSI_CSISR) & BIT_RFF_OR_INT) ? 1 : 0;
-	cs->statff_int = (__raw_readl(CSI_CSISR) & BIT_STATFF_INT) ? 1 : 0;
-	cs->rxff_int = (__raw_readl(CSI_CSISR) & BIT_RXFF_INT) ? 1 : 0;
-	cs->eof_int = (__raw_readl(CSI_CSISR) & BIT_EOF_INT) ? 1 : 0;
-	cs->sof_int = (__raw_readl(CSI_CSISR) & BIT_SOF_INT) ? 1 : 0;
-	cs->f2_int = (__raw_readl(CSI_CSISR) & BIT_F2_INT) ? 1 : 0;
-	cs->f1_int = (__raw_readl(CSI_CSISR) & BIT_F1_INT) ? 1 : 0;
-	cs->cof_int = (__raw_readl(CSI_CSISR) & BIT_COF_INT) ? 1 : 0;
-	cs->ecc_int = (__raw_readl(CSI_CSISR) & BIT_ECC_INT) ? 1 : 0;
-	cs->drdy = (__raw_readl(CSI_CSISR) & BIT_DRDY) ? 1 : 0;
-}
+static csi_irq_callback_t g_callback = 0;
+static void *g_callback_data = 0;
 
 static irqreturn_t csi_irq_handler(int irq, void *data)
 {
-	csihw_read_status(&g_csi_status);
+	unsigned long status = __raw_readl(CSI_CSISR);
 
-	/* rx fifo overflow */
-	if (g_csi_cfg.rf_or_inten && g_csi_status.rff_or_int) {
-		pr_debug("csi_irq_handler rx fifo overflow. \n");
-		__raw_writel(BIT_RFF_OR_INT, CSI_CSISR);
-	}
+	__raw_writel(status, CSI_CSISR);
+	if (g_callback)
+		g_callback(g_callback_data, status);
 
-	/* start of frame */
-	if (g_csi_cfg.sof_inten && g_csi_status.sof_int) {
-		pr_debug("csi_irq_handler SOF.\n");
-		__raw_writel(BIT_SOF_INT, CSI_CSISR);
-	}
+	pr_debug("CSI status = 0x%08X\n", status);
 
 	return IRQ_HANDLED;
 }
-#endif
 
 static void csihw_set_config(csi_config_t * cfg)
 {
@@ -121,9 +96,6 @@ static void csihw_set_config(csi_config_t * cfg)
 
 	/* update global config */
 	memcpy(&g_csi_cfg, cfg, sizeof(csi_config_t));
-
-	/* status flags */
-	memset(&g_csi_status, 0, sizeof(csi_status_t));
 }
 
 static void csihw_enable_mclk(bool flag)
@@ -176,7 +148,7 @@ int32_t csi_init_interface(uint16_t width, uint16_t height,
 	cfg.statff_level = 0;
 	cfg.staff_inten = 0;
 	cfg.rxff_level = 2;
-	cfg.rxff_inten = 1;
+	cfg.rxff_inten = 0;
 	cfg.sof_pol = 1;
 	cfg.sof_inten = 0;
 	cfg.mclkdiv = 0;
@@ -202,6 +174,26 @@ int32_t csi_init_interface(uint16_t width, uint16_t height,
 	csihw_set_config(&cfg);
 
 	return 0;
+}
+
+/*!
+ * csi_enable_prpif
+ *    Enable or disable CSI-PrP interface
+ * @param       enable        Non-zero to enable, zero to disable
+ */
+void csi_enable_prpif(uint32_t enable)
+{
+	if (enable) {
+		g_csi_cfg.prp_if_en = 1;
+		g_csi_cfg.sof_inten = 0;
+		g_csi_cfg.pack_dir = 0;
+	} else {
+		g_csi_cfg.prp_if_en = 0;
+		g_csi_cfg.sof_inten = 1;
+		g_csi_cfg.pack_dir = 1;
+	}
+
+	csihw_set_config(&g_csi_cfg);
 }
 
 /*!
@@ -249,6 +241,12 @@ int csi_read_mclk_flag(void)
 	return gcsi_mclk_source;
 }
 
+void csi_set_callback(csi_irq_callback_t callback, void *data)
+{
+	g_callback = callback;
+	g_callback_data = data;
+}
+
 int32_t __init csi_init_module(void)
 {
 	int ret = 0;
@@ -256,22 +254,18 @@ int32_t __init csi_init_module(void)
 	mxc_clks_enable(CSI_BAUD);
 	csihw_reset();
 
-#ifdef MX27_CSI_INT
 	/* interrupt enable */
 	ret = request_irq(INT_CSI, csi_irq_handler, 0, "csi", 0);
 	if (ret)
 		pr_debug("CSI error: irq request fail\n");
-#endif
 
 	return ret;
 }
 
 void __exit csi_cleanup_module(void)
 {
-#ifdef MX27_CSI_INT
 	/* free irq */
 	free_irq(INT_CSI, 0);
-#endif
 
 	mxc_clks_disable(CSI_BAUD);
 }
@@ -282,6 +276,8 @@ module_exit(csi_cleanup_module);
 EXPORT_SYMBOL(csi_init_interface);
 EXPORT_SYMBOL(csi_enable_mclk);
 EXPORT_SYMBOL(csi_read_mclk_flag);
+EXPORT_SYMBOL(csi_set_callback);
+EXPORT_SYMBOL(csi_enable_prpif);
 
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("MX27 CSI driver");

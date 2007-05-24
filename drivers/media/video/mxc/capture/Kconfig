@@ -12,6 +12,16 @@ config VIDEO_MXC_EMMA_CAMERA
 	select VIDEO_MXC_OPL
 	default y
 
+config VIDEO_MXC_CSI_DMA
+	bool "CSI-DMA Still Image Capture support"
+	depends on VIDEO_MXC_EMMA_CAMERA
+	default n
+	---help---
+	  Use CSI-DMA method instead of CSI-PrP link to capture still image. This allows
+	  to use less physical contiguous memory to capture big resolution still image. But
+	  with this method the CSC (Color Space Conversion) and resize are not supported.
+	  If unsure, say N.
+
 choice
 	prompt "Select Camera"
 	default MXC_CAMERA_MICRON111

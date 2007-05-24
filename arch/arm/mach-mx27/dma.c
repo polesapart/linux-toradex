@@ -452,6 +452,19 @@ static mx2_dma_info_t mmc2_width4_dma_info = {
 	.M2D_Valid = 0,
 };
 
+static mx2_dma_info_t csi_rx_dma_info = {
+	.dma_chan = MXC_DMA_DYNAMIC_CHANNEL,
+	.mode = 0,
+	.rto_en = 0,
+	.dir = 0,
+	.dma_chaining = 1,.ren = 1,
+	.burstLength = 64,.request = DMA_REQ_CSI_RX,.busuntils = 0,
+	.sourceType = DMA_TYPE_FIFO,.sourcePort = DMA_MEM_SIZE_32,
+	.destType = DMA_TYPE_LINEAR,.destPort = DMA_MEM_SIZE_32,
+	.per_address = (CSI_BASE_ADDR + 0x10),
+	.M2D_Valid = 0,
+};
+
 /*!
  * @brief dma info array which is actived
  *    DEVICE_ID  RX/(RX&TX)	TX
@@ -485,6 +498,7 @@ static dma_info_entry_t active_dma_info[] = {
 	{MXC_DMA_MMC1_WIDTH_4, &mmc1_width4_dma_info},
 	{MXC_DMA_MMC2_WIDTH_1, &mmc2_width1_dma_info},
 	{MXC_DMA_MMC2_WIDTH_4, &mmc2_width4_dma_info},
+	{MXC_DMA_CSI_RX, &csi_rx_dma_info},
 };
 
 /*!

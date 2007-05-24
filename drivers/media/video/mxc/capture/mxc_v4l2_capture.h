@@ -111,6 +111,7 @@ typedef struct _cam_data {
 	wait_queue_head_t still_queue;
 	int still_counter;
 	dma_addr_t still_buf;
+	void *still_buf_vaddr;
 
 	/* overlay */
 	struct v4l2_window win;

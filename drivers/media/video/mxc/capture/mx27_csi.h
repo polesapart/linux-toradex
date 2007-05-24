@@ -90,8 +90,17 @@
 #define CSI_CSICR1		(IO_ADDRESS(CSI_BASE_ADDR))
 #define CSI_CSICR2		(IO_ADDRESS(CSI_BASE_ADDR + 0x4))
 #define CSI_CSISR		(IO_ADDRESS(CSI_BASE_ADDR + 0x8))
-#define CSI_CSICR3		(IO_ADDRESS(CSI_BASE_ADDR + 0x1C))
+#define CSI_STATFIFO		(IO_ADDRESS(CSI_BASE_ADDR + 0xC))
+#define CSI_CSIRXFIFO		(IO_ADDRESS(CSI_BASE_ADDR + 0x10))
 #define CSI_CSIRXCNT		(IO_ADDRESS(CSI_BASE_ADDR + 0x14))
+#define CSI_CSICR3		(IO_ADDRESS(CSI_BASE_ADDR + 0x1C))
+
+#define CSI_CSIRXFIFO_PHYADDR	(CSI_BASE_ADDR + 0x10)
+
+static __inline void csi_clear_status(unsigned long status)
+{
+	__raw_writel(status, CSI_CSISR);
+}
 
 typedef struct {
 	unsigned data_width:3;
@@ -144,23 +153,13 @@ typedef struct {
 	unsigned int rxcnt;
 } csi_config_t;
 
-typedef struct {
-	unsigned int sff_or_int:1;
-	unsigned int rff_or_int:1;
-	unsigned int statff_int:1;
-	unsigned int rxff_int:1;
-	unsigned int eof_int:1;
-	unsigned int sof_int:1;
-	unsigned int f2_int:1;
-	unsigned int f1_int:1;
-	unsigned int cof_int:1;
-	unsigned int ecc_int:1;
-	unsigned int drdy:1;
-} csi_status_t;
+typedef void (*csi_irq_callback_t) (void *data, unsigned long status);
 
 int32_t csi_enable_mclk(int src, bool flag, bool wait);
 int32_t csi_init_interface(uint16_t width, uint16_t height,
 			   uint32_t pixel_fmt, csi_signal_cfg_t sig);
 int csi_read_mclk_flag(void);
+void csi_set_callback(csi_irq_callback_t callback, void *data);
+void csi_enable_prpif(uint32_t enable);
 
 #endif
