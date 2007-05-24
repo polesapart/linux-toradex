@@ -89,7 +89,6 @@
  */
 #define MXC_SOUND_PLAYBACK_CHAIN_DMA_EN 1
 #define MXC_SOUND_CAPTURE_CHAIN_DMA_EN 1
-
 /*!
   * ID for this card
   */
@@ -1277,7 +1276,6 @@ void configure_codec(snd_pcm_substream_t * substream, int stream_id)
 
 	ssi_bus = (pmic->ssi == SSI1) ? AUDIO_DATA_BUS_1 : AUDIO_DATA_BUS_2;
 
-	pmic_audio_output_enable_phantom_ground(handle);
 	pmic_audio_vcodec_set_rxtx_timeslot(handle, USE_TS0);
 	pmic_audio_vcodec_enable_mixer(handle, USE_TS1, VCODEC_NO_MIX,
 				       VCODEC_MIX_OUT_0DB);
@@ -1289,7 +1287,9 @@ void configure_codec(snd_pcm_substream_t * substream, int stream_id)
 				    pmic->sample_rate, NO_INVERT);
 	msleep(20);
 	pmic_audio_vcodec_set_config(handle, VCODEC_MASTER_CLOCK_OUTPUTS);
+	pmic_audio_enable(handle);
 	pmic_audio_digital_filter_reset(handle);
+	pmic_audio_output_enable_phantom_ground(handle);
 	msleep(15);
 	if (stream_id == 2) {
 		pmic_audio_output_enable_mixer(handle);
@@ -1301,7 +1301,6 @@ void configure_codec(snd_pcm_substream_t * substream, int stream_id)
 		set_mixer_input_device(handle, IP_NODEV, 1);
 		set_mixer_input_gain(handle, audio_mixer_control.input_volume);
 	}
-	pmic_audio_enable(handle);
 }
 
 /*!
@@ -1333,27 +1332,27 @@ void configure_stereodac(snd_pcm_substream_t * substream)
 
 	ssi_bus = (pmic->ssi == SSI1) ? AUDIO_DATA_BUS_1 : AUDIO_DATA_BUS_2;
 
-	pmic_audio_output_enable_phantom_ground(handle);
 	pmic_audio_stdac_set_rxtx_timeslot(handle, USE_TS0_TS1);
 	pmic_audio_stdac_enable_mixer(handle, USE_TS2_TS3, STDAC_NO_MIX,
 				      STDAC_MIX_OUT_0DB);
-	pmic_audio_digital_filter_reset(handle);
-	msleep(10);
 	pmic_audio_set_protocol(handle, ssi_bus, pmic->protocol, pmic->mode,
 				USE_2_TIMESLOTS);
 	pmic_audio_stdac_set_clock(handle, pmic->pll, pmic->pll_rate,
 				   pmic->sample_rate, NO_INVERT);
+
 	pmic_audio_stdac_set_config(handle, STDAC_MASTER_CLOCK_OUTPUTS);
+	pmic_audio_enable(handle);
 	pmic_audio_output_enable_mixer(handle);
 	audio_mixer_control.stdac_out_to_mixer = 1;
+	pmic_audio_digital_filter_reset(handle);
+	msleep(10);
+	pmic_audio_output_enable_phantom_ground(handle);
+	set_mixer_output_volume(handle, audio_mixer_control.master_volume_out,
+				OP_HEADSET);
 	pmic_audio_output_enable_mono_adder(handle,
 					    audio_mixer_control.
 					    mixer_mono_adder);
 	set_mixer_output_device(handle, MIXER_OUT, OP_NODEV, 1);
-	set_mixer_output_volume(handle, audio_mixer_control.master_volume_out,
-				OP_HEADSET);
-	pmic_audio_enable(handle);
-
 }
 
 /*!
@@ -1935,7 +1934,6 @@ static void audio_playback_dma_callback(void *data, int error,
 	 */
 	if (s->active)
 		snd_pcm_period_elapsed(s->stream);
-
 	spin_lock(&s->dma_lock);
 
 	/*
@@ -2181,7 +2179,6 @@ static int snd_mxc_audio_playback_prepare(snd_pcm_substream_t * substream)
 
 	if (configure_pmic_playback(substream, stream_id) == -1)
 		pr_debug(KERN_ERR "MXC: PMIC Playback Config FAILED\n");
-
 	ssi_interrupt_enable(ssi, ssi_tx_fifo_0_empty);
 	/*
 	   ssi_transmit_enable(ssi, true);
@@ -2360,6 +2357,7 @@ static int snd_card_mxc_audio_playback_open(snd_pcm_substream_t * substream)
 	}
 
 	pmic_audio_antipop_enable(ANTI_POP_RAMP_SLOW);
+	msleep(250);
 
 	chip->s[stream_id].stream = substream;
 

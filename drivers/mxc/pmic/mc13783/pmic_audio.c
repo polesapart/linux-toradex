@@ -928,6 +928,7 @@ PMIC_STATUS pmic_audio_open(PMIC_AUDIO_HANDLE * const handle,
 	/* Check the current device handle state and acquire the handle if
 	 * it is available.
 	 */
+
 	if ((device == STEREO_DAC) && (stDAC.handleState == HANDLE_FREE)) {
 		stDAC.handle = (PMIC_AUDIO_HANDLE) (&stDAC);
 		stDAC.handleState = HANDLE_IN_USE;
@@ -1307,17 +1308,7 @@ PMIC_STATUS pmic_audio_enable(const PMIC_AUDIO_HANDLE handle)
 		return PMIC_SYSTEM_ERROR_EINTR;
 
 	if ((handle == stDAC.handle) && (stDAC.handleState == HANDLE_IN_USE)) {
-		/* Must first set the audio bias bit to power up the audio circuits. */
-		pmic_write_reg(REG_AUDIO_RX_0, AUDIO_BIAS_ENABLE,
-			       AUDIO_BIAS_ENABLE);
-		reg_mask = SET_BITS(regAUDIO_RX_0, HSDETEN, 1) |
-		    SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
-		reg_write = SET_BITS(regAUDIO_RX_0, HSDETEN, 1) |
-		    SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
-		rc = pmic_write_reg(REG_AUDIO_RX_0, reg_write, reg_mask);
-		if (rc == PMIC_SUCCESS) {
-		}
-		/* Then we can enable the Stereo DAC. */
+		/* We can enable the Stereo DAC. */
 		rc = pmic_write_reg(REG_AUDIO_STEREO_DAC,
 				    STDAC_ENABLE, STDAC_ENABLE);
 		/*pmic_read_reg(REG_AUDIO_STEREO_DAC, &reg_value); */
@@ -1636,7 +1627,7 @@ PMIC_STATUS pmic_audio_antipop_enable(const PMIC_AUDIO_ANTI_POP_RAMP_SPEED
 				      rampSpeed)
 {
 	PMIC_STATUS rc = PMIC_ERROR;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 	const unsigned int reg_mask = SET_BITS(regAUDIO_RX_0, BIASEN, 1) |
 	    SET_BITS(regAUDIO_RX_0, BIASSPEED, 1);
 
@@ -1649,8 +1640,8 @@ PMIC_STATUS pmic_audio_antipop_enable(const PMIC_AUDIO_ANTI_POP_RAMP_SPEED
 	 * BIASSPEED .
 	 * BIASEN is just to make sure that BIAS is enabled
 	 */
-	reg_value = SET_BITS(regAUDIO_RX_0, BIASEN, 1) |
-	    SET_BITS(regAUDIO_RX_0, BIASSPEED, 1);
+	reg_value = SET_BITS(regAUDIO_RX_0, BIASEN, 1)
+	    | SET_BITS(regAUDIO_RX_0, BIASSPEED, 0);
 	rc = pmic_write_reg(REG_AUDIO_RX_0, reg_value, reg_mask);
 	return rc;
 }
@@ -4455,10 +4446,8 @@ PMIC_STATUS pmic_audio_output_set_pgaGain(const PMIC_AUDIO_HANDLE handle,
 			reg_write = SET_BITS(regAUDIO_RX_1, PGARX, reg_gain);
 		} else if ((handle == stDAC.handle) &&
 			   (stDAC.handleState == HANDLE_IN_USE)) {
-			reg_mask = SET_BITS(regAUDIO_RX_1, PGAST, 15) |
-			    SET_BITS(regAUDIO_RX_1, PGASTEN, 1);
-			reg_write = SET_BITS(regAUDIO_RX_1, PGAST, reg_gain) |
-			    SET_BITS(regAUDIO_RX_1, PGASTEN, 1);
+			reg_mask = SET_BITS(regAUDIO_RX_1, PGAST, 15);
+			reg_write = SET_BITS(regAUDIO_RX_1, PGAST, reg_gain);
 		}
 
 		if (reg_mask == 0) {
