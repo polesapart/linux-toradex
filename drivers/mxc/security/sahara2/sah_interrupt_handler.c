@@ -58,11 +58,10 @@ uint32_t interrupt_count;
 #endif
 
 /* Internal Prototypes */
-static irqreturn_t sah_Intr_Top_Half(int irq,
-				     void *dev_id, struct pt_regs *regs);
+static irqreturn_t sah_Intr_Top_Half(int irq, void *dev_id);
 
 #ifdef KERNEL_TEST
-extern void (*SAHARA_INT_PTR) (int, void *, struct pt_regs *);
+extern void (*SAHARA_INT_PTR) (int, void *);
 #endif
 
 unsigned long reset_flag;
@@ -165,12 +164,10 @@ void sah_Intr_Release(void)
 *
 * @param    irq     Part of the kernel prototype.
 * @param    dev_id  Part of the kernel prototype.
-* @param    regs    Part of the kernel prototype.
 *
 * @return   An IRQ_RETVAL() -- non-zero to that function means 'handled'
 */
-static irqreturn_t sah_Intr_Top_Half(int irq,
-				     void *dev_id, struct pt_regs *regs)
+static irqreturn_t sah_Intr_Top_Half(int irq, void *dev_id)
 {
 #if defined(DIAG_DRV_INTERRUPT) && defined(DIAG_DURING_INTERRUPT)
 	LOG_KDIAG("Top half of Sahara's interrupt handler called.");
@@ -185,7 +182,6 @@ static irqreturn_t sah_Intr_Top_Half(int irq,
 	/* To get rid of the unused parameter warnings. */
 	irq = 0;
 	dev_id = NULL;
-	regs = NULL;
 	return IRQ_RETVAL(1);
 }
 

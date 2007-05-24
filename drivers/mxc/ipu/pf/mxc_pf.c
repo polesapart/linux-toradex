@@ -58,8 +58,7 @@ static struct class *mxc_pf_class;
  * Function definitions
  */
 
-static irqreturn_t mxc_pf_irq_handler(int irq, void *dev_id,
-				      struct pt_regs *regs)
+static irqreturn_t mxc_pf_irq_handler(int irq, void *dev_id)
 {
 	struct mxc_pf_data *pf = dev_id;
 	pf->done_flag++;

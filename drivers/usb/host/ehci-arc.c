@@ -26,7 +26,7 @@
 /* Note: this file is #included by ehci-hcd.c */
 
 #include <linux/platform_device.h>
-#include <linux/usb_otg.h>
+#include <linux/usb/otg.h>
 #include <asm/arch/arc_otg.h>
 #include <asm/arch/isp1504.h>
 

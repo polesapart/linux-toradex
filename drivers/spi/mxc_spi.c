@@ -411,11 +411,10 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
  *
  * @param        irq        the irq number
  * @param        dev_id     the pointer on the device
- * @param        regs       the interrupt parameters
  *
  * @return       The function returns IRQ_HANDLED when handled.
  */
-static irqreturn_t mxc_spi_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxc_spi_isr(int irq, void *dev_id)
 {
 	struct mxc_spi *master_drv_data = dev_id;
 	irqreturn_t ret = IRQ_NONE;

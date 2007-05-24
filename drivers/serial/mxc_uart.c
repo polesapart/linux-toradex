@@ -333,15 +333,9 @@ static void mxcuart_enable_ms(struct uart_port *port)
  *
  * @param   umxc   the MXC UART port structure, this includes the \b uart_port
  *                 structure and other members that are specific to MXC UARTs
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  */
 static void
-#ifdef SUPPORT_SYSRQ
-mxcuart_rx_chars(uart_mxc_port * umxc, struct pt_regs *regs)
-#else
 mxcuart_rx_chars(uart_mxc_port * umxc)
-#endif
 {
 	struct tty_struct *tty = umxc->port.info->tty;
 	volatile unsigned int ch, sr2;
@@ -394,7 +388,7 @@ mxcuart_rx_chars(uart_mxc_port * umxc)
 			}
 		}
 
-		if (uart_handle_sysrq_char(&umxc->port, ch, regs)) {
+		if (uart_handle_sysrq_char(&umxc->port, ch)) {
 			goto ignore_char;
 		}
 
@@ -503,14 +497,12 @@ static void mxcuart_modem_status(uart_mxc_port * umxc, unsigned int sr1,
  *
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *          returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *          \b IRQ_RETVAL is defined in \b include/linux/interrupt.h.
  */
-static irqreturn_t mxcuart_int(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxcuart_int(int irq, void *dev_id)
 {
 	uart_mxc_port *umxc = dev_id;
 	volatile unsigned int sr1, sr2, cr1, cr;
@@ -530,11 +522,7 @@ static irqreturn_t mxcuart_int(int irq, void *dev_id, struct pt_regs *regs)
 		 * Read if there is data available
 		 */
 		if (sr2 & MXC_UARTUSR2_RDR) {
-#ifdef SUPPORT_SYSRQ
-			mxcuart_rx_chars(umxc, regs);
-#else
 			mxcuart_rx_chars(umxc);
-#endif
 		}
 
 		if ((sr1 & (MXC_UARTUSR1_RTSD | MXC_UARTUSR1_DTRD)) ||
@@ -600,14 +588,12 @@ static irqreturn_t mxcuart_int(int irq, void *dev_id, struct pt_regs *regs)
  *
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *          returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *          \b IRQ_RETVAL is defined in include/linux/interrupt.h.
  */
-static irqreturn_t mxcuart_tx_int(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxcuart_tx_int(int irq, void *dev_id)
 {
 	uart_mxc_port *umxc = dev_id;
 	int handled = 0;
@@ -653,25 +639,19 @@ static irqreturn_t mxcuart_tx_int(int irq, void *dev_id, struct pt_regs *regs)
  *
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *          returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *          \b IRQ_RETVAL is defined in include/linux/interrupt.h.
  */
-static irqreturn_t mxcuart_rx_int(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxcuart_rx_int(int irq, void *dev_id)
 {
 	uart_mxc_port *umxc = dev_id;
 	int handled = 0;
 
 	/* Clear the aging timer bit */
 	writel(MXC_UARTUSR1_AGTIM, umxc->port.membase + MXC_UARTUSR1);
-#ifdef SUPPORT_SYSRQ
-	mxcuart_rx_chars(umxc, regs);
-#else
 	mxcuart_rx_chars(umxc);
-#endif
 	handled = 1;
 
 	return IRQ_RETVAL(handled);
@@ -684,14 +664,12 @@ static irqreturn_t mxcuart_rx_int(int irq, void *dev_id, struct pt_regs *regs)
  *
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *          returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *          \b IRQ_RETVAL is defined in include/linux/interrupt.h.
  */
-static irqreturn_t mxcuart_mint_int(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxcuart_mint_int(int irq, void *dev_id)
 {
 	uart_mxc_port *umxc = dev_id;
 	int handled = 0;

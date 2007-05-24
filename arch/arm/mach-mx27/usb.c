@@ -29,7 +29,6 @@
  * Include files
  */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -37,7 +36,7 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
-#include <linux/usb_otg.h>
+#include <linux/usb/otg.h>
 #include <linux/delay.h>
 
 #include <asm/io.h>
@@ -751,7 +750,7 @@ static struct platform_device *host_pdev_register(struct resource *res,
 	pdev = platform_device_register_simple("fsl-ehci",
 					       instance_id, res, n_res);
 	if (IS_ERR(pdev)) {
-		pr_debug("can't register %s Host, %d\n",
+		pr_debug("can't register %s Host, %ld\n",
 			 config->name, PTR_ERR(pdev));
 		return NULL;
 	}

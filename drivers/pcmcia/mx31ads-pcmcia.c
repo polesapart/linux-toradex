@@ -1003,8 +1003,7 @@ static void mx31ads_common_check_status(struct mx31ads_pcmcia_socket *skt)
  * handling code performs scheduling operations which cannot be
  * executed from within an interrupt context.
  */
-static irqreturn_t mx31ads_common_pcmcia_interrupt(int irq, void *dev,
-						   struct pt_regs *regs)
+static irqreturn_t mx31ads_common_pcmcia_interrupt(int irq, void *dev)
 {
 	struct mx31ads_pcmcia_socket *skt = dev;
 	volatile u32 pscr, pgsr;

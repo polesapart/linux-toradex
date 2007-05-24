@@ -40,7 +40,6 @@
 #  define __KERNEL__
 #endif
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/version.h>
@@ -765,7 +764,7 @@ void slcdc_send_data(u32 length)
  *             
  *@return		0 on success, any other value otherwise
  **/
-static irqreturn_t slcdc_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t slcdc_isr(int irq, void *dev_id)
 {
 	volatile u32 reg;
 	reg = __raw_readl(IO_ADDRESS(SLCDC_BASE_ADDR + 0x20));

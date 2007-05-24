@@ -93,7 +93,7 @@ static int vpu_free_buffers(vpu_mem_desc mem[], int num_buf)
 /*!
  * @brief vpu interrupt handler
  */
-static irqreturn_t vpu_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
 {
 	struct vpu_t *dev;
 	dev = (struct vpu_t *)dev_id;

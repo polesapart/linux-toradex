@@ -271,7 +271,7 @@ static int scc_init(void);
 static void scc_cleanup(void);
 
 /* Forward defines of internal functions */
-static irqreturn_t scc_irq(int irq, void *dev_id, struct pt_regs *regs);
+static irqreturn_t scc_irq(int irq, void *dev_id);
 static void scc_perform_callbacks(void);
 static uint32_t copy_to_scc(const uint8_t * from, uint32_t to,
 			    unsigned long count_bytes, uint16_t * crc);

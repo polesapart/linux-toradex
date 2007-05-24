@@ -111,7 +111,7 @@ static const char *part_probes[] = { /* "RedBoot", */ "cmdlinepart", NULL };
 
 static wait_queue_head_t irq_waitq;
 
-static irqreturn_t mxc_nfc_irq(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 {
 	NFC_CONFIG1 |= NFC_INT_MSK;	/* Disable interrupt */
 	wake_up(&irq_waitq);

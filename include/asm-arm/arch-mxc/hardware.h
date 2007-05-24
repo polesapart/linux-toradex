@@ -23,21 +23,6 @@
 #include <asm/sizes.h>
 
 /*!
- * makes bool as int type
- */
-#define bool int
-
-/*!
- * defines false as 0
- */
-#define false 		0
-
-/*!
- * defines true as 1
- */
-#define true		1
-
-/*!
  * defines PCIO_BASE (not used but needed for compilation)
  */
 #define PCIO_BASE		0

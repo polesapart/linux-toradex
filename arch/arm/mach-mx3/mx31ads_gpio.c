@@ -1138,7 +1138,7 @@ EXPORT_SYMBOL(gpio_ata_inactive);
  *          otherwise returns an error code.
  */
 int extuart_intr_setup(unsigned int port, unsigned int irq,
-		       irqreturn_t(*handler) (int, void *, struct pt_regs *),
+		       irqreturn_t(*handler) (int, void *),
 		       unsigned long irq_flags, const char *devname,
 		       void *dev_id)
 {

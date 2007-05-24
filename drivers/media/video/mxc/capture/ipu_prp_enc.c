@@ -35,11 +35,10 @@ static ipu_rotate_mode_t grotation = IPU_ROTATE_NONE;
  *
  * @param irq       int irq line
  * @param dev_id    void * device id
- * @param regs      struct pt_regs *
  *
  * @return status   IRQ_HANDLED for handled
  */
-static irqreturn_t prp_enc_callback(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t prp_enc_callback(int irq, void *dev_id)
 {
 	cam_data *cam = (cam_data *) dev_id;
 

@@ -130,8 +130,8 @@ static struct file_operations Fops = {
 	.fsync = NULL,
 	.fasync = NULL,
 	.lock = NULL,
-	.readv = NULL,
-	.writev = NULL,
+	.aio_read = NULL,
+	.aio_write = NULL,
 	.sendpage = NULL,
 	.get_unmapped_area = NULL
 };

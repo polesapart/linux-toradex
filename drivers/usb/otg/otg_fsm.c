@@ -13,7 +13,7 @@
 
 #include <asm/types.h>
 #include <linux/kernel.h>
-#include <linux/usb_otg.h>
+#include <linux/usb/otg.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/usb.h>

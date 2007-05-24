@@ -27,7 +27,6 @@
 #define DUMP_QUEUES
 #endif
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/ioport.h>
@@ -46,7 +45,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb_ch9.h>
 #include <linux/usb_gadget.h>
-#include <linux/usb_otg.h>
+#include <linux/usb/otg.h>
 #include <linux/dma-mapping.h>
 
 #include <asm/byteorder.h>
@@ -2218,7 +2217,7 @@ static void reset_irq(struct arcotg_udc *udc)
 	}
 }
 
-static irqreturn_t arcotg_udc_irq(int irq, void *_udc, struct pt_regs *r)
+static irqreturn_t arcotg_udc_irq(int irq, void *_udc)
 {
 	struct arcotg_udc *udc = _udc;
 	u32 irq_src;

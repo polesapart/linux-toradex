@@ -193,7 +193,7 @@ typedef struct {
  *
  * @return  Zero if not handled, non-zero if handled.
  */
-typedef int (*os_interrupt_handler_t) (int, void *, struct pt_regs *);
+typedef int (*os_interrupt_handler_t) (int, void *);
 
 /*!
  * @name Driver-to-Kernel Operations
@@ -1207,7 +1207,7 @@ function_name
  * @return   A call to #os_dev_isr_return()
  */
 #define OS_DEV_ISR(function_name)                                             \
-static irqreturn_t function_name(int N1_, void* N2_, struct pt_regs* N3_)
+static irqreturn_t function_name(int N1_, void* N2_)
 
 /*!
  * Declare prototype for an ISR function.
@@ -1295,7 +1295,6 @@ do {                                                                         \
     /* Unused warnings */                                                    \
     (void)N1_;                                                               \
     (void)N2_;                                                               \
-    (void)N3_;                                                               \
                                                                              \
     return IRQ_RETVAL(code);                                                 \
 } while (0)

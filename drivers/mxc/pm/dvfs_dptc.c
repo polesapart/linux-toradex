@@ -74,7 +74,7 @@ static ssize_t dvfs_dptc_read(struct file *filp, char __user * buf,
 #endif
 
 #ifndef CONFIG_MXC_DVFS_SDMA
-static irqreturn_t dvfs_dptc_irq(int irq, void *dev_id, struct pt_regs *regs);
+static irqreturn_t dvfs_dptc_irq(int irq, void *dev_id);
 #else
 static void dvfs_dptc_sdma_callback(dvfs_dptc_params_s * params);
 #endif
@@ -1157,14 +1157,12 @@ static int dvfs_dptc_ioctl(struct inode *inode, struct file *filp,
  *
  * @param   irq      The Interrupt number
  * @param   dev_id   Driver private data
- * @param   regs     Holds a snapshot of the processors context before the
- *                   processor entered the interrupt code
  *
  * @result    The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *            returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *            \b IRQ_RETVAL is defined in include/linux/interrupt.h.
  */
-static irqreturn_t dvfs_dptc_irq(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t dvfs_dptc_irq(int irq, void *dev_id)
 {
 #ifdef EVB_DEBUG
 	printk("CCM interrupt (0x%x)!!!\n",

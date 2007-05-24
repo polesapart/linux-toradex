@@ -281,8 +281,7 @@ static void _init_panel(int disp)
 }
 
 #ifdef PARTIAL_REFRESH
-static irqreturn_t mxcfb_sys2_eof_irq_handler(int irq, void *dev_id,
-					      struct pt_regs *regs)
+static irqreturn_t mxcfb_sys2_eof_irq_handler(int irq, void *dev_id)
 {
 	ipu_channel_params_t params;
 	struct fb_info *fbi = dev_id;
@@ -356,8 +355,7 @@ static irqreturn_t mxcfb_sys2_eof_irq_handler(int irq, void *dev_id,
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t mxcfb_sys1_eof_irq_handler(int irq, void *dev_id,
-					      struct pt_regs *regs)
+static irqreturn_t mxcfb_sys1_eof_irq_handler(int irq, void *dev_id)
 {
 	ipu_disable_irq(IPU_IRQ_ADC_SYS1_EOF);
 	ipu_disable_channel(ADC_SYS1, false);

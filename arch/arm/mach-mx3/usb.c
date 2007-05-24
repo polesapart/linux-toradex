@@ -29,7 +29,6 @@
  *Include files
  */
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -37,7 +36,7 @@
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/platform_device.h>
-#include <linux/usb_otg.h>
+#include <linux/usb/otg.h>
 #include <linux/delay.h>
 
 #include <asm/io.h>

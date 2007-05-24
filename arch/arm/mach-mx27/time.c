@@ -62,20 +62,17 @@
  *
  * @param  irq          GPT interrupt source number (not used)
  * @param  dev_id       this parameter is not used
- * @param  regs         pointer to a structure containing the processor
- *                      registers and state prior to servicing the interrupt
  * @return always returns \b IRQ_HANDLED as defined in
  *         include/linux/interrupt.h.
  */
-static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id,
-				       struct pt_regs *regs)
+static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id)
 {
 	unsigned int next_match;
 
 	write_seqlock(&xtime_lock);
 
 	do {
-		timer_tick(regs);
+		timer_tick();
 		next_match = __raw_readl(MXC_GPT_TCMP_TICK) + LATCH;
 		__raw_writel(GPT_TSTAT_COMP, MXC_GPT_TSTAT_TICK);
 		__raw_writel(next_match, MXC_GPT_TCMP_TICK);

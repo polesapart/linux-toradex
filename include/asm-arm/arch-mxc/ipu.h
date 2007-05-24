@@ -688,7 +688,7 @@ void ipu_enable_irq(uint32_t irq);
 void ipu_disable_irq(uint32_t irq);
 void ipu_clear_irq(uint32_t irq);
 int ipu_request_irq(uint32_t irq,
-		    irqreturn_t(*handler) (int, void *, struct pt_regs *),
+		    irqreturn_t(*handler) (int, void *),
 		    uint32_t irq_flags, const char *devname, void *dev_id);
 void ipu_free_irq(uint32_t irq, void *dev_id);
 bool ipu_get_irq_status(uint32_t irq);

@@ -871,10 +871,8 @@ scc_return_t scc_write_register(int register_offset, uint32_t value)
  *
  * @param irq Channel number for the IRQ. (@c SCC_INT_SMN or @c SCC_INT_SCM).
  * @param dev_id Pointer to the identification of the device.  Ignored.
- * @param regs Holds the snapshot of the processor's context before the
- *        processor entered the interrupt.  Ignored.
  */
-static irqreturn_t scc_irq(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t scc_irq(int irq, void *dev_id)
 {
 	uint32_t smn_status;
 	uint32_t scm_status;

@@ -599,15 +599,12 @@ static void mxc_kpp_handle_timer(unsigned long data)
  *
  * @param   irq      The Interrupt number
  * @param   dev_id   Driver private data
- * @param   regs     Holds a snapshot of the processors context before the
- *                   processor entered the interrupt code
  *
  * @result    The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *            returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  *            \b IRQ_RETVAL is defined in include/linux/interrupt.h.
  */
-static irqreturn_t mxc_kpp_interrupt(int irq, void *dev_id,
-				     struct pt_regs *regs)
+static irqreturn_t mxc_kpp_interrupt(int irq, void *dev_id)
 {
 	unsigned short reg_val;
 

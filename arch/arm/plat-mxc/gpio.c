@@ -313,8 +313,7 @@ void mxc_free_gpio(iomux_pin_name_t pin)
  * line's interrupt handler has been run, we may miss some nested
  * interrupts.
  */
-static void mxc_gpio_irq_handler(u32 irq, struct irq_desc *desc,
-				 struct pt_regs *regs)
+static void mxc_gpio_irq_handler(u32 irq, struct irq_desc *desc)
 {
 	u32 isr_reg = 0, imr_reg = 0, imr_val;
 	u32 int_valid;
@@ -346,13 +345,12 @@ static void mxc_gpio_irq_handler(u32 irq, struct irq_desc *desc,
 			       port->num, gpio_irq);
 			BUG();	/* oops */
 		}
-		d->handle_irq(gpio_irq, d, regs);
+		d->handle_irq(gpio_irq, d);
 	}
 }
 
 #ifdef MXC_MUX_GPIO_INTERRUPTS
-static void mxc_gpio_mux_irq_handler(u32 irq, struct irq_desc *desc,
-				     struct pt_regs *regs)
+static void mxc_gpio_mux_irq_handler(u32 irq, struct irq_desc *desc)
 {
 	int i;
 	u32 isr_reg = 0, imr_reg = 0, imr_val;
@@ -369,7 +367,7 @@ static void mxc_gpio_mux_irq_handler(u32 irq, struct irq_desc *desc,
 
 		if (int_valid) {
 			set_irq_data(irq, (void *)port);
-			mxc_gpio_irq_handler(irq, desc, regs);
+			mxc_gpio_irq_handler(irq, desc);
 		}
 	}
 }

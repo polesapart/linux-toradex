@@ -263,8 +263,7 @@ static void mxc_v4l2out_timer_handler(unsigned long arg)
 	spin_unlock_irqrestore(&g_lock, lock_flags);
 }
 
-irqreturn_t mxc_v4l2out_pp_in_irq_handler(int irq, void *dev_id,
-					  struct pt_regs *regs)
+irqreturn_t mxc_v4l2out_pp_in_irq_handler(int irq, void *dev_id)
 {
 	int last_buf;
 	int index;

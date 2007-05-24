@@ -64,7 +64,7 @@ static int prp_vf_start(void *private);
 static int prp_vf_stop(void *private);
 static int prp_still_start(void *private);
 static int prp_still_stop(void *private);
-static irqreturn_t prp_isr(int irq, void *dev_id, struct pt_regs *regs);
+static irqreturn_t prp_isr(int irq, void *dev_id);
 static void rotation(unsigned long private);
 static int prp_resize_check_ch1(emma_prp_cfg * cfg);
 static int prp_resize_check_ch2(emma_prp_cfg * cfg);
@@ -271,7 +271,7 @@ static int prp_v4l2_cfg(emma_prp_cfg * cfg, cam_data * cam)
 /*!
  * @brief PrP interrupt handler
  */
-static irqreturn_t prp_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t prp_isr(int irq, void *dev_id)
 {
 	int status;
 	cam_data *cam = (cam_data *) dev_id;

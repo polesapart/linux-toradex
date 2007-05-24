@@ -122,7 +122,7 @@ static void hmp4ehw_clock_disable(void);
 /*readable by other modules through ipc */
 /*static int g_hmp4e_busy = 0;*/
 
-static irqreturn_t hmp4e_isr(int irq, void *dev_id, struct pt_regs *regs);
+static irqreturn_t hmp4e_isr(int irq, void *dev_id);
 
 /* VM operations */
 static struct page *hmp4e_vm_nopage(struct vm_area_struct *vma,
@@ -630,7 +630,7 @@ static int MapHwRegs(struct file *filp, struct vm_area_struct *vma)
 	return 0;
 }
 
-static irqreturn_t hmp4e_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t hmp4e_isr(int irq, void *dev_id)
 {
 	hmp4e_t *dev = (hmp4e_t *) dev_id;
 	u32 irq_status = __raw_readl(dev->hwregs + 5);

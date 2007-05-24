@@ -63,7 +63,7 @@ typedef enum gpio_int_cfg {
 #endif
 } gpio_edge_t;
 
-typedef irqreturn_t(*gpio_irq_handler) (int, void *, struct pt_regs *);
+typedef irqreturn_t(*gpio_irq_handler) (int, void *);
 
 /*!
  * This function configures the GPIO signal to be either input or output. For

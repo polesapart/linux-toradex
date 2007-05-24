@@ -388,7 +388,7 @@ static void setup_dmac(mxc_dma_channel_t * dma)
 /*!
  * @brief interrupt handler of dma channel
  */
-static irqreturn_t dma_irq_handler(int irq, void *dev_id, struct pt_regs *reg)
+static irqreturn_t dma_irq_handler(int irq, void *dev_id)
 {
 	mxc_dma_channel_t *dma = (mxc_dma_channel_t *) dev_id;
 	mx2_dma_priv_t *priv = (mx2_dma_priv_t *) (dma ? dma->private : NULL);

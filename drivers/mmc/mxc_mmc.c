@@ -760,12 +760,10 @@ static int mxcmci_data_done(struct mxcmci_host *host, unsigned int stat)
  *
  * @param   irq    the interrupt number
  * @param   devid  driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1)
  */
-static irqreturn_t mxcmci_gpio_irq(int irq, void *devid, struct pt_regs *regs)
+static irqreturn_t mxcmci_gpio_irq(int irq, void *devid)
 {
 	struct mxcmci_host *host = devid;
 	int card_gpio_status = host->plat_data->status(host->mmc->dev);
@@ -803,13 +801,11 @@ static irqreturn_t mxcmci_gpio_irq(int irq, void *devid, struct pt_regs *regs)
  *
  * @param   irq    the interrupt number
  * @param   devid  driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_RETVAL(1) if interrupt was handled,
  *          returns \b IRQ_RETVAL(0) if the interrupt was not handled.
  */
-static irqreturn_t mxcmci_irq(int irq, void *devid, struct pt_regs *regs)
+static irqreturn_t mxcmci_irq(int irq, void *devid)
 {
 	struct mxcmci_host *host = devid;
 	unsigned int status = 0;
@@ -842,7 +838,7 @@ static irqreturn_t mxcmci_irq(int irq, void *devid, struct pt_regs *regs)
 				printk(KERN_ERR "\nSDIO int unhandled\n");
 				BUG();	/* oops */
 			}
-			d->handle_irq(host->mmc->sdio_irq, d, regs);
+			d->handle_irq(host->mmc->sdio_irq, d);
 		}
 	}
 
@@ -907,7 +903,7 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 #if defined(CONFIG_MXC_MC13783_POWER)
 	t_regulator_voltage voltage;
 #endif
-	pr_debug("%s: clock %u, bus %u, power %u, vdd %u\n", DRIVER_NAME,
+	pr_debug("%s: clock %u, bus %lu, power %u, vdd %u\n", DRIVER_NAME,
 		 ios->clock, 1UL << ios->bus_width, ios->power_mode, ios->vdd);
 
 	host->dma_dir = DMA_NONE;

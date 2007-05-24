@@ -120,11 +120,10 @@ static void pmic_pdev_unregister(void)
  *
  * @param        irq        the irq number
  * @param        dev_id     the pointer on the device
- * @param        regs       the interrupt parameters
  *
  * @return       The function returns IRQ_HANDLED when handled.
  */
-static irqreturn_t pmic_irq_handler(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t pmic_irq_handler(int irq, void *dev_id)
 {
 	/* prepare a task */
 	schedule_work(&pmic_ws);

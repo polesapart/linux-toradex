@@ -346,8 +346,7 @@ static inline void mxc_init_fb(void)
 }
 #endif
 
-static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc,
-				  struct pt_regs *regs)
+static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc)
 {
 	u32 imr_val;
 	u32 int_valid;
@@ -375,7 +374,7 @@ static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc,
 			       expio_irq);
 			BUG();	/* oops */
 		}
-		d->handle_irq(expio_irq, d, regs);
+		d->handle_irq(expio_irq, d);
 	}
 
       out:

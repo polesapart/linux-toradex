@@ -55,7 +55,7 @@ static void csihw_read_status(csi_status_t * cs)
 	cs->drdy = (__raw_readl(CSI_CSISR) & BIT_DRDY) ? 1 : 0;
 }
 
-static irqreturn_t csi_irq_handler(int irq, void *data, struct pt_regs *pt)
+static irqreturn_t csi_irq_handler(int irq, void *data)
 {
 	csihw_read_status(&g_csi_status);
 

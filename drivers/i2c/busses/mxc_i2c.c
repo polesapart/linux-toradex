@@ -546,12 +546,10 @@ static struct i2c_algorithm mxc_i2c_algorithm = {
  * completion. Also sets a flag if bus arbitration is lost.
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  *
  * @return  The function returns \b IRQ_HANDLED.
  */
-static irqreturn_t mxc_i2c_handler(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxc_i2c_handler(int irq, void *dev_id)
 {
 	mxc_i2c_device *dev = dev_id;
 	volatile unsigned int sr, cr;

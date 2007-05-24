@@ -115,8 +115,7 @@ extern void gpio_lcd_inactive(void);
 
 extern int fs453_ioctl(unsigned int cmd, void *arg);
 #endif
-static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id,
-				     struct pt_regs *regs);
+static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id);
 static int mxcfb_blank(int blank, struct fb_info *info);
 static int mxcfb_map_video_memory(struct fb_info *fbi, bool use_internal_ram);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
@@ -753,8 +752,7 @@ static struct fb_ops mxcfb_ovl_ops = {
 };
 #endif
 
-static irqreturn_t mxcfb_vsync_irq_handler(int irq, void *dev_id,
-					   struct pt_regs *regs)
+static irqreturn_t mxcfb_vsync_irq_handler(int irq, void *dev_id)
 {
 	struct mxcfb_data *fb_data = dev_id;
 
@@ -765,8 +763,7 @@ static irqreturn_t mxcfb_vsync_irq_handler(int irq, void *dev_id,
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id,
-				     struct pt_regs *regs)
+static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id)
 {
 	struct fb_info *fbi = dev_id;
 	struct mxcfb_info *mxc_fbi = fbi->par;

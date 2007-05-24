@@ -144,7 +144,7 @@ void dam_select_RxClk_direction(dam_port port, signal_direction direction);
  *                                 the source port
  * @param        p_source          the source port
  */
-void dam_select_RxClk_source(dam_port p_config, int from_RxClk,
+void dam_select_RxClk_source(dam_port p_config, bool from_RxClk,
 			     dam_port p_source);
 
 /*!
@@ -171,7 +171,7 @@ void dam_select_RxFS_direction(dam_port port, signal_direction direction);
  *                                 the source port
  * @param        p_source          the source port
  */
-void dam_select_RxFS_source(dam_port p_config, int from_RxFS,
+void dam_select_RxFS_source(dam_port p_config, bool from_RxFS,
 			    dam_port p_source);
 
 /*!
@@ -190,7 +190,7 @@ void dam_select_TxClk_direction(dam_port port, signal_direction direction);
  *                                 the source port
  * @param        p_source          the source port
  */
-void dam_select_TxClk_source(dam_port p_config, int from_RxClk,
+void dam_select_TxClk_source(dam_port p_config, bool from_RxClk,
 			     dam_port p_source);
 
 /*!
@@ -209,7 +209,7 @@ void dam_select_TxFS_direction(dam_port port, signal_direction direction);
  *                                 the source port
  * @param        p_source          the source port
  */
-void dam_select_TxFS_source(dam_port p_config, int from_RxFS,
+void dam_select_TxFS_source(dam_port p_config, bool from_RxFS,
 			    dam_port p_source);
 
 /*!
@@ -236,7 +236,7 @@ int dam_set_internal_network_mode_mask(dam_port port, unsigned char bit_mask);
  * @param        port              the DAM port to configure
  * @param        synchronous       the state to assign
  */
-void dam_set_synchronous(dam_port port, int synchronous);
+void dam_set_synchronous(dam_port port, bool synchronous);
 
 /*!
  * This function swaps the transmit and receive signals from (Da-TxD, Db-RxD) to
@@ -246,7 +246,7 @@ void dam_set_synchronous(dam_port port, int synchronous);
  * @param        port              the DAM port to configure
  * @param        value             the switch state
  */
-void dam_switch_Tx_Rx(dam_port port, int value);
+void dam_switch_Tx_Rx(dam_port port, bool value);
 
 /*!
  * This function resets the two registers of the selected port.

@@ -142,13 +142,10 @@ static int g_wdog_count = 0;
  *
  * @param  irq          GPT interrupt source number (not used)
  * @param  dev_id       this parameter is not used
- * @param  regs         pointer to a structure containing the processor
- *                      registers and state prior to servicing the interrupt
  * @return always returns \b IRQ_HANDLED as defined in
  *         include/linux/interrupt.h.
  */
-static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id,
-				       struct pt_regs *regs)
+static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id)
 {
 	unsigned int next_match;
 
@@ -166,7 +163,7 @@ static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id,
 #else
 			kick_wd();
 #endif				/* WDOG_SERVICE_PERIOD */
-			timer_tick(regs);
+			timer_tick();
 			next_match = __raw_readl(MXC_GPT_GPTOCR1) + LATCH;
 			__raw_writel(GPTSR_OF1, MXC_GPT_GPTSR);
 			__raw_writel(next_match, MXC_GPT_GPTOCR1);

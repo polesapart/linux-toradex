@@ -34,12 +34,11 @@ static int callback_flag;
  *
  * @param irq       int irq line
  * @param dev_id    void * device id
- * @param regs      struct pt_regs *
  *
  * @return status   IRQ_HANDLED for handled
  */
 static irqreturn_t
-prp_csi_eof_callback(int irq, void *dev_id, struct pt_regs *regs)
+prp_csi_eof_callback(int irq, void *dev_id)
 {
 	if (callback_flag == 2) {
 		ipu_select_buffer(CSI_MEM, IPU_OUTPUT_BUFFER, 0);
@@ -55,12 +54,11 @@ prp_csi_eof_callback(int irq, void *dev_id, struct pt_regs *regs)
  *
  * @param irq       int irq line
  * @param dev_id    void * device id
- * @param regs      struct pt_regs *
  *
  * @return status   IRQ_HANDLED for handled
  */
 static irqreturn_t
-prp_still_callback(int irq, void *dev_id, struct pt_regs *regs)
+prp_still_callback(int irq, void *dev_id)
 {
 	cam_data *cam = (cam_data *) dev_id;
 

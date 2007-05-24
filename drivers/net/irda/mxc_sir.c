@@ -363,7 +363,7 @@ static int mxc_irda_sir_rxirq(struct mxc_irda *si, struct net_device *dev)
 /*
  * IrDA interrupt service routine
  */
-static irqreturn_t mxc_irda_irq(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mxc_irda_irq(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
 	struct mxc_irda *si = netdev_priv(dev);

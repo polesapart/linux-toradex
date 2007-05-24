@@ -352,8 +352,7 @@ static u32 mxc_card_state_changed(u32 mask, u32 s0, u32 s1)
  * Interrupt handler for the expio (CPLD) to deal with interrupts from
  * FEC, external UART, CS8900 Ethernet and SD cards, etc.
  */
-static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc,
-				  struct pt_regs *regs)
+static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc)
 {
 	u32 imr, card_int, i;
 	u32 int_valid;
@@ -398,7 +397,7 @@ static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc,
 			       expio_irq);
 			BUG();	/* oops */
 		}
-		d->handle_irq(expio_irq, d, regs);
+		d->handle_irq(expio_irq, d);
 	}
 
       out:
@@ -408,8 +407,7 @@ static void mxc_expio_irq_handler(u32 irq, struct irqdesc *desc,
 
 #ifdef MXC_CARD_DEBUG
 
-static irqreturn_t mxc_sd_test_handler(int irq, void *desc,
-				       struct pt_regs *regs)
+static irqreturn_t mxc_sd_test_handler(int irq, void *desc)
 {
 	int s = -1;
 

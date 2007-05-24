@@ -52,7 +52,7 @@ static int scale_1d(int inv, int outv, int k);
 static int scale_1d_smart(int *inv, int *outv, int index);
 static int scale_2d(emma_pp_scale * sz);
 
-static irqreturn_t pp_isr(int irq, void *dev_id, struct pt_regs *regs);
+static irqreturn_t pp_isr(int irq, void *dev_id);
 static int set_output_addr(emma_pp_cfg * cfg, vout_data * vout);
 static int pphw_reset(void);
 static int pphw_enable(int flag);
@@ -245,13 +245,12 @@ int pp_cfg(vout_data * vout)
 	return pphw_cfg(&g_pp_cfg);
 }
 
-irqreturn_t mxc_v4l2out_pp_in_irq_handler(int irq, void *dev_id,
-					  struct pt_regs * regs);
+irqreturn_t mxc_v4l2out_pp_in_irq_handler(int irq, void *dev_id);
 
 /*!
  * @brief PP IRQ handler.
  */
-static irqreturn_t pp_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t pp_isr(int irq, void *dev_id)
 {
 	int status;
 	vout_data *vout = dev_id;
@@ -268,7 +267,7 @@ static irqreturn_t pp_isr(int irq, void *dev_id, struct pt_regs *regs)
 		pphw_outptr(&g_pp_cfg);
 	}
 
-	return mxc_v4l2out_pp_in_irq_handler(irq, dev_id, regs);
+	return mxc_v4l2out_pp_in_irq_handler(irq, dev_id);
 }
 
 /*!

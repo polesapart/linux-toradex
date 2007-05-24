@@ -70,7 +70,6 @@ static int __init mxc_ts_init(void)
 		return -ENOMEM;
 	}
 
-	init_input_dev(mxc_inputdev);
 	mxc_inputdev->name = MXC_TS_NAME;
 	mxc_inputdev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
 	mxc_inputdev->keybit[LONG(BTN_TOUCH)] |= BIT(BTN_TOUCH);

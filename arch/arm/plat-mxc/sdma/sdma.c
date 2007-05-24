@@ -155,11 +155,9 @@ static void sdma_wakeup_channel(int channel)
  *
  * @param   irq    the interrupt number
  * @param   dev_id driver private data
- * @param   regs   holds a snapshot of the processor's context before the
- *                 processor entered the interrupt code
  * @return the function returns \b IRQ_RETVAL(1) -  interrupt was handled
  */
-static irqreturn_t sdma_int_handler(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t sdma_int_handler(int irq, void *dev_id)
 {
 	IRQ_Handler();
 	return IRQ_RETVAL(1);
