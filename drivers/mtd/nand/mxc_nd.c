@@ -431,9 +431,6 @@ static u16 get_dev_status(void)
 	 */
 	NFC_BUF_ADDR = 1;
 
-	/* Send the Read status command before reading status */
-	send_cmd(NAND_CMD_STATUS, true);
-
 	/* Read status into main buffer */
 	NFC_CONFIG1 &= (~(NFC_SP_EN));
 	NFC_CONFIG2 = NFC_STATUS;
@@ -441,11 +438,11 @@ static u16 get_dev_status(void)
 	/* Wait for operation to complete */
 	wait_op_done(TROP_US_DELAY, 0, true);
 
+	/* Status is placed in first word of main buffer */
 	/* get status, then recovery area 1 data */
 	ret = mainBuf[0];
 	*((u32 *) mainBuf) = store;
 
-	/* Status is placed in first word of main buffer */
 	return ret;
 }
 
