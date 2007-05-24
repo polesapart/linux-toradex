@@ -185,7 +185,7 @@ static void dptc_unmask_dptc_int(void)
  */
 static void dptc_clear_dcr(void)
 {
-	mx27_pmcr_modify_reg(MX27_PMCR_DCR_MASK, 0 << MX27_PMCR_DCR_OFFSET);
+	mx27_pmcr_modify_reg(MX27_PMCR_DCR_MASK, (0 << MX27_PMCR_DCR_OFFSET));
 }
 
 /*!
@@ -415,15 +415,15 @@ static void dptc_workqueue_handler(void *arg)
 	if (dptc_intr_status & 0x4) {
 		/* Chip working point has increased dramatically, 
 		 * raise working point to maximum */
-		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 1);
+		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 2);
 	} else if (dptc_intr_status & 0x2) {
 		/* Chip working point has increased, raise working point 
 		 * by one */
-		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 1);
+		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp + 1);
 	} else {
 		/* Chip working point has decreased, lower working point 
 		 * by one */
-		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp + 1);
+		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 1);
 	}
 
 	/*
