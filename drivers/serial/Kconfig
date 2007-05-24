@@ -171,6 +171,16 @@ config SERIAL_8250_DETECT_IRQ
 
 	  If unsure, say N.
 
+config SERIAL_8250_DONT_TEST_BUG_TXEN
+	bool "Don't probe for TXEN bug"
+	depends on SERIAL_8250_EXTENDED
+	help
+	  Say Y here if you don't want the kernel to probe for TXEN bug
+	  on your serial port and try to workaround it. It might lead to
+	  character loss on some boards, though this is quite a rare case.
+
+	  If unsure, say N.
+
 config SERIAL_8250_RSA
 	bool "Support RSA serial ports"
 	depends on SERIAL_8250_EXTENDED

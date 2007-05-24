@@ -1136,18 +1136,10 @@ static void serial8250_start_tx(struct uart_port *port)
 		serial_out(up, UART_IER, up->ier);
 
 		if (up->bugs & UART_BUG_TXEN) {
-#ifdef CONFIG_ARCH_MXC
-			unsigned char lsr;
-#else
 			unsigned char lsr, iir;
-#endif
 			lsr = serial_in(up, UART_LSR);
-#ifdef CONFIG_ARCH_MXC
-			if (lsr & UART_LSR_TEMT)
-#else
 			iir = serial_in(up, UART_IIR);
 			if (lsr & UART_LSR_TEMT && iir & UART_IIR_NO_INT)
-#endif
 				transmit_chars(up);
 		}
 	}
@@ -1317,7 +1309,11 @@ static unsigned int check_modem_status(struct uart_8250_port *up)
  * This handles the interrupt from one port.
  */
 static inline void
+#ifdef CONFIG_ARCH_MXC
+serial8250_handle_port(struct uart_8250_port *up, unsigned int iir)
+#else
 serial8250_handle_port(struct uart_8250_port *up)
+#endif
 {
 	unsigned int status;
 
@@ -1330,7 +1326,11 @@ serial8250_handle_port(struct uart_8250_port *up)
 	if (status & UART_LSR_DR)
 		receive_chars(up, &status);
 	check_modem_status(up);
+#ifdef CONFIG_ARCH_MXC
+	if ((status & UART_LSR_THRE) || ((iir & UART_IIR_ID) == UART_IIR_THRI))
+#else
 	if (status & UART_LSR_THRE)
+#endif
 		transmit_chars(up);
 
 	spin_unlock(&up->port.lock);
@@ -1369,8 +1369,11 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 
 		iir = serial_in(up, UART_IIR);
 		if (!(iir & UART_IIR_NO_INT)) {
+#ifdef CONFIG_ARCH_MXC
+			serial8250_handle_port(up, iir);
+#else
 			serial8250_handle_port(up);
-
+#endif
 			handled = 1;
 
 			end = NULL;
@@ -1469,8 +1472,11 @@ static void serial8250_timeout(unsigned long data)
 
 	iir = serial_in(up, UART_IIR);
 	if (!(iir & UART_IIR_NO_INT))
+#ifdef CONFIG_ARCH_MXC
+		serial8250_handle_port(up, iir);
+#else
 		serial8250_handle_port(up);
-
+#endif
 	timeout = up->port.timeout;
 	timeout = timeout > 6 ? (timeout / 2 - 2) : 1;
 	mod_timer(&up->timer, jiffies + timeout);
@@ -1548,7 +1554,9 @@ static int serial8250_startup(struct uart_port *port)
 {
 	struct uart_8250_port *up = (struct uart_8250_port *)port;
 	unsigned long flags;
+#ifndef CONFIG_SERIAL_8250_DONT_TEST_BUG_TXEN
 	unsigned char lsr, iir;
+#endif
 	int retval;
 
 	up->capabilities = uart_config[up->port.type].flags;
@@ -1653,6 +1661,7 @@ static int serial8250_startup(struct uart_port *port)
 
 	serial8250_set_mctrl(&up->port, up->port.mctrl);
 
+#ifndef CONFIG_SERIAL_8250_DONT_TEST_BUG_TXEN
 	/*
 	 * Do a quick test to see if we receive an
 	 * interrupt when we enable the TX irq.
@@ -1668,7 +1677,9 @@ static int serial8250_startup(struct uart_port *port)
 			pr_debug("ttyS%d - enabling bad tx status workarounds\n",
 				 port->line);
 		}
-	} else {
+	} else
+#endif
+	{
 		up->bugs &= ~UART_BUG_TXEN;
 	}
 
