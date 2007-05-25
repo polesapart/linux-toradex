@@ -27,77 +27,54 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- *
+ * along with this program; if not, write to the Free Software Foundation, 
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>		/*  __init,__exit directives */
 #include <linux/mm.h>		/* remap_page_range / remap_pfn_range */
-#include <linux/fs.h>		/* for struct file_operations, register_chrdev() */
+#include <linux/fs.h>		/* for struct file_operations */
 #include <linux/errno.h>	/* standard error codes */
 #include <linux/platform_device.h>	/* for device registeration for PM */
 #include <linux/delay.h>	/* for msleep_interruptible */
 #include <linux/interrupt.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-mapping.h>	/* for dma_alloc_consistent */
+#include <linux/clk.h>
 #include <asm/uaccess.h>	/* for ioctl __get_user, __put_user */
-
-#define NON_PAGE_ALIGNED        1	/* when base address not page aligned */
-#define CONS_ALLOC              1	/* use consistent_alloc */
-#if CONS_ALLOC
-static u32 hmp4e_phys;
-#endif
-
-/* our own stuff */
-#include "mxc_hmp4e.h"
-#include <asm/hardware.h>
-#include <linux/pm.h>
-#define APM_HMP4E 0
-/* use apm for hmp4e driver
-   note, after hmp4e is inserted, apm level will be set to LOW, i.e.
-   HCLK >= 88MHz, in order to acheive 30fps */
-
-/* module description */
-MODULE_AUTHOR("Hantro Products Oy");
-MODULE_DESCRIPTION("Device driver for Hantro's MPEG4 encoder HW");
-MODULE_SUPPORTED_DEVICE("4400 MPEG4 Encoder");
-MODULE_LICENSE("GPL");
-
-/* these could be module params in the future */
-
-#define ENC_IO_SIZE                 (16*4)	/* bytes */
-#define HMP4E_BUF_SIZE              512000	/* bytes */
-
-#define ENC_HW_ID                   0x00001882
-
-unsigned long base_port = MPEG4_ENC_BASE_ADDR;	//0x10026400;
-unsigned int irq = INT_MPEG4_ENC;	//51;
-
-module_param(base_port, long, 000);
-module_param(irq, int, 000);
-
-/* and this is our MAJOR; use 0 for dynamic allocation (recommended)*/
-static int hmp4e_major = 0;
-
-static struct class *hmp4e_class;
-
-/* For module reference count */
-static int count = 0;
+#include "mxc_hmp4e.h"		/* MPEG4 encoder specific */
 
 /* here's all the must remember stuff */
 typedef struct {
-	char *buffer;
-	unsigned int buffsize;
-	unsigned long iobaseaddr;
-	unsigned int iosize;
+	ulong buffaddr;
+	u32 buffsize;
+	ulong iobaseaddr;
+	u32 iosize;
 	volatile u32 *hwregs;
-	unsigned int irq;
+	u32 irq;
+	u16 hwid_offset;
+	u16 intr_offset;
+	u16 busy_offset;
+	u16 type;		/* Encoder type, CIF = 0, VGA = 1 */
+	u16 clk_gate;
+	u16 busy_val;
 	struct fasync_struct *async_queue;
+#ifdef CONFIG_PM
+	s32 suspend_state;
+	wait_queue_head_t power_queue;
+#endif
 } hmp4e_t;
 
-static hmp4e_t hmp4e_data;	/* dynamic allocation? */
+/* and this is our MAJOR; use 0 for dynamic allocation (recommended)*/
+static s32 hmp4e_major;
+
+static u32 hmp4e_phys;
+static struct class *hmp4e_class;
+static hmp4e_t hmp4e_data;
+
+/*! MPEG4 enc clock handle. */
+static struct clk *hmp4e_clk;
 
 /*
  * avoid "enable_irq(x) unbalanced from ..."
@@ -106,100 +83,122 @@ static hmp4e_t hmp4e_data;	/* dynamic allocation? */
  */
 static bool irq_enable = false;
 
-static int AllocMemory(void);
-static void FreeMemory(void);
+ulong base_port = MPEG4_ENC_BASE_ADDR;
+u32 irq = INT_MPEG4_ENC;
 
-static int ReserveIO(void);
-static void ReleaseIO(void);
+module_param(base_port, long, 000);
+module_param(irq, int, 000);
 
-static int MapBuffers(struct file *filp, struct vm_area_struct *vma);
-static int MapHwRegs(struct file *filp, struct vm_area_struct *vma);
-static void ResetAsic(hmp4e_t * dev);
-
-/* local */
-static void hmp4ehw_clock_enable(void);
-static void hmp4ehw_clock_disable(void);
-/*readable by other modules through ipc */
-/*static int g_hmp4e_busy = 0;*/
-
-static irqreturn_t hmp4e_isr(int irq, void *dev_id);
-
-/* VM operations */
-static struct page *hmp4e_vm_nopage(struct vm_area_struct *vma,
-				    unsigned long address, int *write_access)
-{
-	printk(KERN_INFO "hmp4e_vm_nopage: problem with mem access\n");
-	return NOPAGE_SIGBUS;	/* send a SIGBUS */
-}
-
-static void hmp4e_vm_open(struct vm_area_struct *vma)
-{
-	count++;
-	printk(KERN_INFO "hmp4e_vm_open:\n");
-}
-
-static void hmp4e_vm_close(struct vm_area_struct *vma)
-{
-	count--;
-	printk(KERN_INFO "hmp4e_vm_close:\n");
-}
-
-static struct vm_operations_struct hmp4e_vm_ops = {
-      open:hmp4e_vm_open,
-      close:hmp4e_vm_close,
-      nopage:hmp4e_vm_nopage,
-};
-
-/* the device's mmap method. The VFS has kindly prepared the process's
- * vm_area_struct for us, so we examine this to see what was requested.
+/*!
+ * These variables store the register values when HMP4E is in suspend mode.
  */
-static int hmp4e_mmap(struct file *filp, struct vm_area_struct *vma)
+#ifdef CONFIG_PM
+u32 io_regs[64];
+#endif
+
+static s32 hmp4e_map_buffer(struct file *filp, struct vm_area_struct *vma);
+static s32 hmp4e_map_hwregs(struct file *filp, struct vm_area_struct *vma);
+static void hmp4e_reset(hmp4e_t * dev);
+irqreturn_t hmp4e_isr(s32 irq, void *dev_id, struct pt_regs *regs);
+
+/*!
+ * This funtion is called to write h/w register. 
+ *
+ * @param   val		value to be written into the register
+ * @param   offset	register offset
+ *
+ */
+static inline void hmp4e_write(u32 val, u32 offset)
 {
-	int result;
-	unsigned long offset = vma->vm_pgoff << PAGE_SHIFT;
-#if NON_PAGE_ALIGNED
-	int ofs;
+	hmp4e_t *dev = &hmp4e_data;
+	__raw_writel(val, (dev->hwregs + offset));
+}
 
-	ofs = hmp4e_data.iobaseaddr & (PAGE_SIZE - 1);
-#endif
+/*!
+ * This funtion is called to read h/w register. 
+ *
+ * @param   offset	register offset
+ *
+ * @return  This function returns the value read from the register.
+ *
+ */
+static inline u32 hmp4e_read(u32 offset)
+{
+	hmp4e_t *dev = &hmp4e_data;
+	u32 val;
 
-	printk(KERN_INFO "hmp4e_mmap: size = %lu off = 0x%08lx\n",
-	       vma->vm_end - vma->vm_start, offset);
+	val = __raw_readl(dev->hwregs + offset);
 
-	if (offset == 0)
-		result = MapBuffers(filp, vma);
-#if NON_PAGE_ALIGNED
-	else if (offset == hmp4e_data.iobaseaddr - ofs)
-#else
-	else if (offset == hmp4e_data.iobaseaddr)
-#endif
-		result = MapHwRegs(filp, vma);
-	else
+	return val;
+}
+
+/*!
+ * The device's mmap method. The VFS has kindly prepared the process's
+ * vm_area_struct for us, so we examine this to see what was requested.
+ *
+ * @param   filp	pointer to struct file 
+ * @param   vma		pointer to struct vma_area_struct
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ * 
+ */
+static s32 hmp4e_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+	s32 result;
+	ulong offset = vma->vm_pgoff << PAGE_SHIFT;
+
+	pr_debug("hmp4e_mmap: size = %lu off = 0x%08lx\n",
+		 (unsigned long)(vma->vm_end - vma->vm_start), offset);
+
+	if (offset == 0) {
+		result = hmp4e_map_buffer(filp, vma);
+	} else if (offset == hmp4e_data.iobaseaddr) {
+		result = hmp4e_map_hwregs(filp, vma);
+	} else {
+		pr_debug("hmp4e: mmap invalid value\n");
 		result = -EINVAL;
-
-	if (result == 0) {
-		vma->vm_ops = &hmp4e_vm_ops;
-		/* open is not implicitly called when mmap is called */
-		hmp4e_vm_open(vma);
 	}
 
 	return result;
 }
 
-static int hmp4e_ioctl(struct inode *inode, struct file *filp,
-		       unsigned int cmd, unsigned long arg)
+/*!
+ * This funtion is called to handle ioctls. 
+ *
+ * @param   inode	pointer to struct inode
+ * @param   filp	pointer to struct file
+ * @param   cmd		ioctl command
+ * @param   arg		user data
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ *
+ */
+static s32 hmp4e_ioctl(struct inode *inode, struct file *filp,
+		       u32 cmd, ulong arg)
 {
-	int err = 0;
+	s32 err = 0, retval = 0;
+	ulong offset = 0;
+	hmp4e_t *dev = &hmp4e_data;
+	write_t bwrite;
 
-	printk(KERN_INFO "ioctl cmd 0x%08ux\n", cmd);
+#ifdef CONFIG_PM
+	wait_event_interruptible(hmp4e_data.power_queue,
+				 hmp4e_data.suspend_state == 0);
+#endif
+
 	/*
 	 * extract the type and number bitfields, and don't decode
 	 * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
 	 */
-	if (_IOC_TYPE(cmd) != HMP4E_IOC_MAGIC)
+	if (_IOC_TYPE(cmd) != HMP4E_IOC_MAGIC) {
+		pr_debug("hmp4e: ioctl invalid magic\n");
 		return -ENOTTY;
-	if (_IOC_NR(cmd) > HMP4E_IOC_MAXNR)
+	}
+
+	if (_IOC_NR(cmd) > HMP4E_IOC_MAXNR) {
+		pr_debug("hmp4e: ioctl exceeds max ioctl\n");
 		return -ENOTTY;
+	}
 
 	/*
 	 * the direction is a bitmask, and VERIFY_WRITE catches R/W
@@ -207,44 +206,69 @@ static int hmp4e_ioctl(struct inode *inode, struct file *filp,
 	 * access_ok is kernel-oriented, so the concept of "read" and
 	 * "write" is reversed
 	 */
-	if (_IOC_DIR(cmd) & _IOC_READ)
+	if (_IOC_DIR(cmd) & _IOC_READ) {
 		err = !access_ok(VERIFY_WRITE, (void *)arg, _IOC_SIZE(cmd));
-	else if (_IOC_DIR(cmd) & _IOC_WRITE)
+	} else if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		err = !access_ok(VERIFY_READ, (void *)arg, _IOC_SIZE(cmd));
-	if (err)
+	}
+
+	if (err) {
+		pr_debug("hmp4e: ioctl invalid direction\n");
 		return -EFAULT;
+	}
 
 	switch (cmd) {
 	case HMP4E_IOCHARDRESET:
-		/*
-		 * reset the counter to 1, to allow unloading in case
-		 * of problems. Use 1, not 0, because the invoking
-		 * process has the device open.
-		 */
-		while (count > 0)
-			count--;
-		count++;
 		break;
 
 	case HMP4E_IOCGBUFBUSADDRESS:
-#if !CONS_ALLOC
-		__put_user(virt_to_bus(hmp4e_data.buffer),
-			   (unsigned long *)arg);
-#else
-		__put_user(hmp4e_phys, (unsigned long *)arg);
-#endif
+		retval = __put_user((ulong) hmp4e_phys, (u32 *) arg);
 		break;
 
 	case HMP4E_IOCGBUFSIZE:
-		__put_user(hmp4e_data.buffsize, (unsigned int *)arg);
+		retval = __put_user(hmp4e_data.buffsize, (u32 *) arg);
+		break;
+
+	case HMP4E_IOCSREGWRITE:
+		if (dev->type != 1) {	/* This ioctl only for VGA */
+			pr_debug("hmp4e: HMP4E_IOCSREGWRITE invalid\n");
+			retval = -EINVAL;
+			break;
+		}
+
+		retval = __copy_from_user(&bwrite, (u32 *) arg,
+					  sizeof(write_t));
+
+		if (bwrite.offset <= hmp4e_data.iosize - 4) {
+			hmp4e_write(bwrite.data, (bwrite.offset / 4));
+		} else {
+			pr_debug("hmp4e: HMP4E_IOCSREGWRITE failed\n");
+			retval = -EFAULT;
+		}
+		break;
+
+	case HMP4E_IOCXREGREAD:
+		if (dev->type != 1) {	/* This ioctl only for VGA */
+			pr_debug("hmp4e: HMP4E_IOCSREGWRITE invalid\n");
+			retval = -EINVAL;
+			break;
+		}
+
+		retval = __get_user(offset, (ulong *) arg);
+		if (offset <= hmp4e_data.iosize - 4) {
+			__put_user(hmp4e_read((offset / 4)), (ulong *) arg);
+		} else {
+			pr_debug("hmp4e: HMP4E_IOCXREGREAD failed\n");
+			retval = -EFAULT;
+		}
 		break;
 
 	case HMP4E_IOCGHWOFFSET:
-		__put_user(hmp4e_data.iobaseaddr, (unsigned long *)arg);
+		__put_user(hmp4e_data.iobaseaddr, (ulong *) arg);
 		break;
 
 	case HMP4E_IOCGHWIOSIZE:
-		__put_user(hmp4e_data.iosize, (unsigned int *)arg);
+		__put_user(hmp4e_data.iosize, (u32 *) arg);
 		break;
 
 	case HMP4E_IOC_CLI:
@@ -260,54 +284,57 @@ static int hmp4e_ioctl(struct inode *inode, struct file *filp,
 			irq_enable = true;
 		}
 		break;
+
+	default:
+		pr_debug("unknown case %x\n", cmd);
 	}
-	return 0;
+
+	return retval;
 }
 
-static int hmp4e_open(struct inode *inode, struct file *filp)
+/*!
+ * This funtion is called when the device is opened. 
+ *
+ * @param   inode	pointer to struct inode
+ * @param   filp	pointer to struct file 
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ *
+ */
+static s32 hmp4e_open(struct inode *inode, struct file *filp)
 {
-	int result;
 	hmp4e_t *dev = &hmp4e_data;
 
 	filp->private_data = (void *)dev;
 
-	if (count > 0)
+	if (request_irq(dev->irq, hmp4e_isr, 0, "mxc_hmp4e", dev) != 0) {
+		pr_debug("hmp4e: request irq failed\n");
 		return -EBUSY;
-
-	result = request_irq(dev->irq, hmp4e_isr, 0, "hmp4e", (void *)dev);
-	if (result == -EINVAL) {
-		printk(KERN_ERR "hmp4e: Bad irq number or handler\n");
-		return result;
-	} else if (result == -EBUSY) {
-		printk(KERN_ERR "hmp4e: IRQ %d busy, change your config\n",
-		       dev->irq);
-		return result;
 	}
 
 	if (irq_enable == false) {
 		irq_enable = true;
 	}
-	/* enable_irq(dev->irq); */
 
-	count++;
-	printk(KERN_INFO "dev opened\n");
 	return 0;
 }
 
-static int hmp4e_fasync(int fd, struct file *filp, int mode)
+static s32 hmp4e_fasync(s32 fd, struct file *filp, s32 mode)
 {
 	hmp4e_t *dev = (hmp4e_t *) filp->private_data;
-
-	printk(KERN_INFO "fasync called\n");
-
 	return fasync_helper(fd, filp, mode, &dev->async_queue);
 }
 
-#ifdef HMP4E_DEBUG
-static void dump_regs(unsigned long data);
-#endif
-
-static int hmp4e_release(struct inode *inode, struct file *filp)
+/*!
+ * This funtion is called when the device is closed. 
+ *
+ * @param   inode	pointer to struct inode
+ * @param   filp	pointer to struct file 
+ *
+ * @return  This function returns 0.
+ *
+ */
+static s32 hmp4e_release(struct inode *inode, struct file *filp)
 {
 	hmp4e_t *dev = (hmp4e_t *) filp->private_data;
 
@@ -316,299 +343,120 @@ static int hmp4e_release(struct inode *inode, struct file *filp)
 		disable_irq(dev->irq);
 		irq_enable = false;
 	}
-#ifdef HMP4E_DEBUG
-	dump_regs((unsigned long)dev);	/* dump the regs */
-#endif
-	ResetAsic(dev);		/* reset hardware */
+
+	/* reset hardware */
+	hmp4e_reset(&hmp4e_data);
 
 	/* free the encoder IRQ */
 	free_irq(dev->irq, (void *)dev);
 
 	/* remove this filp from the asynchronusly notified filp's */
 	hmp4e_fasync(-1, filp, 0);
-
-	/* g_hmp4e_busy = 0; */
-
-	count--;
-	printk(KERN_INFO "dev closed\n");
 	return 0;
 }
 
 /* VFS methods */
 static struct file_operations hmp4e_fops = {
-      mmap:hmp4e_mmap,
-      open:hmp4e_open,
-      release:hmp4e_release,
-      ioctl:hmp4e_ioctl,
-      fasync:hmp4e_fasync,
+	.owner = THIS_MODULE,
+	.open = hmp4e_open,
+	.release = hmp4e_release,
+	.ioctl = hmp4e_ioctl,
+	.mmap = hmp4e_mmap,
+	.fasync = hmp4e_fasync,
 };
 
-int __init hmp4e_init(void)
+/*!
+ * This funtion allocates physical contigous memory. 
+ *
+ * @param   size 	size of memory to be allocated
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ *
+ */
+static s32 hmp4e_alloc(u32 size)
 {
-	int result = 0;
-	struct class_device *temp_class;
+	hmp4e_data.buffsize = PAGE_ALIGN(size);
+	hmp4e_data.buffaddr =
+	    (ulong) dma_alloc_coherent(NULL, hmp4e_data.buffsize,
+				       (dma_addr_t *) & hmp4e_phys,
+				       GFP_DMA | GFP_KERNEL);
 
-	/* if you want to test the module, you obviously need to "mknod". */
-	printk(KERN_INFO "module init\n");
-
-	printk(KERN_INFO "hmp4e: base_port=0x%08lx irq=%i\n", base_port, irq);
-
-	if (__raw_readl(HANTRO_FUSE) & MXC_IIMHWV1_HANTRO_DISABLE)
-		__raw_writel(__raw_readl(HANTRO_FUSE) &
-			     ~MXC_IIMHWV1_HANTRO_DISABLE, HANTRO_FUSE);
-	if (__raw_readl(HANTRO_FUSE) & MXC_IIMHWV1_HANTRO_DISABLE) {
-		printk(KERN_ERR "The hantro hardware is disabled.\n");
-		return -1;
-	}
-
-	/* make sure clock is enabled */
-	hmp4ehw_clock_enable();
-
-	hmp4e_data.iobaseaddr = base_port;
-	hmp4e_data.iosize = ENC_IO_SIZE;
-	hmp4e_data.irq = irq;
-
-	hmp4e_major = register_chrdev(0, "hmp4e", &hmp4e_fops);
-	if (hmp4e_major < 0) {
-		printk(KERN_INFO "hmp4e: unable to get major for hmp4e\n");
-		return hmp4e_major;
-	}
-
-	hmp4e_class = class_create(THIS_MODULE, "hmp4e");
-	if (IS_ERR(hmp4e_class)) {
-		printk(KERN_ERR "Error creating hmp4e class.\n");
-		result = PTR_ERR(hmp4e_class);
-		goto err1;
-	}
-
-	temp_class = class_device_create(hmp4e_class, NULL,
-					 MKDEV(hmp4e_major, 0), NULL, "hmp4e");
-	if (IS_ERR(temp_class)) {
-		printk(KERN_ERR "Error creating hmp4e class device.\n");
-		result = PTR_ERR(temp_class);
-		goto err2;
-	}
-
-	/* register for ipc */
-	/* in case other emma device want to get the status of each other
-	   g_hmp4e_busy = 0;
-	   inter_module_register("string_hmp4e_busy", THIS_MODULE,&g_hmp4e_busy); */
-	result = ReserveIO();
-	if (result < 0) {
-		goto err3;
-	}
-
-	ResetAsic(&hmp4e_data);	/* reset hardware */
-
-	result = AllocMemory();
-	if (result < 0) {
-		goto err4;
-	}
-
-	printk(KERN_INFO "hmp4e: module inserted. Major = %d\n", hmp4e_major);
-
-	return result;
-
-      err4:
-	ReleaseIO();
-      err3:
-	class_device_destroy(hmp4e_class, MKDEV(hmp4e_major, 0));
-      err2:
-	class_destroy(hmp4e_class);
-      err1:
-	unregister_chrdev(hmp4e_major, "hmp4e");
-	printk(KERN_INFO "hmp4e: module not inserted\n");
-	return result;
-}
-
-/* changed to devfs */
-void __exit hmp4e_cleanup(void)
-{
-	/* unregister ipc
-	   inter_module_unregister("string_hmp4e_busy"); */
-
-	class_device_destroy(hmp4e_class, MKDEV(hmp4e_major, 0));
-	class_destroy(hmp4e_class);
-
-	unregister_chrdev(hmp4e_major, "hmp4e");
-
-	hmp4ehw_clock_disable();
-
-	FreeMemory();
-
-	ReleaseIO();
-
-	printk(KERN_INFO "Encoder driver is unloaded sucessfully\n");
-}
-
-module_init(hmp4e_init);
-module_exit(hmp4e_cleanup);
-
-static int AllocMemory(void)
-{
-#if !CONS_ALLOC
-	struct page *pg;
-	char *start_addr, *end_addr;
-	u32 order, size;
-
-	printk(KERN_INFO "hmp4e: AllocMemory: Begin\n");
-
-	hmp4e_data.buffer = NULL;
-	hmp4e_data.buffsize = HMP4E_BUF_SIZE;
-	printk(KERN_INFO "hmp4e: AllocMemory: Buffer size %d\n",
-	       hmp4e_data.buffsize);
-
-	for (order = 0, size = PAGE_SIZE; size < hmp4e_data.buffsize;
-	     order++, size <<= 1) ;
-	hmp4e_data.buffsize = size;
-
-	/* alloc memory */
-	start_addr = (char *)__get_free_pages(GFP_KERNEL, order);
-
-	if (!start_addr) {
-		printk(KERN_INFO "hmp4e: failed to allocate memory\n");
-		printk(KERN_INFO "hmp4e: AllocMemory: End (-ENOMEM)\n");
-		return -ENOMEM;
-	} else {
-		memset(start_addr, 0, hmp4e_data.buffsize);	/* clear the mem */
-
-		hmp4e_data.buffer = start_addr;
-	}
-	end_addr = start_addr + hmp4e_data.buffsize - 1;
-
-	printk(KERN_INFO "Alloc buffer 0x%08lx -- 0x%08lx\n", (long)start_addr,
-	       (long)end_addr);
-
-	/* now we've got the kernel memory, but it can still be
-	 * swapped out. We need to stop the VM system from removing our
-	 * pages from main memory. To do this we just need to set the PG_reserved
-	 * bit on each page, via mem_map_reserve() macro.
-	 */
-
-	/* If we don't set the reserved bit, the user-space application sees
-	 * all-zeroes pages. This is because remap_pfn_range() won't allow you to
-	 * map non-reserved pages (check remap_pte_range()).
-	 * The pte's will be cleared, resulting in a page faulting in a new zeroed
-	 * page instead of the pages we are trying to mmap().
-	 */
-	for (pg = virt_to_page(start_addr); pg <= virt_to_page(end_addr); pg++) {
-		mem_map_reserve(pg);
-	}
-#else
-	hmp4e_data.buffsize = (HMP4E_BUF_SIZE + PAGE_SIZE - 1) &
-	    ~(PAGE_SIZE - 1);
-	hmp4e_data.buffer = dma_alloc_coherent(NULL, hmp4e_data.buffsize,
-					       (dma_addr_t *) & hmp4e_phys,
-					       GFP_DMA | GFP_KERNEL);
-	if (!hmp4e_data.buffer) {
+	if (hmp4e_data.buffaddr == 0) {
+		printk(KERN_ERR "hmp4e: couldn't allocate data buffer\n");
 		return -ENOMEM;
 	}
-	memset(hmp4e_data.buffer, 0, hmp4e_data.buffsize);
-#endif
-	printk(KERN_INFO "hmp4e: AllocMemory: End (0)\n");
+
+	memset((s8 *) hmp4e_data.buffaddr, 0, hmp4e_data.buffsize);
 	return 0;
 }
 
-static void FreeMemory(void)
+/*!
+ * This funtion frees the DMAed memory. 
+ */
+static void hmp4e_free(void)
 {
-#if !CONS_ALLOC
-	struct page *pg;
-	u32 size, order;
-
-	/* first unreserve */
-	for (pg = virt_to_page(hmp4e_data.buffer);
-	     pg < virt_to_page(hmp4e_data.buffer + hmp4e_data.buffsize); pg++) {
-		mem_map_unreserve(pg);
+	if (hmp4e_data.buffaddr != 0) {
+		dma_free_coherent(NULL, hmp4e_data.buffsize,
+				  (void *)hmp4e_data.buffaddr, hmp4e_phys);
+		hmp4e_data.buffaddr = 0;
 	}
-	for (order = 0, size = PAGE_SIZE; size < hmp4e_data.buffsize;
-	     order++, size <<= 1) ;
-	/* and now free */
-	free_pages((long)hmp4e_data.buffer, order);
-	printk(KERN_INFO "Free buffer 0x%08lx -- 0x%08lx\n",
-	       (long)hmp4e_data.buffer,
-	       (long)(hmp4e_data.buffer + hmp4e_data.buffsize - 1));
-#else
-	dma_free_coherent(NULL, hmp4e_data.buffsize, (void *)hmp4e_data.buffer,
-			  hmp4e_phys);
-#endif
 }
 
-static int ReserveIO(void)
+/*!
+ * This funtion maps the shared buffer in memory. 
+ *
+ * @param   filp 	pointer to struct file
+ * @param   vma		pointer to struct vm_area_struct
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ *
+ */
+static s32 hmp4e_map_buffer(struct file *filp, struct vm_area_struct *vma)
 {
-	long int hwid;
-
-	hmp4e_data.hwregs = (volatile u32 *)IO_ADDRESS(hmp4e_data.iobaseaddr);
-	if (hmp4e_data.hwregs == NULL) {
-		printk(KERN_INFO "hmp4e: failed to ioremap HW regs\n");
-		ReleaseIO();
-		return -EBUSY;
-	}
-
-	hwid = __raw_readl(hmp4e_data.hwregs + 7);
-
-	if ((hwid & 0x0000ffff) != ENC_HW_ID) {
-		printk(KERN_INFO "hmp4e: HW not found at 0x%08lx\n",
-		       hmp4e_data.iobaseaddr);
-		ReleaseIO();
-		return -EBUSY;
-	} else {
-		printk(KERN_INFO "hmp4e: Compatble HW found with ID: 0x%08lx\n",
-		       hwid);
-	}
-
-	return 0;
-}
-
-static void ReleaseIO(void)
-{
-}
-
-static int MapBuffers(struct file *filp, struct vm_area_struct *vma)
-{
-	unsigned long phys;
-	unsigned long start = (unsigned long)vma->vm_start;
-	unsigned long size = (unsigned long)(vma->vm_end - vma->vm_start);
+	ulong phys;
+	ulong start = (u32) vma->vm_start;
+	ulong size = (u32) (vma->vm_end - vma->vm_start);
 
 	/* if userspace tries to mmap beyond end of our buffer, fail */
 	if (size > hmp4e_data.buffsize) {
-		printk(KERN_INFO "hmp4e: MapBuffers (-EINVAL)\n");
+		pr_debug("hmp4e: hmp4e_map_buffer, invalid size\n");
 		return -EINVAL;
 	}
 
 	vma->vm_flags |= VM_RESERVED | VM_IO;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
-#if !CONS_ALLOC
-	/* Remember this won't work for vmalloc()d memory ! */
-	phys = virt_to_phys(hmp4e_data.buffer);
-#else
 	phys = hmp4e_phys;
-#endif
 
-	if (remap_pfn_range
-	    (vma, start, phys >> PAGE_SHIFT, size, vma->vm_page_prot)) {
-		printk(KERN_INFO "hmp4e: MapBuffers (-EAGAIN)\n");
+	if (remap_pfn_range(vma, start, phys >> PAGE_SHIFT, size,
+			    vma->vm_page_prot)) {
+		pr_debug("hmp4e: failed mmapping shared buffer\n");
 		return -EAGAIN;
 	}
 
-	printk(KERN_INFO "hmp4e: MapBuffers (0)\n");
 	return 0;
 }
 
-static int MapHwRegs(struct file *filp, struct vm_area_struct *vma)
+/*!
+ * This funtion maps the h/w register space in memory. 
+ *
+ * @param   filp 	pointer to struct file
+ * @param   vma		pointer to struct vm_area_struct
+ *
+ * @return  This function returns 0 if successful or -ve value on error.
+ *
+ */
+static s32 hmp4e_map_hwregs(struct file *filp, struct vm_area_struct *vma)
 {
-	unsigned long phys;
-	unsigned long start = (unsigned long)vma->vm_start;
-	unsigned long size = (unsigned long)(vma->vm_end - vma->vm_start);
-#if NON_PAGE_ALIGNED
-	int ofs;
-
-	ofs = hmp4e_data.iobaseaddr & (PAGE_SIZE - 1);
-#endif
+	ulong phys;
+	ulong start = (unsigned long)vma->vm_start;
+	ulong size = (unsigned long)(vma->vm_end - vma->vm_start);
 
 	/* if userspace tries to mmap beyond end of our buffer, fail */
-	if (size > PAGE_SIZE)
+	if (size > PAGE_SIZE) {
+		pr_debug("hmp4e: hmp4e_map_hwregs, invalid size\n");
 		return -EINVAL;
+	}
 
 	vma->vm_flags |= VM_RESERVED | VM_IO;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
@@ -616,73 +464,347 @@ static int MapHwRegs(struct file *filp, struct vm_area_struct *vma)
 	/* Remember this won't work for vmalloc()d memory ! */
 	phys = hmp4e_data.iobaseaddr;
 
-#if NON_PAGE_ALIGNED
-	if (remap_pfn_range(vma, start, (phys - ofs) >> PAGE_SHIFT,
-			    hmp4e_data.iosize + ofs, vma->vm_page_prot))
-#else
 	if (remap_pfn_range(vma, start, phys >> PAGE_SHIFT, hmp4e_data.iosize,
-			    vma->vm_page_prot))
-#endif
-	{
+			    vma->vm_page_prot)) {
+		pr_debug("hmp4e: failed mmapping HW registers\n");
 		return -EAGAIN;
 	}
 
 	return 0;
 }
 
-static irqreturn_t hmp4e_isr(int irq, void *dev_id)
+/*!
+ * This function is the interrupt service routine. 
+ *
+ * @param   irq		the irq number
+ * @param   dev_id	driver data when ISR was regiatered
+ * @param   regs	pointer to struct pt_regs
+ *
+ * @return  The return value is IRQ_HANDLED.
+ *
+ */
+irqreturn_t hmp4e_isr(s32 irq, void *dev_id, struct pt_regs * regs)
 {
 	hmp4e_t *dev = (hmp4e_t *) dev_id;
-	u32 irq_status = __raw_readl(dev->hwregs + 5);
+	u32 offset = dev->intr_offset;
 
-	__raw_writel(irq_status & (~0x01), dev->hwregs + 5);	/* clear enc IRQ */
-	printk(KERN_INFO "IRQ received!\n");
+	u32 irq_status = hmp4e_read(offset);
+
+	/* clear enc IRQ */
+	hmp4e_write(irq_status & (~0x01), offset);
+
 	if (dev->async_queue)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN);
 
 	return IRQ_HANDLED;
 }
 
-void ResetAsic(hmp4e_t * dev)
+/*!
+ * This function is called to reset the encoder. 
+ *
+ * @param   dev	 pointer to struct hmp4e_data
+ *
+ */
+static void hmp4e_reset(hmp4e_t * dev)
 {
-	u32 tmp;
+	s32 i;
 
-	tmp = __raw_readl(dev->hwregs);
-	tmp = tmp | 0x02;
-	__raw_writel(tmp, dev->hwregs);	/* enable enc CLK */
-	__raw_writel(tmp & (~0x01), dev->hwregs);	/* disable enc */
-	__raw_writel(0x02, dev->hwregs);	/* clear reg 1 */
-	__raw_writel(0, dev->hwregs + 5);	/* clear enc IRQ */
-	__raw_writel(0, dev->hwregs);	/* disable enc CLK */
-}
+	/* enable HCLK for register reset */
+	hmp4e_write(dev->clk_gate, 0);
 
-#ifdef HMP4E_DEBUG
-void dump_regs(unsigned long data)
-{
-	hmp4e_t *dev = (hmp4e_t *) data;
-	int i;
+	/* Reset registers, except ECR0 (0x00) and ID (read-only) */
+	for (i = 1; i < (dev->iosize / 4); i += 1) {
+		if (i == dev->hwid_offset)	/* ID is read only */
+			continue;
 
-	printk(KERN_INFO "Reg Dump Start\n");
-	for (i = 0; i < 16; i++) {
-		printk(KERN_INFO "\toffset %02X = %08X\n", i * 4,
-		       __raw_readl(dev->hwregs + i));
+		/* Only for CIF, not used */
+		if ((dev->type == 0) && (i == 14))
+			continue;
+
+		hmp4e_write(0, i);
 	}
-	printk(KERN_INFO "Reg Dump End\n");
+
+	/* disable HCLK */
+	hmp4e_write(0, 0);
+	return;
 }
+
+/*!
+ * This function is called during the driver binding process. This function
+ * does the hardware initialization.
+ *
+ * @param   dev   the device structure used to store device specific
+ *                information that is used by the suspend, resume and remove
+ *                functions
+ *
+ * @return  The function returns 0 if successful.
+ */
+static s32 hmp4e_probe(struct platform_device *pdev)
+{
+	s32 result;
+	u32 hwid;
+	struct class_device *temp_class;
+
+	hmp4e_data.iobaseaddr = base_port;
+	hmp4e_data.irq = irq;
+	hmp4e_data.buffaddr = 0;
+
+	/* map hw i/o registers into kernel space */
+	hmp4e_data.hwregs = (volatile void *)IO_ADDRESS(hmp4e_data.iobaseaddr);
+
+	hmp4e_clk = clk_get(&pdev->dev, "mpeg4_clk");
+	if (hmp4e_clk == NULL) {
+		printk(KERN_INFO "hmp4e: Unable to get clock\n");
+		return -EIO;
+	}
+
+	clk_enable(hmp4e_clk);
+
+	/* check hw id for encoder signature */
+	hwid = hmp4e_read(7);
+	if ((hwid & 0xffff) == 0x1882) {	/* CIF first */
+		hmp4e_data.type = 0;
+		hmp4e_data.iosize = (16 * 4);
+		hmp4e_data.hwid_offset = 7;
+		hmp4e_data.intr_offset = 5;
+		hmp4e_data.clk_gate = (1 << 1);
+		hmp4e_data.buffsize = 512000;
+		hmp4e_data.busy_offset = 0;
+		hmp4e_data.busy_val = 1;
+	} else {
+		hwid = hmp4e_read((0x88 / 4));
+		if ((hwid & 0xffff0000) == 0x52510000) {	/* VGA */
+			hmp4e_data.type = 1;
+			hmp4e_data.iosize = (35 * 4);
+			hmp4e_data.hwid_offset = (0x88 / 4);
+			hmp4e_data.intr_offset = (0x10 / 4);
+			hmp4e_data.clk_gate = (1 << 12);
+			hmp4e_data.buffsize = 1048576;
+			hmp4e_data.busy_offset = (0x10 / 4);
+			hmp4e_data.busy_val = (1 << 1);
+		} else {
+			printk(KERN_INFO "hmp4e: HW ID not found\n");
+			goto error1;
+		}
+	}
+
+	/* Reset hardware */
+	hmp4e_reset(&hmp4e_data);
+
+	/* allocate memory shared with ewl */
+	result = hmp4e_alloc(hmp4e_data.buffsize);
+	if (result < 0)
+		goto error1;
+
+	result = register_chrdev(hmp4e_major, "hmp4e", &hmp4e_fops);
+	if (result <= 0) {
+		pr_debug("hmp4e: unable to get major %d\n", hmp4e_major);
+		goto error2;
+	}
+
+	hmp4e_major = result;
+
+	hmp4e_class = class_create(THIS_MODULE, "hmp4e");
+	if (IS_ERR(hmp4e_class)) {
+		pr_debug("Error creating hmp4e class.\n");
+		goto error3;
+	}
+
+	temp_class = class_device_create(hmp4e_class, NULL,
+					 MKDEV(hmp4e_major, 0), NULL, "hmp4e");
+	if (IS_ERR(temp_class)) {
+		pr_debug("Error creating hmp4e class device.\n");
+		goto error4;
+	}
+
+	platform_set_drvdata(pdev, &hmp4e_data);
+
+#ifdef CONFIG_PM
+	hmp4e_data.async_queue = NULL;
+	hmp4e_data.suspend_state = 0;
+	init_waitqueue_head(&hmp4e_data.power_queue);
 #endif
 
-static void hmp4ehw_clock_enable(void)
-{
-	if ((__raw_readl(CCM_MCGR1_REG) & MCGR1_MPEG4_CLK_EN) !=
-	    MCGR1_MPEG4_CLK_EN)
-		__raw_writel(__raw_readl(CCM_MCGR1_REG) | MCGR1_MPEG4_CLK_EN,
-			     CCM_MCGR1_REG);
+	printk(KERN_INFO "hmp4e: %s encoder initialized\n",
+	       hmp4e_data.type ? "VGA" : "CIF");
+	return 0;
+
+      error4:
+	class_destroy(hmp4e_class);
+      error3:
+	unregister_chrdev(hmp4e_major, "hmp4e");
+      error2:
+	hmp4e_free();
+      error1:
+	clk_disable(hmp4e_clk);
+	clk_put(hmp4e_clk);
+	printk(KERN_INFO "hmp4e: module not inserted\n");
+	return -EIO;
 }
 
-static void hmp4ehw_clock_disable(void)
+/*!
+ * Dissociates the driver.
+ *
+ * @param   dev   the device structure 
+ *
+ * @return  The function always returns 0.
+ */
+static s32 hmp4e_remove(struct platform_device *pdev)
 {
-	__raw_writel(__raw_readl(CCM_MCGR1_REG) & ~MCGR1_MPEG4_CLK_EN,
-		     CCM_MCGR1_REG);
+	class_device_destroy(hmp4e_class, MKDEV(hmp4e_major, 0));
+	class_destroy(hmp4e_class);
+	unregister_chrdev(hmp4e_major, "hmp4e");
+	hmp4e_free();
+	clk_disable(hmp4e_clk);
+	clk_put(hmp4e_clk);
+	platform_set_drvdata(pdev, NULL);
+	return 0;
 }
 
+#ifdef CONFIG_PM
+/*!
+ * This is the suspend of power management for the Hantro MPEG4 module
+ *
+ * @param        dev            the device
+ * @param        state          the state
+ *
+ * @return       This function always returns 0.
+ */
+static s32 hmp4e_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	s32 i;
+	hmp4e_t *pdata = &hmp4e_data;
+
+	/* 
+	 * how many times msleep_interruptible will be called before 
+	 * giving up 
+	 */
+	s32 timeout = 10;
+
+	pr_debug("hmp4e: Suspend\n");
+	hmp4e_data.suspend_state = 1;
+
+	/* check if encoder is currently running */
+	while ((hmp4e_read(pdata->busy_offset) & (pdata->busy_val)) &&
+	       --timeout) {
+		pr_debug("hmp4e: encoder is running, going to sleep\n");
+		msleep_interruptible((unsigned int)30);
+	}
+
+	if (!timeout) {
+		pr_debug("hmp4e: timeout suspending, resetting encoder\n");
+		hmp4e_write(hmp4e_read(pdata->busy_offset) &
+			    (~pdata->busy_val), pdata->busy_offset);
+	}
+
+	/* first read register 0 */
+	io_regs[0] = hmp4e_read(0);
+
+	/* then override HCLK to make sure other registers can be read */
+	hmp4e_write(pdata->clk_gate, 0);
+
+	/* read other registers */
+	for (i = 1; i < (pdata->iosize / 4); i += 1) {
+
+		/* Only for CIF, not used */
+		if ((pdata->type == 0) && (i == 14))
+			continue;
+
+		io_regs[i] = hmp4e_read(i);
+	}
+
+	/* restore value of register 0 */
+	hmp4e_write(io_regs[0], 0);
+
+	/* stop HCLK */
+	hmp4e_write(0, 0);
+	clk_disable(hmp4e_clk);
+	return 0;
+};
+
+/*!
+ * This is the resume of power management for the Hantro MPEG4 module
+ * It suports RESTORE state. 
+ *
+ * @param        pdev            the platform device
+ *
+ * @return       This function always returns 0
+ */
+static s32 hmp4e_resume(struct platform_device *pdev)
+{
+	s32 i;
+	u32 status;
+	hmp4e_t *pdata = &hmp4e_data;
+
+	pr_debug("hmp4e: Resume\n");
+	clk_enable(hmp4e_clk);
+
+	/* override HCLK to make sure registers can be written */
+	hmp4e_write(pdata->clk_gate, 0x00);
+
+	for (i = 1; i < (pdata->iosize / 4); i += 1) {
+		if (i == pdata->hwid_offset)	/* Read only */
+			continue;
+
+		/* Only for CIF, not used */
+		if ((pdata->type == 0) && (i == 14))
+			continue;
+
+		hmp4e_write(io_regs[i], i);
+	}
+
+	/* write register 0 last */
+	hmp4e_write(io_regs[0], 0x00);
+
+	/* Clear the suspend flag */
+	hmp4e_data.suspend_state = 0;
+
+	/* Unblock the wait queue */
+	wake_up_interruptible(&hmp4e_data.power_queue);
+
+	/* Continue operations */
+	status = hmp4e_read(pdata->intr_offset);
+	if (status & 0x1) {
+		hmp4e_write(status & (~0x01), pdata->intr_offset);
+		if (hmp4e_data.async_queue)
+			kill_fasync(&hmp4e_data.async_queue, SIGIO, POLL_IN);
+	}
+
+	return 0;
+};
+
+#endif
+
+static struct platform_driver hmp4e_driver = {
+	.driver = {
+		   .name = "mxc_hmp4e",
+		   },
+	.probe = hmp4e_probe,
+	.remove = hmp4e_remove,
+#ifdef CONFIG_PM
+	.suspend = hmp4e_suspend,
+	.resume = hmp4e_resume,
+#endif
+};
+
+static s32 __init hmp4e_init(void)
+{
+	printk(KERN_INFO "hmp4e: init\n");
+	platform_driver_register(&hmp4e_driver);
+	return 0;
+}
+
+static void __exit hmp4e_cleanup(void)
+{
+	platform_driver_unregister(&hmp4e_driver);
+	printk(KERN_INFO "hmp4e: module removed\n");
+}
+
+module_init(hmp4e_init);
+module_exit(hmp4e_cleanup);
+
+/* module description */
+MODULE_AUTHOR("Hantro Products Oy");
+MODULE_DESCRIPTION("Device driver for Hantro's hardware based MPEG4 encoder");
+MODULE_SUPPORTED_DEVICE("5251/4251 MPEG4 Encoder");
 MODULE_LICENSE("GPL");

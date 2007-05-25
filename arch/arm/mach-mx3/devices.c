@@ -724,6 +724,33 @@ static inline void mxc_init_pcmcia(void)
 }
 #endif
 
+#if defined(CONFIG_MXC_HMP4E) || defined(CONFIG_MXC_HMP4E_MODULE)
+static struct platform_device hmp4e_device = {
+	.name = "mxc_hmp4e",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		}
+};
+
+static inline void mxc_init_hmp4e(void)
+{
+	/* override fuse for Hantro HW clock */
+	if (readl(IO_ADDRESS(IIM_BASE_ADDR + 0x808)) == 0x4) {
+		if (!(readl(IO_ADDRESS(IIM_BASE_ADDR + 0x800)) & (1 << 5))) {
+			writel(readl(IO_ADDRESS(IIM_BASE_ADDR + 0x808)) &
+			       0xfffffffb, IO_ADDRESS(IIM_BASE_ADDR + 0x808));
+		}
+	}
+
+	platform_device_register(&hmp4e_device);
+}
+#else
+static inline void mxc_init_hmp4e(void)
+{
+}
+#endif
+
 static int __init mxc_init_devices(void)
 {
 	mxc_init_wdt();
@@ -735,6 +762,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_rtc();
 	mxc_init_owire();
 	mxc_init_pcmcia();
+	mxc_init_hmp4e();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);

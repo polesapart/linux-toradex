@@ -327,7 +327,7 @@
 #define INT_CS8900A             2
 #define INT_I2C3                3
 #define INT_I2C2                4
-#define INT_MPEG4_ENCODER       5
+#define INT_MPEG4_ENC	        5
 #define INT_RTIC                6
 #define INT_FIRI                7
 #define INT_MMC_SDHC2           8
