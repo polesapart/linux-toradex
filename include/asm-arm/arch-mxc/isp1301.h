@@ -85,19 +85,9 @@ static struct i2c_client isp1301_i2c_client = {
 	.driver = &isp1301_i2c_driver,
 };
 
-/*!
- * isp1301 I2C attach function
- *
- * @param adapter            struct i2c_adapter *
- * @return  Error code indicating success or failure
- */
-static int isp1301_attach(struct i2c_adapter *adapter)
+static int isp1301_detect_client(struct i2c_adapter *adapter, int address,
+				 int kind)
 {
-	if (strcmp(adapter->name, MXC_ADAPTER_NAME) != 0) {
-		printk(KERN_ERR "isp1301_attach: %s\n", adapter->name);
-		return -1;
-	}
-
 	isp1301_i2c_client.adapter = adapter;
 	if (i2c_attach_client(&isp1301_i2c_client)) {
 		isp1301_i2c_client.adapter = NULL;
@@ -105,7 +95,24 @@ static int isp1301_attach(struct i2c_adapter *adapter)
 		return -1;
 	}
 
+	printk(KERN_INFO "isp1301 Detected\n");
 	return 0;
+}
+
+static unsigned short normal_i2c[] = { ISP1301_DEV_ADDR, I2C_CLIENT_END };
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+/*!
+ * isp1301 I2C attach function
+ *
+ * @param adapter            struct i2c_adapter *
+ * @return  Error code indicating success or failure
+ */
+static int isp1301_attach(struct i2c_adapter *adap)
+{
+	return i2c_probe(adap, &addr_data, &isp1301_detect_client);
 }
 
 /*!
