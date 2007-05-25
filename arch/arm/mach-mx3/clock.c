@@ -19,6 +19,7 @@
 
 #include <linux/module.h>
 #include <linux/spinlock.h>
+#include <linux/delay.h>
 #include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
@@ -185,6 +186,50 @@ static void _clk_pll_recalc(struct clk *clk)
 	temp = (ref_clk * mfi) + temp;
 
 	clk->rate = temp;
+}
+
+static int _clk_usb_pll_enable(struct clk *clk)
+{
+	u32 reg;
+	reg = __raw_readl(MXC_CCM_CCMR);
+	reg |= MXC_CCM_CCMR_UPE;
+	__raw_writel(reg, MXC_CCM_CCMR);
+
+	/* No lock bit on MX31, so using max time from spec */
+	udelay(80);
+
+	return 0;
+}
+
+static void _clk_usb_pll_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CCMR);
+	reg &= ~MXC_CCM_CCMR_UPE;
+	__raw_writel(reg, MXC_CCM_CCMR);
+}
+
+static int _clk_serial_pll_enable(struct clk *clk)
+{
+	u32 reg;
+	reg = __raw_readl(MXC_CCM_CCMR);
+	reg |= MXC_CCM_CCMR_SPE;
+	__raw_writel(reg, MXC_CCM_CCMR);
+
+	/* No lock bit on MX31, so using max time from spec */
+	udelay(80);
+
+	return 0;
+}
+
+static void _clk_serial_pll_disable(struct clk *clk)
+{
+	u32 reg;
+
+	reg = __raw_readl(MXC_CCM_CCMR);
+	reg &= ~MXC_CCM_CCMR_SPE;
+	__raw_writel(reg, MXC_CCM_CCMR);
 }
 
 #define PDR0(mask, off) ((__raw_readl(MXC_CCM_PDR0) & mask) >> off)
@@ -443,6 +488,8 @@ static struct clk serial_pll_clk = {
 	.parent = &ckih_clk,
 	.set_rate = _clk_pll_set_rate,
 	.recalc = _clk_pll_recalc,
+	.enable = _clk_serial_pll_enable,
+	.disable = _clk_serial_pll_disable,
 };
 
 static struct clk usb_pll_clk = {
@@ -450,6 +497,8 @@ static struct clk usb_pll_clk = {
 	.parent = &ckih_clk,
 	.set_rate = _clk_pll_set_rate,
 	.recalc = _clk_pll_recalc,
+	.enable = _clk_usb_pll_enable,
+	.disable = _clk_usb_pll_disable,
 };
 
 static struct clk cpu_clk = {
@@ -601,14 +650,18 @@ static struct clk rtc_clk = {
 	.disable = _clk_disable,
 };
 
-static struct clk usb_clk = {
-	.name = "usb_clk",
-	.parent = &usb_pll_clk,
-	.recalc = _clk_usb_recalc,
-	.enable = _clk_enable,
-	.enable_reg = MXC_CCM_CGR1,
-	.enable_shift = MXC_CCM_CGR1_USBOTG_OFFSET,
-	.disable = _clk_disable,
+static struct clk usb_clk[] = {
+	{
+	 .name = "usb_clk",
+	 .parent = &usb_pll_clk,
+	 .recalc = _clk_usb_recalc,},
+	{
+	 .name = "usb_ahb_clk",
+	 .parent = &ahb_clk,
+	 .enable = _clk_enable,
+	 .enable_reg = MXC_CCM_CGR1,
+	 .enable_shift = MXC_CCM_CGR1_USBOTG_OFFSET,
+	 .disable = _clk_disable,},
 };
 
 static struct clk csi_clk = {
@@ -728,6 +781,7 @@ static struct clk ssi_clk[] = {
 	 .disable = _clk_disable,},
 	{
 	 .name = "ssi_clk",
+	 .id = 1,
 	 .parent = &serial_pll_clk,
 	 .recalc = _clk_ssi2_recalc,
 	 .enable = _clk_enable,
@@ -976,7 +1030,8 @@ static struct clk *mxc_clks[] = {
 	&nfc_clk,
 	&ipu_clk,
 	&kpp_clk,
-	&usb_clk,
+	&usb_clk[0],
+	&usb_clk[1],
 	&csi_clk,
 	&uart_clk[0],
 	&uart_clk[1],
@@ -1015,7 +1070,14 @@ int __init mxc_clocks_init(void)
 	}
 
 	/* Turn off all possible clocks */
-	// TODO
+	__raw_writel(MXC_CCM_CGR0_GPT_MASK, MXC_CCM_CGR0);
+	__raw_writel(0, MXC_CCM_CGR1);
+	__raw_writel(MXC_CCM_CGR2_EMI_MASK |
+		     MXC_CCM_CGR2_IPMUX1_MASK |
+		     MXC_CCM_CGR2_IPMUX2_MASK, MXC_CCM_CGR2);
+	cko1_clk.disable(&cko1_clk);
+	serial_pll_clk.disable(&serial_pll_clk);
+	usb_pll_clk.disable(&usb_pll_clk);
 
 	/* Determine which high frequency clock source is coming in */
 	if ((__raw_readw(PBC_BASE_ADDRESS + PBC_BSTAT) &
@@ -1028,6 +1090,9 @@ int __init mxc_clocks_init(void)
 
 	/* This will propagate to all children and init all the clock rates */
 	propagate_rate(&ckih_clk);
+
+	clk_enable(&gpt_clk);
+	clk_enable(&emi_clk);
 
 	return 0;
 }

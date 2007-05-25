@@ -1636,6 +1636,8 @@ static int __init mxcuart_console_setup(struct console *co, char *options)
 		return -ENODEV;
 	}
 
+	clk_enable(umxc->clk);
+
 	/* initialize port.lock else oops */
 	spin_lock_init(&umxc->port.lock);
 
@@ -1803,6 +1805,7 @@ static int mxcuart_probe(struct platform_device *pdev)
 		}
 
 		mxc_ports[id]->clk = clk_get(&pdev->dev, "uart_clk");
+		clk_enable(mxc_ports[id]->clk);
 		if (mxc_ports[id]->clk == NULL)
 			return -1;
 

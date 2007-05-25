@@ -60,6 +60,8 @@
 #define MXC_CCM_CCMR_LPM_MASK                   (0x3 << 14)
 #define MXC_CCM_CCMR_FIRS_OFFSET                11
 #define MXC_CCM_CCMR_FIRS_MASK                  (0x3 << 11)
+#define MXC_CCM_CCMR_UPE                        (1 << 9)
+#define MXC_CCM_CCMR_SPE                        (1 << 8)
 #define MXC_CCM_CCMR_MDS                        (1 << 7)
 #define MXC_CCM_CCMR_SBYCS                      (1 << 4)
 #define MXC_CCM_CCMR_MPE                        (1 << 3)

@@ -1093,6 +1093,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	this->verify_buf = mxc_nand_verify_buf;
 
 	nfc_clk = clk_get(&pdev->dev, "nfc_clk");
+	clk_enable(nfc_clk);
 
 	NFC_CONFIG1 |= NFC_INT_MSK;
 	init_waitqueue_head(&irq_waitq);

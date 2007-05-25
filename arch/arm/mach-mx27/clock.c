@@ -56,6 +56,28 @@ static void _clk_disable(struct clk *clk)
 	__raw_writel(reg, clk->enable_reg);
 }
 
+static int _clk_spll_enable(struct clk *clk)
+{
+	unsigned long reg;
+
+	reg = __raw_readl(CCM_CSCR);
+	reg |= CCM_CSCR_SPEN;
+	__raw_writel(reg, CCM_CSCR);
+
+	while ((__raw_readl(CCM_SPCTL1) & CCM_SPCTL1_LF) == 0) ;
+
+	return 0;
+}
+
+static void _clk_spll_disable(struct clk *clk)
+{
+	unsigned long reg;
+
+	reg = __raw_readl(CCM_CSCR);
+	reg &= ~CCM_CSCR_SPEN;
+	__raw_writel(reg, CCM_CSCR);
+}
+
 static void _clk_pccr01_enable(unsigned long mask0, unsigned long mask1)
 {
 	unsigned long reg;
@@ -451,6 +473,8 @@ static struct clk spll_clk = {
 	.name = "spll",
 	.parent = &ckih_clk,
 	.recalc = _clk_pll_recalc,
+	.enable = _clk_spll_enable,
+	.disable = _clk_spll_disable,
 };
 
 static struct clk cpu_clk = {
@@ -554,7 +578,7 @@ struct clk uart3_clk[] = {
 	 .secondary = &uart3_clk[1],},
 	{
 	 .name = "uart_ipg_clk",
-	 .id = 3,
+	 .id = 2,
 	 .parent = &ipg_clk,
 	 .enable = _clk_enable,
 	 .enable_reg = CCM_PCCR1,
@@ -860,7 +884,6 @@ static struct clk usb_clk[] = {
 	{
 	 .name = "usb_clk",
 	 .parent = &spll_clk,
-	 .secondary = &usb_clk[1],
 	 .recalc = _clk_usb_recalc,
 	 .enable = _clk_enable,
 	 .enable_reg = CCM_PCCR1,
@@ -919,7 +942,7 @@ static struct clk ssi2_clk[] = {
 
 static struct clk nfc_clk = {
 	.name = "nfc_clk",
-	.parent = &ahb_clk,
+	.parent = &cpu_clk,
 	.recalc = _clk_nfc_recalc,
 	.enable = _clk_enable,
 	.enable_reg = CCM_PCCR1,
@@ -1345,7 +1368,10 @@ int __init mxc_clocks_init(void)
 	}
 
 	/* Turn off all possible clocks */
-	// TODO
+	__raw_writel(CCM_PCCR0_GPT1_MASK, CCM_PCCR0);
+	__raw_writel(CCM_PCCR1_PERCLK1_MASK | CCM_PCCR1_HCLK_EMI_MASK,
+		     CCM_PCCR1);
+	spll_clk.disable(&spll_clk);
 
 	cscr = CSCR();
 	if (cscr & CCM_CSCR_MCU) {
@@ -1354,9 +1380,9 @@ int __init mxc_clocks_init(void)
 		mpll_clk.parent = &ckil_clk;
 	}
 	if (cscr & CCM_CSCR_SP) {
-		mpll_clk.parent = &ckih_clk;
+		spll_clk.parent = &ckih_clk;
 	} else {
-		mpll_clk.parent = &ckil_clk;
+		spll_clk.parent = &ckil_clk;
 	}
 
 	/* Determine which high frequency clock source is coming in */
@@ -1369,8 +1395,11 @@ int __init mxc_clocks_init(void)
 
 	/* This will propagate to all children and init all the clock rates */
 	propagate_rate(&ckih_clk);
+	propagate_rate(&ckil_clk);
 
+	clk_enable(&emi_clk);
 	clk_enable(&gpio_clk);
+	clk_enable(&iim_clk);
 	clk_enable(&gpt1_clk[0]);
 
 	return 0;
