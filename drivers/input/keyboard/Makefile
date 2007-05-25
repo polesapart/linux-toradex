@@ -18,4 +18,3 @@ obj-$(CONFIG_KEYBOARD_HIL)		+= hil_kbd.o
 obj-$(CONFIG_KEYBOARD_HIL_OLD)		+= hilkbd.o
 obj-$(CONFIG_KEYBOARD_OMAP)             += omap-keypad.o
 obj-$(CONFIG_KEYBOARD_MXC)		+= mxc_keyb.o
-

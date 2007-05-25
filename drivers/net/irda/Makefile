@@ -13,7 +13,6 @@ obj-$(CONFIG_SIGMATEL_FIR)	+= stir4200.o
 obj-$(CONFIG_NSC_FIR)		+= nsc-ircc.o
 obj-$(CONFIG_WINBOND_FIR)	+= w83977af_ir.o
 obj-$(CONFIG_SA1100_FIR)	+= sa1100_ir.o
-obj-$(CONFIG_MXC_FIR)		+= mxc_ir.o
 obj-$(CONFIG_TOSHIBA_FIR)	+= donauboe.o
 obj-$(CONFIG_SMC_IRCC_FIR)	+= smsc-ircc2.o
 obj-$(CONFIG_ALI_FIR)		+= ali-ircc.o
@@ -21,6 +20,7 @@ obj-$(CONFIG_VLSI_FIR)		+= vlsi_ir.o
 obj-$(CONFIG_VIA_FIR)		+= via-ircc.o
 obj-$(CONFIG_PXA_FICP)	        += pxaficp_ir.o
 obj-$(CONFIG_MCS_FIR)	        += mcs7780.o
+obj-$(CONFIG_MXC_FIR)		+= mxc_ir.o
 obj-$(CONFIG_MXC_IRDA)	        += mxc_sir.o
 # Old dongle drivers for old SIR drivers
 obj-$(CONFIG_ESI_DONGLE_OLD)		+= esi.o

@@ -478,7 +478,6 @@ static s32 hmp4e_map_hwregs(struct file *filp, struct vm_area_struct *vma)
  *
  * @param   irq		the irq number
  * @param   dev_id	driver data when ISR was regiatered
- * @param   regs	pointer to struct pt_regs
  *
  * @return  The return value is IRQ_HANDLED.
  *

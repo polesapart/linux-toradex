@@ -11,7 +11,6 @@ config MXC_IPU
 config MXC_IPU_LPMC
 	bool
 	depends on MXC_IPU
-	default n
 
 source "drivers/mxc/ipu/pf/Kconfig"
 

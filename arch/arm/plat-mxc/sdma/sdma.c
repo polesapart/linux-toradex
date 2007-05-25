@@ -364,7 +364,6 @@ static unsigned short sdma_get_pc(sdma_periphT peripheral_type,
 	}
 
 	return res;
-
 }
 
 /*!
@@ -1232,7 +1231,6 @@ int __init sdma_init(void)
       sdma_init_fail:
 	printk(KERN_ERR "Error 0x%x in sdma_init\n", res);
 	return res;
-
 }
 
 arch_initcall(sdma_init);

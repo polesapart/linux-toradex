@@ -47,7 +47,7 @@ static irqreturn_t csi_irq_handler(int irq, void *data)
 	if (g_callback)
 		g_callback(g_callback_data, status);
 
-	pr_debug("CSI status = 0x%08X\n", status);
+	pr_debug("CSI status = 0x%08lX\n", status);
 
 	return IRQ_HANDLED;
 }

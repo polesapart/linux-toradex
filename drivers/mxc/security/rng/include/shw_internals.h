@@ -150,6 +150,7 @@ static os_error_code add_entropy(fsl_shw_uco_t * user_ctx,
 
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("Device Driver for FSL SHW API");
+MODULE_LICENSE("GPL");
 
 #endif				/* LINUX_VERSION_CODE */
 

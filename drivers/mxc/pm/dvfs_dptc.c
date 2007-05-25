@@ -57,11 +57,6 @@
 #endif
 
 /*
- * Comment EVB_DEBUG to disable debug messages
- */
-/* #define EVB_DEBUG 1 */
-
-/*
  * Prototypes
  */
 static int dvfs_dptc_open(struct inode *inode, struct file *filp);
@@ -1018,9 +1013,7 @@ static int dvfs_dptc_ioctl(struct inode *inode, struct file *filp,
 
 	down(&access_mutex);
 
-#ifdef EVB_DEBUG
-	printk("DVFS_DPTC ioctl (%d)\n", cmd);
-#endif
+	pr_debug("DVFS_DPTC ioctl (%d)\n", cmd);
 
 	switch (cmd) {
 #ifdef CONFIG_MXC_DPTC
@@ -1176,10 +1169,8 @@ static int dvfs_dptc_ioctl(struct inode *inode, struct file *filp,
  */
 static irqreturn_t dvfs_dptc_irq(int irq, void *dev_id)
 {
-#ifdef EVB_DEBUG
-	printk("CCM interrupt (0x%x)!!!\n",
-	       (unsigned int)mxc_ccm_get_reg(MXC_CCM_PMCR0));
-#endif
+	pr_debug("CCM interrupt (0x%x)!!!\n",
+		 (unsigned int)mxc_ccm_get_reg(MXC_CCM_PMCR0));
 
 #ifdef CONFIG_MXC_DPTC
 	if (dvfs_dptc_params.dptc_is_active == TRUE) {

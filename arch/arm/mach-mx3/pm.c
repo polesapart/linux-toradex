@@ -59,7 +59,7 @@
 
 static int mx31_pm_enter(suspend_state_t state)
 {
-	printk("Hi, from mx31_pm_enter\n");
+	printk(KERN_INFO "Hi, from mx31_pm_enter\n");
 	switch (state) {
 	case PM_SUSPEND_MEM:
 		mxc_pm_lowpower(STOP_MODE);
@@ -104,7 +104,7 @@ struct pm_ops mx31_pm_ops = {
 
 static int __init mx31_pm_init(void)
 {
-	printk("Power Management for Freescale MX31\n");
+	printk(KERN_INFO "Power Management for Freescale MX31\n");
 	pm_set_ops(&mx31_pm_ops);
 
 	return 0;

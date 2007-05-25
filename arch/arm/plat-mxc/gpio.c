@@ -36,7 +36,7 @@
  */
 
 /* GPIO related defines */
-#if defined(CONFIG_ARCH_MX27) || defined(CONFIG_ARCH_MX21)
+#if defined(CONFIG_ARCH_MX27)
 enum gpio_reg {
 	GPIO_DR = 0x1C,
 	GPIO_GDIR = 0x00,

@@ -61,8 +61,6 @@
 #define cpu_is_mx31()		(0)
 #endif
 
-#define cpu_is_mx21()		(0)
-
 #ifdef CONFIG_ARCH_MX27
 #include <asm/arch/mx27.h>
 #define cpu_is_mx27()		(1)

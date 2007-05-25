@@ -1153,9 +1153,7 @@ static int dptc_mx27_ioctl(struct inode *inode, struct file *filp,
 
 	down(&access_mutex);
 
-#ifdef EVB_DEBUG
-	printk("DVFS_DPTC ioctl (%d)\n", cmd);
-#endif
+	pr_debug("DVFS_DPTC ioctl (%d)\n", cmd);
 
 	switch (cmd) {
 		/* Enable the DPTC module */

@@ -25,24 +25,6 @@ static void __exit mxc_sec_mod_cleanup(void)
 	printk(KERN_INFO "SEC: mxc_sec_mod_cleanup() called \n");
 }
 
-#ifndef        CONFIG_ARCH_MX3
-#ifdef CONFIG_MXC_SECURITY_HAC
-/* Export Symbol of HACC */
-EXPORT_SYMBOL(hac_hash_data);
-EXPORT_SYMBOL(hac_hashing_status);
-EXPORT_SYMBOL(hac_get_status);
-EXPORT_SYMBOL(hac_stop);
-EXPORT_SYMBOL(hac_hash_result);
-EXPORT_SYMBOL(hac_swrst);
-EXPORT_SYMBOL(hac_burst_mode);
-EXPORT_SYMBOL(hac_burst_read);
-#ifdef CONFIG_PM
-EXPORT_SYMBOL(hac_suspend);
-EXPORT_SYMBOL(hac_resume);
-#endif
-#endif
-#endif
-
 /* Export Symbol of RTIC */
 EXPORT_SYMBOL(rtic_init);
 EXPORT_SYMBOL(rtic_configure_mode);

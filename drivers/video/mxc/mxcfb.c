@@ -874,6 +874,7 @@ static int mxcfb_resume(struct platform_device *pdev)
  * all virtual memory access to the video memory should occur at the new region.
  *
  * @param       fbi     framebuffer information pointer
+ * @param       use_internal_ram flag on whether to use internal RAM for memory
  *
  * @return      Error code indicating success or failure
  */

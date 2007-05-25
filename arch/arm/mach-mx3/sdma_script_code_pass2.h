@@ -322,11 +322,14 @@
 #define RAM_CODE_SIZE_2	1810
 
 /*!
-* This function returns buffer that holds the image of SDMA RAM
+* This function returns buffer that holds the image of SDMA RAM.
+* This is required to start on a 4-byte aligned boundary on some platforms
+* for SDMA to work properly.
 *
 * @return pointer to buffer that holds the image of SDMA RAM
 */
 
+__attribute__ ((__aligned__(4)))
 static const short sdma_code_2[] = {
 	0x0870, 0x0011, 0x5010, 0xc0ec, 0x7d60, 0x5ac0, 0x5bc8, 0x5ef8,
 	0xc0fe, 0x56f8, 0x7d02, 0x0200, 0x9806, 0x6ec3, 0x6dd7, 0x5df0,

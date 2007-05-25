@@ -580,7 +580,7 @@ static void fsl_otg_event(void *ptr)
  * intact.  It needs to have knowledge of some USB interrupts
  * such as port change.
  */
-irqreturn_t fsl_otg_isr(int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t fsl_otg_isr(int irq, void *dev_id)
 {
 	struct otg_fsm *fsm = &((struct fsl_otg *)dev_id)->fsm;
 	struct otg_transceiver *otg = &((struct fsl_otg *)dev_id)->otg;

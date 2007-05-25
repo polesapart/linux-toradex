@@ -431,5 +431,5 @@ module_init(mxc_w1_init);
 module_exit(mxc_w1_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Freescale Semiconductor, Inc");
+MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("Driver for One-Wire on MXC");

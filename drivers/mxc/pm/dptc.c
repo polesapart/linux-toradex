@@ -48,11 +48,6 @@
 #include <asm/arch/pmic_power.h>
 
 /*
- * Comment EVB_DEBUG to disable debug messages
- */
-/* #define EVB_DEBUG 1 */
-
-/*
  * Module header file
  */
 #include <asm/arch/dptc.h>
@@ -180,30 +175,22 @@ int enable_ref_circuits(dvfs_dptc_params_s * params, unsigned char rc_state)
 		if (rc_state & 0x1) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0, MXC_CCM_PMCR0_DRCE0,
 					   MXC_CCM_PMCR0_DRCE0);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 0 enabled\n");
-#endif
+			pr_debug("Ref circuit 0 enabled\n");
 		}
 		if (rc_state & 0x2) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0, MXC_CCM_PMCR0_DRCE1,
 					   MXC_CCM_PMCR0_DRCE1);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 1 enabled\n");
-#endif
+			pr_debug("Ref circuit 1 enabled\n");
 		}
 		if (rc_state & 0x4) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0, MXC_CCM_PMCR0_DRCE2,
 					   MXC_CCM_PMCR0_DRCE2);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 2 enabled\n");
-#endif
+			pr_debug("Ref circuit 2 enabled\n");
 		}
 		if (rc_state & 0x8) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0, MXC_CCM_PMCR0_DRCE3,
 					   MXC_CCM_PMCR0_DRCE3);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 3 enabled\n");
-#endif
+			pr_debug("Ref circuit 3 enabled\n");
 		}
 
 		ret_val = 0;
@@ -232,30 +219,22 @@ int disable_ref_circuits(dvfs_dptc_params_s * params, unsigned char rc_state)
 		if (rc_state & 0x1) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0,
 					   MXC_CCM_PMCR0_DRCE0, 0);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 0 disabled\n");
-#endif
+			pr_debug("Ref circuit 0 disabled\n");
 		}
 		if (rc_state & 0x2) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0,
 					   MXC_CCM_PMCR0_DRCE1, 0);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 1 disabled\n");
-#endif
+			pr_debug("Ref circuit 1 disabled\n");
 		}
 		if (rc_state & 0x4) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0,
 					   MXC_CCM_PMCR0_DRCE2, 0);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 2 disabled\n");
-#endif
+			pr_debug("Ref circuit 2 disabled\n");
 		}
 		if (rc_state & 0x8) {
 			mxc_ccm_modify_reg(MXC_CCM_PMCR0,
 					   MXC_CCM_PMCR0_DRCE3, 0);
-#ifdef EVB_DEBUG
-			printk("Ref circuit 3 disabled\n");
-#endif
+			pr_debug("Ref circuit 3 disabled\n");
 		}
 
 		ret_val = 0;
@@ -272,15 +251,13 @@ static void dptc_workqueue_handler(void *arg)
 
 	params = (dvfs_dptc_params_s *) arg;
 
-#ifdef EVB_DEBUG
-	printk("In %s: PTVAI = %d\n", __FUNCTION__, dptc_get_ptvai());
-	printk("PMCR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_PMCR0));
-	printk("DCVR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR0));
-	printk("DCVR1 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR1));
-	printk("DCVR2 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR2));
-	printk("DCVR3 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR3));
-	printk("PTVAI = 0x%x\n", ptvai);
-#endif
+	pr_debug("In %s: PTVAI = %d\n", __FUNCTION__, dptc_get_ptvai());
+	pr_debug("PMCR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_PMCR0));
+	pr_debug("DCVR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR0));
+	pr_debug("DCVR1 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR1));
+	pr_debug("DCVR2 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR2));
+	pr_debug("DCVR3 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR3));
+	pr_debug("PTVAI = 0x%x\n", ptvai);
 
 #ifndef CONFIG_MXC_DVFS_SDMA
 	switch (ptvai) {
@@ -334,11 +311,9 @@ void dptc_irq(void)
 #ifndef CONFIG_MXC_DVFS_SDMA
 	ptvai = dptc_get_ptvai();
 
-#ifdef EVB_DEBUG
-	printk("Got DPTC interrupt on %d ", (int)jiffies);
-	printk("ptvai = 0x%x (0x%x)!!!!!!!\n", ptvai,
-	       mxc_ccm_get_reg(MXC_CCM_PMCR0));
-#endif
+	pr_debug("Got DPTC interrupt on %d ", (int)jiffies);
+	pr_debug("ptvai = 0x%x (0x%x)!!!!!!!\n", ptvai,
+		 mxc_ccm_get_reg(MXC_CCM_PMCR0));
 
 	if (ptvai != 0) {
 		dptc_mask_dptc_int();
@@ -380,13 +355,11 @@ void set_pmic_voltage(dvfs_dptc_tables_s * dvfs_dptc_tables_ptr, int wp)
 	pmic_power_switcher_set_stby(SW_SW1B, volt);
 #endif
 
-#ifdef EVB_DEBUG
 	if (cpu_is_mx31()) {
-		printk("DPVV = 0x%x (0x%x)\n",
-		       mxc_ccm_get_reg(MXC_CCM_PMCR0) & MXC_CCM_PMCR0_DPVV,
-		       mxc_ccm_get_reg(MXC_CCM_PMCR0));
+		pr_debug("DPVV = 0x%x (0x%x)\n",
+			 mxc_ccm_get_reg(MXC_CCM_PMCR0) & MXC_CCM_PMCR0_DPVV,
+			 mxc_ccm_get_reg(MXC_CCM_PMCR0));
 	}
-#endif				/* EVB_DEBUG */
 }
 
 /*!
@@ -528,9 +501,7 @@ void set_dptc_wp(dvfs_dptc_params_s * params, int new_wp)
 	add_dptc_log_entry(params, &params->dptc_log_buffer,
 			   params->dvfs_dptc_tables_ptr->curr_wp, freq_index);
 
-#ifdef EVB_DEBUG
-	printk("Current wp: %d\n", params->dvfs_dptc_tables_ptr->curr_wp);
-#endif
+	pr_debug("Current wp: %d\n", params->dvfs_dptc_tables_ptr->curr_wp);
 }
 
 /*!
@@ -887,7 +858,7 @@ int set_dptc_curr_freq(dvfs_dptc_params_s * params, unsigned int freq_index)
  */
 void dptc_sdma_callback(dvfs_dptc_params_s * params)
 {
-	printk("In %s: params->dvfs_dptc_tables_ptr->curr_wp = %d\n",
+	printk(KERN_INFO "In %s: params->dvfs_dptc_tables_ptr->curr_wp = %d\n",
 	       __FUNCTION__, params->dvfs_dptc_tables_ptr->curr_wp);
 }
 #endif

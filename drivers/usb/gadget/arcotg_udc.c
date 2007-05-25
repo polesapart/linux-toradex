@@ -2860,7 +2860,8 @@ static int __devinit arcotg_udc_probe(struct platform_device *pdev)
 	rsrc_len = pdev->resource[0].end - pdev->resource[0].start + 1;
 
 	pr_debug("     start=0x%lx   end=0x%lx\n",
-		 pdev->resource[0].start, pdev->resource[0].end);
+		 (unsigned long)pdev->resource[0].start,
+		 (unsigned long)pdev->resource[0].end);
 	pr_debug("rsrc_start=0x%llx  rsrc_len=0x%llx\n", rsrc_start, rsrc_len);
 
 #if 0				/* DDD */
@@ -3029,7 +3030,7 @@ static int __devexit arcotg_udc_remove(struct platform_device *pdev)
 static int arcotg_udc_suspend(struct device *dev, pm_message_t state)
 {
 	struct arcotg_udc *udc = udc_controller;
-	pr_debug("udc: Suspend.  state=%d\n", state);
+	pr_debug("udc: Suspend.\n");
 	udc->stopped = 1;
 	return 0;
 }

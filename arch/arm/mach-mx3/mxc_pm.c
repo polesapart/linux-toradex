@@ -56,7 +56,6 @@ static struct clk *mcu_pll_clk;
 static struct clk *cpu_clk;
 static struct clk *ahb_clk;
 static struct clk *ipg_clk;
-static struct clk *csi_baud;
 
 /*!
  * Compare two frequences using allowable tolerance
@@ -283,7 +282,6 @@ void mxc_pm_lowpower(int mode)
 		__raw_writel(INT_GPT, AVIC_INTDISNUM);
 
 		/* work-around for SR mode after camera related test */
-		clk_enable(csi_baud);
 		__raw_writel(0x51, IPU_CONF);
 		break;
 
@@ -316,7 +314,6 @@ void mxc_pm_lowpower(int mode)
 
 	/* work-around for SR mode after camera related test */
 	__raw_writel(ipu_conf, IPU_CONF);
-	clk_disable(csi_baud);
 
 	__raw_writel(INT_GPT, AVIC_INTENNUM);
 
@@ -369,7 +366,6 @@ static int __init mxc_pm_init_module(void)
 	cpu_clk = clk_get(NULL, "cpu_clk");
 	ahb_clk = clk_get(NULL, "ahb_clk");
 	ipg_clk = clk_get(NULL, "ipg_clk");
-	csi_baud = clk_get(NULL, "csi_baud");
 	return 0;
 }
 

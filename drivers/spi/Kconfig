@@ -124,7 +124,7 @@ config SPI_MXC_SELECT1
 config SPI_MXC_SELECT2
 	bool "CSPI2"
 	depends on SPI_MXC
-	default y
+	default n
 
 config SPI_MXC_SELECT3
 	bool "CSPI3"
