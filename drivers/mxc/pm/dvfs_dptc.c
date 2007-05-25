@@ -422,7 +422,11 @@ static int __init dvfs_dptc_init_default_table(void)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_MX31_TO2_REG_SWIZZLE_WORKAROUND
+	table_str = default_table_str_rev2;
+#else
 	table_str = default_table_str;
+#endif
 	if (cpu_is_mx31()) {
 		if (system_rev < CHIP_REV_2_0) {
 			clk = clk_get(NULL, "ckih");
@@ -435,7 +439,9 @@ static int __init dvfs_dptc_init_default_table(void)
 			}
 		} else {
 #ifdef CONFIG_ARCH_MX3
+#ifndef CONFIG_MX31_TO2_REG_SWIZZLE_WORKAROUND
 			table_str = default_table_str_rev2;
+#endif
 #endif
 		}
 		clk_put(clk);
