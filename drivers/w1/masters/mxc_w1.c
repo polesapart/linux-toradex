@@ -344,7 +344,6 @@ static int __devinit mxc_w1_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	dev->clk = clk_get(&pdev->dev, "owire_clk");
-
 	dev->bus_master = (struct w1_bus_master *)(dev + 1);
 	dev->found = 1;
 	dev->clkdiv = (clk_get_rate(dev->clk) / 1000000) - 1;
@@ -389,6 +388,7 @@ static int mxc_w1_remove(struct platform_device *pdev)
 {
 	struct mxc_w1_device *dev = platform_get_drvdata(pdev);
 
+	clk_disable(dev->clk);
 	clk_put(dev->clk);
 	if (dev->found) {
 		w1_remove_master_device(dev->bus_master);

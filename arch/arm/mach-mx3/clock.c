@@ -759,6 +759,10 @@ static struct clk i2c_clk[] = {
 static struct clk owire_clk = {
 	.name = "owire_clk",
 	.parent = &perclk_clk,
+	.enable_reg = MXC_CCM_CGR1,
+	.enable_shift = MXC_CCM_CGR1_OWIRE_OFFSET,
+	.enable = _clk_enable,
+	.disable = _clk_disable,
 };
 
 static struct clk sdhc_clk[] = {
