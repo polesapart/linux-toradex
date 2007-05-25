@@ -167,12 +167,6 @@ struct mxc_spi_master {
 #define IIM_PROD_REV_SH		3
 #define IIM_PROD_REV_LEN	5
 
-/* Since AVIC vector registers are NOT used, we reserve some for various
- * purposes. */
-#define AVIC_VEC_0		0x100	/* For WFI workaround. */
-#define AVIC_VECTOR		IO_ADDRESS(AVIC_BASE_ADDR + AVIC_VEC_0)
-#define MXC_WFI_ENABLE		0x00000008
-
 /* DMA driver defines */
 #define MXC_IDE_DMA_WATERMARK	32	/* DMA watermark level in bytes */
 #define MXC_IDE_DMA_BD_NR	(512/3/4)	/* Number of BDs per channel */

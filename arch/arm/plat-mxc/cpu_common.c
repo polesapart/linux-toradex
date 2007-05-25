@@ -112,7 +112,7 @@ static void system_rev_update(void)
 	}
 }
 
-static int mxc_jtag_enabled __initdata = 0;	/* OFF: 0 (default), ON: 1 */
+int mxc_jtag_enabled __initdata = 0;	/* OFF: 0 (default), ON: 1 */
 
 /*
  * Here are the JTAG options from the command line. By default JTAG
@@ -135,26 +135,7 @@ static void __init jtag_wfi_setup(char **p)
 
 __early_param("jtag=", jtag_wfi_setup);
 
-/*!
- * Enable or Disable WFI based on JTAG on boot command line
- */
-static void __init jtag_wfi_init(void)
-{
-	if (mxc_jtag_enabled) {
-		/* Disable WFI as JTAG is connected */
-		__raw_writel(__raw_readl(AVIC_VECTOR) & ~(MXC_WFI_ENABLE),
-			     AVIC_VECTOR);
-		pr_debug("jtag: on\n");
-	} else {
-		/* Enable WFI as JTAG is not connected */
-		__raw_writel(__raw_readl(AVIC_VECTOR) | (MXC_WFI_ENABLE),
-			     AVIC_VECTOR);
-		pr_debug("jtag: off\n");
-	}
-}
-
 void mxc_cpu_common_init(void)
 {
 	system_rev_update();
-	jtag_wfi_init();
 }

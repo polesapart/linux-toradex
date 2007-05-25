@@ -41,6 +41,8 @@
  * @ingroup System
  */
 
+extern int mxc_jtag_enabled;
+
 /*!
  * This function puts the CPU into idle mode. It is called by default_idle()
  * in process.c file.
@@ -51,7 +53,7 @@ void arch_idle(void)
 	 * This should do all the clock switching
 	 * and wait for interrupt tricks.
 	 */
-	if ((__raw_readl(AVIC_VECTOR) & MXC_WFI_ENABLE) != 0) {
+	if (!mxc_jtag_enabled) {
 		cpu_do_idle();
 	}
 }
