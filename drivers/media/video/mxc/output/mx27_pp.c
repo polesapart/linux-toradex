@@ -284,8 +284,9 @@ static int set_output_addr(emma_pp_cfg * cfg, vout_data * vout)
 		cfg->out_stride = vout->crop_current.width;
 		return 0;
 	} else {
-		struct fb_info *fb = registered_fb[0];
+		struct fb_info *fb;
 
+		fb = registered_fb[vout->output_fb_num[vout->cur_disp_output]];
 		if (!fb)
 			return -1;
 
