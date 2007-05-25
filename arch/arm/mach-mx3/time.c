@@ -155,7 +155,7 @@ static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id)
  */
 static unsigned long __noinstrument mxc_gettimeoffset(void)
 {
-	unsigned long ticks_to_match, elapsed, usec, tick_usec, i;
+	long ticks_to_match, elapsed, usec;
 
 	/* Get ticks before next timer match */
 	ticks_to_match =
@@ -165,13 +165,7 @@ static unsigned long __noinstrument mxc_gettimeoffset(void)
 	elapsed = LATCH - ticks_to_match;
 
 	/* Now convert them to usec */
-	/* Insure no overflow when calculating the usec below */
-	for (i = 1, tick_usec = tick_nsec / 1000;; i *= 2) {
-		tick_usec /= i;
-		if ((0xFFFFFFFF / tick_usec) > elapsed)
-			break;
-	}
-	usec = (unsigned long)(elapsed * tick_usec) / (LATCH / i);
+	usec = (unsigned long)(elapsed * (tick_nsec / 1000)) / LATCH;
 
 	return usec;
 }
