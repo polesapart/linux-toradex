@@ -80,7 +80,7 @@ static int vpu_free_buffers(void)
 	spin_lock_irqsave(&vpu_lock, flags);
 	list_for_each_entry_safe(rec, n, &head, list) {
 		mem = rec->mem;
-		dma_free_coherent(0, mem.size,
+		dma_free_coherent(0, PAGE_ALIGN(mem.size),
 				  (void *)mem.cpu_addr, mem.phy_addr);
 		pr_debug("[FREE] freed paddr=0x%08X\n", mem.phy_addr);
 		list_del(&rec->list);
