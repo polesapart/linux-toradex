@@ -350,8 +350,7 @@ static void _init_csc(uint8_t ic_task, ipu_color_space_t in_format,
 	} else if (ic_task == IC_TASK_POST_PROCESSOR) {
 		address = 0x87C << 3;
 	} else {
-		MXC_ERR_CHK(1);
-		return;
+		BUG();
 	}
 
 	if ((in_format == YCbCr) && (out_format == RGB)) {

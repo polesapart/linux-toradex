@@ -92,8 +92,8 @@ int iomux_config_mux(iomux_pin_name_t pin, iomux_pin_ocfg_t out,
 	u32 mux_mask = GET_FIELD_MASK(MUX_CTL_BIT_LEN, mux_field);
 	u8 *rp;
 
-	MXC_ERR_CHK((mux_index > (MUX_PIN_NUM_MAX / MUX_CTL_FIELDS - 1)) ||
-		    (mux_field >= MUX_CTL_FIELDS));
+	BUG_ON((mux_index > (MUX_PIN_NUM_MAX / MUX_CTL_FIELDS - 1)) ||
+	       (mux_field >= MUX_CTL_FIELDS));
 
 	reg = IOMUXSW_MUX_CTL + (mux_index * 4);
 	spin_lock(&gpio_mux_lock);
@@ -167,8 +167,8 @@ void mxc_free_iomux(iomux_pin_name_t pin, iomux_pin_ocfg_t out,
 	u32 mux_field = PIN_TO_IOMUX_FIELD(pin);
 	u8 *rp = iomux_pin_res_table + mux_index * MUX_CTL_FIELDS + mux_field;
 
-	MXC_ERR_CHK((mux_index > (MUX_PIN_NUM_MAX / MUX_CTL_FIELDS - 1)) ||
-		    (mux_field >= MUX_CTL_FIELDS));
+	BUG_ON((mux_index > (MUX_PIN_NUM_MAX / MUX_CTL_FIELDS - 1)) ||
+	       (mux_field >= MUX_CTL_FIELDS));
 
 	*rp = 0;
 	if (out == OUTPUTCONFIG_GPIO && in == INPUTCONFIG_GPIO) {
@@ -189,8 +189,8 @@ void mxc_iomux_set_pad(iomux_pin_name_t pin, u32 config)
 	u32 pad_field = (pin >> PAD_F) & ((1 << (MUX_IO_I - PAD_F)) - 1);
 	u32 pad_mask = GET_FIELD_MASK(MUX_PAD_BIT_LEN, pad_field);
 
-	MXC_ERR_CHK((pad_index > (PAD_CTL_NUM_MAX / PAD_CTL_FIELDS - 1)) ||
-		    (pad_field >= PAD_CTL_FIELDS));
+	BUG_ON((pad_index > (PAD_CTL_NUM_MAX / PAD_CTL_FIELDS - 1)) ||
+	       (pad_field >= PAD_CTL_FIELDS));
 
 	reg = IOMUXSW_PAD_CTL + (pad_index * 4);
 	spin_lock(&gpio_mux_lock);

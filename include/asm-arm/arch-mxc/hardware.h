@@ -37,25 +37,6 @@
  */
 #define MXC_SET_FIELD(val, len, sh, nval)    ((val & ~(((1 << len) - 1) << sh)) | nval << sh)
 
-/* This is used to turn on/off debugging */
-#define MXC_TRACE
-#ifdef MXC_TRACE
-/*!
- * This is used for error checking in debugging mode.
- */
-#define MXC_ERR_CHK(a) \
-        do { \
-                if ((a)) { \
-                        printk("Error at line %d in function %s in file %s", \
-                                __LINE__, __FUNCTION__, __FILE__); \
-                        BUG(); \
-                } \
-        } \
-        while (0)
-#else
-#define MXC_ERR_CHK(a)
-#endif
-
 /*
  * ---------------------------------------------------------------------------
  * Processor specific defines

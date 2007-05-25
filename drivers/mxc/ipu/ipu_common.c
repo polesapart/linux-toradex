@@ -1376,7 +1376,7 @@ int ipu_request_irq(uint32_t irq,
 {
 	uint32_t lock_flags;
 
-	MXC_ERR_CHK(irq >= IPU_IRQ_COUNT);
+	BUG_ON(irq >= IPU_IRQ_COUNT);
 
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
