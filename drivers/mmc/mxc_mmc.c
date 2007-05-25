@@ -988,7 +988,7 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 		/* clk_dev =1, CLK_DIV = ipg_perclk/2 */
 
-		while (prescaler <= 16) {
+		while (prescaler <= 0x800) {
 			for (clk_dev = 1; clk_dev <= 0xF; clk_dev++) {
 				int x;
 				if (prescaler != 0) {
