@@ -18,6 +18,8 @@
 #error "Do not include directly."
 #endif
 
+#include <asm/arch/clock.h>
+
 #ifndef __ASSEMBLY__
 
 struct mxc_ipu_config {
@@ -27,6 +29,12 @@ struct mxc_ipu_config {
 struct mxc_ir_platform_data {
 	int uart_ir_mux;
 };
+
+struct mxc_i2c_platform_data {
+	enum mxc_clocks clk;
+	u32 i2c_clk;
+};
+
 #endif
 
 /*

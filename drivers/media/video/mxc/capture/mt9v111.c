@@ -581,13 +581,9 @@ static void mt9v111_test_pattern(bool flag)
  * @param adapter            struct i2c_adapter *
  * @return  Error code indicating success or failure
  */
-static int mt9v111_attach(struct i2c_adapter *adapter)
+static int mt9v111_detect_client(struct i2c_adapter *adapter, int address,
+				 int kind)
 {
-	if (strcmp(adapter->name, MXC_ADAPTER_NAME) != 0) {
-		printk(KERN_ERR "mt9v111_attach: %s\n", adapter->name);
-		return -1;
-	}
-
 	mt9v111_i2c_client.adapter = adapter;
 	if (i2c_attach_client(&mt9v111_i2c_client)) {
 		mt9v111_i2c_client.adapter = NULL;
@@ -602,7 +598,30 @@ static int mt9v111_attach(struct i2c_adapter *adapter)
 		return -1;
 	}
 
+	mxc_clks_disable(CSI_BAUD);
+	printk(KERN_INFO "MT9V111 Detected\n");
+
 	return 0;
+}
+
+static unsigned short normal_i2c[] = { MT9V111_I2C_ADDRESS, I2C_CLIENT_END };
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+/*!
+ * mt9v111 I2C attach function
+ *
+ * @param adapter            struct i2c_adapter *
+ * @return  Error code indicating success or failure
+ */
+static int mt9v111_attach(struct i2c_adapter *adap)
+{
+	uint32_t mclk = 27000000;
+	mxc_clks_enable(CSI_BAUD);
+	set_mclk_rate(&mclk);
+
+	return i2c_probe(adap, &addr_data, &mt9v111_detect_client);
 }
 
 /*!

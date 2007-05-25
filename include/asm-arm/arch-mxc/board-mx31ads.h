@@ -25,18 +25,6 @@
 /* Size of contiguous memory for DMA and other h/w blocks */
 #define CONSISTENT_DMA_SIZE	SZ_8M
 
-/* I2C configuration */
-/*!
- * This defines the number of I2C modules in the MXC platform
- * Defined as 1, as MC13783 on ADS uses the other pins
- */
-#define I2C_NR                  1
-/*!
- * This define specifies the frequency divider value to be written into
- * the I2C \b IFDR register.
- */
-#define I2C1_FRQ_DIV            0x17
-
 /*!
  * @name MXC UART EVB board level configurations
  */

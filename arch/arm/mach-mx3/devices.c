@@ -560,6 +560,134 @@ static inline void mxc_init_spi(void)
 }
 #endif
 
+/* I2C controller and device data */
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+
+#ifdef CONFIG_I2C_MXC_SELECT1
+/*!
+ * Resource definition for the I2C1
+ */
+static struct resource mxci2c1_resources[] = {
+	[0] = {
+	       .start = I2C_BASE_ADDR,
+	       .end = I2C_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = INT_I2C,
+	       .end = INT_I2C,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c1_data = {
+	.clk = I2C1_CLK,
+	.i2c_clk = 100000,
+};
+#endif
+
+#ifdef CONFIG_I2C_MXC_SELECT2
+/*!
+ * Resource definition for the I2C2
+ */
+static struct resource mxci2c2_resources[] = {
+	[0] = {
+	       .start = I2C2_BASE_ADDR,
+	       .end = I2C2_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = INT_I2C2,
+	       .end = INT_I2C2,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c2_data = {
+	.clk = I2C2_CLK,
+	.i2c_clk = 100000,
+};
+#endif
+
+#ifdef CONFIG_I2C_MXC_SELECT3
+/*!
+ * Resource definition for the I2C3
+ */
+static struct resource mxci2c3_resources[] = {
+	[0] = {
+	       .start = I2C3_BASE_ADDR,
+	       .end = I2C3_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = INT_I2C3,
+	       .end = INT_I2C3,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c3_data = {
+	.clk = I2C3_CLK,
+	.i2c_clk = 100000,
+};
+#endif
+
+/*! Device Definition for MXC I2C1 */
+static struct platform_device mxci2c_devices[] = {
+#ifdef CONFIG_I2C_MXC_SELECT1
+	{
+	 .name = "mxc_i2c",
+	 .id = 0,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .platform_data = &mxci2c1_data,
+		 },
+	 .num_resources = ARRAY_SIZE(mxci2c1_resources),
+	 .resource = mxci2c1_resources,},
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT2
+	{
+	 .name = "mxc_i2c",
+	 .id = 1,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .platform_data = &mxci2c2_data,
+		 },
+	 .num_resources = ARRAY_SIZE(mxci2c2_resources),
+	 .resource = mxci2c2_resources,},
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT3
+	{
+	 .name = "mxc_i2c",
+	 .id = 2,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .platform_data = &mxci2c3_data,
+		 },
+	 .num_resources = ARRAY_SIZE(mxci2c3_resources),
+	 .resource = mxci2c3_resources,},
+#endif
+};
+
+static inline void mxc_init_i2c(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mxci2c_devices); i++) {
+		if (platform_device_register(&mxci2c_devices[i]) < 0)
+			dev_err(&mxci2c_devices[i].dev,
+				"Unable to register I2C device\n");
+	}
+}
+#else
+static inline void mxc_init_i2c(void)
+{
+}
+#endif
+
 struct mxc_gpio_port mxc_gpio_ports[GPIO_PORT_NUM] = {
 	{
 	 .num = 0,
@@ -605,6 +733,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_mmc();
 	mxc_init_ir();
 	mxc_init_spi();
+	mxc_init_i2c();
 	mxc_init_rtc();
 	mxc_init_owire();
 	mxc_init_pcmcia();

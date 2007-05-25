@@ -5,9 +5,9 @@ config MACH_MX27ADS
 	bool "Support MX27ADS platforms"
 	default y
 	help
-	  Include support for MX27ADS platform. This includes specific 
+	  Include support for MX27ADS platform. This includes specific
 	  configurations for the board and its peripherals.
-	
+
 config ISP1504_MXC
 	tristate "ISP1504 transceiver support"
 	select ISP1504_MXC_OTG if USB_GADGET && USB_EHCI_HCD && USB_OTG
@@ -22,5 +22,23 @@ config ISP1504_MXC_OTG
 config ISP1301_MXC
 	bool
 	select I2C_MXC
+
+menu "Device options"
+
+config I2C_MXC_SELECT1
+	bool "Enable I2C1 module"
+	default y
+	depends on I2C_MXC
+	help
+	  Enable MX31 I2C1 module.
+
+config I2C_MXC_SELECT2
+	bool "Enable I2C2 module"
+	default n
+	depends on I2C_MXC
+	help
+	  Enable MX31 I2C2 module.
+
+endmenu
 
 endmenu
