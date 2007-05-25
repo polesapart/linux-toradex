@@ -874,7 +874,7 @@ static struct clk lcdc_clk[] = {
 
 static struct clk csi_clk[] = {
 	{
-	 .name = "csi_clk",
+	 .name = "csi_perclk",
 	 .parent = &per_clk[3],
 	 .secondary = &csi_clk[1],
 	 .round_rate = _clk_parent_round_rate,
