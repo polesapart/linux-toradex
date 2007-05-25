@@ -83,12 +83,19 @@ extern void gpio_usbotg_fs_inactive(void);
 static u64 ehci_dmamask = ~(u32) 0;
 
 static struct clk *usb_clk;
+static struct clk *usb_ahb_clk;
+extern int clk_get_usecount(struct clk *clk);
+
 /*
  * make sure USB_CLK is running at 60 MHz +/- 1000 Hz
  */
 static int check_usbclk(void)
 {
 	unsigned long freq;
+
+	usb_ahb_clk = clk_get(NULL, "usb_ahb_clk");
+	clk_enable(usb_ahb_clk);
+	clk_put(usb_ahb_clk);
 
 	usb_clk = clk_get(NULL, "usb_clk");
 	freq = clk_get_rate(usb_clk);
@@ -244,20 +251,21 @@ static void otg_hs_set_xcvr(void)
 	 * the ULPI transceiver to reset too.
 	 */
 	mdelay(10);
+
+	/* Turn off the usbpll for ulpi tranceivers */
+	clk_disable(usb_clk);
+	dbg("usb_pll usecount %d\n", clk_get_usecount(usb_clk));
 }
 
 static int otg_hs_init(void)
 {
 	if (!otg_used) {
-		if (check_usbclk() != 0)
-			return -EINVAL;
-
 		dbg("grab OTG-HS pins");
 
 		/* enable OTG/HS */
-		clk_disable(usb_clk);
-		__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC3_CLEAR);
 		clk_enable(usb_clk);
+		dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
+		__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC3_CLEAR);
 
 		gpio_usbotg_hs_active();	/* grab our pins */
 		mdelay(1);
@@ -351,8 +359,8 @@ static void otg_fs_set_xcvr(void)
 static int otg_fs_host_init(void)
 {
 	dbg("grab OTG-FS pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
+	clk_enable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 
 	isp1301_init();
 
@@ -361,9 +369,7 @@ static int otg_fs_host_init(void)
 	mdelay(1);
 
 	/* enable OTG VBUS */
-	clk_disable(usb_clk);
 	__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC3_CLEAR);
-	clk_enable(usb_clk);
 
 	otg_fs_set_xcvr();	/* set transceiver type */
 
@@ -388,6 +394,8 @@ static void otg_fs_host_uninit(void)
 	isp1301_uninit();
 
 	gpio_usbotg_fs_inactive();	/* release our pins */
+	clk_disable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 }
 
 /*!
@@ -421,16 +429,14 @@ static int usbh1_init(void)
 {
 	dbg("grab H1 pins");
 
-	if (check_usbclk() != 0)
-		return -EINVAL;
+	clk_enable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 
 	gpio_usbh1_active();
 	mdelay(1);
 
-	clk_disable(usb_clk);
 	__raw_writew(PBC_BCTRL3_FSH_MOD, PBC3_CLEAR);	/* single ended */
 	__raw_writew(PBC_BCTRL3_FSH_VBUS_EN, PBC3_CLEAR);	/* enable FSH VBUS */
-	clk_enable(usb_clk);
 
 	USBCTRL &= ~(UCTRL_H1SIC_MASK | UCTRL_BPE);	/* disable bypass mode */
 	USBCTRL |= UCTRL_H1SIC_SU6 |	/* single-ended / unidir. */
@@ -448,6 +454,8 @@ static void usbh1_uninit(void)
 	__raw_writew(PBC_BCTRL3_FSH_VBUS_EN, PBC3_SET);	/* disable FSH VBUS */
 
 	gpio_usbh1_inactive();	/* release our pins */
+	clk_disable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 }
 
 /* *INDENT-OFF* */
@@ -492,17 +500,19 @@ static void usbh2_set_xcvr(void)
 	 */
 	mdelay(10);
 
+	/* Turn off the usbpll for ulpi tranceivers */
+	clk_disable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 }
 
 static int usbh2_init(void)
 {
 	dbg("grab H2 pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
 
-	clk_disable(usb_clk);
 	__raw_writew(PBC_BCTRL3_HSH_EN, PBC3_CLEAR);	/* enable OTG_VBUS_EN */
 	clk_enable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
+
 	gpio_usbh2_active();	/* grab our pins */
 	mdelay(1);
 
@@ -577,8 +587,9 @@ static struct arc_usb_config udc_hs_config = {
 int otg_fs_dev_init(void)
 {
 	dbg("grab OTG-FS pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
+
+	clk_enable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 
 	isp1301_init();
 
@@ -587,9 +598,7 @@ int otg_fs_dev_init(void)
 	mdelay(1);
 
 	/* disable OTG VBUS */
-	clk_disable(usb_clk);
 	__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC3_SET);
-	clk_enable(usb_clk);
 
 	otg_fs_set_xcvr();	/* set transceiver type */
 
@@ -611,6 +620,8 @@ static void otg_fs_dev_uninit(void)
 
 	isp1301_uninit();
 	gpio_usbotg_fs_inactive();	/* release our pins */
+	clk_disable(usb_clk);
+	dbg("usb_clk usecount %d\n", clk_get_usecount(usb_clk));
 }
 
 /* *INDENT-OFF* */
@@ -824,6 +835,10 @@ static int __init mx27_usb_init(void)
 		       ((struct arc_usb_config *)udc_device.dev.platform_data)->
 		       name);
 #endif
+
+	if (check_usbclk() != 0)
+		return -EINVAL;
+
 	return 0;
 }
 

@@ -83,12 +83,23 @@ extern void gpio_usbotg_fs_inactive(void);
 static u64 ehci_dmamask = ~(u32) 0;
 
 static struct clk *usb_clk;
+static struct clk *usb_ahb_clk;
+static struct clk *usb_pll;
+extern int clk_get_usecount(struct clk *clk);
+
 /*
  * make sure USB_CLK is running at 60 MHz +/- 1000 Hz
  */
 static int check_usbclk(void)
 {
 	unsigned long freq;
+
+	usb_pll = clk_get(NULL, "usb_pll");
+	clk_put(usb_pll);
+
+	usb_ahb_clk = clk_get(NULL, "usb_ahb_clk");
+	clk_enable(usb_ahb_clk);
+	clk_put(usb_ahb_clk);
 
 	usb_clk = clk_get(NULL, "usb_clk");
 	freq = clk_get_rate(usb_clk);
@@ -97,6 +108,7 @@ static int check_usbclk(void)
 		printk(KERN_ERR "USB_CLK=%lu, should be 60MHz\n", freq);
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -243,15 +255,20 @@ static void otg_hs_set_xcvr(void)
 	 * the ULPI transceiver to reset too.
 	 */
 	mdelay(10);
+
+	/* Turn off the usbpll for ulpi tranceivers */
+	clk_disable(usb_clk);
+	dbg("usb_pll usecount %d\n", clk_get_usecount(usb_pll));
 }
 
 static int otg_hs_init(void)
 {
 	if (!otg_used) {
-		if (check_usbclk() != 0)
-			return -EINVAL;
-
 		dbg("grab OTG-HS pins");
+
+		clk_enable(usb_clk);
+		dbg("usb_pll usecount %d\n", clk_get_usecount(usb_pll));
+
 		if (gpio_usbotg_hs_active())	/* grab our pins */
 			return -EINVAL;
 
@@ -343,8 +360,8 @@ static void otg_fs_set_xcvr(void)
 static int otg_fs_host_init(void)
 {
 	dbg("grab OTG-FS pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
+
+	clk_enable(usb_clk);
 
 	isp1301_init();
 
@@ -381,6 +398,7 @@ static void otg_fs_host_uninit(void)
 	isp1301_uninit();
 
 	gpio_usbotg_fs_inactive();	/* release our pins */
+	clk_disable(usb_clk);
 }
 
 /*!
@@ -414,8 +432,8 @@ static int usbh1_init(void)
 {
 	dbg("grab H1 pins");
 
-	if (check_usbclk() != 0)
-		return -EINVAL;
+	clk_enable(usb_clk);
+	dbg("usb_pll usecount %d\n", clk_get_usecount(usb_pll));
 
 	if (gpio_usbh1_active())
 		return -EINVAL;
@@ -442,6 +460,7 @@ static void usbh1_uninit(void)
 	__raw_writew(PBC_BCTRL3_FSH_VBUS_EN, PBC3_SET);	/* disable FSH VBUS */
 
 	gpio_usbh1_inactive();	/* release our pins */
+	clk_disable(usb_clk);
 }
 
 /* *INDENT-OFF* */
@@ -475,13 +494,18 @@ static void usbh2_set_xcvr(void)
 {
 	UH2_PORTSC1 &= ~PORTSC_PTS_MASK;	/* set ULPI xcvr */
 	UH2_PORTSC1 |= PORTSC_PTS_ULPI;
+
+	/* Turn off the usbpll for ulpi tranceivers */
+	clk_disable(usb_clk);
+	dbg("usb_pll usecount %d\n", clk_get_usecount(usb_pll));
 }
 
 static int usbh2_init(void)
 {
 	dbg("grab H2 pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
+
+	clk_enable(usb_clk);
+	dbg("usb_pll usecount %d\n", clk_get_usecount(usb_pll));
 
 	/* abort the init if NAND card is present */
 	if ((__raw_readw(PBC_BASE_ADDRESS + PBC_BSTAT1) &
@@ -581,8 +605,6 @@ static struct arc_usb_config udc_hs_config = {
 int otg_fs_dev_init(void)
 {
 	dbg("grab OTG-FS pins");
-	if (check_usbclk() != 0)
-		return -EINVAL;
 
 	isp1301_init();
 
@@ -829,6 +851,10 @@ static int __init mx3_usb_init(void)
 		       ((struct arc_usb_config *)udc_device.dev.platform_data)->
 		       name);
 #endif
+
+	if (check_usbclk() != 0)
+		return -EINVAL;
+
 	return 0;
 }
 
