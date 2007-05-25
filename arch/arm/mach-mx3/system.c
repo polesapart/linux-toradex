@@ -46,31 +46,12 @@
  */
 void arch_idle(void)
 {
-	unsigned int reg, v;
-
 	/*
 	 * This should do all the clock switching
 	 * and wait for interrupt tricks.
 	 */
 	if ((__raw_readl(AVIC_VECTOR) & MXC_WFI_ENABLE) != 0) {
-		/*
-		 * workaround ARM11 Platform defect TLSbo64855.
-		 * Also see TLSbo78761.
-		 */
-		reg = __raw_readl(MXC_CCM_PDR0);
-		v = (reg & MXC_CCM_PDR0_MAX_PODF_MASK) >>
-		    MXC_CCM_PDR0_MAX_PODF_OFFSET;
-
-		/* make sure ARM:AHB clock ratio is 1:1 */
-		__raw_writel((reg & ~MXC_CCM_PDR0_MCU_PODF_MASK) | v,
-			     MXC_CCM_PDR0);
-		__raw_readl(MXC_CCM_PDR0);
-		__raw_readl(MXC_CCM_PDR0);
-
 		cpu_do_idle();
-
-		/* restore original clock dividers */
-		__raw_writel(reg, MXC_CCM_PDR0);
 	}
 }
 
