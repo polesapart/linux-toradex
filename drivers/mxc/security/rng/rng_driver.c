@@ -45,6 +45,7 @@
  * In a debug configuration, it provides the following kernel functions:
  * rng_return_t rng_read_register(uint32_t byte_offset, uint32_t* valuep);
  * rng_return_t rng_write_register(uint32_t byte_offset, uint32_t value);
+ *  @ingroup RNG
  */
 
 #include "portable_os.h"
@@ -408,10 +409,11 @@ static uint32_t finish_random(shw_queue_entry_t * gen_entry)
  *
  * @param      user_ctx  A user context from #fsl_shw_register_user().
  * @param      length    The number of octets of @a data being requested.
- * @param[out] data      A pointer to a location of @a length octets to where
+ * @param data      A pointer to a location of @a length octets to where
  *                       random data will be returned.
  *
- * @return    A return code of type #fsl_shw_return_t.
+ * @return     FSL_RETURN_NO_RESOURCE_S  A return code of type #fsl_shw_return_t.
+ *             FSL_RETURN_OK_S 
  */
 fsl_shw_return_t fsl_shw_get_random(fsl_shw_uco_t * user_ctx, uint32_t length,
 				    uint8_t * data)
@@ -621,7 +623,7 @@ inline int rng_check_register_offset(uint32_t offset)
  *
  * This routine is only for checking accesses by other than this driver.
  *
- * @param[in]  offset   The (byte) offset within the RNG block
+ * @param  offset   The (byte) offset within the RNG block
  *                      of the register to be accessed.  See
  *                      @ref rngregs for meanings.
  * @param access_write  0 for read, anything else for write

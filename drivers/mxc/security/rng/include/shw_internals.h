@@ -24,6 +24,7 @@
  *
  *  @li Some sort of platform flag.
  *
+ *  @ingroup RNG
  */
 
 #include "portable_os.h"

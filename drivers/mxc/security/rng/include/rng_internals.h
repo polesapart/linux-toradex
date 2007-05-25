@@ -24,6 +24,7 @@
  *
  *  @li Some sort of platform flag.  (FSL_HAVE_RNGA or FSL_HAVE_RNGC)
  *
+ *  @ingroup RNG
  */
 
 #include "portable_os.h"

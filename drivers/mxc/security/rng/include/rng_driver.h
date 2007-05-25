@@ -31,6 +31,7 @@
  *
  * @brief Header file to use the RNG driver.
  *
+ *  @ingroup RNG
  */
 
 #if defined(FSL_HAVE_RNGA)

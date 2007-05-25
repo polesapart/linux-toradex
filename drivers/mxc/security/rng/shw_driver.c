@@ -55,6 +55,7 @@
  * fsl_shw_deregister_user(), fsl_shw_get_capabilities(), and
  * fsl_shw_get_results().  Other parts of the API are provided by other
  * drivers, if available, to support the cryptographic functions.
+ *  @ingroup RNG
  */
 
 #include "portable_os.h"
@@ -1130,7 +1131,7 @@ EXPORT_SYMBOL(fsl_shw_auth_decrypt);
  * @param payload_length   Length in bytes of @a payload
  * @param ct               The encrypted data
  * @param auth_value       The authentication code to validate
- * @param[out] payload     The location to store decrypted data
+ * @param payload     The location to store decrypted data
  *
  * @return    A return code of type #fsl_shw_return_t.
  */
