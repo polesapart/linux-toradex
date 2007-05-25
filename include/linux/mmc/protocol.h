@@ -81,9 +81,13 @@
 #define MMC_GEN_CMD              56   /* adtc [0] RD/WR          R1  */
 
 /* SD commands                           type  argument     response */
-  /* class 8 */
+  /* class 0 */
 /* This is basically the same command as for MMC with some quirks. */
 #define SD_SEND_RELATIVE_ADDR     3   /* bcr                     R6  */
+#define SD_SEND_IF_COND           8   /* bcr  [11:0] See below   R7  */
+
+  /* class 10 */
+/* #define SD_SWITCH should go here */
 
   /* Application commands */
 #define SD_APP_SET_BUS_WIDTH      6   /* ac   [1:0] bus width    R1  */
@@ -103,6 +107,14 @@
 #define SDIO_RW_WRITE		1
 #define SDIO_RW_RD_A_WR		1
 #define SDIO_RW_INC		1
+
+/*
+ * SD_SEND_IF_COND argument format:
+ *
+ *	[31:12] Reserved (0)
+ *	[11:8] Host Voltage Supply Flags
+ *	[7:0] Check Pattern (0xAA)
+ */
 
 /*
   MMC status in R1
