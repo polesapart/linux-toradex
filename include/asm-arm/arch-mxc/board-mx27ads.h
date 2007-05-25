@@ -422,4 +422,11 @@ enum mxc_card_no {
          __raw_writew(  \
                 PBC_BCTRL2_ATAFEC_EN |PBC_BCTRL2_ATAFEC_SEL | PBC_BCTRL2_ATA_EN,                PBC_BCTRL2_SET_REG)
 
+#define MXC_BD_LED1             (1 << 5)
+#define MXC_BD_LED2             (1 << 6)
+#define MXC_BD_LED_ON(led) \
+        __raw_writew(led, PBC_BCTRL1_SET_REG)
+#define MXC_BD_LED_OFF(led) \
+        __raw_writew(led, PBC_BCTRL1_CLEAR_REG)
+
 #endif				/* __ASM_ARCH_MXC_BOARD_MX27ADS_H__ */

@@ -352,4 +352,11 @@
 #define PBC_ATA_SIGNAL_INACTIVE() \
          __raw_writew(PBC_BCTRL2_ATA_EN, PBC_BASE_ADDRESS + PBC_BCTRL2_SET);
 
+#define MXC_BD_LED1             (1 << 6)
+#define MXC_BD_LED2             (1 << 7)
+#define MXC_BD_LED_ON(led) \
+        __raw_writew(led, PBC_BASE_ADDRESS + PBC_BCTRL1_SET)
+#define MXC_BD_LED_OFF(led) \
+        __raw_writew(led, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR)
+
 #endif				/* __ASM_ARCH_MXC_BOARD_MX31ADS_H__ */
