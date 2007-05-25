@@ -751,6 +751,19 @@ static inline void mxc_init_hmp4e(void)
 }
 #endif
 
+static struct platform_device mxc_dma_device = {
+	.name = "mxc_dma",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		},
+};
+
+static inline void mxc_init_dma(void)
+{
+	(void)platform_device_register(&mxc_dma_device);
+}
+
 static int __init mxc_init_devices(void)
 {
 	mxc_init_wdt();
@@ -763,6 +776,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_owire();
 	mxc_init_pcmcia();
 	mxc_init_hmp4e();
+	mxc_init_dma();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);

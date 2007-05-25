@@ -1440,12 +1440,12 @@ static int mxcmci_resume(struct platform_device *pdev)
 	if (!host->mxc_mmc_suspend_flag) {
 		return 0;
 	}
+	clk_enable(host->clk);
 
 	if (mmc) {
 		ret = mmc_resume_host(mmc);
 		host->mxc_mmc_suspend_flag = 0;
 	}
-	clk_enable(host->clk);
 	if (host->sdio_set_wake_enable == 1) {
 		reg = __raw_readl(host->base + MMC_INT_CNTR);
 		reg &= ~INT_CNTR_SDIO_INT_WKP_EN;

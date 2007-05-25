@@ -696,6 +696,7 @@ static int mxci2c_probe(struct platform_device *pdev)
 	mxc_i2c->adap.id = id;
 	mxc_i2c->adap.algo = &mxc_i2c_algorithm;
 	mxc_i2c->adap.timeout = 1;
+	platform_set_drvdata(pdev, mxc_i2c);
 	i2c_set_adapdata(&mxc_i2c->adap, mxc_i2c);
 	if ((ret = i2c_add_adapter(&mxc_i2c->adap)) < 0) {
 		goto err2;
