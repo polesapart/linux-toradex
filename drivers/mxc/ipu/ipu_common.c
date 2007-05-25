@@ -58,6 +58,10 @@ struct device *g_ipu_dev;
 static struct ipu_irq_node ipu_irq_list[IPU_IRQ_COUNT];
 static const char driver_name[] = "mxc_ipu";
 
+static uint32_t g_ipu_config = 0;
+static uint32_t g_channel_init_mask_backup = 0;
+static bool g_csi_used = false;
+
 /* Static functions */
 static irqreturn_t ipu_irq_handler(int irq, void *desc);
 static void _ipu_pf_init(ipu_channel_params_t * params);
@@ -169,6 +173,9 @@ int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t * params)
 	ipu_conf = __raw_readl(IPU_CONF);
 	if (g_channel_init_mask & 0x00000066L) {	/*CSI */
 		ipu_conf |= IPU_CONF_CSI_EN;
+		if (cpu_is_mx31()) {
+			g_csi_used = true;
+		}
 	}
 	if (g_channel_init_mask & 0x00001FFFL) {	/*IC */
 		ipu_conf |= IPU_CONF_IC_EN;
@@ -1634,6 +1641,34 @@ ipu_color_space_t format_to_colorspace(uint32_t fmt)
 
 }
 
+static int ipu_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	if (cpu_is_mx31()) {
+		/* work-around for i.Mx31 SR mode after camera related test */
+		if (g_csi_used) {
+			g_ipu_config = __raw_readl(IPU_CONF);
+			clk_enable(g_ipu_csi_clk);
+			__raw_writel(0x51, IPU_CONF);
+			g_channel_init_mask_backup = g_channel_init_mask;
+			g_channel_init_mask |= 2;
+		}
+	}
+	return 0;
+}
+
+static int ipu_resume(struct platform_device *pdev)
+{
+	if (cpu_is_mx31()) {
+		/* work-around for i.Mx31 SR mode after camera related test */
+		if (g_csi_used) {
+			__raw_writel(g_ipu_config, IPU_CONF);
+			clk_disable(g_ipu_csi_clk);
+			g_channel_init_mask = g_channel_init_mask_backup;
+		}
+	}
+	return 0;
+}
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
@@ -1642,6 +1677,8 @@ static struct platform_driver mxcipu_driver = {
 		   .name = "mxc_ipu",
 		   },
 	.probe = ipu_probe,
+	.suspend = ipu_suspend,
+	.resume = ipu_resume,
 };
 
 int32_t __init ipu_gen_init(void)
