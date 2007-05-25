@@ -18,6 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
 #include <asm/proc-fns.h>
@@ -55,6 +56,9 @@ void arch_idle(void)
 	}
 }
 
+#define WDOG_WCR_REG                    IO_ADDRESS(WDOG_BASE_ADDR)
+#define WDOG_WCR_SRS                    (1 << 4)
+
 /*
  * This function resets the system. It is called by machine_restart().
  *
@@ -62,13 +66,11 @@ void arch_idle(void)
  */
 void arch_reset(char mode)
 {
-	if ((__raw_readw(IO_ADDRESS(WDOG_BASE_ADDR)) & 0x4) != 0) {
-		/* If WDOG enabled, wait till it's timed out */
-		asm("cpsid iaf");
-		while (1) {
-		}
-	} else {
-		__raw_writew(__raw_readw(IO_ADDRESS(WDOG_BASE_ADDR)) | 0x4,
-			     IO_ADDRESS(WDOG_BASE_ADDR));
-	}
+	struct clk *clk;
+
+	clk = clk_get(NULL, "wdog_clk");
+	clk_enable(clk);
+
+	/* Assert SRS signal */
+	__raw_writew(__raw_readw(WDOG_WCR_REG) & ~WDOG_WCR_SRS, WDOG_WCR_REG);
 }

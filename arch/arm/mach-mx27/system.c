@@ -53,7 +53,8 @@ void arch_idle(void)
 	cpu_do_idle();
 }
 
-#define WDT_WCR_WDE             0x0004
+#define WDOG_WCR_REG                    IO_ADDRESS(WDOG_BASE_ADDR)
+#define WDOG_WCR_SRS                    (1 << 4)
 
 /*
  * This function resets the system. It is called by machine_restart().
@@ -62,11 +63,11 @@ void arch_idle(void)
  */
 void arch_reset(char mode)
 {
-	u16 v;
 	struct clk *clk;
 
 	clk = clk_get(NULL, "wdog_clk");
 	clk_enable(clk);
-	v = __raw_readw(IO_ADDRESS(WDOG_BASE_ADDR));
-	__raw_writew(v | WDT_WCR_WDE, IO_ADDRESS(WDOG_BASE_ADDR));
+
+	/* Assert SRS signal */
+	__raw_writew(__raw_readw(WDOG_WCR_REG) & ~WDOG_WCR_SRS, WDOG_WCR_REG);
 }
