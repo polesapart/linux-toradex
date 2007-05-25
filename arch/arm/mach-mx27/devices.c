@@ -34,10 +34,15 @@ static void mxc_nop_release(struct device *dev)
 }
 
 #if defined(CONFIG_W1_MASTER_MXC) || defined(CONFIG_W1_MASTER_MXC_MODULE)
+static struct mxc_w1_config mxc_w1_data = {
+	.search_rom_accelerator = 0,
+};
+
 static struct platform_device mxc_w1_devices = {
 	.name = "mxc_w1",
 	.dev = {
 		.release = mxc_nop_release,
+		.platform_data = &mxc_w1_data,
 		},
 	.id = 0
 };
