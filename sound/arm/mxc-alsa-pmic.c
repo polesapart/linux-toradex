@@ -711,6 +711,10 @@ void normalize_speed_for_pmic(snd_pcm_substream_t * substream)
 			pmic_device->sample_rate = STDAC_RATE_11_025_KHZ;
 			break;
 
+		case 12000:
+			pmic_device->sample_rate = STDAC_RATE_12_KHZ;
+			break;
+
 		case 16000:
 			pmic_device->sample_rate = STDAC_RATE_16_KHZ;
 			break;
