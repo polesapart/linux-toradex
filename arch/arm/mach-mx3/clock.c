@@ -891,6 +891,15 @@ static struct clk mstick_clk[] = {
 	 .disable = _clk_disable,},
 };
 
+static struct clk iim_clk = {
+	.name = "iim_clk",
+	.parent = &ipg_clk,
+	.enable = _clk_enable,
+	.enable_reg = MXC_CCM_CGR0,
+	.enable_shift = MXC_CCM_CGR0_IIM_OFFSET,
+	.disable = _clk_disable,
+};
+
 static unsigned long _clk_cko1_round_rate(struct clk *clk, unsigned long rate)
 {
 	u32 div;
@@ -1067,6 +1076,7 @@ static struct clk *mxc_clks[] = {
 	&mstick_clk[0],
 	&mstick_clk[1],
 	&scc_clk,
+	&iim_clk,
 };
 
 extern void propagate_rate(struct clk *tclk);
@@ -1103,6 +1113,7 @@ int __init mxc_clocks_init(void)
 
 	clk_enable(&gpt_clk);
 	clk_enable(&emi_clk);
+	clk_enable(&iim_clk);
 
 	return 0;
 }
