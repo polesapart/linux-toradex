@@ -1789,9 +1789,9 @@ int retvalue = IAPI_SUCCESS;  /* Variable to store the results from I.API calls 
    /* Set Command Channel (Channel Zero) */
    SDMA_CHN0ADDR = 0x4050;
    
-   /* Set bits of CONFIG register*/
+   /* Set bits of CONFIG register but with static context switching */
    SDMA_H_CONFIG = (config_p->dspdma << 12) | (config_p->rtdobs << 11) |
-                    (config_p->acr << 4) | (config_p->csm);
+                    (config_p->acr << 4) | (0);
    
    /* Send the address for the host channel table to the SDMA*/
    SDMA_H_C0PTR = (unsigned long)iapi_Virt2Phys(iapi_CCBHead);
@@ -1799,8 +1799,13 @@ int retvalue = IAPI_SUCCESS;  /* Variable to store the results from I.API calls 
    if(ram_image != NULL)
    {
       retvalue = iapi_SetScript(cd_p, (void*)ram_image, code_size,  
-                                start_addr);   
+                                start_addr);
    }
+
+   /* Set bits of CONFIG register with given context switching mode */
+   SDMA_H_CONFIG = (config_p->dspdma << 12) | (config_p->rtdobs << 11) |
+                    (config_p->acr << 4) | (config_p->csm);
+
 #endif
 #ifdef DSP
    /* Send the address for the host channel table to the SDMA*/
@@ -1809,6 +1814,7 @@ int retvalue = IAPI_SUCCESS;  /* Variable to store the results from I.API calls 
 
    return retvalue;
 }
+
 
 /* ***************************************************************************/
 /**High layer interface for starting a channel
