@@ -908,11 +908,14 @@ static int mxc_irda_hard_xmit(struct sk_buff *skb, struct net_device *dev)
 	} else {
 		unsigned int mtt = irda_get_mtt(skb);
 		unsigned char *p = skb->data;
+		unsigned int skb_len = skb->len;
 #ifdef FIRI_SDMA_TX
 		mxc_dma_requestbuf_t dma_request;
 #else
 		unsigned int i, sr;
 #endif
+
+		skb_len = skb_len + ((4 - (skb_len % 4)) % 4);
 
 		if (si->txskb) {
 			BUG();
@@ -940,11 +943,11 @@ static int mxc_irda_hard_xmit(struct sk_buff *skb, struct net_device *dev)
 		 * Number of bytes in SK buffer to transfer and Transfer complete
 		 * callback function.
 		 */
-		si->dma_tx_buff_len = skb->len;
+		si->dma_tx_buff_len = skb_len;
 		si->dma_tx_buff_phy =
-		    dma_map_single(si->dev, p, skb->len, DMA_TO_DEVICE);
+		    dma_map_single(si->dev, p, skb_len, DMA_TO_DEVICE);
 
-		dma_request.num_of_bytes = skb->len;
+		dma_request.num_of_bytes = skb_len;
 		dma_request.dst_addr = si->firi_res->start + FIRITXFIFO;
 		dma_request.src_addr = si->dma_tx_buff_phy;
 
