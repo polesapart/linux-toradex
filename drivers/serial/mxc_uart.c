@@ -1218,15 +1218,6 @@ static void mxcuart_shutdown(struct uart_port *port)
 	if (umxc->dma_enabled == 1) {
 		mxcuart_freedma(dma_list + umxc->port.line, umxc);
 	}
-	/*
-	 * Do not disable clocks if UART is used as a console
-	 */
-	if (umxc->port.cons != NULL) {
-		if ((umxc->port.cons->flags & CON_ENABLED) &&
-		    (umxc->port.line == console_index)) {
-			return;
-		}
-	}
 }
 
 /*!
