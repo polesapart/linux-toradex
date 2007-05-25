@@ -115,10 +115,10 @@ static void dptc_unmask_dptc_int(void)
  *
  * @return  PTVAI bits value
  */
-static unsigned long dptc_get_ptvai(void)
+static unsigned int dptc_get_ptvai(void)
 {
-	return (mxc_ccm_get_reg(MXC_CCM_PMCR0) & MXC_CCM_PMCR0_PTVAI_MASK)
-	    >> MXC_CCM_PMCR0_PTVAI_OFFSET;
+	return (unsigned int)((mxc_ccm_get_reg(MXC_CCM_PMCR0) &
+		MXC_CCM_PMCR0_PTVAI_MASK) >> MXC_CCM_PMCR0_PTVAI_OFFSET);
 }
 
 /*!
@@ -251,13 +251,12 @@ static void dptc_workqueue_handler(void *arg)
 
 	params = (dvfs_dptc_params_s *) arg;
 
-	pr_debug("In %s: PTVAI = %d\n", __FUNCTION__, dptc_get_ptvai());
-	pr_debug("PMCR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_PMCR0));
-	pr_debug("DCVR0 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR0));
-	pr_debug("DCVR1 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR1));
-	pr_debug("DCVR2 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR2));
-	pr_debug("DCVR3 = 0x%x ", mxc_ccm_get_reg(MXC_CCM_DCVR3));
-	pr_debug("PTVAI = 0x%x\n", ptvai);
+	pr_debug("In %s: \nPTVAI = %d\n", __FUNCTION__, dptc_get_ptvai());
+	pr_debug("PMCR0 = 0x%x ", (unsigned int)mxc_ccm_get_reg(MXC_CCM_PMCR0));
+	pr_debug("DCVR0 = 0x%x ", (unsigned int)mxc_ccm_get_reg(MXC_CCM_DCVR0));
+	pr_debug("DCVR1 = 0x%x ", (unsigned int)mxc_ccm_get_reg(MXC_CCM_DCVR1));
+	pr_debug("DCVR2 = 0x%x ", (unsigned int)mxc_ccm_get_reg(MXC_CCM_DCVR2));
+	pr_debug("DCVR3 = 0x%x ", (unsigned int)mxc_ccm_get_reg(MXC_CCM_DCVR3));
 
 #ifndef CONFIG_MXC_DVFS_SDMA
 	switch (ptvai) {
@@ -357,8 +356,8 @@ void set_pmic_voltage(dvfs_dptc_tables_s * dvfs_dptc_tables_ptr, int wp)
 
 	if (cpu_is_mx31()) {
 		pr_debug("DPVV = 0x%x (0x%x)\n",
-			 mxc_ccm_get_reg(MXC_CCM_PMCR0) & MXC_CCM_PMCR0_DPVV,
-			 mxc_ccm_get_reg(MXC_CCM_PMCR0));
+			 (unsigned int)mxc_ccm_get_reg(MXC_CCM_PMCR0) & MXC_CCM_PMCR0_DPVV,
+			 (unsigned int)mxc_ccm_get_reg(MXC_CCM_PMCR0));
 	}
 }
 
