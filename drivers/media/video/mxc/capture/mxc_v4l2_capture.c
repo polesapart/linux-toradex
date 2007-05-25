@@ -139,6 +139,9 @@ static void mxc_free_frames(cam_data * cam)
 
 	cam->enc_counter = 0;
 	cam->skip_frame = 0;
+	INIT_LIST_HEAD(&cam->ready_q);
+	INIT_LIST_HEAD(&cam->working_q);
+	INIT_LIST_HEAD(&cam->done_q);
 }
 
 /*!
