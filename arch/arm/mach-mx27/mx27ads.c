@@ -693,7 +693,7 @@ MACHINE_START(MX27ADS, "Freescale i.MX27ADS")
 	.phys_io        = AIPI_BASE_ADDR,
 	.io_pg_offst    = ((AIPI_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 #endif
-	.boot_params    = PHYS_OFFSET_ASM + 0x100,
+	.boot_params    = PHYS_OFFSET + 0x100,
 	.fixup          = fixup_mxc_board,
 	.map_io         = mxc_map_io,
 	.init_irq       = mxc_init_irq,

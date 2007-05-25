@@ -28,19 +28,6 @@
  */
 
 /*!
- * Physical start address of the first bank of RAM
- */
-#if defined(PHYS_OFFSET)
-
-/*! This is needed for L2 Cache support */
-#define PHYS_OFFSET_ASM	        PHYS_OFFSET
-#define PAGE_OFFSET_ASM	        0xC0000000
-
-#else
-#error "Define PHYS_OFFSET to the base of the physical memory's PA"
-#endif
-
-/*!
  * Virtual view <-> DMA view memory address translations
  * This macro is used to translate the virtual address to an address
  * suitable to be passed to set_dma_addr()

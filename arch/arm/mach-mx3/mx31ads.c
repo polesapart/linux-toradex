@@ -542,15 +542,20 @@ static void __init mxc_board_init(void)
  * The following uses standard kernel macros define in arch.h in order to
  * initialize __mach_desc_MX31ADS data structure.
  */
+/* *INDENT-OFF* */
 MACHINE_START(MX31ADS, "Freescale MX31ADS")
-    /* Maintainer: Freescale Semiconductor, Inc. */
+	/* Maintainer: Freescale Semiconductor, Inc. */
 #ifdef CONFIG_SERIAL_8250_CONSOLE
-    .phys_io = CS4_BASE_ADDR,.io_pg_offst =
-    ((CS4_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.phys_io = CS4_BASE_ADDR,
+	.io_pg_offst = ((CS4_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 #else
-    .phys_io = AIPS1_BASE_ADDR,.io_pg_offst =
-    ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.phys_io = AIPS1_BASE_ADDR,
+	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 #endif
-    .boot_params = PHYS_OFFSET_ASM + 0x100,.fixup = fixup_mxc_board,.map_io =
-    mxc_map_io,.init_irq = mxc_init_irq,.init_machine = mxc_board_init,.timer =
-    &mxc_timer, MACHINE_END
+	.boot_params = PHYS_OFFSET + 0x100,
+	.fixup = fixup_mxc_board,
+	.map_io = mxc_map_io,
+	.init_irq = mxc_init_irq,
+	.init_machine = mxc_board_init,
+	.timer = &mxc_timer,
+MACHINE_END
