@@ -612,7 +612,7 @@ int mxc_dma_free(int channel_num)
 }
 
 int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
-		   int num_buf, mxc_dma_mode_t mode);
+		   int num_buf, mxc_dma_mode_t mode)
 {
 	return -ENODEV;
 }
@@ -634,7 +634,7 @@ int mxc_dma_disable(int channel_num)
 	return -ENODEV;
 }
 
-int mxc_dma_enable(int channel_num);
+int mxc_dma_enable(int channel_num)
 {
 	return -ENODEV;
 }
