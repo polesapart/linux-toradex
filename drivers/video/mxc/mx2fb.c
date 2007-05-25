@@ -1050,7 +1050,7 @@ static void _update_lcdc(struct fb_info *info)
 	__raw_writel(info->var.xres_virtual >> 1, LCDC_REG(LCDC_LVPWR));
 
 	/* To setup LCDC pixel clock */
-	perclk3 = clk_round_rate(lcdc_clk, 133000000);
+	perclk3 = clk_round_rate(lcdc_clk, 134000000);
 	if (clk_set_rate(lcdc_clk, perclk3)) {
 		printk(KERN_INFO "mx2fb: Unable to set clock to %lu\n",
 		       perclk3);
