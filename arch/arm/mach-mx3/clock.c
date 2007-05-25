@@ -1118,6 +1118,7 @@ int __init mxc_clocks_init(void)
 	clk_enable(&gpt_clk);
 	clk_enable(&emi_clk);
 	clk_enable(&iim_clk);
+	clk_enable(&mbx_clk);
 
 	return 0;
 }
