@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <asm/arch/mxc_i2c.h>
 #include "mxc_v4l2_capture.h"
 
@@ -579,18 +580,17 @@ struct camera_sensor camera_sensor_if = {
 };
 
 /*!
- * mc521da I2C attach function
+ * mc521da I2C detect_client function
  *
  * @param adapter            struct i2c_adapter *
+ * @param address            int
+ * @param kind               int
+ * 
  * @return  Error code indicating success or failure
  */
-static int mc521da_attach(struct i2c_adapter *adapter)
+static int mc521da_detect_client(struct i2c_adapter *adapter, int address,
+				 int kind)
 {
-	if (strcmp(adapter->name, MXC_ADAPTER_NAME) != 0) {
-		printk(KERN_ERR "mc521da_attach: %s\n", adapter->name);
-		return -1;
-	}
-
 	mc521da_i2c_client.adapter = adapter;
 	if (i2c_attach_client(&mc521da_i2c_client)) {
 		mc521da_i2c_client.adapter = NULL;
@@ -606,7 +606,38 @@ static int mc521da_attach(struct i2c_adapter *adapter)
 	}
 
 	interface_param->mclk = 25000000;
+
+	printk(KERN_INFO "mc521da Detected\n");
+
 	return 0;
+}
+
+static unsigned short normal_i2c[] = { MC521DA_I2C_ADDRESS, I2C_CLIENT_END };
+
+/* Magic definition of all other variables and things */
+I2C_CLIENT_INSMOD;
+
+static int mc521da_attach(struct i2c_adapter *adap)
+{
+	uint32_t mclk = 25000000;
+	struct clk *clk;
+	int err;
+
+	clk = clk_get(NULL, "csi_clk");
+	clk_enable(clk);
+	set_mclk_rate(&mclk);
+
+	gpio_sensor_reset(true);
+	msleep(10);
+	gpio_sensor_reset(false);
+	msleep(100);
+
+	err = i2c_probe(adap, &addr_data, &mc521da_detect_client);
+
+	clk_disable(clk);
+	clk_put(clk);
+
+	return err;
 }
 
 /*!

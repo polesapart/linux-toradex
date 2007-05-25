@@ -39,12 +39,9 @@ void set_mclk_rate(uint32_t * p_mclk_freq)
 
 	clk = clk_get(NULL, "csi_clk");
 
-	/* clk_round_rate rounds down, but we need it rounded up
-	 * So we try 9 steps up to 2x the requested freq.
-	 */
 	for (i = 0; i <= 8; i++) {
-		freq = clk_round_rate(clk, *p_mclk_freq + (i * step));
-		if (freq >= *p_mclk_freq)
+		freq = clk_round_rate(clk, *p_mclk_freq - (i * step));
+		if (freq <= *p_mclk_freq)
 			break;
 	}
 	clk_set_rate(clk, freq);

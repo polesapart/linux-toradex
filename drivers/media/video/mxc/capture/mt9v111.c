@@ -577,9 +577,12 @@ static void mt9v111_test_pattern(bool flag)
 #endif
 
 /*!
- * mt9v111 I2C attach function
+ * mt9v111 I2C detect_client function
  *
  * @param adapter            struct i2c_adapter *
+ * @param address            int
+ * @param kind               int
+ * 
  * @return  Error code indicating success or failure
  */
 static int mt9v111_detect_client(struct i2c_adapter *adapter, int address,

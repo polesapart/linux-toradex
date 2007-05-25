@@ -507,7 +507,11 @@ void gpio_sensor_active(void)
 	gpio_request_mux(MX27_PIN_CSI_VSYNC, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_CSI_HSYNC, GPIO_MUX_PRIMARY);
 
+#ifdef CONFIG_MXC_CAMERA_MC521DA
+	__raw_writew(0x100, PBC_BCTRL2_SET_REG);
+#else
 	__raw_writew(0x400, PBC_BCTRL2_SET_REG);
+#endif
 }
 
 void gpio_sensor_inactive(void)
@@ -525,7 +529,24 @@ void gpio_sensor_inactive(void)
 	gpio_free_mux(MX27_PIN_CSI_VSYNC);
 	gpio_free_mux(MX27_PIN_CSI_HSYNC);
 
+#ifdef CONFIG_MXC_CAMERA_MC521DA
+	__raw_writew(0x100, PBC_BCTRL2_CLEAR_REG);
+#else
 	__raw_writew(0x400, PBC_BCTRL2_CLEAR_REG);
+#endif
+}
+
+void gpio_sensor_reset(bool flag)
+{
+	u16 temp;
+
+	if (flag) {
+		temp = 0x200;
+		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR);
+	} else {
+		temp = 0x200;
+		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_SET);
+	}
 }
 
 /*!
@@ -1149,6 +1170,7 @@ EXPORT_SYMBOL(gpio_nand_active);
 EXPORT_SYMBOL(gpio_nand_inactive);
 EXPORT_SYMBOL(gpio_sensor_active);
 EXPORT_SYMBOL(gpio_sensor_inactive);
+EXPORT_SYMBOL(gpio_sensor_reset);
 EXPORT_SYMBOL(gpio_lcdc_active);
 EXPORT_SYMBOL(gpio_lcdc_inactive);
 EXPORT_SYMBOL(gpio_fs453_reset_low);
