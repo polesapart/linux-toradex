@@ -454,56 +454,7 @@ EXPORT_SYMBOL(gpio_owire_inactive);
  */
 void gpio_spi_inactive(int cspi_mod)
 {
-	switch (cspi_mod) {
-	case 0:
-		/* SPI1 */
-		mxc_request_iomux(MX31_PIN_CSPI1_MISO, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_MOSI, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_SCLK, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_SPI_RDY, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_SS0, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_SS1, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI1_SS2, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		break;
-	case 1:
-		/* SPI2 */
-		mxc_request_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SPI_RDY, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS1, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		break;
-	case 2:
-		/* SPI3 */
-		/*
-		   mxc_request_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_SPI_RDY, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_SS1, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		   mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
-		 */
-		break;
-	default:
-		break;
-	}
+	/* Do nothing as CSPI pins doesn't have/support GPIO mode */
 }
 
 /*!
