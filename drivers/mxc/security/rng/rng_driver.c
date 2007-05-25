@@ -125,7 +125,11 @@ static shw_queue_t rng_work_queue;
  * Flag to say whether task initialization succeeded.
  */
 static unsigned task_started = FALSE;
-
+/*!
+ * Waiting queue for RNG SELF TESTING 
+ */
+static DECLARE_COMPLETION(rng_self_testing);
+static DECLARE_COMPLETION(rng_seed_done);
 /*!
  *  Object for blocking-mode callers of RNG driver to sleep.
  */
@@ -164,14 +168,15 @@ OS_WAIT_OBJECT(rng_wait_queue);
 OS_DEV_INIT(rng_init)
 {
 	os_error_code return_code = OS_ERROR_FAIL_S;
-
 	rng_availability = RNG_STATUS_CHECKING;
-
+#if defined(FSL_HAVE_RNGC)
+	INIT_COMPLETION(rng_self_testing);
+	INIT_COMPLETION(rng_seed_done);
+#endif
 	rng_work_queue.head = NULL;
 	rng_work_queue.tail = NULL;
 
 	os_printk("RNG Driver: Loading\n");
-
 	return_code = rng_map_RNG_memory();
 	if (return_code != OS_ERROR_OK_S) {
 		rng_availability = RNG_STATUS_UNIMPLEMENTED;
@@ -191,7 +196,7 @@ OS_DEV_INIT(rng_init)
 		rng_availability = RNG_STATUS_UNIMPLEMENTED;
 		goto check_err;
 	}
-
+	/* Masking All Interrupts */
 	RNG_MASK_ALL_INTERRUPTS();
 	RNG_WAKE();
 
@@ -206,15 +211,32 @@ OS_DEV_INIT(rng_init)
 
 	/* Oscillator not dead.  Setup interrupt code and start the RNG. */
 	if ((return_code = rng_setup_interrupt_handling()) == OS_ERROR_OK_S) {
+#if defined(FSL_HAVE_RNGA)
 		scc_return_t scc_code;
+#endif
 
 		RNG_GO();
-		RNG_CLEAR_ALL_STATUS();
+		/* Self Testing For RNG */
+		do {
+			RNG_CLEAR_ERR();
+			RNG_SELF_TEST();
+#if defined(FSL_HAVE_RNGC)
+			wait_for_completion(&rng_self_testing);
+#endif
+		} while (RNG_CHECK_SELF_ERR());
 
+		RNG_CLEAR_ALL_STATUS();
+		/* checking for RNG SEED done */
+		do {
+			RNG_CLEAR_ERR();
+			RNG_SEED_GEN();
+#if defined(FSL_HAVE_RNGC)
+			wait_for_completion(&rng_seed_done);
+#endif
+		} while (RNG_CHECK_SEED_ERR());
 #ifndef RNG_NO_FORCE_HIGH_ASSURANCE
 		RNG_SET_HIGH_ASSURANCE();
 #endif
-
 		if (RNG_GET_HIGH_ASSURANCE()) {
 #ifdef RNG_DEBUG
 			os_printk
@@ -259,7 +281,7 @@ OS_DEV_INIT(rng_init)
 		} else {
 			task_started = TRUE;
 		}
-
+#if defined(FSL_HAVE_RNGA)
 		scc_code = scc_monitor_security_failure(rng_sec_failure);
 		if (scc_code != SCC_RET_OK) {
 #ifdef RNG_DEBUG
@@ -272,7 +294,7 @@ OS_DEV_INIT(rng_init)
 			goto check_err;
 #endif
 		}
-
+#endif
 		return_code = os_driver_init_registration(rng_reg_handle);
 		if (return_code != OS_ERROR_OK_S) {
 			goto check_err;
@@ -475,13 +497,11 @@ fsl_shw_return_t fsl_shw_add_entropy(fsl_shw_uco_t * user_ctx, uint32_t length,
 				     uint8_t * data)
 {
 	fsl_shw_return_t return_code = FSL_RETURN_NO_RESOURCE_S;
-	uint32_t *local_data = NULL;
-
-	if (rng_availability == RNG_STATUS_OK) {
 #ifdef FSL_HAVE_RNGC
-		/* Additonal entropy has no affect on an RNGC. */
-		return_code = FSL_RETURN_OK_S;
+	return_code = FSL_RETURN_OK_S;
 #else
+	uint32_t *local_data = NULL;
+	if (rng_availability == RNG_STATUS_OK) {
 		/* make 32-bit aligned place to hold data */
 		local_data = os_alloc_memory(length + 3, 0);
 		if (local_data == NULL) {
@@ -502,8 +522,9 @@ fsl_shw_return_t fsl_shw_add_entropy(fsl_shw_uco_t * user_ctx, uint32_t length,
 			return_code = FSL_RETURN_OK_S;
 			os_free_memory(local_data);
 		}		/* else local_data not NULL */
-#endif
+
 	}
+#endif
 	/* rng_availability is OK */
 	return return_code;
 }				/* fsl_shw_add_entropy */
@@ -656,8 +677,8 @@ static int rng_check_register_accessible(uint32_t offset, int access_write)
 	     ((offset == RNGC_FIFO) ||
 	      (offset == RNGC_VERIFICATION_CONTROL) ||
 	      (offset == RNGC_OSCILLATOR_CONTROL_COUNTER) ||
-	      (offset == RNGC_OSCILLATOR_COUNTER) ||
-	      (offset == RNGC_OSCILLATOR_COUNTER_STATUS)))
+	      (offset == RNGC_OSC_COUNTER) ||
+	      (offset == RNGC_OSC_COUNTER_STATUS)))
 #endif
 	    ) {
 
@@ -693,9 +714,9 @@ static int rng_check_register_accessible(uint32_t offset, int access_write)
 			     (offset == RNGA_OSCILLATOR_COUNTER_STATUS))
 #else				/* FSL_HAVE_RNGC */
 			    ((offset == RNGC_STATUS) ||
-			     (offset == RNGC_OUTPUT_FIFO) ||
-			     (offset == RNGC_OSCILLATOR_COUNTER) ||
-			     (offset == RNGC_OSCILLATOR_COUNshdTER_STATUS))
+			     (offset == RNGC_FIFO) ||
+			     (offset == RNGC_OSC_COUNTER) ||
+			     (offset == RNGC_OSC_COUNTER_STATUS))
 #endif
 			    ) {
 				return_code = TRUE;	/* can be written */
@@ -743,7 +764,17 @@ OS_DEV_ISR(rng_irq)
 #ifdef RNG_DEBUG
 	os_printk("RNG Driver: Inside the RNG Interrupt Handler\n");
 #endif
+	if (RNG_SEED_DONE()) {
+		complete(&rng_seed_done);
+		RNG_CLEAR_ALL_STATUS();
+		handled = TRUE;
+	}
 
+	if (RNG_SELF_TEST_DONE()) {
+		complete(&rng_self_testing);
+		RNG_CLEAR_ALL_STATUS();
+		handled = TRUE;
+	}
 	/* Look to see whether RNG needs attention */
 	if (RNG_HAS_ERROR()) {
 		if (RNG_GET_HIGH_ASSURANCE()) {
@@ -751,12 +782,11 @@ OS_DEV_ISR(rng_irq)
 			rng_availability = RNG_STATUS_FAILED;
 			RNG_MASK_ALL_INTERRUPTS();
 		}
-
+		handled = TRUE;
 		/* Clear the interrupt */
 		RNG_CLEAR_ALL_STATUS();
-		handled = TRUE;
-	}
 
+	}
 	os_dev_isr_return(handled);
 }				/* rng_irq */
 
@@ -873,11 +903,29 @@ static fsl_shw_return_t rng_drain_fifo(uint32_t * random_p, int count_words)
 	int words_in_rng;	/* Number of words available now in RNG */
 	fsl_shw_return_t code = FSL_RETURN_ERROR_S;
 	int sequential_count = 0;	/* times through big while w/empty FIFO */
+#if defined(FSL_HAVE_RNGC)
+	int count_for_reseed = 0;
+	INIT_COMPLETION(rng_seed_done);
+#endif
 #ifdef RNG_DEBUG
 	int fifo_empty_count = 0;	/* number of times FIFO was empty */
 	int max_sequential = 0;	/* max times 0 seen in a row */
 #endif
-
+#if defined(FSL_HAVE_RNGC)
+	if (RNG_RESEED()) {
+		do {
+			RNG_CLEAR_ERR();
+			RNG_SEED_GEN();
+			wait_for_completion(&rng_seed_done);
+			if (count_for_reseed == 7) {
+				os_printk
+				    ("Device could not able to enter RESEED Mode\n");
+				code = FSL_RETURN_INTERNAL_ERROR_S;
+			}
+			count_for_reseed++;
+		} while (RNG_CHECK_SEED_ERR());
+	}
+#endif
 	/* Copy all of them in.  Stop if pool fills. */
 	while ((rng_availability == RNG_STATUS_OK) && (count_words > 0)) {
 		/* Ask RNG how many words currently in FIFO */

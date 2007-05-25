@@ -71,15 +71,15 @@
 /*! These bits are unimplemented or reserved. */
 #define RNGC_COMMAND_ZEROS_MASK      0xffffff8c
 /*! Perform a software reset of the RNGC. */
-#define RNGC_SOFTWARE_RESET          0x00000040
+#define RNGC_COMMAND_SOFTWARE_RESET          0x00000040
 /*! Clear error from Error Status register (and interrupt). */
-#define RNGC_CLEAR_ERROR             0x00000020
+#define RNGC_COMMAND_CLEAR_ERROR             0x00000020
 /*! Clear interrupt & status. */
-#define RNGC_CLEAR_INTERRUPT         0x00000010
+#define RNGC_COMMAND_CLEAR_INTERRUPT         0x00000010
 /*! Start RNGC seed generation. */
-#define RNGC_SEED                    0x00000002
+#define RNGC_COMMAND_SEED                    0x00000002
 /*! Perform a self test of (and reset) the RNGC. */
-#define RNGC_SELF_TEST               0x00000001
+#define RNGC_COMMAND_SELF_TEST               0x00000001
 /*! @} */
 
 /*! @defgroup rngccontrolreg RNGC Control Register Definitions 
@@ -95,6 +95,9 @@
 #define RNGC_CONTROL_VERIF_MODE       0x00000100
 /*! Prevent RNGC from generating interrupts caused by errors. */
 #define RNGC_CONTROL_MASK_ERROR       0x00000040
+/*! Masking all interrupts */
+#define RNGC_CONTROL_MASK_INTERRUPTS 0x00000060
+
 /*!
  * Prevent RNGC from generating interrupts after Seed Done or Self Test Mode
  * completion.
@@ -109,7 +112,7 @@
 
 /*! @} */
 
-/*! @{
+/*! @{  */
 /*! FIFO Underflow should cause ... */
 #define RNGC_CONTROL_FIFO_UFLOW_ZEROS_ERROR 0
 /*! FIFO Underflow should cause ... */
@@ -179,9 +182,11 @@
 /*! NO INFORMATION ON THIS BIT! */
 #define RNGC_ERROR_STATUS_REG_ERR           0x00000020
 /*! Random Compare Error.  Previous number matched the current number. */
-#define RNGC_ERROR_STATUS_RAND_ERR          0x00000010
+#define RNGC_ERROR_STATUS_RAND_ERR          0x00000020
 /*! FIFO Underflow.  FIFO was read while empty. */
-#define RNGC_ERROR_STATUS_FIFO_ERR          0x00000008
+#define RNGC_ERROR_STATUS_FIFO_ERR          0x00000010
+/*! Statistic Error Statistic Test failed for the last seed. */
+#define RNGC_ERROR_STATUS_STAT_ERR          0x00000008
 /*! Self-test error.  Some self test has failed. */
 #define RNGC_ERROR_STATUS_ST_ERR            0x00000004
 /*!

@@ -8,22 +8,22 @@ config MXC_SECURITY_SCC
 	  This module contains the core API's for accessing the SCC module.
 	  If you are unsure about this, say N here.
 
-config MXC_SECURITY_RNGA
-	tristate "MXC RNGA Driver"
+config MXC_SECURITY_RNG
+	tristate "MXC RNG Driver"
 	depends on ARCH_MXC
 	depends on !ARCH_MX27
 	default n
 	select MXC_SECURITY_CORE
 	---help---
-	  This module contains the core API's for accessing the RNGA module.
+	  This module contains the core API's for accessing the RNG module.
 	  If you are unsure about this, say N here.
 
-config MXC_RNGA_TEST_DRIVER
-	bool "MXC RNGA module debugging"
-	depends on MXC_SECURITY_RNGA
+config MXC_RNG_TEST_DRIVER
+	bool "MXC RNG module debugging"
+	depends on MXC_SECURITY_RNG
 	default n
 	---help---
-	  This option enables the RNGA kcore driver to provide peek-poke facility
+	  This option enables the RNG kcore driver to provide peek-poke facility
 	  into the RNG device registers. Enable this, only for development and
 	  testing purposes.
 
