@@ -676,7 +676,7 @@ while (!((status = bdp->cbd_sc) & BD_ENET_RX_EMPTY)) {
 	pkt_len = bdp->cbd_datlen;
 	fep->stats.rx_bytes += pkt_len;
 	data = (__u8*)__va(bdp->cbd_bufaddr);
-	fec_dcache_inv_range(data, data+pkt_len);
+	fec_dcache_inv_range(data, data + pkt_len - 4);
 	
 	/* This does 16 byte alignment, exactly what we need.
 	 * The packet length includes FCS, but we don't want to
@@ -1614,7 +1614,7 @@ static void __inline__ fec_localhw_setup(void)
  */
 static void __inline__ fec_dcache_inv_range(void * start, void * end)
 {
-	        return ;
+	return ;
 }
 
 /*
@@ -2126,18 +2126,20 @@ static void __inline__ fec_localhw_setup(void)
 /*
  * invalidate dcache related with the virtual memory range(start, end)
  */
-static void __inline__ fec_dcache_inv_range(void * start, void * end)
+static void __inline__ fec_dcache_inv_range(void *start, void *end)
 {
-	dma_sync_single(NULL, (unsigned long)start, (unsigned long) end, DMA_FROM_DEVICE);
+	dma_sync_single(NULL, (unsigned long)__pa(start),
+	                (unsigned long)(end - start), DMA_FROM_DEVICE);
 	return ;
 }
 
 /*
  * flush dcache related with the virtual memory range(start, end)
  */
-static void __inline__ fec_dcache_flush_range(void * start, void * end)
+static void __inline__ fec_dcache_flush_range(void *start, void *end)
 {
-	dma_sync_single(NULL, (unsigned long)start, (unsigned long)end, DMA_BIDIRECTIONAL);
+	dma_sync_single(NULL, (unsigned long)__pa(start),
+	                (unsigned long)(end - start), DMA_BIDIRECTIONAL);
 	return ;
 }
 
