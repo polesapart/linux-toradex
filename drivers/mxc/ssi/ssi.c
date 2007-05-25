@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
+#include <asm/arch/clock.h>
 
 #include "registers.h"
 #include "ssi.h"
@@ -95,6 +96,14 @@ EXPORT_SYMBOL(ssi_tx_prescaler_modulus);
 EXPORT_SYMBOL(ssi_tx_shift_direction);
 EXPORT_SYMBOL(ssi_tx_word_length);
 
+unsigned int get_ssi_base_addr(unsigned int ssi)
+{
+	unsigned int base_addr;
+	base_addr = (ssi == SSI1) ? IO_ADDRESS(SSI1_BASE_ADDR) :
+	    IO_ADDRESS(SSI2_BASE_ADDR);
+	return base_addr;
+}
+
 void set_register_bits(unsigned int mask, unsigned int data,
 		       unsigned int offset, unsigned int ssi)
 {
@@ -103,8 +112,7 @@ void set_register_bits(unsigned int mask, unsigned int data,
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&ssi_lock, flags);
-	base_addr = (ssi == SSI1) ? IO_ADDRESS(SSI1_BASE_ADDR) :
-	    IO_ADDRESS(SSI2_BASE_ADDR);
+	base_addr = get_ssi_base_addr(ssi);
 	reg = __raw_readl(base_addr + offset);
 	reg = (reg & (~mask)) | data;
 	__raw_writel(reg, base_addr + offset);
@@ -118,8 +126,7 @@ unsigned long getreg_value(unsigned int offset, unsigned int ssi)
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&ssi_lock, flags);
-	base_addr = (ssi == SSI1) ? IO_ADDRESS(SSI1_BASE_ADDR) :
-	    IO_ADDRESS(SSI2_BASE_ADDR);
+	base_addr = get_ssi_base_addr(ssi);
 	reg = __raw_readl(base_addr + offset);
 	spin_unlock_irqrestore(&ssi_lock, flags);
 
@@ -132,8 +139,7 @@ void set_register(unsigned int data, unsigned int offset, unsigned int ssi)
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&ssi_lock, flags);
-	base_addr = (ssi == SSI1) ? IO_ADDRESS(SSI1_BASE_ADDR) :
-	    IO_ADDRESS(SSI2_BASE_ADDR);
+	base_addr = get_ssi_base_addr(ssi);
 	__raw_writel(data, base_addr + offset);
 	spin_unlock_irqrestore(&ssi_lock, flags);
 

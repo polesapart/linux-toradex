@@ -1702,7 +1702,7 @@ PMIC_STATUS pmic_audio_digital_filter_reset(const PMIC_AUDIO_HANDLE handle)
 
 	if ((handle == stDAC.handle) && (stDAC.handleState == HANDLE_IN_USE)) {
 		reg_mask = SET_BITS(regST_DAC, STDCRESET, 1);
-		if (pmic_write_reg(REG_AUDIO_STEREO_DAC, 1,
+		if (pmic_write_reg(REG_AUDIO_STEREO_DAC, reg_mask,
 				   reg_mask) != PMIC_SUCCESS) {
 			rc = PMIC_ERROR;
 		} else {
