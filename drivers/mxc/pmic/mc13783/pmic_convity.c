@@ -529,10 +529,12 @@ PMIC_STATUS pmic_convity_open(PMIC_CONVITY_HANDLE * const handle,
 		if (mode == USB) {
 			usb.handle = (PMIC_CONVITY_HANDLE) (&usb);
 			usb.handle_state = HANDLE_IN_USE;
-		} else if (mode == (RS232_1 || RS232_2)) {
+		} else if ((mode == RS232_1) || (mode == RS232_2)) {
 			rs_232.handle = (PMIC_CONVITY_HANDLE) (&rs_232);
 			rs_232.handle_state = HANDLE_IN_USE;
-		} else {
+		} else if ((mode == CEA936_STEREO) || (mode == CEA936_MONO)
+			   || (mode == CEA936_TEST_LEFT)
+			   || (mode == CEA936_TEST_RIGHT)) {
 			cea_936.handle = (PMIC_CONVITY_HANDLE) (&cea_936);
 			cea_936.handle_state = HANDLE_IN_USE;
 
@@ -547,9 +549,12 @@ PMIC_STATUS pmic_convity_open(PMIC_CONVITY_HANDLE * const handle,
 			 */
 			if (mode == USB) {
 				*handle = usb.handle;
-			} else if (mode == (RS232_1 || RS232_2)) {
+			} else if ((mode == RS232_1) || (mode == RS232_2)) {
 				*handle = rs_232.handle;
-			} else {
+			} else if ((mode == CEA936_STEREO)
+				   || (mode == CEA936_MONO)
+				   || (mode == CEA936_TEST_LEFT)
+				   || (mode == CEA936_TEST_RIGHT)) {
 				*handle = cea_936.handle;
 			}
 		} else {
@@ -559,10 +564,13 @@ PMIC_STATUS pmic_convity_open(PMIC_CONVITY_HANDLE * const handle,
 			if (mode == USB) {
 				usb.handle = reset.handle;
 				usb.handle_state = reset.handle_state;
-			} else if (mode == (RS232_1 || RS232_2)) {
+			} else if ((mode == RS232_1) || (mode == RS232_2)) {
 				rs_232.handle = reset.handle;
 				rs_232.handle_state = reset.handle_state;
-			} else {
+			} else if ((mode == CEA936_STEREO)
+				   || (mode == CEA936_MONO)
+				   || (mode == CEA936_TEST_LEFT)
+				   || (mode == CEA936_TEST_RIGHT)) {
 				cea_936.handle = reset.handle;
 				cea_936.handle_state = reset.handle_state;
 			}
@@ -2115,10 +2123,11 @@ static PMIC_STATUS pmic_convity_set_mode_internal(const PMIC_CONVITY_MODE mode)
 	if (rc == PMIC_SUCCESS) {
 		if (mode == USB) {
 			usb.mode = mode;
-		} else if (mode == RS232_1 || RS232_1) {
+		} else if ((mode == RS232_1) || (mode == RS232_1)) {
 			rs_232.mode = mode;
-		} else if (mode == CEA936_MONO || CEA936_STEREO
-			   || CEA936_TEST_RIGHT || CEA936_TEST_LEFT) {
+		} else if ((mode == CEA936_MONO) || (mode == CEA936_STEREO) ||
+			   (mode == CEA936_TEST_RIGHT)
+			   || (mode == CEA936_TEST_LEFT)) {
 			cea_936.mode = mode;
 		}
 	}
