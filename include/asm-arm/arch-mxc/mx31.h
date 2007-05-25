@@ -279,7 +279,7 @@
 /*
  * DMA request assignments
  */
-#define DMA_REQ_GPIO1_0    31
+#define DMA_REQ_ECT        31
 #define DMA_REQ_NFC        30
 #define DMA_REQ_SSI1_TX1   29
 #define DMA_REQ_SSI1_RX1   28
@@ -297,10 +297,12 @@
 #define DMA_REQ_FIRI_RX    16
 #define DMA_REQ_UART2_TX   17
 #define DMA_REQ_UART2_RX   16
-#define DMA_REQ_GPIO1_1    15
-#define DMA_REQ_GPIO1_2    14
+#define DMA_REQ_EXTREQ1    15
+#define DMA_REQ_EXTREQ2    14
 #define DMA_REQ_UART4_TX   13
 #define DMA_REQ_UART4_RX   12
+#define DMA_REQ_CSPI3_TX   11
+#define DMA_REQ_CSPI3_RX   10
 #define DMA_REQ_UART5_TX   11
 #define DMA_REQ_UART5_RX   10
 #define DMA_REQ_CSPI1_TX   9
@@ -314,7 +316,7 @@
 #define DMA_REQ_ATA_TX     3
 #define DMA_REQ_ATA_TX_END 2
 #define DMA_REQ_CCM        1
-#define DMA_REQ_reserved   0
+#define DMA_REQ_EXTREQ0    0
 
 /*
  * Interrupt numbers
