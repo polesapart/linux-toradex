@@ -286,6 +286,9 @@
 #define MXC_CCM_PMCR1_DVGP_OFFSET               0
 #define MXC_CCM_PMCR1_DVGP_MASK                 (0xF)
 
+#define MXC_CCM_PMCR1_PLLRDIS                      (0x1 << 7)
+#define MXC_CCM_PMCR1_EMIRQ_EN                      (0x1 << 8)
+
 #define MXC_CCM_DCVR_ULV_MASK                   (0x3FF << 22)
 #define MXC_CCM_DCVR_ULV_OFFSET                 22
 #define MXC_CCM_DCVR_LLV_MASK                   (0x3FF << 12)

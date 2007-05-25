@@ -34,6 +34,7 @@
 #ifdef CONFIG_ARCH_MX3
 #include "dvfs_dptc_table_mx31.h"
 #include "dvfs_dptc_table_mx31_27ckih.h"
+#include "dvfs_dptc_table_mx31_rev2.h"
 #endif
 #ifdef CONFIG_ARCH_MX27
 #include "dvfs_dptc_table_mx27.h"

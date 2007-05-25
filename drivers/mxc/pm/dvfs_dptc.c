@@ -429,12 +429,18 @@ static int __init dvfs_dptc_init_default_table(void)
 
 	table_str = default_table_str;
 	if (cpu_is_mx31()) {
-		clk = clk_get(NULL, "ckih");
-		if (clk_get_rate(clk) == 27000000) {
-			printk(KERN_INFO
-			       "DVFS & DPTC: using 27MHz CKIH table\n");
+		if (system_rev < CHIP_REV_2_0) {
+			clk = clk_get(NULL, "ckih");
+			if (clk_get_rate(clk) == 27000000) {
+				printk(KERN_INFO
+				       "DVFS & DPTC: using 27MHz CKIH table\n");
 #ifdef CONFIG_ARCH_MX3
-			table_str = default_table_str_27ckih;
+				table_str = default_table_str_27ckih;
+#endif
+			}
+		} else {
+#ifdef CONFIG_ARCH_MX3
+			table_str = default_table_str_rev2;
 #endif
 		}
 		clk_put(clk);

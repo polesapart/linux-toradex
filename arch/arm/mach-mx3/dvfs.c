@@ -45,6 +45,8 @@
 #include <asm/semaphore.h>
 #include <linux/jiffies.h>
 #include <linux/device.h>
+#include <linux/delay.h>
+#include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/sdma.h>
 #include <linux/dma-mapping.h>
@@ -96,6 +98,21 @@ pmcr0 = ((pmcr0 & ~MXC_CCM_PMCR0_DFSUP1) | x << MXC_CCM_PMCR0_DFSUP1_OFFSET)
 
 #define SET_VSCNT(pmcr0, x) \
 pmcr0 = ((pmcr0 & ~MXC_CCM_PMCR0_VSCNT_MASK) | x << MXC_CCM_PMCR0_VSCNT_OFFSET)
+
+/*
+ * Clear DPVCR bit
+ */
+#define CLEAR_DPVCR(pmcr0) pmcr0 &= ~MXC_CCM_PMCR0_DPVCR
+
+/*
+ * Set DPVCR bit
+ */
+#define SET_DPVCR(pmcr0) pmcr0 |= MXC_CCM_PMCR0_DPVCR
+
+/*
+ * Set DPVCR bit
+ */
+#define SET_DPVV(pmcr0) pmcr0 |= MXC_CCM_PMCR0_DPVV
 
 dvfs_states_table *dvfs_states_tbl;
 
@@ -500,6 +517,21 @@ int __init init_dvfs_controller(dvfs_dptc_params_s * params)
 
 	dvfs_dptc_params = params;
 
+	if (system_rev >= CHIP_REV_2_0) {
+		/* Rev2.0 changes */
+
+		/* Disable PLL restart on DVFS switch */
+		mxc_ccm_modify_reg(MXC_CCM_PMCR1, MXC_CCM_PMCR1_PLLRDIS,
+				   MXC_CCM_PMCR1_PLLRDIS);
+
+		/* Enable automatic EMI handshake */
+		mxc_ccm_modify_reg(MXC_CCM_PMCR1, MXC_CCM_PMCR1_EMIRQ_EN,
+				   MXC_CCM_PMCR1_EMIRQ_EN);
+
+		/* Init SR PLL for 399MHz */
+		mxc_ccm_modify_reg(MXC_CCM_SRPCTL, 0xffffffff, 0x00331c23);
+	}
+
 	if (res == 0) {
 		printk(KERN_INFO "DVFS controller initialized\n");
 	}
@@ -536,21 +568,17 @@ void dvfs_update_freqs_table(dvfs_dptc_tables_s * dvfs_dptc_tables_ptr)
 	pll = table[0].pll_up;
 	pdr0 = table[0].pdr0_up;
 	freq = dvfs_get_clock(table[0].pll_up, table[0].pdr0_up);
-	dvfs_states_tbl->freqs[0] = 1000000 * (freq / 1000000);
+	dvfs_states_tbl->freqs[0] = freq;
 
 	for (i = 0; i < dvfs_dptc_tables_ptr->dvfs_state_num - 1; i++) {
+
 		if (table[i].pll_sw_down == 1) {
 			pll = table[i].pll_down;
 		}
 		pdr0 = table[i].pdr0_down;
 
 		freq = dvfs_get_clock(pll, pdr0);
-		dvfs_states_tbl->freqs[i + 1] = 1000000 * (freq / 1000000);
-	}
-
-	for (i = 0; i < dvfs_dptc_tables_ptr->dvfs_state_num; i++) {
-		printk(KERN_INFO "DVFS frequency #%d: %d\n", i,
-		       dvfs_states_tbl->freqs[i]);
+		dvfs_states_tbl->freqs[i + 1] = freq;
 	}
 }
 
@@ -642,8 +670,10 @@ void set_freq(dvfs_dptc_params_s * params, int fsvai)
 	int dfsup0, dfsup1;
 	dvfs_state *table;
 	unsigned long pmcr0;
+	int dptc_enable = 0;
 
 	pmcr0 = mxc_ccm_get_reg(MXC_CCM_PMCR0);
+	dptc_enable = pmcr0 & MXC_CCM_PMCR0_DPTEN;
 
 	/* Read DVSUP - current frequency index */
 	dvsup = dvfs_get_dvsup();
@@ -655,16 +685,15 @@ void set_freq(dvfs_dptc_params_s * params, int fsvai)
 	table = sdma_phys_to_virt((unsigned long)table);
 #endif
 
+	if (dptc_enable) {
+		CLEAR_DPVCR(pmcr0);
+	}
 	if (fsvai == DVFS_DECREASE) {
 		/* On DVFS_DECREASE event the frequency will be changed according
 		 * to the next state setting
 		 */
 		CLEAR_UDSC(pmcr0);
-		if (params->dvfs_dptc_tables_ptr->use_four_freq) {
-			dvsup++;
-		} else {
-			dvsup = 0x3;
-		}
+		dvsup++;
 		SET_VSCNT(pmcr0, 1);
 		pll_switch = table[curr_freq_index].pll_sw_down;
 		pdr0 = table[curr_freq_index].pdr0_down;
@@ -706,6 +735,8 @@ void set_freq(dvfs_dptc_params_s * params, int fsvai)
 	SET_DFSUP1(pmcr0, dfsup1);
 
 	mxc_ccm_modify_reg(MXC_CCM_PMCR0, 0xffffffff, pmcr0);
+	/* software wait for voltage ramp-up */
+	udelay(100);
 	mxc_ccm_modify_reg(MXC_CCM_PDR0, 0xffffffff, pdr0);
 
 	if (pll_switch == 1) {
@@ -716,6 +747,13 @@ void set_freq(dvfs_dptc_params_s * params, int fsvai)
 			/* SRPCTL will be updated */
 			mxc_ccm_modify_reg(MXC_CCM_SRPCTL, 0xffffffff, pll);
 		}
+	}
+
+	if (dptc_enable) {
+		pmcr0 = mxc_ccm_get_reg(MXC_CCM_PMCR0);
+		SET_DPVCR(pmcr0);
+		SET_DPVV(pmcr0);
+		mxc_ccm_modify_reg(MXC_CCM_PMCR0, 0xffffffff, pmcr0);
 	}
 
 	pr_debug(KERN_INFO "ARM frequency: %dMHz CKIH frequency: %dMHz(%d)\n",
