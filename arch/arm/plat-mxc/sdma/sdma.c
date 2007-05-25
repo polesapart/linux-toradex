@@ -849,6 +849,30 @@ int mxc_dma_get_config(int channel, dma_request_t * p, int bd_index)
 }
 
 /*!
+ * This function is used by MXC IPC's write_ex2. It passes the pointer to the 
+ * data control structure to iapi_write_ipcv2()
+ *
+ * @param channel  SDMA channel number
+ * @param ctrl_ptr Data Control structure pointer
+ */
+int mxc_sdma_write_ipcv2(int channel, void *ctrl_ptr)
+{
+	return iapi_Write_ipcv2(sdma_data[channel].cd, ctrl_ptr);
+}
+
+/*!
+ * This function is used by MXC IPC's read_ex2. It passes the pointer to the 
+ * data control structure to iapi_read_ipcv2()
+ *
+ * @param channel   SDMA channel number
+ * @param ctrl_ptr  Data Control structure pointer
+ */
+int mxc_sdma_read_ipcv2(int channel, void *ctrl_ptr)
+{
+	return iapi_Read_ipcv2(sdma_data[channel].cd, ctrl_ptr);
+}
+
+/*!
  * Starts dma channel.
  *
  * @param   channel           channel number
@@ -1222,6 +1246,8 @@ EXPORT_SYMBOL(mxc_dma_get_config);
 EXPORT_SYMBOL(mxc_dma_set_bd_intr);
 EXPORT_SYMBOL(mxc_dma_get_bd_intr);
 EXPORT_SYMBOL(mxc_dma_reset);
+EXPORT_SYMBOL(mxc_sdma_write_ipcv2);
+EXPORT_SYMBOL(mxc_sdma_read_ipcv2);
 EXPORT_SYMBOL(mxc_dma_start);
 EXPORT_SYMBOL(mxc_dma_stop);
 EXPORT_SYMBOL(sdma_malloc);

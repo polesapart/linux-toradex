@@ -333,6 +333,24 @@ int mxc_dma_set_config(int channel, dma_request_t * p, int bd_index);
 int mxc_dma_get_config(int channel, dma_request_t * p, int bd_index);
 
 /*!
+ * This function is used by MXC IPC's write_ex2. It passes the a pointer to the 
+ * data control structure to iapi_write_ipcv2()
+ *
+ * @param channel  SDMA channel number
+ * @param ctrl_ptr Data Control structure pointer
+ */
+int mxc_sdma_write_ipcv2(int channel, void *ctrl_ptr);
+
+/*!
+ * This function is used by MXC IPC's read_ex2. It passes the a pointer to the 
+ * data control structure to iapi_read_ipcv2()
+ *
+ * @param channel   SDMA channel number
+ * @param ctrl_ptr  Data Control structure pointer
+ */
+int mxc_sdma_read_ipcv2(int channel, void *ctrl_ptr);
+
+/*!
  * Starts dma channel.
  *
  * @param   channel           channel number

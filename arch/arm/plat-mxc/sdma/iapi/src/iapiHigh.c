@@ -42,12 +42,14 @@
 /* ****************************************************************************
  * External Reference Section (for compatibility with already developed code)
  *****************************************************************************/
-
+static void iapi_read_ipcv2_callback(struct iapi_channelDescriptor* cd_p, void* data);
 
 /* ****************************************************************************
  * Global Variable Section
  *****************************************************************************/
+#define         MAX_CHANNEL         32
 
+static dataNodeDescriptor*          dnd_read_control_struct[MAX_CHANNEL];
 /* ****************************************************************************
  * Function Section
  *****************************************************************************/
@@ -72,8 +74,10 @@
  * - Channel's configuration properties (mcu side only)
  * - read/write direction => enable/disable channel setting
  *
- * @param  *cd_p pointer to channel descriptor for the channnel to be opened. 
- *               Must be allocated.
+ * @param  *cd_p -If channelNumber is 0, it is pointer to channel descriptor for the channnel 0 to be opened and 
+                  has default values. 
+ *               For other channels,this function should be called after channel 0 has been opened, and it is channel descriptor for 
+                  channel 0.Must be allocated.
  * @param  channelNumber channel to be opened
  *
  * @return
@@ -788,6 +792,366 @@ iapi_Write (channelDescriptor * cd_p, void * buf, unsigned short nbyte)
    *release the channel 
    */
   return writtenBytes;
+}
+
+
+
+
+/* ***************************************************************************/
+/* This function is used to receive data from the SDMA.
+ *
+ * <b>Algorithm:</b>\n
+ *
+ * The data control structure would be copied to IPCv1 complied Buffer 
+ * Descriptor Array. This array shall be allocated from non cacheable memory.  
+ * It would then provide this buffer descriptor array as an input to SDMA using 
+ * channel control block and then configure the Host Enable (HE) or 
+ * DSP enable (DE) bit of SDMA for the channel used for this transfer depending 
+ * on the source. 
+ *
+ * <b>Notes:</b>\n
+ * Virtual DMA channels are unidirectional, an iapi_Write_ipcv2 authorized 
+ * on a channel means that source processor is expecting to send to the destination 
+ * processor. The meaning of an interrupt received from the SDMA notifies that the 
+ * data has been delivered to the destination processor. 
+ *   
+ * @param *cd_p chanenl descriptor for the channel to receive from
+ * @param *data_control_struct_ipcv2 
+
+ *   Data Control structure:
+ *   -------------------------
+ *   | Data Node Descriptor 1|
+ *   -------------------------
+ *   | Data Node Descriptor 2|
+ *   -------------------------
+ *   |           :           |
+ *   |           :           |
+ *   -------------------------
+ *   |Data Node Descriptor n |
+ *   -------------------------
+ *
+ *   Data Node Descriptor (Buffer Descriptor):
+ *------------------------------------------------------------------------------
+ *| 31	30	29	28	27	26	25	24	23	22	21	20	19	18	17	16	15	 …	  0|
+ *------------------------------------------------------------------------------
+ *| L	E	D	R	R	R	R	R	|<---- Reserved          ---->  |<- Length-> |
+ *------------------------------------------------------------------------------
+ *| <---------------------------- Data Ptr ----------------------------------->|
+ *------------------------------------------------------------------------------
+ *
+ * L bit (LAST): If set, means that this buffer of data is the last buffer of the frame
+ * E bit (END): If set, we reached the end of the buffers passed to the function
+ * D bit (DONE): Only valid on the read callback. When set, means that the buffer has been 
+ * filled by the SDMA.
+ * Length: Length of data pointed by this node in bytes
+ * Data Ptr: Pointer to the data pointed to by this node.
+ * The Function Shall not be called for the same channel unless the Read callback has been
+ * received for channel for which it has been called already.
+ *
+ * @return 
+ *       - IAPI_SUCCESS on success, IAPI_ERROR otherwise
+ * 
+ *- -iapi_errno if failure
+ */
+
+int iapi_Read_ipcv2( channelDescriptor * cd_p, void * data_control_struct_ipcv2)
+{
+
+/* The Parameters passed are considered to be validated by the upper layers*/
+
+  unsigned int index = 0;
+  bufferDescriptor_ipcv1_v2 *bd_ipcv2_p;
+  dataNodeDescriptor    *dnd_p = (dataNodeDescriptor*)data_control_struct_ipcv2;
+  channelControlBlock * ccb_p;
+  unsigned char         chNum;
+    
+  iapi_errno = IAPI_ERR_NO_ERROR;
+
+  /* Control block & Descriptpor associated with the channel being worked on */
+  chNum = cd_p->channelNumber;
+  ccb_p = cd_p->ccb_ptr;
+
+
+ /*calculate the number of Data Node descriptors required. */
+ do
+ {
+    index++;
+    if(dnd_p->mode.status & DND_END_OF_XFER)
+    {
+        break;
+    }
+    else
+    {
+        dnd_p++;
+    }
+    
+ }while(1);
+
+ 
+  if(ccb_p->baseBDptr == NULL)
+    return IAPI_ERR_BD_UNINITIALIZED;
+
+  ccb_p->currentBDptr = ccb_p->baseBDptr;
+
+  /* Copy the data Node descriptor information to new BDs */
+ dnd_p = (dataNodeDescriptor*)data_control_struct_ipcv2;
+ bd_ipcv2_p = (bufferDescriptor_ipcv1_v2*)iapi_Phys2Virt(ccb_p->baseBDptr);
+
+ while(index--)
+ {
+    bd_ipcv2_p->bufferAddr = dnd_p->bufferAddr;
+    bd_ipcv2_p->mode.count = dnd_p->mode.count;
+    
+#ifdef MCU    
+    bd_ipcv2_p->mode.endianness = 1;    
+#endif 
+#ifdef DSP
+    bd_ipcv2_p->mode.endianness = 0;
+#endif    
+    bd_ipcv2_p->mode.status = BD_EXTD;
+    /* Reverse Map the Done bit of Data node Descriptor */
+
+    if((dnd_p->mode.status & DND_DONE) == 0)
+    {
+
+        bd_ipcv2_p->mode.status  |=  BD_DONE ;
+       
+    }
+
+    bd_ipcv2_p->mode.status |= (dnd_p->mode.status & DND_END_OF_FRAME) ? BD_IPCV2_END_OF_FRAME : 0 ;
+
+    if(index)    
+    {
+        bd_ipcv2_p->mode.status |= BD_CONT;
+    }
+    else
+    {
+        bd_ipcv2_p->mode.status |= BD_INTR;
+	bd_ipcv2_p->mode.status |= BD_WRAP;
+    }
+
+
+    bd_ipcv2_p->mode.status |= (dnd_p->mode.status & DND_END_OF_XFER) ? BD_LAST : 0 ;
+
+
+
+    bd_ipcv2_p++;
+    dnd_p++;
+   
+ }
+
+
+   /*
+   * Store the buffer address 
+   */
+    dnd_read_control_struct[cd_p->channelNumber] = (dataNodeDescriptor*)data_control_struct_ipcv2;
+  /*
+   *  Register the Call Back 
+   */
+
+   iapi_AttachCallbackISR(cd_p, iapi_read_ipcv2_callback);
+
+   /*
+   *  Starting of the channel
+   */
+  iapi_lowStartChannel(chNum);
+  ccb_p->status.execute = TRUE;
+
+  return IAPI_SUCCESS;
+   
+}
+
+
+/* ***************************************************************************/
+/*
+ * The function is used send a group of buffers to SDMA. 
+ * <b>Algorithm:</b>\n
+ *
+ * The data control structure would be copied to IPCv1 complied Buffer 
+ * Descriptor Array. This array shall be allocated from non cacheable memory.  
+ * It would then provide this buffer descriptor array as an input to SDMA using 
+ * channel control block and then configure the Host Enable (HE) or 
+ * DSP enable (DE) bit of SDMA for the channel used for this transfer depending 
+ * on the source. 
+ * The Function Shall not be called for the same channel unless the Read callback has been
+ * received for channel for which it has been called already.
+ *
+ * <b>Notes:</b>\n
+ * Virtual DMA channels are unidirectional, an iapi_Write_ipcv2 authorized 
+ * on a channel means that source processor is expecting to send to the destination 
+ * processor. The meaning of an interrupt received from the SDMA notifies that the 
+ * data has been delivered to the destination processor. 
+ *   
+ * @param *cd_p chanenl descriptor for the channel to write to
+ * @param *data_control_struct_ipcv2 
+
+ *   Data Control structure:
+ *   -------------------------
+ *   | Data Node Descriptor 1|
+ *   -------------------------
+ *   | Data Node Descriptor 2|
+ *   -------------------------
+ *   |           :           |
+ *   |           :           |
+ *   -------------------------
+ *   |Data Node Descriptor n |
+ *   -------------------------
+ *
+ *   Data Node Descriptor (Buffer Descriptor):
+ *------------------------------------------------------------------------------
+ *| 31	30	29	28	27	26	25	24	23	22	21	20	19	18	17	16	15	 …	  0|
+ *------------------------------------------------------------------------------
+ *| L	E	D	R	R	R	R	R	|<---- Reserved          ---->  |<- Length-> |
+ *------------------------------------------------------------------------------
+ *| <---------------------------- Data Ptr ----------------------------------->|
+ *------------------------------------------------------------------------------
+ *
+ * L bit (LAST): If set, means that this buffer of data is the last buffer of the frame
+ * E bit (END): If set, we reached the end of the buffers passed to the function
+ * D bit (DONE): Only valid on the read callback. When set, means that the buffer has been 
+ * filled by the SDMA.
+ * Length: Length of data pointed by this node in bytes
+ * Data Ptr: Pointer to the data pointed to by this node.
+ *
+ *
+ * @return 
+ *       - iapi sucess on success.
+ *       - -iapi_errno if failure
+ */
+ 
+int iapi_Write_ipcv2( channelDescriptor * cd_p, void * data_control_struct_ipcv2)
+{
+/* The Parameters passed are considered to be validated by the upper layers*/
+
+  unsigned int index = 0;
+  bufferDescriptor_ipcv1_v2 *bd_ipcv2_p;
+  dataNodeDescriptor    *dnd_p = (dataNodeDescriptor*)data_control_struct_ipcv2;
+  channelControlBlock * ccb_p;
+  unsigned char         chNum;
+
+  iapi_errno = IAPI_ERR_NO_ERROR;
+
+
+  /* Control block & Descriptpor associated with the channel being worked on */
+  chNum = cd_p->channelNumber;
+  ccb_p = cd_p->ccb_ptr;
+
+ /*calculate the number of Data Node descriptors required. */
+ do
+ {
+    index++;
+    if(dnd_p->mode.status & DND_END_OF_XFER)
+    {
+        break;
+    }
+    else
+    {
+        dnd_p++;
+    }
+    
+ }while(1);
+
+ if(ccb_p->baseBDptr == NULL)
+    return IAPI_ERR_BD_UNINITIALIZED;
+
+
+ ccb_p->currentBDptr = ccb_p->baseBDptr;
+
+ /* Copy the data Node descriptor information to new BDs */
+ dnd_p = (dataNodeDescriptor*)data_control_struct_ipcv2;
+ bd_ipcv2_p = (bufferDescriptor_ipcv1_v2*)iapi_Phys2Virt(ccb_p->currentBDptr);
+ while(index--)
+ {
+
+    bd_ipcv2_p->bufferAddr = dnd_p->bufferAddr;
+    
+#ifdef MCU    
+    bd_ipcv2_p->mode.endianness = 1;    
+#endif 
+#ifdef DSP
+    bd_ipcv2_p->mode.endianness = 0;
+#endif    
+
+    bd_ipcv2_p->mode.status = BD_EXTD;
+    bd_ipcv2_p->mode.count = dnd_p->mode.count;
+
+
+    /* Reverse Map the Done bit of Data node Descriptor */
+    if((dnd_p->mode.status & DND_DONE) == 0)
+    {
+
+        bd_ipcv2_p->mode.status  |=  BD_DONE ;
+       
+    }
+
+    bd_ipcv2_p->mode.status |= (dnd_p->mode.status & DND_END_OF_FRAME) ? BD_IPCV2_END_OF_FRAME : 0 ;
+
+    if(index)    
+    {
+        bd_ipcv2_p->mode.status |= BD_CONT;
+    }
+    else
+    {
+        bd_ipcv2_p->mode.status |= BD_INTR;
+	bd_ipcv2_p->mode.status |= BD_WRAP;
+    }
+
+    bd_ipcv2_p->mode.status |= (dnd_p->mode.status & DND_END_OF_XFER) ? BD_LAST : 0 ;
+
+    bd_ipcv2_p++;
+    dnd_p++;
+   
+ }
+
+   /*
+   *  Starting of the channel
+   */
+  iapi_lowStartChannel(chNum);
+  ccb_p->status.execute = TRUE;
+
+  return IAPI_SUCCESS;
+ 
+}
+
+/* ***************************************************************************/
+/** Call back ISR for the IPCv2 Receive. 
+ *
+ * <b>Algorithm:</b>\n
+ *    - This would copy back the informationfrom IPCv1 BD to IPCv2 BD on 
+ * the receiving processor
+ *
+ * @return 
+ *     - void
+ */
+ 
+void iapi_read_ipcv2_callback(struct iapi_channelDescriptor* cd_p, void* data)
+{
+    dataNodeDescriptor    *dnd_p = dnd_read_control_struct[cd_p->channelNumber];//cd_p->ccb_ptr->channelDNDBuffer;
+    bufferDescriptor_ipcv1_v2 *bd_ipcv2_p = (bufferDescriptor_ipcv1_v2*)iapi_Phys2Virt(cd_p->ccb_ptr->baseBDptr);
+    int index = MAX_BD_NUM - 1;
+
+    
+    do
+    {
+        dnd_p->mode.status = 0;
+        dnd_p->mode.count = bd_ipcv2_p->mode.count;
+      
+        dnd_p->mode.status |= bd_ipcv2_p->mode.status & BD_DONE ? 0x00 : DND_DONE ;
+        dnd_p->mode.status |= bd_ipcv2_p->mode.status & BD_IPCV2_END_OF_FRAME ? DND_END_OF_FRAME : 0x00;
+        dnd_p->mode.status |= bd_ipcv2_p->mode.status & BD_LAST ? DND_END_OF_XFER : 0x00;
+        cd_p->ccb_ptr->currentBDptr = (bufferDescriptor*)iapi_Virt2Phys(bd_ipcv2_p);
+
+        if((bd_ipcv2_p->mode.status & BD_LAST) != 0   ||
+            (bd_ipcv2_p->mode.status & BD_CONT) == 0
+        )
+            break;
+        dnd_p++;
+        bd_ipcv2_p++;
+        
+    }while(index--);
+
+    /*Call back the Original ISR */
+     cd_p->callbackISR_ptr(cd_p, data);
 }
 
 /* ***************************************************************************/

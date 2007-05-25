@@ -63,7 +63,7 @@ static struct list_head buf_map;
  * The size must be at least 512 bytes, because
  * sdma channel control blocks array size is 512 bytes
  */
-#define SDMA_POOL_SIZE 512
+#define SDMA_POOL_SIZE 1024
 
 /*!
  * Adds new buffer structure into conversion hash tables

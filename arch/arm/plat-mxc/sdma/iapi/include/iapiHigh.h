@@ -89,6 +89,12 @@ int iapi_MemCopy(channelDescriptor * cd_p, void* dest, void* src,
                  unsigned long size);
 int iapi_IoCtl( channelDescriptor * cd_p, unsigned long ctlRequest, 
 				unsigned long param);
+
+
+int iapi_Read_ipcv2( channelDescriptor * cd_p, void * data_control_struct_ipcv2);
+
+int iapi_Write_ipcv2( channelDescriptor * cd_p, void * data_control_struct_ipcv2);
+
 #ifdef MCU
 int iapi_Init(channelDescriptor * cd_p, configs_data * config_p, 
               unsigned short* ram_image, unsigned short code_size, 
