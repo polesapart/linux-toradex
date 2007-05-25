@@ -1063,7 +1063,7 @@ void mxc_irda_firi_init(struct mxc_irda *si)
 	si->firi_clk = clk_get(si->dev, "firi_clk");
 	firi_baud = clk_round_rate(si->firi_clk, 48004500);
 	if ((firi_baud < 47995500) ||
-		(clk_set_rate(si->firi_clk, firi_baud) < 0)) {
+	    (clk_set_rate(si->firi_clk, firi_baud) < 0)) {
 		dev_err(si->dev, "Unable to set FIR clock to 48MHz.\n");
 		return;
 	}
@@ -1529,8 +1529,8 @@ static int mxc_irda_resume(struct platform_device *pdev)
 		clk_enable(si->uart_clk);
 
 		/*Now init FIRI */
-                gpio_firi_active(si->firi_base + FIRITCR, FIRITCR_TPP);
- 		mxc_irda_startup(si);
+		gpio_firi_active(si->firi_base + FIRITCR, FIRITCR_TPP);
+		mxc_irda_startup(si);
 
 		/* Enable the UART and FIRI interrupts.. */
 		local_irq_save(flags);
