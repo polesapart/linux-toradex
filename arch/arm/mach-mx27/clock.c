@@ -193,14 +193,22 @@ static void _clk_fec_disable(struct clk *clk)
 
 static int _clk_vpu_enable(struct clk *clk)
 {
-	_clk_pccr01_enable(CCM_PCCR1_VPU_BAUD_MASK, CCM_PCCR1_HCLK_VPU_MASK);
+	unsigned long reg;
+
+	reg = __raw_readl(CCM_PCCR1);
+	reg |= CCM_PCCR1_VPU_BAUD_MASK | CCM_PCCR1_HCLK_VPU_MASK;
+	__raw_writel(reg, CCM_PCCR1);
 
 	return 0;
 }
 
 static void _clk_vpu_disable(struct clk *clk)
 {
-	_clk_pccr01_disable(CCM_PCCR1_VPU_BAUD_MASK, CCM_PCCR1_HCLK_VPU_MASK);
+	unsigned long reg;
+
+	reg = __raw_readl(CCM_PCCR1);
+	reg &= ~(CCM_PCCR1_VPU_BAUD_MASK | CCM_PCCR1_HCLK_VPU_MASK);
+	__raw_writel(reg, CCM_PCCR1);
 }
 
 static int _clk_sahara2_enable(struct clk *clk)
