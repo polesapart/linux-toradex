@@ -177,6 +177,7 @@ static struct platform_device mxc_uart_device1 = {
 		},
 };
 
+#if UART2_ENABLED == 1
 static struct platform_device mxc_uart_device2 = {
 	.name = "mxcintuart",
 	.id = 1,
@@ -184,6 +185,7 @@ static struct platform_device mxc_uart_device2 = {
 		.platform_data = &mxc_ports[1],
 		},
 };
+#endif
 
 static struct platform_device mxc_uart_device3 = {
 	.name = "mxcintuart",
@@ -215,7 +217,9 @@ static int __init mxc_init_uart(void)
 {
 	/* Register all the MXC UART platform device structures */
 	platform_device_register(&mxc_uart_device1);
+#if UART2_ENABLED == 1
 	platform_device_register(&mxc_uart_device2);
+#endif
 
 	/* Grab ownership of shared UARTs 3 and 4, only when enabled */
 #if UART3_ENABLED == 1
