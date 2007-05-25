@@ -1,7 +1,9 @@
-# Makefile for the Linux VPU drivers.
-# 25 May 2006
-
-# Each configuration option enables a list of files.
+#
+# Makefile for the VPU drivers.
+#
 
 obj-$(CONFIG_MXC_VPU)                  += mxc_vpu.o
 
+ifeq ($(CONFIG_MXC_VPU_DEBUG),y)
+EXTRA_CFLAGS += -DDEBUG
+endif

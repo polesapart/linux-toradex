@@ -19,11 +19,7 @@
  * @ingroup VPU
  */
 
-#ifdef	CONFIG_MXC_VPU_DEBUG
-#define	DEBUG
 #include <linux/kernel.h>
-#endif
-
 #include <linux/mm.h>
 #include <linux/interrupt.h>
 #include <linux/autoconf.h>
@@ -248,10 +244,11 @@ static int vpu_ioctl(struct inode *inode, struct file *filp, u_int cmd,
 			if (!wait_event_interruptible_timeout
 			    (vpu_queue, codec_done != 0,
 			     msecs_to_jiffies(timeout))) {
-				printk("VPU blocking: timeout.\n");
+				printk(KERN_WARNING "VPU blocking: timeout.\n");
 				ret = -ETIME;
 			} else if (signal_pending(current)) {
-				printk("VPU interrupt received.\n");
+				printk(KERN_WARNING
+				       "VPU interrupt received.\n");
 				ret = -ERESTARTSYS;
 			}
 
