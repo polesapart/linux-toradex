@@ -240,14 +240,16 @@ void search_ROM_accelerator(void *data, u8 search_type,
 			reg_val = rn2[z] >> (8 * w);
 			mxc_w1_ds2_write_byte(data, reg_val);
 			reg_val = mxc_w1_read_byte(data);
+			if ((reg_val & 0x3) == 0x3) {
+				pr_debug("Device is Not Responding\n");
+				break;
+			}
 			for (j = 0; j < 8; j += 2) {
 				byte = 0xFF;
 				byte1 = 1;
 				byte ^= byte1 << j;
 				bit = (reg_val >> j) & 0x1;
 				bit2 = (reg_val >> j);
-				if ((bit2 & 0x3) == 0x3)
-					pr_debug("Device is Not Responding\n");
 				if (bit) {
 					prev_disc = disc;
 					disc = 8 * i + j;
