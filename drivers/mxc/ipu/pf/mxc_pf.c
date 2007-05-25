@@ -493,29 +493,34 @@ static int mxc_pf_open(struct inode *inode, struct file *filp)
 {
 	int i;
 
-	if (open_count++ == 0) {
-		memset(&pf_data, 0, sizeof(pf_data));
-		for (i = 0; i < PF_MAX_BUFFER_CNT; i++) {
-			pf_data.buf[i].index = -1;
-		}
-		init_waitqueue_head(&pf_data.pf_wait);
-		init_MUTEX(&pf_data.busy_lock);
-
-		pf_data.busy_flag = 1;
-
-		ipu_request_irq(IPU_IRQ_PF_Y_OUT_EOF, mxc_pf_irq_handler,
-				0, "mxc_ipu_pf", &pf_data);
-
-		ipu_request_irq(IPU_IRQ_PF_U_OUT_EOF, mxc_pf_irq_handler,
-				0, "mxc_ipu_pf", &pf_data);
-
-		ipu_request_irq(IPU_IRQ_PF_V_OUT_EOF, mxc_pf_irq_handler,
-				0, "mxc_ipu_pf", &pf_data);
-
-		ipu_disable_irq(IPU_IRQ_PF_Y_OUT_EOF);
-		ipu_disable_irq(IPU_IRQ_PF_U_OUT_EOF);
-		ipu_disable_irq(IPU_IRQ_PF_V_OUT_EOF);
+	if (open_count) {
+		return -EBUSY;
 	}
+
+	open_count++;
+
+	memset(&pf_data, 0, sizeof(pf_data));
+	for (i = 0; i < PF_MAX_BUFFER_CNT; i++) {
+		pf_data.buf[i].index = -1;
+	}
+	init_waitqueue_head(&pf_data.pf_wait);
+	init_MUTEX(&pf_data.busy_lock);
+
+	pf_data.busy_flag = 1;
+
+	ipu_request_irq(IPU_IRQ_PF_Y_OUT_EOF, mxc_pf_irq_handler,
+			0, "mxc_ipu_pf", &pf_data);
+
+	ipu_request_irq(IPU_IRQ_PF_U_OUT_EOF, mxc_pf_irq_handler,
+			0, "mxc_ipu_pf", &pf_data);
+
+	ipu_request_irq(IPU_IRQ_PF_V_OUT_EOF, mxc_pf_irq_handler,
+			0, "mxc_ipu_pf", &pf_data);
+
+	ipu_disable_irq(IPU_IRQ_PF_Y_OUT_EOF);
+	ipu_disable_irq(IPU_IRQ_PF_U_OUT_EOF);
+	ipu_disable_irq(IPU_IRQ_PF_V_OUT_EOF);
+
 	return 0;
 }
 
@@ -534,7 +539,7 @@ static int mxc_pf_release(struct inode *inode, struct file *filp)
 {
 	pf_reqbufs_params req_buf;
 
-	if (--open_count == 0) {
+	if (open_count) {
 		mxc_pf_uninit();
 
 		/* Free any allocated buffers */
@@ -544,7 +549,7 @@ static int mxc_pf_release(struct inode *inode, struct file *filp)
 		ipu_free_irq(IPU_IRQ_PF_V_OUT_EOF, &pf_data);
 		ipu_free_irq(IPU_IRQ_PF_U_OUT_EOF, &pf_data);
 		ipu_free_irq(IPU_IRQ_PF_Y_OUT_EOF, &pf_data);
-
+		open_count--;
 	}
 	return 0;
 }
