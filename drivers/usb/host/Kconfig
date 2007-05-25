@@ -49,13 +49,13 @@ config USB_EHCI_ARC
 
 config USB_EHCI_ARC_H1
 	bool "Support for Host1 port on ARC controller"
-	depends on USB_EHCI_ARC
+	depends on USB_EHCI_ARC	&& (ARCH_MX27 || ARCH_MX3)
 	---help---
 	  Enable support for the USB Host1 port.
 
 config USB_EHCI_ARC_H2
 	bool "Support for Host2 port on ARC controller"
-	depends on USB_EHCI_ARC
+	depends on USB_EHCI_ARC	&& (ARCH_MX27 || ARCH_MX3)
 	---help---
 	  Enable support for the USB Host2 port.
 
@@ -79,6 +79,7 @@ config USB_EHCI_ARC_OTGHS
 
 config USB_EHCI_ARC_OTGFS
 	bool "Full Speed"
+	depends on MACH_MX31ADS || MACH_MX27ADS
 	---help---
 	  Enable support for the USB OTG port in FS Host mode.
 endchoice

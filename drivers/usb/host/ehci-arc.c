@@ -30,13 +30,7 @@
 #include <asm/arch/arc_otg.h>
 #include <asm/arch/isp1504.h>
 
-#ifdef CONFIG_ARCH_MX3
-#include <asm/arch/mx31_usb.h>
-#endif
-
-#ifdef CONFIG_ARCH_MX27
-#include <asm/arch/mx27_usb.h>
-#endif
+#include <asm/arch/arc_usb.h>
 
 #undef dbg
 #undef vdbg
