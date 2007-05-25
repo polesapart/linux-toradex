@@ -1099,7 +1099,7 @@ static void _set_brightness(unsigned char level)
 /*
  * @brief LCDC interrupt handler
  */
-static irqreturn_t mx2fb_isr(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t mx2fb_isr(int irq, void *dev_id)
 {
 	struct fb_event event;
 	unsigned long status = __raw_readl(LCDC_REG(LCDC_LISR));
