@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -17,20 +17,20 @@
 #include <asm/arch/hardware.h>
 
 /* Register offsets */
-#define CCM_CSCR                0x0
-#define CCM_MPCTL0              0x4
-#define CCM_MPCTL1              0x8
-#define CCM_SPCTL0              0xC
-#define CCM_SPCTL1              0x10
-#define CCM_OSC26MCTL           0x14
-#define CCM_PCDR0               0x18
-#define CCM_PCDR1               0x1c
-#define CCM_PCCR0               0x20
-#define CCM_PCCR1               0x24
-#define CCM_CCSR                0x28
-#define CCM_PMCTL               0x2c
-#define CCM_PMCOUNT             0x30
-#define CCM_WKGDCTL             0x34
+#define CCM_CSCR                (IO_ADDRESS(CCM_BASE_ADDR) + 0x0)
+#define CCM_MPCTL0              (IO_ADDRESS(CCM_BASE_ADDR) + 0x4)
+#define CCM_MPCTL1              (IO_ADDRESS(CCM_BASE_ADDR) + 0x8)
+#define CCM_SPCTL0              (IO_ADDRESS(CCM_BASE_ADDR) + 0xC)
+#define CCM_SPCTL1              (IO_ADDRESS(CCM_BASE_ADDR) + 0x10)
+#define CCM_OSC26MCTL           (IO_ADDRESS(CCM_BASE_ADDR) + 0x14)
+#define CCM_PCDR0               (IO_ADDRESS(CCM_BASE_ADDR) + 0x18)
+#define CCM_PCDR1               (IO_ADDRESS(CCM_BASE_ADDR) + 0x1c)
+#define CCM_PCCR0               (IO_ADDRESS(CCM_BASE_ADDR) + 0x20)
+#define CCM_PCCR1               (IO_ADDRESS(CCM_BASE_ADDR) + 0x24)
+#define CCM_CCSR                (IO_ADDRESS(CCM_BASE_ADDR) + 0x28)
+#define CCM_PMCTL               (IO_ADDRESS(CCM_BASE_ADDR) + 0x2c)
+#define CCM_PMCOUNT             (IO_ADDRESS(CCM_BASE_ADDR) + 0x30)
+#define CCM_WKGDCTL             (IO_ADDRESS(CCM_BASE_ADDR) + 0x34)
 
 #define CCM_CSCR_USB_OFFSET     28
 #define CCM_CSCR_USB_MASK       (0x7 << 28)
@@ -115,68 +115,129 @@
 #define CCM_PCDR1_PERDIV1_OFFSET        0
 #define CCM_PCDR1_PERDIV1_MASK          0x3f
 
-#define CCM_PCCR0_CSPI1         (1 << 31)
-#define CCM_PCCR0_CSPI2         (1 << 30)
-#define CCM_PCCR0_CSPI3         (1 << 29)
-#define CCM_PCCR0_DMA           (1 << 28)
-#define CCM_PCCR0_EMMA          (1 << 27)
-#define CCM_PCCR0_FEC           (1 << 26)
-#define CCM_PCCR0_GPIO          (1 << 25)
-#define CCM_PCCR0_GPT1          (1 << 24)
-#define CCM_PCCR0_GPT2          (1 << 23)
-#define CCM_PCCR0_GPT3          (1 << 22)
-#define CCM_PCCR0_GPT4          (1 << 21)
-#define CCM_PCCR0_GPT5          (1 << 20)
-#define CCM_PCCR0_GPT6          (1 << 19)
-#define CCM_PCCR0_I2C1          (1 << 18)
-#define CCM_PCCR0_I2C2          (1 << 17)
-#define CCM_PCCR0_IIM           (1 << 16)
-#define CCM_PCCR0_KPP           (1 << 15)
-#define CCM_PCCR0_LCDC          (1 << 14)
-#define CCM_PCCR0_MSHC          (1 << 13)
-#define CCM_PCCR0_OWIRE         (1 << 12)
-#define CCM_PCCR0_PWM           (1 << 11)
-#define CCM_PCCR0_RTC           (1 << 9)
-#define CCM_PCCR0_RTIC          (1 << 8)
-#define CCM_PCCR0_SAHARA        (1 << 7)
-#define CCM_PCCR0_SCC           (1 << 6)
-#define CCM_PCCR0_SDHC1         (1 << 5)
-#define CCM_PCCR0_SDHC2         (1 << 4)
-#define CCM_PCCR0_SDHC3         (1 << 3)
-#define CCM_PCCR0_SLCDC         (1 << 2)
-#define CCM_PCCR0_SSI1_IPG      (1 << 1)
-#define CCM_PCCR0_SSI2_IPG      (1 << 0)
+#define CCM_PCCR0_CSPI1_OFFSET          31
+#define CCM_PCCR0_CSPI1_MASK            (1 << 31)
+#define CCM_PCCR0_CSPI2_OFFSET          30
+#define CCM_PCCR0_CSPI2_MASK            (1 << 30)
+#define CCM_PCCR0_CSPI3_OFFSET          29
+#define CCM_PCCR0_CSPI3_MASK            (1 << 29)
+#define CCM_PCCR0_DMA_OFFSET            28
+#define CCM_PCCR0_DMA_MASK              (1 << 28)
+#define CCM_PCCR0_EMMA_OFFSET           27
+#define CCM_PCCR0_EMMA_MASK             (1 << 27)
+#define CCM_PCCR0_FEC_OFFSET            26
+#define CCM_PCCR0_FEC_MASK              (1 << 26)
+#define CCM_PCCR0_GPIO_OFFSET           25
+#define CCM_PCCR0_GPIO_MASK             (1 << 25)
+#define CCM_PCCR0_GPT1_OFFSET           24
+#define CCM_PCCR0_GPT1_MASK             (1 << 24)
+#define CCM_PCCR0_GPT2_OFFSET           23
+#define CCM_PCCR0_GPT2_MASK             (1 << 23)
+#define CCM_PCCR0_GPT3_OFFSET           22
+#define CCM_PCCR0_GPT3_MASK             (1 << 22)
+#define CCM_PCCR0_GPT4_OFFSET           21
+#define CCM_PCCR0_GPT4_MASK             (1 << 21)
+#define CCM_PCCR0_GPT5_OFFSET           20
+#define CCM_PCCR0_GPT5_MASK             (1 << 20)
+#define CCM_PCCR0_GPT6_OFFSET           19
+#define CCM_PCCR0_GPT6_MASK             (1 << 19)
+#define CCM_PCCR0_I2C1_OFFSET           18
+#define CCM_PCCR0_I2C1_MASK             (1 << 18)
+#define CCM_PCCR0_I2C2_OFFSET           17
+#define CCM_PCCR0_I2C2_MASK             (1 << 17)
+#define CCM_PCCR0_IIM_OFFSET            16
+#define CCM_PCCR0_IIM_MASK              (1 << 16)
+#define CCM_PCCR0_KPP_OFFSET            15
+#define CCM_PCCR0_KPP_MASK              (1 << 15)
+#define CCM_PCCR0_LCDC_OFFSET           14
+#define CCM_PCCR0_LCDC_MASK             (1 << 14)
+#define CCM_PCCR0_MSHC_OFFSET           13
+#define CCM_PCCR0_MSHC_MASK             (1 << 13)
+#define CCM_PCCR0_OWIRE_OFFSET          12
+#define CCM_PCCR0_OWIRE_MASK            (1 << 12)
+#define CCM_PCCR0_PWM_OFFSET            11
+#define CCM_PCCR0_PWM_MASK              (1 << 11)
+#define CCM_PCCR0_RTC_OFFSET            9
+#define CCM_PCCR0_RTC_MASK              (1 << 9)
+#define CCM_PCCR0_RTIC_OFFSET           8
+#define CCM_PCCR0_RTIC_MASK             (1 << 8)
+#define CCM_PCCR0_SAHARA_OFFSET         7
+#define CCM_PCCR0_SAHARA_MASK           (1 << 7)
+#define CCM_PCCR0_SCC_OFFSET            6
+#define CCM_PCCR0_SCC_MASK              (1 << 6)
+#define CCM_PCCR0_SDHC1_OFFSET          5
+#define CCM_PCCR0_SDHC1_MASK            (1 << 5)
+#define CCM_PCCR0_SDHC2_OFFSET          4
+#define CCM_PCCR0_SDHC2_MASK            (1 << 4)
+#define CCM_PCCR0_SDHC3_OFFSET          3
+#define CCM_PCCR0_SDHC3_MASK            (1 << 3)
+#define CCM_PCCR0_SLCDC_OFFSET          2
+#define CCM_PCCR0_SLCDC_MASK            (1 << 2)
+#define CCM_PCCR0_SSI1_IPG_OFFSET       1
+#define CCM_PCCR0_SSI1_IPG_MASK         (1 << 1)
+#define CCM_PCCR0_SSI2_IPG_OFFSET       0
+#define CCM_PCCR0_SSI2_IPG_MASK         (1 << 0)
 
-#define CCM_PCCR1_UART1         (1 << 31)
-#define CCM_PCCR1_UART2         (1 << 30)
-#define CCM_PCCR1_UART3         (1 << 29)
-#define CCM_PCCR1_UART4         (1 << 28)
-#define CCM_PCCR1_UART5         (1 << 27)
-#define CCM_PCCR1_UART6         (1 << 26)
-#define CCM_PCCR1_USBOTG        (1 << 25)
-#define CCM_PCCR1_WDT           (1 << 24)
-#define CCM_PCCR1_HCLK_ATA      (1 << 23)
-#define CCM_PCCR1_HCLK_BROM     (1 << 22)
-#define CCM_PCCR1_HCLK_CSI      (1 << 21)
-#define CCM_PCCR1_HCLK_DMA      (1 << 20)
-#define CCM_PCCR1_HCLK_EMI      (1 << 19)
-#define CCM_PCCR1_HCLK_EMMA     (1 << 18)
-#define CCM_PCCR1_HCLK_FEC      (1 << 17)
-#define CCM_PCCR1_HCLK_VPU     (1 << 16)
-#define CCM_PCCR1_HCLK_LCDC     (1 << 15)
-#define CCM_PCCR1_HCLK_RTIC     (1 << 14)
-#define CCM_PCCR1_HCLK_SAHARA   (1 << 13)
-#define CCM_PCCR1_HCLK_SLCDC    (1 << 12)
-#define CCM_PCCR1_HCLK_USBOTG   (1 << 11)
-#define CCM_PCCR1_PERCLK1       (1 << 10)
-#define CCM_PCCR1_PERCLK2       (1 << 9)
-#define CCM_PCCR1_PERCLK3       (1 << 8)
-#define CCM_PCCR1_PERCLK4       (1 << 7)
-#define CCM_PCCR1_VPU_BAUD     (1 << 6)
-#define CCM_PCCR1_SSI1_BAUD     (1 << 5)
-#define CCM_PCCR1_SSI2_BAUD     (1 << 4)
-#define CCM_PCCR1_NFC_BAUD      (1 << 3)
-#define CCM_PCCR1_MSHC_BAUD     (1 << 2)
+#define CCM_PCCR1_UART1_OFFSET          31
+#define CCM_PCCR1_UART1_MASK            (1 << 31)
+#define CCM_PCCR1_UART2_OFFSET          30
+#define CCM_PCCR1_UART2_MASK            (1 << 30)
+#define CCM_PCCR1_UART3_OFFSET          29
+#define CCM_PCCR1_UART3_MASK            (1 << 29)
+#define CCM_PCCR1_UART4_OFFSET          28
+#define CCM_PCCR1_UART4_MASK            (1 << 28)
+#define CCM_PCCR1_UART5_OFFSET          27
+#define CCM_PCCR1_UART5_MASK            (1 << 27)
+#define CCM_PCCR1_UART6_OFFSET          26
+#define CCM_PCCR1_UART6_MASK            (1 << 26)
+#define CCM_PCCR1_USBOTG_OFFSET         25
+#define CCM_PCCR1_USBOTG_MASK           (1 << 25)
+#define CCM_PCCR1_WDT_OFFSET            24
+#define CCM_PCCR1_WDT_MASK              (1 << 24)
+#define CCM_PCCR1_HCLK_ATA_OFFSET       23
+#define CCM_PCCR1_HCLK_ATA_MASK         (1 << 23)
+#define CCM_PCCR1_HCLK_BROM_OFFSET      22
+#define CCM_PCCR1_HCLK_BROM_MASK        (1 << 22)
+#define CCM_PCCR1_HCLK_CSI_OFFSET       21
+#define CCM_PCCR1_HCLK_CSI_MASK         (1 << 21)
+#define CCM_PCCR1_HCLK_DMA_OFFSET       20
+#define CCM_PCCR1_HCLK_DMA_MASK         (1 << 20)
+#define CCM_PCCR1_HCLK_EMI_OFFSET       19
+#define CCM_PCCR1_HCLK_EMI_MASK         (1 << 19)
+#define CCM_PCCR1_HCLK_EMMA_OFFSET      18
+#define CCM_PCCR1_HCLK_EMMA_MASK        (1 << 18)
+#define CCM_PCCR1_HCLK_FEC_OFFSET       17
+#define CCM_PCCR1_HCLK_FEC_MASK         (1 << 17)
+#define CCM_PCCR1_HCLK_VPU_OFFSET       16
+#define CCM_PCCR1_HCLK_VPU_MASK         (1 << 16)
+#define CCM_PCCR1_HCLK_LCDC_OFFSET      15
+#define CCM_PCCR1_HCLK_LCDC_MASK        (1 << 15)
+#define CCM_PCCR1_HCLK_RTIC_OFFSET      14
+#define CCM_PCCR1_HCLK_RTIC_MASK        (1 << 14)
+#define CCM_PCCR1_HCLK_SAHARA_OFFSET    13
+#define CCM_PCCR1_HCLK_SAHARA_MASK      (1 << 13)
+#define CCM_PCCR1_HCLK_SLCDC_OFFSET     12
+#define CCM_PCCR1_HCLK_SLCDC_MASK       (1 << 12)
+#define CCM_PCCR1_HCLK_USBOTG_OFFSET    11
+#define CCM_PCCR1_HCLK_USBOTG_MASK      (1 << 11)
+#define CCM_PCCR1_PERCLK1_OFFSET        10
+#define CCM_PCCR1_PERCLK1_MASK          (1 << 10)
+#define CCM_PCCR1_PERCLK2_OFFSET        9
+#define CCM_PCCR1_PERCLK2_MASK          (1 << 9)
+#define CCM_PCCR1_PERCLK3_OFFSET        8
+#define CCM_PCCR1_PERCLK3_MASK          (1 << 8)
+#define CCM_PCCR1_PERCLK4_OFFSET        7
+#define CCM_PCCR1_PERCLK4_MASK          (1 << 7)
+#define CCM_PCCR1_VPU_BAUD_OFFSET       6
+#define CCM_PCCR1_VPU_BAUD_MASK         (1 << 6)
+#define CCM_PCCR1_SSI1_BAUD_OFFSET      5
+#define CCM_PCCR1_SSI1_BAUD_MASK        (1 << 5)
+#define CCM_PCCR1_SSI2_BAUD_OFFSET      4
+#define CCM_PCCR1_SSI2_BAUD_MASK        (1 << 4)
+#define CCM_PCCR1_NFC_BAUD_OFFSET       3
+#define CCM_PCCR1_NFC_BAUD_MASK         (1 << 3)
+#define CCM_PCCR1_MSHC_BAUD_OFFSET      2
+#define CCM_PCCR1_MSHC_BAUD_MASK        (1 << 2)
 
 #define CCM_CCSR_32KSR          (1 << 15)
 #define CCM_CCSR_CLKMODE1       (1 << 9)

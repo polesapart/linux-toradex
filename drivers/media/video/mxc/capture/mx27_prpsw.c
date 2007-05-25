@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -23,7 +23,6 @@
 #include <linux/string.h>
 #include <linux/fb.h>
 #include <linux/pci.h>
-#include <asm/arch/clock.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 
@@ -41,7 +40,7 @@ static emma_prp_cfg g_prp_cfg;
 static int g_vfbuf, g_rotbuf;
 static struct tasklet_struct prp_vf_tasklet;
 
-/* 
+/*
  * The following variables represents the virtual address for the cacheable
  * buffers accessed by SW rotation/mirroring. The rotation/mirroring in
  * cacheable buffers has significant performance improvement than it in

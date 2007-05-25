@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -34,6 +34,7 @@
 #include <linux/platform_device.h>
 #include <linux/sysrq.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/dma.h>
@@ -1275,7 +1276,7 @@ static void mxcuart_set_termios(struct uart_port *port,
 	cr2_mask = ~(MXC_UARTUCR2_IRTS | MXC_UARTUCR2_CTSC | MXC_UARTUCR2_PREN |
 		     MXC_UARTUCR2_PROE | MXC_UARTUCR2_STPB | MXC_UARTUCR2_WS);
 
-	per_clk = mxc_get_clocks(umxc->clock_id);
+	per_clk = clk_get_rate(umxc->clk);
 
 	mxcuart_get_maxbaud(per_clk, &max_baud);
 	/*
@@ -1510,9 +1511,9 @@ mxcuart_pm(struct uart_port *port, unsigned int state, unsigned int oldstate)
 	uart_mxc_port *umxc = (uart_mxc_port *) port;
 
 	if (state)
-		mxc_clks_disable(umxc->clock_id);
+		clk_disable(umxc->clk);
 	else
-		mxc_clks_enable(umxc->clock_id);
+		clk_enable(umxc->clk);
 }
 
 /*!
@@ -1792,7 +1793,7 @@ static int mxcuart_resume(struct platform_device *pdev)
  *                information that is used by the suspend, resume and remove
  *                functions
  *
- * @return  The function always returns 0.
+ * @return  The function returns 0 if successful; -1 otherwise.
  */
 static int mxcuart_probe(struct platform_device *pdev)
 {
@@ -1809,6 +1810,11 @@ static int mxcuart_probe(struct platform_device *pdev)
 		if (mxc_ports[id]->dma_enabled == 1) {
 			mxc_ports[id]->port.flags |= UPF_LOW_LATENCY;
 		}
+
+		mxc_ports[id]->clk = clk_get(&pdev->dev, "uart_clk");
+		if (mxc_ports[id]->clk == NULL)
+			return -1;
+
 		uart_add_one_port(&mxc_reg, &mxc_ports[id]->port);
 		platform_set_drvdata(pdev, mxc_ports[id]);
 		pdev->dev.power.can_wakeup = 1;

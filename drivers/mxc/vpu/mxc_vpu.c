@@ -1,5 +1,5 @@
 /*
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -34,6 +34,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/wait.h>
 #include <linux/list.h>
+#include <linux/clk.h>
 
 #include <asm/uaccess.h>
 #include <asm/io.h>
@@ -41,7 +42,6 @@
 #include <asm/dma-mapping.h>
 #include <asm/hardware.h>
 
-#include <asm/arch/clock.h>
 #include <asm/arch/mxc_vpu.h>
 
 #define	BIT_INT_CLEAR		0x00C
@@ -65,6 +65,7 @@ static int vpu_major = 0;
 static struct class *vpu_class;
 static struct vpu vpu_data;
 static u8 open_count = 0;
+static struct clk *vpu_clk;
 
 /* implement the blocking ioctl */
 static int codec_done = 0;
@@ -119,7 +120,7 @@ static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
  */
 static int vpu_hardware_enable(void)
 {
-	mxc_clks_enable(VPU_BAUD);
+	clk_enable(vpu_clk);
 	/* enable user space access for vpu register */
 	__raw_writel(0x1, IO_ADDRESS(AIPI_BASE_ADDR + 0x20008));
 	return 0;
@@ -132,7 +133,7 @@ static int vpu_hardware_enable(void)
  */
 static int vpu_hardware_disable(void)
 {
-	mxc_clks_disable(VPU_BAUD);
+	clk_disable(vpu_clk);
 	__raw_writel(0xffffffff, IO_ADDRESS(AIPI_BASE_ADDR + 0x20008));
 	return 0;
 
@@ -384,6 +385,8 @@ static int vpu_dev_probe(struct platform_device *pdev)
 		goto err_out_class;
 	}
 
+	vpu_clk = clk_get(&pdev->dev, "vpu_clk");
+
 	request_irq(INT_VPU, vpu_irq_handler, 0, "VPU_CODEC_IRQ",
 		    (void *)(&vpu_data));
 
@@ -431,6 +434,8 @@ static void __exit vpu_exit(void)
 		}
 		vpu_major = 0;
 	}
+
+	clk_put(vpu_clk);
 
 	platform_driver_unregister(&mxcvpu_driver);
 	return;

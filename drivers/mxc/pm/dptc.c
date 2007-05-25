@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -45,7 +45,6 @@
 #include <linux/jiffies.h>
 #include <linux/platform_device.h>
 #include <asm/arch/sdma.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/pmic_power.h>
 
 /*
@@ -64,6 +63,10 @@
 #ifdef CONFIG_ARCH_MX3
 #include "../../../arch/arm/mach-mx3/crm_regs.h"
 #endif
+
+extern unsigned long mxc_ccm_get_reg(unsigned int reg_offset);
+extern void mxc_ccm_modify_reg(unsigned int reg_offset, unsigned int mask,
+			       unsigned int data);
 
 /*!
  * The dvfs_dptc_params structure holds all the internal DPTC driver parameters

@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -23,11 +23,11 @@
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/interrupt.h>
-#include <asm/arch/hardware.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
-#include <asm/arch/clock.h>
 #include <linux/module.h>
+#include <linux/clk.h>
+#include <asm/arch/hardware.h>
 
 #include "mx27_csi.h"
 
@@ -247,12 +247,17 @@ void csi_set_callback(csi_irq_callback_t callback, void *data)
 	g_callback_data = data;
 }
 
+static struct clk *csi_clk;
+
 int32_t __init csi_init_module(void)
 {
 	int ret = 0;
 
-	mxc_clks_enable(CSI_BAUD);
+	csi_clk = clk_get(NULL, "csi_clk");
+	clk_enable(csi_clk);
+
 	csihw_reset();
+	csi_enable_mclk(0, 1, 0);
 
 	/* interrupt enable */
 	ret = request_irq(INT_CSI, csi_irq_handler, 0, "csi", 0);
@@ -267,7 +272,8 @@ void __exit csi_cleanup_module(void)
 	/* free irq */
 	free_irq(INT_CSI, 0);
 
-	mxc_clks_disable(CSI_BAUD);
+	clk_disable(csi_clk);
+	clk_put(csi_clk);
 }
 
 module_init(csi_init_module);

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Deep Blue Solutions Ltd
  *  Copyright (C) 2002 Shane Nay (shane@minirl.com)
- *  Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include <linux/device.h>
 #include <linux/input.h>
 #include <linux/nodemask.h>
+#include <linux/clk.h>
 #include <linux/spi/spi.h>
 #include <linux/serial_8250.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
@@ -45,7 +46,6 @@
 #include <asm/arch/memory.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/clock.h>
 #include <asm/mach/keypad.h>
 #include "gpio_mux.h"
 
@@ -58,6 +58,7 @@
 
 extern void mxc_map_io(void);
 extern void mxc_init_irq(void);
+extern void mxc_clocks_init(void);
 extern struct sys_timer mxc_timer;
 
 static char command_line[COMMAND_LINE_SIZE];
@@ -609,26 +610,45 @@ static inline int mxc_init_extuart(void)
 #if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
 extern void gpio_ssi_active(int ssi_num);
 
-static inline int mxc_init_pmic_audio(void)
+static void __init mxc_init_pmic_audio(void)
 {
-	/* Assign CLK_26M to CLKO */
-	mxc_set_clock_output(CKO, CKIH_CLK, 1);
+	struct clk *ssi_clk;
+	struct clk *ckih_clk;
+	struct clk *cko_clk;
+
+	/* Enable 26 mhz clock on CKO1 for PMIC audio */
+	ckih_clk = clk_get(NULL, "ckih");
+	cko_clk = clk_get(NULL, "clko_clk");
+	if (IS_ERR(ckih_clk) || IS_ERR(cko_clk)) {
+		printk(KERN_ERR "Unable to set CLKO output to CKIH\n");
+	} else {
+		clk_set_parent(cko_clk, ckih_clk);
+		clk_set_rate(cko_clk, clk_get_rate(ckih_clk));
+		clk_enable(cko_clk);
+	}
+	clk_put(ckih_clk);
+	clk_put(cko_clk);
+
+	ssi_clk = clk_get(NULL, "ssi_clk.0");
+	clk_enable(ssi_clk);
+	clk_put(ssi_clk);
+	ssi_clk = clk_get(NULL, "ssi_clk.1");
+	clk_enable(ssi_clk);
+	clk_put(ssi_clk);
+
 	gpio_ssi_active(0);
 	gpio_ssi_active(1);
-	mxc_clks_enable(SSI1_BAUD);
-	mxc_clks_enable(SSI2_BAUD);
-	return 0;
 }
 #else
-static inline int mxc_init_pmic_audio(void)
+static void __inline mxc_init_pmic_audio(void)
 {
-	return 0;
 }
 #endif
 
 static void mxc_board_init(void)
 {
 	pr_info("AIPI VA base: 0x%x\n", IO_ADDRESS(AIPI_BASE_ADDR));
+	mxc_clocks_init();
 	mxc_gpio_init();
 	mxc_expio_init();
 	mxc_init_keypad();

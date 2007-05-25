@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -23,7 +23,6 @@
 #include <linux/errno.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/ipu.h>
 
 #include "ipu_prv.h"
@@ -141,13 +140,13 @@ int32_t ipu_csi_enable_mclk(int src, bool flag, bool wait)
 		return 0;
 
 	if (flag == true) {
-		mxc_clks_enable(CSI_BAUD);
+		clk_enable(g_ipu_csi_clk);
 		if (wait == true)
 			msleep(10);
 		/*printk("enable csi clock from source %d\n", src);     */
 		gipu_csi_get_mclk_flag = true;
 	} else if (csi_mclk_flag == 0) {
-		mxc_clks_disable(CSI_BAUD);
+		clk_disable(g_ipu_csi_clk);
 		/*printk("disable csi clock from source %d\n", src); */
 		gipu_csi_get_mclk_flag = flag;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -17,6 +17,7 @@
 #include <linux/interrupt.h>
 #include <linux/rtc.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <asm/rtc.h>
 #include <asm/mach/time.h>
 #include <asm/uaccess.h>
@@ -523,12 +524,15 @@ static struct timespec mxc_rtc_delta;
 
 static int __init mxc_rtc_probe(struct platform_device *pdev)
 {
+	struct clk *clkp;
 	struct timespec tv;
 	struct rtc_time temp_time;
 	u32 sec;
 	int ret;
 
-	mxc_clks_enable(RTC_CLK);
+	clkp = clk_get(&pdev->dev, "rtc_clk");
+	clk_enable(clkp);
+
 	/* Configure and enable the RTC */
 	if ((ret =
 	     request_irq(INT_RTC, mxc_rtc_interrupt, 0, "rtc", NULL)) != 0) {

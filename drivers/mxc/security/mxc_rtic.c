@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -26,9 +26,9 @@
  */
 
 #include "mxc_rtic.h"
-#include <asm/arch/clock.h>
 
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #ifdef CONFIG_MXC_RTIC_TEST_DEBUG
 #include <linux/module.h>
 #endif				/* CONFIG_MXC_RTIC_TEST_DEBUG */
@@ -44,9 +44,10 @@
 
 void rtic_init(void)
 {
-#ifdef CONFIG_ARCH_MX27
-	mxc_clks_enable(RTIC_CLK);
-#endif				/* CONFIG_ARCH_MX27 */
+	struct clk *clk;
+
+	clk = clk_get(NULL, "rtic_clk");
+	clk_enable(clk);
 }
 
 /*!

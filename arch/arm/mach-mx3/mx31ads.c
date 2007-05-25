@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Deep Blue Solutions Ltd
  *  Copyright (C) 2002 Shane Nay (shane@minirl.com)
- *  Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #endif
 #include <linux/input.h>
 #include <linux/nodemask.h>
+#include <linux/clk.h>
 #include <linux/spi/spi.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -46,7 +47,6 @@
 #include <asm/mach/keypad.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/clock.h>
 
 #include "crm_regs.h"
 #include "iomux.h"
@@ -64,6 +64,7 @@ extern void mxc_cpu_init(void) __init;
 extern void mx31ads_gpio_init(void) __init;
 extern struct sys_timer mxc_timer;
 extern void mxc_cpu_common_init(void);
+extern int mxc_clocks_init(void);
 
 static void mxc_nop_release(struct device *dev)
 {
@@ -510,15 +511,59 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 #endif
 }
 
+#if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
+extern void gpio_activate_audio_ports(void);
+
+static void __init mxc_init_pmic_audio(void)
+{
+	struct clk *pll_clk;
+	struct clk *ssi_clk;
+	struct clk *ckih_clk;
+	struct clk *cko_clk;
+
+	/* Enable 26 mhz clock on CKO1 for PMIC audio */
+	ckih_clk = clk_get(NULL, "ckih");
+	cko_clk = clk_get(NULL, "cko1_clk");
+	if (IS_ERR(ckih_clk) || IS_ERR(cko_clk)) {
+		printk(KERN_ERR "Unable to set CKO1 output to CKIH\n");
+	} else {
+		clk_set_parent(cko_clk, ckih_clk);
+		clk_set_rate(cko_clk, clk_get_rate(ckih_clk));
+		clk_enable(cko_clk);
+	}
+	clk_put(ckih_clk);
+	clk_put(cko_clk);
+
+	/* Assign USBPLL to be used by SSI1/2 */
+	pll_clk = clk_get(NULL, "usb_pll");
+	ssi_clk = clk_get(NULL, "ssi_clk.0");
+	clk_set_parent(ssi_clk, pll_clk);
+	clk_enable(ssi_clk);
+	clk_put(ssi_clk);
+
+	ssi_clk = clk_get(NULL, "ssi_clk.1");
+	clk_set_parent(ssi_clk, pll_clk);
+	clk_enable(ssi_clk);
+	clk_put(ssi_clk);
+	clk_put(pll_clk);
+
+	gpio_activate_audio_ports();
+}
+#else
+static void __inline mxc_init_pmic_audio(void)
+{
+}
+#endif
+
 /*!
  * Board specific initialization.
  */
 static void __init mxc_board_init(void)
 {
 	mxc_cpu_common_init();
+	mxc_clocks_init();
 
-	/* Enable 26 mhz clock on CKO1 for PMIC audio */
-	mxc_ccm_modify_reg(MXC_CCM_COSR, 0x00000fff, 0x00000208);
+	mxc_init_pmic_audio();
 
 	mxc_gpio_init();
 	mx31ads_gpio_init();
@@ -527,10 +572,6 @@ static void __init mxc_board_init(void)
 	mxc_init_extuart();
 	mxc_init_nor_mtd();
 	mxc_init_nand_mtd();
-
-	/* Assign USBPLL to be used by SSI1/2 */
-	mxc_set_clocks_pll(SSI1_BAUD, USBPLL);
-	mxc_set_clocks_pll(SSI2_BAUD, USBPLL);
 
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));

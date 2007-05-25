@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -36,6 +36,7 @@
 #include <linux/fs.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <asm/uaccess.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
@@ -43,7 +44,6 @@
 #include <linux/jiffies.h>
 #include <linux/vmalloc.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/pmic_external.h>
 
 /*
@@ -417,6 +417,7 @@ static int __init dvfs_dptc_init_default_table(void)
 {
 	int res = 0;
 	char *table_str;
+	struct clk *clk;
 
 	dvfs_dptc_tables_s *default_table;
 
@@ -425,16 +426,19 @@ static int __init dvfs_dptc_init_default_table(void)
 	if (!default_table) {
 		return -ENOMEM;
 	}
+
+	table_str = default_table_str;
+	if (cpu_is_mx31()) {
+		clk = clk_get(NULL, "ckih");
+		if (clk_get_rate(clk) == 27000000) {
+			printk(KERN_INFO
+			       "DVFS & DPTC: using 27MHz CKIH table\n");
 #ifdef CONFIG_ARCH_MX3
-	if (mxc_get_clocks(CKIH_CLK) == 27000000) {
-		printk("DVFS & DPTC: using 27MHz CKIH table\n");
-		table_str = default_table_str_27ckih;
-	} else {
+			table_str = default_table_str_27ckih;
 #endif
-		table_str = default_table_str;
-#ifdef CONFIG_ARCH_MX3
+		}
+		clk_put(clk);
 	}
-#endif
 
 	memset(default_table, 0, sizeof(dvfs_dptc_tables_s));
 	res = dvfs_dptc_parse_table(default_table, table_str);
@@ -995,6 +999,7 @@ static ssize_t dvfs_dptc_read(struct file *filp, char __user * buf,
 static int dvfs_dptc_ioctl(struct inode *inode, struct file *filp,
 			   unsigned int cmd, unsigned long arg)
 {
+	struct clk *clk;
 	unsigned int tmp;
 	int ret_val = -ENOIOCTLCMD;
 	char *tmp_str;
@@ -1135,7 +1140,8 @@ static int dvfs_dptc_ioctl(struct inode *inode, struct file *filp,
 		break;
 #endif				/* CONFIG_MXC_DVFS */
 	case PM_IOCGFREQ:
-		ret_val = mxc_get_clocks(CPU_CLK);
+		clk = clk_get(NULL, "cpu_clk");
+		ret_val = clk_get_rate(clk);
 		break;
 
 		/* Unknown ioctl command -> return error */

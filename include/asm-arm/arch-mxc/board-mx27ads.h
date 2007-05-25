@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -33,11 +33,6 @@
  * Include Files
  */
 #include <asm/arch/board.h>
-
-#define CKIH_CLK_FREQ           26000000	/* 26M reference clk */
-#define CKIH_CLK_FREQ_27MHZ     27000000
-#define CKIL_CLK_FREQ           (32768 * 1024)	/* 32.768k oscillator in */
-#define CKIH_27MHZ_BIT_SET      (1 << 3)
 
 /* Start of physical RAM */
 #define PHYS_OFFSET             UL(0xA0000000)

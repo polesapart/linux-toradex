@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/types.h>
+#include <linux/clk.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
@@ -36,7 +37,6 @@
 #include <asm/irq.h>
 #include <asm/io.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/clock.h>
 
 #ifdef CONFIG_ARCH_MX27
 #include "mxc_spi_mx27.h"
@@ -194,7 +194,7 @@ struct mxc_spi {
 	/*!
 	 * CSPI Clock id.
 	 */
-	enum mxc_clocks clock_id;
+	struct clk *clk;
 	/*!
 	 * CSPI input clock SCLK.
 	 */
@@ -576,13 +576,12 @@ static int mxc_spi_probe(struct platform_device *pdev)
 
 	/* Set this master's data from platform_info */
 
-	master->bus_num = mxc_platform_info->bus_num;
+	master->bus_num = pdev->id + 1;
 	master->num_chipselect = mxc_platform_info->maxchipselect;
 
 	/* Set the master controller driver data for this master */
 
 	master_drv_data = spi_master_get_devdata(master);
-	master_drv_data->clock_id = mxc_platform_info->clock;
 	master_drv_data->mxc_bitbang.master = spi_master_get(master);
 
 	/* Set the master bitbang data */
@@ -663,10 +662,9 @@ static int mxc_spi_probe(struct platform_device *pdev)
 
 	/* Enable the CSPI Clock, CSPI Module, set as a master */
 
-	mxc_clks_enable(master_drv_data->clock_id);
-
-	master_drv_data->spi_ipg_clk =
-	    mxc_get_clocks(master_drv_data->clock_id);
+	master_drv_data->clk = clk_get(&pdev->dev, "cspi_clk");
+	clk_enable(master_drv_data->clk);
+	master_drv_data->spi_ipg_clk = clk_get_rate(master_drv_data->clk);
 
 	__raw_writel(MXC_CSPICTRL_ENABLE | MXC_CSPICTRL_MASTER,
 		     master_drv_data->base + MXC_CSPICTRL);
@@ -702,7 +700,8 @@ static int mxc_spi_probe(struct platform_device *pdev)
 
       err2:
 	gpio_spi_inactive(master->bus_num - 1);
-	mxc_clks_disable(master_drv_data->clock_id);
+	clk_disable(master_drv_data->clk);
+	clk_put(master_drv_data->clk);
 	free_irq(master_drv_data->irq, master_drv_data);
       err1:
 	release_mem_region(pdev->resource[0].start,
@@ -732,7 +731,7 @@ static int mxc_spi_remove(struct platform_device *pdev)
 		    spi_master_get_devdata(master);
 
 		gpio_spi_inactive(master->bus_num - 1);
-		mxc_clks_disable(master_drv_data->clock_id);
+		clk_disable(master_drv_data->clk);
 
 		/* Disable the CSPI module */
 
@@ -832,7 +831,7 @@ static int mxc_spi_suspend(struct platform_device *pdev, pm_message_t state)
 	__raw_writel(MXC_CSPICTRL_DISABLE,
 		     master_drv_data->base + MXC_CSPICTRL);
 
-	mxc_clks_disable(master_drv_data->clock_id);
+	clk_disable(master_drv_data->clk);
 	gpio_spi_inactive(master->bus_num - 1);
 
 	return ret;
@@ -852,7 +851,7 @@ static int mxc_spi_resume(struct platform_device *pdev)
 	struct mxc_spi *master_drv_data = spi_master_get_devdata(master);
 
 	gpio_spi_active(master->bus_num - 1);
-	mxc_clks_enable(master_drv_data->clock_id);
+	clk_enable(master_drv_data->clk);
 
 	spi_bitbang_resume(&master_drv_data->mxc_bitbang);
 	__raw_writel(MXC_CSPICTRL_ENABLE | MXC_CSPICTRL_MASTER,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -40,8 +40,6 @@
  * defines the OS clock tick rate
  */
 #define CLOCK_TICK_RATE         13300000
-
-#define ATA_BASE_CLK            (AHB_CLK)
 
 /*!
  * Register an interrupt handler for the SMN as well as the SCC.  In some

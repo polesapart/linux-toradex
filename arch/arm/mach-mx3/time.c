@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -30,9 +30,10 @@
 #include <linux/interrupt.h>
 #include <asm/mach/time.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include "time_priv.h"
 #include <linux/irq.h>
+
+extern unsigned long clk_early_get_timer_rate(void);
 
 /*!
  * This function converts system timer ticks to microseconds
@@ -206,7 +207,9 @@ void __init mxc_init_time(void)
 
 	__raw_writel(reg, MXC_GPT_GPTCR);
 
-	v = mxc_get_clocks(GPT_CLK);
+	/* Normal clk api are not yet initialized, so use early verion */
+	v = clk_early_get_timer_rate();
+
 	__raw_writel((v / CLOCK_TICK_RATE) - 1, MXC_GPT_GPTPR);
 
 	if ((v % CLOCK_TICK_RATE) != 0) {

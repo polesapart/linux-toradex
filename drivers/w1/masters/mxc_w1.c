@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -43,9 +43,9 @@
 #include <linux/timer.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <asm/hardware.h>
 #include <asm/setup.h>
-#include <asm/arch/clock.h>
 
 #include "../w1.h"
 #include "../w1_int.h"
@@ -90,6 +90,7 @@ struct mxc_w1_device {
 	char *base_address;
 	unsigned long found;
 	unsigned int clkdiv;
+	struct clk *clk;
 	struct w1_bus_master *bus_master;
 };
 
@@ -164,18 +165,13 @@ static u8 mxc_w1_ds2_touch_bit(void *data, u8 bit)
  */
 static void mxc_w1_hw_init(struct mxc_w1_device *dev)
 {
-	mxc_clks_enable(OWIRE_CLK);
+	clk_enable(dev->clk);
 
 	/* set the timer divider clock to divide by 65 */
 	/* as the clock to the One Wire is at 66.5MHz */
 	__raw_writeb(dev->clkdiv, dev->base_address + MXC_W1_TIME_DIVIDER);
 
 	return;
-}
-
-static int mxc_w1_getdiv(void)
-{
-	return ((mxc_get_clocks(OWIRE_CLK) / 1000000) - 1);
 }
 
 /*!
@@ -191,17 +187,17 @@ static int __devinit mxc_w1_probe(struct platform_device *pdev)
 	struct mxc_w1_device *dev;
 	int err = 0;
 
-	dev = kmalloc(sizeof(struct mxc_w1_device) +
+	dev = kzalloc(sizeof(struct mxc_w1_device) +
 		      sizeof(struct w1_bus_master), GFP_KERNEL);
 	if (!dev) {
 		return -ENOMEM;
 	}
 
-	memset(dev, 0,
-	       sizeof(struct mxc_w1_device) + sizeof(struct w1_bus_master));
+	dev->clk = clk_get(&pdev->dev, "owire_clk");
+
 	dev->bus_master = (struct w1_bus_master *)(dev + 1);
 	dev->found = 1;
-	dev->clkdiv = mxc_w1_getdiv();
+	dev->clkdiv = (clk_get_rate(dev->clk) / 1000000) - 1;
 	dev->base_address = (void *)IO_ADDRESS(OWIRE_BASE_ADDR);
 
 	mxc_w1_hw_init(dev);
@@ -232,6 +228,7 @@ static int mxc_w1_remove(struct platform_device *pdev)
 {
 	struct mxc_w1_device *dev = platform_get_drvdata(pdev);
 
+	clk_put(dev->clk);
 	if (dev->found) {
 		w1_remove_master_device(dev->bus_master);
 	}

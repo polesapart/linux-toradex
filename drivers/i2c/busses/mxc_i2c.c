@@ -30,10 +30,9 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
-
+#include <linux/clk.h>
 #include <asm/irq.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include "mxc_i2c_reg.h"
 
 /*!
@@ -68,9 +67,9 @@ typedef struct {
 	unsigned int clkdiv;
 
 	/*!
-	 * The default clock source to be used.
+	 * The clock source for the device.
 	 */
-	enum mxc_clocks clk;
+	struct clk *clk;
 
 	/*!
 	 * The current power state of the device
@@ -373,7 +372,7 @@ static int mxc_i2c_writebytes(mxc_i2c_device * dev, struct i2c_msg *msg,
  */
 static void mxc_i2c_module_en(mxc_i2c_device * dev, int trans_flag)
 {
-	mxc_clks_enable(dev->clk);
+	clk_enable(dev->clk);
 	/* Set the frequency divider */
 	writew(dev->clkdiv, dev->membase + MXC_IFDR);
 	/* Clear the status register */
@@ -391,7 +390,7 @@ static void mxc_i2c_module_en(mxc_i2c_device * dev, int trans_flag)
 static void mxc_i2c_module_dis(mxc_i2c_device * dev)
 {
 	writew(0x0, dev->membase + MXC_I2CR);
-	mxc_clks_disable(dev->clk);
+	clk_disable(dev->clk);
 }
 
 /*!
@@ -668,7 +667,8 @@ static int mxci2c_probe(struct platform_device *pdev)
 
 	gpio_i2c_active(id);
 
-	clk_freq = mxc_get_clocks(i2c_plat_data->clk);
+	mxc_i2c->clk = clk_get(&pdev->dev, "i2c_clk");
+	clk_freq = clk_get_rate(mxc_i2c->clk);
 	mxc_i2c->clkdiv = -1;
 	if (i2c_plat_data->i2c_clk) {
 		/* Calculate divider and round up any fractional part */
@@ -729,6 +729,7 @@ static int mxci2c_remove(struct platform_device *pdev)
 	free_irq(mxc_i2c->irq, mxc_i2c);
 	i2c_del_adapter(&mxc_i2c->adap);
 	gpio_i2c_inactive(id);
+	clk_put(mxc_i2c->clk);
 	platform_set_drvdata(pdev, NULL);
 	return 0;
 }

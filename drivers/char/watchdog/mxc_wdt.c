@@ -3,7 +3,7 @@
  *
  * Watchdog driver for FSL MXC. It is based on omap1610_wdt.c
  *
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  * 2005 (c) MontaVista Software, Inc.  All Rights Reserved.
 
  * This program is free software; you can redistribute it and/or modify
@@ -51,6 +51,7 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/moduleparam.h>
+#include <linux/clk.h>
 
 #include <asm/io.h>
 #include <asm/uaccess.h>
@@ -66,6 +67,7 @@
 #define WDOG_COUNT_TO_SEC(c)  ((c >> 8) / 2)
 
 static int mxc_wdt_users;
+static struct clk *mxc_wdt_clk;
 
 static unsigned int timer_margin = TIMER_MARGIN_DEFAULT;
 module_param(timer_margin, uint, 0);
@@ -249,6 +251,9 @@ static int __init mxc_wdt_probe(struct platform_device *pdev)
 	mxc_wdt_users = 0;
 
 	mxc_wdt_miscdev.dev = &pdev->dev;
+
+	mxc_wdt_clk = clk_get(NULL, "wdog_clk");
+	clk_enable(mxc_wdt_clk);
 
 	ret = misc_register(&mxc_wdt_miscdev);
 	if (ret)

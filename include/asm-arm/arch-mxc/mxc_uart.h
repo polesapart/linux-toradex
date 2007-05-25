@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -30,7 +30,6 @@
 #ifdef __KERNEL__
 
 #include <linux/serial_core.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/dma.h>
 
 /*!
@@ -128,9 +127,9 @@ typedef struct {
 	 */
 	unsigned int shared;
 	/*!
-	 * Clock id from clock.h
+	 * Clock id for UART clock
 	 */
-	enum mxc_clocks clock_id;
+	struct clk *clk;
 	/*!
 	 * Information whether RXDMUXSEL must be set or not for IR port
 	 */

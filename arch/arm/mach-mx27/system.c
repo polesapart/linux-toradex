@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 ARM Limited
  * Copyright (C) 2000 Deep Blue Solutions Ltd
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/proc-fns.h>
 #include <asm/system.h>
-#include <asm/arch/clock.h>
 
 /*!
  * @defgroup MSL Machine Specific Layer (MSL)
@@ -62,8 +62,11 @@ void arch_idle(void)
  */
 void arch_reset(char mode)
 {
-	volatile u16 v;
-	mxc_clks_enable(WDOG_CLK);
+	u16 v;
+	struct clk *clk;
+
+	clk = clk_get(NULL, "wdog_clk");
+	clk_enable(clk);
 	v = __raw_readw(IO_ADDRESS(WDOG_BASE_ADDR));
 	__raw_writew(v | WDT_WCR_WDE, IO_ADDRESS(WDOG_BASE_ADDR));
 }

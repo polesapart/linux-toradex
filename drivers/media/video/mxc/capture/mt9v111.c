@@ -27,6 +27,7 @@
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>
 #include <asm/arch/mxc_i2c.h>
 #include "mxc_v4l2_capture.h"
 #include "mt9v111.h"
@@ -598,7 +599,6 @@ static int mt9v111_detect_client(struct i2c_adapter *adapter, int address,
 		return -1;
 	}
 
-	mxc_clks_disable(CSI_BAUD);
 	printk(KERN_INFO "MT9V111 Detected\n");
 
 	return 0;
@@ -618,10 +618,19 @@ I2C_CLIENT_INSMOD;
 static int mt9v111_attach(struct i2c_adapter *adap)
 {
 	uint32_t mclk = 27000000;
-	mxc_clks_enable(CSI_BAUD);
+	struct clk *clk;
+	int err;
+
+	clk = clk_get(NULL, "csi_clk");
+	clk_enable(clk);
 	set_mclk_rate(&mclk);
 
-	return i2c_probe(adap, &addr_data, &mt9v111_detect_client);
+	err = i2c_probe(adap, &addr_data, &mt9v111_detect_client);
+
+	clk_disable(clk);
+	clk_put(clk);
+
+	return err;
 }
 
 /*!

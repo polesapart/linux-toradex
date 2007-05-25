@@ -3,7 +3,7 @@
 #
 
 # Common support
-obj-y := irq.o gpio.o
+obj-y := irq.o gpio.o clock.o
 
 obj-$(CONFIG_ARCH_MX27) += dma_mx2.o
 

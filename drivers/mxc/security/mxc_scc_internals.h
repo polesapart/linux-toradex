@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -262,9 +262,6 @@ struct scc_key_slot {
 	uint32_t offset;	/**< Offset of value from start of each RAM. */
 	uint32_t status;	/**< 0 = unassigned, 1 = assigned. */
 };
-
-/*! Calculated once for quick reference to max address in SCM */
-extern uint32_t scm_highest_memory_address;
 
 /* Forward-declare a number routines which are not part of user api */
 static int scc_init(void);

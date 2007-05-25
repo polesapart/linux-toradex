@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -25,7 +25,6 @@
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/ipu.h>
 
 #include "ipu_prv.h"
@@ -219,6 +218,9 @@ int32_t ipu_adc_set_update_mode(ipu_channel_t channel,
 	int32_t err = 0;
 	uint32_t ref_per, reg, src = 0;
 	uint32_t lock_flags;
+	uint32_t ipu_freq;
+
+	ipu_freq = clk_get_rate(g_ipu_clk);
 
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
@@ -233,7 +235,7 @@ int32_t ipu_adc_set_update_mode(ipu_channel_t channel,
 			err = -EINVAL;
 			goto err0;
 		}
-		ref_per = (refresh_rate * g_ipu_clk) / 217;
+		ref_per = (refresh_rate * ipu_freq) / 217;
 		ref_per--;
 		reg |= ref_per << FS_AUTO_REF_PER_OFFSET;
 
@@ -244,7 +246,7 @@ int32_t ipu_adc_set_update_mode(ipu_channel_t channel,
 			err = -EINVAL;
 			goto err0;
 		}
-		ref_per = (refresh_rate * g_ipu_clk) / 217;
+		ref_per = (refresh_rate * ipu_freq) / 217;
 		ref_per--;
 		reg |= ref_per << FS_AUTO_REF_PER_OFFSET;
 
@@ -496,10 +498,13 @@ int32_t ipu_adc_init_ifc_timing(display_port_t disp, bool read,
 	uint32_t down_per;
 	uint32_t read_per;
 	uint32_t pixclk_per = 0;
+	uint32_t ipu_freq;
 
-	clk_per = (cycle_time * (g_ipu_clk / 1000L) * 16L) / 1000000L;
-	up_per = (up_time * (g_ipu_clk / 1000L) * 4L) / 1000000L;
-	down_per = (down_time * (g_ipu_clk / 1000L) * 4L) / 1000000L;
+	ipu_freq = clk_get_rate(g_ipu_clk);
+
+	clk_per = (cycle_time * (ipu_freq / 1000L) * 16L) / 1000000L;
+	up_per = (up_time * (ipu_freq / 1000L) * 4L) / 1000000L;
+	down_per = (down_time * (ipu_freq / 1000L) * 4L) / 1000000L;
 
 	reg = (clk_per << DISPx_IF_CLK_PER_OFFSET) |
 	    (up_per << DISPx_IF_CLK_UP_OFFSET) |
@@ -507,9 +512,9 @@ int32_t ipu_adc_init_ifc_timing(display_port_t disp, bool read,
 
 	if (read) {
 		read_per =
-		    (read_latch_time * (g_ipu_clk / 1000L) * 4L) / 1000000L;
+		    (read_latch_time * (ipu_freq / 1000L) * 4L) / 1000000L;
 		if (pixel_clk)
-			pixclk_per = (g_ipu_clk * 16L) / pixel_clk;
+			pixclk_per = (ipu_freq * 16L) / pixel_clk;
 		time_conf3 = (read_per << DISPx_IF_CLK_READ_EN_OFFSET) |
 		    (pixclk_per << DISPx_PIX_CLK_PER_OFFSET);
 	}

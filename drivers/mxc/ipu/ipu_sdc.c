@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -125,7 +125,7 @@ int32_t ipu_sdc_init_panel(ipu_panel_t panel,
 	/* Calculate divider */
 	/* fractional part is 4 bits so simply multiple by 2^4 to get fractional part */
 	dev_dbg(g_ipu_dev, "pixel clk = %d\n", pixel_clk);
-	div = (g_ipu_clk * 16) / pixel_clk;
+	div = (clk_get_rate(g_ipu_clk) * 16) / pixel_clk;
 	if (div < 0x40) {	/* Divider less than 4 */
 		dev_dbg(g_ipu_dev,
 			"InitPanel() - Pixel clock divider less than 1\n");

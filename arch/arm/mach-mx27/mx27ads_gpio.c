@@ -1,5 +1,5 @@
 /*
- *  Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -14,9 +14,9 @@
 #include <linux/errno.h>
 #include <linux/module.h>
 #include <linux/device.h>
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
 
 #include "gpio_mux.h"
@@ -26,9 +26,9 @@ static int g_uart_activated[MXC_UART_NR] = { 0, 0, 0, 0, 0, 0 };
 
 /*!
  * @file mx27ads_gpio.c
- * 
- * @brief This file contains all the GPIO setup functions for the board. 
- * 
+ *
+ * @brief This file contains all the GPIO setup functions for the board.
+ *
  * @ingroup GPIO
  */
 
@@ -176,7 +176,7 @@ void config_uartdma_event(int port)
  *	PE2,PE1,PE0,PE24,PE25 -- PRIMARY
  	PC7 - PC13  -- PRIMARY
  	PB23,PB24 -- PRIMARY
- 
+
   * PIN Configuration for USBH2:    : High/Full/Low speed host
   *	PA0 - PA4 -- PRIMARY
        PD19, PD20,PD21,PD22,PD23,PD24,PD26 --Alternate (SECONDARY)
@@ -322,7 +322,7 @@ void gpio_usbotg_fs_inactive(void)
 
 /*!
  * end Setup GPIO for USB
- * 
+ *
  */
 
 /************************************************************************/
@@ -645,7 +645,7 @@ void gpio_pmic_active(void)
 }
 
 /*!
- * GPIO settings not required for keypad 
+ * GPIO settings not required for keypad
  *
  */
 void gpio_keypad_active(void)
@@ -653,7 +653,7 @@ void gpio_keypad_active(void)
 }
 
 /*!
- * GPIO settings not required for keypad 
+ * GPIO settings not required for keypad
  *
  */
 void gpio_keypad_inactive(void)
@@ -666,6 +666,8 @@ void gpio_keypad_inactive(void)
  */
 void gpio_ata_active(void)
 {
+	struct clk *ata_clk = clk_get(NULL, "ata_clk");
+
 	gpio_request_mux(MX27_PIN_ATA_DATA0, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA1, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA2, GPIO_MUX_PRIMARY);
@@ -697,7 +699,7 @@ void gpio_ata_active(void)
 	gpio_request_mux(MX27_PIN_PC_RW_B, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_POE, GPIO_MUX_ALT);
 
-	mxc_clks_enable(ATA_CLK);
+	clk_enable(ata_clk);
 }
 
 /*!
@@ -706,7 +708,10 @@ void gpio_ata_active(void)
  */
 void gpio_ata_inactive(void)
 {
-	mxc_clks_disable(ATA_CLK);
+	struct clk *ata_clk = clk_get(NULL, "ata_clk");
+
+	clk_disable(ata_clk);
+	clk_put(ata_clk);
 
 	gpio_free_mux(MX27_PIN_ATA_DATA0);
 	gpio_free_mux(MX27_PIN_ATA_DATA1);
@@ -1108,21 +1113,21 @@ void gpio_owire_inactive(void)
 
 void gpio_irda_active(void)
 {
+	struct clk *uart2_baud = clk_get(NULL, "uart_baud.1");
+
 	gpio_uart_active(2, 0);
-	mxc_clks_enable(UART2_BAUD);
+	clk_enable(uart2_baud);
 	/* Band width select */
 	//__raw_writew(PBC_BCTRL2_IRDA_SD, PBC_BCTRL2_SET_REG);
 }
 
 void gpio_irda_inactive(void)
 {
-	mxc_clks_disable(UART2_BAUD);
-	gpio_uart_inactive(2, 0);
-}
+	struct clk *uart2_baud = clk_get(NULL, "uart_baud.1");
 
-unsigned int irda_get_clocks(void)
-{
-	return mxc_get_clocks(UART2_BAUD);
+	clk_disable(uart2_baud);
+	clk_put(uart2_baud);
+	gpio_uart_inactive(2, 0);
 }
 
 EXPORT_SYMBOL(gpio_uart_active);
@@ -1168,5 +1173,4 @@ EXPORT_SYMBOL(gpio_owire_active);
 EXPORT_SYMBOL(gpio_owire_inactive);
 EXPORT_SYMBOL(gpio_irda_active);
 EXPORT_SYMBOL(gpio_irda_inactive);
-EXPORT_SYMBOL(irda_get_clocks);
 

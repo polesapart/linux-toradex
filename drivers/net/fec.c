@@ -25,7 +25,7 @@
  * Copyright (c) 2004-2006 Macq Electronique SA.
  */
 /*
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 #include <linux/module.h>
@@ -45,6 +45,7 @@
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
 #include <linux/bitops.h>
+#include <linux/clk.h>
 
 #include <asm/irq.h>
 #include <asm/uaccess.h>
@@ -60,7 +61,6 @@
 #define FEC_ALIGNMENT  (0x03)          /*FEC needs 4bytes alignment*/
 #elif defined(CONFIG_ARCH_MXC)
 #include <asm/arch/hardware.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/iim.h>
 #include "fec.h"
 #define FEC_ALIGNMENT  (0x0F)          /*FEC needs 128bits(32bytes) alignment*/	
@@ -247,6 +247,8 @@ struct fec_enet_private {
 	int	link;
 	int	old_link;
 	int	full_duplex;
+
+	struct clk *clk;
 };
 
 static int fec_enet_open(struct net_device *dev);
@@ -2017,8 +2019,11 @@ extern void gpio_fec_inactive(void);
  */
 static void __inline__ fec_arch_init(void)
 {
+	struct clk *clk;
 	gpio_fec_active();
-	mxc_clks_enable(FEC_CLK);
+	clk = clk_get(NULL, "fec_clk");
+	clk_enable(clk);
+	clk_put(clk);
 	return;
 }
 /*
@@ -2026,7 +2031,10 @@ static void __inline__ fec_arch_init(void)
  */
 static void __inline__ fec_arch_exit(void)
 {
-	mxc_clks_disable(FEC_CLK);
+	struct clk *clk;
+	clk = clk_get(NULL, "fec_clk");
+	clk_disable(clk);
+	clk_put(clk);
 	gpio_fec_inactive();
 	return;
 }
@@ -2057,6 +2065,8 @@ static void __inline__ fec_release_intrs(struct net_device *dev)
 
 static void __inline__ fec_set_mii(struct net_device *dev, struct fec_enet_private *fep)
 {
+	u32 rate;
+	struct clk *clk;
 	volatile fec_t *fecp;
 	fecp = fep->hwp;
 	fecp->fec_r_cntrl = OPT_FRAME_SIZE | 0x04;
@@ -2065,8 +2075,12 @@ static void __inline__ fec_set_mii(struct net_device *dev, struct fec_enet_priva
  	/*
 	 * Set MII speed to 2.5 MHz
 	 */
+	clk = clk_get(NULL, "fec_clk");
+	rate = clk_get_rate(clk);
+	clk_put(clk);
+
 	fep->phy_speed =
-		((((mxc_get_clocks(AHB_CLK) / 2 + 4999999) / 2500000) / 2) & 0x3F) << 1;
+		((((rate / 2 + 4999999) / 2500000) / 2) & 0x3F) << 1;
 	fecp->fec_mii_speed = fep->phy_speed;
 	fec_restart(dev, 0);
 }

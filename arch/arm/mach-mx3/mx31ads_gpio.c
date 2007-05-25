@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -15,9 +15,9 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
 #include "iomux.h"
 
@@ -990,6 +990,8 @@ EXPORT_SYMBOL(gpio_sensor_inactive);
  */
 void gpio_ata_active(void)
 {
+	struct clk *ata_clk;
+
 	/*
 	 * Configure the GPR for ATA group B signals
 	 */
@@ -1060,9 +1062,9 @@ void gpio_ata_active(void)
 	mxc_iomux_set_pad(MX31_PIN_CAPTURE, PAD_CTL_SRE_FAST | PAD_CTL_PKE_NONE);	// data 14
 	mxc_iomux_set_pad(MX31_PIN_COMPARE, PAD_CTL_SRE_FAST | PAD_CTL_PKE_NONE);	// data 12
 
-	/* 
+	/*
 	 * Turn off default pullups on high asserted control signals.
-	 * These are pulled down externally, so it will just waste 
+	 * These are pulled down externally, so it will just waste
 	 * power and create voltage divider action to pull them up
 	 * on chip.
 	 */
@@ -1070,7 +1072,8 @@ void gpio_ata_active(void)
 	mxc_iomux_set_pad(MX31_PIN_USBH2_CLK, PAD_CTL_PKE_NONE);	// ATA_INTRQ
 
 	printk(KERN_DEBUG "gpio_ata_active: Enable clocks\n");
-	mxc_clks_enable(ATA_CLK);
+	ata_clk = clk_get(NULL, "ata_clk.0");
+	clk_enable(ata_clk);
 }
 
 EXPORT_SYMBOL(gpio_ata_active);
@@ -1081,8 +1084,11 @@ EXPORT_SYMBOL(gpio_ata_active);
  */
 void gpio_ata_inactive(void)
 {
+	struct clk *ata_clk = clk_get(NULL, "ata_clk.0");
+
 	printk(KERN_DEBUG "gpio_ata_inactive: Disable clocks\n");
-	mxc_clks_disable(ATA_CLK);
+	clk_disable(ata_clk);
+	clk_put(ata_clk);
 
 	/*
 	 * Turn off ATA group B signals
@@ -1705,15 +1711,7 @@ EXPORT_SYMBOL(gpio_pcmcia_inactive);
  */
 void gpio_firi_init(void)
 {
-	unsigned long clk;
 	gpio_uart_active(1, 0);
-
-	clk = mxc_get_clocks_parent(FIRI_BAUD);
-	/* 
-	 * FIRI module needs a clock which is a multiple of 8 Mhz..
-	 * We are giving it 48 Mhz in this case.
-	 */
-	mxc_set_clocks_div(FIRI_BAUD, (clk / 48000000));
 }
 
 EXPORT_SYMBOL(gpio_firi_init);
@@ -1770,27 +1768,3 @@ void gpio_firi_active(void *fir_cong_reg_base, unsigned int tpp_mask)
 }
 
 EXPORT_SYMBOL(gpio_firi_active);
-
-/*!
- * Find clock for FIRI
- */
-unsigned int firi_get_clocks(void)
-{
-	return (mxc_get_clocks(UART2_BAUD));
-}
-
-EXPORT_SYMBOL(firi_get_clocks);
-
-void firi_disable_uart_clock(void)
-{
-	mxc_clks_disable(UART2_BAUD);
-}
-
-EXPORT_SYMBOL(firi_disable_uart_clock);
-
-void firi_enable_uart_clock(void)
-{
-	mxc_clks_enable(UART2_BAUD);
-}
-
-EXPORT_SYMBOL(firi_enable_uart_clock);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *	otg_{get,set}_transceiver() are from arm/plat-omap/usb.c.
  *	which is Copyright (C) 2004 Texas Instruments, Inc.
@@ -38,6 +38,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb/otg.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -48,7 +49,6 @@
 #include <asm/arch/board.h>
 #include <asm/arch/arc_otg.h>
 #include <asm/arch/gpio.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/isp1504.h>
 #include <asm/arch/isp1301.h>
 
@@ -82,16 +82,19 @@ extern void gpio_usbotg_fs_inactive(void);
 /* The dmamask must be set for EHCI to work */
 static u64 ehci_dmamask = ~(u32) 0;
 
+static struct clk *usb_clk;
 /*
  * make sure USB_CLK is running at 60 MHz +/- 1000 Hz
  */
 static int check_usbclk(void)
 {
-	unsigned long clk;
+	unsigned long freq;
 
-	clk = mxc_get_clocks(USB_CLK);
-	if ((clk < 59999000) || (clk > 60001000)) {
-		printk(KERN_ERR "USB_CLK=%lu, should be 60MHz\n", clk);
+	usb_clk = clk_get(NULL, "usb_clk");
+	freq = clk_get_rate(usb_clk);
+	clk_put(usb_clk);
+	if ((freq < 59999000) || (freq > 60001000)) {
+		printk(KERN_ERR "USB_CLK=%lu, should be 60MHz\n", freq);
 		return -1;
 	}
 	return 0;
@@ -351,9 +354,9 @@ static int otg_fs_host_init(void)
 	mdelay(1);
 
 	/* enable OTG VBUS */
-	mxc_clks_disable(USB_CLK);
+	clk_disable(usb_clk);
 	__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC3_CLEAR);
-	mxc_clks_enable(USB_CLK);
+	clk_enable(usb_clk);
 
 	otg_fs_set_xcvr();	/* set transceiver type */
 

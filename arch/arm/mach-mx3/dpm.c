@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * Copyright (C) 2002, 2004 MontaVista Software <source@mvista.com>.
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * Based on code by Matthew Locke, Dmitry Chigirev, and Bishop Brock.
  */
@@ -42,6 +42,7 @@
 #include <linux/device.h>
 #include <linux/pm.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 #include <asm/hardirq.h>
 #include <asm/page.h>
@@ -50,7 +51,6 @@
 #include <asm/io.h>
 #include <asm/arch/hardware.h>
 #include <asm/arch/mxc_pm.h>
-#include <asm/arch/clock.h>
 
 static unsigned saved_cpu_freq;
 static unsigned long saved_loops_per_jiffy;
@@ -374,9 +374,12 @@ static void mxc_dpm_idle(void)
 
 static void mxc_dpm_startup(void)
 {
+	struct clk *clk;
+
 	if (!saved_loops_per_jiffy) {
 		saved_loops_per_jiffy = loops_per_jiffy;
-		saved_cpu_freq = mxc_get_clocks(CPU_CLK) / 1000;
+		clk = clk_get(NULL, "cpu_clk");
+		saved_cpu_freq = clk_get_rate(clk) / 1000;
 	}
 	orig_idle = pm_idle;
 	pm_idle = dpm_idle;

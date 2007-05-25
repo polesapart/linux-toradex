@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -30,7 +30,6 @@
 #include <asm/arch/mxc_pm.h>
 #include <asm/arch/mxc.h>
 #include <asm/arch/system.h>
-#include <asm/arch/clock.h>
 #include <asm/irq.h>
 #include "crm_regs.h"
 
@@ -40,39 +39,11 @@
 #define MAX_IPG_FREQ        66500000
 #define FREQ_COMP_TOLERANCE      100	/* tolerance percentage times 100 */
 #define MX27_LLPM_DEBUG	    0
-/*
- * CKO pins configuration
- */
-#define CLKO_CLK32              0
-#define CLKO_PREMCLK            1
-#define CLKO_CLK26M             2
-#define CLKO_MPLLREF            3
-#define CLKO_SPLLREF            4
-#define CLKO_MPLLCLK            5
-#define CLKO_SPLLCLK            6
-#define CLKO_FCLK               7
-#define CLKO_HCLK               8
-#define CLKO_IPGCLK             9
-#define CLKO_PERCLK1            10
-#define CLKO_PERCLK2            11
-#define CLKO_PERCLK3            12
-#define CLKO_PERCLK4            13
-#define CLKO_SSI1BAUD           14
-#define CLKO_SSI2BAUD           15
-#define CLKO_NFCBAUD            16
-#define CLKO_MSHCBAUD           17
-#define CLKO_VPUBAUD           18
-#define CLKO_CLK60M_ALWAYS      19
-#define CLKO_CLK32K_ALWAYS      20
-#define CLKO_CLK60M             21
-#define CLKO_CLKDPTC            22
-
-#define CLKO_MAX                23
 
 /*
  * Global variables
  */
-
+#if 0
 /*!
  * These variables hold the various clock values when the module is loaded.
  * This is needed because these clocks are derived from MPLL and when MPLL
@@ -351,7 +322,7 @@ static s32 mx27_pm_pllscale(u32 arm_freq, u32 ahb_freq, s32 org_pll)
 
 	return 0;
 }
-
+#endif
 /*!
  * Implement steps required to transition to low-power modes.
  *
@@ -383,9 +354,9 @@ void mxc_pm_lowpower(s32 mode)
 		interrupt_disabled = 1;
 
 		/* Clear MPEN and SPEN to disable MPLL/SPLL */
-		cscr = __raw_readl(IO_ADDRESS(CCM_BASE_ADDR) + CCM_CSCR);
+		cscr = __raw_readl(CCM_CSCR);
 		cscr &= 0xFFFFFFFC;
-		__raw_writel(cscr, IO_ADDRESS(CCM_BASE_ADDR) + CCM_CSCR);
+		__raw_writel(cscr, CCM_CSCR);
 		break;
 	}
 
@@ -400,24 +371,7 @@ void mxc_pm_lowpower(s32 mode)
 	local_irq_enable();
 }
 
-/*!
- * Configure the desired clock to be output on CLKO pin.
- *
- * @param       opt     desired CLK for CLKO
- */
-void mxc_pm_ckosel(u32 opt)
-{
-	u32 reg;
-
-	if (opt < 0 || opt >= CLKO_MAX)
-		return;
-
-	reg = __raw_readl(IO_ADDRESS(CCM_BASE_ADDR) + CCM_CCSR);
-	reg = (reg & (~CCM_CCSR_CLKOSEL_MASK)) | opt;
-	__raw_writel(reg, IO_ADDRESS(CCM_BASE_ADDR) + CCM_CCSR);
-	return;
-}
-
+#if 0
 /*!
  * Called to change the core frequency. This function internally decides
  * whether to do integer scaling or pll scaling.
@@ -467,7 +421,7 @@ int mxc_pm_dvfs(unsigned long arm_freq, long ahb_freq, long ipg_freq)
 	local_irq_restore(flags);
 	return ret;
 }
-
+#endif
 /*
  * This API is not supported on i.MX27
  */
@@ -492,12 +446,6 @@ int mxc_pm_pllscale(long armfreq, long ahbfreq, long ipfreq)
 static int __init mxc_pm_init_module(void)
 {
 	printk("MX27: Power management module initialized\n");
-	perclk1 = mxc_get_clocks(PERCLK1);
-	perclk2 = mxc_get_clocks(PERCLK2);
-	perclk3 = mxc_get_clocks(PERCLK3);
-	perclk4 = mxc_get_clocks(PERCLK4);
-	nfcclk = mxc_get_clocks(NFC_CLK);
-	cpuclk = mxc_get_clocks(CPU_CLK);
 	return 0;
 }
 
@@ -513,7 +461,7 @@ module_init(mxc_pm_init_module);
 module_exit(mxc_pm_cleanup_module);
 
 EXPORT_SYMBOL(mxc_pm_lowpower);
-EXPORT_SYMBOL(mxc_pm_dvfs);
+//EXPORT_SYMBOL(mxc_pm_dvfs);
 EXPORT_SYMBOL(mxc_pm_pllscale);
 EXPORT_SYMBOL(mxc_pm_intscale);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -28,281 +28,56 @@
  *
  * @ingroup CLOCKS
  */
-
 #ifndef __ASSEMBLY__
+#include <linux/list.h>
+
+struct module;
+
 /*!
- * Enumerations of plls and available clock sources
+ * MXC specific struct for defining and controlling a single clock.
+ *
+ * This structure should not be accessed directly. Use clk_xxx API all
+ * clock accesses.
  */
-enum plls {
-	MCUPLL = 0,		/*!< MCU PLL */
-	USBPLL = 2,		/*!< USB PLL */
-	DSPPLL = 1,		/*!< DSP PLL */
-	CDPLL = 3,		/*!< Corrected Clock PLL */
-	CKIH = 4,		/*!< Main Network clock */
-	CKIH_X2 = 5,		/*!< Doubled version of CKIH */
-	DIGRF = 6,		/*!< DIGRF ref clock */
-	DIGRF_X2 = 7,		/*!< Doubled version of DIGRF */
-	USBCLK = 8,		/*!< USB Clock */
-	MRCG_2_CLK = 9,		/*!< MRCG CLock */
-	TURBOPLL,		/*!< Turbo PLL */
-	SERIALPLL,		/*!<  PLL */
+struct clk {
+	struct list_head node;
+	struct module *owner;
+	const char *name;
+	int id;
+	/*! Source clock this clk depends on */
+	struct clk *parent;
+	/*! Secondary clock to enable/disable with this clock */
+	struct clk *secondary;
+	/*! Current clock rate */
+	unsigned long rate;
+	/*! Reference count of clock enable/disable */
+	__s8 usecount;
+	/*! Register bit position for clock's enable/disable control. */
+	u8 enable_shift;
+	/*! Register address for clock's enable/disable control. */
+	u32 enable_reg;
+	/*! Function ptr to recalculate the clock's rate based on parent
+	   clock's rate */
+	void (*recalc) (struct clk *);
+	/*! Function ptr to set the clock to a new rate. The rate must match a
+	   supported rate returned from round_rate. Leave blank if clock is not
+	   programmable */
+	int (*set_rate) (struct clk *, unsigned long);
+	/*! Function ptr to round the requested clock rate to the nearest
+	   supported rate that is less than or equal to the requested rate. */
+	unsigned long (*round_rate) (struct clk *, unsigned long);
+	/*! Function ptr to enable the clock. Leave blank if clock can not
+	   be gated. */
+	int (*enable) (struct clk *);
+	/*! Function ptr to disable the clock. Leave blank if clock can not
+	   be gated. */
+	void (*disable) (struct clk *);
+	/*! Function ptr to set the parent clock of the clock. */
+	int (*set_parent) (struct clk *, struct clk *);
 };
 
-enum mxc_clk_out {
-	CKOH,
-	CKO,
-	CKO2,
-	CKO1,
-};
-
-/*!
- * Enumerations for MXC clocks
- */
-enum mxc_clocks {
-	CLK_NONE,
-	CKIL_CLK,
-	CKIH_CLK,
-	CPU_CLK,
-	AHB_CLK,
-	IPG_CLK,
-	NFC_CLK,
-	USB_CLK,
-	UART1_BAUD,
-	UART2_BAUD,
-	UART3_BAUD,
-	UART4_BAUD,
-	UART5_BAUD,
-	UART6_BAUD,
-	SSI1_BAUD,
-	SSI2_BAUD,
-	CSI_BAUD,
-	FIRI_BAUD,
-	I2C_CLK,
-	I2C1_CLK = I2C_CLK,
-	I2C2_CLK,
-	I2C3_CLK,
-	CSPI1_CLK,
-	CSPI2_CLK,
-	CSPI3_CLK,
-	GPT_CLK,
-	GPT1_CLK = GPT_CLK,
-	GPT2_CLK,
-	GPT3_CLK,
-	GPT4_CLK,
-	GPT5_CLK,
-	GPT6_CLK,
-	RTC_CLK,
-	EPIT1_CLK,
-	EPIT2_CLK,
-	EDIO_CLK,
-	WDOG_CLK,
-	WDOG2_CLK,
-	PWM_CLK,
-	IPU_CLK,
-	SIM1_CLK,
-	SIM2_CLK,
-	HAC_CLK,
-	GEM_CLK,
-	SDHC1_CLK,
-	SDHC2_CLK,
-	SDMA_CLK,
-	RNG_CLK,
-	KPP_CLK,
-	MU_CLK,
-	RTIC_CLK,
-	SCC_CLK,
-	SPBA_CLK,
-	DSM_CLK,
-	SAHARA2_CLK,
-	MQSPI_IPG_CLK,
-	MQSPI_CKIH_CLK,
-	EL1T_IPG_CLK,
-	EL1T_NET_CLK,
-	LPMC_CLK,
-	MPEG4_CLK,
-	OWIRE_CLK,
-	MBX_CLK,
-	MSTICK1_BAUD,
-	MSTICK2_BAUD,
-	ATA_CLK,
-	PERCLK1,
-	PERCLK2,
-	PERCLK3,
-	PERCLK4,
-	DMA_CLK,
-	EMMA_PRP_CLK,
-	EMMA_PP_CLK,
-	FEC_CLK,
-	GPIO_CLK,
-	IIM_CLK,
-	LCDC_CLK,
-	SDHC3_CLK,
-	SLCDC_CLK,
-	BROM_CLK,
-	EMI_CLK,
-	VPU_BAUD,
-	BMI_AHB_CLK,
-};
-
-/*!
- * This function is used to modify PLL registers to generate the required
- * frequency.
- *
- * @param  pll      the PLL that you wish to modify
- * @param  mfi      multiplication factor integer part
- * @param  pdf      pre-division factor
- * @param  mfd      multiplication factor denominator
- * @param  mfn      multiplication factor numerator
- */
-void mxc_pll_set(enum plls pll, unsigned int mfi, unsigned int pdf,
-		 unsigned int mfd, unsigned int mfn);
-
-/*!
- * This function is used to get PLL registers values used generate the clock
- * frequency.
- *
- * @param  pll      the PLL that you wish to access
- * @param  mfi      pointer that holds multiplication factor integer part
- * @param  pdf      pointer that holds pre-division factor
- * @param  mfd      pointer that holds multiplication factor denominator
- * @param  mfn      pointer that holds multiplication factor numerator
- */
-void mxc_pll_get(enum plls pll, unsigned int *mfi, unsigned int *pdf,
-		 unsigned int *mfd, unsigned int *mfn);
-
-/*!
- * This function returns the PLL output value in Hz based on pll.
- *
- * @param       pll     PLL as defined in enum plls
- *
- * @return      PLL value in Hz.
- */
-unsigned long mxc_pll_clock(enum plls pll);
-
-/*!
- * This function returns the clock value in Hz for various MXC modules.
- *
- * @param       clk     as defined in enum mxc_clocks
- *
- * @return      clock value in Hz
- */
-unsigned long mxc_get_clocks(enum mxc_clocks clk);
-
-/*!
- * This function returns the parent clock value in Hz for various MXC modules.
- *
- * @param       clk     as defined in enum mxc_clocks
- *
- * @return      clock value in Hz
- */
-unsigned long mxc_get_clocks_parent(enum mxc_clocks clk);
-
-/*!
- * This function sets the PLL source for a clock.
- *
- * @param clk     as defined in enum mxc_clocks
- * @param pll_num the PLL that you wish to use as source for this clock
- */
-void mxc_set_clocks_pll(enum mxc_clocks clk, enum plls pll_num);
-
-/*!
- * This function sets the division factor for a clock.
- *
- * @param clk as defined in enum mxc_clocks
- * @param div the division factor to be used for the clock (For SSI, pass in
- *            2 times the expected division value to account for FP vals)
- */
-void mxc_set_clocks_div(enum mxc_clocks clk, unsigned int div);
-
-/*!
- * This function returns the peripheral clock dividers.
- * Note that for SSI divider, in order to maintain the accuracy, the returned
- * divider is doubled.
- *
- * @param       clk     peripheral clock as defined in enum mxc_clocks
- *
- * @return      divider value
- */
-unsigned long mxc_peri_clock_divider(enum mxc_clocks clk);
-
-/*!
- * This function returns the main clock dividers.
- *
- * @param       clk     peripheral clock as defined in enum mxc_clocks
- *
- * @return      divider value
- */
-unsigned long mxc_main_clock_divider(enum mxc_clocks clk);
-
-/*!
- * This function sets the digital frequency multiplier clock.
- *
- * @param       freq    Desired DFM output frequency in Hz
- *
- * @return      Actual DFM frequency in Hz
- */
-unsigned long mxc_set_dfm_clock(unsigned int freq);
-
-/*!
- * This function returns the DFS block divider - LFDF value
- *
- * @return      Low Voltage frequency Divider Factor value
- */
-unsigned int mxc_get_lfdf_value(void);
-
-/*!
- * This function is called to gate off the individual module clocks
- *
- * @param clks     as defined in enum mxc_clocks
- */
-void mxc_clks_disable(enum mxc_clocks clks);
-
-/*!
- * This function is called to enable the individual module clocks
- *
- * @param clks     as defined in enum mxc_clocks
- */
-void mxc_clks_enable(enum mxc_clocks clks);
-
-/*!
- * This function is called to read the contents of a CCM register
- *
- * @param reg_offset the CCM register that will read
- *
- * @return the register contents
- */
-unsigned long mxc_ccm_get_reg(unsigned int reg_offset);
-
-/*!
- * This function is called to modify the contents of a CCM register
- *
- * @param reg_offset the CCM register that will read
- * @param mask       the mask to be used to clear the bits that are to be modified
- * @param data       the data that should be written to the register
- */
-void mxc_ccm_modify_reg(unsigned int reg_offset, unsigned int mask,
-			unsigned int data);
-
-/*!
- * Configure clock output on CKO1/CKO2 pins
- *
- * @param   output  The desired clock needed to measure. Possible
- *                  values are, CKOH_AP_SEL, CKOH_AHB_SEL or CKOH_IP_SEL
- * @param   clk     as defined in enum mxc_clocks
- * @param   div     divider value
- *
- */
-void mxc_set_clock_output(enum mxc_clk_out output, enum mxc_clocks clk,
-			  int div);
-
-/*!
- * This function returns the divider value for a clock.
- *
- * @param       clk as defined in enum mxc_clocks
- *
- * @return      divider value
- */
-unsigned long mxc_get_clocks_div(enum mxc_clocks clk);
+int clk_register(struct clk *clk);
+void clk_unregister(struct clk *clk);
 
 #endif				/* __ASSEMBLY__ */
 #endif				/* __ASM_ARCH_MXC_CLOCK_H__ */

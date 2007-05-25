@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -55,8 +55,8 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <asm/mach/keypad.h>
-#include <asm/arch/clock.h>
 
 /*
  * Module header file
@@ -73,6 +73,9 @@ static unsigned int key_pad_enabled;
 
 /*! Input device structure. */
 static struct input_dev *mxckbd_dev = NULL;
+
+/*! KPP clock handle. */
+static struct clk *kpp_clk;
 
 /*! This static variable indicates whether a key event is pressed/released. */
 static unsigned short KPress;
@@ -757,7 +760,8 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 	}
 
 	/* Enable keypad clock */
-	mxc_clks_enable(KPP_CLK);
+	kpp_clk = clk_get(&pdev->dev, "kpp_clk");
+	clk_enable(kpp_clk);
 
 	/* IOMUX configuration for keypad */
 	gpio_keypad_active();
@@ -912,7 +916,8 @@ static int mxc_kpp_remove(struct platform_device *pdev)
 	__raw_writew(reg_val, KPSR);
 
 	gpio_keypad_inactive();
-	mxc_clks_disable(KPP_CLK);
+	clk_disable(kpp_clk);
+	clk_put(kpp_clk);
 
 	KPress = 0;
 

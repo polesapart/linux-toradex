@@ -1,5 +1,5 @@
 /*
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -29,7 +29,6 @@
 #include <linux/i2c.h>
 #include <asm/arch/mxc_i2c.h>
 #include "mxc_v4l2_capture.h"
-#include <asm/arch/clock.h>
 
 #define MC521DA_I2C_ADDRESS	0x22
 #define MC521DA_TERM		0xFF

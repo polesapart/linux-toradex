@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -36,6 +36,7 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
+#include <linux/clk.h>
 
 #include <net/irda/irda.h>
 #include <net/irda/wrapper.h>
@@ -45,7 +46,6 @@
 #include <asm/dma.h>
 #include <asm/hardware.h>
 #include <asm/arch/mxc_uart.h>
-#include <asm/arch/clock.h>
 #include "mxc_ir.h"
 
 #define IS_SIR(mi)		( (mi)->speed <= 115200 )
@@ -174,7 +174,17 @@ struct mxc_irda {
 	/*!
 	 * UART clock needed for baud rate calculations
 	 */
-	unsigned int uartclk;
+	struct clk *uart_clk;
+
+	/*!
+	 * UART clock needed for baud rate calculations
+	 */
+	unsigned long uart_clk_rate;
+
+	/*!
+	 * FIRI clock needed for baud rate calculations
+	 */
+	struct clk *firi_clk;
 
 	/*!
 	 * FIRI IRQ number.
@@ -216,9 +226,6 @@ struct mxc_irda {
 extern void gpio_firi_active(void *, unsigned int);
 extern void gpio_firi_inactive(void);
 extern void gpio_firi_init(void);
-extern unsigned int firi_get_clocks(void);
-extern void firi_disable_uart_clock(void);
-extern void firi_enable_uart_clock(void);
 
 void mxc_irda_firi_init(struct mxc_irda *si);
 #ifdef FIRI_SDMA_RX
@@ -338,8 +345,8 @@ static int mxc_irda_set_speed(struct mxc_irda *si, int speed)
 		gpio_firi_inactive();
 
 		num = baud / 100 - 1;
-		denom = si->uartclk / 1600 - 1;
-		if ((denom < 65536) && (si->uartclk > 1600)) {
+		denom = si->uart_clk_rate / 1600 - 1;
+		if ((denom < 65536) && (si->uart_clk_rate > 1600)) {
 			writel(num, si->uart_base + MXC_UARTUBIR);
 			writel(denom, si->uart_base + MXC_UARTUBMR);
 		}
@@ -383,7 +390,7 @@ static int mxc_irda_set_speed(struct mxc_irda *si, int speed)
 		writel(cr, si->firi_base + FIRITCR);
 
 		gpio_firi_active(si->firi_base + FIRITCR, FIRITCR_TPP);
-		
+
 		si->speed = speed;
 
 		cr = readl(si->firi_base + FIRIRCR);
@@ -1053,8 +1060,14 @@ void mxc_irda_firi_init(struct mxc_irda *si)
 	unsigned int firi_baud, osf = 6;
 	unsigned int tcr, rcr, cr;
 
-	firi_baud = mxc_get_clocks(FIRI_BAUD);
-	mxc_clks_enable(FIRI_BAUD);
+	si->firi_clk = clk_get(si->dev, "firi_clk");
+	firi_baud = clk_round_rate(si->firi_clk, 48004500);
+	if ((firi_baud < 47995500) ||
+		(clk_set_rate(si->firi_clk, firi_baud) < 0)) {
+		dev_err(si->dev, "Unable to set FIR clock to 48MHz.\n");
+		return;
+	}
+	clk_enable(si->firi_clk);
 
 	writel(0xFFFF, si->firi_base + FIRITSR);
 	writel(0xFFFF, si->firi_base + FIRIRSR);
@@ -1115,7 +1128,7 @@ static int mxc_irda_uart_init(struct mxc_irda *si)
 	/* Configure the IOMUX for the UART */
 	gpio_firi_init();
 
-	per_clk = firi_get_clocks();
+	per_clk = clk_get_rate(si->uart_clk);
 	baud = per_clk / 16;
 	if (baud > MAX_UART_BAUDRATE) {
 		baud = MAX_UART_BAUDRATE;
@@ -1124,8 +1137,10 @@ static int mxc_irda_uart_init(struct mxc_irda *si)
 			d = 6;
 		}
 	}
-	si->uartclk = per_clk / d;
-	writel(si->uartclk / 1000, si->uart_base + MXC_UARTONEMS);
+	clk_enable(si->uart_clk);
+
+	si->uart_clk_rate = per_clk / d;
+	writel(si->uart_clk_rate / 1000, si->uart_base + MXC_UARTONEMS);
 
 	writel(MXC_IRDA_RX_INV | MXC_UARTUCR4_IRSC,
 	       si->uart_base + MXC_UARTUCR4);
@@ -1155,9 +1170,9 @@ static int mxc_irda_uart_init(struct mxc_irda *si)
 
 	baud = 9600;
 	num = baud / 100 - 1;
-	denom = si->uartclk / 1600 - 1;
+	denom = si->uart_clk_rate / 1600 - 1;
 
-	if ((denom < 65536) && (si->uartclk > 1600)) {
+	if ((denom < 65536) && (si->uart_clk_rate > 1600)) {
 		writel(num, si->uart_base + MXC_UARTUBIR);
 		writel(denom, si->uart_base + MXC_UARTUBMR);
 	}
@@ -1469,7 +1484,7 @@ static int mxc_irda_suspend(struct platform_device *pdev, pm_message_t state)
 		cr = readl(si->uart_base + MXC_UARTUCR1);
 		cr &= ~MXC_UARTUCR1_UARTEN;
 		writel(cr, si->uart_base + MXC_UARTUCR1);
-		firi_disable_uart_clock();
+		clk_disable(si->uart_clk);
 
 		/*Disable Tx and Rx for FIRI and then disable the FIRI clock.. */
 		cr = readl(si->firi_base + FIRITCR);
@@ -1478,7 +1493,7 @@ static int mxc_irda_suspend(struct platform_device *pdev, pm_message_t state)
 		cr = readl(si->firi_base + FIRIRCR);
 		cr &= ~FIRIRCR_RE;
 		writel(cr, si->firi_base + FIRIRCR);
-		mxc_clks_disable(FIRI_BAUD);
+		clk_disable(si->firi_clk);
 
 		gpio_firi_inactive();
 
@@ -1511,7 +1526,7 @@ static int mxc_irda_resume(struct platform_device *pdev)
 	if (si->suspend == 1 && !si->open) {
 
 		/*Initialise the UART first */
-		firi_enable_uart_clock();
+		clk_enable(si->uart_clk);
 
 		/*Now init FIRI */
                 gpio_firi_active(si->firi_base + FIRITCR, FIRITCR_TPP);
@@ -1612,6 +1627,7 @@ static int mxc_irda_probe(struct platform_device *pdev)
 	si->dev = &pdev->dev;
 
 	si->mxc_ir_plat = pdev->dev.platform_data;
+	si->uart_clk = si->mxc_ir_plat->uart_clk;
 
 	si->uart_res = uart_res;
 	si->firi_res = firi_res;

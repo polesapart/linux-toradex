@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -15,17 +15,17 @@
  * @file dptc_mx27.c
  *
  * @brief Driver for the Freescale Semiconductor MX27 DPTC module.
- * 
- * The DPTC driver is designed as a character driver which interacts with the 
- * MX27 DPTC hardware. Upon initialization, the DPTC driver initializes the 
- * DPTC hardware sets up driver nodes attaches to the DPTC interrupt and 
- * initializes internal data structures. When the DPTC interrupt occurs the 
+ *
+ * The DPTC driver is designed as a character driver which interacts with the
+ * MX27 DPTC hardware. Upon initialization, the DPTC driver initializes the
+ * DPTC hardware sets up driver nodes attaches to the DPTC interrupt and
+ * initializes internal data structures. When the DPTC interrupt occurs the
  * driver checks the cause of the interrupt (lower voltage, increase voltage or
- * emergency) and changes the CPU voltage according to translation table that 
- * is loaded into the driver(the voltage changes are done by calling some 
- * routines in the mc13783 driver). The driver read method is used to read the 
- * currently loaded DPTC translation table and the write method is used 
- * in-order to update the translation table. Driver ioctls are used to change 
+ * emergency) and changes the CPU voltage according to translation table that
+ * is loaded into the driver(the voltage changes are done by calling some
+ * routines in the mc13783 driver). The driver read method is used to read the
+ * currently loaded DPTC translation table and the write method is used
+ * in-order to update the translation table. Driver ioctls are used to change
  * driver parameters and enable/disable the DPTC operation.
  *
  * @ingroup PM
@@ -35,12 +35,12 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <asm/uaccess.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
 #include <asm/semaphore.h>
 #include <linux/vmalloc.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/pmic_power.h>
 #include <asm/arch/dvfs_dptc_struct.h>
 #include "dvfs_dptc.h"
@@ -267,10 +267,10 @@ static int disable_ref_circuits(unsigned char rc_state)
 }
 
 /*!
- * This function updates the CPU voltage, produced by MC13783, by calling 
- * MC13783 driver functions. 
+ * This function updates the CPU voltage, produced by MC13783, by calling
+ * MC13783 driver functions.
  *
- * @param    dvfs_dptc_tables_ptr    pointer to the DPTC translation table. 
+ * @param    dvfs_dptc_tables_ptr    pointer to the DPTC translation table.
  * @param    wp			current wp value.
  *
  */
@@ -286,7 +286,7 @@ static void set_pmic_voltage(dvfs_dptc_tables_s * dvfs_dptc_tables_ptr, int wp)
 /*!
  * This function updates the DPTC threshold registers.
  *
- * @param    dvfs_dptc_tables_ptr    pointer to the DPTC translation table. 
+ * @param    dvfs_dptc_tables_ptr    pointer to the DPTC translation table.
  * @param    wp			current wp value.
  *
  */
@@ -306,12 +306,12 @@ static void update_dptc_thresholds(dvfs_dptc_tables_s * dvfs_dptc_tables_ptr,
 }
 
 /*!
- * This function increments a log buffer index (head or tail) 
+ * This function increments a log buffer index (head or tail)
  * by the value of val.
  *
- * @param    index	pointer to the DPTC log buffer index that 
+ * @param    index	pointer to the DPTC log buffer index that
  *			we wish to change.
- * @param    val	the value in which the index should be incremented. 
+ * @param    val	the value in which the index should be incremented.
  *
  */
 static void inc_log_index(int *index, int val)
@@ -323,16 +323,16 @@ static void inc_log_index(int *index, int val)
  * This function adds a new entry to the DPTC log buffer.
  *
  * @param    dptc_log		pointer to the DPTC log buffer structure.
- * @param    wp			value of the working point index written 
+ * @param    wp			value of the working point index written
  *				to the log buffer.
  *
- * @return   number of log buffer entries. 
+ * @return   number of log buffer entries.
  *
  */
 static void add_dptc_log_entry(dptc_log_s * dptc_log, int wp)
 {
 	/*
-	 * Down the log buffer mutex to exclude others from reading and 
+	 * Down the log buffer mutex to exclude others from reading and
 	 * writing to the log buffer.
 	 */
 	if (down_interruptible(&dptc_log->mutex)) {
@@ -358,8 +358,8 @@ static void add_dptc_log_entry(dptc_log_s * dptc_log, int wp)
 }
 
 /*!
- * This function updates the drivers current working point index. This index is 
- * used for access the current DTPC table entry and it corresponds to the 
+ * This function updates the drivers current working point index. This index is
+ * used for access the current DTPC table entry and it corresponds to the
  * current CPU working point measured by the DPTC hardware.
  *
  * @param    new_wp	New working point index value to be set.
@@ -368,7 +368,7 @@ static void add_dptc_log_entry(dptc_log_s * dptc_log, int wp)
 static void set_dptc_wp(int new_wp)
 {
 	/*
-	 * Check if new index is smaller than the maximal working point 
+	 * Check if new index is smaller than the maximal working point
 	 * index in the DPTC translation table and larger that 0.
 	 */
 	if ((new_wp < dptc_params.dvfs_dptc_tables_ptr->wp_num)
@@ -378,13 +378,13 @@ static void set_dptc_wp(int new_wp)
 	}
 
 	/*
-	 * Check if new index is larger than the maximal working point index in 
+	 * Check if new index is larger than the maximal working point index in
 	 * the DPTC translation table.
 	 */
 	if (new_wp >= dptc_params.dvfs_dptc_tables_ptr->wp_num) {
-		/* 
-		 * Set current working point index to maximal working point 
-		 * index in the DPTC translation table. 
+		/*
+		 * Set current working point index to maximal working point
+		 * index in the DPTC translation table.
 		 */
 		dptc_params.dvfs_dptc_tables_ptr->curr_wp =
 		    dptc_params.dvfs_dptc_tables_ptr->wp_num - 1;
@@ -413,22 +413,22 @@ static void set_dptc_wp(int new_wp)
 static void dptc_workqueue_handler(void *arg)
 {
 	if (dptc_intr_status & 0x4) {
-		/* Chip working point has increased dramatically, 
+		/* Chip working point has increased dramatically,
 		 * raise working point to maximum */
 		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 2);
 	} else if (dptc_intr_status & 0x2) {
-		/* Chip working point has increased, raise working point 
+		/* Chip working point has increased, raise working point
 		 * by one */
 		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp + 1);
 	} else {
-		/* Chip working point has decreased, lower working point 
+		/* Chip working point has decreased, lower working point
 		 * by one */
 		set_dptc_wp(dptc_params.dvfs_dptc_tables_ptr->curr_wp - 1);
 	}
 
 	/*
-	 * If the DPTC module is still active, re-enable 
-	 * the DPTC hardware 
+	 * If the DPTC module is still active, re-enable
+	 * the DPTC hardware
 	 */
 	if (dptc_params.dptc_is_active) {
 		dptc_enable_dptc();
@@ -438,7 +438,7 @@ static void dptc_workqueue_handler(void *arg)
 
 /*!
  * This function enables the DPTC module. this function updates the DPTC
- * thresholds, updates the MC13783, unmasks the DPTC interrupt and enables 
+ * thresholds, updates the MC13783, unmasks the DPTC interrupt and enables
  * the DPTC module
  *
  * @return      0 if DPTC module was enabled else returns -EINVAL.
@@ -452,7 +452,7 @@ static int start_dptc(void)
 		disable_ref_circuits(~dptc_params.rc_state);
 
 		/*
-		 * Set the DPTC thresholds and MC13783 voltage to 
+		 * Set the DPTC thresholds and MC13783 voltage to
 		 * correspond to the current working point and frequency.
 		 */
 		set_pmic_voltage(dptc_params.dvfs_dptc_tables_ptr,
@@ -477,9 +477,9 @@ static int start_dptc(void)
 }
 
 /*!
- * This function disables the DPTC module. 
+ * This function disables the DPTC module.
  *
- * @return      0 if DPTC module was disabled else returns -EINVAL. 
+ * @return      0 if DPTC module was disabled else returns -EINVAL.
  */
 static int stop_dptc(void)
 {
@@ -519,7 +519,7 @@ static void init_dptc_wp(void)
 	}
 
 	/*
-	 * Check if new index is smaller than the maximal working point 
+	 * Check if new index is smaller than the maximal working point
 	 * index in the DPTC translation table and larger that 0.
 	 */
 	if ((i < dptc_params.dvfs_dptc_tables_ptr->wp_num) && (i >= 0)) {
@@ -528,13 +528,13 @@ static void init_dptc_wp(void)
 	}
 
 	/*
-	 * Check if new index is larger than the maximal working point index in 
+	 * Check if new index is larger than the maximal working point index in
 	 * the DPTC translation table.
 	 */
 	if (i >= dptc_params.dvfs_dptc_tables_ptr->wp_num) {
-		/* 
-		 * Set current working point index to maximal working point 
-		 * index in the DPTC translation table. 
+		/*
+		 * Set current working point index to maximal working point
+		 * index in the DPTC translation table.
 		 */
 		dptc_params.dvfs_dptc_tables_ptr->curr_wp =
 		    dptc_params.dvfs_dptc_tables_ptr->wp_num - 1;
@@ -552,7 +552,7 @@ static void init_dptc_wp(void)
  *
  * @param    dptc_log	pointer to the DPTC log buffer structure.
  *
- * @return   number of log buffer entries. 
+ * @return   number of log buffer entries.
  *
  */
 static int get_entry_count(dptc_log_s * dptc_log)
@@ -566,17 +566,17 @@ static int get_entry_count(dptc_log_s * dptc_log)
  * and returns the data written in the log buffer.
  *
  * @param    buf	pointer to the buffer the data should be written to.
- * @param    start	pointer to the pointer where the new data is 
+ * @param    start	pointer to the pointer where the new data is
  *                      written to.
- *			procedure should update the start pointer to point to 
+ *			procedure should update the start pointer to point to
  *			where in the buffer the data was written.
  * @param    offset	current offset in the DPTC proc file.
  * @param    count	number of bytes to read.
- * @param    eof	pointer to eof flag. should be set to 1 when 
+ * @param    eof	pointer to eof flag. should be set to 1 when
  *                      reaching eof.
  * @param    data	driver specific data pointer.
  *
- * @return   number byte read from the log buffer. 
+ * @return   number byte read from the log buffer.
  *
  */
 static int read_log(char *buf, char **start, off_t offset, int count,
@@ -597,8 +597,8 @@ static int read_log(char *buf, char **start, off_t offset, int count,
 	num_of_entries = get_entry_count(&params->dptc_log_buffer);
 
 	/*
-	 * If number of entries to read is larger that the number of entries 
-	 * in the log buffer set number of entries to read to number of 
+	 * If number of entries to read is larger that the number of entries
+	 * in the log buffer set number of entries to read to number of
 	 * entries in the log buffer and set eof flag to 1
 	 */
 	if (num_of_entries < entries_to_read) {
@@ -607,7 +607,7 @@ static int read_log(char *buf, char **start, off_t offset, int count,
 	}
 
 	/*
-	 * Down the log buffer mutex to exclude others from reading and 
+	 * Down the log buffer mutex to exclude others from reading and
 	 * writing to the log buffer.
 	 */
 	if (down_interruptible(&params->dptc_log_buffer.mutex)) {
@@ -630,7 +630,7 @@ static int read_log(char *buf, char **start, off_t offset, int count,
 		memcpy(buf, entry_ptr,
 		       (entries_to_read * sizeof(dptc_log_entry_s)));
 	} else {
-		/* 
+		/*
 		 * Tail wrap around.
 		 * First copy data from current position until end of buffer,
 		 * after that copy the rest from start of the log buffer.
@@ -685,9 +685,9 @@ static int init_dptc_controller(void)
 
 	if (create_proc_read_entry(PROC_NODE_NAME, 0,
 				   NULL, read_log, &dptc_params) == NULL) {
-		/* 
-		 * Error creating proc file system entry. 
-		 * Exit and return error code 
+		/*
+		 * Error creating proc file system entry.
+		 * Exit and return error code
 		 */
 		printk(KERN_ERR "DPTC: Unable create proc entry");
 		return -EFAULT;
@@ -1140,6 +1140,7 @@ read more than %d\n", MAX_TABLE_SIZE);
 static int dptc_mx27_ioctl(struct inode *inode, struct file *filp,
 			   unsigned int cmd, unsigned long arg)
 {
+	struct clk *clk;
 	unsigned int tmp;
 	int ret_val = -ENOIOCTLCMD;
 	char *tmp_str;
@@ -1219,7 +1220,8 @@ static int dptc_mx27_ioctl(struct inode *inode, struct file *filp,
 		break;
 
 	case PM_IOCGFREQ:
-		ret_val = mxc_get_clocks(CPU_CLK);
+		clk = clk_get(NULL, "cpu_clk");
+		ret_val = clk_get_rate(clk);
 		break;
 
 		/* Unknown ioctl command -> return error */

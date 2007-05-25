@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -25,8 +25,8 @@
 #include <linux/errno.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/ipu.h>
 
 #include "ipu_prv.h"
@@ -46,8 +46,8 @@ struct ipu_irq_node {
 };
 
 /* Globals */
-uint32_t g_ipu_clk;
-uint32_t g_ipu_csi_clk;
+struct clk *g_ipu_clk;
+struct clk *g_ipu_csi_clk;
 int g_ipu_irq[2];
 int g_ipu_hw_rev;
 bool g_sec_chan_en[21];
@@ -115,9 +115,11 @@ int ipu_probe(struct platform_device *pdev)
 
 	/* Enable IPU and CSI clocks */
 	/* Get IPU clock freq */
-	mxc_clks_enable(IPU_CLK);
-	g_ipu_clk = mxc_get_clocks(IPU_CLK);
-	dev_dbg(g_ipu_dev, "g_ipu_clk = %d\n", g_ipu_clk);
+	g_ipu_clk = clk_get(&pdev->dev, "ipu_clk");
+	clk_enable(g_ipu_clk);
+	dev_dbg(g_ipu_dev, "ipu_clk = %d\n", clk_get_rate(g_ipu_clk));
+
+	g_ipu_csi_clk = clk_get(&pdev->dev, "csi_clk");
 
 	__raw_writel(0x00100010L, DI_HSP_CLK_PER);
 
@@ -412,10 +414,10 @@ void ipu_uninit_channel(ipu_channel_t channel)
  *                              Setting this to a value other than NULL enables
  *                              double buffering mode.
  *
- * @param       u		       	private u offset for additional cropping, 
+ * @param       u		       	private u offset for additional cropping,
  *								zero if not used.
  *
- * @param       v		       	private v offset for additional cropping, 
+ * @param       v		       	private v offset for additional cropping,
  *								zero if not used.
  *
  * @return      This function returns 0 on success or negative error code on fail

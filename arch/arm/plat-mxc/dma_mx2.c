@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -30,19 +30,19 @@
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 
 #include <linux/proc_fs.h>
 #include <asm/io.h>
 
 #include <asm/hardware.h>
 #include <asm/arch/dma.h>
-#include <asm/arch/clock.h>
 #include <asm/delay.h>
 
 #include <asm/atomic.h>
 
-/* commented temperily for mx27 compilation 
-#define DMA_PM 
+/* commented temperily for mx27 compilation
+#define DMA_PM
 */
 #ifdef DMA_PM
 #include <linux/pm.h>
@@ -55,26 +55,28 @@ struct pm_dev *dma_pm;
 static unsigned int dma_pm_status = DMA_PMST_RESUME;
 #endif
 
-/*! 
- * This variable is used to controll the clock of DMA. 
- * It counts the number of actived channels 
+/*!
+ * This variable is used to controll the clock of DMA.
+ * It counts the number of actived channels
  */
 static atomic_t g_dma_actived = ATOMIC_INIT(0);
 
-/*! 
- * This variable point a proc file which contains the information 
- *	of DMA channels 
+/*!
+ * This variable point a proc file which contains the information
+ *	of DMA channels
  */
 static struct proc_dir_entry *g_proc_dir;
 
-/*! 
- * The dma channels  
+/*!
+ * The dma channels
  */
 static mxc_dma_channel_t g_dma_channels[MAX_DMA_CHANNELS];
 static mx2_dma_priv_t g_dma_privates[MXC_DMA_CHANNELS];
 static mx2_dma_bd_t g_dma_bd_table[MXC_DMA_CHANNELS][MAX_BD_SIZE];
 
 static DEFINE_SPINLOCK(dma_list_lock);
+
+static struct clk *dma_clk;
 
 /*!@brief flush buffer descriptor ring*/
 #define flush_dma_bd(private) \
@@ -231,7 +233,7 @@ static unsigned long inline __clear_dma_interrupt(int channel)
 static void inline __enable_dma_clk(void)
 {
 	unsigned long reg;
-	mxc_clks_enable(DMA_CLK);
+	clk_enable(dma_clk);
 	reg = __raw_readl(IO_ADDRESS(DMA_BASE_ADDR) + DMA_DCR);
 	reg |= 0x1;
 	__raw_writel(reg, IO_ADDRESS(DMA_BASE_ADDR) + DMA_DCR);
@@ -244,7 +246,7 @@ static void inline __disable_dma_clk(void)
 	reg = __raw_readl(IO_ADDRESS(DMA_BASE_ADDR) + DMA_DCR);
 	reg &= ~0x1;
 	__raw_writel(reg, IO_ADDRESS(DMA_BASE_ADDR) + DMA_DCR);
-	mxc_clks_disable(DMA_CLK);
+	clk_disable(dma_clk);
 }
 
 /*!@brief This function enables dma clocks with lock */
@@ -271,8 +273,8 @@ static void inline disable_dma_clk(void)
 	return;
 }
 
-/*!@brief select a buffer to transfer and 
- * 	setup dma channel for current transfer 
+/*!@brief select a buffer to transfer and
+ * 	setup dma channel for current transfer
  */
 static void setup_dmac(mxc_dma_channel_t * dma)
 {
@@ -295,13 +297,13 @@ static void setup_dmac(mxc_dma_channel_t * dma)
 	}
 	/* BUSY: transfering
 	 * PEND: Wait for set to DMAC.
-	 * s1: no transfering:  
-	 *      set first(one BUSY). if there are more than one tranfer. set second &repeat is enabled(two BUSY).               
-	 *      
+	 * s1: no transfering:
+	 *      set first(one BUSY). if there are more than one tranfer. set second &repeat is enabled(two BUSY).
+	 *
 	 * s2: transfering & just on transfer
 	 *      one BUSY. set the tranesfer and set repeat bit(two BUSY)
 	 * s3: transfering & repeat has set
-	 *     has two BUSY. 
+	 *     has two BUSY.
 	 */
 	p = priv->bd_ring + priv->bd_rd;
 	q = next_dma_bd(priv);
@@ -352,7 +354,7 @@ static void setup_dmac(mxc_dma_channel_t * dma)
 	} else {		/* Just dma channel which supports dma buffer can run to there */
 		BUG_ON(!priv->dma_chaining);
 		if (q) {	/* p is tranfering, then q must be set into dma controller */
-			/*WARNING:: [1] dangerous area begin. 
+			/*WARNING:: [1] dangerous area begin.
 			 *      If the p is completed during MCU run in this erea, the dma channel is crashed.
 			 */
 			__raw_writel(q->src_addr, &(dma_base->SourceAddr));
@@ -626,7 +628,7 @@ static inline int fill_dma_bd(mxc_dma_channel_t * dma,
 		save_dma_interrupt(mask);
 		mask_dma_interrupt(dma->channel);
 		local_irq_restore(flags);
-		/*TODO :: 
+		/*TODO ::
 		 *  If channel is transfering and supports chain_buffer,
 		 *  when the new buffer is 2st buffer , repeat must be enabled
 		 */
@@ -693,7 +695,7 @@ static inline int fill_dma_bd_by_sg(mxc_dma_channel_t * dma,
 		save_dma_interrupt(mask);
 		mask_dma_interrupt(dma->channel);
 		local_irq_restore(flags);
-		/*TODO :: 
+		/*TODO ::
 		 *  If channel is transfering and supports chain_buffer,
 		 *  when the new buffer is 2st buffer , repeat must be enabled
 		 */
@@ -710,7 +712,7 @@ static inline int fill_dma_bd_by_sg(mxc_dma_channel_t * dma,
 	return 0;
 }
 
-/*!@brief select next buffer descripter to transfer. 
+/*!@brief select next buffer descripter to transfer.
  *	return 1: need call call-back function. 0: Not need call call-back.
  *	it just is called in ISR
  */
@@ -903,7 +905,7 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf, int num_buf,
 		return -EINVAL;
 	}
 
-	/*TODO: fill dma buffer into driver . 
+	/*TODO: fill dma buffer into driver .
 	 * If driver is no enought buffer to save them , it will return -EBUSY
 	 */
 	if (fill_dma_bd(dma, dma_buf, num_buf, mode)) {
@@ -969,7 +971,7 @@ int mxc_dma_sg_config(int channel_num, struct scatterlist *sg,
 		return -EINVAL;
 	}
 
-	/*TODO: fill dma buffer into driver . 
+	/*TODO: fill dma buffer into driver .
 	 * If driver is no enought buffer to save them , it will return -EBUSY
 	 */
 	if (fill_dma_bd_by_sg(dma, sg, num_buf, num_of_bytes, mode)) {
@@ -1280,7 +1282,8 @@ int __init mxc_dma_init(void)
 
 	mxc_dma_load_info(g_dma_channels);
 
-	mxc_clks_enable(DMA_CLK);
+	dma_clk = clk_get(NULL, "dma_clk");
+	clk_enable(dma_clk);
 
 	__raw_writel(0x2, IO_ADDRESS(DMA_BASE_ADDR) + DMA_DCR);	/*reset DMA; */
 

@@ -1,7 +1,7 @@
 /*======================================================================
     drivers/pcmcia/mx31ads-pcmica.c
 
-    Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+    Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
 
     Device driver for the PCMCIA control functionality of i.Mx31
     microprocessors.
@@ -36,13 +36,13 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 
 #include <pcmcia/version.h>
 #include <pcmcia/cs_types.h>
 #include <pcmcia/cs.h>
 #include <pcmcia/ss.h>
 #include <asm/mach-types.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/pcmcia.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
@@ -842,15 +842,13 @@ mx31ads_common_pcmcia_get_timing(struct mx31ads_pcmcia_socket *skt,
 	    calc_speed(skt->spd_attr, MAX_WIN, PCMCIA_ATTR_MEM_ACCESS);
 }
 
-extern unsigned long mxc_get_clocks(enum mxc_clocks clk);
-
 static int mx31ads_pcmcia_set_timing(struct mx31ads_pcmcia_socket *skt)
 {
 	u_int clk_ns;
 	struct mx31ads_pcmcia_timing timing;
 
 	/* How many nanoseconds */
-	clk_ns = (1000 * 1000 * 1000) / mxc_get_clocks(AHB_CLK);
+	clk_ns = (1000 * 1000 * 1000) / clk_get_rate(skt->clk);
 	pr_debug(KERN_INFO "clk_ns = %d\n", clk_ns);
 
 	mx31ads_common_pcmcia_get_timing(skt, &timing);
@@ -1071,6 +1069,8 @@ static int mx31ads_common_drv_pcmcia_probe(struct platform_device *pdev,
 	skt->irq = MX31ADS_PCMCIA_IRQ;
 	skt->dev = &pdev->dev;
 	skt->ops = ops;
+
+	skt->clk = clk_get(NULL, "pcmcia_clk");
 
 	skt->res_skt.start = _PCMCIA(0);
 	skt->res_skt.end = _PCMCIA(0) + PCMCIASp - 1;

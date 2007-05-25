@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -33,8 +33,8 @@
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 #include <asm/uaccess.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/mxcfb.h>
 
 #include "mx2fb.h"
@@ -51,7 +51,7 @@ static int fb_enabled = 0;
 static unsigned long default_bpp = 16;
 static unsigned char brightness = 255;
 static ATOMIC_NOTIFIER_HEAD(mx2fb_notifier_list);
-
+static struct clk *lcdc_clk;
 /*!
  * @brief Structure containing the MX2 specific framebuffer information.
  */
@@ -845,7 +845,7 @@ static void _enable_lcdc(struct fb_info *info)
 	if (mx2fbi->type == MX2FB_TYPE_GW)
 		_enable_graphic_window(info);
 	else if (!fb_enabled) {
-		mxc_clks_enable(LCDC_CLK);
+		clk_enable(lcdc_clk);
 		gpio_lcdc_active();
 		board_power_lcd(1);
 		_set_brightness(brightness);
@@ -882,7 +882,7 @@ static void _disable_lcdc(struct fb_info *info)
 			gpio_lcdc_inactive();
 			board_power_lcd(0);
 			_set_brightness(0);
-			mxc_clks_disable(LCDC_CLK);
+			clk_disable(lcdc_clk);
 			fb_enabled = 0;
 		}
 #ifdef CONFIG_FB_MXC_TVOUT
@@ -1050,11 +1050,15 @@ static void _update_lcdc(struct fb_info *info)
 	__raw_writel(info->var.xres_virtual >> 1, LCDC_REG(LCDC_LVPWR));
 
 	/* To setup LCDC pixel clock */
-	mxc_set_clocks_div(LCDC_CLK, 1);
+	perclk3 = clk_round_rate(lcdc_clk, 133000000);
+	if (clk_set_rate(lcdc_clk, perclk3)) {
+		printk(KERN_INFO "mx2fb: Unable to set clock to %lu\n",
+		       perclk3);
+		perclk3 = clk_get_rate(lcdc_clk);
+	}
 
 	/* Calculate pixel clock divider, and round to the nearest integer */
-	perclk3 = mxc_get_clocks(PERCLK3);
-	pcd = (perclk3 * 10 / (PICOS2KHZ(var->pixclock) * 1000UL) + 5) / 10;
+	pcd = (perclk3 * 8 / (PICOS2KHZ(var->pixclock) * 1000UL) + 4) / 8;
 	if (--pcd > 0x3F)
 		pcd = 0x3F;
 
@@ -1264,6 +1268,8 @@ static int mx2fb_resume(struct platform_device *pdev)
 static int mx2fb_probe(struct platform_device *pdev)
 {
 	int ret, i;
+
+	lcdc_clk = clk_get(&pdev->dev, "lcdc_clk");
 
 	for (i = 0; i < sizeof(mx2fb_info) / sizeof(struct fb_info); i++) {
 		if ((ret = _install_fb(&mx2fb_info[i], pdev))) {

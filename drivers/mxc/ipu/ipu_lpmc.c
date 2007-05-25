@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -20,13 +20,13 @@
  */
 
 #include <linux/module.h>
+#include <linux/clk.h>
 #include <asm/arch/ipu.h>
 
 #ifdef CONFIG_MXC_IPU_LPMC
 
 #include "ipu_prv.h"
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/mxc_pm.h>
 
 #define LPMC_CNTL	IO_ADDRESS(LPMC_BASE_ADDR + 0)
@@ -37,6 +37,9 @@
 #define LPMC_CNTL_LPMC_EN               0x00000001
 #define LPMC_CNTL_RMP_END_PTR_OFFSET    16
 #define LPMC_CNTL_LPMP_END_PTR_OFFSET   24
+
+static struct clk *dfm_clk;
+static struct clk *lpmc_clk;
 
 /*!
  * This function initializes low-power self-refresh mode.
@@ -64,12 +67,16 @@ int ipu_lpmc_init(u32 dfm_freq,
 	u32 reg, lpmc_cntl;
 	u32 lpmc_state, previous_lpmc_state;
 
-	mxc_set_dfm_clock(dfm_freq);
-	mxc_clks_enable(LPMC_CLK);
+	lpmc_clk = clk_get(NULL, "lpmc_clk");
+	clk_enable(lpmc_clk);
 
-#ifdef CONFIG_DPM
+	dfm_clk = clk_get(NULL, "dfm_clk");
+	dfm_freq = clk_round_rate(dfm_clk, dfm_freq);
+	clk_set_rate(dfm_clk, dfm_freq);
+	clk_enable(dfm_clk);
+
 	mxc_pm_lp_ack_enable(MXC_PM_LOWPWR_ACK_IPU);
-#endif
+
 	lpmc_cntl = (save_count) << LPMC_CNTL_RMP_END_PTR_OFFSET;
 	lpmc_cntl |= (lpm_count + save_count) << LPMC_CNTL_LPMP_END_PTR_OFFSET;
 	__raw_writel(lpmc_cntl, LPMC_CNTL);
@@ -106,7 +113,7 @@ int ipu_lpmc_init(u32 dfm_freq,
 	dev_dbg(g_ipu_dev, "LPMC off - LPMC_STAT = 0x%X\n", lpmc_state);
 
 	lpmc_cntl |= LPMC_CNTL_LOW_PWR_CLK | LPMC_CNTL_LPMC_EN;
-	__raw_writel(lpmc_cntl, LPMC_CNTL);	/* EXIT LPMC Mode */
+	__raw_writel(lpmc_cntl, LPMC_CNTL);
 	dev_dbg(g_ipu_dev, "LPMC_CNTL = 0x%08X\n", lpmc_cntl);
 
 	while (lpmc_state != 0xC) {
@@ -133,9 +140,8 @@ void ipu_lpmc_uninit(void)
 
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
-#ifdef CONFIG_DPM
 	mxc_pm_lp_ack_disable(MXC_PM_LOWPWR_ACK_IPU);
-#endif
+
 	reg = __raw_readl(LPMC_CNTL);
 	reg &= ~LPMC_CNTL_LOW_PWR_CLK;
 	__raw_writel(reg, LPMC_CNTL);	/* EXIT LPMC Mode */
@@ -152,8 +158,10 @@ void ipu_lpmc_uninit(void)
 	}
 
 	__raw_writel(0, LPMC_CNTL);	/* Disable LPMC */
-	mxc_clks_disable(LPMC_CLK);
-	mxc_set_dfm_clock(0);
+	clk_disable(dfm_clk);
+	clk_disable(lpmc_clk);
+	clk_put(dfm_clk);
+	clk_put(lpmc_clk);
 }
 
 #else

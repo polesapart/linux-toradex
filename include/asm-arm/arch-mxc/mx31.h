@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -24,7 +24,6 @@
  */
 #define CLOCK_TICK_RATE         16625000
 
-#define ATA_BASE_CLK            (IPG_CLK)
 /*!
  * Register an interrupt handler for the SMN as well as the SCC.  In some
  * implementations, the SMN is not connected at all, and in others, it is

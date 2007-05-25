@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -21,7 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/string.h>
-#include <asm/arch/clock.h>
+#include <linux/clk.h>
 #include <asm/io.h>
 #include <linux/delay.h>
 
@@ -1078,12 +1078,15 @@ int prphw_isr(void)
 	return status;
 }
 
+static struct clk *emma_clk;
+
 /*!
  * @brief  PrP module clock enable
  */
 void prphw_init(void)
 {
-	mxc_clks_enable(EMMA_PRP_CLK);
+	emma_clk = clk_get(NULL, "emma_clk");
+	clk_enable(emma_clk);
 }
 
 /*!
@@ -1091,5 +1094,6 @@ void prphw_init(void)
  */
 void prphw_exit(void)
 {
-	mxc_clks_disable(EMMA_PRP_CLK);
+	clk_disable(emma_clk);
+	clk_put(emma_clk);
 }

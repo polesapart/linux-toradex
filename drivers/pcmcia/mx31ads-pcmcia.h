@@ -1,7 +1,7 @@
 /*
  * linux/drivers/pcmcia/mx31ads-pcmcia.h
  *
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This file contains definitions for the PCMCIA support code common to
  * integrated SOCs like the i.Mx31 microprocessors.
@@ -37,6 +37,8 @@ struct mx31ads_pcmcia_socket {
 	struct device *dev;
 	unsigned int nr;
 	unsigned int irq;
+
+	struct clk *clk;
 
 	/*
 	 * Core PCMCIA state

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -49,9 +49,9 @@
  */
 
 #include "mxc_scc_internals.h"
-#include <asm/arch/clock.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 /******************************************************************************
  *
  *  Global / Static Variables
@@ -75,8 +75,9 @@
  * #SCC_WRITE_REGISTER macros and their ilk.  All dereferences must be
  * 32 bits wide.
  */
-#define static
-static volatile void *scc_base;
+//#define static
+static void *scc_base;
+static struct clk *scc_clk;
 
 /*! Array to hold function pointers registered by
     #scc_monitor_security_failure() and processed by
@@ -169,7 +170,7 @@ static int mxc_scc_suspend(struct platform_device *pdev, pm_message_t state)
 #endif
 
 	/* Turn off clock */
-	mxc_clks_disable(SCC_CLK);
+	clk_disable(scc_clk);
 
 	return 0;
 }
@@ -189,7 +190,7 @@ static int mxc_scc_resume(struct platform_device *pdev)
 #endif
 
 	/* Turn on clock */
-	mxc_clks_enable(SCC_CLK);
+	clk_enable(scc_clk);
 
 	return 0;
 }
@@ -240,13 +241,12 @@ static int scc_init(void)
 	int return_value = -EIO;	/* assume error */
 
 	/* Enable the SCC clocks  */
-#if defined(CONFIG_ARCH_MX27)
 #ifdef SCC_DEBUG
 	printk(KERN_ALERT "SCC: Enabling the SCC CLK ... \n");
 
 #endif				/* SCC_DEBUG */
-	mxc_clks_enable(SCC_CLK);
-#endif				/* CONFIG_ARCH_MX27 */
+	scc_clk = clk_get(NULL, "scc_clk");
+	clk_enable(scc_clk);
 
 	ret = platform_driver_register(&mxc_scc_driver);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -14,7 +14,6 @@
 #define __MXC_RTC_H__
 
 #include <asm/hardware.h>
-#include <asm/arch/clock.h>
 #define RTC_INPUT_CLK_32768HZ
 /*
 #define RTC_INPUT_CLK_32000HZ

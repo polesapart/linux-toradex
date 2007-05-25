@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -51,8 +51,6 @@
 #endif				/* CONFIG_PM */
 
 #include <asm/arch/dma.h>
-#include <asm/arch/spba.h>
-#include <asm/arch/clock.h>
 #include <asm/mach-types.h>
 
 #include <ssi/ssi.h>

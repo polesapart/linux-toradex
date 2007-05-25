@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -15,13 +15,15 @@
 
 #include <linux/types.h>
 #include <linux/device.h>
+#include <linux/clk.h>
 #include <linux/interrupt.h>
 #include <asm/arch/hardware.h>
 
 /* Globals */
 extern struct device *g_ipu_dev;
 extern spinlock_t ipu_lock;
-extern uint32_t g_ipu_clk;
+extern struct clk *g_ipu_clk;
+extern struct clk *g_ipu_csi_clk;
 
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
 

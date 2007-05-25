@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -24,10 +24,10 @@
 #include <linux/types.h>
 #include <linux/mm.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 #include <asm/irq.h>
 #include <asm/arch/dma.h>
 #include <asm/arch/hardware.h>
-#include <asm/arch/clock.h>
 
 #include <asm/semaphore.h>
 #include <linux/spinlock.h>
@@ -1151,6 +1151,7 @@ static void __init init_sdma_data(void)
  */
 int __init sdma_init(void)
 {
+	struct clk *ahb_clk, *ipg_clk;
 	int res = 0;
 	configs_data confreg_data;
 
@@ -1159,7 +1160,11 @@ int __init sdma_init(void)
 
 	confreg_data.dspdma = MXC_SDMA_DSPDMA;
 	/* Set ACR bit */
-	if (mxc_get_clocks(AHB_CLK) / mxc_get_clocks(IPG_CLK) < 2) {
+	ahb_clk = clk_get(NULL, "sdma_ahb_clk");
+	ipg_clk = clk_get(NULL, "sdma_ipg_clk");
+	clk_enable(ahb_clk);
+	clk_enable(ipg_clk);
+	if (clk_get_rate(ahb_clk) / clk_get_rate(ipg_clk) < 2) {
 		printk(KERN_INFO "Setting SDMA ACR\n");
 		confreg_data.acr = 1;
 	}

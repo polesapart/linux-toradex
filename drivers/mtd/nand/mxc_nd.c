@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -20,10 +20,10 @@
 #include <linux/interrupt.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/mtd/partitions.h>
 #include <asm/mach/flash.h>
-#include <asm/arch/clock.h>
 #include <asm/io.h>
 #include "mxc_nd.h"
 
@@ -76,6 +76,8 @@ static int Ecc_disabled;
 #endif
 
 static int is2k_Pagesize = 0;
+
+static struct clk *nfc_clk;
 
 /*
  * OOB placement block for use with hardware ecc generation
@@ -190,7 +192,7 @@ static void send_addr(u16 addr, bool islast)
  * This function requests the NANDFC to initate the transfer
  * of data currently in the NANDFC RAM buffer to the NAND device.
  *
- * @param	buf_id	      Specify Internal RAM Buffer number (0-3)	
+ * @param	buf_id	      Specify Internal RAM Buffer number (0-3)
  * @param       bSpareOnly    set true if only the spare area is transferred
  */
 static void send_prog_page(u8 buf_id, bool bSpareOnly)
@@ -218,7 +220,7 @@ static void send_prog_page(u8 buf_id, bool bSpareOnly)
 /*!
  * This function will correct the single bit ECC error
  *
- * @param  buf_id	Specify Internal RAM Buffer number (0-3)	
+ * @param  buf_id	Specify Internal RAM Buffer number (0-3)
  * @param  eccpos 	Ecc byte and bit position
  * @param  bSpareOnly  	set to true if only spare area needs correction
  */
@@ -252,7 +254,7 @@ static void mxc_nd_correct_error(u8 buf_id, u16 eccpos, bool bSpareOnly)
  * This function will maintains state of single bit Error
  * in Main & spare  area
  *
- * @param buf_id	Specify Internal RAM Buffer number (0-3)	
+ * @param buf_id	Specify Internal RAM Buffer number (0-3)
  * @param spare  	set to true if only spare area needs correction
  */
 static void mxc_nd_correct_ecc(u8 buf_id, bool spare)
@@ -344,7 +346,7 @@ static void mxc_nd_correct_ecc(u8 buf_id, bool spare)
  * This function requests the NANDFC to initated the transfer
  * of data from the NAND device into in the NANDFC ram buffer.
  *
- * @param  	buf_id		Specify Internal RAM Buffer number (0-3)	
+ * @param  	buf_id		Specify Internal RAM Buffer number (0-3)
  * @param       bSpareOnly    	set true if only the spare area is transferred
  */
 static void send_read_page(u8 buf_id, bool bSpareOnly)
@@ -455,7 +457,7 @@ static u16 get_dev_status(void)
  */
 static int mxc_nand_dev_ready(struct mtd_info *mtd)
 {
-	/* 
+	/*
 	 * NFC handles R/B internally.Therefore,this function
 	 * always returns status as ready.
 	 */
@@ -818,11 +820,11 @@ static void mxc_nand_select_chip(struct mtd_info *mtd, int chip)
 	switch (chip) {
 	case -1:
 		/* Disable the NFC clock */
-		mxc_clks_disable(NFC_CLK);
+		clk_disable(nfc_clk);
 		break;
 	case 0:
 		/* Enable the NFC clock */
-		mxc_clks_enable(NFC_CLK);
+		clk_enable(nfc_clk);
 		break;
 
 	default:
@@ -883,11 +885,11 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 	case NAND_CMD_SEQIN:
 		if (column >= mtd->writesize) {
 			if (is2k_Pagesize) {
-				/** 			 
+				/**
 				  * FIXME: before send SEQIN command for write OOB,
-				  * We must read one page out. 			 
-				  * For K9F1GXX has no READ1 command to set current HW 			 
-				  * pointer to spare area, we must write the whole page including OOB together.			 
+				  * We must read one page out.
+				  * For K9F1GXX has no READ1 command to set current HW
+				  * pointer to spare area, we must write the whole page including OOB together.
 				  */
 				/* call itself to read a page */
 				mxc_nand_command(mtd, NAND_CMD_READ0, 0,
@@ -1090,6 +1092,8 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	this->read_buf = mxc_nand_read_buf;
 	this->verify_buf = mxc_nand_verify_buf;
 
+	nfc_clk = clk_get(&pdev->dev, "nfc_clk");
+
 	NFC_CONFIG1 |= NFC_INT_MSK;
 	init_waitqueue_head(&irq_waitq);
 	err = request_irq(INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
@@ -1183,6 +1187,7 @@ static int __exit mxcnd_remove(struct platform_device *pdev)
 {
 	struct mtd_info *mtd = platform_get_drvdata(pdev);
 
+	clk_put(nfc_clk);
 	platform_set_drvdata(pdev, NULL);
 
 	if (mxc_nand_data) {
@@ -1217,7 +1222,7 @@ static int mxcnd_suspend(struct platform_device *pdev, pm_message_t state)
 		ret = info->suspend(info);
 
 	/* Disable the NFC clock */
-	mxc_clks_disable(NFC_CLK);
+	clk_disable(nfc_clk);
 
 	return ret;
 }
@@ -1238,7 +1243,7 @@ static int mxcnd_resume(struct platform_device *pdev)
 
 	DEBUG(MTD_DEBUG_LEVEL0, "MXC_ND : NAND resume\n");
 	/* Enable the NFC clock */
-	mxc_clks_enable(NFC_CLK);
+	clk_enable(nfc_clk);
 
 	if (info) {
 		info->resume(info);

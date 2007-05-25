@@ -42,6 +42,7 @@
 #include <linux/device.h>
 #include <linux/pm.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 #include <asm/hardirq.h>
 #include <asm/page.h>
@@ -120,7 +121,9 @@ static int mxc_dpm_set_opt(struct dpm_opt *cur, struct dpm_opt *new)
 				    md_new->cpu / 1000);
 	}
 #ifdef CONFIG_PM
+#if 0
 	mxc_pm_dvfs(md_new->cpu, md_new->ahb, md_new->ip);
+#endif
 	curr_mode = md_new->mode;
 #endif
 
@@ -220,9 +223,9 @@ static int mxc_dpm_get_opt(struct dpm_opt *opt)
 
 	md_opt = &opt->md_opt;
 
-	md_opt->cpu = mxc_get_clocks(CPU_CLK);
-	md_opt->ahb = mxc_get_clocks(AHB_CLK);
-	md_opt->ip = mxc_get_clocks(IPG_CLK);
+	md_opt->cpu = clk_get(NULL, "cpu_clk")->rate;
+	md_opt->ahb = clk_get(NULL, "ahb_clk")->rate;
+	md_opt->ip = clk_get(NULL, "ipg_clk")->rate;
 	md_opt->mode = curr_mode;
 
 	return 0;
@@ -376,7 +379,7 @@ static void mxc_dpm_startup(void)
 {
 	if (!saved_loops_per_jiffy) {
 		saved_loops_per_jiffy = loops_per_jiffy;
-		saved_cpu_freq = mxc_get_clocks(CPU_CLK) / 1000;
+		saved_cpu_freq = clk_get(NULL, "cpu_clk")->rate / 1000;
 	}
 	orig_idle = pm_idle;
 	pm_idle = dpm_idle;

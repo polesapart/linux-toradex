@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -18,12 +18,11 @@
  *
  * @ingroup Camera
  */
-
 #include <linux/init.h>
 #include <linux/ctype.h>
 #include <linux/types.h>
 #include <linux/device.h>
-#include "asm/arch/clock.h"
+#include <linux/clk.h>
 
 /*
  * set_mclk_rate
@@ -33,25 +32,26 @@
  */
 void set_mclk_rate(uint32_t * p_mclk_freq)
 {
-	uint32_t div;
-	// Calculate the divider using the requested, minimum mclk freq
-	div = mxc_get_clocks_parent(CSI_BAUD) / *p_mclk_freq;
-	/* Calculate and return the actual mclk frequency.
-	   The integer division error/truncation will ensure the actual freq is
-	   greater than the requested freq.
+	struct clk *clk;
+	int i;
+	uint32_t freq = 0;
+	uint32_t step = *p_mclk_freq / 8;
+
+	clk = clk_get(NULL, "csi_clk");
+
+	/* clk_round_rate rounds down, but we need it rounded up
+	 * So we try 9 steps up to 2x the requested freq.
 	 */
-	if (*p_mclk_freq < mxc_get_clocks_parent(CSI_BAUD) / div) {
-		div++;
+	for (i = 0; i <= 8; i++) {
+		freq = clk_round_rate(clk, *p_mclk_freq + (i * step));
+		if (freq >= *p_mclk_freq)
+			break;
 	}
+	clk_set_rate(clk, freq);
 
-	*p_mclk_freq = mxc_get_clocks_parent(CSI_BAUD) / div;
+	*p_mclk_freq = freq;
 
-#ifdef CONFIG_MXC_EMMA
-	mxc_set_clocks_div(CSI_BAUD, div / 2);
-#else
-	mxc_set_clocks_div(CSI_BAUD, div * 2);
-#endif
-
+	clk_put(clk);
 	pr_debug("mclk frequency = %d\n", *p_mclk_freq);
 }
 

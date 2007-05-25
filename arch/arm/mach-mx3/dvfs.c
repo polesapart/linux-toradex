@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -38,13 +38,13 @@
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 #include <asm/uaccess.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
 #include <asm/semaphore.h>
 #include <linux/jiffies.h>
 #include <linux/device.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/sdma.h>
 #include <linux/dma-mapping.h>
@@ -384,16 +384,16 @@ unsigned long dvfs_get_clock(unsigned long reg, unsigned long pdr0)
 	unsigned long pll, ret_val = 0;
 	signed long mcu_pdf;
 	signed long pdf, mfd, mfi, mfn, ref_clk;
+	struct clk *pll_clk;
+	struct clk *parent_clk;
 
-	volatile unsigned long ccmr;
-	unsigned int prcs;
-
-	ccmr = mxc_ccm_get_reg(MXC_CCM_CCMR);
-	prcs = (ccmr & MXC_CCM_CCMR_PRCS_MASK) >> MXC_CCM_CCMR_PRCS_OFFSET;
-	if (prcs == 0x1) {
-		ref_clk = mxc_get_clocks(CKIL_CLK) * 1024;
-	} else {
-		ref_clk = mxc_get_clocks(CKIH_CLK);
+	pll_clk = clk_get(NULL, "mcu_pll");
+	parent_clk = clk_get(NULL, "ckih");
+	if (parent_clk == clk_get_parent(pll_clk)) {
+		ref_clk = clk_get_rate(parent_clk);
+	} else {		/* parent is ckil/fpm */
+		parent_clk = clk_get(NULL, "ckil");
+		ref_clk = clk_get_rate(parent_clk) * 1024;
 	}
 
 	pdf = (signed long)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -57,7 +57,6 @@ static uart_mxc_port mxc_ports[] = {
 	       .rx_threshold = UART1_UFCR_RXTL,
 	       .tx_threshold = UART1_UFCR_TXTL,
 	       .shared = UART1_SHARED_PERI,
-	       .clock_id = UART1_BAUD,
 	       .dma_tx_id = MXC_DMA_UART1_TX,
 	       .dma_rx_id = MXC_DMA_UART1_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
@@ -84,7 +83,6 @@ static uart_mxc_port mxc_ports[] = {
 	       .rx_threshold = UART2_UFCR_RXTL,
 	       .tx_threshold = UART2_UFCR_TXTL,
 	       .shared = UART2_SHARED_PERI,
-	       .clock_id = UART2_BAUD,
 	       .dma_tx_id = MXC_DMA_UART2_TX,
 	       .dma_rx_id = MXC_DMA_UART2_RX,
 	       .rxd_mux = MXC_UART_IR_RXDMUX,
@@ -111,7 +109,6 @@ static uart_mxc_port mxc_ports[] = {
 	       .rx_threshold = UART3_UFCR_RXTL,
 	       .tx_threshold = UART3_UFCR_TXTL,
 	       .shared = UART3_SHARED_PERI,
-	       .clock_id = UART3_BAUD,
 	       .dma_tx_id = MXC_DMA_UART3_TX,
 	       .dma_rx_id = MXC_DMA_UART3_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
@@ -139,7 +136,6 @@ static uart_mxc_port mxc_ports[] = {
 	       .rx_threshold = UART4_UFCR_RXTL,
 	       .tx_threshold = UART4_UFCR_TXTL,
 	       .shared = UART4_SHARED_PERI,
-	       .clock_id = UART4_BAUD,
 	       .dma_tx_id = MXC_DMA_UART4_TX,
 	       .dma_rx_id = MXC_DMA_UART4_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
@@ -167,7 +163,6 @@ static uart_mxc_port mxc_ports[] = {
 	       .rx_threshold = UART5_UFCR_RXTL,
 	       .tx_threshold = UART5_UFCR_TXTL,
 	       .shared = UART5_SHARED_PERI,
-	       .clock_id = UART5_BAUD,
 	       .dma_tx_id = MXC_DMA_UART5_TX,
 	       .dma_rx_id = MXC_DMA_UART5_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,

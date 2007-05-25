@@ -12,7 +12,7 @@
  */
 
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -52,6 +52,7 @@
 #include <linux/mmc/protocol.h>
 #include <linux/delay.h>
 #include <linux/timer.h>
+#include <linux/clk.h>
 
 #include <asm/dma.h>
 #include <asm/io.h>
@@ -62,7 +63,6 @@
 #include <asm/arch/mmc.h>
 
 #include "mxc_mmc.h"
-#include <asm/arch/clock.h>
 
 #if defined(CONFIG_MXC_MC13783_POWER)
 #include <asm/arch/pmic_power.h>
@@ -232,7 +232,7 @@ struct mxcmci_host {
 	/*!
 	 * Clock id to hold ipg_perclk.
 	 */
-	enum mxc_clocks clock_id;
+	struct clk *clk;
 	/*!
 	 * MMC mode.
 	 */
@@ -812,7 +812,7 @@ static irqreturn_t mxcmci_irq(int irq, void *devid)
 	u32 intctrl;
 
 	if (host->mxc_mmc_suspend_flag == 1) {
-		mxc_clks_enable(host->clock_id);
+		clk_enable(host->clk);
 	}
 
 	status = __raw_readl(host->base + MMC_STATUS);
@@ -895,7 +895,7 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	struct mxcmci_host *host = mmc_priv(mmc);
 	/*This variable holds the value of clock prescaler */
 	int prescaler;
-	int clk_rate = mxc_get_clocks(host->clock_id);
+	int clk_rate = clk_get_rate(host->clk);
 #ifdef MXC_MMC_DMA_ENABLE
 	mxc_dma_device_t dev_id = 0;
 #endif
@@ -1241,16 +1241,12 @@ static int mxcmci_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	if (pdev->id == 0) {
-		host->clock_id = SDHC1_CLK;
-	} else {
-		host->clock_id = SDHC2_CLK;
-	}
+	host->clk = clk_get(&pdev->dev, "sdhc_clk");
+	clk_enable(host->clk);
 
 	mmc->f_min = mmc_plat->min_clk;
 	mmc->f_max = mmc_plat->max_clk;
-	pr_debug("SDHC:%d clock:%lu\n", pdev->id,
-		 mxc_get_clocks(host->clock_id));
+	pr_debug("SDHC:%d clock:%lu\n", pdev->id, clk_get_rate(host->clk));
 
 	spin_lock_init(&host->lock);
 	host->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1343,6 +1339,7 @@ static int mxcmci_probe(struct platform_device *pdev)
 	release_mem_region(pdev->resource[0].start,
 			   pdev->resource[0].end - pdev->resource[0].start + 1);
       out:
+	clk_disable(host->clk);
 	mmc_free_host(mmc);
 	platform_set_drvdata(pdev, NULL);
 	return ret;
@@ -1413,7 +1410,7 @@ static int mxcmci_suspend(struct platform_device *pdev, pm_message_t state)
 		reg &= ~INT_CNTR_SDIO_INT_WKP_EN;
 		__raw_writel(reg, host->base + MMC_INT_CNTR);
 	}
-	mxc_clks_disable(host->clock_id);
+	clk_disable(host->clk);
 
 	return ret;
 }
@@ -1448,7 +1445,7 @@ static int mxcmci_resume(struct platform_device *pdev)
 		ret = mmc_resume_host(mmc);
 		host->mxc_mmc_suspend_flag = 0;
 	}
-	mxc_clks_enable(host->clock_id);
+	clk_enable(host->clk);
 	if (host->sdio_set_wake_enable == 1) {
 		reg = __raw_readl(host->base + MMC_INT_CNTR);
 		reg &= ~INT_CNTR_SDIO_INT_WKP_EN;

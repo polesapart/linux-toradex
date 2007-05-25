@@ -5,7 +5,7 @@
  * Copyright (c) 2003-2004 Simtec Electronics
  *  Ben Dooks <ben@simtec.co.uk>
  *
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include <linux/ide.h>
 #include <linux/init.h>
 #include <linux/ide.h>
+#include <linux/clk.h>
 
 #include <asm/mach-types.h>
 
@@ -43,8 +44,6 @@
 #include <asm/irq.h>
 #include <asm/delay.h>
 #include <asm/hardware.h>
-#include <asm/arch/board.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/dma.h>
 #include "mxc_ide.h"
 
@@ -52,6 +51,8 @@ extern void gpio_ata_active(void);
 extern void gpio_ata_inactive(void);
 static int mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode);
 static void mxc_ide_dma_callback(void *arg, int error, unsigned int count);
+
+static struct clk *ata_clk;
 
 /* List of registered interfaces */
 static ide_hwif_t *ifs[1];
@@ -161,7 +162,7 @@ static struct {
 static int set_ata_bus_timing(int speed, enum ata_mode mode)
 {
 	/* get the bus clock cycle time, in ns */
-	int T = 1 * 1000 * 1000 * 1000 / mxc_get_clocks(ATA_BASE_CLK);
+	int T = 1 * 1000 * 1000 * 1000 / clk_get_rate(ata_clk);
 	mxc_ide_time_cfg_t cfg0, cfg1, cfg2, cfg3, cfg4, cfg5;
 	/* every mode gets the same t_off and t_on */
 
@@ -1016,6 +1017,10 @@ static int __init mxc_ide_init(void)
 	/* Configure the pads */
 	gpio_ata_active();
 
+	/* Enable the ata clock */
+	ata_clk = clk_get(NULL, "ata_clk");
+	clk_enable(ata_clk);
+
 	/* Deassert the reset bit to enable the interface */
 	ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B, MXC_IDE_ATA_CONTROL);
 
@@ -1105,6 +1110,12 @@ static void __exit mxc_ide_exit(void)
 
 	/* Disable the interface */
 	PBC_ATA_SIGNAL_INACTIVE();
+
+	/*
+	 * Turn off the clock
+	 */
+	clk_disable(ata_clk);
+	clk_put(ata_clk);
 
 	/*
 	 * Free the pins

@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -24,9 +24,9 @@
 #include <linux/string.h>
 #include <linux/module.h>
 #include <linux/fb.h>
-#include <asm/irq.h>
+#include <linux/clk.h>
+#include <linux/interrupt.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 
 #include "mx27_pp.h"
 #include "mxc_v4l2_output.h"
@@ -883,12 +883,15 @@ static int pphw_isr(void)
 	return status;
 }
 
+static struct clk *emma_clk;
+
 /*!
  * @brief PP module clock enable
  */
 static void pphw_init(void)
 {
-	mxc_clks_enable(EMMA_PP_CLK);
+	emma_clk = clk_get(NULL, "emma_clk");
+	clk_enable(emma_clk);
 }
 
 /*!
@@ -896,5 +899,6 @@ static void pphw_init(void)
  */
 static void pphw_exit(void)
 {
-	mxc_clks_disable(EMMA_PP_CLK);
+	clk_disable(emma_clk);
+	clk_put(emma_clk);
 }

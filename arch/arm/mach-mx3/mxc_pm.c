@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -26,9 +26,9 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 #include <asm/hardware.h>
 #include <asm/arch/system.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/mxc_pm.h>
 #include <asm/irq.h>
 #include <asm/arch/dvfs_dptc_struct.h>
@@ -44,27 +44,15 @@
 #define NFC_MAX_FREQ        20000000	/* Maximum frequency NFC clock */
 #define PRE_DIV_MIN_FREQ    10000000	/* Minimum Frequency after Predivider */
 
-static void print_frequencies(void)
-{
-	pr_debug("MCUPLL       %9lu\n", mxc_pll_clock(MCUPLL));
-	pr_debug("SERIALPLL    %9lu\n", mxc_pll_clock(SERIALPLL));
-	pr_debug("USBPLL       %9lu\n", mxc_pll_clock(USBPLL));
-	pr_debug("\n");
-	pr_debug("CPU_CLK      %9lu\n", mxc_get_clocks(CPU_CLK));
-	pr_debug("AHB_CLK      %9lu\n", mxc_get_clocks(AHB_CLK));
-	pr_debug("IPG_CLK      %9lu\n", mxc_get_clocks(IPG_CLK));
-	pr_debug("NFC_CLK      %9lu\n", mxc_get_clocks(NFC_CLK));
-	pr_debug("IPU_CLK      %9lu\n", mxc_get_clocks(IPU_CLK));
-	pr_debug("USB_CLK      %9lu\n", mxc_get_clocks(USB_CLK));
-	pr_debug("CSI_BAUD     %9lu\n", mxc_get_clocks(CSI_BAUD));
-	pr_debug("UART1_BAUD   %9lu\n", mxc_get_clocks(UART1_BAUD));
-	pr_debug("SSI1_BAUD    %9lu\n", mxc_get_clocks(SSI1_BAUD));
-	pr_debug("SSI2_BAUD    %9lu\n", mxc_get_clocks(SSI2_BAUD));
-	pr_debug("FIRI_BAUD    %9lu\n", mxc_get_clocks(FIRI_BAUD));
-	pr_debug("MSTICK1_BAUD %9lu\n", mxc_get_clocks(MSTICK1_BAUD));
-	pr_debug("MSTICK2_BAUD %9lu\n", mxc_get_clocks(MSTICK2_BAUD));
-	pr_debug("\n");
-}
+extern unsigned long mxc_ccm_get_reg(unsigned int reg_offset);
+extern void mxc_ccm_modify_reg(unsigned int reg_offset, unsigned int mask,
+			       unsigned int data);
+
+static struct clk *mcu_pll_clk;
+static struct clk *cpu_clk;
+static struct clk *ahb_clk;
+static struct clk *ipg_clk;
+static struct clk *csi_baud;
 
 /*!
  * Compare two frequences using allowable tolerance
@@ -182,17 +170,25 @@ int mxc_pm_intscale(long arm_freq, long max_freq, long ip_freq)
 
 	printk(KERN_INFO "arm_freq=%ld, max_freq=%ld, ip_freq=%ld\n",
 	       arm_freq, max_freq, ip_freq);
-	print_frequencies();	/* debug */
+	//print_frequencies();  /* debug */
 
-	mcu_main_clk = mxc_pll_clock(MCUPLL);
+	mcu_main_clk = clk_get_rate(mcu_pll_clk);
 	ret_value = cal_pdr0_value(mcu_main_clk, arm_freq, max_freq, ip_freq,
 				   &mask, &value);
-
-	if (ret_value == 0) {
-		mxc_ccm_modify_reg(MXC_CCM_PDR0, mask, value);
+	if ((arm_freq != clk_round_rate(cpu_clk, arm_freq)) ||
+	    (max_freq != clk_round_rate(ahb_clk, max_freq)) ||
+	    (ip_freq != clk_round_rate(ipg_clk, ip_freq))) {
+		return -EINVAL;
 	}
 
-	print_frequencies();
+	if ((max_freq != clk_get_rate(ahb_clk)) ||
+	    (ip_freq != clk_get_rate(ipg_clk))) {
+		return -EINVAL;
+	}
+
+	if (arm_freq != clk_get_rate(cpu_clk)) {
+		ret_value = clk_set_rate(cpu_clk, arm_freq);
+	}
 	return ret_value;
 }
 
@@ -219,52 +215,18 @@ int mxc_pm_intscale(long arm_freq, long max_freq, long ip_freq)
  */
 int mxc_pm_pllscale(long arm_freq, long max_freq, long ip_freq)
 {
-	unsigned long ccmr;	/* clock control register */
-	unsigned long prcs;	/* PLL reference clock select bits. */
-	signed long ref_freq;	/* reference frequency */
-	signed long pll_freq;	/* target pll frequency */
-	signed long pd;		/* Pre-divider */
-	signed long mfi;	/* Multiplication Factor (Integer part) */
-	signed long mfn;	/* Multiplication Factor (Integer part) */
-	signed long mfd;	/* Multiplication Factor (Denominator Part) */
-	signed long old_pll;	/* old pll frequency */
-	signed long tmp;
+	signed long pll_freq = 0;	/* target pll frequency */
+	unsigned long old_pll;
 	unsigned long mask;
 	unsigned long value;
 	int ret_value;
 
 	printk(KERN_INFO "arm_freq=%ld, max_freq=%ld, ip_freq=%ld\n",
 	       arm_freq, max_freq, ip_freq);
-	print_frequencies();
-
-	ccmr = __raw_readl(IO_ADDRESS(CCM_BASE_ADDR) + MXC_CCM_CCMR);
-	prcs = (ccmr & MXC_CCM_CCMR_PRCS_MASK) >> MXC_CCM_CCMR_PRCS_OFFSET;
-	if (prcs == 0x1) {
-		ref_freq = mxc_get_clocks(CKIL_CLK) * 1024;
-	} else {
-		ref_freq = mxc_get_clocks(CKIH_CLK);
-	}
-	/*
-	 * MCU PLL output frequency equation
-	 *
-	 *                           mfn
-	 *                    mfi + -----
-	 *                           mfd
-	 *    ref_freq * 2 * ------------- =  pll_freq
-	 *                        pd
-	 *
-	 *   mfi must be >= 5 and <= 15
-	 *   mfd range 1 to 1024
-	 *   mfn range -512 to 511
-	 *   The absolute value of mfn/mfd must be smaller than 1.
-	 *   pd range 1 to 16
-	 *
-	 */
-
-	pd = 1;
-	pll_freq = arm_freq;
+	//print_frequencies();
 
 	do {
+		pll_freq += arm_freq;
 		if ((pll_freq > MCU_PLL_MAX_FREQ) || (pll_freq / 8 > arm_freq)) {
 			return FREQ_OUT_OF_RANGE;
 		}
@@ -275,54 +237,20 @@ int mxc_pm_pllscale(long arm_freq, long max_freq, long ip_freq)
 			    cal_pdr0_value(pll_freq, arm_freq, max_freq,
 					   ip_freq, &mask, &value);
 		}
-		if (ret_value != 0) {
-			pll_freq += arm_freq;
-		}
 	} while (ret_value != 0);
 
-	while (((ref_freq / pd) * 10) > pll_freq) {
-		pd++;
-	}
-
-	if ((ref_freq / pd) < PRE_DIV_MIN_FREQ) {
-		return FREQ_OUT_OF_RANGE;
-	}
-
-	/* the ref_freq/2 in the following is to round up */
-	mfi = (((pll_freq / 2) * pd) + (ref_freq / 2)) / ref_freq;
-	if (mfi < 5 || mfi > 15) {
-		return FREQ_OUT_OF_RANGE;
-	}
-
-	/* pick a mfd value that will work
-	 * then solve for mfn */
-	mfd = ref_freq / 50000;
-
-	/*
-	 *          pll_freq * pd * mfd
-	 *   mfn = --------------------  -  (mfi * mfd)
-	 *           2 * ref_freq
-	 */
-	/* the tmp/2 is for rounding */
-	tmp = ref_freq / 10000;
-	mfn =
-	    ((((((pll_freq / 2) + (tmp / 2)) / tmp) * pd) * mfd) / 10000) -
-	    (mfi * mfd);
-
-	mfn = mfn & 0x3ff;
-
-	old_pll = mxc_pll_clock(MCUPLL);
+	old_pll = clk_get_rate(mcu_pll_clk);
 	if (pll_freq > old_pll) {
 		/* if pll freq is increasing then change dividers first */
 		mxc_ccm_modify_reg(MXC_CCM_PDR0, mask, value);
-		mxc_pll_set(MCUPLL, mfi, pd - 1, mfd - 1, mfn);
+		ret_value = clk_set_rate(mcu_pll_clk, pll_freq);
 	} else {
 		/* if pll freq is decreasing then change pll first */
-		mxc_pll_set(MCUPLL, mfi, pd - 1, mfd - 1, mfn);
+		ret_value = clk_set_rate(mcu_pll_clk, pll_freq);
 		mxc_ccm_modify_reg(MXC_CCM_PDR0, mask, value);
 	}
-	print_frequencies();
-	return 0;
+	//print_frequencies();
+	return ret_value;
 }
 
 /*!
@@ -351,7 +279,7 @@ void mxc_pm_lowpower(int mode)
 		__raw_writel(INT_GPT, AVIC_INTDISNUM);
 
 		/* work-around for SR mode after camera related test */
-		mxc_clks_enable(CSI_BAUD);
+		clk_enable(csi_baud);
 		__raw_writel(0x51, IPU_CONF);
 		break;
 
@@ -384,7 +312,7 @@ void mxc_pm_lowpower(int mode)
 
 	/* work-around for SR mode after camera related test */
 	__raw_writel(ipu_conf, IPU_CONF);
-	mxc_clks_disable(CSI_BAUD);
+	clk_disable(csi_baud);
 
 	__raw_writel(INT_GPT, AVIC_INTENNUM);
 
@@ -432,6 +360,12 @@ int mxc_pm_dvfs(unsigned long armfreq, long ahbfreq, long ipfreq)
 static int __init mxc_pm_init_module(void)
 {
 	printk(KERN_INFO "Low-Level PM Driver module loaded\n");
+
+	mcu_pll_clk = clk_get(NULL, "mcu_pll");
+	cpu_clk = clk_get(NULL, "cpu_clk");
+	ahb_clk = clk_get(NULL, "ahb_clk");
+	ipg_clk = clk_get(NULL, "ipg_clk");
+	csi_baud = clk_get(NULL, "csi_baud");
 	return 0;
 }
 
@@ -440,6 +374,10 @@ static int __init mxc_pm_init_module(void)
  */
 static void __exit mxc_pm_cleanup_module(void)
 {
+	clk_put(mcu_pll_clk);
+	clk_put(cpu_clk);
+	clk_put(ahb_clk);
+	clk_put(ipg_clk);
 	printk(KERN_INFO "Low-Level PM Driver module Unloaded\n");
 }
 

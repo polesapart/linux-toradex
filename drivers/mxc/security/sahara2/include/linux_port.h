@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -70,7 +70,7 @@
 
 #include <linux/platform_device.h>	/* used in dynamic power management */
 
-#include <asm/arch/clock.h>	/* clock en/disable for DPM */
+#include <linux/clk.h>	/* clock en/disable for DPM */
 
 #include <linux/dmapool.h>
 #include <linux/dma-mapping.h>

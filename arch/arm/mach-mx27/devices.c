@@ -9,7 +9,7 @@
  * licensed "as is" without any warranty of any kind, whether express
  * or implied.
  *
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -19,7 +19,6 @@
 #include <linux/spi/spi.h>
 
 #include <asm/hardware.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/mmc.h>
 
  /*!
@@ -90,7 +89,6 @@ static struct platform_device mxc_wdt_device = {
 
 static void mxc_init_wdt(void)
 {
-	mxc_clks_enable(WDOG_CLK);
 	(void)platform_device_register(&mxc_wdt_device);
 }
 #else
@@ -245,16 +243,9 @@ static inline void mxc_init_mmc(void)
 		mxcsdhc2_device.resource[2].end = cd_irq;
 	}
 
-	mxc_clks_enable(PERCLK2);
-
-	mxc_clks_enable(SDHC1_CLK);
 	(void)platform_device_register(&mxcsdhc1_device);
-
-	mxc_clks_enable(SDHC2_CLK);
 	(void)platform_device_register(&mxcsdhc2_device);
-
 #ifdef CONFIG_MXC_SDHC3
-	mxc_clks_enable(SDHC3_CLK);
 	(void)platform_device_register(&mxcsdhc3_device);
 #endif
 }
@@ -286,16 +277,14 @@ static struct resource mxcspi1_resources[] = {
 
 /*! Platform Data for MXC CSPI1 */
 static struct mxc_spi_master mxcspi1_data = {
-	.bus_num = 1,
 	.maxchipselect = 4,
 	.spi_version = 0,
-	.clock = CSPI1_CLK,
 };
 
 /*! Device Definition for MXC CSPI1 */
 static struct platform_device mxcspi1_device = {
 	.name = "mxc_spi",
-	.id = 1,
+	.id = 0,
 	.dev = {
 		.release = mxc_nop_release,
 		.platform_data = &mxcspi1_data,
@@ -325,16 +314,14 @@ static struct resource mxcspi2_resources[] = {
 
 /*! Platform Data for MXC CSPI2 */
 static struct mxc_spi_master mxcspi2_data = {
-	.bus_num = 2,
 	.maxchipselect = 4,
 	.spi_version = 0,
-	.clock = CSPI2_CLK,
 };
 
 /*! Device Definition for MXC CSPI2 */
 static struct platform_device mxcspi2_device = {
 	.name = "mxc_spi",
-	.id = 2,
+	.id = 1,
 	.dev = {
 		.release = mxc_nop_release,
 		.platform_data = &mxcspi2_data,
@@ -363,16 +350,14 @@ static struct resource mxcspi3_resources[] = {
 
 /*! Platform Data for MXC CSPI3 */
 static struct mxc_spi_master mxcspi3_data = {
-	.bus_num = 3,
 	.maxchipselect = 4,
 	.spi_version = 0,
-	.clock = CSPI3_CLK,
 };
 
 /*! Device Definition for MXC CSPI3 */
 static struct platform_device mxcspi3_device = {
 	.name = "mxc_spi",
-	.id = 3,
+	.id = 2,
 	.dev = {
 		.release = mxc_nop_release,
 		.platform_data = &mxcspi3_data,
@@ -425,7 +410,6 @@ static struct resource mxci2c1_resources[] = {
 
 /*! Platform Data for MXC I2C */
 static struct mxc_i2c_platform_data mxci2c1_data = {
-	.clk = I2C_CLK,
 	.i2c_clk = 100000,
 };
 #endif
@@ -449,7 +433,6 @@ static struct resource mxci2c2_resources[] = {
 
 /*! Platform Data for MXC I2C */
 static struct mxc_i2c_platform_data mxci2c2_data = {
-	.clk = I2C2_CLK,
 	.i2c_clk = 100000,
 };
 #endif

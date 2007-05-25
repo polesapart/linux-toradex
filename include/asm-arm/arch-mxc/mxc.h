@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -47,10 +47,6 @@ struct mxc_spi_master {
 	 * CSPI Hardware Version.
 	 */
 	unsigned int spi_version;
-	/*!
-	 * CSPI Clock.
-	 */
-	unsigned int clock;
 };
 #endif
 

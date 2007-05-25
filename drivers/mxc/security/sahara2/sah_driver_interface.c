@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -156,6 +156,7 @@ static char Diag_msg[DIAG_MSG_SIZE];
 */
 OS_DEV_INIT(sah_init)
 {
+	struct clk *clk;
 	/* Status variable */
 	int os_error_code = 0;
 #ifdef DIAG_DRV_IF
@@ -168,7 +169,8 @@ OS_DEV_INIT(sah_init)
 #ifdef DIAG_DRV_IF
 	LOG_KDIAG("SAHARA : Enabling the IPG and AHB clocks\n")
 #endif				/*DIAG_DRV_IF */
-	    mxc_clks_enable(SAHARA2_CLK);
+	clk = clk_get(NULL, "sahara_clk");
+	clk_enable(clk);
 
 	if (os_error_code == 0) {
 		sah_hw_version = sah_HW_Read_Version();
@@ -322,6 +324,7 @@ OS_DEV_SHUTDOWN(sah_cleanup)
 #if defined(CONFIG_DEVFS_FS) && (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0))
 	devfs_unregister(Sahara_devfs_handle);
 #else
+	struct clk *clk;
 	int ret_val = 0;
 
 	if (Sahara_procfs_handle != NULL) {
@@ -355,7 +358,8 @@ OS_DEV_SHUTDOWN(sah_cleanup)
 #ifdef DIAG_DRV_IF
 	LOG_KDIAG("SAHARA : Disabling the clocks\n")
 #endif				/*DIAG_DRV_IF */
-	    mxc_clks_disable(SAHARA2_CLK);
+	clk = clk_get(NULL, "sahara_clk");
+	clk_disable(clk);
 
 	os_dev_shutdown_return(OS_ERROR_OK_S);
 }
