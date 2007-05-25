@@ -1070,7 +1070,7 @@ static int mx31ads_common_drv_pcmcia_probe(struct platform_device *pdev,
 	skt->dev = &pdev->dev;
 	skt->ops = ops;
 
-	skt->clk = clk_get(NULL, "pcmcia_clk");
+	skt->clk = clk_get(NULL, "ahb_clk");
 
 	skt->res_skt.start = _PCMCIA(0);
 	skt->res_skt.end = _PCMCIA(0) + PCMCIASp - 1;
