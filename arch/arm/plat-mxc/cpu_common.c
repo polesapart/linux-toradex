@@ -112,7 +112,7 @@ static void system_rev_update(void)
 	}
 }
 
-static int mxc_jtag_enabled __initdata;	/* OFF: 0 (default), ON: 1 */
+static int mxc_jtag_enabled __initdata = 0;	/* OFF: 0 (default), ON: 1 */
 
 /*
  * Here are the JTAG options from the command line. By default JTAG
