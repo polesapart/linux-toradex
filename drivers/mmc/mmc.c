@@ -4,7 +4,7 @@
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  SD support Copyright (C) 2005 Pierre Ossman, All Rights Reserved.
- *  SDIO support Copyright (C) 2006 Freescale Semiconductor, Inc., All Rights Reserved.
+ *  SDIO support Copyright (C) 2006-2007 Freescale Semiconductor, Inc., All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

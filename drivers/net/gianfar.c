@@ -9,7 +9,7 @@
  * Author: Andy Fleming
  * Maintainer: Kumar Gala
  *
- * Copyright (c) 2002-2004 Freescale Semiconductor, Inc.
+ * Copyright (c) 2002-2007 Freescale Semiconductor, Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the

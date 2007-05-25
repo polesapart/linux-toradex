@@ -3,7 +3,7 @@
 |
 | codetest.c - Linux implementation of CodeTEST RTOS event hooks
 |
-| Copyright (c) 2003 - 2005 Freescale Semiconductor, Inc.
+| Copyright (c) 2003 - 2007 Freescale Semiconductor, Inc.
 |
 | This software is licensed under the GPL.  It may be redistributed
 | and/or modified under the terms of the GNU General Public License as

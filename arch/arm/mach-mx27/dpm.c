@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * Copyright (C) 2002, 2004 MontaVista Software <source@mvista.com>.
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * Based on code by Matthew Locke, Dmitry Chigirev, and Bishop Brock.
  */

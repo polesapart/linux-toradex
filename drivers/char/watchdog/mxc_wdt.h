@@ -8,7 +8,7 @@
  *       <AKuster@mvista.com> or <source@mvista.com>
  *
  * 2005 (c) MontaVista Software, Inc.
- * Copyright 2006 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
  * kind, whether express or implied.

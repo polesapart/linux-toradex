@@ -2,7 +2,7 @@
  * Header for MultiMediaCard (MMC)
  *
  * Copyright 2002 Hewlett-Packard Company
- * SDIO support Copyright 2006 Freescale Semiconductor, Inc.
+ * SDIO support Copyright 2006-2007 Freescale Semiconductor, Inc.
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is

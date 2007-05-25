@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright 2005 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *
  * The code contained herein is licensed under the GNU General Public
