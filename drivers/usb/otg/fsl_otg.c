@@ -555,17 +555,36 @@ static int fsl_otg_set_power(struct otg_transceiver *otg_p, unsigned mA)
 	return 0;
 }
 
+/* Delayed pin detect interrupt processing.
+ *
+ * When the Mini-A cable is disconnected from the board,
+ * the pin-detect interrupt happens before the disconnnect
+ * interrupts for the connected device(s).  In order to 
+ * process the disconnect interrupt(s) prior to switching
+ * roles, the pin-detect interrupts are delayed, and handled
+ * by this routine. 
+ */
+static void fsl_otg_event(void *ptr)
+{
+	struct otg_fsm *fsm = &((struct fsl_otg *)ptr)->fsm;
+
+	if (fsm->id) {		/* switch to gadget */
+		fsl_otg_start_host(fsm, 0);
+		otg_drv_vbus(fsm, 0);
+		fsl_otg_start_gadget(fsm, 1);
+	}
+}
+
 /* Interrupt handler.  OTG/host/peripheral share the same int line.
  * OTG driver clears OTGSC interrupts and leaves USB interrupts 
  * intact.  It needs to have knowledge of some USB interrupts
  * such as port change.
  */
-irqreturn_t fsl_otg_isr(int irq, void *dev_id, struct pt_regs * regs)
+irqreturn_t fsl_otg_isr(int irq, void *dev_id, struct pt_regs *regs)
 {
 	struct otg_fsm *fsm = &((struct fsl_otg *)dev_id)->fsm;
 	struct otg_transceiver *otg = &((struct fsl_otg *)dev_id)->otg;
 	u32 otg_int_src, otg_sc;
-	int trigger = 0;
 
 	otg_sc = le32_to_cpu(usb_dr_regs->otgsc);
 	otg_int_src = otg_sc & OTGSC_INTSTS_MASK & (otg_sc >> 8);
@@ -586,18 +605,20 @@ irqreturn_t fsl_otg_isr(int irq, void *dev_id, struct pt_regs * regs)
 				otg->host->is_b_host = fsm->id;
 			if (otg->gadget)
 				otg->gadget->is_a_peripheral = !fsm->id;
-			trigger = 1;
 			VDBG("IRQ=ID now=%d", fsm->id);
-			if (fsm->id) {	/* switch to gadget */
-				fsl_otg_start_host(fsm, 0);
-				otg_drv_vbus(fsm, 0);
-				fsl_otg_start_gadget(fsm, 1);
 
+			if (fsm->id) {	/* switch to gadget */
+				schedule_delayed_work(&((struct fsl_otg *)
+							dev_id)->otg_event, 25);
 			} else {	/* switch to host */
+				cancel_delayed_work(&
+						    ((struct fsl_otg *)dev_id)->
+						    otg_event);
 				fsl_otg_start_gadget(fsm, 0);
 				otg_drv_vbus(fsm, 1);
 				fsl_otg_start_host(fsm, 1);
 			}
+
 			return IRQ_HANDLED;
 		}
 	}
@@ -642,6 +663,8 @@ int fsl_otg_config(struct platform_device *pdev)
 
 	fsl_otg_tc->dr_mem_map = config->regs;
 	DBG("set dr_mem_map to 0x%p", config->regs);
+
+	INIT_WORK(&fsl_otg_tc->otg_event, fsl_otg_event, fsl_otg_tc);
 
 	INIT_LIST_HEAD(&active_timers);
 	fsl_otg_init_timers(&fsl_otg_tc->fsm);

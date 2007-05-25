@@ -220,6 +220,7 @@ struct fsl_otg {
 	struct otg_transceiver otg;
 	struct otg_fsm fsm;
 	struct usb_dr_mmap *dr_mem_map;
+	struct work_struct otg_event;
 
 	/*used for usb host */
 	u8 host_working;
