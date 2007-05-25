@@ -1885,6 +1885,9 @@ static void init_camera_struct(cam_data * cam)
 	spin_lock_init(&cam->int_lock);
 }
 
+extern void gpio_sensor_active(void);
+extern void gpio_sensor_inactive(void);
+
 /*!
  * camera_power function
  *    Turn Sensor power On/Off
@@ -1896,10 +1899,12 @@ static void init_camera_struct(cam_data * cam)
 static u8 camera_power(bool cameraOn)
 {
 	if (cameraOn == true) {
+		gpio_sensor_active();
 		csi_enable_mclk(csi_mclk_flag_backup, true, true);
 	} else {
 		csi_mclk_flag_backup = csi_read_mclk_flag();
 		csi_enable_mclk(csi_mclk_flag_backup, false, false);
+		gpio_sensor_inactive();
 	}
 	return 0;
 }
