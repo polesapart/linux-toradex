@@ -449,7 +449,7 @@ int mxc_pm_pllscale(long armfreq, long ahbfreq, long ipfreq)
  */
 static int __init mxc_pm_init_module(void)
 {
-	printk("MX27: Power management module initialized\n");
+	printk(KERN_INFO "MX27: Power management module initialized\n");
 	return 0;
 }
 
@@ -458,7 +458,7 @@ static int __init mxc_pm_init_module(void)
  */
 static void __exit mxc_pm_cleanup_module(void)
 {
-	printk("MX27: Power management module exit\n");
+	printk(KERN_INFO "MX27: Power management module exit\n");
 }
 
 module_init(mxc_pm_init_module);

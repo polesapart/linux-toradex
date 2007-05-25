@@ -392,7 +392,7 @@ static void mxc_dpm_cleanup(void)
 
 static int __init mxc_dpm_init(void)
 {
-	printk("Freescale i.MX27 Dynamic Power Management.\n");
+	printk(KERN_INFO "Freescale i.MX27 Dynamic Power Management.\n");
 
 	dpm_md.init_opt = mxc_dpm_init_opt;
 	dpm_md.set_opt = mxc_dpm_set_opt;
