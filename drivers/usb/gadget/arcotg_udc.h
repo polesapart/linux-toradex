@@ -369,13 +369,13 @@ struct ep_queue_head {
 #define  EP_QUEUE_HEAD_STATUS_HALT	      (0x00000040)
 #define  EP_QUEUE_HEAD_STATUS_ACTIVE          (0x00000080)
 #define  EP_QUEUE_CURRENT_OFFSET_MASK         (0x00000FFF)
-#define  EP_QUEUE_HEAD_NEXT_POINTER_MASK      (0xFFFFFFE0)
 #define  EP_QUEUE_FRINDEX_MASK                (0x000007FF)
 #define  EP_MAX_LENGTH_TRANSFER               (0x4000)
 
 /*! 
  * Endpoint Transfer Descriptor data struct 
  *  Rem: all the variables of td are LittleEndian Mode 
+ *       must be 32-byte aligned
  */
 struct ep_td_struct {
 	/*!
@@ -414,9 +414,19 @@ struct ep_td_struct {
 	u32 buff_ptr4;
 
 	/*!
-	 *  make it an even 8 words 
-	 */
-	u32 res;
+	 * dma address of this td
+	 * */
+	dma_addr_t td_dma;
+
+	/*!
+	 * virtual address of next td
+	 * */
+	struct ep_td_struct *next_td_virt;
+
+	/*!
+	 * make it an even 16 words
+	 * */
+	u32 res[7];
 };
 
 /*! 
@@ -429,7 +439,6 @@ struct ep_td_struct {
 #define  DTD_STATUS_DATA_BUFF_ERR             (0x00000020)
 #define  DTD_STATUS_TRANSACTION_ERR           (0x00000008)
 #define  DTD_RESERVED_FIELDS                  (0x80007300)
-#define  DTD_ADDR_MASK                        (0xFFFFFFE0)
 #define  DTD_PACKET_SIZE                      (0x7FFF0000)
 #define  DTD_LENGTH_BIT_POS                   (16)
 #define  DTD_ERROR_MASK                       (DTD_STATUS_HALTED | \
@@ -510,6 +519,7 @@ struct arcotg_udc {
 	unsigned stopped:1;
 
 	struct ep_queue_head *ep_qh;	/* Endpoints Queue-Head */
+	int ep_qh_size;		/* Endpoints Queue-Head */
 	struct arcotg_req *status_req;	/* ep0 status request */
 
 	u32 max_pipes;		/* Device max pipes */
@@ -523,24 +533,12 @@ struct arcotg_udc {
 				   USB_DIR_IN or USB_DIR_OUT */
 	u32 usb_sof_count;	/* SOF count */
 	u32 errors;		/* USB ERRORs count */
+	dma_addr_t ep_qh_dma;	/* DMA address of ep_qh */
+	struct dma_pool *dtd_pool;
 	u8 device_address;	/* Device USB address */
 
 	struct completion *done;	/* to make sure release() is done */
 };
-
-/*-------------------------------------------------------------------------*/
-
-#ifdef DEBUG
-#  if 0				/* jiffie-timestamped version */
-#     define DBG(fmt, args...) \
-	printk("j=%lu  [%s]  " fmt "\n", jiffies, __FUNCTION__, ## args)
-#  else
-#     define DBG(fmt, args...) \
-	printk("[%s]  " fmt "\n", __FUNCTION__, ## args)
-#  endif
-#else
-#define DBG(fmt, args...)	do {} while (0)
-#endif
 
 #if 0
 static void dump_msg(const char *label, const u8 * buf, unsigned int length)
@@ -550,7 +548,7 @@ static void dump_msg(const char *label, const u8 * buf, unsigned int length)
 
 	if (length >= 512)
 		return;
-	DBG("%s, length %u:\n", label, length);
+	pr_debug("udc: %s, length %u:\n", label, length);
 	start = 0;
 	while (length > 0) {
 		num = min(length, 16u);
@@ -569,16 +567,6 @@ static void dump_msg(const char *label, const u8 * buf, unsigned int length)
 	}
 }
 #endif
-
-#ifdef VERBOSE
-#define VDBG		DBG
-#else
-#define VDBG(stuff...)	do{}while(0)
-#endif
-
-#define ERR(stuff...)		printk(KERN_ERR "udc: " stuff)
-#define WARN(stuff...)		printk(KERN_WARNING "udc: " stuff)
-#define INFO(stuff...)		printk(KERN_INFO "udc: " stuff)
 
 /*-------------------------------------------------------------------------*/
 
@@ -603,23 +591,6 @@ static void dump_msg(const char *label, const u8 * buf, unsigned int length)
 
 #define get_ep_by_pipe(udc, pipe)	((pipe == 1)? &udc->eps[0]: \
 					&udc->eps[pipe])
-/*
- * memory kmalloc with alignning size and zero the content
- * @base :output parameter. It store the base address before align.
- * Return value it the address after align
- *
- */
-static void *KMALLOC_ALIGN(size_t size, int flags, unsigned int align,
-			   void **base)
-{
-/* #define MY_ALIGN(n)   ((n)+(-(n) & (align - 1)))  */
-
-	*base = kmalloc(size + align, flags);
-	if (*base == NULL)
-		return NULL;
-	memset(*base, 0, (size + align));
-	return (void *)ALIGN((unsigned int)(*base), align);
-}
 
 /* Bulk only class request */
 #define USB_BULK_RESET_REQUEST          0xff
