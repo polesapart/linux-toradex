@@ -1261,7 +1261,7 @@ static int arcotg_fifo_status(struct usb_ep *_ep)
 		size = (d_qh->size_ioc_int_sts & DTD_PACKET_SIZE)
 		    >> DTD_LENGTH_BIT_POS;
 
-	pr_debug(ep->dev, "%s %u\n", __FUNCTION__, size);
+	pr_debug("%s %u\n", __FUNCTION__, size);
 	return size;
 }
 

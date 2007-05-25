@@ -185,8 +185,7 @@ static u8 mxc_w1_read_byte(void *data)
 	reg_val = __raw_readb((dev->base_address + MXC_W1_TXRX));
 	return reg_val;
 }
-static irqreturn_t w1_interrupt_handler(int irq, void *data,
-					struct pt_regs *regs)
+static irqreturn_t w1_interrupt_handler(int irq, void *data)
 {
 	u8 reg_val;
 	irqreturn_t ret = IRQ_NONE;
