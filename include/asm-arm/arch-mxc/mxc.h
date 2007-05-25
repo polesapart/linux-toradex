@@ -28,7 +28,14 @@ struct mxc_gpio_port {
 	u16 irq;		/*!< irq number to the core */
 	u16 virtual_irq_start;	/*!< virtual irq start number */
 };
+/*!
+ * This structure is used to define the One wire platform data.
+ * It includes search rom accelerator.
+ */
 
+struct mxc_w1_config {
+	int search_rom_accelerator;
+};
 /*!
  * This structure is used to define the SPI master controller's platform
  * data. It includes the SPI  bus number and the maximum number of
