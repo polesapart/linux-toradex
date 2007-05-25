@@ -57,6 +57,10 @@ static unsigned saved_cpu_freq;
 static unsigned long saved_loops_per_jiffy;
 static unsigned int curr_mode = DPM_MODE_RUN;
 
+static struct clk *cpu_clk;
+static struct clk *ahb_clk;
+static struct clk *ipg_clk;
+
 extern void (*pm_idle) (void);
 
 static int mxc_dpm_set_opt(struct dpm_opt *cur, struct dpm_opt *new)
@@ -223,9 +227,9 @@ static int mxc_dpm_get_opt(struct dpm_opt *opt)
 
 	md_opt = &opt->md_opt;
 
-	md_opt->cpu = clk_get(NULL, "cpu_clk")->rate;
-	md_opt->ahb = clk_get(NULL, "ahb_clk")->rate;
-	md_opt->ip = clk_get(NULL, "ipg_clk")->rate;
+	md_opt->cpu = clk_get_rate(cpu_clk);
+	md_opt->ahb = clk_get_rate(ahb_clk);
+	md_opt->ip = clk_get_rate(ipg_clk);
 	md_opt->mode = curr_mode;
 
 	return 0;
@@ -379,7 +383,7 @@ static void mxc_dpm_startup(void)
 {
 	if (!saved_loops_per_jiffy) {
 		saved_loops_per_jiffy = loops_per_jiffy;
-		saved_cpu_freq = clk_get(NULL, "cpu_clk")->rate / 1000;
+		saved_cpu_freq = clk_get_rate(cpu_clk) / 1000;
 	}
 	orig_idle = pm_idle;
 	pm_idle = dpm_idle;
@@ -393,6 +397,10 @@ static void mxc_dpm_cleanup(void)
 static int __init mxc_dpm_init(void)
 {
 	printk(KERN_INFO "Freescale i.MX27 Dynamic Power Management.\n");
+
+	cpu_clk = clk_get(NULL, "cpu_clk");
+	ahb_clk = clk_get(NULL, "ahb_clk");
+	ipg_clk = clk_get(NULL, "ipg_clk");
 
 	dpm_md.init_opt = mxc_dpm_init_opt;
 	dpm_md.set_opt = mxc_dpm_set_opt;

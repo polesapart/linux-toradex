@@ -15,7 +15,6 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
-#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
 #include <asm/arch/gpio.h>
@@ -990,8 +989,6 @@ EXPORT_SYMBOL(gpio_sensor_inactive);
  */
 void gpio_ata_active(void)
 {
-	struct clk *ata_clk;
-
 	/*
 	 * Configure the GPR for ATA group B signals
 	 */
@@ -1070,10 +1067,6 @@ void gpio_ata_active(void)
 	 */
 	mxc_iomux_set_pad(MX31_PIN_USBH2_STP, PAD_CTL_PKE_NONE);	// ATA_DMARQ
 	mxc_iomux_set_pad(MX31_PIN_USBH2_CLK, PAD_CTL_PKE_NONE);	// ATA_INTRQ
-
-	printk(KERN_DEBUG "gpio_ata_active: Enable clocks\n");
-	ata_clk = clk_get(NULL, "ata_clk.0");
-	clk_enable(ata_clk);
 }
 
 EXPORT_SYMBOL(gpio_ata_active);
@@ -1084,12 +1077,6 @@ EXPORT_SYMBOL(gpio_ata_active);
  */
 void gpio_ata_inactive(void)
 {
-	struct clk *ata_clk = clk_get(NULL, "ata_clk.0");
-
-	printk(KERN_DEBUG "gpio_ata_inactive: Disable clocks\n");
-	clk_disable(ata_clk);
-	clk_put(ata_clk);
-
 	/*
 	 * Turn off ATA group B signals
 	 */

@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/netdevice.h>
 #include <linux/interrupt.h>
+#include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
@@ -163,10 +164,12 @@ struct mxc_irda {
 
 static int max_rate = 115200;
 static int uart_ir_mux = 1;
+static struct clk *irda_clk;
+static struct clk *per_clk;
+
 
 extern void gpio_irda_active(void);
 extern void gpio_irda_inactive(void);
-extern unsigned int irda_get_clocks(void);
 
 /*
  * This function is called to set the IrDA communications speed.
@@ -521,7 +524,7 @@ static struct net_device_stats *mxc_irda_stats(struct net_device *dev)
 static int mxc_irda_startup(struct mxc_irda *si)
 {
 	unsigned int num, denom, baud, ufcr = 0;
-	unsigned int per_clk;
+	unsigned int per_clk_val;
 	unsigned int cr;
 	int d = 1;
 	int ret;
@@ -532,18 +535,20 @@ static int mxc_irda_startup(struct mxc_irda *si)
 
 	/* Configure the IOMUX for the UART */
 	gpio_irda_active();
-
-	per_clk = irda_get_clocks();
-	mxcirda_debug("per_clk = %d", per_clk);
-	baud = per_clk / 16;
+	irda_clk = clk_get(NULL, "uart_baud.1");
+        clk_enable(irda_clk);
+	per_clk = clk_get(NULL, "per_clk.0");
+	per_clk_val = clk_get_rate(per_clk);
+	mxcirda_debug("per_clk_val = %d", per_clk_val);
+	baud = per_clk_val / 16;
 	if (baud > MAX_UART_BAUDRATE) {
 		baud = MAX_UART_BAUDRATE;
-		d = per_clk / ((baud * 16) + 1000);
+		d = per_clk_val / ((baud * 16) + 1000);
 		if (d > 6) {
 			d = 6;
 		}
 	}
-	si->uartclk = per_clk / d;
+	si->uartclk = per_clk_val / d;
 	writel(si->uartclk / 1000, si->uart_base + MXC_UARTONEMS);
 
 	cr = readl(si->uart_base + MXC_UARTUCR4);
@@ -613,6 +618,9 @@ static void mxc_irda_shutdown(struct mxc_irda *si)
 	cr &= ~MXC_UARTUCR1_UARTEN;
 	writel(cr, si->uart_base + MXC_UARTUCR1);
 
+	clk_disable(irda_clk);
+	clk_put(irda_clk);
+	clk_put(per_clk);
 	gpio_irda_inactive();
 	return;
 }

@@ -1018,7 +1018,7 @@ static int __init mxc_ide_init(void)
 	gpio_ata_active();
 
 	/* Enable the ata clock */
-	ata_clk = clk_get(NULL, "ata_clk");
+	ata_clk = clk_get(NULL, "ata_clk.0");
 	clk_enable(ata_clk);
 
 	/* Deassert the reset bit to enable the interface */

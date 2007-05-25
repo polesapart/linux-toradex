@@ -14,7 +14,6 @@
 #include <linux/errno.h>
 #include <linux/module.h>
 #include <linux/device.h>
-#include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
 #include <asm/arch/gpio.h>
@@ -687,8 +686,6 @@ void gpio_keypad_inactive(void)
  */
 void gpio_ata_active(void)
 {
-	struct clk *ata_clk = clk_get(NULL, "ata_clk");
-
 	gpio_request_mux(MX27_PIN_ATA_DATA0, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA1, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA2, GPIO_MUX_PRIMARY);
@@ -719,8 +716,6 @@ void gpio_ata_active(void)
 	gpio_request_mux(MX27_PIN_IOIS16, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_RW_B, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_POE, GPIO_MUX_ALT);
-
-	clk_enable(ata_clk);
 }
 
 /*!
@@ -729,11 +724,6 @@ void gpio_ata_active(void)
  */
 void gpio_ata_inactive(void)
 {
-	struct clk *ata_clk = clk_get(NULL, "ata_clk");
-
-	clk_disable(ata_clk);
-	clk_put(ata_clk);
-
 	gpio_free_mux(MX27_PIN_ATA_DATA0);
 	gpio_free_mux(MX27_PIN_ATA_DATA1);
 	gpio_free_mux(MX27_PIN_ATA_DATA2);
@@ -1134,20 +1124,13 @@ void gpio_owire_inactive(void)
 
 void gpio_irda_active(void)
 {
-	struct clk *uart2_baud = clk_get(NULL, "uart_baud.1");
-
 	gpio_uart_active(2, 0);
-	clk_enable(uart2_baud);
 	/* Band width select */
 	//__raw_writew(PBC_BCTRL2_IRDA_SD, PBC_BCTRL2_SET_REG);
 }
 
 void gpio_irda_inactive(void)
 {
-	struct clk *uart2_baud = clk_get(NULL, "uart_baud.1");
-
-	clk_disable(uart2_baud);
-	clk_put(uart2_baud);
 	gpio_uart_inactive(2, 0);
 }
 
