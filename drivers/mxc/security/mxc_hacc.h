@@ -27,12 +27,6 @@
 #include <asm/hardware.h>
 #include <asm/errno.h>
 
-#ifdef CONFIG_MXC_HAC_TEST_DEBUG
-#define HAC_DEBUG(fmt, args...) printk(fmt,## args)
-#else
-#define HAC_DEBUG(fmt, args...)
-#endif				/* CONFIG_MXC_HAC_TEST_DEBUG */
-
 /*
  * HAC Control register
  */

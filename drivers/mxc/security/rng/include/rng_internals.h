@@ -97,8 +97,6 @@
  * This flag is undefined by default.
  */
 /* REQ-FSLSHW-DEBUG-001 */
-#define RNG_DEBUG
-#undef RNG_DEBUG
 
 /*!
  * Turn on compilation of run-time logging of access to the RNG registers,

@@ -27,12 +27,6 @@
 #include <asm/arch/hardware.h>
 #include <asm-generic/errno-base.h>
 
-#ifdef CONFIG_MXC_RTIC_TEST_DEBUG
-#define RTIC_DEBUG(fmt, args...) printk(fmt,## args)
-#else
-#define RTIC_DEBUG(fmt, args...)
-#endif				/* CONFIG_MXC_RTIC_TEST_DEBUG */
-
 /*
  * RTIC status register
  */

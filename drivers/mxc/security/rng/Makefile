@@ -18,6 +18,10 @@ EXTRA_CFLAGS = -DLINUX_KERNEL $(CFG_RNG) $(DBG_RNG)
 ifeq ($(CONFIG_MXC_RNG_TEST_DRIVER),y)
 EXTRA_CFLAGS += -DRNG_REGISTER_PEEK_POKE
 endif
+ifeq ($(CONFIG_RNG_DEBUG),y)
+EXTRA_CFLAGS += -DDEBUG
+endif
+
 
 EXTRA_CFLAGS += -Idrivers/mxc/security/rng/include -Idrivers/mxc/security/sahara2/include
 

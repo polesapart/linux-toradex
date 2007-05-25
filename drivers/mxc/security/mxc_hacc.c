@@ -69,18 +69,18 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 	hac_blk_cnt = __raw_readl(HAC_BLK_CNT);
 	hac_ctl = __raw_readl(HAC_CTL);
 	if (hac_suspend_state == 1) {
-		printk("HAC Module: HAC Module is in suspend mode.\n");
+		pr_debug("HAC Module: HAC Module is in suspend mode.\n");
 		return -EPERM;
 	}
-	HAC_DEBUG("Function %s. HAC Module: Start address: 0x%08lX, "
-		  "block length: 0x%08lX, hash option: 0x%08X\n",
-		  __FUNCTION__, start_address, blk_len, option);
+	pr_debug("Function %s. HAC Module: Start address: 0x%08lX, "
+		 "block length: 0x%08lX, hash option: 0x%08X\n",
+		 __FUNCTION__, start_address, blk_len, option);
 	/* Validating the parameters. Checking for start address to be in
 	   512 bit boundary(64 byte) and block count value must not to be
 	   zero. */
 	if ((!start_address) || (blk_len > HAC_MAX_BLOCK_LENGTH) ||
 	    (blk_len == 0) || (!((start_address % 64) == 0))) {
-		HAC_DEBUG("HAC Module: Invalid parameters passed. \n");
+		pr_debug("HAC Module: Invalid parameters passed. \n");
 		return HAC_FAILURE;
 	}
 	if ((hac_ctl & HAC_CTL_BUSY) == 0) {
@@ -88,12 +88,12 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		__raw_writel(hac_start, HAC_START_ADDR);
 		hac_blk_cnt = blk_len;
 		__raw_writel(hac_blk_cnt, HAC_BLK_CNT);
-		HAC_DEBUG("HAC Module: Hashing start address 0x%08lX\n ",
-			  start_address);
-		HAC_DEBUG("HAC Module: Hashing blk length 0x%08lX\n ", blk_len);
+		pr_debug("HAC Module: Hashing start address 0x%08lX\n ",
+			 start_address);
+		pr_debug("HAC Module: Hashing blk length 0x%08lX\n ", blk_len);
 	} else {
-		HAC_DEBUG("HAC Module: HAC module is busy in Hashing "
-			  "process.\n");
+		pr_debug("HAC Module: HAC module is busy in Hashing "
+			 "process.\n");
 		return HAC_HASH_BUSY;
 	}
 
@@ -107,11 +107,11 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		 * HAC Control register. If 'DONE' bit and  'ERROR' bit are
 		 * set, they are cleared.
 		 */
-		HAC_DEBUG("HAC Module: Starts the hashing process \n");
+		pr_debug("HAC Module: Starts the hashing process \n");
 		/* Checking if the Stop bit is been set. */
 		if ((hac_ctl & HAC_CTL_STOP) == HAC_CTL_STOP) {
-			HAC_DEBUG("HAC Module: STOP bit is set while"
-				  "starting the Hashing\n");
+			pr_debug("HAC Module: STOP bit is set while"
+				 "starting the Hashing\n");
 			hac_ctl &= ~HAC_CTL_STOP;
 			__raw_writel(hac_ctl, HAC_CTL);
 		}
@@ -119,8 +119,8 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		   If they are set write to clear those bits */
 		if (((hac_ctl & HAC_CTL_DONE) == HAC_CTL_DONE) ||
 		    ((hac_ctl & HAC_CTL_ERROR) == HAC_CTL_ERROR)) {
-			HAC_DEBUG("HAC Module: DONE and ERROR bit is set"
-				  "while starting the Hashing\n");
+			pr_debug("HAC Module: DONE and ERROR bit is set"
+				 "while starting the Hashing\n");
 			hac_ctl |= HAC_CTL_DONE;
 			__raw_writel(hac_ctl, HAC_CTL);
 			hac_ctl |= HAC_CTL_ERROR;
@@ -142,12 +142,12 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		 * HAC Control register. If 'DONE' bit and  'ERROR' bit are
 		 * set, they are cleared.
 		 */
-		HAC_DEBUG("HAC Module: Starts with last block"
-			  "the hashing process \n");
+		pr_debug("HAC Module: Starts with last block"
+			 "the hashing process \n");
 		/* Checking if the Stop bit is been set. */
 		if ((hac_ctl & HAC_CTL_STOP) == HAC_CTL_STOP) {
-			HAC_DEBUG("HAC Module: STOP bit is set while"
-				  "starting the Hashing\n");
+			pr_debug("HAC Module: STOP bit is set while"
+				 "starting the Hashing\n");
 			hac_ctl &= ~HAC_CTL_STOP;
 			__raw_writel(hac_ctl, HAC_CTL);
 		}
@@ -155,8 +155,8 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		   If they are set write to clear those bits */
 		if (((hac_ctl & HAC_CTL_DONE) == HAC_CTL_DONE) ||
 		    ((hac_ctl & HAC_CTL_ERROR) == HAC_CTL_ERROR)) {
-			HAC_DEBUG(" HAC Module: DONE and ERROR bit is set"
-				  "while  starting the Hashing\n");
+			pr_debug(" HAC Module: DONE and ERROR bit is set"
+				 "while  starting the Hashing\n");
 			hac_ctl |= HAC_CTL_DONE;
 			__raw_writel(hac_ctl, HAC_CTL);
 			hac_ctl |= HAC_CTL_ERROR;
@@ -165,8 +165,8 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		hac_ctl |= HAC_CTL_START;
 		__raw_writel(hac_ctl, HAC_CTL);
 		/* Hash for the last block by padding it. */
-		HAC_DEBUG("HAC Module: Setting the PAD bit while start"
-			  "Hashing the last block\n");
+		pr_debug("HAC Module: Setting the PAD bit while start"
+			 "Hashing the last block\n");
 		hac_ctl |= HAC_CTL_PAD;
 		__raw_writel(hac_ctl, HAC_CTL);
 		break;
@@ -184,7 +184,7 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		 * register. If 'ERROR' bit is set, then error message is
 		 * indicated to the user.
 		 */
-		HAC_DEBUG("HAC Module: Continue hashing process. \n");
+		pr_debug("HAC Module: Continue hashing process. \n");
 		/* Checking if the Stop bit is been set. */
 		if ((hac_ctl & HAC_CTL_STOP) == HAC_CTL_STOP) {
 			hac_ctl &= ~HAC_CTL_STOP;
@@ -221,7 +221,7 @@ hac_ret hac_hash_data(ulong start_address, ulong blk_len, hac_hash option)
 		 * register. If 'ERROR' bit is set, then error message is
 		 * indicated to the user.
 		 */
-		HAC_DEBUG("HAC Module: Last block to hash. \n");
+		pr_debug("HAC Module: Last block to hash. \n");
 		/* Checking if the Stop bit is been set. */
 		if ((hac_ctl & HAC_CTL_STOP) == HAC_CTL_STOP) {
 			hac_ctl &= ~HAC_CTL_STOP;
@@ -269,15 +269,15 @@ hac_hash_status hac_hashing_status(void)
 	ulong hac_ctl;
 	hac_ctl = __raw_readl(HAC_CTL);
 	if ((hac_ctl & HAC_CTL_BUSY) != 0) {
-		HAC_DEBUG("HAC Module: Hash module is in busy state \n");
+		pr_debug("HAC Module: Hash module is in busy state \n");
 		return HAC_BUSY;
 	} else if ((hac_ctl & HAC_CTL_DONE) != 0) {
 		/* Clearing the done bit of the control register */
-		HAC_DEBUG("HAC Module: Hashing of data is done \n");
+		pr_debug("HAC Module: Hashing of data is done \n");
 		return HAC_DONE;
 	} else if ((hac_ctl & HAC_CTL_ERROR) != 0) {
 		/* Clearing the error bit of the control register */
-		HAC_DEBUG("HAC Module: Error has occurred during hashing \n");
+		pr_debug("HAC Module: Error has occurred during hashing \n");
 		return HAC_ERR;
 	} else {
 		return HAC_UNKNOWN;
@@ -292,8 +292,8 @@ hac_hash_status hac_hashing_status(void)
 ulong hac_get_status(void)
 {
 	ulong hac_ctl = __raw_readl(HAC_CTL);
-	HAC_DEBUG("HAC Module: Hashing status register value 0x%08lX\n ",
-		  hac_ctl);
+	pr_debug("HAC Module: Hashing status register value 0x%08lX\n ",
+		 hac_ctl);
 	return hac_ctl;
 }
 
@@ -305,10 +305,10 @@ hac_ret hac_stop(void)
 	ulong hac_ctl;
 	hac_ctl = __raw_readl(HAC_CTL);
 	if (hac_suspend_state == 1) {
-		HAC_DEBUG("HAC Module: HAC Module is in suspend mode.\n");
+		pr_debug("HAC Module: HAC Module is in suspend mode.\n");
 		return HAC_FAILURE;
 	}
-	HAC_DEBUG("HAC Module: Stop hashing process. \n");
+	pr_debug("HAC Module: Stop hashing process. \n");
 	hac_ctl |= HAC_CTL_STOP;
 	__raw_writel(hac_ctl, HAC_CTL);
 	return HAC_SUCCESS;
@@ -330,10 +330,10 @@ hac_ret hac_hash_result(hac_hash_rlt * hash_result_reg)
 	hac_hsh1 = __raw_readl(HAC_HSH1);
 	hac_hsh0 = __raw_readl(HAC_HSH0);
 	if (hac_suspend_state == 1) {
-		printk("HAC Module: HAC Module is in suspend mode.\n");
+		pr_debug("HAC Module: HAC Module is in suspend mode.\n");
 		return HAC_FAILURE;
 	}
-	HAC_DEBUG("HAC Module: Read hash result \n");
+	pr_debug("HAC Module: Read hash result \n");
 	hash_result_reg->hash_result[0] = hac_hsh4;
 	hash_result_reg->hash_result[1] = hac_hsh3;
 	hash_result_reg->hash_result[2] = hac_hsh2;
@@ -355,9 +355,9 @@ hac_ret hac_swrst(void)
 	ulong hac_ctl;
 	ulong hac_ret = HAC_SUCCESS;
 	hac_ctl = __raw_readl(HAC_CTL);
-	HAC_DEBUG("HAC Module: HAC Software reset function. \n");
+	pr_debug("HAC Module: HAC Software reset function. \n");
 	if (hac_suspend_state == 1) {
-		printk("HAC MODULE: HAC Module is in suspend mode.\n");
+		pr_debug("HAC MODULE: HAC Module is in suspend mode.\n");
 		return HAC_FAILURE;
 	}
 	hac_ctl |= HAC_CTL_SWRST;
@@ -380,9 +380,9 @@ hac_ret hac_burst_mode(hac_burst_mode_config burst_mode)
 	ulong hac_ctl;
 	ulong hac_ret = HAC_SUCCESS;
 	hac_ctl = __raw_readl(HAC_CTL);
-	HAC_DEBUG("HAC Module: HAC Burst Mode function. \n");
+	pr_debug("HAC Module: HAC Burst Mode function. \n");
 	if (hac_suspend_state == 1) {
-		printk("HAC MODULE: HAC Module is in suspend mode.\n");
+		pr_debug("HAC MODULE: HAC Module is in suspend mode.\n");
 		return HAC_FAILURE;
 	}
 	switch (burst_mode) {
@@ -414,9 +414,9 @@ hac_ret hac_burst_read(hac_burst_read_config burst_read)
 	ulong hac_ctl;
 	ulong hac_ret = HAC_SUCCESS;
 	hac_ctl = __raw_readl(HAC_CTL);
-	HAC_DEBUG("HAC Module: HAC Burst Read function. \n");
+	pr_debug("HAC Module: HAC Burst Read function. \n");
 	if (hac_suspend_state == 1) {
-		printk("HAC MODULE: HAC Module is in suspend mode.\n");
+		pr_debug("HAC MODULE: HAC Module is in suspend mode.\n");
 		return HAC_FAILURE;
 	}
 	switch (burst_read) {
@@ -468,7 +468,7 @@ hac_ret hac_suspend(struct platform_device * pdev, pm_message_t state)
 
 	hac_suspend_state = 1;
 
-	printk("HAC Module: In suspend power down.\n");
+	pr_debug("HAC Module: In suspend power down.\n");
 
 	/* Enable stop bits in HAC Control Register. */
 	hac_ctl |= HAC_CTL_STOP;
@@ -493,7 +493,7 @@ hac_ret hac_resume(struct platform_device * pdev)
 
 	hac_ctl = __raw_readl(HAC_CTL);
 
-	printk("HAC Module: Resume power on.\n");
+	pr_debug("HAC Module: Resume power on.\n");
 	/* Disable stop bit in HAC Control register. */
 	hac_ctl &= ~HAC_CTL_STOP;
 	__raw_writel(hac_ctl, HAC_CTL);

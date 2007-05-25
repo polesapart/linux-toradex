@@ -67,8 +67,6 @@
  * This flag is undefined by default.
  */
 /* REQ-FSLSHW-DEBUG-001 */
-#define SHW_DEBUG
-#undef SHW_DEBUG
 
 /*! @} */
 #endif				/* end DOXYGEN_HACK */

@@ -61,7 +61,6 @@
 /*!
  * Turn on generation of run-time operational, debug, and error messages
  */
-//#define SCC_DEBUG
 
 /*!
  * Turn on generation of run-time logging of access to the SCM and SMN

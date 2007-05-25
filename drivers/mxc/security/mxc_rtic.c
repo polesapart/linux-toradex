@@ -78,15 +78,15 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 	 */
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (mode) {
 	case RTIC_ONE_TIME:
 		switch (mem_blk) {
 		case RTIC_A1:
-			RTIC_DEBUG("RTIC Module:Memory Block A is enabled for"
-				   "One-Time Hashing.\n");
+			pr_debug("RTIC Module:Memory Block A is enabled for"
+				 "One-Time Hashing.\n");
 			rtic_ctrl &= ~HASH_ONCE_MEM_CLR;
 			rtic_ctrl |= RTIC_CTL_HASHONCE_MEMA_BLK_EN;
 			__raw_writel(rtic_ctrl, RTIC_CONTROL);
@@ -95,8 +95,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_B1:
 			if ((rtic_ctrl & RTIC_CTL_HASHONCE_MEMA_BLK_EN) ==
 			    RTIC_CTL_HASHONCE_MEMA_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block B is "
-					   "enabled for One_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block B is "
+					 "enabled for One_Time Hashing.\n");
 				rtic_ctrl &= ~HASH_ONCE_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_HASHONCE_MEMB_BLK_EN |
 				    RTIC_CTL_HASHONCE_MEMA_BLK_EN;
@@ -107,8 +107,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_C1:
 			if ((rtic_ctrl & RTIC_CTL_HASHONCE_MEMB_BLK_EN) ==
 			    RTIC_CTL_HASHONCE_MEMB_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block C is "
-					   "enabled for One_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block C is "
+					 "enabled for One_Time Hashing.\n");
 				rtic_ctrl &= ~HASH_ONCE_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_HASHONCE_MEMC_BLK_EN |
 				    RTIC_CTL_HASHONCE_MEMA_BLK_EN |
@@ -120,8 +120,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_D1:
 			if ((rtic_ctrl & RTIC_CTL_HASHONCE_MEMC_BLK_EN) ==
 			    RTIC_CTL_HASHONCE_MEMC_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block D is "
-					   "enabled for One_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block D is "
+					 "enabled for One_Time Hashing.\n");
 				rtic_ctrl &= ~HASH_ONCE_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_HASHONCE_MEMD_BLK_EN |
 				    RTIC_CTL_HASHONCE_MEMA_BLK_EN |
@@ -149,8 +149,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 #endif				/* CONFIG_ARCH_MX27 */
 		switch (mem_blk) {
 		case RTIC_A1:
-			RTIC_DEBUG("RTIC Module:Memory Block A is enabled for"
-				   "Run_Time Hashing.\n");
+			pr_debug("RTIC Module:Memory Block A is enabled for"
+				 "Run_Time Hashing.\n");
 			rtic_ctrl &= ~RUN_TIME_MEM_CLR;
 			rtic_ctrl |= RTIC_CTL_RUNTIME_MEMA_BLK_EN;
 			__raw_writel(rtic_ctrl, RTIC_CONTROL);
@@ -159,8 +159,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_B1:
 			if ((rtic_ctrl & RTIC_CTL_RUNTIME_MEMA_BLK_EN) ==
 			    RTIC_CTL_RUNTIME_MEMA_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block B is "
-					   "enabled for Run_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block B is "
+					 "enabled for Run_Time Hashing.\n");
 				rtic_ctrl &= ~RUN_TIME_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_RUNTIME_MEMB_BLK_EN |
 				    RTIC_CTL_RUNTIME_MEMA_BLK_EN;
@@ -171,8 +171,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_C1:
 			if ((rtic_ctrl & RTIC_CTL_RUNTIME_MEMB_BLK_EN) ==
 			    RTIC_CTL_RUNTIME_MEMB_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block C is "
-					   "enabled for Run_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block C is "
+					 "enabled for Run_Time Hashing.\n");
 				rtic_ctrl &= ~RUN_TIME_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_RUNTIME_MEMC_BLK_EN |
 				    RTIC_CTL_RUNTIME_MEMA_BLK_EN |
@@ -184,8 +184,8 @@ rtic_ret rtic_configure_mode(rtic_mode mode, rtic_memblk mem_blk)
 		case RTIC_D1:
 			if ((rtic_ctrl & RTIC_CTL_RUNTIME_MEMC_BLK_EN) ==
 			    RTIC_CTL_RUNTIME_MEMC_BLK_EN) {
-				RTIC_DEBUG("RTIC Module:Memory Block D is "
-					   "enabled for Run_Time Hashing.\n");
+				pr_debug("RTIC Module:Memory Block D is "
+					 "enabled for Run_Time Hashing.\n");
 				rtic_ctrl &= ~RUN_TIME_MEM_CLR;
 				rtic_ctrl |= RTIC_CTL_RUNTIME_MEMD_BLK_EN |
 				    RTIC_CTL_RUNTIME_MEMA_BLK_EN |
@@ -242,79 +242,79 @@ rtic_ret rtic_configure_mem_blk(ulong start_addr, ulong blk_len,
 	}
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (mem_blk) {
 	case RTIC_A1:
-		RTIC_DEBUG("RTIC Module: Mem Block A1 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block A1 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMAADDR1);
-		RTIC_DEBUG("RTIC Module: Mem Block A1 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block A1 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMALEN1);
 		break;
 
 	case RTIC_A2:
-		RTIC_DEBUG("RTIC Module: Mem Block A2 start address"
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block A2 start address"
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMAADDR2);
-		RTIC_DEBUG("RTIC Module: Mem Block A2 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block A2 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMALEN2);
 		break;
 
 	case RTIC_B1:
-		RTIC_DEBUG("RTIC Module: Mem Block B1 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block B1 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMBADDR1);
-		RTIC_DEBUG("RTIC Module: Mem Block B1 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block B1 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMBLEN1);
 		break;
 
 	case RTIC_B2:
-		RTIC_DEBUG("RTIC Module: Mem Block B2 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block B2 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMBADDR2);
-		RTIC_DEBUG("RTIC Module: Mem Block B2 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block B2 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMBLEN2);
 		break;
 
 	case RTIC_C1:
-		RTIC_DEBUG("RTIC Module: Mem Block C1 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block C1 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMCADDR1);
-		RTIC_DEBUG("RTIC Module: Mem Block C1 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block C1 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMCLEN1);
 		break;
 
 	case RTIC_C2:
-		RTIC_DEBUG("RTIC Module: Mem Block C2 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block C2 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMCADDR2);
-		RTIC_DEBUG("RTIC Module: Mem Block C2 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block C2 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMCLEN2);
 		break;
 
 	case RTIC_D1:
-		RTIC_DEBUG("RTIC Module: Mem Block D1 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block D1 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMDADDR1);
-		RTIC_DEBUG("RTIC Module: Mem Block D1 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block D1 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMDLEN1);
 		break;
 
 	case RTIC_D2:
-		RTIC_DEBUG("RTIC Module: Mem Block D2 start address "
-			   "0x%08lX\n", start_addr);
+		pr_debug("RTIC Module: Mem Block D2 start address "
+			 "0x%08lX\n", start_addr);
 		__raw_writel(start_addr, RTIC_MEMDADDR2);
-		RTIC_DEBUG("RTIC Module: Mem Block D2 block len "
-			   "0x%08lX\n", blk_len);
+		pr_debug("RTIC Module: Mem Block D2 block len "
+			 "0x%08lX\n", blk_len);
 		__raw_writel(blk_len, RTIC_MEMDLEN2);
 		break;
 
@@ -343,21 +343,21 @@ rtic_ret rtic_start_hash(rtic_mode mode)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 
 	switch (mode) {
 	case RTIC_ONE_TIME:
-		RTIC_DEBUG("RTIC Module: Starts the One_time hashing"
-			   "process \n");
+		pr_debug("RTIC Module: Starts the One_time hashing"
+			 "process \n");
 		rtic_cmd |= RTIC_CMD_HASH_ONCE;
 		__raw_writel(rtic_cmd, RTIC_COMMAND);
 		break;
 
 	case RTIC_RUN_TIME:
-		RTIC_DEBUG("RTIC Module: Starts the Run_time hashing"
-			   "process \n");
+		pr_debug("RTIC Module: Starts the Run_time hashing"
+			 "process \n");
 #ifndef CONFIG_ARCH_MX27
 		/* Check RUN Time Disable bit before starting RUN Time
 		   Hashing. */
@@ -387,8 +387,8 @@ ulong rtic_get_status(void)
 	ulong rtic_sts;
 	/* Read for RTIC Registers value. */
 	rtic_sts = __raw_readl(RTIC_STATUS);
-	RTIC_DEBUG("RTIC  Module: Hashing status register value 0x%08lX\n ",
-		   rtic_sts);
+	pr_debug("RTIC  Module: Hashing status register value 0x%08lX\n ",
+		 rtic_sts);
 	return rtic_sts;
 }
 
@@ -402,8 +402,8 @@ ulong rtic_get_control(void)
 	ulong rtic_ctrl;
 	/* Read for RTIC Registers value. */
 	rtic_ctrl = __raw_readl(RTIC_CONTROL);
-	RTIC_DEBUG("RTIC  Module: Hashing control register value 0x%08lX\n ",
-		   rtic_ctrl);
+	pr_debug("RTIC  Module: Hashing control register value 0x%08lX\n ",
+		 rtic_ctrl);
 	return rtic_ctrl;
 }
 
@@ -424,12 +424,12 @@ rtic_ret rtic_configure_interrupt(rtic_interrupt irq_en)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (irq_en) {
 	case RTIC_INTERRUPT_ENABLE:
-		RTIC_DEBUG("RTIC Module: RTIC Interrupt enabled.\n");
+		pr_debug("RTIC Module: RTIC Interrupt enabled.\n");
 		/* If in interrupt mode then, set the irq enable bit in
 		   the RTIC control register */
 		rtic_ctrl |= RTIC_CTL_IRQ_EN;
@@ -437,7 +437,7 @@ rtic_ret rtic_configure_interrupt(rtic_interrupt irq_en)
 		break;
 
 	case RTIC_INTERRUPT_DISABLE:
-		RTIC_DEBUG("RTIC  Module: RTIC Interrupt Disabled.\n");
+		pr_debug("RTIC  Module: RTIC Interrupt Disabled.\n");
 		/* If in polling mode, then disable the irq enable bit in
 		   the RTIC Control register */
 		rtic_ctrl &= ~RTIC_CTL_IRQ_EN;
@@ -461,8 +461,8 @@ ulong rtic_get_faultaddress(void)
 	ulong rtic_faultaddr;
 	/* Read for RTIC Registers value. */
 	rtic_faultaddr = __raw_readl(RTIC_FAULTADDR);
-	RTIC_DEBUG("RTIC  Module: Hashing fault register value 0x%08lX\n ",
-		   rtic_faultaddr);
+	pr_debug("RTIC  Module: Hashing fault register value 0x%08lX\n ",
+		 rtic_faultaddr);
 	return rtic_faultaddr;
 }
 
@@ -492,8 +492,8 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 		if ((rtic_sts & RTIC_DONE) == RTIC_DONE) {
 			switch (mem_blk) {
 			case RTIC_A1:
-				RTIC_DEBUG("RTIC Module: Read mem blk A hash"
-					   "result\n");
+				pr_debug("RTIC Module: Read mem blk A hash"
+					 "result\n");
 				hash_result_reg->hash_result[0] =
 				    __raw_readl(RTIC_MEMAHASHRES0);
 				hash_result_reg->hash_result[1] =
@@ -507,8 +507,8 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 				break;
 
 			case RTIC_B1:
-				RTIC_DEBUG("RTIC Module: Read mem blk B hash"
-					   "result\n");
+				pr_debug("RTIC Module: Read mem blk B hash"
+					 "result\n");
 				hash_result_reg->hash_result[0] =
 				    __raw_readl(RTIC_MEMBHASHRES0);
 				hash_result_reg->hash_result[1] =
@@ -522,8 +522,8 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 				break;
 
 			case RTIC_C1:
-				RTIC_DEBUG("RTIC Module: Read mem blk C hash"
-					   "result\n");
+				pr_debug("RTIC Module: Read mem blk C hash"
+					 "result\n");
 				hash_result_reg->hash_result[0] =
 				    __raw_readl(RTIC_MEMCHASHRES0);
 				hash_result_reg->hash_result[1] =
@@ -537,8 +537,8 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 				break;
 
 			case RTIC_D1:
-				RTIC_DEBUG("RTIC Module: Read mem blk D hash"
-					   "result\n");
+				pr_debug("RTIC Module: Read mem blk D hash"
+					 "result\n");
 				hash_result_reg->hash_result[0] =
 				    __raw_readl(RTIC_MEMDHASHRES0);
 				hash_result_reg->hash_result[1] =
@@ -556,8 +556,8 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 				break;
 			}
 		} else {
-			printk("RTIC Module: Memory blocks are not hashed "
-			       "for boot authentication.\n");
+			pr_debug("RTIC Module: Memory blocks are not hashed "
+				 "for boot authentication.\n");
 			ret_val = RTIC_FAILURE;
 		}
 		break;
@@ -565,26 +565,26 @@ rtic_hash_result(rtic_memblk mem_blk, rtic_mode mode,
 	case RTIC_RUN_TIME:
 		switch (mem_blk) {
 		case RTIC_A1:
-			printk("RTIC Module: run-time check doesn't update"
-			       "Hash result value.\n");
+			pr_debug("RTIC Module: run-time check doesn't update"
+				 "Hash result value.\n");
 			ret_val = RTIC_FAILURE;
 			break;
 
 		case RTIC_B1:
-			printk("RTIC Module: run-time check doesn't update"
-			       "Hash result value.\n");
+			pr_debug("RTIC Module: run-time check doesn't update"
+				 "Hash result value.\n");
 			ret_val = RTIC_FAILURE;
 			break;
 
 		case RTIC_C1:
-			printk("RTIC Module: run-time check doesn't update"
-			       "Hash result value.\n");
+			pr_debug("RTIC Module: run-time check doesn't update"
+				 "Hash result value.\n");
 			ret_val = RTIC_FAILURE;
 			break;
 
 		case RTIC_D1:
-			printk("RTIC Module: run-time check doesn't update"
-			       "Hash result value.\n");
+			pr_debug("RTIC Module: run-time check doesn't update"
+				 "Hash result value.\n");
 			ret_val = RTIC_FAILURE;
 			break;
 
@@ -615,14 +615,14 @@ rtic_ret rtic_dma_burst_read(rtic_dma_word dma_burst)
 	ulong rtic_ctrl;
 	ulong rtic_dma_delay, rtic_sts;
 	rtic_ret ret_val = RTIC_SUCCESS;
-	RTIC_DEBUG("RTIC DMA burst read confirgured.\n");
+	pr_debug("RTIC DMA burst read confirgured.\n");
 	/* Read for RTIC Registers value. */
 	rtic_ctrl = __raw_readl(RTIC_CONTROL);
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	rtic_dma_delay = __raw_readl(RTIC_DMA);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (dma_burst) {
@@ -676,7 +676,7 @@ rtic_ret rtic_hash_once_dma_throttle(void)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 #if defined(CONFIG_ARCH_MX27)
@@ -710,7 +710,7 @@ rtic_ret rtic_dma_delay(ulong dma_delay)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	__raw_writel(dma_delay, RTIC_DMA);
@@ -734,7 +734,7 @@ rtic_ret rtic_wd_timer(ulong wd_timer)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	__raw_writel(wd_timer, RTIC_WDTIMER);
@@ -758,18 +758,18 @@ rtic_ret rtic_sw_reset(rtic_sw_rst rtic_rst)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (rtic_rst) {
 	case RTIC_RST_ENABLE:
-		RTIC_DEBUG("RTIC Module: RTIC SW Reset enabled.\n");
+		pr_debug("RTIC Module: RTIC SW Reset enabled.\n");
 		rtic_cmd |= RTIC_CMD_SW_RESET;
 		__raw_writel(rtic_cmd, RTIC_COMMAND);
 		break;
 
 	case RTIC_RST_DISABLE:
-		RTIC_DEBUG("RTIC  Module: RTIC SW Reset Disabled.\n");
+		pr_debug("RTIC  Module: RTIC SW Reset Disabled.\n");
 		rtic_cmd &= ~RTIC_CMD_SW_RESET;
 		__raw_writel(rtic_cmd, RTIC_COMMAND);
 		break;
@@ -798,18 +798,18 @@ rtic_ret rtic_clr_irq(rtic_clear_irq rtic_irq_clr)
 	rtic_sts = __raw_readl(RTIC_STATUS);
 	/* Check for RTIC Busy bit before writing into RTIC Registers. */
 	if ((rtic_sts & RTIC_BUSY) != 0) {
-		RTIC_DEBUG("RTIC Module: RTIC is in BUSY in Hashing\n");
+		pr_debug("RTIC Module: RTIC is in BUSY in Hashing\n");
 		return RTIC_FAILURE;
 	}
 	switch (rtic_irq_clr) {
 	case RTIC_CLR_IRQ_ENABLE:
-		RTIC_DEBUG("RTIC Module: RTIC SW Reset enabled.\n");
+		pr_debug("RTIC Module: RTIC SW Reset enabled.\n");
 		rtic_cmd |= RTIC_CMD_CLRIRQ;
 		__raw_writel(rtic_cmd, RTIC_COMMAND);
 		break;
 
 	case RTIC_CLR_IRQ_DISABLE:
-		RTIC_DEBUG("RTIC  Module: RTIC SW Reset Disabled.\n");
+		pr_debug("RTIC  Module: RTIC SW Reset Disabled.\n");
 		rtic_cmd &= ~RTIC_CMD_CLRIRQ;
 		__raw_writel(rtic_cmd, RTIC_COMMAND);
 		break;

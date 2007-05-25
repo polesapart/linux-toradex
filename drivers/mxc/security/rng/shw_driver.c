@@ -178,9 +178,7 @@ OS_DEV_INIT(shw_init)
 {
 	os_error_code error_code = OS_ERROR_NO_MEMORY_S;	/* assume failure */
 
-#ifdef SHW_DEBUG
-	os_printk("SHW Driver: Loading\n");
-#endif
+	pr_debug("SHW Driver: Loading\n");
 
 	user_list = NULL;
 	shw_queue_lock = os_lock_alloc_init();
@@ -188,23 +186,16 @@ OS_DEV_INIT(shw_init)
 	if (shw_queue_lock != NULL) {
 		error_code = shw_setup_user_driver_interaction();
 		if (error_code != OS_ERROR_OK_S) {
-#ifdef SHW_DEBUG
-			os_printk("SHW Driver: Failed to setup user"
-				  " i/f: %d\n", error_code);
-#endif
+			pr_debug("SHW Driver: Failed to setup user"
+				 " i/f: %d\n", error_code);
 		}
 	}
 	/* queue_lock not NULL */
 	if (error_code != OS_ERROR_OK_S) {
-#ifdef SHW_DEBUG
-		os_printk("SHW: Driver initialization failed. %d\n",
-			  error_code);
-#endif
+		pr_debug("SHW: Driver initialization failed. %d\n", error_code);
 		shw_cleanup();
 	} else {
-#ifdef SHW_DEBUG
-		os_printk("SHW: Driver initialization complete.\n");
-#endif
+		pr_debug("SHW: Driver initialization complete.\n");
 	}
 
 	os_dev_init_return(error_code);
@@ -225,9 +216,7 @@ OS_DEV_INIT(shw_init)
 OS_DEV_SHUTDOWN(shw_shutdown)
 {
 
-#ifdef SHW_DEBUG
-	os_printk("SHW: shutdown called\n");
-#endif
+	pr_debug("SHW: shutdown called\n");
 	shw_cleanup();
 
 	os_dev_shutdown_return(OS_ERROR_OK_S);
@@ -254,9 +243,7 @@ static void shw_cleanup(void)
 	if (shw_queue_lock != NULL) {
 		os_lock_deallocate(shw_queue_lock);
 	}
-#ifdef SHW_DEBUG
-	os_printk("SHW Driver: Cleaned up\n");
-#endif
+	pr_debug("SHW Driver: Cleaned up\n");
 }				/* shw_cleanup */
 
 /*!***************************************************************************/
@@ -293,9 +280,7 @@ OS_DEV_IOCTL(shw_ioctl)
 
 	fsl_shw_uco_t *user_ctx = os_dev_get_user_private();
 
-#ifdef SHW_DEBUG
-	os_printk("SHW: IOCTL %d received\n", os_dev_get_ioctl_op());
-#endif
+	pr_debug("SHW: IOCTL %d received\n", os_dev_get_ioctl_op());
 	switch (os_dev_get_ioctl_op()) {
 
 	case SHW_IOCTL_REQUEST + SHW_USER_REQ_REGISTER_USER:
@@ -331,25 +316,19 @@ OS_DEV_IOCTL(shw_ioctl)
 		break;
 
 	case SHW_IOCTL_REQUEST + SHW_USER_REQ_GET_RANDOM:
-#ifdef SHW_DEBUG
-		os_printk("SHW: get_random ioctl received\n");
-#endif
+		pr_debug("SHW: get_random ioctl received\n");
 		code = get_random(user_ctx, (struct get_random_req *)
 				  os_dev_get_ioctl_arg());
 		break;
 
 	case SHW_IOCTL_REQUEST + SHW_USER_REQ_ADD_ENTROPY:
-#ifdef SHW_DEBUG
-		os_printk("SHW: add_entropy ioctl received\n");
-#endif
+		pr_debug("SHW: add_entropy ioctl received\n");
 		code = add_entropy(user_ctx, (struct add_entropy_req *)
 				   os_dev_get_ioctl_arg());
 		break;
 
 	default:
-#ifdef SHW_DEBUG
-		os_printk("SHW: Unexpected ioctl %d\n", os_dev_get_ioctl_op());
-#endif
+		pr_debug("SHW: Unexpected ioctl %d\n", os_dev_get_ioctl_op());
 		break;
 	}
 
@@ -398,10 +377,7 @@ OS_DEV_CLOSE(shw_release)
  */
 static void shw_user_callback(fsl_shw_uco_t * uco)
 {
-#ifdef SHW_DEBUG
-	os_printk("SHW: Signalling callback user process for context %p\n",
-		  uco);
-#endif
+	pr_debug("SHW: Signalling callback user process for context %p\n", uco);
 	os_send_signal(uco->process, SIGUSR2);
 }
 
@@ -434,16 +410,12 @@ static os_error_code shw_setup_user_driver_interaction(void)
 
 	if (error_code != OS_ERROR_OK_S) {
 		/* failure ! */
-#ifdef SHW_DEBUG
-		os_printk("SHW Driver: register device driver failed: %d\n",
-			  error_code);
-#endif
+		pr_debug("SHW Driver: register device driver failed: %d\n",
+			 error_code);
 	} else {		/* success */
 		shw_device_registered = TRUE;
-#ifdef SHW_DEBUG
-		os_printk("SHW Driver:  Major node is %d\n",
-			  os_driver_get_major(reg_handle));
-#endif
+		pr_debug("SHW Driver:  Major node is %d\n",
+			 os_driver_get_major(reg_handle));
 	}
 
 	return error_code;
@@ -477,10 +449,8 @@ static os_error_code init_uco(fsl_shw_uco_t * user_ctx, void *user_mode_uco)
 		user_ctx->callback = shw_user_callback;
 		SHW_ADD_USER(user_ctx);
 	}
-#ifdef SHW_DEBUG
-	os_printk("SHW: init uco returning %d (flags %x)\n", code,
-		  user_ctx->flags);
-#endif
+	pr_debug("SHW: init uco returning %d (flags %x)\n", code,
+		 user_ctx->flags);
 
 	return code;
 }
@@ -565,14 +535,12 @@ static os_error_code get_capabilities(fsl_shw_uco_t * user_ctx,
 	if (code == OS_ERROR_OK_S) {
 		void *endcap;
 		void *user_bounds;
-#ifdef SHW_DEBUG
-		os_printk("SHE: Received get_cap request: 0x%p/%u/0x%x\n",
-			  req.capabilities, req.size, sizeof(fsl_shw_pco_t));
-#endif
+		pr_debug("SHE: Received get_cap request: 0x%p/%u/0x%x\n",
+			 req.capabilities, req.size, sizeof(fsl_shw_pco_t));
 		endcap = req.capabilities + 1;	/* point to end of structure */
 		user_bounds = (void *)req.capabilities + req.size;	/* end of area */
 
-		printk("next: %p, end: %p\n", endcap, user_bounds);	//
+		printk(KERN_INFO "next: %p, end: %p\n", endcap, user_bounds);	//
 		/* First verify that request is big enough for the main structure */
 		if (endcap >= user_bounds) {
 			endcap = NULL;	/* No! */
@@ -625,9 +593,7 @@ static os_error_code get_capabilities(fsl_shw_uco_t * user_ctx,
 
 	/* code may already be set to an error.  This is another error case.  */
 
-#ifdef SHW_DEBUG
-	os_printk("SHW: get capabilities returning %d\n", code);
-#endif
+	pr_debug("SHW: get capabilities returning %d\n", code);
 
 	return code;
 }
@@ -730,17 +696,13 @@ static os_error_code get_random(fsl_shw_uco_t * user_ctx,
 	code = os_copy_from_user(&req, user_mode_get_random_req, sizeof(req));
 	if (code == OS_ERROR_OK_S) {
 		process_hdr(user_ctx, &req.hdr);
-#ifdef SHW_DEBUG
-		os_printk("SHW: get_random() for %d bytes in %sblocking mode\n",
-			  req.size, (req.hdr.flags & FSL_UCO_BLOCKING_MODE) ?
-			  "" : "non-");
-#endif
+		pr_debug("SHW: get_random() for %d bytes in %sblocking mode\n",
+			 req.size, (req.hdr.flags & FSL_UCO_BLOCKING_MODE) ?
+			 "" : "non-");
 		req.hdr.code =
 		    fsl_shw_get_random(user_ctx, req.size, req.random);
 
-#ifdef SHW_DEBUG
-		os_printk("SHW: get_random() returning %d\n", req.hdr.code);
-#endif
+		pr_debug("SHW: get_random() returning %d\n", req.hdr.code);
 
 		/* Copy FSL function status back to user */
 		code = copy_fsl_code(user_mode_get_random_req, req.hdr.code);

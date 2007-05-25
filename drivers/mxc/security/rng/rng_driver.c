@@ -176,19 +176,15 @@ OS_DEV_INIT(rng_init)
 	rng_work_queue.head = NULL;
 	rng_work_queue.tail = NULL;
 
-	os_printk("RNG Driver: Loading\n");
+	printk(KERN_INFO "RNG Driver: Loading\n");
 	return_code = rng_map_RNG_memory();
 	if (return_code != OS_ERROR_OK_S) {
 		rng_availability = RNG_STATUS_UNIMPLEMENTED;
-#ifdef RNG_DEBUG
-		os_printk("RNG: Driver failed to map RNG registers. %d\n",
-			  return_code);
-#endif
+		pr_debug("RNG: Driver failed to map RNG registers. %d\n",
+			 return_code);
 		goto check_err;
 	}
-#ifdef RNG_DEBUG
-	os_printk("RNG Driver: rng_base is 0x%08x\n", (uint32_t) rng_base);
-#endif
+	pr_debug("RNG Driver: rng_base is 0x%08x\n", (uint32_t) rng_base);
 
 	/* Check RNG configuration and status */
 	return_code = rng_grab_config_values();
@@ -202,9 +198,7 @@ OS_DEV_INIT(rng_init)
 
 	/* Determine status of RNG */
 	if (RNG_OSCILLATOR_FAILED()) {
-#ifdef RNG_DEBUG
-		os_printk("RNG Driver: RNG Oscillator is dead\n");
-#endif
+		pr_debug("RNG Driver: RNG Oscillator is dead\n");
 		rng_availability = RNG_STATUS_FAILED;
 		goto check_err;
 	}
@@ -238,14 +232,11 @@ OS_DEV_INIT(rng_init)
 		RNG_SET_HIGH_ASSURANCE();
 #endif
 		if (RNG_GET_HIGH_ASSURANCE()) {
-#ifdef RNG_DEBUG
-			os_printk
-			    ("RNG Driver: RNG is in High Assurance mode\n");
-#endif
+			pr_debug("RNG Driver: RNG is in High Assurance mode\n");
 		} else {
 #ifndef RNG_NO_FORCE_HIGH_ASSURANCE
-			os_printk("RNG Driver: RNG could not be put in "
-				  "High Assurance mode\n");
+			pr_debug("RNG Driver: RNG could not be put in "
+				 "High Assurance mode\n");
 #endif
 			rng_availability = RNG_STATUS_FAILED;
 			goto check_err;
@@ -253,10 +244,8 @@ OS_DEV_INIT(rng_init)
 
 		/* Check that RNG is OK */
 		if (!RNG_WORKING()) {
-#ifdef RNG_DEBUG
-			os_printk("RNG determined to be inoperable."
-				  "  Status %08x\n", RNG_GET_STATUS());
-#endif
+			pr_debug("RNG determined to be inoperable."
+				 "  Status %08x\n", RNG_GET_STATUS());
 			/* Couldn't wake it up or other problem */
 			rng_availability = RNG_STATUS_FAILED;
 			goto check_err;
@@ -264,18 +253,14 @@ OS_DEV_INIT(rng_init)
 
 		rng_queue_lock = os_lock_alloc_init();
 		if (rng_queue_lock == NULL) {
-#ifdef RNG_DEBUG
-			os_printk("RNG: lock initialization failed\n");
-#endif
+			pr_debug("RNG: lock initialization failed\n");
 			rng_availability = RNG_STATUS_FAILED;
 			goto check_err;
 		}
 
 		return_code = os_create_task(rng_entropy_task);
 		if (return_code != OS_ERROR_OK_S) {
-#ifdef RNG_DEBUG
-			os_printk("RNG: task initialization failed\n");
-#endif
+			pr_debug("RNG: task initialization failed\n");
 			rng_availability = RNG_STATUS_FAILED;
 			goto check_err;
 		} else {
@@ -284,11 +269,9 @@ OS_DEV_INIT(rng_init)
 #if defined(FSL_HAVE_RNGA)
 		scc_code = scc_monitor_security_failure(rng_sec_failure);
 		if (scc_code != SCC_RET_OK) {
-#ifdef RNG_DEBUG
-			os_printk
+			pr_debug
 			    ("RNG Driver: Failed to register SCC callback: %d\n",
 			     scc_code);
-#endif
 #ifndef RNG_NO_FORCE_HIGH_ASSURANCE
 			return_code = OS_ERROR_FAIL_S;
 			goto check_err;
@@ -314,10 +297,8 @@ OS_DEV_INIT(rng_init)
 		RNG_PUT_RNG_TO_SLEEP();
 		rng_availability = RNG_STATUS_OK;	/* RNG & driver are ready */
 	} else if (return_code != OS_ERROR_OK_S) {
-#ifdef RNG_DEBUG
-		os_printk("RNG: Driver initialization failed. %d\n",
-			  return_code);
-#endif
+		pr_debug("RNG: Driver initialization failed. %d\n",
+			 return_code);
 		rng_cleanup();
 	}
 
@@ -340,9 +321,7 @@ OS_DEV_INIT(rng_init)
 OS_DEV_SHUTDOWN(rng_shutdown)
 {
 
-#ifdef RNG_DEBUG
-	os_printk("RNG: shutdown called\n");
-#endif
+	pr_debug("RNG: shutdown called\n");
 	rng_cleanup();
 
 	os_driver_remove_registration(rng_reg_handle);
@@ -389,9 +368,7 @@ static void rng_cleanup(void)
 		rng_availability = RNG_STATUS_UNIMPLEMENTED;
 	}
 
-#ifdef RNG_DEBUG
-	os_printk("RNG Driver: Cleaned up\n");
-#endif
+	pr_debug("RNG Driver: Cleaned up\n");
 
 }				/* rng_cleanup */
 
@@ -622,12 +599,9 @@ inline int rng_check_register_offset(uint32_t offset)
 	 */
 	if ((offset < RNG_ADDRESS_RANGE) && (offset % sizeof(uint32_t) == 0)) {
 		return_code = TRUE;	/* OK */
+	} else {
+		pr_debug("RNG: Denied access to offset %8x\n", offset);
 	}
-#ifdef RNG_DEBUG
-	else {
-		os_printk("RNG: Denied access to offset %8x\n", offset);
-	}
-#endif
 
 	return return_code;
 
@@ -690,14 +664,11 @@ static int rng_check_register_accessible(uint32_t offset, int access_write)
 #ifdef FSL_HAVE_RNGA
 			if (!(offset == RNGA_ENTROPY)) {
 				return_code = TRUE;	/* Let all others be read */
-			}
-#ifdef RNG_DEBUG
-			else {
-				os_printk
+			} else {
+				pr_debug
 				    ("RNG: Offset %04x denied read access\n",
 				     offset);
 			}
-#endif
 #else				/* else RNGC */
 			/* No registers are write-only */
 			return_code = TRUE;
@@ -720,22 +691,17 @@ static int rng_check_register_accessible(uint32_t offset, int access_write)
 #endif
 			    ) {
 				return_code = TRUE;	/* can be written */
-			}
-#ifdef RNG_DEBUG
-			else {
-				os_printk
+			} else {
+				pr_debug
 				    ("RNG: Offset %04x denied write access\n",
 				     offset);
 			}
-#endif
 		}		/* write */
-	}			/* not high assurance and inaccessible register... */
-#ifdef RNG_DEBUG
+	} /* not high assurance and inaccessible register... */
 	else {
-		os_printk("RNG: Offset %04x denied high-assurance access\n",
-			  offset);
+		pr_debug("RNG: Offset %04x denied high-assurance access\n",
+			 offset);
 	}
-#endif
 
 	return return_code;
 }				/* rng_check_register_accessible */
@@ -761,9 +727,7 @@ OS_DEV_ISR(rng_irq)
 {
 	int handled = FALSE;	/* assume interrupt isn't from RNG */
 
-#ifdef RNG_DEBUG
-	os_printk("RNG Driver: Inside the RNG Interrupt Handler\n");
-#endif
+	pr_debug("RNG Driver: Inside the RNG Interrupt Handler\n");
 	if (RNG_SEED_DONE()) {
 		complete(&rng_seed_done);
 		RNG_CLEAR_ALL_STATUS();
@@ -807,9 +771,7 @@ static os_error_code rng_map_RNG_memory(void)
 	rng_base = os_map_device(RNG_BASE_ADDR, RNG_ADDRESS_RANGE);
 	if (rng_base == NULL) {
 		/* failure ! */
-#ifdef RNG_DEBUG
-		os_printk("RNG Driver: ioremap failed.\n");
-#endif
+		pr_debug("RNG Driver: ioremap failed.\n");
 	} else {
 		error_code = OS_ERROR_OK_S;
 	}
@@ -836,9 +798,7 @@ static os_error_code rng_setup_interrupt_handling(void)
 	error_code = os_register_interrupt(RNG_DRIVER_NAME, INT_RNG,
 					   OS_DEV_ISR_REF(rng_irq));
 	if (error_code != OS_ERROR_OK_S) {
-#ifdef RNG_DEBUG
-		os_printk("RNG Driver: Error installing Interrupt Handler\n");
-#endif
+		pr_debug("RNG Driver: Error installing Interrupt Handler\n");
 	} else {
 		RNG_UNMASK_ALL_INTERRUPTS();
 	}
@@ -871,14 +831,12 @@ static os_error_code rng_grab_config_values(void)
 			ret = OS_ERROR_OK_S;
 		}
 	}
-#ifdef RNG_DEBUG
 	if (ret != OS_ERROR_OK_S) {
-		os_printk
+		pr_debug
 		    ("RNG: Unknown or unexpected RNG type %d (FIFO size %d)."
 		     "  Failing driver initialization\n", type,
 		     rng_output_fifo_size);
 	}
-#endif
 
 	return ret;
 }
@@ -907,10 +865,8 @@ static fsl_shw_return_t rng_drain_fifo(uint32_t * random_p, int count_words)
 	int count_for_reseed = 0;
 	INIT_COMPLETION(rng_seed_done);
 #endif
-#ifdef RNG_DEBUG
 	int fifo_empty_count = 0;	/* number of times FIFO was empty */
 	int max_sequential = 0;	/* max times 0 seen in a row */
-#endif
 #if defined(FSL_HAVE_RNGC)
 	if (RNG_RESEED()) {
 		do {
@@ -932,17 +888,13 @@ static fsl_shw_return_t rng_drain_fifo(uint32_t * random_p, int count_words)
 		words_in_rng = RNG_GET_WORDS_IN_FIFO();
 		if (words_in_rng == 0) {
 			++sequential_count;
-#ifdef RNG_DEBUG
 			fifo_empty_count++;
 			if (sequential_count > max_sequential) {
 				max_sequential = sequential_count;
 			}
-#endif
 			if (sequential_count >= RNG_MAX_TRIES) {
-#ifdef RNG_DEBUG
-				os_printk("RNG: FIFO staying empty (%d)\n",
-					  words_in_rng);
-#endif
+				pr_debug("RNG: FIFO staying empty (%d)\n",
+					 words_in_rng);
 				code = FSL_RETURN_NO_RESOURCE_S;
 				break;
 			}
@@ -972,12 +924,10 @@ static fsl_shw_return_t rng_drain_fifo(uint32_t * random_p, int count_words)
 	if (count_words == 0) {
 		code = FSL_RETURN_OK_S;
 	}
-#ifdef RNG_DEBUG
 	if (fifo_empty_count != 0) {
-		os_printk("RNG: FIFO empty %d times, max loop count %d\n",
-			  fifo_empty_count, max_sequential);
+		pr_debug("RNG: FIFO empty %d times, max loop count %d\n",
+			 fifo_empty_count, max_sequential);
 	}
-#endif
 
 	return code;
 }				/* rng_drain_fifo */
@@ -999,23 +949,17 @@ OS_DEV_TASK(rng_entropy_task)
 
 	os_dev_task_begin();
 
-#ifdef RNG_DEBUG
-	os_printk("RNG: entropy task starting\n");
-#endif
+	pr_debug("RNG: entropy task starting\n");
 
 	while ((work = RNG_GET_WORK_ENTRY()) != NULL) {
-#ifdef RNG_DEBUG
-		os_printk("RNG: found %d bytes of work at %p (%p)\n",
-			  work->length, work, work->data_local);
-#endif
+		pr_debug("RNG: found %d bytes of work at %p (%p)\n",
+			 work->length, work, work->data_local);
 		work->hdr.code = rng_drain_fifo(work->data_local,
 						BYTES_TO_WORDS(work->length));
 		work->completed = TRUE;
 
 		if (work->hdr.flags & FSL_UCO_BLOCKING_MODE) {
-#ifdef RNG_DEBUG
-			os_printk("RNG: Waking queued processes\n");
-#endif
+			pr_debug("RNG: Waking queued processes\n");
 			os_wake_sleepers(rng_wait_queue);
 		} else {
 			os_lock_context_t lock_context;
@@ -1029,19 +973,15 @@ OS_DEV_TASK(rng_entropy_task)
 				if (work->hdr.callback != NULL) {
 					work->hdr.callback(work->hdr.user_ctx);
 				} else {
-#ifdef RNG_DEBUG
-					os_printk
+					pr_debug
 					    ("RNG: Callback ptr for %p is NULL\n",
 					     work);
-#endif
 				}
 			}
 		}
 	}			/* while */
 
-#ifdef RNG_DEBUG
-	os_printk("RNG: entropy task ending\n");
-#endif
+	pr_debug("RNG: entropy task ending\n");
 
 	os_dev_task_return(OS_ERROR_OK_S);
 }				/* rng_entropy_task */
@@ -1060,9 +1000,7 @@ OS_DEV_TASK(rng_entropy_task)
  */
 static void rng_sec_failure(void)
 {
-#ifdef RNG_DEBUG
-	os_printk("RNG Driver: Security Failure Alarm received.\n");
-#endif
+	pr_debug("RNG Driver: Security Failure Alarm received.\n");
 
 	rng_cleanup();
 
@@ -1087,7 +1025,7 @@ static uint32_t dbg_rng_read_register(uint32_t offset)
 #ifndef RNG_ENTROPY_DEBUG
 	if (offset != RNG_OUTPUT_FIFO) {
 #endif
-		os_printk("RNG RD: 0x%4x : 0x%08x\n", offset, value);
+		pr_debug("RNG RD: 0x%4x : 0x%08x\n", offset, value);
 #ifndef RNG_ENTROPY_DEBUG
 	}
 #endif
@@ -1105,7 +1043,7 @@ static uint32_t dbg_rng_read_register(uint32_t offset)
  */
 static void dbg_rng_write_register(uint32_t offset, uint32_t value)
 {
-	os_printk("RNG WR: 0x%4x : 0x%08x\n", offset, value);
+	pr_debug("RNG WR: 0x%4x : 0x%08x\n", offset, value);
 	os_write32(value, rng_base + offset);
 	return;
 }

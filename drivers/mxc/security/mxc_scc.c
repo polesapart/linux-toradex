@@ -165,13 +165,9 @@ static uint8_t scc_block_padding[8] =
  */
 static int mxc_scc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-#ifdef SCC_DEBUG
-	printk(" MXC SCC driver suspend function\n");
-#endif
-
+	pr_debug(" MXC SCC driver suspend function\n");
 	/* Turn off clock */
 	clk_disable(scc_clk);
-
 	return 0;
 }
 
@@ -185,10 +181,7 @@ static int mxc_scc_suspend(struct platform_device *pdev, pm_message_t state)
  */
 static int mxc_scc_resume(struct platform_device *pdev)
 {
-#ifdef SCC_DEBUG
-	printk("MXC SCC driver resume function\n");
-#endif
-
+	pr_debug("MXC SCC driver resume function\n");
 	/* Turn on clock */
 	clk_enable(scc_clk);
 
@@ -239,12 +232,8 @@ static int scc_init(void)
 	int i;
 	int ret;
 	int return_value = -EIO;	/* assume error */
-
 	/* Enable the SCC clocks  */
-#ifdef SCC_DEBUG
-	printk(KERN_ALERT "SCC: Enabling the SCC CLK ... \n");
-
-#endif				/* SCC_DEBUG */
+	pr_debug(KERN_ALERT "SCC: Enabling the SCC CLK ... \n");
 	scc_clk = clk_get(NULL, "scc_clk");
 	clk_enable(scc_clk);
 
@@ -275,10 +264,8 @@ static int scc_init(void)
 
 		/* See whether there is an SCC available */
 		if (0 && !SCC_ENABLED()) {
-#ifdef SCC_DEBUG
-			printk
+			pr_debug
 			    ("SCC: Fuse for SCC is set to disabled.  Exiting.\n");
-#endif
 		} else {
 			/* Map the SCC (SCM and SMN) memory on the internal bus into
 			   kernel address space */
@@ -286,10 +273,8 @@ static int scc_init(void)
 
 			/* If that worked, we can try to use the SCC */
 			if (scc_base == NULL) {
-#ifdef SCC_DEBUG
-				printk
+				pr_debug
 				    ("SCC: Register mapping failed.  Exiting.\n");
-#endif
 			} else {
 				/* Get SCM into 'clean' condition w/interrupts cleared &
 				   disabled */
@@ -363,8 +348,7 @@ static int scc_init(void)
 		}
 	}
 	/* ! STATUS_INITIAL */
-#ifdef SCC_DEBUG
-	printk("SCC: Driver Status is %s\n",
+	pr_debug("SCC: Driver Status is %s\n",
 	       (scc_availability == SCC_STATUS_INITIAL) ? "INITIAL" :
 	       (scc_availability == SCC_STATUS_CHECKING) ? "CHECKING" :
 	       (scc_availability ==
@@ -373,7 +357,6 @@ static int scc_init(void)
 							       SCC_STATUS_OK) ?
 	       "OK" : (scc_availability ==
 		       SCC_STATUS_FAILED) ? "FAILED" : "UNKNOWN");
-#endif
 
 	return return_value;
 }				/* scc_init */
@@ -438,9 +421,7 @@ static void scc_cleanup(void)
 		free_irq(INT_SCC_SMN, NULL);
 #endif
 	}
-#ifdef SCC_DEBUG
-	printk("SCC driver cleaned up.\n");
-#endif
+	pr_debug("SCC driver cleaned up.\n");
 
 }				/* scc_cleanup */
 
@@ -499,13 +480,11 @@ scc_return_t scc_zeroize_memories(void)
 		if (!(status & SCM_ERR_ZEROIZE_FAILED)) {
 			return_status = SCC_RET_OK;
 		}
-#ifdef SCC_DEBUG
 		else {
-			printk
+			pr_debug
 			    ("SCC: Zeroize failed.  SCM Error Status is 0x%08x\n",
 			     status);
 		}
-#endif
 
 		/* Clear out any status. */
 		SCC_WRITE_REGISTER(SCM_INTERRUPT_CTRL,
@@ -550,9 +529,7 @@ scc_crypt(unsigned long count_in_bytes, uint8_t * data_in,
 		count_in_bytes % SCC_BLOCK_SIZE_BYTES() != 0)
 	    || (check_mode != SCC_VERIFY_MODE_NONE &&
 		check_mode != SCC_VERIFY_MODE_CCITT_CRC)) {
-#ifdef SCC_DEBUG
-		printk("SCC: scc_crypt() detected bad argument\n");
-#endif
+		pr_debug("SCC: scc_crypt() detected bad argument\n");
 	} else {
 		/* Start settings for write to SCM_CONTROL register  */
 		uint32_t scc_control = SCM_CONTROL_START_CIPHER;
@@ -629,11 +606,9 @@ scc_crypt(unsigned long count_in_bytes, uint8_t * data_in,
 				    (int)count_in_bytes - CRC_SIZE_BYTES -
 				    SCC_BLOCK_SIZE_BYTES();
 				if ((int)*count_out_bytes < possible_size) {
-#ifdef SCC_DEBUG
-					printk
+					pr_debug
 					    ("SCC: insufficient decrypt space %ld/%d.\n",
 					     *count_out_bytes, possible_size);
-#endif
 					return_code =
 					    SCC_RET_INSUFFICIENT_SPACE;
 				}
@@ -978,16 +953,12 @@ copy_to_scc(const uint8_t * from, uint32_t to, unsigned long count_bytes,
 	uint16_t current_crc = 0;	/* local copy for fast access */
 	uint32_t status;
 
-#ifdef SCC_DEBUG
-	printk("SCC: copying %ld bytes to 0x%0x.\n", count_bytes, to);
-#endif
+	pr_debug("SCC: copying %ld bytes to 0x%0x.\n", count_bytes, to);
 
 	status = SCC_READ_REGISTER(SCM_ERROR_STATUS) & SCM_ACCESS_ERRORS;
 	if (status != 0) {
-#ifdef SCC_DEBUG
-		printk("SCC copy_to_scc(): Error status detected (before copy):"
+		pr_debug("SCC copy_to_scc(): Error status detected (before copy):"
 		       " %08x\n", status);
-#endif
 		/* clear out errors left behind by somebody else */
 		SCC_WRITE_REGISTER(SCM_ERROR_STATUS, status);
 	}
@@ -1040,10 +1011,8 @@ copy_to_scc(const uint8_t * from, uint32_t to, unsigned long count_bytes,
 
 	status = SCC_READ_REGISTER(SCM_ERROR_STATUS) & SCM_ACCESS_ERRORS;
 	if (status != 0) {
-#ifdef SCC_DEBUG
-		printk("SCC copy_to_scc(): Error status detected: %08x\n",
+		pr_debug("SCC copy_to_scc(): Error status detected: %08x\n",
 		       status);
-#endif
 		/* Clear any/all bits. */
 		SCC_WRITE_REGISTER(SCM_ERROR_STATUS, status);
 	}
@@ -1079,18 +1048,12 @@ copy_from_scc(const uint32_t from, uint8_t * to, unsigned long count_bytes,
 	uint32_t scm_word;
 	uint16_t current_crc = 0;	/* local copy for fast access */
 	uint32_t status;
-
-#ifdef SCC_DEBUG
-	printk("SCC: copying %ld bytes from 0x%x.\n", count_bytes, from);
-#endif
-
+	pr_debug("SCC: copying %ld bytes from 0x%x.\n", count_bytes, from);
 	status = SCC_READ_REGISTER(SCM_ERROR_STATUS) & SCM_ACCESS_ERRORS;
 	if (status != 0) {
-#ifdef SCC_DEBUG
-		printk
+		pr_debug
 		    ("SCC copy_from_scc(): Error status detected (before copy):"
 		     " %08x\n", status);
-#endif
 		/* clear out errors left behind by somebody else */
 		SCC_WRITE_REGISTER(SCM_ERROR_STATUS, status);
 	}
@@ -1143,10 +1106,8 @@ copy_from_scc(const uint32_t from, uint8_t * to, unsigned long count_bytes,
 
 	status = SCC_READ_REGISTER(SCM_ERROR_STATUS) & SCM_ACCESS_ERRORS;
 	if (status != 0) {
-#ifdef SCC_DEBUG
-		printk("SCC copy_from_scc(): Error status detected: %08x\n",
+		pr_debug("SCC copy_from_scc(): Error status detected: %08x\n",
 		       status);
-#endif
 		/* Clear any/all bits. */
 		SCC_WRITE_REGISTER(SCM_ERROR_STATUS, status);
 	}
@@ -1186,10 +1147,8 @@ scc_strip_padding(uint8_t * from, unsigned *count_bytes_stripped)
 			return_code = SCC_RET_OK;
 			break;
 		} else if (*from != 0) {	/* if not marker, check for 0 */
-#ifdef SCC_DEBUG
-			printk("SCC: Found non-zero interim pad: 0x%x\n",
+			pr_debug("SCC: Found non-zero interim pad: 0x%x\n",
 			       *from);
-#endif
 			break;
 		}
 	}
@@ -1249,15 +1208,11 @@ static uint32_t scc_update_state(void)
 		} else if (smn_state == SMN_STATE_FAIL) {
 			scc_availability = SCC_STATUS_FAILED;	/* uh oh - unhealthy */
 			scc_perform_callbacks();
-#ifdef SCC_DEBUG
-			printk("SCC: SCC went into FAILED mode\n");
-#endif
+			pr_debug("SCC: SCC went into FAILED mode\n");
 		} else {
 			/* START, ZEROIZE RAM, HEALTH CHECK, or unknown */
 			scc_availability = SCC_STATUS_UNIMPLEMENTED;	/* unuseable */
-#ifdef SCC_DEBUG
-			printk("SCC: SCC declared UNIMPLEMENTED\n");
-#endif
+			pr_debug("SCC: SCC declared UNIMPLEMENTED\n");
 		}
 	}
 	/* if availability is initial or ok */
@@ -1327,16 +1282,12 @@ static uint32_t scc_grab_config_values(void)
 	if (scc_availability != SCC_STATUS_UNIMPLEMENTED) {
 		/* access the SCC - these are 'safe' registers */
 		config_register = SCC_READ_REGISTER(SCM_CONFIGURATION);
-#ifdef SCC_DEBUG
-		printk("SCC Driver: SCM config is 0x%08x\n", config_register);
-#endif
+		pr_debug("SCC Driver: SCM config is 0x%08x\n", config_register);
 
 		/* Get SMN status and update scc_availability */
 		smn_status_register = scc_update_state();
-#ifdef SCC_DEBUG
-		printk("SCC Driver: SMN status is 0x%08x\n",
+		pr_debug("SCC Driver: SMN status is 0x%08x\n",
 		       smn_status_register);
-#endif
 
 		/* save sizes and versions information for later use */
 		scc_configuration.block_size_bytes = (config_register &
@@ -1408,7 +1359,7 @@ static int setup_interrupt_handling(void)
 	smn_error_code = request_irq(INT_SCC_SMN, scc_irq, 0,
 				     SCC_DRIVER_NAME, NULL);
 	if (smn_error_code != 0) {
-		printk
+		pr_debug
 		    ("SCC Driver: Error installing SMN Interrupt Handler: %d\n",
 		     smn_error_code);
 	} else {
@@ -1429,11 +1380,11 @@ static int setup_interrupt_handling(void)
 				     SCC_DRIVER_NAME, NULL);
 	if (scm_error_code != 0) {
 #ifndef MXC
-		printk
+		pr_debug
 		    ("SCC Driver: Error installing SCM Interrupt Handler: %d\n",
 		     scm_error_code);
 #else
-		printk
+		pr_debug
 		    ("SCC Driver: Error installing SCC Interrupt Handler: %d\n",
 		     scm_error_code);
 #endif
@@ -1492,9 +1443,7 @@ static uint32_t scc_do_crypto(int byte_count, uint32_t scm_control)
 	if (crypto_status != SCM_STATUS_CIPHERING_DONE) {
 		/* Replace with error status instead */
 		crypto_status = SCC_READ_REGISTER(SCM_ERROR_STATUS);
-#ifdef SCC_DEBUG
-		printk("SCM Failure: 0x%x\n", crypto_status);
-#endif
+		pr_debug("SCM Failure: 0x%x\n", crypto_status);
 		if (crypto_status == 0) {
 			/* That came up 0.  Turn on arbitrary bit to signal error. */
 			crypto_status = SCM_ERR_INTERNAL_ERROR;
@@ -1503,9 +1452,7 @@ static uint32_t scc_do_crypto(int byte_count, uint32_t scm_control)
 		crypto_status = 0;
 	}
 
-#ifdef SCC_DEBUG
-	printk("SCC: Done waiting.\n");
-#endif
+	pr_debug("SCC: Done waiting.\n");
 
 	/* Clear out any status. */
 	SCC_WRITE_REGISTER(SCM_INTERRUPT_CTRL,
@@ -1600,18 +1547,14 @@ scc_encrypt(uint32_t count_in_bytes, uint8_t * data_in, uint32_t scm_control,
 		if (output_bytes_copied + bytes_to_process > *count_out_bytes) {
 			return_code = SCC_RET_INSUFFICIENT_SPACE;
 			scm_error_status = -1;	/* error signal */
-#ifdef SCC_DEBUG
-			printk
+			pr_debug
 			    ("SCC: too many ciphertext bytes for space available\n");
-#endif
 			break;
 		}
-#ifdef SCC_DEBUG
-		printk("SCC: Starting encryption. %x for %d bytes (%p/%p)\n",
+		pr_debug("SCC: Starting encryption. %x for %d bytes (%p/%p)\n",
 		       scm_control, bytes_to_process,
 		       (void *)SCC_READ_REGISTER(SCM_RED_START),
 		       (void *)SCC_READ_REGISTER(SCM_BLACK_START));
-#endif
 		scm_error_status = scc_do_crypto(bytes_to_process, scm_control);
 		if (scm_error_status != 0) {
 			break;
@@ -1696,10 +1639,8 @@ scc_decrypt(uint32_t count_in_bytes, uint8_t * data_in, uint32_t scm_control,
 		copy_to_scc(data_in, scm_location, bytes_to_copy, NULL);
 		data_in += bytes_to_copy;	/* move pointer */
 
-#ifdef SCC_DEBUG
-		printk("SCC: Starting decryption of %d bytes.\n",
+		pr_debug("SCC: Starting decryption of %d bytes.\n",
 		       bytes_to_copy);
-#endif
 
 		/*  Do the work, wait for completion */
 		scm_error_status = scc_do_crypto(bytes_to_copy, scm_control);
@@ -1734,10 +1675,8 @@ scc_decrypt(uint32_t count_in_bytes, uint8_t * data_in, uint32_t scm_control,
 			copy_to_scc(data_in, scm_location, bytes_to_copy, NULL);
 			data_in += bytes_to_copy;	/* move pointer */
 
-#ifdef SCC_DEBUG
-			printk("SCC: Finishing decryption (%d bytes).\n",
+			pr_debug("SCC: Finishing decryption (%d bytes).\n",
 			       bytes_to_copy);
-#endif
 
 			/*  Do the work, wait for completion */
 			scm_error_status =
@@ -1787,8 +1726,7 @@ scc_decrypt(uint32_t count_in_bytes, uint8_t * data_in, uint32_t scm_control,
 						} else {
 							return_code =
 							    SCC_RET_VERIFICATION_FAILED;
-#ifdef SCC_DEBUG
-							printk
+							pr_debug
 							    ("SCC:  CRC values are %04x, %02x%02x\n",
 							     crc,
 							     last_two_blocks
@@ -1796,7 +1734,6 @@ scc_decrypt(uint32_t count_in_bytes, uint8_t * data_in, uint32_t scm_control,
 							     last_two_blocks
 							     [bytes_to_copy +
 							      1]);
-#endif
 						}
 					}	/* if space available */
 				} /* if scc_strip_padding... */
@@ -1836,10 +1773,8 @@ scc_alloc_slot(uint32_t value_size_bytes, uint64_t owner_id, uint32_t * slot)
 	/* ACQUIRE LOCK to prevent others from using SCC crypto */
 	spin_lock_irqsave(&scc_crypto_lock, irq_flags);
 
-#ifdef SCC_DEBUG
-	printk("SCC: Allocating %d-byte slot for 0x%Lx\n", value_size_bytes,
+	pr_debug("SCC: Allocating %d-byte slot for 0x%Lx\n", value_size_bytes,
 	       owner_id);
-#endif
 
 	if ((value_size_bytes != 0) && (value_size_bytes <= SCC_MAX_KEY_SIZE)) {
 		int i;
@@ -1858,9 +1793,7 @@ scc_alloc_slot(uint32_t value_size_bytes, uint64_t owner_id, uint32_t * slot)
 		if (status != SCC_RET_OK) {
 			status = SCC_RET_INSUFFICIENT_SPACE;
 		} else {
-#ifdef SCC_DEBUG
-			printk("SCC: Allocated slot %d (0x%Lx)\n", i, owner_id);
-#endif
+			pr_debug("SCC: Allocated slot %d (0x%Lx)\n", i, owner_id);
 		}
 	}
 
@@ -1881,21 +1814,17 @@ static inline scc_return_t verify_slot_access(uint64_t owner_id, uint32_t slot,
 	    && (scc_key_info[slot].owner_id == owner_id)
 	    && (access_len <= SCC_KEY_SLOT_SIZE)) {
 		status = SCC_RET_OK;
-#ifdef SCC_DEBUG
-		printk("SCC: Verify on slot %d succeeded\n", slot);
-#endif
+		pr_debug("SCC: Verify on slot %d succeeded\n", slot);
 	} else {
-#ifdef SCC_DEBUG
 		if (slot >= SCC_KEY_SLOTS) {
-			printk("SCC: Verify on bad slot (%d) failed\n", slot);
+			pr_debug("SCC: Verify on bad slot (%d) failed\n", slot);
 		} else if (scc_key_info[slot].status) {
-			printk("SCC: Verify on slot %d failed (%Lx) \n", slot,
+			pr_debug("SCC: Verify on slot %d failed (%Lx) \n", slot,
 			       owner_id);
 		} else {
-			printk("SCC: Verify on slot %d failed: not allocated\n",
+			pr_debug("SCC: Verify on slot %d failed: not allocated\n",
 			       slot);
 		}
-#endif
 		status = SCC_RET_FAIL;
 	}
 
@@ -1927,9 +1856,7 @@ scc_return_t scc_dealloc_slot(uint64_t owner_id, uint32_t slot)
 			SCC_WRITE_REGISTER(SCM_BLACK_MEMORY +
 					   scc_key_info[slot].offset + i, 0);
 		}
-#ifdef SCC_DEBUG
-		printk("SCC: Deallocated slot %d\n", slot);
-#endif
+		pr_debug("SCC: Deallocated slot %d\n", slot);
 	}
 
 	spin_unlock_irqrestore(&scc_crypto_lock, irq_flags);
@@ -1967,21 +1894,17 @@ scc_load_slot(uint64_t owner_id, uint32_t slot, uint8_t * key_data,
 		status = SCC_RET_FAIL;	/* reset expectations */
 
 		if (key_length > SCC_KEY_SLOT_SIZE) {
-#ifdef SCC_DEBUG
-			printk
+			pr_debug
 			    ("SCC: scc_load_slot() rejecting key of %d bytes.\n",
 			     key_length);
-#endif
 			status = SCC_RET_INSUFFICIENT_SPACE;
 		} else {
 			if (copy_to_scc(key_data,
 					SCM_RED_MEMORY +
 					scc_key_info[slot].offset, key_length,
 					NULL)) {
-#ifdef SCC_DEBUG
-				printk
+				pr_debug
 				    ("SCC: RED copy_to_scc() failed for scc_load_slot()\n");
-#endif
 			} else {
 				status = SCC_RET_OK;
 			}
@@ -2035,10 +1958,8 @@ scc_return_t scc_encrypt_slot(uint64_t owner_id, uint32_t slot,
 					      SCM_CBC_MODE);
 
 		if (crypto_status != 0) {
-#ifdef SCC_DEBUG
-			printk("SCM encrypt red crypto failure: 0x%x\n",
+			pr_debug("SCM encrypt red crypto failure: 0x%x\n",
 			       crypto_status);
-#endif
 		} else {
 
 			/* Give blob back to caller */
@@ -2046,9 +1967,7 @@ scc_return_t scc_encrypt_slot(uint64_t owner_id, uint32_t slot,
 			    (SCM_BLACK_MEMORY + scc_key_info[slot].offset,
 			     black_data, length, NULL)) {
 				status = SCC_RET_OK;
-#ifdef SCC_DEBUG
-				printk("SCC: Encrypted slot %d\n", slot);
-#endif
+				pr_debug("SCC: Encrypted slot %d\n", slot);
 			}
 		}
 	}
@@ -2108,10 +2027,8 @@ scc_return_t scc_decrypt_slot(uint64_t owner_id, uint32_t slot,
 					      SCM_DECRYPT_MODE);
 
 		if (crypto_status != 0) {
-#ifdef SCC_DEBUG
-			printk("SCM decrypt black crypto failure: 0x%x\n",
+			pr_debug("SCM decrypt black crypto failure: 0x%x\n",
 			       crypto_status);
-#endif
 		} else {
 			status = SCC_RET_OK;
 		}
@@ -2180,9 +2097,7 @@ static void scc_wait_completion(void)
 		/* kill time if loop not optimized away */
 		udelay(1000);
 	}
-#ifdef SCC_DEBUG
-	printk("SCC: Polled DONE %d times\n", i);
-#endif
+	pr_debug("SCC: Polled DONE %d times\n", i);
 }				/* scc_wait_completion() */
 
 /*****************************************************************************/
@@ -2271,10 +2186,8 @@ check_register_accessible(uint32_t register_offset, uint32_t smn_status,
 			if (!((register_offset == SMN_STATUS) ||
 			      (register_offset == SMN_COMMAND) ||
 			      (register_offset == SMN_DEBUG_DETECT_STAT))) {
-#ifdef SCC_DEBUG
-				printk
+				pr_debug
 				    ("SCC Driver: Note: Security State is in FAIL state.\n");
-#endif
 			} /* register not a safe one */
 			else {
 				/* SMN is in  FAIL, but register is a safe one */
@@ -2296,10 +2209,8 @@ check_register_accessible(uint32_t register_offset, uint32_t smn_status,
 			 (register_offset == SCM_ERROR_STATUS) ||
 			 (register_offset == SCM_INTERRUPT_CTRL) ||
 			 (register_offset == SCM_CONFIGURATION))) {
-#ifdef SCC_DEBUG
-			printk
+			pr_debug
 			    ("SCC Driver: Note: Secure Memory is in BUSY state.\n");
-#endif
 		} /* status is busy & register inaccessible */
 		else {
 			error_code = SCC_RET_OK;
@@ -2359,7 +2270,7 @@ static uint32_t dbg_scc_read_register(uint32_t offset)
 #ifndef SCC_RAM_DEBUG		/* print no RAM references */
 	if ((offset < SCM_RED_MEMORY) || (offset >= scm_highest_memory_address)) {
 #endif
-		printk("SCC RD: 0x%4x : 0x%08x\n", offset, value);
+		pr_debug("SCC RD: 0x%4x : 0x%08x\n", offset, value);
 #ifndef SCC_RAM_DEBUG
 	}
 #endif
@@ -2382,7 +2293,7 @@ static void dbg_scc_write_register(uint32_t offset, uint32_t value)
 #ifndef SCC_RAM_DEBUG		/* print no RAM references */
 	if ((offset < SCM_RED_MEMORY) || (offset >= scm_highest_memory_address)) {
 #endif
-		printk("SCC WR: 0x%4x : 0x%08x\n", offset, value);
+		pr_debug("SCC WR: 0x%4x : 0x%08x\n", offset, value);
 #ifndef SCC_RAM_DEBUG
 	}
 #endif
