@@ -168,14 +168,18 @@ OS_WAIT_OBJECT(rng_wait_queue);
  */
 OS_DEV_INIT(rng_init)
 {
+	struct clk *clk;
 	os_error_code return_code = OS_ERROR_FAIL_S;
 	rng_availability = RNG_STATUS_CHECKING;
+
 #if defined(FSL_HAVE_RNGC)
 	INIT_COMPLETION(rng_self_testing);
 	INIT_COMPLETION(rng_seed_done);
 #endif
 	rng_work_queue.head = NULL;
 	rng_work_queue.tail = NULL;
+	clk = clk_get(NULL, "rng_clk");
+	clk_enable(clk);
 
 	printk(KERN_INFO "RNG Driver: Loading\n");
 	return_code = rng_map_RNG_memory();
@@ -348,8 +352,10 @@ OS_DEV_SHUTDOWN(rng_shutdown)
  */
 static void rng_cleanup(void)
 {
+	struct clk *clk;
 	scc_stop_monitoring_security_failure(rng_sec_failure);
-
+	clk = clk_get(NULL, "rng_clk");
+	clk_disable(clk);
 	if (task_started) {
 		os_dev_stop_task(rng_entropy_task);
 	}

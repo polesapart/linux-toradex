@@ -25,7 +25,7 @@ config MXC_SECURITY_RNG
 	  If you are unsure about this, say N here.
 
 config MXC_RNG_TEST_DRIVER
-	bool "MXC RNG module debugging"
+	bool "MXC RNG debug register"
 	depends on MXC_SECURITY_RNG
 	default n
 	---help---
