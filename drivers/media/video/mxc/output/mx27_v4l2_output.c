@@ -59,6 +59,66 @@ uint32_t g_buf_output_cnt;
 uint32_t g_buf_q_cnt;
 uint32_t g_buf_dq_cnt;
 
+#ifdef CONFIG_VIDEO_MXC_OUTPUT_FBSYNC
+static uint32_t g_output_fb = -1;
+static uint32_t g_fb_enabled = 0;
+static uint32_t g_pp_ready = 0;
+
+static int fb_event_notify(struct notifier_block *self,
+			   unsigned long action, void *data)
+{
+	struct fb_event *event = data;
+	struct fb_info *info = event->info;
+	unsigned long lock_flags;
+	int blank, i;
+
+	for (i = 0; i < num_registered_fb; i++)
+		if (registered_fb[i] == info)
+			break;
+
+	/*
+	 * Check if the event is sent by the framebuffer in which
+	 * the video is displayed.
+	 */
+	if (i != g_output_fb)
+		return 0;
+
+	switch (action) {
+	case FB_EVENT_BLANK:
+		blank = *(int *)event->data;
+		spin_lock_irqsave(&g_lock, lock_flags);
+		g_fb_enabled = !blank;
+		if (blank && g_pp_ready) {
+			if (pp_enable(1))
+				pr_debug("unable to enable PP\n");
+			g_pp_ready = 0;
+		}
+		spin_unlock_irqrestore(&g_lock, lock_flags);
+		break;
+	case FB_EVENT_MXC_EOF:
+		spin_lock_irqsave(&g_lock, lock_flags);
+		g_fb_enabled = 1;
+		if (g_pp_ready) {
+			if (pp_enable(1))
+				pr_debug("unable to enable PP\n");
+			g_pp_ready = 0;
+		}
+		spin_unlock_irqrestore(&g_lock, lock_flags);
+		break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block fb_event_notifier = {
+	.notifier_call = fb_event_notify,
+};
+
+static struct notifier_block mx2fb_event_notifier = {
+	.notifier_call = fb_event_notify,
+};
+#endif
+
 #define QUEUE_SIZE (MAX_FRAME_NUM + 1)
 static __inline int queue_size(v4l_queue * q)
 {
@@ -227,10 +287,19 @@ static void mxc_v4l2out_timer_handler(unsigned long arg)
 		pr_debug("unable to update buffer\n");
 		goto exit0;
 	}
+#ifdef CONFIG_VIDEO_MXC_OUTPUT_FBSYNC
+	if (g_fb_enabled && (vout->v4l2_fb.flags != V4L2_FBUF_FLAG_OVERLAY))
+		g_pp_ready = 1;
+	else if (pp_enable(1)) {
+		pr_debug("unable to enable PP\n");
+		goto exit0;
+	}
+#else
 	if (pp_enable(1)) {
 		pr_debug("unable to enable PP\n");
 		goto exit0;
 	}
+#endif
 	pr_debug("enabled index %d\n", index);
 
 	/* Setup timer for next buffer */
@@ -385,7 +454,13 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		pr_debug("failed to config PP.\n");
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_VIDEO_MXC_OUTPUT_FBSYNC
+	g_output_fb = vout->output_fb_num[vout->cur_disp_output];
+	g_fb_enabled = 0;
+	g_pp_ready = 0;
+	fb_register_client(&fb_event_notifier);
+	mx2fb_register_client(&mx2fb_event_notifier);
+#endif
 	vout->frame_count = 0;
 	vout->state = STATE_STREAM_ON;
 	index = peek_next_buf(&vout->ready_q);
@@ -456,6 +531,13 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 		gwinfo.enabled = 0;
 		mx2_gw_set(&gwinfo);
 	}
+#ifdef CONFIG_VIDEO_MXC_OUTPUT_FBSYNC
+	g_output_fb = -1;
+	g_fb_enabled = 0;
+	g_pp_ready = 0;
+	fb_unregister_client(&fb_event_notifier);
+	mx2fb_unregister_client(&mx2fb_event_notifier);
+#endif
 
 	mxc_free_buffers(vout->display_bufs, vout->display_bufs_vaddr,
 			 2, vout->sdc_fg_buf_size);

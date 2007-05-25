@@ -32,6 +32,7 @@
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
+#include <linux/interrupt.h>
 #include <asm/uaccess.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/mxcfb.h>
@@ -49,6 +50,7 @@ static char *fb_mode = 0;
 static int fb_enabled = 0;
 static unsigned long default_bpp = 16;
 static unsigned char brightness = 255;
+static ATOMIC_NOTIFIER_HEAD(mx2fb_notifier_list);
 
 /*!
  * @brief Structure containing the MX2 specific framebuffer information.
@@ -95,6 +97,8 @@ static void _enable_graphic_window(struct fb_info *info);
 static void _disable_graphic_window(struct fb_info *info);
 static void _update_lcdc(struct fb_info *info);
 static void _set_brightness(unsigned char level);
+static void _request_irq(void);
+static void _free_irq(void);
 
 #ifdef CONFIG_PM
 static int mx2fb_suspend(struct platform_device *pdev, pm_message_t state);
@@ -1092,6 +1096,135 @@ static void _set_brightness(unsigned char level)
 	__raw_writel(0x00A90300 | level, LCDC_REG(LCDC_LPCCR));
 }
 
+/*
+ * @brief LCDC interrupt handler
+ */
+static irqreturn_t mx2fb_isr(int irq, void *dev_id, struct pt_regs *regs)
+{
+	struct fb_event event;
+	unsigned long status = __raw_readl(LCDC_REG(LCDC_LISR));
+
+	if (status & MX2FB_INT_EOF) {
+		event.info = &mx2fb_info[0];
+		atomic_notifier_call_chain(&mx2fb_notifier_list,
+					   FB_EVENT_MXC_EOF, &event);
+	}
+#ifdef CONFIG_FB_MXC_OVERLAY
+	if (status & MX2FB_INT_GW_EOF) {
+		event.info = &mx2fb_info[1];
+		atomic_notifier_call_chain(&mx2fb_notifier_list,
+					   FB_EVENT_MXC_EOF, &event);
+	}
+#endif
+
+	return IRQ_HANDLED;
+}
+
+/*!
+ * @brief Config and request LCDC interrupt
+ */
+static void _request_irq(void)
+{
+	unsigned long status;
+	unsigned long flags;
+
+	/* Read to clear the status */
+	status = __raw_readl(LCDC_REG(LCDC_LISR));
+
+	if (request_irq(INT_LCDC, mx2fb_isr, 0, "LCDC", 0))
+		pr_info("Request LCDC IRQ failed.\n");
+	else {
+		spin_lock_irqsave(&mx2fb_notifier_list.lock, flags);
+
+		/* Enable interrupt in case client has registered */
+		if (mx2fb_notifier_list.head != NULL) {
+			unsigned long status;
+			unsigned long ints = MX2FB_INT_EOF;
+#ifdef CONFIG_FB_MXC_OVERLAY
+			ints |= MX2FB_INT_GW_EOF;
+#endif
+			/* Read to clear the status */
+			status = __raw_readl(LCDC_REG(LCDC_LISR));
+
+			/* Configure interrupt condition for EOF */
+			__raw_writel(0x0, LCDC_REG(LCDC_LICR));
+
+			/* Enable EOF and graphic window EOF interrupt */
+			__raw_writel(ints, LCDC_REG(LCDC_LIER));
+		}
+
+		spin_unlock_irqrestore(&mx2fb_notifier_list.lock, flags);
+	}
+}
+
+/*!
+ * @brief Free LCDC interrupt handler
+ */
+static void _free_irq(void)
+{
+	/* Disable all LCDC interrupt */
+	__raw_writel(0x0, LCDC_REG(LCDC_LIER));
+
+	free_irq(INT_LCDC, 0);
+}
+
+/*!
+ * @brief Register a client notifier
+ * @param nb	notifier block to callback on events
+ */
+int mx2fb_register_client(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	ret = atomic_notifier_chain_register(&mx2fb_notifier_list, nb);
+
+	spin_lock_irqsave(&mx2fb_notifier_list.lock, flags);
+
+	/* Enable interrupt in case client has registered */
+	if (mx2fb_notifier_list.head != NULL) {
+		unsigned long status;
+		unsigned long ints = MX2FB_INT_EOF;
+#ifdef CONFIG_FB_MXC_OVERLAY
+		ints |= MX2FB_INT_GW_EOF;
+#endif
+		/* Read to clear the status */
+		status = __raw_readl(LCDC_REG(LCDC_LISR));
+
+		/* Configure interrupt condition for EOF */
+		__raw_writel(0x0, LCDC_REG(LCDC_LICR));
+
+		/* Enable EOF and graphic window EOF interrupt */
+		__raw_writel(ints, LCDC_REG(LCDC_LIER));
+	}
+
+	spin_unlock_irqrestore(&mx2fb_notifier_list.lock, flags);
+
+	return ret;
+}
+
+/*!
+ * @brief Unregister a client notifier
+ * @param nb	notifier block to callback on events
+ */
+int mx2fb_unregister_client(struct notifier_block *nb)
+{
+	unsigned long flags;
+	int ret;
+
+	ret = atomic_notifier_chain_unregister(&mx2fb_notifier_list, nb);
+
+	spin_lock_irqsave(&mx2fb_notifier_list.lock, flags);
+
+	/* Mask interrupt in case no client registered */
+	if (mx2fb_notifier_list.head == NULL)
+		__raw_writel(0x0, LCDC_REG(LCDC_LIER));
+
+	spin_unlock_irqrestore(&mx2fb_notifier_list.lock, flags);
+
+	return ret;
+}
+
 #ifdef CONFIG_PM
 /*
  * Power management hooks. Note that we won't be called from IRQ context,
@@ -1139,6 +1272,7 @@ static int mx2fb_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
+	_request_irq();
 
 	return 0;
 }
@@ -1170,6 +1304,7 @@ void __exit mx2fb_exit(void)
 {
 	int i;
 
+	_free_irq();
 	for (i = sizeof(mx2fb_info) / sizeof(struct fb_info); i > 0; i--)
 		_uninstall_fb(&mx2fb_info[i - 1]);
 
@@ -1208,6 +1343,8 @@ module_init(mx2fb_init);
 module_exit(mx2fb_exit);
 
 EXPORT_SYMBOL(mx2_gw_set);
+EXPORT_SYMBOL(mx2fb_register_client);
+EXPORT_SYMBOL(mx2fb_unregister_client);
 
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
 MODULE_DESCRIPTION("MX2 framebuffer driver");

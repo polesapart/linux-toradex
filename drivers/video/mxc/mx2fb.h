@@ -68,6 +68,27 @@ struct fb_gwinfo {
 	__u32 xres_virtual;	/* Virtual x resolution */
 };
 
+/* 0x46E0-0x46FF are reserved for MX27 */
+#define FBIOGET_GWINFO		0x46E0	/*!< Get graphic window information */
+#define FBIOPUT_GWINFO		0x46E1	/*!< Set graphic window information */
+
+struct mx2fb_gbl_alpha {
+	int enable;
+	int alpha;
+};
+
+struct mx2fb_color_key {
+	int enable;
+	__u32 color_key;
+};
+
+#define MX2FB_SET_GBL_ALPHA	_IOW('M', 0, struct mx2fb_gbl_alpha)
+#define MX2FB_SET_CLR_KEY	_IOW('M', 1, struct mx2fb_color_key)
+#define MX2FB_WAIT_FOR_VSYNC	_IOW('F', 0x20, u_int32_t)
+#define MX2FB_SET_BRIGHTNESS	_IOW('M', 3, __u8)
+
+#ifdef __KERNEL__
+
 /*
  * LCDC register definitions
  */
@@ -100,25 +121,22 @@ struct fb_gwinfo {
 
 #define LCDC_REG(reg)		(IO_ADDRESS(LCDC_BASE_ADDR) + reg)
 
-/* 0x46E0-0x46FF are reserved for MX27 */
-#define FBIOGET_GWINFO		0x46E0	/*!< Get graphic window information */
-#define FBIOPUT_GWINFO		0x46E1	/*!< Set graphic window information */
+#define MX2FB_INT_BOF		0x0001	/* Beginning of Frame */
+#define MX2FB_INT_EOF		0x0002	/* End of Frame */
+#define MX2FB_INT_ERR_RES	0x0004	/* Error Response */
+#define MX2FB_INT_UDR_ERR	0x0008	/* Under Run Error */
+#define MX2FB_INT_GW_BOF	0x0010	/* Graphic Window BOF */
+#define MX2FB_INT_GW_EOF	0x0020	/* Graphic Window EOF */
+#define MX2FB_INT_GW_ERR_RES	0x0040	/* Graphic Window ERR_RES */
+#define MX2FB_INT_GW_UDR_ERR	0x0080	/* Graphic Window UDR_ERR */
 
-struct mx2fb_gbl_alpha {
-	int enable;
-	int alpha;
-};
+#define FB_EVENT_MXC_EOF	0x8001	/* End of Frame event */
 
-struct mx2fb_color_key {
-	int enable;
-	__u32 color_key;
-};
-
-#define MX2FB_SET_GBL_ALPHA	_IOW('M', 0, struct mx2fb_gbl_alpha)
-#define MX2FB_SET_CLR_KEY	_IOW('M', 1, struct mx2fb_color_key)
-#define MX2FB_WAIT_FOR_VSYNC	_IOW('F', 0x20, u_int32_t)
-#define MX2FB_SET_BRIGHTNESS	_IOW('M', 3, __u8)
+int mx2fb_register_client(struct notifier_block *nb);
+int mx2fb_unregister_client(struct notifier_block *nb);
 
 void mx2_gw_set(struct fb_gwinfo *gwinfo);
+
+#endif				/* __KERNEL__ */
 
 #endif				/* __MX2FB_H__ */
