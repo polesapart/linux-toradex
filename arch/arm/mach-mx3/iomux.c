@@ -11,6 +11,18 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+/*!
+ * @defgroup GPIO_MX31 Board GPIO and Muxing Setup
+ * @ingroup MSL_MX31
+ */
+/*!
+ * @file mach-mx3/iomux.c
+ *
+ * @brief I/O Muxing control functions
+ *
+ * @ingroup GPIO_MX31
+ */
+
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <asm/hardware.h>

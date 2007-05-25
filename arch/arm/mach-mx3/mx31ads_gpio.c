@@ -22,11 +22,11 @@
 #include "iomux.h"
 
 /*!
- * @file mx31ads_gpio.c
+ * @file mach-mx3/mx31ads_gpio.c
  *
  * @brief This file contains all the GPIO setup functions for the board.
  *
- * @ingroup GPIO
+ * @ingroup GPIO_MX31
  */
 
 void gpio_activate_audio_ports(void);

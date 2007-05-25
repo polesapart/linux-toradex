@@ -14,6 +14,11 @@
 #ifndef __ARCH_ARM_MACH_MX27_SERIAL_H__
 #define __ARCH_ARM_MACH_MX27_SERIAL_H__
 
+/*!
+ * @file mach-mx27/serial.h
+ *
+ * @ingroup MSL_MX27
+ */
 #include <asm/arch/mxc_uart.h>
 
 /* UART 1 configuration */

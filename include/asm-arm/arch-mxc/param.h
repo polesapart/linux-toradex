@@ -18,9 +18,9 @@
  */
 
 /*!
- * @file param.h
+ * @file arch-mxc/param.h
  *
  * @brief This file exists only because other kernel files include it.
  *
- * @ingroup System
+ * @ingroup MSL_MX27 MSL_MX31
  */

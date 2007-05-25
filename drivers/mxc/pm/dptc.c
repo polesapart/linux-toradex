@@ -29,7 +29,7 @@
  * Driver ioctls are used to change driver parameters and enable/disable the
  * DPTC operation.
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 
 #include <linux/module.h>

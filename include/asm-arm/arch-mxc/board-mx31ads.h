@@ -14,6 +14,21 @@
 #ifndef __ASM_ARCH_MXC_BOARD_MX31ADS_H__
 #define __ASM_ARCH_MXC_BOARD_MX31ADS_H__
 
+/*!
+ * @defgroup BRDCFG_MX31 Board Configuration Options
+ * @ingroup MSL_MX31
+ */
+
+/*!
+ * @file arch-mxc/board-mx31ads.h
+ *
+ * @brief This file contains all the board level configuration options.
+ *
+ * It currently hold the options defined for MX31 ADS Platform.
+ *
+ * @ingroup BRDCFG_MX31
+ */
+
 /*
  * Include Files
  */

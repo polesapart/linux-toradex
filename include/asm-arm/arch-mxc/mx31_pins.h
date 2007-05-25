@@ -13,6 +13,14 @@
 #ifndef __ASM_ARCH_MXC_MX31_PINS_H__
 #define __ASM_ARCH_MXC_MX31_PINS_H__
 
+/*!
+ * @file arch-mxc/mx31_pins.h
+ *
+ * @brief MX31 I/O Pin List
+ *
+ * @ingroup GPIO_MX31
+ */
+
 #ifndef __ASSEMBLY__
 
 /*!

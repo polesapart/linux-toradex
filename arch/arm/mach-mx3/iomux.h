@@ -16,6 +16,14 @@
 #include <linux/types.h>
 
 /*!
+ * @file mach-mx3/iomux.h
+ *
+ * @brief I/O Muxing control definitions and functions
+ *
+ * @ingroup GPIO_MX31
+ */
+
+/*!
  * various IOMUX output functions
  */
 typedef enum iomux_output_config {

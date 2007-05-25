@@ -20,7 +20,7 @@
  */
 
 /*!
- * @file pmic_adc.h
+ * @file arch-mxc/pmic_adc.h
  * @brief This is the header of PMIC ADC driver.
  *
  * @ingroup PMIC_ADC

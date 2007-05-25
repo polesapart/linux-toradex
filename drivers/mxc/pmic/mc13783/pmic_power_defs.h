@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_power_defs.h
+ * @file mc13783/pmic_power_defs.h
  * @brief This is the internal header define of PMIC(mc13783) Power driver.
  *
  * @ingroup PMIC_POWER

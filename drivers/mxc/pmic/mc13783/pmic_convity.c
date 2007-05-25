@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_convity.c
+ * @file mc13783/pmic_convity.c
  * @brief Implementation of the PMIC Connectivity driver APIs.
  *
  * The PMIC connectivity device driver and this API were developed to support

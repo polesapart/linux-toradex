@@ -12,7 +12,7 @@
  */
 
 /*
- * @file    mxcfb.h
+ * @file arch-mxc/   mxcfb.h
  *
  * @brief Global header file for the MXC Frame buffer
  *

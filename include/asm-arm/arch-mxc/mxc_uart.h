@@ -16,7 +16,7 @@
  */
 
 /*!
- * @file mxc_uart.h
+ * @file arch-mxc/mxc_uart.h
  *
  * @brief This file contains the UART configuration structure definition.
  *

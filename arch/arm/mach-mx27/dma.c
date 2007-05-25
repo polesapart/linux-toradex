@@ -12,9 +12,9 @@
  */
 
 /*!
- *@file dma.c
+ *@file mach-mx27/dma.c
  *@brief This file contains the dma parameter which is depend on the platform  .
- * @ingroup DMA
+ * @ingroup DMA_MX27
  */
 
 #include <linux/module.h>

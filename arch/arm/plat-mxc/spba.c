@@ -18,7 +18,7 @@
 #include <asm/arch/spba.h>
 
 /*!
- * @file spba.c
+ * @file plat-mxc/spba.c
  *
  * @brief This file contains the SPBA API implementation details.
  *

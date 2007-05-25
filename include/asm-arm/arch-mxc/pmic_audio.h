@@ -19,7 +19,7 @@
  */
 
 /*!
- * @file pmic_audio.h
+ * @file arch-mxc/pmic_audio.h
  * @brief External definitions for the PMIC Audio Client driver.
  *
  * The PMIC Audio driver and this API were developed to support the

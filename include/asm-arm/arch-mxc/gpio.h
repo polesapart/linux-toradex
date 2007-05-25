@@ -15,12 +15,11 @@
 
 /*!
  * @defgroup GPIO General Purpose Input Output (GPIO)
- * @ingroup MSL
  */
 
 /*!
- * @file gpio.h
- * @brief This file contains the GPIO and IOMUX configuration details.
+ * @file arch-mxc/gpio.h
+ * @brief This file contains the GPIO API functions.
  *
  * @ingroup GPIO
  */

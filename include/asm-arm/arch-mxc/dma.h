@@ -15,7 +15,7 @@
 #define __ASM_ARCH_MXC_DMA_H__
 
 /*!
- * @file dma.h
+ * @file arch-mxc/dma.h
  * @brief This file contains Unified DMA API for all MXC platforms.
  * The API is platform independent.
  *

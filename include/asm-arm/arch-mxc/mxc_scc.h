@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file mxc_scc.h
+ * @file arch-mxc/mxc_scc.h
  *
  * @brief This is intended to be the file which contains all of code or changes
  * needed to port the driver.

@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_adc_defs.h
+ * @file mc13783/pmic_adc_defs.h
  * @brief This header contains all defines for PMIC(mc13783) ADC driver.
  *
  * @ingroup PMIC_ADC

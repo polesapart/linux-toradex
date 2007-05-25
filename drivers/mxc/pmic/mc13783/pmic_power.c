@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_power.c
+ * @file mc13783/pmic_power.c
  * @brief This is the main file of PMIC(mc13783) Power driver.
  *
  * @ingroup PMIC_POWER

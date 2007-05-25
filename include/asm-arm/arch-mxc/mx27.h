@@ -12,19 +12,10 @@
  */
 
 /*!
- * @defgroup MSL Machine Specific Layer (MSL)
- */
-
-/*!
- * @defgroup System System-wide Misc Files for MSL
- * @ingroup MSL
- */
-
-/*!
- * @file mx27.h
+ * @file arch-mxc/mx27.h
  * @brief This file contains register definitions.
  *
- * @ingroup System
+ * @ingroup MSL_MX27
  */
 
 #ifndef __ASM_ARCH_MXC_MX27_H__

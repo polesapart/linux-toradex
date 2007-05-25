@@ -15,7 +15,7 @@
  * @defgroup IPU MXC Image Processing Unit (IPU) Driver
  */
 /*!
- * @file ipu.h
+ * @file arch-mxc/ipu.h
  *
  * @brief This file contains the IPU driver API declarations.
  *

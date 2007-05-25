@@ -19,7 +19,7 @@
  /*!
   * @file mxc-alsa-pmic.h
   * @brief
-  * @ingroup
+  * @ingroup SOUND_DRV
   */
 
 #ifndef __MXC_ALSA_PMIC_H__

@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_wrap.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_wrap.c
  *
  * @brief This file implements Key-Wrap (Black Key) functions of the FSL SHW API for
  * Sahara.

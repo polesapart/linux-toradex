@@ -17,7 +17,7 @@
  */
 
 /*!
- * @file mxc_pm.h
+ * @file arch-mxc/mxc_pm.h
  *
  * @brief This file contains the  chip level configuration details and
  * public API declarations for CRM_AP module

@@ -12,13 +12,17 @@
  */
 
 /*!
- * @file mxc_pm.c
+ * @defgroup DPM_MX27 Power Management
+ * @ingroup MSL_MX27
+ */
+/*!
+ * @file mach-mx27/mxc_pm.c
  *
  * @brief This file contains the implementation of the Low-level power
  * management driver. It modifies the registers of the PLL and clock module
  * of the i.MX27.
  *
- * @ingroup LPMD
+ * @ingroup DPM_MX27
  */
 
 /*

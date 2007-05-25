@@ -22,19 +22,10 @@
 #define __ASM_ARCH_MXC_SYSTEM_H__
 
 /*!
- * @defgroup MSL Machine Specific Layer (MSL)
- */
-
-/*!
- * @defgroup System System-wide Misc Files for MSL
- * @ingroup MSL
- */
-
-/*!
- * @file system.h
+ * @file arch-mxc/system.h
  * @brief This file contains idle and reset functions.
  *
- * @ingroup System
+ * @ingroup MSL_MX27 MSL_MX31
  */
 
 /*!

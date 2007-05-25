@@ -14,6 +14,9 @@
  */
 
 /*!
+ * @defgroup USB ARC OTG USB Driver
+ */
+/*!
  * @file ehci-arc.c
  * @brief platform related part of usb host driver.
  * @ingroup USB

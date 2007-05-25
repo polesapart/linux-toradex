@@ -51,11 +51,11 @@
 #include "crm_regs.h"
 #include "iomux.h"
 /*!
- * @file mx31ads.c
+ * @file mach-mx3/mx31ads.c
  *
  * @brief This file contains the board specific initialization routines.
  *
- * @ingroup System
+ * @ingroup MSL_MX31
  */
 
 extern void mxc_map_io(void);

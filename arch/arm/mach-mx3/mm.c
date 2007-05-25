@@ -27,11 +27,11 @@
 #include <asm/mach/map.h>
 
 /*!
- * @file mm.c
+ * @file mach-mx3/mm.c
  *
  * @brief This file creates static mapping between physical to virtual memory.
  *
- * @ingroup Memory
+ * @ingroup Memory_MX31
  */
 
 /*!

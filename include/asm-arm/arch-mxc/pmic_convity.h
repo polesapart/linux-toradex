@@ -19,7 +19,7 @@
  */
 
 /*!
- * @file pmic_convity.h
+ * @file arch-mxc/pmic_convity.h
  * @brief External definitions for the PMIC Connectivity Client driver.
  *
  * The PMIC Connectivity driver and this API were developed to support the

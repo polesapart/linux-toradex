@@ -20,7 +20,7 @@
  */
 
 /*!
- * @file sdma.h
+ * @file arch-mxc/sdma.h
  *
  * @brief This file contains the SDMA API declarations.
  *

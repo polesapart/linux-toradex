@@ -27,7 +27,7 @@
  * into the driver (the voltage changes are done by calling some routines
  * of the mc13783 driver).
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 
 #include <linux/module.h>

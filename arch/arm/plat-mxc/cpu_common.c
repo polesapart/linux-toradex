@@ -20,11 +20,11 @@
 extern const u32 system_rev_tbl[SYSTEM_REV_NUM][2];
 
 /*!
- * @file cpu_common.c
+ * @file plat-mxc/cpu_common.c
  *
  * @brief This file contains the common CPU initialization code.
  *
- * @ingroup System
+ * @ingroup MSL_MX31
  */
 
 static int system_rev_updated = 0;

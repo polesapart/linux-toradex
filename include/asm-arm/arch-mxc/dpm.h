@@ -28,16 +28,11 @@
 #include <asm/timex.h>
 
 /*!
- * @defgroup DPM Dynamic Power Management
- * @ingroup MSL
- */
-
-/*!
- * @file dpm.h
+ * @file arch-mxc/dpm.h
  *
  * @brief This file provides DPM support hooks for the Freescale MXC
  *
- * @ingroup DPM
+ * @ingroup DPM_MX27 DPM_MX31
  */
 
 /*!

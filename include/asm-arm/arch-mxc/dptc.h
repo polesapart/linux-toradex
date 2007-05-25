@@ -13,11 +13,11 @@
  */
 
 /*!
- * @file dptc.h
+ * @file arch-mxc/dptc.h
  *
  * @brief MXC dptc header file.
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 #ifndef __ASM_ARCH_MXC_DPTC_H__
 #define __ASM_ARCH_MXC_DPTC_H__

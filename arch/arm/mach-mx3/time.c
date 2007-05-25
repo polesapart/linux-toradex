@@ -17,12 +17,16 @@
  */
 
 /*!
- * @file time.c
+ * @defgroup Timers_MX31 RTC, OS tick, Watchdog Timers
+ * @ingroup MSL_MX31
+ */
+/*!
+ * @file mach-mx3/time.c
  * @brief This file contains OS tick and wdog timer implementations.
  *
  * This file contains OS tick and wdog timer implementations.
  *
- * @ingroup Timers
+ * @ingroup Timers_MX31
  */
 
 #include <linux/module.h>

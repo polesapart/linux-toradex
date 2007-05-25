@@ -12,12 +12,8 @@
  */
 
 /*!
- * @defgroup SPI Configurable Serial Peripheral Interface (CSPI) Driver
- */
-
-/*!
  * @file mxc_spi.h
- * @brief This header file contains SPI driver low level definition to access module registers.
+ * @brief This header file contains SPI driver low level register definitions.
  *
  * @ingroup SPI
  */

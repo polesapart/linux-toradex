@@ -14,6 +14,14 @@
 #ifndef __ASM_ARCH_MXC_MX27_PINS_H__
 #define __ASM_ARCH_MXC_MX27_PINS_H__
 
+/*!
+ * @file arch-mxc/mx27_pins.h
+ *
+ * @brief MX27 I/O Pin List
+ *
+ * @ingroup GPIO_MX27
+ */
+
 #ifndef __ASSEMBLY__
 
 /*!

@@ -11,11 +11,11 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file serial.c
+ * @file mach-mx3/serial.c
  *
  * @brief This file contains the UART initiliazation.
  *
- * @ingroup System
+ * @ingroup MSL_MX31
  */
 #include <linux/module.h>
 #include <linux/platform_device.h>

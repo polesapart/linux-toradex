@@ -26,19 +26,14 @@
 #include "crm_regs.h"
 
 /*!
- * @defgroup MSL Machine Specific Layer (MSL)
+ * @defgroup MSL_MX31 i.MX31 Machine Specific Layer (MSL)
  */
 
 /*!
- * @defgroup System System-wide Misc Files for MSL
- * @ingroup MSL
- */
-
-/*!
- * @file system.c
+ * @file mach-mx3/system.c
  * @brief This file contains idle and reset functions.
  *
- * @ingroup System
+ * @ingroup MSL_MX31
  */
 
 extern int mxc_jtag_enabled;

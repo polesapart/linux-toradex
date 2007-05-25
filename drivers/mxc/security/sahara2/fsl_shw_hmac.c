@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_hmac.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_hmac.c
  *
  * @brief This file implements Hashed Message Authentication Code functions of the FSL
  * SHW API for Sahara.

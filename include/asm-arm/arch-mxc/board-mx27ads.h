@@ -15,18 +15,18 @@
 #define __ASM_ARCH_MXC_BOARD_MX27ADS_H__
 
 /*!
- * @defgroup BRDCFG Board Configuration Options
- * @ingroup MSL
+ * @defgroup BRDCFG_MX27 Board Configuration Options
+ * @ingroup MSL_MX27
  */
 
 /*!
- * @file board-mx27ads.h
+ * @file arch-mxc/board-mx27ads.h
  *
  * @brief This file contains all the board level configuration options.
  *
  * It currently hold the options defined for MX27 ADS Platform.
  *
- * @ingroup BRDCFG
+ * @ingroup BRDCFG_MX27
  */
 
 /*

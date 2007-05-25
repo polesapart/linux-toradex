@@ -15,7 +15,7 @@
   * @file fs453.h
   * @brief Driver for FS453/4 TV encoder
   *
-  * @ingroup Framebuffer
+  * @ingroup FS453
   */
 
 #ifndef __FS453_H__

@@ -14,11 +14,11 @@
 
 /*!
  * @defgroup SPBA Shared Peripheral Bus Arbiter (SPBA)
- * @ingroup MSL
+ * @ingroup MSL_MX31
  */
 
 /*!
- * @file spba.h
+ * @file arch-mxc/spba.h
  * @brief This file contains the Shared Peripheral Bus Arbiter (spba) API.
  *
  * @ingroup SPBA

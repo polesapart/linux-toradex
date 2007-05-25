@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file mxc_v4l2_output.c
+ * @file drivers/media/video/mxc/output/mxc_v4l2_output.c
  *
  * @brief MXC V4L2 Video Output Driver
  *

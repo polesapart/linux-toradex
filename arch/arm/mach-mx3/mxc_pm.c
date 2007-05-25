@@ -12,12 +12,16 @@
  */
 
 /*!
- * @file mxc_pm.c
+ * @defgroup DPM_MX31 Power Management
+ * @ingroup MSL_MX31
+ */
+/*!
+ * @file mach-mx3/mxc_pm.c
  *
  * @brief This file provides all the kernel level and user level API
  * definitions for the CRM_MCU and DPLL in mx3.
  *
- * @ingroup LPMD
+ * @ingroup DPM_MX31
  */
 
 /*

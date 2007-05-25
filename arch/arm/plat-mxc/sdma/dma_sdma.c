@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file dma_sdma.c
+ * @file plat-mxc/sdma/dma_sdma.c
  * @brief Front-end to the DMA handling.  This handles the allocation/freeing
  * of DMA channels, and provides a unified interface to the machines
  * DMA facilities. This file contains functions for Smart DMA.

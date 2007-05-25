@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file mxc_uart.c
+ * @file drivers/serial/mxc_uart.c
  *
  * @brief Driver for the Freescale Semiconductor MXC serial ports based on
  * drivers/char/serial.c, by Linus Torvalds, Theodore Ts'o.

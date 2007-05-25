@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_light.c
+ * @file mc13783/pmic_light.c
  * @brief This is the main file of PMIC(mc13783) Light and Backlight driver.
  *
  * @ingroup PMIC_LIGHT

@@ -20,6 +20,12 @@
 #include <asm/arch/mx31_pins.h>
 
 /*!
+ * @file arch-mxc/mx31.h
+ * @brief This file contains register definitions.
+ *
+ * @ingroup MSL_MX31
+ */
+/*!
  * defines the OS clock tick rate
  */
 #define CLOCK_TICK_RATE         16625000

@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file mxc_v4l2.h
+ * @file arch-mxc/mxc_v4l2.h
  *
  * @brief mxc V4L2 private structures
  *

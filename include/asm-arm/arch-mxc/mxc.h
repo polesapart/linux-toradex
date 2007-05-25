@@ -19,6 +19,10 @@
 
 #ifndef __ASSEMBLY__
 #include <linux/types.h>
+
+/*!
+ * @ingroup MSL_MX27 MSL_MX31
+ */
 /*!
  * gpio port structure
  */

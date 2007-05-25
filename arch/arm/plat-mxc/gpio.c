@@ -28,9 +28,9 @@
 #include <asm/arch/gpio.h>
 
 /*!
- * @file gpio.c
+ * @file plat-mxc/gpio.c
  *
- * @brief This file contains the GPIO and IOMUX implementation details.
+ * @brief This file contains the GPIO implementation details.
  *
  * @ingroup GPIO
  */

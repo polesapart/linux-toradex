@@ -12,9 +12,9 @@
  */
 
 /*!
- *@file gpio_mux.h
+ *@file mach-mx27/gpio_mux.h
  *@brief This file contains the private definition  .
- * @ingroup GPIO
+ * @ingroup GPIO_MX27
  */
 
 #ifndef __ARCH_ARM_MACH_MX27_GPIO_MUX_H__

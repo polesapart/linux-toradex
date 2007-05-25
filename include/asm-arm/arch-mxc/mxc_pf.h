@@ -15,7 +15,7 @@
  * @defgroup MXC_PF MPEG4/H.264 Post Filter Driver
  */
 /*!
- * @file mxc_pf.h
+ * @file arch-mxc/mxc_pf.h
  *
  * @brief MXC IPU MPEG4/H.264 Post-filtering driver
  *

@@ -25,7 +25,7 @@
  *
  * @brief MX31 dvfs & dptc table file for CKIH clock 26MHz.
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 #ifndef __DVFS_DPTC_TABLE_MX31_H__
 #define __DVFS_DPTC_TABLE_MX31_H__

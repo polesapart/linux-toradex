@@ -12,15 +12,18 @@
  */
 
 /*!
- * @defgroup PM Dynamic Process Temperature Compensation (DPTC) & Dynamic Voltage Frequency Scaling (DVFS) Drivers
+ * @defgroup PM_MX27 Dynamic Process Temperature Compensation (DPTC) for i.MX27
+ */
+/*!
+ * @defgroup PM_MX31 Dynamic Process Temperature Compensation (DPTC) & Dynamic Voltage Frequency Scaling (DVFS) Drivers for i.MX31
  */
 
 /*!
- * @file pm_api.h
+ * @file arch-mxc/pm_api.h
  *
  * @brief MXC PM API header file.
  *
- * @ingroup PM
+ * @ingroup PM_MX27 PM_MX31
  */
 #ifndef __ASM_ARCH_MXC_PM_API_H__
 #define __ASM_ARCH_MXC_PM_API_H__

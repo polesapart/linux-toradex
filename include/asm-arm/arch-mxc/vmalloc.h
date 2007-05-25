@@ -21,11 +21,11 @@
 #define __ASM_ARCH_MXC_VMALLOC_H__
 
 /*!
- * @file vmalloc.h
+ * @file arch-mxc/vmalloc.h
  *
  * @brief This file contains the macros for vmalloc.
  *
- * @ingroup System
+ * @ingroup MSL_MX27 MSL_MX31
  */
 
 /*!

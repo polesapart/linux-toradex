@@ -1903,7 +1903,7 @@ extern fsl_shw_return_t fsl_shw_release_key(fsl_shw_uco_t * user_ctx,
  */
 
 /*!
- * @example wrapped_key.c
+ * @example wrap.c
  */
 
 #endif				/* API_DOC */

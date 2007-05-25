@@ -22,7 +22,7 @@
   *             Playback supports 8000, 11025, 16000, 22050, 24000, 32000,
   *             44100 and 48000 khz for mono and stereo.
   *
-  * @ingroup    SOUND_DRV
+  * @ingroup SOUND_DRV
   */
 
 #include <sound/driver.h>

@@ -19,7 +19,7 @@
  */
 
 /*!
- * @file pmic_light.h
+ * @file arch-mxc/pmic_light.h
  * @brief This is the header of PMIC Light driver.
  *
  * @ingroup PMIC_LIGHT

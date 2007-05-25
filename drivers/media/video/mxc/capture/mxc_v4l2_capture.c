@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file mxc_v4l2_capture.c
+ * @file drivers/media/video/mxc/capture/mxc_v4l2_capture.c
  *
  * @brief Mxc Video For Linux 2 driver
  *

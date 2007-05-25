@@ -19,7 +19,7 @@
  */
 
 /*!
- * @file pmic_battery.h
+ * @file arch-mxc/pmic_battery.h
  * @brief This is the header of PMIC Battery driver.
  *
  * @ingroup PMIC_BATTERY

@@ -15,12 +15,10 @@
 #define __ASM_ARCH_MXC_CLOCK_H__
 
 /*!
- * @defgroup CLOCKS Clocking Setup and Retrieving
- * @ingroup MSL
+ * @defgroup CLOCKS Clock Control API
  */
-
 /*!
- * @file clock.h
+ * @file arch-mxc/clock.h
  *
  * @brief API for setting up and retrieving clocks.
  *

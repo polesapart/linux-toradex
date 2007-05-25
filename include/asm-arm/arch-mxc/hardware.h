@@ -12,10 +12,10 @@
  */
 
 /*!
- * @file hardware.h
+ * @file arch-mxc/hardware.h
  * @brief This file contains the hardware definitions of the board.
  *
- * @ingroup System
+ * @ingroup MSL_MX27 MSL_MX31
  */
 #ifndef __ASM_ARCH_MXC_HARDWARE_H__
 #define __ASM_ARCH_MXC_HARDWARE_H__

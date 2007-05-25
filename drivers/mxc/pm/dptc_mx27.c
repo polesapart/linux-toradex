@@ -28,7 +28,7 @@
  * in-order to update the translation table. Driver ioctls are used to change
  * driver parameters and enable/disable the DPTC operation.
  *
- * @ingroup PM
+ * @ingroup PM_MX27
  */
 
 #include <linux/module.h>

@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_user.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_user.c
  *
  * @brief This file implements user and platform capabilities functions of the FSL SHW API
  * API for Sahara

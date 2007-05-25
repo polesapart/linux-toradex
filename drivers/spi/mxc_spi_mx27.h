@@ -12,15 +12,11 @@
  */
 
 /*!
- * @defgroup SPI Configurable Serial Peripheral Interface (CSPI) Driver
+ * @file mxc_spi_mx27.h
+ * @brief This header file contains SPI driver low level register definitions for MX27.
+ *
+ * @ingroup SPI
  */
-
- /*!
-  * @file mxc_spi_mx27.h
-  * @brief This header file contains SPI driver low level definition to access module registers.
-  *
-  * @ingroup SPI
-  */
 
 #ifndef __MXC_SPI_MX27_H__
 #define __MXC_SPI_MX27_H__

@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_rand.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_rand.c
  *
  * @brief This file implements Random Number Generation functions of the FSL SHW API for
  * for Sahara.

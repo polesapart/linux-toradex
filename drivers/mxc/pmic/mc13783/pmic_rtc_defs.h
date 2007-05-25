@@ -14,7 +14,7 @@
 #define __MC13783_RTC_DEFS_H__
 
 /*!
- * @file pmic_rtc_defs.h
+ * @file mc13783/pmic_rtc_defs.h
  * @brief This is the internal header of PMIC(mc13783) RTC driver.
  *
  * @ingroup PMIC_RTC

@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_hash.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_hash.c
  *
  * @brief This file implements Cryptographic Hashing functions of the FSL SHW API
  * for Sahara.  This does not include HMAC.

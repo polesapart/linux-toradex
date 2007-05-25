@@ -39,7 +39,7 @@ extern "C" {
  */
 
 /*!
- * @file mxc_scc_driver.h
+ * @file arch-mxc/mxc_scc_driver.h
  *
  * @brief Header file to use the SCC driver.
  *

@@ -9,11 +9,11 @@
  */
 
 /*!
- * @file cpu.c
+ * @file mach-mx3/cpu.c
  *
  * @brief This file contains the CPU initialization code.
  *
- * @ingroup System
+ * @ingroup MSL_MX31
  */
 
 #include <linux/types.h>

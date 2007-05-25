@@ -15,14 +15,14 @@
 #define __ASM_ARCH_MXC_MX2_H__
 
 /*!
-*@defgroup DMA DMA driver
-*/
+ * @defgroup DMA_MX27 DMA driver for i.MX27
+ */
 
 /*!
- *@file mx2_dma.h
+ *@file arch-mxc/mx2_dma.h
  *@brief DMA driver header file
  *
- * @ingroup DMA
+ * @ingroup DMA_MX27
  *
  */
 

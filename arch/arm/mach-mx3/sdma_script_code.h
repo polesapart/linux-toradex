@@ -11,15 +11,6 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-/*!
- * @file sdma_script_code.h
- * @brief This file contains functions of SDMA scripts code initialization
- *
- * The file was generated automatically. Based on sdma scripts library.
- *
- * @ingroup SDMA
- */
-
 #ifndef __SDMA_SCRIPT_CODE_H__
 #define __SDMA_SCRIPT_CODE_H__
 

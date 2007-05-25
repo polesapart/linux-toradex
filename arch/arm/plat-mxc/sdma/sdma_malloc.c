@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file sdma_malloc.c
+ * @file plat-mxc/sdma/sdma_malloc.c
  * @brief This file contains functions for SDMA non-cacheable buffers allocation
  *
  * SDMA (Smart DMA) is used for transferring data between MCU and peripherals

@@ -25,7 +25,7 @@
  *
  * @brief MX31 dvfs & dptc table file for MX31 2.0
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 #ifndef __DVFS_DPTC_TABLE_MX3_REV2_H__
 #define __DVFS_DPTC_TABLE_MX3_REV2_H__

@@ -17,10 +17,10 @@
  */
 
 /*!
- * @file dma_mx2.c
+ * @file plat-mxc/dma_mx2.c
  * @brief This file contains functions for DMA  API
  *
- * @ingroup DMA
+ * @ingroup DMA_MX27
  */
 
 #include <linux/module.h>

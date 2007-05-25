@@ -12,11 +12,11 @@
  */
 
 /*!
- * @file dvfs_dptc_struct.h
+ * @file arch-mxc/dvfs_dptc_struct.h
  *
  * @brief MXC dvfs & dptc structure definitions file.
  *
- * @ingroup PM
+ * @ingroup PM_MX27 PM_MX31
  */
 #ifndef __ASM_ARCH_MXC_DVFS_DPTC_STRUCT_H__
 #define __ASM_ARCH_MXC_DVFS_DPTC_STRUCT_H__

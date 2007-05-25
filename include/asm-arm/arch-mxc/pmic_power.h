@@ -19,7 +19,7 @@
  */
 
 /*!
- * @file pmic_power.h
+ * @file arch-mxc/pmic_power.h
  * @brief This is the header of PMIC power driver.
  *
  * @ingroup PMIC_POWER

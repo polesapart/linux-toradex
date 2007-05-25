@@ -16,15 +16,19 @@
 #include <asm/arch/hardware.h>
 
 /*!
- * @defgroup Memory Memory Map
- * @ingroup MSL
+ * @defgroup Memory_MX27 Memory Map
+ * @ingroup MSL_MX27
+ */
+/*!
+ * @defgroup Memory_MX31 Memory Map
+ * @ingroup MSL_MX31
  */
 
 /*!
- * @file memory.h
+ * @file arch-mxc/memory.h
  * @brief This file contains macros needed by the Linux kernel and drivers.
  *
- * @ingroup Memory
+ * @ingroup Memory_MX27 Memory_MX31
  */
 
 /*!

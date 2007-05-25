@@ -12,9 +12,15 @@
  */
 
 /*!
- *@file gpio_mux.c
- *@brief This file contains the IOMUX implementation details. 
- * @ingroup GPIO
+ * @defgroup GPIO_MX27 Board GPIO and Muxing Setup
+ * @ingroup MSL_MX27
+ */
+/*!
+ * @file mach-mx27/gpio_mux.c
+ *
+ * @brief I/O Muxing control functions
+ *
+ * @ingroup GPIO_MX27
  */
 
 #include <linux/kernel.h>

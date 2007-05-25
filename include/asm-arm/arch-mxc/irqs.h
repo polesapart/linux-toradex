@@ -17,10 +17,10 @@
 
 /*!
  * @defgroup Interrupt Interrupt Controller (AVIC)
- * @ingroup MSL
  */
+
 /*!
- * @file irqs.h
+ * @file arch-mxc/irqs.h
  * @brief This file defines the number of normal interrupts and fast interrupts
  *
  * @ingroup Interrupt

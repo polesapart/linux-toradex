@@ -15,14 +15,15 @@
  */
 
 /*!
- *@defgroup USB ARC OTG USB Driver
+ * @defgroup USB_MX27 ARC OTG USB Driver for i.MX27
+ * @ingroup USB
  */
 
 /*!
- * @file usb.c
+ * @file mach-mx27/usb.c
  *
  * @brief platform related part of usb driver.
- * @ingroup USB
+ * @ingroup USB_MX27
  */
 
 /*!

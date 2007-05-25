@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_sym.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_sym.c
  *
  * @brief This file implements Symmetric Cipher functions of the FSL SHW API for
  * Sahara.  This does not include CCM.

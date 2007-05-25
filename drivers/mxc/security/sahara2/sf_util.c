@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
-* @file sf_util.c
+* @file drivers/mxc/security/sahara2/sf_util.c
 *
 * @brief Security Functions component API - Utility functions
 *

@@ -25,19 +25,14 @@
 #include <asm/system.h>
 
 /*!
- * @defgroup MSL Machine Specific Layer (MSL)
+ * @defgroup MSL_MX27 i.MX27 Machine Specific Layer (MSL)
  */
 
 /*!
- * @defgroup System System-wide Misc Files for MSL
- * @ingroup MSL
- */
-
-/*!
- * @file system.c
+ * @file mach-mx27/system.c
  * @brief This file contains idle and reset functions.
  *
- * @ingroup System
+ * @ingroup MSL_MX27
  */
 
 /*!

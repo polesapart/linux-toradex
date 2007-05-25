@@ -12,11 +12,11 @@
  */
 
 /*!
- * @file dvfs.h
+ * @file arch-mxc/dvfs.h
  *
  * @brief MXC dvfs header file.
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 #ifndef __ASM_ARCH_MXC_DVFS_H__
 #define __ASM_ARCH_MXC_DVFS_H__

@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file sdma.c
+ * @file plat-mxc/sdma/sdma.c
  * @brief This file contains functions for Smart DMA  API
  *
  * SDMA (Smart DMA) is used for transferring data between MCU and peripherals

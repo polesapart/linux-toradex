@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_rtc.c
+ * @file mc13783/pmic_rtc.c
  * @brief This is the main file of PMIC(mc13783) RTC driver.
  *
  * @ingroup PMIC_RTC

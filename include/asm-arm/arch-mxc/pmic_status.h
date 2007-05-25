@@ -14,7 +14,7 @@
 #define __ASM_ARCH_MXC_PMIC_STATUS_H__
 #include <asm-generic/errno-base.h>
 /*!
- * @file pmic_status.h
+ * @file arch-mxc/pmic_status.h
  * @brief PMIC APIs return code definition.
  *
  * @ingroup PMIC_CORE

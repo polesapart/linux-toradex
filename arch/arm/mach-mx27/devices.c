@@ -22,10 +22,10 @@
 #include <asm/arch/mmc.h>
 
  /*!
-  * @file devices.c
+  * @file mach-mx27/devices.c
   * @brief device configurations including nor/nand/watchdog for mx27.
   *
-  * @ingroup MSL
+  * @ingroup MSL_MX27
   */
 
 static void mxc_nop_release(struct device *dev)

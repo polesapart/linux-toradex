@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_audio.c
+ * @file mc13783/pmic_audio.c
  * @brief Implementation of the PMIC(mc13783) Audio driver APIs.
  *
  * The PMIC Audio driver and this API were developed to support the

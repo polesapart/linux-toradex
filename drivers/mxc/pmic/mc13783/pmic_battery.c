@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_battery.c
+ * @file mc13783/pmic_battery.c
  * @brief This is the main file of PMIC(mc13783) Battery driver.
  *
  * @ingroup PMIC_BATTERY

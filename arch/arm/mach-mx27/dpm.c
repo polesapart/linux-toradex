@@ -23,11 +23,11 @@
  */
 
 /*!
- * @file dpm.c
+ * @file mach-mx27/dpm.c
  *
  * @brief This file provides DPM support hooks for the Freescale i.MX27
  *
- * @ingroup DPM
+ * @ingroup DPM_MX27
  */
 
 #include <linux/dpm.h>

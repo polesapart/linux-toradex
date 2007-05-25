@@ -13,12 +13,12 @@
 #ifndef __MACH_MX31_TIME_PRIV_H__
 #define __MACH_MX31_TIME_PRIV_H__
 /*!
- * @file time_priv.h
+ * @file mach-mx3/time_priv.h
  * @brief This file contains OS tick and wdog timer register definitions.
  *
  * This file contains OS tick and wdog timer register definitions.
  *
- * @ingroup Timers
+ * @ingroup Timers_MX31
  */
 
 #include <asm/hardware.h>

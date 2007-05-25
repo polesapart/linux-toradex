@@ -16,7 +16,7 @@
  *
  * @brief MXC dvfs & dptc header file.
  *
- * @ingroup PM
+ * @ingroup PM_MX27 PM_MX31
  */
 #ifndef __DVFS_DPTC_H__
 #define __DVFS_DPTC_H__

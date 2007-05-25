@@ -16,7 +16,7 @@
  */
 
 /*!
- * @file mxc_vpu.h
+ * @file arch-mxc/mxc_vpu.h
  *
  * @brief VPU system initialization and file operation definition
  *

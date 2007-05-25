@@ -11,7 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 /*!
- * @file fsl_shw_auth.c
+ * @file drivers/mxc/security/sahara2/fsl_shw_auth.c
  *
  * @brief This file contains the routines which do the combined encrypt+authentication
  * functions.  For now, only AES-CCM is supported.

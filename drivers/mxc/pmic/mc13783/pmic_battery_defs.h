@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_battery_defs.h
+ * @file mc13783/pmic_battery_defs.h
  * @brief This is the internal header for PMIC(mc13783) Battery driver.
  *
  * @ingroup PMIC_BATTERY

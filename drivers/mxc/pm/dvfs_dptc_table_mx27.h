@@ -16,7 +16,7 @@
  *
  * @brief i.MX27 dptc table file. 
  * 
- * @ingroup PM
+ * @ingroup PM_MX27
  */
 #ifndef __DVFS_DPTC_TABLE_MX27_H__
 #define __DVFS_DPTC_TABLE_MX27_H__

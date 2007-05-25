@@ -27,7 +27,7 @@
  */
 
 /*!
- * @file pmic_external.h
+ * @file arch-mxc/pmic_external.h
  * @brief This file contains interface of PMIC protocol driver.
  *
  * @ingroup PMIC_CORE

@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_adc.c
+ * @file mc13783/pmic_adc.c
  * @brief This is the main file of PMIC(mc13783) ADC driver.
  *
  * @ingroup PMIC_ADC

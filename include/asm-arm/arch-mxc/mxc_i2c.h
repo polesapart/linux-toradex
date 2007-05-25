@@ -18,7 +18,7 @@
  */
 
 /*!
- * @file mxc_i2c.h
+ * @file arch-mxc/mxc_i2c.h
  *
  * @brief This file contains the I2C chip level configuration details.
  *

@@ -31,7 +31,7 @@
   *             These mixer controls shall be accessible thru alsa as well as
   *             OSS emulation modes
   *
-  * @ingroup    SOUND_DRV
+  * @ingroup SOUND_DRV
   */
 
 #include <sound/driver.h>

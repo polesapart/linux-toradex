@@ -12,10 +12,13 @@
  */
 
 /*!
+ * @defgroup FS453 Focus FS453 TV Encoder Driver
+ */
+/*!
  * @file fs453.c
  * @brief Driver for FS453/4 TV encoder
  *
- * @ingroup Framebuffer
+ * @ingroup FS453
  */
 
 #include <linux/kernel.h>

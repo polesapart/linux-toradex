@@ -25,11 +25,11 @@
 static int g_uart_activated[MXC_UART_NR] = { 0, 0, 0, 0, 0, 0 };
 
 /*!
- * @file mx27ads_gpio.c
+ * @file mach-mx27/mx27ads_gpio.c
  *
  * @brief This file contains all the GPIO setup functions for the board.
  *
- * @ingroup GPIO
+ * @ingroup GPIO_MX27
  */
 
 /*!

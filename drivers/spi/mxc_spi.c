@@ -12,6 +12,10 @@
  */
 
 /*!
+ * @defgroup SPI Configurable Serial Peripheral Interface (CSPI) Driver
+ */
+
+/*!
  * @file mxc_spi.c
  * @brief This file contains the implementation of the SPI master controller services
  *

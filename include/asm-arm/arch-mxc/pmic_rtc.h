@@ -20,7 +20,7 @@
  */
 
 /*!
- * @file pmic_rtc.h
+ * @file arch-mxc/pmic_rtc.h
  * @brief This is the header of PMIC RTC driver.
  *
  * @ingroup PMIC_RTC

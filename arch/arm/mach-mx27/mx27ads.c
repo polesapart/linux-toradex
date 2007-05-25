@@ -50,10 +50,10 @@
 #include "gpio_mux.h"
 
 /*!
- * @file mx27ads.c
+ * @file mach-mx27/mx27ads.c
  * @brief This file contains the board specific initialization routines.
  *
- * @ingroup System
+ * @ingroup MSL_MX27
  */
 
 extern void mxc_map_io(void);

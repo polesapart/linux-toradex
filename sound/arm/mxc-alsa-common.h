@@ -14,7 +14,7 @@
  /*!
   * @file mxc-alsa-common.h
   * @brief
-  * @ingroup
+  * @ingroup SOUND_DRV
   */
 
 #ifndef __MXC_ALSA_COMMON_H__

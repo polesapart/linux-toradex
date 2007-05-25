@@ -12,7 +12,7 @@
  */
 
 /*!
- * @defgroup Framebuffer Framebuffer Driver for MX27 ADS.
+ * @defgroup Framebuffer_MX27 Framebuffer Driver for MX27.
  */
 
 /*!
@@ -20,7 +20,7 @@
  *
  * @brief Frame buffer driver for MX27 ADS.
  *
- * @ingroup Framebuffer
+ * @ingroup Framebuffer_MX27
  */
 
 #include <linux/module.h>

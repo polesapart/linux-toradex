@@ -14,6 +14,11 @@
 #ifndef __ARCH_ARM_MACH_MX3_SERIAL_H__
 #define __ARCH_ARM_MACH_MX3_SERIAL_H__
 
+/*!
+ * @file mach-mx3/serial.h
+ *
+ * @ingroup MSL_MX31
+ */
 #include <asm/arch/mxc_uart.h>
 
 /* UART 1 configuration */

@@ -26,7 +26,7 @@
  */
 
 /*!
- * @file mxc_security_api.h
+ * @file arch-mxc/mxc_security_api.h
  *
  * @brief MXC Security user header file.
  *

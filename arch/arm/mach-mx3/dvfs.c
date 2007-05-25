@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file dvfs.c
+ * @file mach-mx3/dvfs.c
  *
  * @brief Driver for the Freescale Semiconductor MXC DVFS module.
  *
@@ -27,7 +27,7 @@
  * Driver ioctls are used to change driver parameters and enable/disable the
  * DVFS operation.
  *
- * @ingroup PM
+ * @ingroup PM_MX31
  */
 
 /* Define to enable debug messages */

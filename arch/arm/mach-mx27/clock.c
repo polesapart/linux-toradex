@@ -11,15 +11,6 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-/*!
- * @file clock.c
- * @brief API for setting up and retrieving clocks.
- *
- * This file contains API for setting up and retrieving clocks.
- *
- * @ingroup CLOCKS
- */
-
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/clk.h>

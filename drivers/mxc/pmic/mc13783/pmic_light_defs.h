@@ -12,7 +12,7 @@
  */
 
 /*!
- * @file pmic_light_defs.h
+ * @file mc13783/pmic_light_defs.h
  * @brief This is the internal header PMIC(mc13783) Light and Backlight driver.
  *
  * @ingroup PMIC_LIGHT

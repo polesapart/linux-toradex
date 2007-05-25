@@ -21,6 +21,11 @@
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
 
+/*!
+ * @file plat-mxc/irq.c
+ *
+ * @ingroup Interrupt
+ */
 /*
  *****************************************
  * EDIO Registers                        *

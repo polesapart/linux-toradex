@@ -11,12 +11,6 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-/*!
- * @file mach-mx3/clock.c
- * @brief Low level clock structs and functions for MX31 clocks.
- * @ingroup CLOCKS
- */
-
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
