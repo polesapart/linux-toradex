@@ -542,10 +542,10 @@ void gpio_sensor_reset(bool flag)
 
 	if (flag) {
 		temp = 0x200;
-		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR);
+		__raw_writew(temp, PBC_BCTRL2_CLEAR_REG);
 	} else {
 		temp = 0x200;
-		__raw_writew(temp, PBC_BASE_ADDRESS + PBC_BCTRL1_SET);
+		__raw_writew(temp, PBC_BCTRL2_SET_REG);
 	}
 }
 
