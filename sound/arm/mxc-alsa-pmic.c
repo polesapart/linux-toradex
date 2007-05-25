@@ -1323,12 +1323,20 @@ void configure_stereodac(snd_pcm_substream_t * substream)
 	pmic_audio_device_t *pmic;
 	int ssi_bus;
 	PMIC_AUDIO_HANDLE handle;
+	snd_pcm_runtime_t *runtime;
 
 	chip = snd_pcm_substream_chip(substream);
 	stream_id = substream->pstr->stream;
 	s = &chip->s[stream_id];
 	pmic = &s->pmic_audio_device;
 	handle = pmic->handle;
+	runtime = substream->runtime;
+
+	if (runtime->channels == 1) {
+		audio_mixer_control.mixer_mono_adder = MONO_ADD_LEFT_RIGHT;
+	} else {
+		audio_mixer_control.mixer_mono_adder = MONO_ADDER_OFF;
+	}
 
 	ssi_bus = (pmic->ssi == SSI1) ? AUDIO_DATA_BUS_1 : AUDIO_DATA_BUS_2;
 
