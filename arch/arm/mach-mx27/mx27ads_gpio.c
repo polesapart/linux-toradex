@@ -347,7 +347,7 @@ void gpio_i2c_active(int i2c_num)
 		gpio_request_mux(MX27_PIN_I2C2_SDA, GPIO_MUX_PRIMARY);
 		break;
 	default:
-		printk("gpio_i2c_active no compatible I2C adapter\n");
+		printk(KERN_ERR "gpio_i2c_active no compatible I2C adapter\n");
 		break;
 	}
 }
@@ -606,7 +606,7 @@ void gpio_fs453_reset_low(void)
 {
 	gpio_free_mux(MX27_PIN_CLS);
 	if (gpio_request_mux(MX27_PIN_CLS, GPIO_MUX_GPIO)) {
-		printk("bug: request GPIO PA25 failed.\n");
+		printk(KERN_ERR "bug: request GPIO PA25 failed.\n");
 		return;
 	}
 
@@ -624,7 +624,7 @@ void gpio_fs453_reset_high(void)
 {
 	gpio_free_mux(MX27_PIN_CLS);
 	if (gpio_request_mux(MX27_PIN_CLS, GPIO_MUX_GPIO)) {
-		printk("bug: request GPIO PA25 failed.\n");
+		printk(KERN_ERR "bug: request GPIO PA25 failed.\n");
 		return;
 	}
 
@@ -697,7 +697,6 @@ void gpio_ata_active(void)
 	gpio_request_mux(MX27_PIN_PC_RW_B, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_POE, GPIO_MUX_ALT);
 
-	printk("ATA interface call clock enable ATA CLK \n");
 	mxc_clks_enable(ATA_CLK);
 }
 
@@ -707,7 +706,6 @@ void gpio_ata_active(void)
  */
 void gpio_ata_inactive(void)
 {
-	printk("ATA interface call clock disable ATA CLK \n");
 	mxc_clks_disable(ATA_CLK);
 
 	gpio_free_mux(MX27_PIN_ATA_DATA0);

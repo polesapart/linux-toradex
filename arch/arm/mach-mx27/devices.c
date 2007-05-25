@@ -386,15 +386,15 @@ static inline void mxc_init_spi(void)
 {
 #ifdef CONFIG_SPI_MXC_SELECT1
 	if (platform_device_register(&mxcspi1_device) < 0)
-		printk("Error: Registering the SPI Controller_1\n");
+		printk(KERN_ERR "Registering the SPI Controller_1\n");
 #endif				/* CONFIG_SPI_MXC_SELECT1 */
 #ifdef CONFIG_SPI_MXC_SELECT2
 	if (platform_device_register(&mxcspi2_device) < 0)
-		printk("Error: Registering the SPI Controller_2\n");
+		printk(KERN_ERR "Registering the SPI Controller_2\n");
 #endif				/* CONFIG_SPI_MXC_SELECT2 */
 #ifdef CONFIG_SPI_MXC_SELECT3
 	if (platform_device_register(&mxcspi3_device) < 0)
-		printk("Error: Registering the SPI Controller_3\n");
+		printk(KERN_ERR "Registering the SPI Controller_3\n");
 #endif				/* CONFIG_SPI_MXC_SELECT3 */
 }
 #else

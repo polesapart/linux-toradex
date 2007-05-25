@@ -115,7 +115,6 @@ static struct platform_device mxc_keypad_device = {
 
 static void mxc_init_keypad(void)
 {
-	printk("mx27ads.c: registering mxc keypad device...\n");
 	(void)platform_device_register(&mxc_keypad_device);
 }
 #else
@@ -342,8 +341,8 @@ static u32 mxc_card_state_changed(u32 mask, u32 s0, u32 s1)
 		}
 	}
 #ifdef MXC_CARD_DEBUG
-	printk("\nmask=%x, s0=%x, s1=%x\n", mask, s0, s1);
-	printk("retval=%x, stat=%x\n", retval, stat);
+	printk(KERN_INFO "\nmask=%x, s0=%x, s1=%x\n", mask, s0, s1);
+	printk(KERN_INFO "retval=%x, stat=%x\n", retval, stat);
 #endif
 	return retval;
 }
@@ -411,26 +410,26 @@ static irqreturn_t mxc_sd_test_handler(int irq, void *desc)
 {
 	int s = -1;
 
-	printk("%s(irq=%d) for ", __FUNCTION__, irq);
+	printk(KERN_INFO "%s(irq=%d) for ", __FUNCTION__, irq);
 	if (irq == EXPIO_INT_SD1_EN) {
-		printk("SD1");
+		printk(KERN_INFO "SD1");
 		s = MXC_CARD_SD1;
 	} else if (irq == EXPIO_INT_SD2_EN) {
-		printk("SD2");
+		printk(KERN_INFO "SD2");
 		s = MXC_CARD_SD2;
 	} else if (irq == EXPIO_INT_SD3_EN) {
-		printk("SD3");
+		printk(KERN_INFO "SD3");
 		s = MXC_CARD_SD3;
 	} else if (irq == EXPIO_INT_MS_EN) {
-		printk("MS");
+		printk(KERN_INFO "MS");
 		s = MXC_CARD_MS;
 	} else {
-		printk("None!!!!");
+		printk(KERN_INFO "None!!!!");
 	}
 	if (mxc_card_detected(s)) {
-		printk(" inserted\n");
+		printk(KERN_INFO " inserted\n");
 	} else {
-		printk(" removed\n");
+		printk(KERN_INFO " removed\n");
 	}
 
 	return IRQ_HANDLED;
