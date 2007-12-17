@@ -101,6 +101,13 @@ struct mxc_lcd_platform_data {
 	void (*reset) (void);
 };
 
+struct mxc_tvout_platform_data {
+	char *io_reg;
+	char *core_reg;
+	char *analog_reg;
+	u32 detect_line;
+};
+
 /*! Platform data for the IDE drive structure. */
 struct mxc_ide_platform_data {
 	char *power_drive;	/*!< The power pointer */

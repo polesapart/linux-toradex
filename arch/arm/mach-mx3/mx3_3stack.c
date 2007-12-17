@@ -25,6 +25,7 @@
 #include <linux/irq.h>
 #include <linux/init.h>
 #include <linux/input.h>
+#include <linux/i2c.h>
 #include <linux/nodemask.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
@@ -220,12 +221,23 @@ static struct mxc_camera_platform_data camera_data = {
 	.gpo_regulator = "GPO3",
 };
 
+struct mxc_tvout_platform_data tvout_data = {
+	.io_reg = "VGEN",
+	.core_reg = "GPO3",
+	.analog_reg = "GPO1",
+	.detect_line = MX31_PIN_BATT_LINE,
+};
+
 static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "ov2640",
 	 .addr = 0x30,
-	 .platform_data = (void *)&camera_data,
-	 },
+	 .platform_data = (void *)&camera_data,},
+	{
+	 .driver_name = "ch7024",
+	 .addr = 0x76,
+	 .platform_data = (void *)&tvout_data,
+	 .irq = IOMUX_TO_IRQ(MX31_PIN_BATT_LINE),},
 };
 
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
@@ -325,28 +337,9 @@ static inline void mxc_init_bl(void)
 }
 #endif
 
-#if defined(CONFIG_MXC_HP_DETECT) || defined(CONFIG_MXC_HP_DETECT_MODULE)
-
-static struct resource mxc_hp_detect_resources[] = {
-	[0] = {
-	       .start = IOMUX_TO_IRQ(MX31_PIN_BATT_LINE),
-	       .end = IOMUX_TO_IRQ(MX31_PIN_BATT_LINE),
-	       .flags = IORESOURCE_IRQ,
-	       }
-};
-
-/* mxc headphone detect driver */
-static struct platform_device mxc_hp_detect_device = {
-	.name = "hp_detect",
-	.id = 0,
-	.num_resources = ARRAY_SIZE(mxc_hp_detect_resources),
-	.resource = mxc_hp_detect_resources,
-	.dev = {
-		.release = mxc_nop_release,
-		},
-};
-
-static int mxc_init_hp_detect(void)
+#if defined(CONFIG_FB_MXC_TVOUT_CH7024) || \
+    defined(CONFIG_FB_MXC_TVOUT_CH7024_MODULE)
+static int mxc_init_ch7024(void)
 {
 	/* request gpio for phone jack detect */
 	mxc_request_iomux(MX31_PIN_BATT_LINE, OUTPUTCONFIG_GPIO,
@@ -354,11 +347,12 @@ static int mxc_init_hp_detect(void)
 	mxc_iomux_set_pad(MX31_PIN_BATT_LINE, PAD_CTL_PKE_NONE);
 	mxc_set_gpio_direction(MX31_PIN_BATT_LINE, 1);
 
-	return platform_device_register(&mxc_hp_detect_device);
+	return 0;
 }
 #else
-static inline void mxc_init_hp_detect(void)
+static inline int mxc_init_ch7024(void)
 {
+	return 0;
 }
 #endif
 
@@ -680,7 +674,10 @@ static void __init mxc_board_init(void)
 	mxc_init_keypad();
 	mxc_init_enet();
 	mxc_init_nand_mtd();
-	mxc_init_hp_detect();
+	mxc_init_ch7024();
+
+	i2c_register_board_info(0, mxc_i2c_board_info,
+				ARRAY_SIZE(mxc_i2c_board_info));
 
 	i2c_register_board_info(0, mxc_i2c_board_info,
 				ARRAY_SIZE(mxc_i2c_board_info));

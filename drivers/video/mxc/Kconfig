@@ -24,9 +24,12 @@ config FB_MXC_EPSON_VGA_SYNC_PANEL
 	default n
 
 config FB_MXC_TVOUT
-	bool "TV Out Encoder"
+	bool "FS453 TV Out Encoder"
 	depends on FB_MXC_SYNC_PANEL
-	default n
+
+config FB_MXC_TVOUT_CH7024
+	tristate "CH7024 TV Out Encoder"
+	depends on FB_MXC_SYNC_PANEL
 
 config FB_MXC_LOW_PWR_DISPLAY
 	bool "Low Power Display Refresh Mode"
