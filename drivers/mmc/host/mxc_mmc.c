@@ -822,7 +822,6 @@ static irqreturn_t mxcmci_irq(int irq, void *devid)
 	}
 
 	status = __raw_readl(host->base + MMC_STATUS);
-	intctrl = __raw_readl(host->base + MMC_INT_CNTR);
 #ifdef CONFIG_MMC_DEBUG
 	dump_status(__FUNCTION__, status);
 #endif
@@ -831,6 +830,18 @@ static irqreturn_t mxcmci_irq(int irq, void *devid)
 		mxcmci_cmd_done(host, status);
 	}
 
+	status = __raw_readl(host->base + MMC_STATUS);
+	intctrl = __raw_readl(host->base + MMC_INT_CNTR);
+	if ((status & STATUS_SDIO_INT_ACTIVE)
+	    && (intctrl & INT_CNTR_SDIO_IRQ_EN)) {
+		__raw_writel(STATUS_SDIO_INT_ACTIVE, host->base + MMC_STATUS);
+
+		/*Here we do not handle the sdio interrupt to client driver
+		   if the host is in suspend state */
+		if (host->mxc_mmc_suspend_flag == 0) {
+			mmc_signal_sdio_irq(host->mmc);
+		}
+	}
 	return IRQ_HANDLED;
 }
 
@@ -1013,13 +1024,31 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	}
 }
 
+static void mxcmci_enable_sdio_irq(struct mmc_host *mmc, int enable)
+{
+	struct mxcmci_host *host = mmc_priv(mmc);
+	u32 intctrl;
+	unsigned long flags;
+
+	spin_lock_irqsave(&host->lock, flags);
+	intctrl = __raw_readl(host->base + MMC_INT_CNTR);
+	intctrl &= ~INT_CNTR_SDIO_IRQ_EN;
+
+	if (enable)
+		intctrl |= INT_CNTR_SDIO_IRQ_EN;
+
+	__raw_writel(intctrl, host->base + MMC_INT_CNTR);
+	spin_unlock_irqrestore(&host->lock, flags);
+}
+
 /*!
  * MMC/SD host operations structure.
  * These functions are registered with MMC/SD Bus protocol driver.
  */
 static struct mmc_host_ops mxcmci_ops = {
 	.request = mxcmci_request,
-	.set_ios = mxcmci_set_ios
+	.set_ios = mxcmci_set_ios,
+	.enable_sdio_irq = mxcmci_enable_sdio_irq,
 };
 
 #ifdef MXC_MMC_DMA_ENABLE
@@ -1144,7 +1173,7 @@ static int mxcmci_probe(struct platform_device *pdev)
 	mmc->ocr_avail |= MMC_VDD_31_32;
 
 	mmc->max_phys_segs = NR_SG;
-	mmc->caps = MMC_CAP_4_BIT_DATA;
+	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ;
 
 	host = mmc_priv(mmc);
 	host->mmc = mmc;
