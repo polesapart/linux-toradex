@@ -79,7 +79,7 @@ int32_t ipu_sdc_init_panel(ipu_panel_t panel,
 			   uint32_t pixel_fmt,
 			   uint16_t h_start_width, uint16_t h_sync_width,
 			   uint16_t h_end_width, uint16_t v_start_width,
-			   uint16_t vSyncWidth, uint16_t v_end_width,
+			   uint16_t v_sync_width, uint16_t v_end_width,
 			   ipu_di_signal_cfg_t sig)
 {
 	unsigned long lock_flags;
@@ -89,21 +89,23 @@ int32_t ipu_sdc_init_panel(ipu_panel_t panel,
 
 	dev_dbg(g_ipu_dev, "panel size = %d x %d\n", width, height);
 
-	if ((vSyncWidth == 0) || (h_sync_width == 0))
+	if ((v_sync_width == 0) || (h_sync_width == 0))
 		return EINVAL;
 
 	/* Init panel size and blanking periods */
 	reg =
 	    ((uint32_t) (h_sync_width - 1) << 26) |
-	    ((uint32_t) (width + h_start_width + h_end_width - 1) << 16);
+	    ((uint32_t) (width + h_sync_width + h_start_width + h_end_width - 1)
+	     << 16);
 	__raw_writel(reg, SDC_HOR_CONF);
 
-	reg = ((uint32_t) (vSyncWidth - 1) << 26) | SDC_V_SYNC_WIDTH_L |
-	    ((uint32_t) (height + v_start_width + v_end_width - 1) << 16);
+	reg = ((uint32_t) (v_sync_width - 1) << 26) | SDC_V_SYNC_WIDTH_L |
+	    ((uint32_t)
+	     (height + v_sync_width + v_start_width + v_end_width - 1) << 16);
 	__raw_writel(reg, SDC_VER_CONF);
 
-	g_h_start_width = h_start_width;
-	g_v_start_width = v_start_width;
+	g_h_start_width = h_start_width + h_sync_width;
+	g_v_start_width = v_start_width + v_sync_width;
 
 	switch (panel) {
 	case IPU_PANEL_SHARP_TFT:

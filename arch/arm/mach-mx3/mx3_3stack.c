@@ -20,6 +20,7 @@
 
 #include <linux/types.h>
 #include <linux/sched.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/init.h>
@@ -186,6 +187,19 @@ static inline void mxc_init_nand_mtd(void)
 }
 #endif
 
+static void lcd_reset(void)
+{
+	/* ensure that LCDIO(1.8V) has been turn on */
+	/* active reset line GPIO */
+	mxc_request_iomux(MX31_PIN_LCS1, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+	mxc_set_gpio_dataout(MX31_PIN_LCS1, 0);
+	mxc_set_gpio_direction(MX31_PIN_LCS1, 0);
+	/* do reset */
+	msleep(10);		/* tRES >= 100us */
+	mxc_set_gpio_dataout(MX31_PIN_LCS1, 1);
+	msleep(60);
+}
+
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "pmic_spi",
@@ -195,7 +209,8 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	 .chip_select = 2,},
 	{
 	 .modalias = "lcd_spi",
-	 .max_speed_hz = 500000,
+	 .platform_data = (void *)lcd_reset,
+	 .max_speed_hz = 5000000,
 	 .bus_num = 1,
 	 .chip_select = 2,},
 };
