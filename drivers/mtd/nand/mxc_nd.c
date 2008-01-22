@@ -50,10 +50,10 @@ static struct mxc_mtd_s *mxc_nand_data = NULL;
  */
 #define TROP_US_DELAY   2000
 /*
- * Macros to get byte and bit positions of ECC
+ * Macros to get half word and bit positions of ECC
  */
-#define COLPOS(x)  ((x) >> 3)
-#define BITPOS(x) ((x)& 0xf)
+#define COLPOS(x) ((x) >> 4)
+#define BITPOS(x) ((x) & 0xf)
 
 /* Define single bit Error positions in Main & Spare area */
 #define MAIN_SINGLEBIT_ERROR 0x4
@@ -243,9 +243,9 @@ static void mxc_nd_correct_error(u8 buf_id, u16 eccpos, bool bSpareOnly)
 
 	/* Set the pointer for main / spare area */
 	if (!bSpareOnly) {
-		buf = MAIN_AREA0 + (col >> 1) + (512 * buf_id);
+		buf = (volatile u16 *)(MAIN_AREA0 + col + (256 * buf_id));
 	} else {
-		buf = SPARE_AREA0 + (col >> 1) + (16 * buf_id);
+		buf = (volatile u16 *)(SPARE_AREA0 + col + (8 * buf_id));
 	}
 
 	/* Fix the data */
@@ -1112,14 +1112,13 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 
 	int err = 0;
 	/* Allocate memory for MTD device structure and private data */
-	mxc_nand_data = kmalloc(sizeof(struct mxc_mtd_s), GFP_KERNEL);
+	mxc_nand_data = kzalloc(sizeof(struct mxc_mtd_s), GFP_KERNEL);
 	if (!mxc_nand_data) {
 		printk(KERN_ERR "%s: failed to allocate mtd_info\n",
 		       __FUNCTION__);
 		err = -ENOMEM;
 		goto out;
 	}
-	memset(mxc_nand_data, 0, sizeof(struct mxc_mtd_s));
 	memset((char *)&g_nandfc_info, 0, sizeof(g_nandfc_info));
 
 	mxc_nand_data->dev = &pdev->dev;
