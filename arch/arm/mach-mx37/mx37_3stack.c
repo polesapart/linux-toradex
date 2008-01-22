@@ -204,19 +204,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 #endif
 }
 
-/*! PMIC */
-static struct platform_device pmic_device = {
-	.name = "wm8350-imx37-3stack",
-	.id = 0,
-};
-
-static inline void mxc_init_pmic(void)
-{
-	if (platform_device_register(&pmic_device) < 0)
-		printk(KERN_ERR "Error: Registering the PMIC.\n");
-
-}
-
 /*!
  * Board specific initialization.
  */
@@ -229,7 +216,6 @@ static void __init mxc_board_init(void)
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 	mxc_init_nand_mtd();
-	mxc_init_pmic();
 }
 
 /*

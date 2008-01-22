@@ -1,0 +1,21 @@
+config SND_MXC_SOC
+ tristate "SoC Audio for the Freescale i.MX CPU"
+ depends on ARCH_MXC && SND
+ select SND_PCM
+ help
+   Say Y or M if you want to add support for codecs attached to
+   the MXC I2S or SSP interface. You will also need
+   to select the audio interfaces to support below.
+
+config SND_MXC_SOC_SSI
+ tristate
+
+config SND_SOC_IMX37_3STACK_WM8350
+ tristate "SoC Audio support for MX37 - WM8350"
+ select SND_MXC_SOC_SSI
+ select SND_SOC_WM8350
+ select PMIC_WM8350
+ help
+   Say Y if you want to add support for SoC audio on IMX37 3STACK
+   with the WM8350.
+

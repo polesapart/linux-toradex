@@ -1,5 +1,5 @@
 /*
- *  Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -21,7 +21,7 @@
 #define MXC_SSI_TX1_REG           0x4
 #define MXC_SSI_RX0_REG           0x8
 #define MXC_SSI_RX1_REG           0xC
-#define MXC_SSI_TXFIFO_WML        0x4
+#define MXC_SSI_TXFIFO_WML        0x2
 #define MXC_SSI_RXFIFO_WML        0x6
 
 typedef struct mxc_sdma_info_entry_s {
