@@ -27,8 +27,7 @@
 #if defined(__KERNEL__)
 
 #if defined(CONFIG_ARCH_MXC91321) || defined(CONFIG_ARCH_MXC91231)     \
-    || defined(CONFIG_ARCH_MX27) || defined(CONFIG_ARCH_MX33)          \
-    || defined(CONFIG_ARCH_MXC92323)
+    || defined(CONFIG_ARCH_MX27)  || defined(CONFIG_ARCH_MXC92323)
 #include <asm/arch/hardware.h>
 #define SAHA_BASE_ADDR SAHARA_BASE_ADDR
 #define SAHARA_IRQ     MXC_INT_SAHARA

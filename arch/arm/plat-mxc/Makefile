@@ -9,9 +9,7 @@ ifneq ($(CONFIG_ARCH_MX21)$(CONFIG_ARCH_MX27),y)
 obj-y += time.o spba.o sdma/
 endif
 
-ifneq ($(CONFIG_ARCH_MX33),y)
 obj-y += irq.o
-endif
 
 obj-$(CONFIG_ARCH_MX21) += dma_mx2.o
 obj-$(CONFIG_ARCH_MX27) += dma_mx2.o usb_common.o
