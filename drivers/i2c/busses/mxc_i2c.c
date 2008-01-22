@@ -679,12 +679,12 @@ static int mxci2c_probe(struct platform_device *pdev)
 	 * Set the adapter information
 	 */
 	strcpy(mxc_i2c->adap.name, pdev->name);
-	mxc_i2c->adap.id = id;
+	mxc_i2c->adap.id = mxc_i2c->adap.nr = id;
 	mxc_i2c->adap.algo = &mxc_i2c_algorithm;
 	mxc_i2c->adap.timeout = 1;
 	platform_set_drvdata(pdev, mxc_i2c);
 	i2c_set_adapdata(&mxc_i2c->adap, mxc_i2c);
-	if ((ret = i2c_add_adapter(&mxc_i2c->adap)) < 0) {
+	if ((ret = i2c_add_numbered_adapter(&mxc_i2c->adap)) < 0) {
 		goto err2;
 	}
 
