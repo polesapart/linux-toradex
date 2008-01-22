@@ -294,6 +294,11 @@
 #define SPARE_COUNT       4
 #define SPARE_SIZE        (SPARE_LEN * SPARE_COUNT)
 
+/* read column 464-465 byte but only 464 for bad block marker */
+#define BAD_BLK_MARKER_MA	IO_ADDRESS(NFC_BASE_ADDR + 0x600 + 464)
+/* read column 0-1 byte, but only 1 is used for swapped main area data */
+#define BAD_BLK_MARKER_SP	IO_ADDRESS(NFC_BASE_ADDR + 0x800)
+
 #define IS_4BIT_ECC       1
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
