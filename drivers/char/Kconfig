@@ -446,18 +446,6 @@ config MXC_SUPER_GEM
 	---help---
 	  Super GEM module called for transfers between MCU and DSP core.
 
-config MXC_SDMA_TTY
-	tristate "MXC SDMA TTY Driver"
-	depends on ARCH_MXC && MXC_SDMA_API
-	depends on !ARCH_MX3
-	depends on !ARCH_MX21
-	depends on !ARCH_MX27
-	select INPUT
-	default y
-	---help---
-	  This module is called from other modules for
-	  data transfers between MCU and DSP core.
-
 source "drivers/serial/Kconfig"
 
 config UNIX98_PTYS

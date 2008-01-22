@@ -98,8 +98,6 @@ obj-$(CONFIG_GPIO_TB0219)	+= tb0219.o
 obj-$(CONFIG_TELCLOCK)		+= tlclk.o
 obj-$(CONFIG_MXC_MU)		+= mxc_mu.o
 obj-$(CONFIG_MXC_IPC)		+= mxc_ipc.o
-obj-$(CONFIG_MXC_SDMA_TTY)	+= mxc_sdma_tty.o
-
 obj-$(CONFIG_MWAVE)		+= mwave/
 obj-$(CONFIG_AGP)		+= agp/
 obj-$(CONFIG_DRM)		+= drm/
