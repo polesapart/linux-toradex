@@ -1045,13 +1045,11 @@ static int mx31ads_common_drv_pcmcia_probe(struct platform_device *pdev,
 
 	down(&mx31ads_pcmcia_sockets_lock);
 
-	skt = kmalloc(sizeof(struct mx31ads_pcmcia_socket), GFP_KERNEL);
+	skt = kzalloc(sizeof(struct mx31ads_pcmcia_socket), GFP_KERNEL);
 	if (!skt) {
 		ret = -ENOMEM;
 		goto out;
 	}
-
-	memset(skt, 0, sizeof(struct mx31ads_pcmcia_socket));
 
 	/*
 	 * Initialise the socket structure.
@@ -1066,7 +1064,7 @@ static int mx31ads_common_drv_pcmcia_probe(struct platform_device *pdev,
 	skt->poll_timer.expires = jiffies + PCMCIA_POLL_PERIOD;
 
 	skt->irq = MX31ADS_PCMCIA_IRQ;
-	skt->dev = &pdev->dev;
+	skt->socket.dev.parent = &pdev->dev;
 	skt->ops = ops;
 
 	skt->clk = clk_get(NULL, "ahb_clk");
