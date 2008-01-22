@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -89,6 +89,25 @@ static uint8_t oob_data_2k[] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
 };
 
+static uint8_t oob_data_4k[] = {
+	0xff, 0xff, 0x85, 0x19, 0x03, 0x20, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
 static struct clk *nfc_clk;
 
 /*
@@ -102,6 +121,13 @@ static struct nand_ecclayout nand_hw_eccoob_512 = {
 };
 
 static struct nand_ecclayout nand_hw_eccoob_2k = {
+	.eccbytes = 9,
+	.eccpos = {7, 8, 9, 10, 11, 12, 13, 14, 15},
+	.oobavail = 4,
+	.oobfree = {{2, 4}}
+};
+
+static struct nand_ecclayout nand_hw_eccoob_4k = {
 	.eccbytes = 9,
 	.eccpos = {7, 8, 9, 10, 11, 12, 13, 14, 15},
 	.oobavail = 4,
@@ -136,7 +162,7 @@ static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static u8 mxc_main_xfer_buf[2048] ____cacheline_aligned;
+static u8 mxc_main_xfer_buf[4096] ____cacheline_aligned;
 
 /*
  * Functions that operate on the shadow table maintained in the RAM.
@@ -206,6 +232,37 @@ static void nfc_memcpy(void *dst, const void *src, int len)
 	}
 }
 
+/*
+ * Functions to transfer data to/from spare erea.
+ */
+static void copy_spare(struct mtd_info *mtd, char *pbuf, char *pspare, int len,
+		       bool bfrom)
+{
+	u16 ooblen = mtd->oobsize;
+	u8 i, count, size;
+
+	count = mtd->writesize >> 9;
+	size = (ooblen / count >> 1) << 1;
+
+	if (bfrom) {
+		for (i = 0; i < count - 1; i++) {
+			nfc_memcpy((void *)(pbuf + i * size),
+				   (void *)(pspare + i * SPARE_LEN), size);
+		}
+
+		nfc_memcpy((void *)(pbuf + i * size),
+			   (void *)(pspare + i * SPARE_LEN), len - i * size);
+	} else {
+		for (i = 0; i < count - 1; i++) {
+			nfc_memcpy((void *)(pspare + i * SPARE_LEN),
+				   (void *)(pbuf + i * size), size);
+		}
+
+		nfc_memcpy((void *)(pspare + i * SPARE_LEN),
+			   (void *)(pbuf + i * size), len - i * size);
+	}
+}
+
 /*!
  * This function polls the NFC to wait for the basic operation to complete by
  * checking the INT bit of config2 register.
@@ -223,15 +280,16 @@ static void wait_op_done(int maxRetries, bool useirq)
 				  REG_NFC_INTRRUPT);
 			wait_event(irq_waitq,
 				   (raw_read(REG_NFC_OPS_STAT) & NFC_OPS_STAT));
-			raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),
-				  REG_NFC_OPS_STAT);
+			WRITE_NFC_IP_REG((raw_read(REG_NFC_OPS_STAT) &
+					  ~NFC_OPS_STAT), REG_NFC_OPS_STAT);
 		}
 	} else {
 		while (1) {
 			maxRetries--;
 			if (raw_read(REG_NFC_OPS_STAT) & NFC_OPS_STAT) {
-				raw_write((raw_read(REG_NFC_OPS_STAT) &
-					   ~NFC_OPS_STAT), REG_NFC_OPS_STAT);
+				WRITE_NFC_IP_REG((raw_read(REG_NFC_OPS_STAT) &
+						  ~NFC_OPS_STAT),
+						 REG_NFC_OPS_STAT);
 				break;
 			}
 			udelay(1);
@@ -425,15 +483,17 @@ static int mxc_check_ecc_status(struct mtd_info *mtd)
 	u16 ecc_stat, err;
 	int no_subpages = 1;
 	int ret = 0;
+	u8 ecc_bit_mask, err_limit;
 
-	if (IS_2K_PAGE_NAND) {
-		no_subpages = 4;
-	}
+	ecc_bit_mask = (IS_4BIT_ECC ? 0x7 : 0xf);
+	err_limit = (IS_4BIT_ECC ? 0x4 : 0x8);
+
+	no_subpages = mtd->writesize >> 9;
 
 	ecc_stat = raw_read(REG_NFC_ECC_STATUS_RESULT);
 	do {
-		err = ecc_stat & 0x7;
-		if (err > 0x4) {
+		err = ecc_stat & ecc_bit_mask;
+		if (err > err_limit) {
 			return -1;
 		} else {
 			ret += err;
@@ -573,6 +633,8 @@ static void mxc_nand_write_buf(struct mtd_info *mtd,
 	panic("re-work needed\n");
 	if (g_nandfc_info.colAddr >= mtd->writesize || g_nandfc_info.bSpareOnly) {
 		base = (uint32_t *) SPARE_AREA0;
+		copy_spare(mtd, (char *)buf, (char *)base, len, false);
+		return;
 	} else {
 		g_nandfc_info.colAddr += len;
 		base = (uint32_t *) MAIN_AREA0;
@@ -596,6 +658,8 @@ static void mxc_nand_read_buf(struct mtd_info *mtd, u_char * buf, int len)
 
 	if (g_nandfc_info.colAddr >= mtd->writesize || g_nandfc_info.bSpareOnly) {
 		base = (uint32_t *) SPARE_AREA0;
+		copy_spare(mtd, buf, (char *)base, len, true);
+		return;
 	} else {
 		base = (uint32_t *) MAIN_AREA0;
 		g_nandfc_info.colAddr += len;
@@ -683,6 +747,9 @@ static void mxc_do_addr_cycle(struct mtd_info *mtd, int column, int page_addr)
 		if (IS_2K_PAGE_NAND) {
 			/* another col addr cycle for 2k page */
 			send_addr((column >> 8) & 0xF, false);
+		} else if (IS_4K_PAGE_NAND) {
+			/* another col addr cycle for 4k page */
+			send_addr((column >> 8) & 0x1F, false);
 		}
 	}
 	if (page_addr != -1) {
@@ -704,10 +771,11 @@ static void read_full_page(struct mtd_info *mtd, int page_addr)
 
 	mxc_do_addr_cycle(mtd, 0, page_addr);
 
-	if (IS_2K_PAGE_NAND) {
+	if (IS_LARGE_PAGE_NAND) {
 		send_cmd(NAND_CMD_READSTART, false);
-		READ_2K_PAGE;
-		mxc_swap_2k_bi_main_sp();
+		READ_PAGE();
+		if (IS_2K_PAGE_NAND)
+			mxc_swap_2k_bi_main_sp();
 	} else {
 		send_read_page(0);
 	}
@@ -787,10 +855,14 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 			mark_oob_data_dirty(page_addr, 1);
 		} else {
 			if (is_oob_data_dirty(page_addr)) {
-				memcpy((void *)SPARE_AREA0, shadow_oob_data,
-				       mtd->oobsize);
+				copy_spare(mtd, shadow_oob_data,
+					   (char *)SPARE_AREA0, mtd->oobsize,
+					   false);
 			} else {
-				memset((void *)SPARE_AREA0, 0xFF, mtd->oobsize);
+				copy_spare(mtd,
+					   ((struct nand_chip *)(mtd->priv))->
+					   oob_poi, (char *)SPARE_AREA0,
+					   mtd->oobsize, false);
 			}
 			g_nandfc_info.bSpareOnly = false;
 			/* Set program pointer to page start */
@@ -801,8 +873,9 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 
 	case NAND_CMD_PAGEPROG:
 		if (!g_nandfc_info.bSpareOnly) {
-			if (IS_2K_PAGE_NAND) {
-			PROG_2K_PAGE} else {
+			if (IS_LARGE_PAGE_NAND) {
+				PROG_PAGE();
+			} else {
 				send_prog_page(0);
 			}
 		} else {
@@ -812,18 +885,22 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 
 	case NAND_CMD_ERASE1:
 		/*Decide to erase */
-		read_full_page(mtd, page_addr);
-		if (is_page_clean(mtd)) {
-			mark_oob_data_clean(page_addr);
-			skip_erase = 1;
-			return;
+		if (!IS_4K_PAGE_NAND) {
+			read_full_page(mtd, page_addr);
+			if (is_page_clean(mtd)) {
+				mark_oob_data_clean(page_addr);
+				skip_erase = 1;
+				return;
+			}
 		}
 		useirq = false;
 		break;
 	case NAND_CMD_ERASE2:
-		if (skip_erase) {
-			skip_erase = 0;
-			return;
+		if (!IS_4K_PAGE_NAND) {
+			if (skip_erase) {
+				skip_erase = 0;
+				return;
+			}
 		}
 		useirq = false;
 		break;
@@ -843,11 +920,11 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 
 	case NAND_CMD_READOOB:
 	case NAND_CMD_READ0:
-		if (IS_2K_PAGE_NAND) {
+		if (IS_LARGE_PAGE_NAND) {
 			/* send read confirm command */
 			send_cmd(NAND_CMD_READSTART, true);
 			/* read for each AREA */
-			READ_2K_PAGE;
+			READ_PAGE();
 		} else {
 			send_read_page(0);
 		}
@@ -933,7 +1010,7 @@ static int mxc_nand_read_oob(struct mtd_info *mtd, struct nand_chip *chip,
 		sndcmd = 0;
 	}
 
-	nfc_memcpy((void *)chip->oob_poi, (void *)SPARE_AREA0, mtd->oobsize);
+	copy_spare(mtd, chip->oob_poi, (char *)SPARE_AREA0, mtd->oobsize, true);
 	return sndcmd;
 }
 
@@ -977,12 +1054,12 @@ static void mxc_swap_2k_bi_main_sp(void)
 {
 	u16 tmp1, tmp2, new_tmp1;
 
-	tmp1 = __raw_readw(BAD_BLK_MARKER_464);
-	tmp2 = __raw_readw(BAD_BLK_MARKER_SP_0);
+	tmp1 = __raw_readw(BAD_BLK_MARKER_MA);
+	tmp2 = __raw_readw(BAD_BLK_MARKER_SP);
 	new_tmp1 = (tmp1 & 0xFF00) | (tmp2 >> 8);
 	tmp2 = (tmp1 << 8) | (tmp2 & 0xFF);
-	__raw_writew(new_tmp1, BAD_BLK_MARKER_464);
-	__raw_writew(tmp2, BAD_BLK_MARKER_SP_0);
+	__raw_writew(new_tmp1, BAD_BLK_MARKER_MA);
+	__raw_writew(tmp2, BAD_BLK_MARKER_SP);
 
 }
 
@@ -1040,18 +1117,48 @@ static struct nand_bbt_descr largepage_memorybased = {
 	.pattern = scan_ff_pattern
 };
 
+/* Generic flash bbt decriptors
+*/
+static uint8_t bbt_pattern[] = { 'B', 'b', 't', '0' };
+static uint8_t mirror_pattern[] = { '1', 't', 'b', 'B' };
+
+static struct nand_bbt_descr bbt_main_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE
+	    | NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0,
+	.len = 4,
+	.veroffs = 4,
+	.maxblocks = 4,
+	.pattern = bbt_pattern
+};
+
+static struct nand_bbt_descr bbt_mirror_descr = {
+	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE
+	    | NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
+	.offs = 0,
+	.len = 4,
+	.veroffs = 4,
+	.maxblocks = 4,
+	.pattern = mirror_pattern
+};
+
 static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 {
 	struct nand_chip *this = mtd->priv;
+	int n;
 
 	/* Do some configurations before scanning */
 	page_to_block_shift = this->phys_erase_shift - this->page_shift;
 	g_page_mask = this->pagemask;
 
 	if (IS_2K_PAGE_NAND) {
-		NFMS |= (1 << NFMS_NF_PG_SZ);
+		SET_NFMS(1 << NFMS_NF_PG_SZ);
 		this->ecc.layout = &nand_hw_eccoob_2k;
 		shadow_oob_data = oob_data_2k;
+	} else if (IS_4K_PAGE_NAND) {
+		SET_NFMS(1 << NFMS_NF_PG_SZ);
+		this->ecc.layout = &nand_hw_eccoob_4k;
+		shadow_oob_data = oob_data_4k;
 	} else {
 		this->ecc.layout = &nand_hw_eccoob_512;
 		shadow_oob_data = oob_data_512;
@@ -1059,12 +1166,26 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 
 	/* propagate ecc.layout to mtd_info */
 	mtd->ecclayout = this->ecc.layout;
-
-	this->bbt_td = NULL;
-	this->bbt_md = NULL;
+	if (IS_4K_PAGE_NAND) {
+		this->bbt_td = &bbt_main_descr;
+		this->bbt_md = &bbt_mirror_descr;
+	} else {
+		this->bbt_td = NULL;
+		this->bbt_md = NULL;
+	}
 	if (!this->badblock_pattern) {
 		this->badblock_pattern = (mtd->writesize > 512) ?
 		    &largepage_memorybased : &smallpage_memorybased;
+	}
+
+	n = mtd->size >> this->phys_erase_shift;
+	/* each bit is used for one page's dirty information */
+	oob_data_shadow_p = (u8 *) kzalloc(n / 8, GFP_KERNEL);
+	if (!oob_data_shadow_p) {
+		printk(KERN_ERR "%s: failed to allocate oob_data_shadow_p\n",
+		       __FUNCTION__);
+		kfree(mxc_nand_data);
+		return -ENOMEM;
 	}
 	/* Build bad block table */
 	return nand_scan_bbt(mtd, this->badblock_pattern);
@@ -1084,7 +1205,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	struct nand_chip *this;
 	struct mtd_info *mtd;
 	struct flash_platform_data *flash = pdev->dev.platform_data;
-	int nr_parts = 0, n, err = 0;
+	int nr_parts = 0, err = 0;
 
 	nfc_axi_base = IO_ADDRESS(NFC_AXI_BASE_ADDR);
 	nfc_ip_base = IO_ADDRESS(NFC_BASE_ADDR);
@@ -1123,11 +1244,14 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	this->read_buf = mxc_nand_read_buf;
 	this->verify_buf = mxc_nand_verify_buf;
 	this->scan_bbt = mxc_nand_scan_bbt;
+	if (IS_4K_PAGE_NAND)
+		this->options |= NAND_USE_FLASH_BBT;	/* always use flash based bbt */
+
 	/* NAND bus width determines access funtions used by upper layer */
 	if (flash->width == 2) {
 		this->read_byte = mxc_nand_read_byte16;
 		this->options |= NAND_BUSWIDTH_16;
-		NFMS |= (1 << NFMS_NF_DWIDTH);
+		SET_NFMS(1 << NFMS_NF_DWIDTH);
 	}
 
 	nfc_clk = clk_get(&pdev->dev, "nfc_clk");
@@ -1203,16 +1327,6 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, mtd);
-
-	n = mtd->size / mtd->erasesize;
-	/* each bit is used for one page's dirty information */
-	oob_data_shadow_p = (u8 *) kzalloc(n / 8, GFP_KERNEL);
-	if (!oob_data_shadow_p) {
-		printk(KERN_ERR "%s: failed to allocate oob_data_shadow_p\n",
-		       __FUNCTION__);
-		err = -ENOMEM;
-		goto out;
-	}
 
 	/* Erase all the blocks of a NAND -- depend on the config */
 	mxc_low_erase(mtd);

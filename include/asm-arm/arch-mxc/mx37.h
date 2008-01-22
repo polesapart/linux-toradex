@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -234,14 +234,14 @@
  * it returns 0xDEADBEEF
  */
 #define IO_ADDRESS(x)   \
-        (((x >= (unsigned long)(IRAM_BASE_ADDR)) && (x < (unsigned long)((IRAM_BASE_ADDR + IRAM_SIZE)))) ? IRAM_IO_ADDRESS(x):\
-        ((x >= (unsigned long)PLATFORM_BASE_ADDR) && (x < (unsigned long)(PLATFORM_BASE_ADDR + PLATFORM_SIZE))) ? PLATFORM_IO_ADDRESS(x):\
-        ((x >= (unsigned long)TZIC_BASE_ADDR) && (x < (unsigned long)(TZIC_BASE_ADDR + TZIC_SIZE))) ? TZIC_IO_ADDRESS(x):\
-        ((x >= (unsigned long)DEBUG_BASE_ADDR) && (x < (unsigned long)(DEBUG_BASE_ADDR + DEBUG_SIZE))) ? DEBUG_IO_ADDRESS(x):\
-        ((x >= (unsigned long)SPBA0_BASE_ADDR) && (x < (unsigned long)(SPBA0_BASE_ADDR + SPBA0_SIZE))) ? SPBA0_IO_ADDRESS(x):\
-        ((x >= (unsigned long)AIPS1_BASE_ADDR) && (x < (unsigned long)(AIPS1_BASE_ADDR + AIPS1_SIZE))) ? AIPS1_IO_ADDRESS(x):\
-        ((x >= (unsigned long)AIPS2_BASE_ADDR) && (x < (unsigned long)(AIPS2_BASE_ADDR + AIPS2_SIZE))) ? AIPS2_IO_ADDRESS(x):\
-        ((x >= (unsigned long)(NFC_BASE_ADDR_AXI)) && (x < (unsigned long)((NFC_BASE_ADDR_AXI + NFC_AXI_SIZE)))) ? NFC_BASE_ADDR_AXI_IO_ADDRESS(x):\
+        (((x >= (unsigned long)IRAM_BASE_ADDR) && (x < (unsigned long)IRAM_BASE_ADDR + IRAM_SIZE)) ? IRAM_IO_ADDRESS(x):\
+        ((x >= (unsigned long)PLATFORM_BASE_ADDR) && (x < (unsigned long)PLATFORM_BASE_ADDR + PLATFORM_SIZE)) ? PLATFORM_IO_ADDRESS(x):\
+        ((x >= (unsigned long)TZIC_BASE_ADDR) && (x < (unsigned long)TZIC_BASE_ADDR + TZIC_SIZE)) ? TZIC_IO_ADDRESS(x):\
+        ((x >= (unsigned long)DEBUG_BASE_ADDR) && (x < (unsigned long)DEBUG_BASE_ADDR + DEBUG_SIZE)) ? DEBUG_IO_ADDRESS(x):\
+        ((x >= (unsigned long)SPBA0_BASE_ADDR) && (x < (unsigned long)SPBA0_BASE_ADDR + SPBA0_SIZE)) ? SPBA0_IO_ADDRESS(x):\
+        ((x >= (unsigned long)AIPS1_BASE_ADDR) && (x < (unsigned long)AIPS1_BASE_ADDR + AIPS1_SIZE)) ? AIPS1_IO_ADDRESS(x):\
+        ((x >= (unsigned long)AIPS2_BASE_ADDR) && (x < (unsigned long)AIPS2_BASE_ADDR + AIPS2_SIZE)) ? AIPS2_IO_ADDRESS(x):\
+        ((x >= (unsigned long)NFC_BASE_ADDR_AXI) && (x < (unsigned long)NFC_BASE_ADDR_AXI + NFC_AXI_SIZE)) ? NFC_BASE_ADDR_AXI_IO_ADDRESS(x):\
         0xDEADBEEF)
 
 /*

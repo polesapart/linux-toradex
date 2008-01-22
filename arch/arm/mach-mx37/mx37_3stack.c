@@ -71,9 +71,9 @@ unsigned long board_get_ckih_rate(void)
 	|| defined(CONFIG_MTD_NAND_MXC_V2) || defined(CONFIG_MTD_NAND_MXC_V2_MODULE) \
 	|| defined(CONFIG_MTD_NAND_MXC_V3)
 
-static struct mtd_partition mxc_nand_partitions[4] = {
+static struct mtd_partition mxc_nand_partitions[] = {
 	{
-	 .name = "IPL-SPL",
+	 .name = "bootloader",
 	 .offset = 0,
 	 .size = 2 * 1024 * 1024},
 	{
@@ -85,9 +85,17 @@ static struct mtd_partition mxc_nand_partitions[4] = {
 	 .offset = MTDPART_OFS_APPEND,
 	 .size = 128 * 1024 * 1024},
 	{
-	 .name = "nand.userfs",
+	 .name = "nand.userfs1",
 	 .offset = MTDPART_OFS_APPEND,
-	 .size = MTDPART_SIZ_FULL},
+	 .size = 256 * 1024 * 1024},
+	{
+	 .name = "nand.userfs2",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 512 * 1024 * 1024},
+	{
+	 .name = "nand.userfs3",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 1024 * 1024 * 1024},
 };
 
 static struct flash_platform_data mxc_nand_data = {

@@ -15,6 +15,22 @@ config MXC_SDMA_API
            This selects the Freescale MXC SDMA API.
            If unsure, say N.
 
+config ARCH_MXC_HAS_NFC_V3
+        bool "MXC NFC Hardware Version 3"
+        depends on ARCH_MX37
+        default y
+        help
+           This selects the Freescale MXC Nand Flash Controller Hardware Version 3
+           If unsure, say N.
+
+config ARCH_MXC_HAS_NFC_V3_1
+        bool "MXC NFC Hardware Version 3.1"
+        depends on ARCH_MXC_HAS_NFC_V3
+        default y
+        help
+           This selects the Freescale MXC Nand Flash Controller Hardware Version 3.1
+           If unsure, say N.
+
 menu "Device options"
 
 config I2C_MXC_SELECT1
