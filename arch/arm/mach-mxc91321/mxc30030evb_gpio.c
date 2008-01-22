@@ -476,6 +476,7 @@ int sdhc_init_card_det(int id)
 	if (id == 0) {
 		iomux_config_mux(PIN_GPIO37, OUTPUTCONFIG_FUNC,
 				 INPUTCONFIG_FUNC);
+		iomux_config_pad(PIN_GPIO37, PAD_CTL_PKE_NONE);
 		return IOMUX_TO_IRQ(PIN_GPIO37);
 	} else {
 		return 0;	//SD2 not supported
