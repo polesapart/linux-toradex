@@ -25,7 +25,7 @@
  * SoC dynamic audio power managment
  *
  * We can have upto 4 power domains
- * 	1. Codec domain - VREF, VMID
+ *  1. Codec domain - VREF, VMID
  *     Usually controlled at codec probe/remove, although can be set
  *     at stream time if power is not needed for sidetone, etc.
  *  2. Platform/Machine domain - physically connected inputs and outputs
@@ -131,20 +131,41 @@
 	.shift = wshift, .invert = winvert}
 
 /* dapm kcontrol types */
-#define SOC_DAPM_SINGLE(xname, reg, shift, mask, invert) \
+#define SOC_DAPM_SINGLE(xname, reg, shift, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw, \
 	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
-	.private_value =  SOC_SINGLE_VALUE(reg, shift, mask, invert) }
-#define SOC_DAPM_DOUBLE(xname, reg, shift_left, shift_right, mask, invert, \
+	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
+#define SOC_DAPM_DOUBLE(xname, reg, shift_left, shift_right, max, invert, \
 	power) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw, \
  	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
  	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
- 		 ((mask) << 16) | ((invert) << 24) }
+ 		 ((max) << 16) | ((invert) << 24) }
+#define SOC_DAPM_SINGLE_TLV(xname, reg, shift, max, invert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.info = snd_soc_info_volsw, \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE |\
+	 SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
+	.tlv.p = (tlv_array), \
+	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
+	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
+#define SOC_DAPM_DOUBLE_TLV(xname, reg, shift_left, shift_right, max, invert, \
+	power, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE |\
+	 SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw, \
+ 	.get = snd_soc_dapm_get_volsw, .put = snd_soc_dapm_put_volsw, \
+ 	.private_value = (reg) | ((shift_left) << 8) | ((shift_right) << 12) |\
+ 		 ((max) << 16) | ((invert) << 24) }
 #define SOC_DAPM_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_enum_double, \
  	.get = snd_soc_dapm_get_enum_double, \
  	.put = snd_soc_dapm_put_enum_double, \
@@ -172,7 +193,58 @@
 	(e & (SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMU))
 #define SND_SOC_DAPM_EVENT_OFF(e)	\
 	(e & (SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMD))
-
+	
+/*
+ * DAPM Policy
+ * 
+ * Policy only applies to the platform, path and stream DAPM power domains.
+ * 
+ * There are 4 DAPM Machine policies :-
+ *  1. Automatic Stream - power is automatically switched before stream start
+ *  and after stream stop. This is the most aggresive power saving mode,
+ *  although it may cause audable pops and clicks during switching.
+ * 
+ *  2. Automatic Path - power is automatically switched at all times.
+ *  This mode keeps valid paths (has valid sink & source) powered on during
+ *  D0, D1, D3 and D3hot operating points. It will use more power than mode 1,
+ *  although there will be reduced pops and clicks.
+ * 
+ *  3. Manual. All widgets are in the off state unless set manually in 
+ *  machine driver.
+ * 
+ *  4. All on. All widgets are in the on state. No pops and clicks, however 
+ *  burns more power. Useful for testing.
+ * 
+ */
+#define SND_SOC_DAPM_POLICY_STREAM	0x0
+#define SND_SOC_DAPM_POLICY_PATH	0x1
+#define SND_SOC_DAPM_POLICY_MANUAL	0x2
+#define SND_SOC_DAPM_POLICY_ALL_ON	0x3
+	
+/*
+ * DAPM Widget Operating Mode (WOM)
+ * 
+ * WOM is widget/component specific and applies to all DAPM power domains. It 
+ * is set per widget and is independent of DAPM policy.
+ * 
+ * There are 3 generic modes (custom modes are supported) :-
+ * 
+ *  1. Max Quality - maximum audio quality is preffered over power saving.
+ *  (e.g. DAC oversampling can be increased for higher quality at the expense
+ *  of extra power consumption).
+ * 
+ *  2. Min Power - minimum power use is preffered over audio quality.
+ *  (e.g. DAC oversampling can be reduced to save power at the expense of
+ *  audio quality).
+ * 
+ *  3. Compromise - Audio quality and power saving are preffered. Will not
+ *  be as high quality as 1 or save as much power as 2.
+ *  
+ */
+#define SND_SOC_DAPM_WOM_QUALITY	0x0
+#define SND_SOC_DAPM_WOM_POWER	0x1
+#define SND_SOC_DAPM_WOM_COMP	0x2
+ 
 struct snd_soc_dapm_widget;
 enum snd_soc_dapm_type;
 struct snd_soc_dapm_path;
@@ -187,26 +259,30 @@ int snd_soc_dapm_get_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_dapm_put_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_dapm_new_control(struct snd_soc_codec *codec,
-	const struct snd_soc_dapm_widget *widget);
+int snd_soc_dapm_new_control(struct snd_soc_machine *machine,
+	struct snd_soc_codec *codec, const struct snd_soc_dapm_widget *widget);
 
 /* dapm path setup */
-int snd_soc_dapm_connect_input(struct snd_soc_codec *codec,
+int snd_soc_dapm_connect_input(struct snd_soc_machine *machine,
 	const char *sink_name, const char *control_name, const char *src_name);
-int snd_soc_dapm_new_widgets(struct snd_soc_codec *codec);
-void snd_soc_dapm_free(struct snd_soc_device *socdev);
+int snd_soc_dapm_new_widgets(struct snd_soc_machine *machine);
+void snd_soc_dapm_free(struct snd_soc_machine *machine);
 
 /* dapm events */
-int snd_soc_dapm_stream_event(struct snd_soc_codec *codec, char *stream,
+int snd_soc_dapm_stream_event(struct snd_soc_machine *machine, char *stream,
 	int event);
+int snd_soc_dapm_device_event(struct snd_soc_pcm_link *pcm_link, int event);
 
 /* dapm sys fs - used by the core */
 int snd_soc_dapm_sys_add(struct device *dev);
 
 /* dapm audio endpoint control */
-int snd_soc_dapm_set_endpoint(struct snd_soc_codec *codec,
+int snd_soc_dapm_set_endpoint(struct snd_soc_machine *machine,
 	char *pin, int status);
-int snd_soc_dapm_sync_endpoints(struct snd_soc_codec *codec);
+int snd_soc_dapm_sync_endpoints(struct snd_soc_machine *machine);
+
+/* policy */
+int snd_soc_dapm_set_policy(struct snd_soc_machine *machine, int policy);
 
 /* dapm widget types */
 enum snd_soc_dapm_type {
@@ -253,6 +329,7 @@ struct snd_soc_dapm_widget {
 	char *name;		/* widget name */
 	char *sname;	/* stream name */
 	struct snd_soc_codec *codec;
+	struct snd_soc_machine *machine;
 	struct list_head list;
 
 	/* dapm control */
@@ -281,6 +358,15 @@ struct snd_soc_dapm_widget {
 	/* widget input and outputs */
 	struct list_head sources;
 	struct list_head sinks;
+	
+	/* operating modes */
+	struct list_head op_mode_list;
+};
+
+struct snd_soc_widget_op_mode {
+	struct list_head list;
+	char name[16];
+	int (*set)(struct snd_soc_dapm_widget *w, int mode);
 };
 
 #endif

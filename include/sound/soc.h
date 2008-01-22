@@ -13,6 +13,7 @@
 #ifndef __LINUX_SND_SOC_H
 #define __LINUX_SND_SOC_H
 
+#include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
@@ -22,32 +23,61 @@
 #include <sound/control.h>
 #include <sound/ac97_codec.h>
 
-#define SND_SOC_VERSION "0.13.1"
+#define SND_SOC_VERSION "0.20"
 
 /*
  * Convenience kcontrol builders
  */
-#define SOC_SINGLE_VALUE(reg,shift,mask,invert) ((reg) | ((shift) << 8) |\
-	((shift) << 12) | ((mask) << 16) | ((invert) << 24))
-#define SOC_SINGLE_VALUE_EXT(reg,mask,invert) ((reg) | ((mask) << 16) |\
+#define SOC_SINGLE_VALUE(reg,shift,max,invert) ((reg) | ((shift) << 8) |\
+	((shift) << 12) | ((max) << 16) | ((invert) << 24))
+#define SOC_SINGLE_VALUE_EXT(reg,max,invert) ((reg) | ((max) << 16) |\
 	((invert) << 31))
-#define SOC_SINGLE(xname, reg, shift, mask, invert) \
+#define SOC_SINGLE(xname, reg, shift, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
 	.put = snd_soc_put_volsw, \
-	.private_value =  SOC_SINGLE_VALUE(reg, shift, mask, invert) }
-#define SOC_DOUBLE(xname, reg, shift_left, shift_right, mask, invert) \
+	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
+#define SOC_SINGLE_TLV(xname, reg, shift, max, invert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE |\
+	 SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
+	.put = snd_soc_put_volsw, \
+	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
+#define SOC_DOUBLE(xname, reg, shift_left, shift_right, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw, \
 	.put = snd_soc_put_volsw, \
 	.private_value = (reg) | ((shift_left) << 8) | \
-		((shift_right) << 12) | ((mask) << 16) | ((invert) << 24) }
-#define SOC_DOUBLE_R(xname, reg_left, reg_right, shift, mask, invert) \
+		((shift_right) << 12) | ((max) << 16) | ((invert) << 24) }
+#define SOC_DOUBLE_R(xname, reg_left, reg_right, shift, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw_2r, \
 	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_volsw_2r, \
 	.private_value = (reg_left) | ((shift) << 8)  | \
-		((mask) << 12) | ((invert) << 20) | ((reg_right) << 24) }
+		((max) << 12) | ((invert) << 20) | ((reg_right) << 24) }
+#define SOC_DOUBLE_TLV(xname, reg, shift_left, shift_right, max, invert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE |\
+	 SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw, \
+	.put = snd_soc_put_volsw, \
+	.private_value = (reg) | ((shift_left) << 8) | \
+		((shift_right) << 12) | ((max) << 16) | ((invert) << 24) }
+#define SOC_DOUBLE_R_TLV(xname, reg_left, reg_right, shift, max, invert, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE |\
+	 SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw_2r, \
+	.get = snd_soc_get_volsw_2r, .put = snd_soc_put_volsw_2r, \
+	.private_value = (reg_left) | ((shift) << 8)  | \
+		((max) << 12) | ((invert) << 20) | ((reg_right) << 24) }
 #define SOC_ENUM_DOUBLE(xreg, xshift_l, xshift_r, xmask, xtexts) \
 {	.reg = xreg, .shift_l = xshift_l, .shift_r = xshift_r, \
 	.mask = xmask, .texts = xtexts }
@@ -57,22 +87,26 @@
 {	.mask = xmask, .texts = xtexts }
 #define SOC_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,\
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_enum_double, \
 	.get = snd_soc_get_enum_double, .put = snd_soc_put_enum_double, \
 	.private_value = (unsigned long)&xenum }
 #define SOC_SINGLE_EXT(xname, xreg, xshift, xmask, xinvert,\
 	 xhandler_get, xhandler_put) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_volsw, \
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = SOC_SINGLE_VALUE(xreg, xshift, xmask, xinvert) }
 #define SOC_SINGLE_BOOL_EXT(xname, xdata, xhandler_get, xhandler_put) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_bool_ext, \
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = xdata }
 #define SOC_ENUM_EXT(xname, xenum, xhandler_get, xhandler_put) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_READWRITE | SNDRV_CTL_ELEM_ACCESS_VOLATILE,\
 	.info = snd_soc_info_enum_ext, \
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = (unsigned long)&xenum }
@@ -101,8 +135,20 @@
 /*
  * DAI Gating
  */
-#define SND_SOC_DAIFMT_CONT			(0 << 4)	/* continuous clock */
+#define SND_SOC_DAIFMT_CONT		(0 << 4)	/* continuous clock */
 #define SND_SOC_DAIFMT_GATED		(1 << 4)	/* clock is gated when not Tx/Rx */
+
+/*
+ * DAI Sync
+ * Synchronous LR (Left Right) clocks and Frame signals.
+ */
+#define SND_SOC_DAIFMT_SYNC		(0 << 5)	/* Tx FRM = Rx FRM */ 
+#define SND_SOC_DAIFMT_ASYNC		(1 << 5)	/* Tx FRM ~ Rx FRM */ 
+
+/*
+ * TDM
+ */
+#define SND_SOC_DAIFMT_TDM		(1 << 6)
 
 /*
  * DAI hardware signal inversions
@@ -128,7 +174,6 @@
 #define SND_SOC_DAIFMT_INV_MASK			0x0f00
 #define SND_SOC_DAIFMT_MASTER_MASK		0xf000
 
-
 /*
  * Master Clock Directions
  */
@@ -143,36 +188,58 @@
 #define SND_SOC_DAI_AC97_ID2	(1 << 2)
 #define SND_SOC_DAI_AC97_ID3	(1 << 3)
 
-struct snd_soc_device;
+#define SND_SOC_MACHINE_NAME_SIZE	32
+#define SND_SOC_CODEC_NAME_SIZE	32
+#define SND_SOC_PLATFORM_NAME_SIZE	32
+#define SND_SOC_DAI_NAME_SIZE	32
+#define SND_SOC_PCM_NAME_SIZE	32
+
 struct snd_soc_pcm_stream;
 struct snd_soc_ops;
-struct snd_soc_dai_mode;
-struct snd_soc_pcm_runtime;
-struct snd_soc_codec_dai;
-struct snd_soc_cpu_dai;
-struct snd_soc_codec;
-struct snd_soc_machine_config;
 struct soc_enum;
-struct snd_soc_ac97_ops;
-struct snd_soc_clock_info;
+struct snd_soc_machine;
+struct snd_soc_dai;
+struct snd_soc_codec;
+struct snd_soc_platform;
+struct snd_soc_pcm_link;
+struct snd_soc_pcm_link_ops;
 
-typedef int (*hw_write_t)(void *,const char* ,int);
-typedef int (*hw_read_t)(void *,char* ,int);
+/* ASoC audio device types */
+enum snd_soc_bus_device_type {
+	SND_SOC_BUS_TYPE_PCM = 0,
+	SND_SOC_BUS_TYPE_DMA,
+	SND_SOC_BUS_TYPE_CODEC,
+	SND_SOC_BUS_TYPE_DAI,
+};
 
-extern struct snd_ac97_bus_ops soc_ac97_ops;
+extern struct bus_type asoc_bus_type;
 
 /* pcm <-> DAI connect */
-void snd_soc_free_pcms(struct snd_soc_device *socdev);
-int snd_soc_new_pcms(struct snd_soc_device *socdev, int idx, const char *xid);
-int snd_soc_register_card(struct snd_soc_device *socdev);
+int snd_soc_pcm_new(struct snd_soc_pcm_link *pcm_link, int playback, 
+	int capture);
+void snd_soc_machine_free(struct snd_soc_machine *machine);
+int snd_soc_new_card(struct snd_soc_machine *machine, int num_pcm_links, 
+	int idx, const char *xid);
+int snd_soc_register_card(struct snd_soc_machine *machine);
+struct snd_soc_pcm_link *snd_soc_pcm_link_new(
+	struct snd_soc_machine *machine, const char *name,
+	const struct snd_soc_pcm_link_ops *link_ops, 
+	const char *platform_id, const char *codec_id, 
+	const char *codec_dai_id, const char *cpu_dai_id);
+int snd_soc_pcm_link_attach(struct snd_soc_pcm_link *pcm_link);
+
+int snd_soc_register_codec_dai(struct snd_soc_dai *dai);
+int snd_soc_register_cpu_dai(struct snd_soc_dai *dai);
+int snd_soc_register_codec(struct snd_soc_codec *codec);
+int snd_soc_register_platform(struct snd_soc_platform *platform);
 
 /* set runtime hw params */
 int snd_soc_set_runtime_hwparams(struct snd_pcm_substream *substream,
 	const struct snd_pcm_hardware *hw);
 
 /* codec IO */
-#define snd_soc_read(codec, reg) codec->read(codec, reg)
-#define snd_soc_write(codec, reg, value) codec->write(codec, reg, value)
+#define snd_soc_read(codec, reg) codec->ops->read(codec, reg)
+#define snd_soc_write(codec, reg, value) codec->ops->write(codec, reg, value)
 
 /* codec register bit access */
 int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
@@ -180,9 +247,13 @@ int snd_soc_update_bits(struct snd_soc_codec *codec, unsigned short reg,
 int snd_soc_test_bits(struct snd_soc_codec *codec, unsigned short reg,
 				unsigned short mask, unsigned short value);
 
-int snd_soc_new_ac97_codec(struct snd_soc_codec *codec,
+int snd_soc_new_ac97_codec(struct snd_soc_pcm_link *pcm_link,
 	struct snd_ac97_bus_ops *ops, int num);
-void snd_soc_free_ac97_codec(struct snd_soc_codec *codec);
+void snd_soc_free_ac97_codec(struct snd_soc_pcm_link *pcm_link);
+
+/* suspend and resume */
+int snd_soc_suspend(struct snd_soc_machine *machine, pm_message_t state);
+int snd_soc_resume(struct snd_soc_machine *machine);
 
 /*
  *Controls
@@ -235,217 +306,220 @@ struct snd_soc_ops {
 	int (*trigger)(struct snd_pcm_substream *, int);
 };
 
-/* ASoC codec DAI ops */
-struct snd_soc_codec_ops {
-	/* codec DAI clocking configuration */
-	int (*set_sysclk)(struct snd_soc_codec_dai *codec_dai,
-		int clk_id, unsigned int freq, int dir);
-	int (*set_pll)(struct snd_soc_codec_dai *codec_dai,
-		int pll_id, unsigned int freq_in, unsigned int freq_out);
-	int (*set_clkdiv)(struct snd_soc_codec_dai *codec_dai,
+/* ASoC DAI ops */
+struct snd_soc_dai_ops {
+	/* DAI clocking configuration */
+	int (*set_sysclk)(struct snd_soc_dai *dai, int clk_id, 
+		unsigned int freq, int dir);
+	int (*set_clkdiv)(struct snd_soc_dai *dai,
 		int div_id, int div);
-
-	/* CPU DAI format configuration */
-	int (*set_fmt)(struct snd_soc_codec_dai *codec_dai,
-		unsigned int fmt);
-	int (*set_tdm_slot)(struct snd_soc_codec_dai *codec_dai,
-		unsigned int mask, int slots);
-	int (*set_tristate)(struct snd_soc_codec_dai *, int tristate);
-
-	/* digital mute */
-	int (*digital_mute)(struct snd_soc_codec_dai *, int mute);
-};
-
-/* ASoC cpu DAI ops */
-struct snd_soc_cpu_ops {
-	/* CPU DAI clocking configuration */
-	int (*set_sysclk)(struct snd_soc_cpu_dai *cpu_dai,
-		int clk_id, unsigned int freq, int dir);
-	int (*set_clkdiv)(struct snd_soc_cpu_dai *cpu_dai,
-		int div_id, int div);
-	int (*set_pll)(struct snd_soc_cpu_dai *cpu_dai,
+	int (*set_pll)(struct snd_soc_dai *dai,
 		int pll_id, unsigned int freq_in, unsigned int freq_out);
 
-	/* CPU DAI format configuration */
-	int (*set_fmt)(struct snd_soc_cpu_dai *cpu_dai,
+	/* DAI format configuration */
+	int (*set_fmt)(struct snd_soc_dai *dai,
 		unsigned int fmt);
-	int (*set_tdm_slot)(struct snd_soc_cpu_dai *cpu_dai,
+	int (*set_tdm_slot)(struct snd_soc_dai *dai,
 		unsigned int mask, int slots);
-	int (*set_tristate)(struct snd_soc_cpu_dai *, int tristate);
+	int (*set_tristate)(struct snd_soc_dai *dai, int tristate);
+	
+	int (*digital_mute)(struct snd_soc_dai *dai, int mute);
 };
 
-/* SoC Codec DAI */
-struct snd_soc_codec_dai {
-	char *name;
+struct snd_soc_dai {
+	char name[SND_SOC_DAI_NAME_SIZE];
+	struct device dev;
+	struct module *owner;
+	struct list_head list;
+	struct list_head codec_list;
+	enum snd_soc_bus_device_type type;
 	int id;
-	unsigned char type;
-
-	/* DAI capabilities */
-	struct snd_soc_pcm_stream playback;
-	struct snd_soc_pcm_stream capture;
-
-	/* DAI runtime info */
-	struct snd_soc_codec *codec;
-	unsigned int active;
-	unsigned char pop_wait:1;
 
 	/* ops */
-	struct snd_soc_ops ops;
-	struct snd_soc_codec_ops dai_ops;
+	const struct snd_soc_ops *audio_ops;
+	const struct snd_soc_dai_ops *ops;
+	struct snd_ac97_bus_ops *ac97_ops;
+	
+	/* hw capabilities */
+	const struct snd_soc_pcm_stream *capture;
+	const struct snd_soc_pcm_stream *playback;
 
-	/* DAI private data */
-	void *private_data;
-};
-
-/* SoC CPU DAI */
-struct snd_soc_cpu_dai {
-
-	/* DAI description */
-	char *name;
-	unsigned int id;
-	unsigned char type;
-
-	/* DAI callbacks */
-	int (*probe)(struct platform_device *pdev);
-	void (*remove)(struct platform_device *pdev);
-	int (*suspend)(struct platform_device *pdev,
-		struct snd_soc_cpu_dai *cpu_dai);
-	int (*resume)(struct platform_device *pdev,
-		struct snd_soc_cpu_dai *cpu_dai);
-
-	/* ops */
-	struct snd_soc_ops ops;
-	struct snd_soc_cpu_ops dai_ops;
-
-	/* DAI capabilities */
-	struct snd_soc_pcm_stream capture;
-	struct snd_soc_pcm_stream playback;
-
-	/* DAI runtime info */
+	/* runtime info */
 	struct snd_pcm_runtime *runtime;
-	unsigned char active:1;
-	void *dma_data;
-
-	/* DAI private data */
+	struct snd_soc_codec *codec; /* codec dai only */
+	int capture_active;
+	int playback_active;
+	int active;
+	int pop_wait;
+	void *dma_data; /* cpu dai only */
+	
 	void *private_data;
 };
+#define to_snd_soc_dai(d) container_of(d, struct snd_soc_dai, dev)
+
+/* ASoC codec ops */
+struct snd_soc_codec_ops {
+	int (*dapm_event)(struct snd_soc_codec *codec, int event);
+	
+	unsigned int (*read)(struct snd_soc_codec *codec, unsigned int reg);
+	int (*write)(struct snd_soc_codec *codec, unsigned int reg, 
+		unsigned int value);
+	
+	/* codec probe/remove - this can perform IO */
+	int (*io_probe)(struct snd_soc_codec *codec, 
+		struct snd_soc_machine *machine);
+	int (*io_remove)(struct snd_soc_codec *codec, 
+		struct snd_soc_machine *machine);
+};
+
 
 /* SoC Audio Codec */
 struct snd_soc_codec {
-	char *name;
+	char name[SND_SOC_CODEC_NAME_SIZE];
+	struct device dev;
 	struct module *owner;
 	struct mutex mutex;
-
-	/* callbacks */
-	int (*dapm_event)(struct snd_soc_codec *codec, int event);
+	struct list_head list;
+	struct list_head dai_list;
+	enum snd_soc_bus_device_type type;
 
 	/* runtime */
-	struct snd_card *card;
-	struct snd_ac97 *ac97;  /* for ad-hoc ac97 devices */
 	unsigned int active;
-	unsigned int pcm_devs;
-	void *private_data;
+	unsigned int dapm_state;
+	unsigned int suspend_dapm_state;
+	struct snd_ac97 *ac97;  /* for ad-hoc ac97 devices */
+
+	/* ops */
+	const struct snd_soc_codec_ops *ops;
 
 	/* codec IO */
-	void *control_data; /* codec control (i2c/3wire) data */
-	unsigned int (*read)(struct snd_soc_codec *, unsigned int);
-	int (*write)(struct snd_soc_codec *, unsigned int, unsigned int);
-	hw_write_t hw_write;
-	hw_read_t hw_read;
+	void *control_data; /* codec control data */
+	/* machine read/write can be used in 2 ways :-
+	 *  1. data points to buffer and arg 3 is size (bytes)
+	 *  2. data is reg val and arg 3 is register
+	 * This depends on codec and machine.
+	 */
+	int (*mach_write)(void *control_data, long data, int);
+	int (*mach_read)(void *control_data, long data, int);
+	
+	/* register cache */
 	void *reg_cache;
 	short reg_cache_size;
 	short reg_cache_step;
 
-	/* dapm */
-	struct list_head dapm_widgets;
-	struct list_head dapm_paths;
-	unsigned int dapm_state;
-	unsigned int suspend_dapm_state;
 	struct delayed_work delayed_work;
-
-	/* codec DAI's */
-	struct snd_soc_codec_dai *dai;
-	unsigned int num_dai;
+	
+	void *private_data;
+	void *platform_data;
 };
+#define to_snd_soc_codec(d) container_of(d, struct snd_soc_codec, dev)
 
-/* codec device */
-struct snd_soc_codec_device {
-	int (*probe)(struct platform_device *pdev);
-	int (*remove)(struct platform_device *pdev);
-	int (*suspend)(struct platform_device *pdev, pm_message_t state);
-	int (*resume)(struct platform_device *pdev);
+/* ASoC platform ops */
+struct snd_soc_platform_ops {
+	/* pcm creation and destruction */
+	int (*pcm_new)(struct snd_soc_platform *platform, 
+		struct snd_card *card, int playback, int capture, 
+		struct snd_pcm *pcm);
+	void (*pcm_free)(struct snd_pcm *pcm);
 };
 
 /* SoC platform interface */
 struct snd_soc_platform {
-	char *name;
+	char name[SND_SOC_PLATFORM_NAME_SIZE];
+	struct device dev;
+	struct module *owner;
+	struct list_head list;
+	enum snd_soc_bus_device_type type;
 
-	int (*probe)(struct platform_device *pdev);
-	int (*remove)(struct platform_device *pdev);
-	int (*suspend)(struct platform_device *pdev,
-		struct snd_soc_cpu_dai *cpu_dai);
-	int (*resume)(struct platform_device *pdev,
-		struct snd_soc_cpu_dai *cpu_dai);
+	/* platform ops */
+	const struct snd_pcm_ops *pcm_ops;
+	const struct snd_soc_platform_ops *platform_ops;
+	
+	void *private_data;
+	void *platform_data;
+};
+#define to_snd_soc_platform(d) container_of(d, struct snd_soc_platform, dev)
 
-	/* pcm creation and destruction */
-	int (*pcm_new)(struct snd_card *, struct snd_soc_codec_dai *,
-		struct snd_pcm *);
-	void (*pcm_free)(struct snd_pcm *);
-
-	/* platform stream ops */
-	struct snd_pcm_ops *pcm_ops;
+/* ASoC pcm device ops */
+struct snd_soc_pcm_link_ops {
+	int (*new)(struct snd_soc_pcm_link *pcm_link);
+	int (*free)(struct snd_soc_pcm_link *pcm_link);
 };
 
-/* SoC machine DAI configuration, glues a codec and cpu DAI together */
-struct snd_soc_dai_link  {
-	char *name;			/* Codec name */
-	char *stream_name;		/* Stream name */
+/* ASoC PCM, glues a codec, cpu DAI, codec DAI and platform together */
+struct snd_soc_pcm_link {
+	char name[SND_SOC_PCM_NAME_SIZE];
+	struct list_head active_list;
+	struct list_head all_list;
+	struct delayed_work delayed_work;
+	enum snd_soc_bus_device_type type;
+	int id;
+	int probed;
+	
+	/* runtime devices */
+	const char *codec_id;
+	struct snd_soc_codec *codec;
+	const char *cpu_dai_id;
+	struct snd_soc_dai *cpu_dai;
+	const char *codec_dai_id;
+	struct snd_soc_dai *codec_dai;
+	const char *platform_id;
+	struct snd_soc_platform *platform;
+	struct snd_soc_machine *machine;
 
-	/* DAI */
-	struct snd_soc_codec_dai *codec_dai;
-	struct snd_soc_cpu_dai *cpu_dai;
+	/* dai stream operations */
+	const struct snd_soc_ops *audio_ops;
+	const struct snd_soc_pcm_link_ops *link_ops;
+	
+	/* DAI pcm */
+	struct snd_pcm *pcm;
+	
+	void *private_data;
+	void *platform_data;
+};
 
-	/* machine stream operations */
-	struct snd_soc_ops *ops;
+struct snd_soc_device_driver {
+	struct device_driver driver;
+	enum snd_soc_bus_device_type type;
+};
+#define to_snd_soc_drv(d) container_of(d, struct snd_soc_device_driver, driver)
 
-	/* codec/machine specific init - e.g. add machine controls */
-	int (*init)(struct snd_soc_codec *codec);
+/* ASoC machine ops */
+struct snd_soc_machine_ops {
+	int (*mach_probe)(struct snd_soc_machine *machine);
+	int (*mach_remove)(struct snd_soc_machine *machine);
+	int (*dapm_event)(struct snd_soc_machine *machine, int event);
+	int (*suspend_pre) (struct snd_soc_machine *machine, 
+		pm_message_t state);
+	int (*suspend_post) (struct snd_soc_machine *machine, 
+		pm_message_t state);
+	int (*resume_pre) (struct snd_soc_machine *machine);
+	int (*resume_post) (struct snd_soc_machine *machine);
 };
 
 /* SoC machine */
 struct snd_soc_machine {
-	char *name;
+	const char *name;
+	const char *longname;
+	struct module *owner;
+	struct mutex mutex;
+	struct platform_device *pdev;
+	struct snd_card *card;
+	const struct snd_soc_machine_ops *ops;
+	
+	/* dapm */
+	struct list_head dapm_widgets;
+	struct list_head dapm_paths;
+	int dapm_policy;
+	
+	/* component pcm link devs */
+	struct list_head active_list;
+	int pcm_links;
+	int pcm_links_total;
+	int disconnect;
 
-	int (*probe)(struct platform_device *pdev);
-	int (*remove)(struct platform_device *pdev);
-
-	/* the pre and post PM functions are used to do any PM work before and
-	 * after the codec and DAI's do any PM work. */
-	int (*suspend_pre)(struct platform_device *pdev, pm_message_t state);
-	int (*suspend_post)(struct platform_device *pdev, pm_message_t state);
-	int (*resume_pre)(struct platform_device *pdev);
-	int (*resume_post)(struct platform_device *pdev);
-
-	/* CPU <--> Codec DAI links  */
-	struct snd_soc_dai_link *dai_link;
-	int num_links;
-};
-
-/* SoC Device - the audio subsystem */
-struct snd_soc_device {
-	struct device *dev;
-	struct snd_soc_machine *machine;
-	struct snd_soc_platform *platform;
-	struct snd_soc_codec *codec;
-	struct snd_soc_codec_device *codec_dev;
-	struct delayed_work delayed_work;
-	void *codec_data;
-};
-
-/* runtime channel data */
-struct snd_soc_pcm_runtime {
-	struct snd_soc_dai_link *dai;
-	struct snd_soc_device *socdev;
+	void *private_data;
+	void *platform_data;
 };
 
 /* enumerated kcontrol */
