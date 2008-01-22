@@ -84,6 +84,38 @@
 #define MASK_1_TS_REC				0xfffffffe
 #define SOUND_CARD_NAME				"MXC"
 
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+#define MAX_IRAM_SIZE   (IRAM_SIZE - CONFIG_SDMA_IRAM_SIZE)
+#define DMA_IRAM_SIZE   (4*1024)
+#define ADMA_BASE_PADDR (IRAM_BASE_ADDR + CONFIG_SDMA_IRAM_SIZE)
+#define ADMA_BASE_VADDR (IRAM_BASE_ADDR_VIRT + CONFIG_SDMA_IRAM_SIZE)
+
+#if (MAX_IRAM_SIZE + CONFIG_SDMA_IRAM_SIZE) > IRAM_SIZE
+#error  "The IRAM size required has beyond the limitation of IC spec"
+#endif
+
+#if (MAX_IRAM_SIZE&(DMA_IRAM_SIZE-1))
+#error "The IRAM size for DMA ring buffer should be multiples of dma buffer size"
+#endif
+
+#endif				/* CONFIG_SND_MXC_PMIC_IRAM */
+
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+#define MAX_IRAM_SIZE   (IRAM_SIZE - CONFIG_SDMA_IRAM_SIZE)
+#define DMA_IRAM_SIZE   (4*1024)
+#define ADMA_BASE_PADDR (IRAM_BASE_ADDR + CONFIG_SDMA_IRAM_SIZE)
+#define ADMA_BASE_VADDR (IRAM_BASE_ADDR_VIRT + CONFIG_SDMA_IRAM_SIZE)
+
+#if (MAX_IRAM_SIZE + CONFIG_SDMA_IRAM_SIZE) > IRAM_SIZE
+#error  "The IRAM size required has beyond the limitation of IC spec"
+#endif
+
+#if (MAX_IRAM_SIZE&(DMA_IRAM_SIZE-1))
+#error "The IRAM size for DMA ring buffer should be multiples of dma buffer size"
+#endif
+
+#endif				/* CONFIG_SND_MXC_PMIC_IRAM */
+
 /*!
  * These defines enable DMA chaining for playback
  * and capture respectively.
@@ -407,6 +439,46 @@ static struct snd_pcm_hw_constraint_list hw_playback_rates_stereo = {
 	.list = playback_rates_stereo,
 	.mask = 0,
 };
+
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+static spinlock_t g_audio_iram_lock = SPIN_LOCK_UNLOCKED;
+static int g_audio_iram_en = 1;
+static int g_device_opened = 0;
+extern void flush_cache_range(struct vm_area_struct *vma, unsigned long start,
+			      unsigned long end);
+
+static inline int mxc_snd_enable_iram(int enable)
+{
+	int ret = -EBUSY;
+	unsigned long flags;
+	spin_lock_irqsave(&g_audio_iram_lock, flags);
+	if (!g_device_opened) {
+		g_audio_iram_en = (enable != 0);
+		ret = 0;
+	}
+	spin_unlock_irqrestore(&g_audio_iram_lock, flags);
+	return ret;
+}
+
+static inline void mxc_snd_pcm_iram_get(void)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&g_audio_iram_lock, flags);
+	g_audio_iram_en++;
+	spin_unlock_irqrestore(&g_audio_iram_lock, flags);
+}
+
+static inline void mxc_snd_pcm_iram_put(void)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&g_audio_iram_lock, flags);
+	g_audio_iram_en--;
+	spin_unlock_irqrestore(&g_audio_iram_lock, flags);
+}
+
+struct snd_dma_buffer g_iram_dmab;
+
+#endif				/* CONFIG_SND_MXC_PMIC_IRAM */
 
 /*!
   * this structure represents the sample rates supported
@@ -1922,8 +1994,8 @@ static void audio_playback_dma(audio_stream_t * s)
 	int ret = 0;
 	mxc_dma_requestbuf_t dma_request;
 #ifdef CONFIG_SND_MXC_PLAYBACK_MIXING
-	unsigned int dma_size1 = 0, offset1;
-	mxc_dma_requestbuf_t dma_request1;
+	unsigned int dma_size_mix = 0, offset_mix;
+	mxc_dma_requestbuf_t dma_request_mix;
 	int ret1 = 0;
 #endif
 	int device;
@@ -1950,7 +2022,7 @@ static void audio_playback_dma(audio_stream_t * s)
 	if (stream_id == 2) {
 		memset(&dma_request, 0, sizeof(mxc_dma_requestbuf_t));
 	} else if (stream_id == 3) {
-		memset(&dma_request1, 0, sizeof(mxc_dma_requestbuf_t));
+		memset(&dma_request_mix, 0, sizeof(mxc_dma_requestbuf_t));
 	}
 #endif
 	if (s->active) {
@@ -1970,13 +2042,19 @@ static void audio_playback_dma(audio_stream_t * s)
 
 		offset = dma_size * s->period;
 		snd_assert(dma_size <= DMA_BUF_SIZE,);
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
 
-		dma_request.src_addr = (dma_addr_t) (dma_map_single(NULL,
-								    runtime->
-								    dma_area +
-								    offset,
-								    dma_size,
-								    DMA_TO_DEVICE));
+		if (g_audio_iram_en && stream_id == 0) {
+			dma_request.src_addr = ADMA_BASE_PADDR + offset;
+		} else
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+		{
+
+			dma_request.src_addr =
+			    (dma_addr_t) (dma_map_single
+					  (NULL, runtime->dma_area + offset,
+					   dma_size, DMA_TO_DEVICE));
+		}
 		if (stream_id == 0) {
 			dma_request.dst_addr =
 			    (dma_addr_t) get_ssi_fifo_addr(s->ssi, 1);
@@ -1985,8 +2063,8 @@ static void audio_playback_dma(audio_stream_t * s)
 			    (dma_addr_t) get_ssi_fifo_addr(s->ssi, 1);
 		}
 		dma_request.num_of_bytes = dma_size;
-		pr_debug("MXC: Start DMA offset (%d) size (%d)\n", offset,
-			 runtime->dma_bytes);
+		pr_debug("MXC: Start DMA offset (%d) size (%d)\n",
+			 offset, runtime->dma_bytes);
 
 		mxc_dma_config(s->dma_wchannel, &dma_request, 1,
 			       MXC_DMA_MODE_WRITE);
@@ -2042,7 +2120,7 @@ static void audio_playback_dma(audio_stream_t * s)
 
 		} else if (stream_id == 3) {
 
-			dma_size1 =
+			dma_size_mix =
 			    frames_to_bytes(runtime, runtime->period_size);
 			pr_debug("s->period (%x) runtime->periods (%d)\n",
 				 s->period, runtime->periods);
@@ -2050,20 +2128,20 @@ static void audio_playback_dma(audio_stream_t * s)
 				 (unsigned int)runtime->period_size,
 				 runtime->dma_bytes);
 
-			offset1 = dma_size1 * s->period;
-			snd_assert(dma_size1 <= DMA_BUF_SIZE,);
-			dma_request1.src_addr =
+			offset_mix = dma_size_mix * s->period;
+			snd_assert(dma_size_mix <= DMA_BUF_SIZE,);
+			dma_request_mix.src_addr =
 			    (dma_addr_t) (dma_map_single
 					  (NULL, runtime->dma_area + offset1,
 					   dma_size1, DMA_TO_DEVICE));
-			dma_request1.dst_addr =
+			dma_request_mix.dst_addr =
 			    (dma_addr_t) get_ssi_fifo_addr(s->ssi, 1);
-			dma_request1.num_of_bytes = dma_size1;
+			dma_request_mix.num_of_bytes = dma_size_mix;
 
 			pr_debug("MXC: Start DMA offset (%d) size (%d)\n",
-				 offset1, runtime->dma_bytes);
+				 offset_mix, runtime->dma_bytes);
 
-			mxc_dma_config(s->dma_wchannel, &dma_request1, 1,
+			mxc_dma_config(s->dma_wchannel, &dma_request_mix, 1,
 				       MXC_DMA_MODE_WRITE);
 			ret1 = mxc_dma_enable(s->dma_wchannel);
 			ssi_transmit_enable(s->ssi, true);
@@ -2113,29 +2191,39 @@ static void audio_playback_dma(audio_stream_t * s)
 
 #ifndef CONFIG_SND_MXC_PLAYBACK_MIXING
 		offset = dma_size * s->period;
-		dma_request.src_addr = (dma_addr_t) (dma_map_single(NULL,
-								    runtime->
-								    dma_area +
-								    offset,
-								    dma_size,
-								    DMA_TO_DEVICE));
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+		if (g_audio_iram_en && stream_id == 0) {
+			dma_request.src_addr = ADMA_BASE_PADDR + offset;
+		} else
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+		{
+
+			dma_request.src_addr =
+			    (dma_addr_t) (dma_map_single
+					  (NULL, runtime->dma_area + offset,
+					   dma_size, DMA_TO_DEVICE));
+		}
 		mxc_dma_config(s->dma_wchannel, &dma_request, 1,
 			       MXC_DMA_MODE_WRITE);
 #else
 		if (stream_id == 3) {
-			offset1 = dma_size1 * s->period;
+			offset_mix = dma_size_mix * s->period;
 			dma_request.src_addr =
 			    (dma_addr_t) (dma_map_single
-					  (NULL, runtime->dma_area + offset1,
-					   dma_size1, DMA_TO_DEVICE));
-			mxc_dma_config(s->dma_wchannel, &dma_request1, 1,
+					  (NULL,
+					   runtime->dma_area + offset_mix,
+					   dma_size, DMA_TO_DEVICE));
+
+			mxc_dma_config(s->dma_wchannel, &dma_request_mix, 1,
 				       MXC_DMA_MODE_WRITE);
 		} else {
 			offset = dma_size * s->period;
 			dma_request.src_addr =
 			    (dma_addr_t) (dma_map_single
-					  (NULL, runtime->dma_area + offset,
+					  (NULL,
+					   runtime->dma_area + offset,
 					   dma_size, DMA_TO_DEVICE));
+
 			mxc_dma_config(s->dma_wchannel, &dma_request, 1,
 				       MXC_DMA_MODE_WRITE);
 		}
@@ -2765,30 +2853,37 @@ static int snd_card_mxc_audio_playback_open(struct snd_pcm_substream *substream)
 
 	else if (stream_id == 3) {
 		runtime->hw = snd_mxc_pmic_playback_mono;
+
 		if ((err = snd_pcm_hw_constraint_list(runtime, 0,
 						      SNDRV_PCM_HW_PARAM_RATE,
 						      &hw_playback_rates_mono))
 		    < 0)
 			return err;
 	}
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	if (g_audio_iram_en && stream_id == 0) {
+		runtime->hw.buffer_bytes_max = MAX_IRAM_SIZE;
+		runtime->hw.period_bytes_max = DMA_IRAM_SIZE;
+	}
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
 
 	if ((err = snd_pcm_hw_constraint_integer(runtime,
 						 SNDRV_PCM_HW_PARAM_PERIODS)) <
 	    0)
-		return err;
+		goto exit_err;
 	if (stream_id == 0) {
 		if ((err = snd_pcm_hw_constraint_list(runtime, 0,
 						      SNDRV_PCM_HW_PARAM_RATE,
 						      &hw_playback_rates_stereo))
 		    < 0)
-			return err;
+			goto exit_err;
 
 	} else if (stream_id == 2) {
 		if ((err = snd_pcm_hw_constraint_list(runtime, 0,
 						      SNDRV_PCM_HW_PARAM_RATE,
 						      &hw_playback_rates_mono))
 		    < 0)
-			return err;
+			goto exit_err;
 	}
 	msleep(10);
 
@@ -2797,9 +2892,15 @@ static int snd_card_mxc_audio_playback_open(struct snd_pcm_substream *substream)
 	     configure_write_channel(&mxc_audio->s[stream_id],
 				     audio_playback_dma_callback,
 				     stream_id)) < 0)
-		return err;
-
+		goto exit_err;
 	return 0;
+      exit_err:
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	if (stream_id == 0)
+		mxc_snd_pcm_iram_put();
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+	return err;
+
 }
 
 /*!
@@ -2863,6 +2964,11 @@ static int snd_card_mxc_audio_playback_close(struct snd_pcm_substream
 	chip->s[stream_id].stream = NULL;
       End:
 	audio_mixer_control.mixing_active = 0;
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	if (stream_id == 0)
+		mxc_snd_pcm_iram_put();
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+
 	return 0;
 }
 
@@ -2916,15 +3022,49 @@ static int snd_mxc_audio_hw_params(struct snd_pcm_substream *substream,
 				   struct snd_pcm_hw_params *hw_params)
 {
 	struct snd_pcm_runtime *runtime;
-	int ret;
+	int ret = 0, size;
+	int device, stream_id = -1;
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	struct snd_dma_buffer *dmab;
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
 
 	runtime = substream->runtime;
 	ret =
 	    snd_pcm_lib_malloc_pages(substream, params_buffer_bytes(hw_params));
 	if (ret < 0)
 		return ret;
+	size = params_buffer_bytes(hw_params);
+	device = substream->pcm->device;
+	if (device == 0)
+		stream_id = 0;
+	else if (device == 1)
+		stream_id = 2;
 
 	runtime->dma_addr = virt_to_phys(runtime->dma_area);
+
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) && g_audio_iram_en
+	    && stream_id == 0) {
+		if (runtime->dma_buffer_p
+		    && (runtime->dma_buffer_p != &g_iram_dmab)) {
+			snd_pcm_lib_free_pages(substream);
+		}
+		dmab = &g_iram_dmab;
+		dmab->dev = substream->dma_buffer.dev;
+		dmab->area = (char *)ADMA_BASE_VADDR;
+		dmab->addr = ADMA_BASE_PADDR;
+		dmab->bytes = size;
+		snd_pcm_set_runtime_buffer(substream, dmab);
+		runtime->dma_bytes = size;
+	} else
+#endif				/* CONFIG_SND_MXC_PMIC_IRAM */
+	{
+		ret = snd_pcm_lib_malloc_pages(substream, size);
+		if (ret < 0)
+			return ret;
+
+		runtime->dma_addr = virt_to_phys(runtime->dma_area);
+	}
 
 	pr_debug("MXC: snd_mxc_audio_hw_params runtime->dma_addr 0x(%x)\n",
 		 (unsigned int)runtime->dma_addr);
@@ -2945,7 +3085,16 @@ static int snd_mxc_audio_hw_params(struct snd_pcm_substream *substream,
   */
 static int snd_mxc_audio_hw_free(struct snd_pcm_substream *substream)
 {
-	return snd_pcm_lib_free_pages(substream);
+#ifdef  CONFIG_SND_MXC_PMIC_IRAM
+	if (substream->runtime->dma_buffer_p == &g_iram_dmab) {
+		snd_pcm_set_runtime_buffer(substream, NULL);
+		return 0;
+	} else
+#endif				/* CONFIG_SND_MXC_PMIC_IRAM */
+	{
+		return snd_pcm_lib_free_pages(substream);
+	}
+	return 0;
 }
 
 /*!
@@ -3063,6 +3212,180 @@ static int snd_card_mxc_audio_capture_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+static struct page *snd_mxc_audio_playback_nopage(struct vm_area_struct *area,
+						  unsigned long address,
+						  int *type)
+{
+	struct snd_pcm_substream *substream = area->vm_private_data;
+	struct snd_pcm_runtime *runtime;
+	unsigned long offset;
+	struct page *page;
+	void *vaddr;
+	size_t dma_bytes;
+
+	if (substream == NULL)
+		return NOPAGE_OOM;
+	runtime = substream->runtime;
+	if (g_audio_iram_en) {
+		return NOPAGE_SIGBUS;
+	}
+	offset = area->vm_pgoff << PAGE_SHIFT;
+	offset += address - area->vm_start;
+	snd_assert((offset % PAGE_SIZE) == 0, return NOPAGE_OOM);
+	dma_bytes = PAGE_ALIGN(runtime->dma_bytes);
+	if (offset > dma_bytes - PAGE_SIZE)
+		return NOPAGE_SIGBUS;
+	if (substream->ops->page) {
+		page = substream->ops->page(substream, offset);
+		if (!page)
+			return NOPAGE_OOM;
+	} else {
+		vaddr = runtime->dma_area + offset;
+		page = virt_to_page(vaddr);
+	}
+	get_page(page);
+	if (type)
+		*type = VM_FAULT_MINOR;
+	return page;
+}
+
+static struct vm_operations_struct snd_mxc_audio_playback_vm_ops = {
+	.open = snd_pcm_mmap_data_open,
+	.close = snd_pcm_mmap_data_close,
+	.nopage = snd_mxc_audio_playback_nopage,
+};
+
+#ifdef CONFIG_ARCH_MX3
+static inline int snd_mxc_set_pte_attr(struct mm_struct *mm,
+				       pmd_t * pmd,
+				       unsigned long addr, unsigned long end)
+{
+
+	pte_t *pte;
+	spinlock_t *ptl;
+	pte = pte_alloc_map_lock(mm, pmd, addr, &ptl);
+
+	if (!pte)
+		return -ENOMEM;
+	do {
+		BUG_ON(pte_none(*pte));	//The mapping is created. It should not be none.
+		*(pte - 512) |= 0x83;	//Directly modify to non-shared device
+	} while (pte++, addr += PAGE_SIZE, addr != end);
+
+	pte_unmap_unlock(pte - 1, ptl);
+
+	return 0;
+
+}
+
+static int snd_mxc_set_pmd_attr(struct mm_struct *mm,
+				pud_t * pud,
+				unsigned long addr, unsigned long end)
+{
+
+	pmd_t *pmd;
+	unsigned long next;
+	pmd = pmd_alloc(mm, pud, addr);
+
+	if (!pmd)
+		return -ENOMEM;
+	do {
+
+		next = pmd_addr_end(addr, end);
+		if (snd_mxc_set_pte_attr(mm, pmd, addr, next))
+			return -ENOMEM;
+
+	} while (pmd++, addr = next, addr != end);
+
+	return 0;
+
+}
+
+static int snd_mxc_set_pud_attr(struct mm_struct *mm,
+				pgd_t * pgd,
+				unsigned long addr, unsigned long end)
+{
+
+	pud_t *pud;
+	unsigned long next;
+	pud = pud_alloc(mm, pgd, addr);
+
+	if (!pud)
+		return -ENOMEM;
+	do {
+
+		next = pud_addr_end(addr, end);
+		if (snd_mxc_set_pmd_attr(mm, pud, addr, next))
+			return -ENOMEM;
+
+	} while (pud++, addr = next, addr != end);
+
+	return 0;
+
+}
+
+static inline int snd_mxc_set_pgd_attr(struct vm_area_struct *area)
+{
+
+	int ret = 0;
+	pgd_t *pgd;
+	struct mm_struct *mm = current->mm;
+	unsigned long next, addr = area->vm_start;
+
+	pgd = pgd_offset(mm, addr);
+	flush_cache_range(area, addr, area->vm_end);
+
+	do {
+		if (!pgd_present(*pgd))
+			return -1;
+
+		next = pgd_addr_end(addr, area->vm_end);
+		if ((ret = snd_mxc_set_pud_attr(mm, pgd, addr, next)))
+			break;
+
+	} while (pgd++, addr = next, addr != area->vm_end);
+
+	return ret;
+
+}
+
+#else
+#define snd_mxc_set_page_attr()  (0)
+#endif
+
+static int snd_mxc_audio_playback_mmap(struct snd_pcm_substream *substream,
+				       struct vm_area_struct *area)
+{
+	int ret = 0;
+	area->vm_ops = &snd_mxc_audio_playback_vm_ops;
+	area->vm_private_data = substream;
+	if (g_audio_iram_en) {
+		unsigned long off = area->vm_pgoff << PAGE_SHIFT;
+		unsigned long phys = ADMA_BASE_PADDR + off;
+		unsigned long size = area->vm_end - area->vm_start;
+		if (off + size > MAX_IRAM_SIZE) {
+			return -EINVAL;
+		}
+		area->vm_page_prot = pgprot_nonshareddev(area->vm_page_prot);
+		area->vm_flags |= VM_IO;
+		ret =
+		    remap_pfn_range(area, area->vm_start, phys >> PAGE_SHIFT,
+				    size, area->vm_page_prot);
+		if (ret == 0) {
+			ret = snd_mxc_set_pgd_attr(area);
+		}
+
+	} else {
+		area->vm_flags |= VM_RESERVED;
+	}
+	if (ret == 0)
+		area->vm_ops->open(area);
+	return ret;
+}
+
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+
 /*!
   * This structure is the list of operation that the driver
   * must provide for the capture interface
@@ -3091,6 +3414,9 @@ static struct snd_pcm_ops snd_card_mxc_audio_playback_ops = {
 	.prepare = snd_mxc_audio_playback_prepare,
 	.trigger = snd_mxc_audio_playback_trigger,
 	.pointer = snd_mxc_audio_playback_pointer,
+#ifdef CONFIG_SND_MXC_PMIC_IRAM
+	.mmap = snd_mxc_audio_playback_mmap,
+#endif				/*CONFIG_SND_MXC_PMIC_IRAM */
 };
 
 /*!

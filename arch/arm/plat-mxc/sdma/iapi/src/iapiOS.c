@@ -40,6 +40,9 @@
 /**
  * Function Section
  */
+#ifdef CONFIG_SDMA_IRAM
+void*(* iapi_iram_Malloc) (size_t size);
+#endif /*CONFIG_SDMA_IRAM*/
 
 void*(* iapi_Malloc) (size_t size);
 void (* iapi_Free) (void * ptr);

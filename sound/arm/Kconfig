@@ -68,4 +68,17 @@ config HEADSET_DETECT_ENABLE
         help
         Say Y here to enable Headset Detect Feature.
 
+config SND_MXC_PMIC_IRAM
+        bool "MXC PMIC sound system supports IRAM"
+        depends on SND_MXC_PMIC && SDMA_IRAM
+        default n
+        select SND_PCM
+        help
+          It will use IRAM as the DMA buffer of ALSA playback.
+
+
+
+
+
+
 endmenu

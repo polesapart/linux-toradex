@@ -577,6 +577,11 @@ int mxc_request_dma(int *channel, const char *devicename)
 	/* Dynamic allocation */
 	if (*channel == 0) {
 		for (i = MAX_DMA_CHANNELS - 1; i > 0; i--) {
+#ifdef CONFIG_SDMA_IRAM
+			/*TODO:It will be removed after DPTC used UDMA interface */
+			if (i >= MXC_DMA_CHANNEL_IRAM)
+				continue;
+#endif				/*CONFIG_SDMA_IRAM */
 			if (!sdma_data[i].in_use) {
 				*channel = i;
 				break;
@@ -1039,6 +1044,9 @@ static void __init init_iapi_struct(void)
 	printk(KERN_INFO "Using SDMA I.API\n");
 
 	iapi_Malloc = &sdma_malloc;
+#ifdef CONFIG_SDMA_IRAM
+	iapi_iram_Malloc = &sdma_iram_malloc;
+#endif				/*CONFIG_SDMA_IRAM */
 
 	iapi_Free = &sdma_free;
 	iapi_Virt2Phys = (void *(*)(void *))&sdma_virt_to_phys;

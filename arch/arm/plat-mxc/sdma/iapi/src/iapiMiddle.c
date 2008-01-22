@@ -67,9 +67,19 @@ iapi_AllocBD (channelControlBlock * ccb_p)
   bufferDescriptor * ptrBD = NULL;
 
   if (ccb_p->channelDescriptor->bufferDescNumber != 0){
-     ptrBD = (bufferDescriptor *)
-       MALLOC( ccb_p->channelDescriptor->bufferDescNumber *
-           sizeof(bufferDescriptor));
+#ifdef CONFIG_SDMA_IRAM
+     channelDescriptor * cd_p = ccb_p->channelDescriptor;
+     if(cd_p->channelNumber >= MXC_DMA_CHANNEL_IRAM) {
+         ptrBD = (bufferDescriptor *)
+           MALLOC( ccb_p->channelDescriptor->bufferDescNumber *
+               sizeof(bufferDescriptor), SDMA_IRAM);
+     } else
+#endif /*CONFIG_SDMA_IRAM*/
+     {
+     	ptrBD = (bufferDescriptor *)
+       		MALLOC( ccb_p->channelDescriptor->bufferDescNumber * 
+           		sizeof(bufferDescriptor), SDMA_ERAM);   
+     }
   }
   if (ptrBD != NULL) {
    ptrBD->mode.command = 0;
@@ -103,7 +113,7 @@ iapi_AllocContext(contextData ** ctxd_p, unsigned char channel)
    return -result;
   }
 
-  ctxData = (contextData *)MALLOC(sizeof(contextData));
+  ctxData = (contextData *)MALLOC(sizeof(contextData), SDMA_ERAM);
 
   if (ctxData !=NULL) {
    *ctxd_p = ctxData;
@@ -148,7 +158,7 @@ iapi_AllocChannelDesc (channelDescriptor ** cd_p, unsigned char channel)
    return -result;
   }
 
-  tmpCDptr = (channelDescriptor *)MALLOC(sizeof(channelDescriptor));
+  tmpCDptr = (channelDescriptor *)MALLOC(sizeof(channelDescriptor), SDMA_ERAM);
 
   if (tmpCDptr != NULL){
    iapi_memcpy(tmpCDptr, &iapi_ChannelDefaults, sizeof (channelDescriptor));
@@ -579,7 +589,7 @@ iapi_InitializeMemory (channelControlBlock * ccb_p)
         iapi_SetBufferDescriptor(bd_p,
                       (unsigned char)ccb_p->channelDescriptor->dataSize,
                       BD_CONT|BD_EXTD, ccb_p->channelDescriptor->bufferSize,
-                      MALLOC(ccb_p->channelDescriptor->bufferSize), NULL);
+                      MALLOC(ccb_p->channelDescriptor->bufferSize, SDMA_ERAM), NULL);
       }
      }
      bd_p++;
@@ -600,7 +610,7 @@ iapi_InitializeMemory (channelControlBlock * ccb_p)
                     (unsigned char)ccb_p->channelDescriptor->dataSize,
                     BD_EXTD|BD_WRAP|BD_INTR,
                     ccb_p->channelDescriptor->bufferSize,
-                    MALLOC(ccb_p->channelDescriptor->bufferSize), NULL);
+                    MALLOC(ccb_p->channelDescriptor->bufferSize, SDMA_ERAM), NULL);
      }
    }
   }

@@ -96,7 +96,7 @@ iapi_Channel0Command( channelDescriptor * cd_p, void * buf,
   }
 
   /* Allocation of buffer descriptors */
-  bd_p = (bufferDescriptor *)MALLOC(sizeof( bufferDescriptor ));
+  bd_p = (bufferDescriptor *)MALLOC(sizeof( bufferDescriptor ), SDMA_ERAM);
   if (bd_p != NULL) {
 	ccb_p->baseBDptr = (bufferDescriptor *)iapi_Virt2Phys(bd_p);
   } else {
@@ -437,7 +437,7 @@ iapi_lowAssignScript(channelDescriptor * cd_p, script_data * data_p)
    }
 
    /* Allocate context and initialize PC to required script start adress*/
-   chContext  = (contextData *) MALLOC(sizeof(contextData));
+   chContext  = (contextData *) MALLOC(sizeof(contextData), SDMA_ERAM);
    if (chContext == NULL)
    {
       result = IAPI_ERR_B_ALLOC_FAILED | cd_p->channelNumber;

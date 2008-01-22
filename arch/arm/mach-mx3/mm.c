@@ -41,9 +41,9 @@
  */
 static struct map_desc mxc_io_desc[] __initdata = {
 	{
-	 .virtual = IRAM_BASE_ADDR_VIRT,
-	 .pfn = __phys_to_pfn(IRAM_BASE_ADDR),
-	 .length = IRAM_SIZE,
+	 .virtual = IRAM_BASE_ADDR_VIRT & 0xFFF00000,
+	 .pfn = __phys_to_pfn(IRAM_BASE_ADDR & 0xFFF00000),
+	 .length = SZ_1M,
 	 .type = MT_NONSHARED_DEVICE},
 	{
 	 .virtual = X_MEMC_BASE_ADDR_VIRT,

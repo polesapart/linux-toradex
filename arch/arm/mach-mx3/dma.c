@@ -29,6 +29,12 @@
 #define MXC_SSI_RXFIFO_WML        0x6
 #define MXC_FIRI_WML              16
 
+#ifdef CONFIG_SDMA_IRAM
+#define trans_type  int_2_per
+#else
+#define trans_type emi_2_per
+#endif
+
 typedef struct mxc_sdma_info_entry_s {
 	mxc_dma_device_t device;
 	mxc_sdma_channel_params_t *chnl_info;
@@ -421,7 +427,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx0_params = {
 			.watermark_level = MXC_SSI_TXFIFO_WML,
 			.per_address = SSI2_BASE_ADDR + MXC_SSI_TX0_REG,
 			.peripheral_type = SSI_SP,
-			.transfer_type = emi_2_per,
+			.transfer_type = trans_type,
 			.event_id = DMA_REQ_SSI2_TX1,
 			.bd_number = 32,
 			.word_size = TRANSFER_8BIT,
@@ -449,7 +455,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx0_params = {
 			.watermark_level = MXC_SSI_TXFIFO_WML,
 			.per_address = SSI2_BASE_ADDR + MXC_SSI_TX0_REG,
 			.peripheral_type = SSI_SP,
-			.transfer_type = emi_2_per,
+			.transfer_type = trans_type,
 			.event_id = DMA_REQ_SSI2_TX1,
 			.bd_number = 32,
 			.word_size = TRANSFER_16BIT,
@@ -477,7 +483,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx0_params = {
 			.watermark_level = MXC_SSI_TXFIFO_WML,
 			.per_address = SSI2_BASE_ADDR + MXC_SSI_TX0_REG,
 			.peripheral_type = SSI_SP,
-			.transfer_type = emi_2_per,
+			.transfer_type = trans_type,
 			.event_id = DMA_REQ_SSI2_TX1,
 			.bd_number = 32,
 			.word_size = TRANSFER_32BIT,
@@ -505,7 +511,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_8bit_tx1_params = {
 			.watermark_level = MXC_SSI_TXFIFO_WML,
 			.per_address = SSI2_BASE_ADDR + MXC_SSI_TX1_REG,
 			.peripheral_type = SSI_SP,
-			.transfer_type = emi_2_per,
+			.transfer_type = trans_type,
 			.event_id = DMA_REQ_SSI2_TX2,
 			.bd_number = 32,
 			.word_size = TRANSFER_8BIT,
@@ -533,7 +539,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_16bit_tx1_params = {
 			.watermark_level = MXC_SSI_TXFIFO_WML,
 			.per_address = SSI2_BASE_ADDR + MXC_SSI_TX1_REG,
 			.peripheral_type = SSI_SP,
-			.transfer_type = emi_2_per,
+			.transfer_type = trans_type,
 			.event_id = DMA_REQ_SSI2_TX2,
 			.bd_number = 32,
 			.word_size = TRANSFER_16BIT,
@@ -714,7 +720,11 @@ mxc_sdma_channel_params_t *mxc_sdma_get_channel_params(mxc_dma_device_t
  */
 void mxc_get_static_channels(mxc_dma_channel_t * chnl)
 {
-	/* No channels statically allocated for MX31 */
+#ifdef CONFIG_SDMA_IRAM
+	int i;
+	for (i = MXC_DMA_CHANNEL_IRAM; i < MAX_DMA_CHANNELS; i++)
+		chnl[i].dynamic = 0;
+#endif				/*CONFIG_SDMA_IRAM */
 }
 
 EXPORT_SYMBOL(mxc_sdma_get_channel_params);

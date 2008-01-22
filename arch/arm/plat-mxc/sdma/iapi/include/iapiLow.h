@@ -56,8 +56,6 @@
 /* ****************************************************************************
  * Macro-command Section
  *****************************************************************************/
-#define MALLOC(x) (* iapi_Malloc)(x)
-#define FREE(x)   if (x!=NULL) (* iapi_Free)(x)
 
 #define GOTO_SLEEP(x) (iapi_GotoSleep)(x)
 #define INIT_SLEEP(x) (iapi_InitSleep)(x)

@@ -391,6 +391,16 @@ void mxc_dma_set_callback(int channel, dma_callback_t callback, void *arg);
  */
 void *sdma_malloc(size_t size);
 
+#ifdef CONFIG_SDMA_IRAM
+/*!
+ * Allocates uncachable buffer from IRAM..
+ *
+ * @param   size    size of allocated buffer
+ * @return  pointer to buffer
+ */
+void *sdma_iram_malloc(size_t size);
+#endif				/*CONFIG_SDMA_IRAM */
+
 /*!
  * Frees uncachable buffer. Uses hash table.
  */

@@ -54,8 +54,14 @@
 /* ****************************************************************************
  * Macro-command Section
  *****************************************************************************/
-#define MALLOC(x) (* iapi_Malloc)(x)
-#define FREE(x)   if (x!=NULL) (* iapi_Free)(x)
+#define SDMA_ERAM 0
+#define SDMA_IRAM 1
+#ifdef CONFIG_SDMA_IRAM
+#define MALLOC(x, s) (s == SDMA_ERAM)? (* iapi_Malloc)(x):(* iapi_iram_Malloc)(x)
+#else /*CONFIG_SDMA_IRAM */
+#define MALLOC(x, s) (* iapi_Malloc)(x)
+#endif /*CONFIG_SDMA_IRAM */
+#define FREE(x)   if (x!=NULL)  (* iapi_Free)(x)
 
 #define GOTO_SLEEP(x) (iapi_GotoSleep)(x)
 #define INIT_SLEEP(x) (iapi_InitSleep)(x)
@@ -63,6 +69,10 @@
 /* ****************************************************************************
  * Public Function Prototype Section
  *****************************************************************************/
+
+#ifdef CONFIG_SDMA_IRAM
+extern void*(* iapi_iram_Malloc) (size_t size);
+#endif /*CONFIG_SDMA_IRAM*/
 
 extern void*(* iapi_Malloc) (size_t size);
 extern void (* iapi_Free) (void * ptr);

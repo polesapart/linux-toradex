@@ -406,7 +406,7 @@ iapi_Open (channelDescriptor * cd_p, unsigned char channelNumber)
     }
     /* Whole channel control block data structure */
     ccb_p = (channelControlBlock *)
-      MALLOC(CH_NUM*sizeof(channelControlBlock));
+      MALLOC(CH_NUM*sizeof(channelControlBlock), SDMA_IRAM);
     if (ccb_p == NULL){
       result = IAPI_ERR_CCB_ALLOC_FAILED |
                IAPI_ERR_CH_AVAILABLE | channelNumber;
