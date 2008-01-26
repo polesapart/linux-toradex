@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Deep Blue Solutions Ltd
  *  Copyright (C) 2002 Shane Nay (shane@minirl.com)
- *  Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -200,6 +200,12 @@ static void lcd_reset(void)
 	msleep(60);
 }
 
+static struct mxc_lcd_platform_data lcd_data = {
+	.io_reg = "VGEN",
+	.core_reg = "VMMC1",
+	.reset = lcd_reset,
+};
+
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "pmic_spi",
@@ -209,7 +215,7 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	 .chip_select = 2,},
 	{
 	 .modalias = "lcd_spi",
-	 .platform_data = (void *)lcd_reset,
+	 .platform_data = (void *)&lcd_data,
 	 .max_speed_hz = 5000000,
 	 .bus_num = 1,
 	 .chip_select = 2,},

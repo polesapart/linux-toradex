@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -33,9 +33,9 @@
 #include <linux/errno.h>
 #include <linux/fb.h>
 #include <linux/init.h>
+#include <linux/regulator/regulator.h>
 #include <linux/spi/spi.h>
 #include <asm/arch/mxcfb.h>
-#include <asm/arch/pmic_power.h>
 
 static struct spi_device *lcd_spi;
 
@@ -44,6 +44,8 @@ static void lcd_poweron(void);
 static void lcd_poweroff(void);
 
 static void (*lcd_reset) (void);
+static struct regulator *io_reg;
+static struct regulator *core_reg;
 
 static struct fb_videomode video_modes[] = {
 	{
@@ -114,26 +116,21 @@ static struct notifier_block nb = {
 static int __devinit lcd_spi_probe(struct spi_device *spi)
 {
 	int i;
-	t_regulator_voltage voltage;
-	t_regulator_lp_mode lpmode = LOW_POWER_CTRL_BY_PIN;
+	struct mxc_lcd_platform_data *plat = spi->dev.platform_data;
 
 	lcd_spi = spi;
 
-	/* open the VGEN of pmic to supply VDDI */
-	voltage.vgen = VGEN_1_8V;
-	pmic_power_regulator_set_voltage(REGU_VGEN, voltage);
-	pmic_power_regulator_set_lp_mode(REGU_VGEN, lpmode);
-	pmic_power_regulator_on(REGU_VGEN);
+	if (plat) {
+		lcd_reset = plat->reset;
+		if (lcd_reset)
+			lcd_reset();
 
-	/* open the VMMC1 of pmic to supply VDDI */
-	voltage.vmmc1 = VMMC_2_8V;
-	pmic_power_regulator_set_voltage(REGU_VMMC1, voltage);
-	pmic_power_regulator_set_lp_mode(REGU_VMMC1, lpmode);
-	pmic_power_regulator_on(REGU_VMMC1);
-
-	if (spi->dev.platform_data) {
-		lcd_reset = (void (*)(void))spi->dev.platform_data;
-		lcd_reset();
+		io_reg = regulator_get(&spi->dev, plat->io_reg);
+		regulator_set_voltage(io_reg, 1800000);
+		regulator_enable(io_reg);
+		core_reg = regulator_get(&spi->dev, plat->core_reg);
+		regulator_set_voltage(core_reg, 2800000);
+		regulator_enable(core_reg);
 	}
 
 	spi->bits_per_word = 9;
@@ -158,6 +155,9 @@ static int __devexit lcd_spi_remove(struct spi_device *spi)
 {
 	fb_unregister_client(&nb);
 	lcd_poweroff();
+	regulator_put(io_reg, &spi->dev);
+	regulator_put(core_reg, &spi->dev);
+
 	return 0;
 }
 

@@ -86,6 +86,12 @@ struct mxc_audio_platform_data {
 	char *regulator2;
 };
 
+struct mxc_lcd_platform_data {
+	char *io_reg;
+	char *core_reg;
+	void (*reset) (void);
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);
