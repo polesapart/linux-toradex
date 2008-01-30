@@ -3,21 +3,18 @@
  */
 
 /*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 /*!
- * @file arch-mxc/io.h
+ * @file io.h
  * @brief This file contains some memory mapping macros.
- * @note We don't have a PCI bus, but we have to define these macros
+ * @note There is no real ISA or PCI buses. But have to define these macros
  * for some drivers to compile.
  *
- * @ingroup MSL_MX27 MSL_MX31
+ * @ingroup System
  */
 
 #ifndef __ASM_ARCH_MXC_IO_H__

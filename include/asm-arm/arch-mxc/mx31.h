@@ -3,13 +3,11 @@
  */
 
 /*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
+
 #ifndef __ASM_ARCH_MXC_MX31_H__
 #define __ASM_ARCH_MXC_MX31_H__
 
@@ -28,7 +26,7 @@
 /*!
  * defines the OS clock tick rate
  */
-#define CLOCK_TICK_RATE         16625000
+#define CLOCK_TICK_RATE		16625000
 
 /*!
  * Register an interrupt handler for the SMN as well as the SCC.  In some
@@ -75,7 +73,7 @@
 /*
  * AIPS 1
  */
-#define AIPS1_BASE_ADDR 	0x43F00000
+#define AIPS1_BASE_ADDR		0x43F00000
 #define AIPS1_BASE_ADDR_VIRT	0xD4000000
 #define AIPS1_SIZE		SZ_1M
 
@@ -221,19 +219,19 @@
  */
 /* MX31 ADS SDRAM is from 0x80000000, 64M */
 #define SDRAM_BASE_ADDR         0x80000000
-#define IPU_MEM_BASE_ADDR       0x70000000
-#define CSD1_BASE_ADDR          0x90000000
-#define CS0_BASE_ADDR           0xA0000000
-#define CS1_BASE_ADDR           0xA8000000
-#define CS2_BASE_ADDR           0xB0000000
-#define CS3_BASE_ADDR           0xB2000000
+#define IPU_MEM_BASE_ADDR	0x70000000
+#define CSD1_BASE_ADDR		0x90000000
+#define CS0_BASE_ADDR		0xA0000000
+#define CS1_BASE_ADDR		0xA8000000
+#define CS2_BASE_ADDR		0xB0000000
+#define CS3_BASE_ADDR		0xB2000000
 
-#define CS4_BASE_ADDR           0xB4000000
+#define CS4_BASE_ADDR		0xB4000000
 #define CS4_BASE_ADDR_VIRT      0xEB000000
 #define CS4_SIZE                SZ_16M
 
-#define CS5_BASE_ADDR           0xB6000000
-#define PCMCIA_MEM_BASE_ADDR    0xBC000000
+#define CS5_BASE_ADDR		0xB6000000
+#define PCMCIA_MEM_BASE_ADDR	0xBC000000
 
 /*
  * VL2CC for i.MX32
@@ -247,15 +245,15 @@
  * it returns 0xDEADBEEF
  */
 #define IO_ADDRESS(x)   \
-        (((x >= IRAM_BASE_ADDR) && (x < (IRAM_BASE_ADDR + IRAM_SIZE))) ? IRAM_IO_ADDRESS(x):\
-        ((x >= AIPS1_BASE_ADDR) && (x < (AIPS1_BASE_ADDR + AIPS1_SIZE))) ? AIPS1_IO_ADDRESS(x):\
-        ((x >= SPBA0_BASE_ADDR) && (x < (SPBA0_BASE_ADDR + SPBA0_SIZE))) ? SPBA0_IO_ADDRESS(x):\
-        ((x >= AIPS2_BASE_ADDR) && (x < (AIPS2_BASE_ADDR + AIPS2_SIZE))) ? AIPS2_IO_ADDRESS(x):\
-        ((x >= ROMP_BASE_ADDR) && (x < (ROMP_BASE_ADDR + ROMP_SIZE))) ? ROMP_IO_ADDRESS(x):\
-        ((x >= AVIC_BASE_ADDR) && (x < (AVIC_BASE_ADDR + AVIC_SIZE))) ? AVIC_IO_ADDRESS(x):\
-        ((x >= CS4_BASE_ADDR) && (x < (CS4_BASE_ADDR + CS4_SIZE))) ? CS4_IO_ADDRESS(x):\
-        ((x >= X_MEMC_BASE_ADDR) && (x < (X_MEMC_BASE_ADDR + X_MEMC_SIZE))) ? X_MEMC_IO_ADDRESS(x):\
-        0xDEADBEEF)
+	(((x >= IRAM_BASE_ADDR) && (x < (IRAM_BASE_ADDR + IRAM_SIZE))) ? IRAM_IO_ADDRESS(x):\
+	((x >= AIPS1_BASE_ADDR) && (x < (AIPS1_BASE_ADDR + AIPS1_SIZE))) ? AIPS1_IO_ADDRESS(x):\
+	((x >= SPBA0_BASE_ADDR) && (x < (SPBA0_BASE_ADDR + SPBA0_SIZE))) ? SPBA0_IO_ADDRESS(x):\
+	((x >= AIPS2_BASE_ADDR) && (x < (AIPS2_BASE_ADDR + AIPS2_SIZE))) ? AIPS2_IO_ADDRESS(x):\
+	((x >= ROMP_BASE_ADDR) && (x < (ROMP_BASE_ADDR + ROMP_SIZE))) ? ROMP_IO_ADDRESS(x):\
+	((x >= AVIC_BASE_ADDR) && (x < (AVIC_BASE_ADDR + AVIC_SIZE))) ? AVIC_IO_ADDRESS(x):\
+	((x >= CS4_BASE_ADDR) && (x < (CS4_BASE_ADDR + CS4_SIZE))) ? CS4_IO_ADDRESS(x):\
+	((x >= X_MEMC_BASE_ADDR) && (x < (X_MEMC_BASE_ADDR + X_MEMC_SIZE))) ? X_MEMC_IO_ADDRESS(x):\
+	0xDEADBEEF)
 
 #define IS_STATIC_MAPPED(x)						\
         ((((x) >= IRAM_BASE_ADDR_VIRT) && ((x) < (IRAM_BASE_ADDR_VIRT + IRAM_SIZE))) || \
@@ -274,28 +272,28 @@
  */
 
 #define IRAM_IO_ADDRESS(x)  \
-        (((x) - IRAM_BASE_ADDR) + IRAM_BASE_ADDR_VIRT)
+	(((x) - IRAM_BASE_ADDR) + IRAM_BASE_ADDR_VIRT)
 
 #define AIPS1_IO_ADDRESS(x)  \
-        (((x) - AIPS1_BASE_ADDR) + AIPS1_BASE_ADDR_VIRT)
+	(((x) - AIPS1_BASE_ADDR) + AIPS1_BASE_ADDR_VIRT)
 
 #define SPBA0_IO_ADDRESS(x)  \
-        (((x) - SPBA0_BASE_ADDR) + SPBA0_BASE_ADDR_VIRT)
+	(((x) - SPBA0_BASE_ADDR) + SPBA0_BASE_ADDR_VIRT)
 
 #define AIPS2_IO_ADDRESS(x)  \
-        (((x) - AIPS2_BASE_ADDR) + AIPS2_BASE_ADDR_VIRT)
+	(((x) - AIPS2_BASE_ADDR) + AIPS2_BASE_ADDR_VIRT)
 
 #define ROMP_IO_ADDRESS(x)  \
-        (((x) - ROMP_BASE_ADDR) + ROMP_BASE_ADDR_VIRT)
+	(((x) - ROMP_BASE_ADDR) + ROMP_BASE_ADDR_VIRT)
 
 #define AVIC_IO_ADDRESS(x)  \
-        (((x) - AVIC_BASE_ADDR) + AVIC_BASE_ADDR_VIRT)
+	(((x) - AVIC_BASE_ADDR) + AVIC_BASE_ADDR_VIRT)
 
 #define CS4_IO_ADDRESS(x)  \
-        (((x) - CS4_BASE_ADDR) + CS4_BASE_ADDR_VIRT)
+	(((x) - CS4_BASE_ADDR) + CS4_BASE_ADDR_VIRT)
 
 #define X_MEMC_IO_ADDRESS(x)  \
-        (((x) - X_MEMC_BASE_ADDR) + X_MEMC_BASE_ADDR_VIRT)
+	(((x) - X_MEMC_BASE_ADDR) + X_MEMC_BASE_ADDR_VIRT)
 
 #define PCMCIA_IO_ADDRESS(x) \
 	(((x) - X_MEMC_BASE_ADDR) + X_MEMC_BASE_ADDR_VIRT)
@@ -412,7 +410,7 @@
 #define INT_EXT_WDOG            62
 #define INT_EXT_TV              63
 
-#define MXC_MAX_INT_LINES       64
+#define MXC_MAX_INT_LINES	64
 
 /*!
  * Interrupt Number for ARM11 PMU
@@ -424,11 +422,11 @@
 /*!
  * Number of GPIO port as defined in the IC Spec
  */
-#define GPIO_PORT_NUM           3
+#define GPIO_PORT_NUM		3
 /*!
  * Number of GPIO pins per port
  */
-#define GPIO_NUM_PIN            32
+#define GPIO_NUM_PIN		32
 
 /*
  * Used for 1-Wire
@@ -452,4 +450,4 @@
 #define PWM_CTRL_MASK           0xFFFCFFFF
 #define PWM_CTRL_OFFSET	    	16
 
-#endif				/*  __ASM_ARCH_MXC_MX31_H__ */
+#endif			/*  __ASM_ARCH_MXC_MX31_H__ */

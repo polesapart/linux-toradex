@@ -3,12 +3,9 @@
  */
 
 /*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/module.h>
@@ -21,6 +18,7 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
+#include <asm/arch/common.h>
 
 /*!
  * @file plat-mxc/irq.c

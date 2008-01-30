@@ -3,13 +3,11 @@
  */
 
 /*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
+
 #ifndef __ASM_ARCH_MXC_H__
 #define __ASM_ARCH_MXC_H__
 
@@ -60,7 +58,7 @@ struct mxc_spi_master {
 	unsigned int maxchipselect;
 	/*!
 	 * CSPI Hardware Version.
-	 */
+ */
 	unsigned int spi_version;
 };
 

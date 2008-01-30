@@ -1,14 +1,12 @@
 /*
+ *  Copyright (C) 2007 Lennert Buytenhek <buytenh@wantstofly.org>
  *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <asm/hardware.h>
@@ -17,11 +15,11 @@
 	.macro	disable_fiq
 	.endm
 
-        .macro  get_irqnr_preamble, base, tmp
-        .endm
+	.macro  get_irqnr_preamble, base, tmp
+	.endm
 
-        .macro  arch_ret_to_user, tmp1, tmp2
-        .endm
+	.macro  arch_ret_to_user, tmp1, tmp2
+	.endm
 
 	@ this macro checks which interrupt occured
 	@ and returns its number in irqnr

@@ -58,11 +58,9 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 {
 	struct mmc_host *host;
 
-	host = kmalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
+	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
 	if (!host)
 		return NULL;
-
-	memset(host, 0, sizeof(struct mmc_host) + extra);
 
 	host->parent = dev;
 	host->class_dev.parent = dev;
@@ -101,9 +99,6 @@ EXPORT_SYMBOL(mmc_alloc_host);
 int mmc_add_host(struct mmc_host *host)
 {
 	int err;
-
-	WARN_ON((host->caps & MMC_CAP_SDIO_IRQ) &&
-		!host->ops->enable_sdio_irq);
 
 	if (!idr_pre_get(&mmc_host_idr, GFP_KERNEL))
 		return -ENOMEM;

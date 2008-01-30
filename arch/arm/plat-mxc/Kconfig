@@ -21,7 +21,7 @@ config ARCH_MX27
 	select MXC_EMMA
 	select USB_ARCH_HAS_EHCI
 	help
-	  This enables support for systems based on Freescale i.MX27
+	  This enables support for systems based on the Freescale i.MX3 family
 
 endchoice
 

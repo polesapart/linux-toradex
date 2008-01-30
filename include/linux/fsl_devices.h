@@ -53,6 +53,7 @@ struct gianfar_platform_data {
 	u32	bus_id;
 	u32	phy_id;
 	u8	mac_addr[6];
+	phy_interface_t interface;
 };
 
 struct gianfar_mdio_data {
@@ -71,8 +72,8 @@ struct gianfar_mdio_data {
 #define FSL_GIANFAR_DEV_HAS_PADDING		0x00000080
 
 /* Flags in gianfar_platform_data */
-#define FSL_GIANFAR_BRD_HAS_PHY_INTR	0x00000001	/* set or use a timer */
-#define FSL_GIANFAR_BRD_IS_REDUCED	0x00000002	/* Set if RGMII, RMII */
+#define FSL_GIANFAR_BRD_HAS_PHY_INTR	0x00000001 /* set or use a timer */
+#define FSL_GIANFAR_BRD_IS_REDUCED	0x00000002 /* Set if RGMII, RMII */
 
 struct fsl_i2c_platform_data {
 	/* device specific information */
@@ -131,14 +132,14 @@ struct fsl_usb2_platform_data {
 #define FSL_USB2_PORT1_ENABLED	0x00000002
 
 struct fsl_spi_platform_data {
-	u32 initial_spmode;	/* initial SPMODE value */
-	u16 bus_num;
-
+	u32 	initial_spmode;	/* initial SPMODE value */
+	u16	bus_num;
+	bool	qe_mode;
 	/* board specific information */
-	u16 max_chipselect;
-	void (*activate_cs) (u8 cs, u8 polarity);
-	void (*deactivate_cs) (u8 cs, u8 polarity);
-	u32 sysclk;
+	u16	max_chipselect;
+	void	(*activate_cs)(u8 cs, u8 polarity);
+	void	(*deactivate_cs)(u8 cs, u8 polarity);
+	u32	sysclk;
 };
 
 struct fsl_ata_platform_data {

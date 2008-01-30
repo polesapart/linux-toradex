@@ -52,47 +52,11 @@
 #include "crm_regs.h"
 #include "iomux.h"
 /*!
- * @file mach-mx3/mx31ads.c
+ * @file mx31ads.c
  *
- * @brief This file contains the board specific initialization routines.
+ * @brief This file contains the board-specific initialization routines.
  *
- * @ingroup MSL_MX31
- */
-
-extern void mxc_map_io(void);
-extern void mxc_init_irq(void);
-extern void mxc_cpu_init(void) __init;
-extern void mx31ads_gpio_init(void) __init;
-extern struct sys_timer mxc_timer;
-extern void mxc_cpu_common_init(void);
-extern int mxc_clocks_init(void);
-extern void __init early_console_setup(char *);
-
-static void mxc_nop_release(struct device *dev)
-{
-	/* Nothing */
-}
-
-unsigned long board_get_ckih_rate(void)
-{
-	if ((__raw_readw(PBC_BASE_ADDRESS + PBC_BSTAT) &
-	     CKIH_27MHZ_BIT_SET) != 0) {
-		return 27000000;
-	}
-	return 26000000;
-}
-
-#if defined(CONFIG_CS89x0) || defined(CONFIG_CS89x0_MODULE)
-/*! Null terminated portlist used to probe for the CS8900A device on ISA Bus
- * Add 3 to reset the page window before probing (fixes eth probe when deployed
- * using nand_boot)
- */
-unsigned int netcard_portlist[] = { CS8900A_BASE_ADDRESS + 3, 0 };
-
-EXPORT_SYMBOL(netcard_portlist);
-/*!
- * The CS8900A has 4 IRQ pins, which is software selectable, CS8900A interrupt
- * pin 0 is used for interrupt generation.
+ * @ingroup System
  */
 unsigned int cs8900_irq_map[] = { CS8900AIRQ, 0, 0, 0 };
 
@@ -166,45 +130,37 @@ static inline void mxc_init_keypad(void)
 
 #if defined(CONFIG_SERIAL_8250) || defined(CONFIG_SERIAL_8250_MODULE)
 /*!
- * The serial port definition structure. The fields contain:
- * {UART, CLK, PORT, IRQ, FLAGS}
+ * The serial port definition structure.
  */
 static struct plat_serial8250_port serial_platform_data[] = {
 	{
-	 .membase = (void __iomem *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTA),
-	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTA),
-	 .irq = EXPIO_INT_XUART_INTA,
-	 .uartclk = 14745600,
-	 .regshift = 0,
-	 .iotype = UPIO_MEM,
-	 .flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
-	 },
-	{
-	 .membase = (void __iomem *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTB),
-	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTB),
-	 .irq = EXPIO_INT_XUART_INTB,
-	 .uartclk = 14745600,
-	 .regshift = 0,
-	 .iotype = UPIO_MEM,
-	 .flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
-	 },
+		.membase  = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTA),
+		.mapbase  = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTA),
+		.irq      = EXPIO_INT_XUART_INTA,
+		.uartclk  = 14745600,
+		.regshift = 0,
+		.iotype   = UPIO_MEM,
+		.flags    = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
+	}, {
+		.membase  = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTB),
+		.mapbase  = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTB),
+		.irq      = EXPIO_INT_XUART_INTB,
+		.uartclk  = 14745600,
+		.regshift = 0,
+		.iotype   = UPIO_MEM,
+		.flags    = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
+	},
 	{},
 };
 
-/*!
- * REVISIT: document me
- */
 static struct platform_device serial_device = {
-	.name = "serial8250",
-	.id = 0,
-	.dev = {
+	.name	= "serial8250",
+	.id	= 0,
+	.dev	= {
 		.platform_data = serial_platform_data,
-		},
+	},
 };
 
-/*!
- * REVISIT: document me
- */
 static int __init mxc_init_extuart(void)
 {
 	return platform_device_register(&serial_device);
@@ -516,7 +472,7 @@ static void expio_ack_irq(u32 irq)
  * @param irq		a expio virtual irq number
  */
 static void expio_unmask_irq(u32 irq)
-{
+	{
 	u32 expio = MXC_IRQ_TO_EXPIO(irq);
 	/* unmask the interrupt */
 	__raw_writew(1 << expio, PBC_INTMASK_SET_REG);
@@ -650,6 +606,38 @@ static void __inline mxc_init_pmic_audio(void)
 }
 #endif
 
+static struct map_desc mx31ads_io_desc[] __initdata = {
+	{
+		.virtual	= AIPS1_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(AIPS1_BASE_ADDR),
+		.length		= AIPS1_SIZE,
+		.type		= MT_NONSHARED_DEVICE
+	}, {
+		.virtual	= SPBA0_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(SPBA0_BASE_ADDR),
+		.length		= SPBA0_SIZE,
+		.type		= MT_NONSHARED_DEVICE
+	}, {
+		.virtual	= AIPS2_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(AIPS2_BASE_ADDR),
+		.length		= AIPS2_SIZE,
+		.type		= MT_NONSHARED_DEVICE
+	}, {
+		.virtual	= CS4_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(CS4_BASE_ADDR),
+		.length		= CS4_SIZE / 2,
+		.type		= MT_DEVICE
+	},
+};
+
+void __init mx31ads_map_io(void)
+
+{
+	mxc_map_io();
+//	iotable_init(mx31ads_io_desc, ARRAY_SIZE(mx31ads_io_desc));
+}
+
+
 /*!
  * Board specific initialization.
  */
@@ -753,23 +741,22 @@ struct cpu_wp *get_cpu_wp(int *wp)
 }
 
 /*
- * The following uses standard kernel macros define in arch.h in order to
+ * The following uses standard kernel macros defined in arch.h in order to
  * initialize __mach_desc_MX31ADS data structure.
  */
-/* *INDENT-OFF* */
-MACHINE_START(MX31ADS, "Freescale MX31/MX32 ADS")
+MACHINE_START(MX31ADS, "Freescale MX31ADS")
 	/* Maintainer: Freescale Semiconductor, Inc. */
 #ifdef CONFIG_SERIAL_8250_CONSOLE
 	.phys_io = CS4_BASE_ADDR,
 	.io_pg_offst = ((CS4_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 #else
-	.phys_io = AIPS1_BASE_ADDR,
-	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.phys_io	= AIPS1_BASE_ADDR,
+	.io_pg_offst	= ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 #endif
-	.boot_params = PHYS_OFFSET + 0x100,
-	.fixup = fixup_mxc_board,
-	.map_io = mxc_map_io,
-	.init_irq = mxc_init_irq,
-	.init_machine = mxc_board_init,
-	.timer = &mxc_timer,
+	.boot_params    = PHYS_OFFSET + 0x100,
+	.fixup = fixup_mxc_board
+	.map_io         = mx31ads_map_io,
+	.init_irq       = mxc_init_irq,
+	.init_machine   = mxc_board_init,
+	.timer          = &mxc_timer,
 MACHINE_END

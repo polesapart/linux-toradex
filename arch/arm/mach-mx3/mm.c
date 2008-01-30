@@ -25,17 +25,19 @@
 #include <asm/hardware.h>
 #include <asm/pgtable.h>
 #include <asm/mach/map.h>
+#include <asm/arch/common.h>
 
 /*!
- * @file mach-mx3/mm.c
+ * @file mm.c
  *
- * @brief This file creates static mapping between physical to virtual memory.
+ * @brief This file creates static virtual to physical mappings, common to all MX3 boards.
  *
- * @ingroup Memory_MX31
+ * @ingroup Memory
  */
 
 /*!
- * This structure defines the MX31 memory map.
+ * This table defines static virtual address mappings for I/O regions.
+ * These are the mappings common across all MX3 boards.
  */
 static struct map_desc mxc_io_desc[] __initdata = {
 	{
@@ -44,9 +46,9 @@ static struct map_desc mxc_io_desc[] __initdata = {
 	 .length = IRAM_SIZE,
 	 .type = MT_NONSHARED_DEVICE},
 	{
-	 .virtual = X_MEMC_BASE_ADDR_VIRT,
-	 .pfn = __phys_to_pfn(X_MEMC_BASE_ADDR),
-	 .length = X_MEMC_SIZE,
+		.virtual	= X_MEMC_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(X_MEMC_BASE_ADDR),
+		.length		= X_MEMC_SIZE,
 	 .type = MT_DEVICE},
 	{
 	 .virtual = ROMP_BASE_ADDR_VIRT,
@@ -54,9 +56,9 @@ static struct map_desc mxc_io_desc[] __initdata = {
 	 .length = ROMP_SIZE,
 	 .type = MT_NONSHARED_DEVICE},
 	{
-	 .virtual = AVIC_BASE_ADDR_VIRT,
-	 .pfn = __phys_to_pfn(AVIC_BASE_ADDR),
-	 .length = AVIC_SIZE,
+		.virtual	= AVIC_BASE_ADDR_VIRT,
+		.pfn		= __phys_to_pfn(AVIC_BASE_ADDR),
+		.length		= AVIC_SIZE,
 	 .type = MT_NONSHARED_DEVICE},
 	{
 	 .virtual = AIPS1_BASE_ADDR_VIRT,
@@ -82,8 +84,8 @@ static struct map_desc mxc_io_desc[] __initdata = {
 
 /*!
  * This function initializes the memory map. It is called during the
- * system startup to create static physical to virtual memory map for
- * the IO modules.
+ * system startup to create static physical to virtual memory mappings
+ * for the IO modules.
  */
 void __init mxc_map_io(void)
 {

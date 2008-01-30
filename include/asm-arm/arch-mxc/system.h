@@ -22,10 +22,10 @@
 #define __ASM_ARCH_MXC_SYSTEM_H__
 
 /*!
- * @file arch-mxc/system.h
+ * @file system.h
  * @brief This file contains idle and reset functions.
  *
- * @ingroup MSL_MX27 MSL_MX31
+ * @ingroup System
  */
 
 /*!
