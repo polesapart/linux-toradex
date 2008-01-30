@@ -50,13 +50,6 @@
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
 
-#ifdef CONFIG_CODETEST
-/*
- * CodeTEST mods
- */
-extern void ct_thread_delete(struct task_struct *p);
-#endif /* CONFIG_CODETEST */
-
 extern void sem_exit (void);
 
 static void exit_mm(struct task_struct * tsk);
@@ -785,10 +778,6 @@ static void exit_notify(struct task_struct *tsk)
 	 *	as a result of our exiting, and if they have any stopped
 	 *	jobs, send them a SIGHUP and then a SIGCONT.  (POSIX 3.2.2.2)
 	 */
-
-#ifdef CONFIG_CODETEST
-	ct_thread_delete(current);
-#endif /* CONFIG_CODETEST */
 
 	INIT_LIST_HEAD(&ptrace_dead);
 	forget_original_parent(tsk, &ptrace_dead);

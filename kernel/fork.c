@@ -57,10 +57,6 @@
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
 
-#ifdef CONFIG_CODETEST
-extern void ct_thread_create(struct task_struct *p);
-#endif /* CONFIG_CODETEST */
-
 /*
  * Protected counters by write_lock_irq(&tasklist_lock)
  */
@@ -1403,10 +1399,6 @@ long do_fork(unsigned long clone_flags,
 			wake_up_new_task(p, clone_flags);
 		else
 			p->state = TASK_STOPPED;
-
-#ifdef CONFIG_CODETEST
-		ct_thread_create(p);
-#endif /* CONFIG_CODETEST */
 
 		if (unlikely (trace)) {
 			current->ptrace_message = nr;
