@@ -829,9 +829,8 @@ static void mxc_ide_dma_host_on(ide_drive_t * drive)
  *
  * @return      0 if successful, non-zero otherwise
  */
-static int mxc_ide_dma_timeout(ide_drive_t * drive)
+static void mxc_ide_dma_timeout(ide_drive_t * drive)
 {
-	return 0;
 }
 
 /*!
@@ -841,9 +840,8 @@ static int mxc_ide_dma_timeout(ide_drive_t * drive)
  *
  * @return      0 if successful, non-zero otherwise
  */
-static int mxc_ide_dma_lost_irq(ide_drive_t * drive)
+static void mxc_ide_dma_lost_irq(ide_drive_t * drive)
 {
-	return 0;
 }
 
 /*!
@@ -891,8 +889,12 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	hwif->ultra_mask = 0x7f;
 	hwif->mwdma_mask = 0x07;
 	hwif->swdma_mask = 0x07;
-	hwif->udma_four = 1;
-
+	
+#warning Revisit	
+	//	hwif->udma_four = 1;
+	hwif->cbl = ATA_CBL_PATA40;
+	hwif->pio_mask = ATA_PIO4,
+	  
 	hwif->dma_off_quietly = mxc_ide_dma_off_quietly;
 	hwif->ide_dma_on = mxc_ide_dma_on;
 	hwif->ide_dma_check = mxc_ide_dma_check;
@@ -903,8 +905,8 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	hwif->ide_dma_test_irq = mxc_ide_dma_test_irq;
 	hwif->dma_host_off = mxc_ide_dma_host_off;
 	hwif->dma_host_on = mxc_ide_dma_host_on;
-	hwif->ide_dma_timeout = mxc_ide_dma_timeout;
-	hwif->ide_dma_lostirq = mxc_ide_dma_lost_irq;
+	hwif->dma_timeout = mxc_ide_dma_timeout;
+	hwif->dma_lost_irq = mxc_ide_dma_lost_irq;
 
 	hwif->hwif_data = (void *)priv;
 	return;
