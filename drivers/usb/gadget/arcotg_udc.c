@@ -838,49 +838,6 @@ static void arcotg_free_request(struct usb_ep *_ep, struct usb_request *_req)
 		kfree(req);
 }
 
-/*!
- * Allocate an I/O buffer for the ep->req->buf.
- * @param _ep    endpoint pointer
- * @param bytes  length of the desired buffer
- * @param dma   pointer to the buffer's DMA address; must be valid
- *       when gadget layer calls this function, ma is &req->dma
- * @param gfp_flags  GFP_* flags to use
- * @return Returns a new buffer, or null if one could not be allocated
- */
-static void *arcotg_alloc_buffer(struct usb_ep *_ep, unsigned bytes,
-				 dma_addr_t * dma, gfp_t gfp_flags)
-{
-	void *retval = NULL;
-
-	if (!bytes)
-		return 0;
-
-	retval = kmalloc(bytes, gfp_flags);
-
-	if (retval)
-		*dma = virt_to_phys(retval);
-
-	pr_debug("udc: ep=%s  buffer=0x%p  dma=0x%x  len=%d\n",
-		 _ep->name, retval, *dma, bytes);
-
-	return retval;
-}
-
-/*!
- * Free an I/O buffer for the ep->req->buf
- * @param _ep    endpoint pointer
- * @param buf    data buf pointer
- * @param dma    for 834x, we will not touch dma field
- * @param bytes  buffer size
- */
-static void arcotg_free_buffer(struct usb_ep *_ep, void *buf,
-			       dma_addr_t dma, unsigned bytes)
-{
-	pr_debug("udc: buf=0x%p  dma=0x%x\n", buf, dma);
-	if (buf)
-		kfree(buf);
-}
-
 /*-------------------------------------------------------------------------*/
 
 /*!
@@ -1345,9 +1302,6 @@ static const struct usb_ep_ops arcotg_ep_ops = {
 
 	.alloc_request = arcotg_alloc_request,
 	.free_request = arcotg_free_request,
-
-	.alloc_buffer = arcotg_alloc_buffer,
-	.free_buffer = arcotg_free_buffer,
 
 	.queue = arcotg_ep_queue,
 	.dequeue = arcotg_ep_dequeue,
