@@ -1334,7 +1334,7 @@ static struct video_device mxc_v4l2out_template = {
 	.name = "MXC Video Output",
 	.type = 0,
 	.type2 = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING,
-	.hardware = 39,
+	// DLS	.hardware = 39,
 	.fops = &mxc_v4l2out_fops,
 	.release = video_device_release,
 };

@@ -786,13 +786,13 @@ static int spi_bitbang_suspend(struct spi_bitbang *bitbang)
 	while (!list_empty(&bitbang->queue) && limit--) {
 		spin_unlock_irqrestore(&bitbang->lock, flags);
 
-		dev_dbg(bitbang->master->cdev.dev, "wait for queue\n");
+		dev_dbg(bitbang->master->dev.parent, "wait for queue\n");
 		msleep(10);
 
 		spin_lock_irqsave(&bitbang->lock, flags);
 	}
 	if (!list_empty(&bitbang->queue)) {
-		dev_err(bitbang->master->cdev.dev, "queue didn't empty\n");
+		dev_err(bitbang->master->dev.parent, "queue didn't empty\n");
 		return -EBUSY;
 	}
 	spin_unlock_irqrestore(&bitbang->lock, flags);

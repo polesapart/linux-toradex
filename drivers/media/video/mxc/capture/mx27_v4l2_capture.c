@@ -1875,7 +1875,6 @@ static struct video_device mxc_v4l_template = {
 	.name = "Mxc Camera",
 	.type = 0,
 	.type2 = VID_TYPE_CAPTURE,
-	.hardware = 0,
 	.fops = &mxc_v4l_fops,
 	.release = video_device_release,
 };

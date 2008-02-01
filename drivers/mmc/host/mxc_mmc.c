@@ -630,7 +630,7 @@ static int mxcmci_cmd_done(struct mxcmci_host *host, unsigned int stat)
 #endif
 	/* Use PIO tranfer of data */
 	buf =
-	    (unsigned long *)(page_address(data->sg->page) + data->sg->offset);
+	  (unsigned long *)(sg_virt(data->sg));
 	buf8 = (u8 *) buf;
 
 	/* calculate the number of bytes requested for transfer */

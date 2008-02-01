@@ -43,7 +43,7 @@
 #include <linux/mm.h>
 #include <linux/platform_device.h>
 #include <linux/usb/ch9.h>
-#include <linux/usb_gadget.h>
+#include <linux/usb/gadget.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/fsl_devices.h>
