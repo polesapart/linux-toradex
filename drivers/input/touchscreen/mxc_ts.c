@@ -75,7 +75,7 @@ static int __init mxc_ts_init(void)
 
 	mxc_inputdev->name = MXC_TS_NAME;
 	mxc_inputdev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
-	mxc_inputdev->keybit[LONG(BTN_TOUCH)] |= BIT(BTN_TOUCH);
+	mxc_inputdev->keybit[BIT_WORD(BTN_TOUCH)] |= BIT(BTN_TOUCH);
 	mxc_inputdev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
 	input_register_device(mxc_inputdev);
 
