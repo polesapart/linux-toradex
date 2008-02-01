@@ -18,7 +18,7 @@
 #include <linux/delay.h>
 #include <linux/pagemap.h>
 #include <linux/err.h>
-#include <asm/scatterlist.h>
+#include <linux/leds.h>
 #include <linux/scatterlist.h>
 
 #include <linux/mmc/card.h>
@@ -40,6 +40,14 @@ extern int mmc_attach_sd(struct mmc_host *host, u32 ocr);
 extern int mmc_attach_sdio(struct mmc_host *host, u32 ocr);
 
 static struct workqueue_struct *workqueue;
+
+/*
+ * Enabling software CRCs on the data blocks can be a significant (30%)
+ * performance cost, and for other reasons may not always be desired.
+ * So we allow it it to be disabled.
+ */
+int use_spi_crc = 1;
+module_param(use_spi_crc, bool, 0);
 
 /*
  * Internal function. Schedule delayed work in the MMC work queue.
@@ -71,6 +79,11 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 	struct mmc_command *cmd = mrq->cmd;
 	int err = cmd->error;
 
+	if (err && cmd->retries && mmc_host_is_spi(host)) {
+		if (cmd->resp[0] & R1_SPI_ILLEGAL_COMMAND)
+			cmd->retries = 0;
+	}
+
 	if (err && cmd->retries) {
 		pr_debug("%s: req failed (CMD%u): %d, retrying...\n",
 			mmc_hostname(host), cmd->opcode, err);
@@ -79,6 +92,8 @@ void mmc_request_done(struct mmc_host *host, struct mmc_request *mrq)
 		cmd->error = 0;
 		host->ops->request(host, mrq);
 	} else {
+		led_trigger_event(host->led, LED_OFF);
+
 		pr_debug("%s: req done (CMD%u): %d: %08x %08x %08x %08x\n",
 			mmc_hostname(host), cmd->opcode, err,
 			cmd->resp[0], cmd->resp[1],
@@ -132,6 +147,8 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 	}
 
 	WARN_ON(!host->claimed);
+
+	led_trigger_event(host->led, LED_FULL);
 
 	mrq->cmd->error = 0;
 	mrq->cmd->mrq = mrq;
@@ -223,13 +240,11 @@ EXPORT_SYMBOL(mmc_wait_for_cmd);
  *	mmc_set_data_timeout - set the timeout for a data command
  *	@data: data phase for command
  *	@card: the MMC card associated with the data transfer
- *	@write: flag to differentiate reads from writes
  *
  *	Computes the data timeout parameters according to the
  *	correct algorithm given the card type.
  */
-void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card,
-			  int write)
+void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card)
 {
 	unsigned int mult;
 
@@ -251,7 +266,7 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card,
 	 * Scale up the multiplier (and therefore the timeout) by
 	 * the r2w factor for writes.
 	 */
-	if (write)
+	if (data->flags & MMC_DATA_WRITE)
 		mult <<= card->csd.r2w_factor;
 
 	data->timeout_ns = card->csd.tacc_ns * mult;
@@ -267,7 +282,7 @@ void mmc_set_data_timeout(struct mmc_data *data, const struct mmc_card *card,
 		timeout_us += data->timeout_clks * 1000 /
 			(card->host->ios.clock / 1000);
 
-		if (write)
+		if (data->flags & MMC_DATA_WRITE)
 			limit_us = 250000;
 		else
 			limit_us = 100000;
@@ -455,19 +470,32 @@ static void mmc_power_up(struct mmc_host *host)
 	int bit = fls(host->ocr_avail) - 1;
 
 	host->ios.vdd = bit;
-	host->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
-	host->ios.chip_select = MMC_CS_DONTCARE;
+	if (mmc_host_is_spi(host)) {
+		host->ios.chip_select = MMC_CS_HIGH;
+		host->ios.bus_mode = MMC_BUSMODE_PUSHPULL;
+	} else {
+		host->ios.chip_select = MMC_CS_DONTCARE;
+		host->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
+	}
 	host->ios.power_mode = MMC_POWER_UP;
 	host->ios.bus_width = MMC_BUS_WIDTH_1;
 	host->ios.timing = MMC_TIMING_LEGACY;
 	mmc_set_ios(host);
 
-	mmc_delay(1);
+	/*
+	 * This delay should be sufficient to allow the power supply
+	 * to reach the minimum voltage.
+	 */
+	mmc_delay(2);
 
 	host->ios.clock = host->f_min;
 	host->ios.power_mode = MMC_POWER_ON;
 	mmc_set_ios(host);
 
+	/*
+	 * This delay must be at least 74 clock sizes, or 1 ms, or the
+	 * time required to reach a stable voltage.
+	 */
 	mmc_delay(2);
 }
 
@@ -475,8 +503,10 @@ static void mmc_power_off(struct mmc_host *host)
 {
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
-	host->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
-	host->ios.chip_select = MMC_CS_DONTCARE;
+	if (!mmc_host_is_spi(host)) {
+		host->ios.bus_mode = MMC_BUSMODE_OPENDRAIN;
+		host->ios.chip_select = MMC_CS_DONTCARE;
+	}
 	host->ios.power_mode = MMC_POWER_OFF;
 	host->ios.bus_width = MMC_BUS_WIDTH_1;
 	host->ios.timing = MMC_TIMING_LEGACY;

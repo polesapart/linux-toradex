@@ -21,7 +21,7 @@
 #include "sdio_bus.h"
 
 #define dev_to_sdio_func(d)	container_of(d, struct sdio_func, dev)
-#define to_sdio_driver(d)	container_of(d, struct sdio_driver, drv)
+#define to_sdio_driver(d)      container_of(d, struct sdio_driver, drv)
 
 /* show configuration fields */
 #define sdio_config_attr(field, format_string)				\
@@ -96,29 +96,22 @@ static int sdio_bus_match(struct device *dev, struct device_driver *drv)
 }
 
 static int
-sdio_bus_uevent(struct device *dev, char **envp, int num_envp, char *buf,
-		int buf_size)
+sdio_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct sdio_func *func = dev_to_sdio_func(dev);
-	int i = 0, length = 0;
 
-	if (add_uevent_var(envp, num_envp, &i,
-			buf, buf_size, &length,
+	if (add_uevent_var(env,
 			"SDIO_CLASS=%02X", func->class))
 		return -ENOMEM;
 
-	if (add_uevent_var(envp, num_envp, &i,
-			buf, buf_size, &length,
+	if (add_uevent_var(env, 
 			"SDIO_ID=%04X:%04X", func->vendor, func->device))
 		return -ENOMEM;
 
-	if (add_uevent_var(envp, num_envp, &i,
-			buf, buf_size, &length,
+	if (add_uevent_var(env,
 			"MODALIAS=sdio:c%02Xv%04Xd%04X",
 			func->class, func->vendor, func->device))
 		return -ENOMEM;
-
-	envp[i] = NULL;
 
 	return 0;
 }
@@ -192,7 +185,6 @@ int sdio_register_driver(struct sdio_driver *drv)
 	drv->drv.bus = &sdio_bus_type;
 	return driver_register(&drv->drv);
 }
-
 EXPORT_SYMBOL_GPL(sdio_register_driver);
 
 /**
@@ -204,7 +196,6 @@ void sdio_unregister_driver(struct sdio_driver *drv)
 	drv->drv.bus = &sdio_bus_type;
 	driver_unregister(&drv->drv);
 }
-
 EXPORT_SYMBOL_GPL(sdio_unregister_driver);
 
 static void sdio_release_func(struct device *dev)
@@ -212,6 +203,9 @@ static void sdio_release_func(struct device *dev)
 	struct sdio_func *func = dev_to_sdio_func(dev);
 
 	sdio_free_func_cis(func);
+
+	if (func->info)
+		kfree(func->info);
 
 	kfree(func);
 }

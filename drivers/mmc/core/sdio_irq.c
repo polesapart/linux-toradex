@@ -27,7 +27,7 @@
 
 static int process_sdio_pending_irqs(struct mmc_card *card)
 {
-	int i, ret;
+	int i, ret, count;
 	unsigned char pending;
 
 	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_INTx, 0, &pending);
@@ -37,29 +37,37 @@ static int process_sdio_pending_irqs(struct mmc_card *card)
 		return ret;
 	}
 
+	count = 0;
 	for (i = 1; i <= 7; i++) {
 		if (pending & (1 << i)) {
 			struct sdio_func *func = card->sdio_func[i - 1];
 			if (!func) {
 				printk(KERN_WARNING "%s: pending IRQ for "
 					"non-existant function\n",
-					sdio_func_id(func));
+					mmc_card_id(card));
+				ret = -EINVAL;
 			} else if (func->irq_handler) {
 				func->irq_handler(func);
-			} else
+				count++;
+			} else {
 				printk(KERN_WARNING "%s: pending IRQ with no handler\n",
 				       sdio_func_id(func));
+				ret = -EINVAL;
+			}
 		}
 	}
 
-	return 0;
+	if (count)
+		return count;
+
+	return ret;
 }
 
 static int sdio_irq_thread(void *_host)
 {
 	struct mmc_host *host = _host;
 	struct sched_param param = { .sched_priority = 1 };
-	unsigned long period;
+	unsigned long period, idle_period;
 	int ret;
 
 	sched_setscheduler(current, SCHED_FIFO, &param);
@@ -70,8 +78,9 @@ static int sdio_irq_thread(void *_host)
 	 * asynchronous notification of pending SDIO card interrupts
 	 * hence we poll for them in that case.
 	 */
+	idle_period = msecs_to_jiffies(10);
 	period = (host->caps & MMC_CAP_SDIO_IRQ) ?
-		MAX_SCHEDULE_TIMEOUT : msecs_to_jiffies(10);
+		MAX_SCHEDULE_TIMEOUT : idle_period;
 
 	pr_debug("%s: IRQ thread started (poll period = %lu jiffies)\n",
 		 mmc_hostname(host), period);
@@ -101,8 +110,23 @@ static int sdio_irq_thread(void *_host)
 		 * errors.  FIXME: determine if due to card removal and
 		 * possibly exit this thread if so.
 		 */
-		if (ret)
+		if (ret < 0)
 			ssleep(1);
+
+		/*
+		 * Adaptive polling frequency based on the assumption
+		 * that an interrupt will be closely followed by more.
+		 * This has a substantial benefit for network devices.
+		 */
+		if (!(host->caps & MMC_CAP_SDIO_IRQ)) {
+			if (ret > 0)
+				period /= 2;
+			else {
+				period++;
+				if (period > idle_period)
+					period = idle_period;
+			}
+		}
 
 		set_task_state(current, TASK_INTERRUPTIBLE);
 		if (host->caps & MMC_CAP_SDIO_IRQ)
@@ -200,7 +224,6 @@ int sdio_claim_irq(struct sdio_func *func, sdio_irq_handler_t *handler)
 
 	return ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_claim_irq);
 
 /**
@@ -240,6 +263,5 @@ int sdio_release_irq(struct sdio_func *func)
 
 	return 0;
 }
-
 EXPORT_SYMBOL_GPL(sdio_release_irq);
 

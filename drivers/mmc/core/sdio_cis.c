@@ -23,30 +23,50 @@
 #include "sdio_cis.h"
 #include "sdio_ops.h"
 
-#define sdio_card_func_id(card, func) \
-	(func ? sdio_func_id(func) : mmc_card_id(card))
-
 static int cistpl_vers_1(struct mmc_card *card, struct sdio_func *func,
 			 const unsigned char *buf, unsigned size)
 {
-	unsigned i, nr_strings = 0;
+	unsigned i, nr_strings;
+	char **buffer, *string;
 
-	printk(KERN_DEBUG "%s: CISTPL_VERS_1 = %u.%u\n",
-	       sdio_card_func_id(card, func), buf[0], buf[1]);
 	buf += 2;
+	size -= 2;
 
-	for (i = 0; i < size - 2; i++) {
+	nr_strings = 0;
+	for (i = 0; i < size; i++) {
 		if (buf[i] == 0xff)
 			break;
 		if (buf[i] == 0)
 			nr_strings++;
 	}
-	printk(KERN_INFO "%s:", sdio_card_func_id(card, func));
-	for (i = 0; i < nr_strings; i++) {
-		printk(" \"%s\"", buf);
-		while (*buf++);
+
+	if (buf[i-1] != '\0') {
+		printk(KERN_WARNING "SDIO: ignoring broken CISTPL_VERS_1\n");
+		return 0;
 	}
-	printk("\n");
+
+	size = i;
+
+	buffer = kzalloc(sizeof(char*) * nr_strings + size, GFP_KERNEL);
+	if (!buffer)
+		return -ENOMEM;
+
+	string = (char*)(buffer + nr_strings);
+
+	for (i = 0; i < nr_strings; i++) {
+		buffer[i] = string;
+		strcpy(string, buf);
+		string += strlen(string) + 1;
+		buf += strlen(buf) + 1;
+	}
+
+	if (func) {
+		func->num_info = nr_strings;
+		func->info = (const char**)buffer;
+	} else {
+		card->num_info = nr_strings;
+		card->info = (const char**)buffer;
+	}
 
 	return 0;
 }
@@ -58,13 +78,9 @@ static int cistpl_manfid(struct mmc_card *card, struct sdio_func *func,
 
 	/* TPLMID_MANF */
 	vendor = buf[0] | (buf[1] << 8);
-	printk(KERN_DEBUG "%s: TPLMID_MANF = 0x%04x\n",
-	       sdio_card_func_id(card, func), vendor);
 
 	/* TPLMID_CARD */
 	device = buf[2] | (buf[3] << 8);
-	printk(KERN_DEBUG "%s: TPLMID_CARD = 0x%04x\n",
-	       sdio_card_func_id(card, func), device);
 
 	if (func) {
 		func->vendor = vendor;
@@ -73,16 +89,6 @@ static int cistpl_manfid(struct mmc_card *card, struct sdio_func *func,
 		card->cis.vendor = vendor;
 		card->cis.device = device;
 	}
-
-	return 0;
-}
-
-static int cistpl_funcid(struct mmc_card *card, struct sdio_func *func,
-			 const unsigned char *buf, unsigned size)
-{
-	/* TPLFID_FUNCTION */
-	printk(KERN_DEBUG "%s: TPLFID_FUNCTION = 0x%02x\n",
-	       sdio_card_func_id(card, func), buf[0]);
 
 	return 0;
 }
@@ -100,13 +106,10 @@ static int cistpl_funce_common(struct mmc_card *card,
 
 	/* TPLFE_FN0_BLK_SIZE */
 	card->cis.blksize = buf[1] | (buf[2] << 8);
-	printk(KERN_DEBUG "%s: TPLFE_FN0_BLK_SIZE = %u\n",
-	       mmc_card_id(card), (unsigned)card->cis.blksize);
+
 	/* TPLFE_MAX_TRAN_SPEED */
 	card->cis.max_dtr = speed_val[(buf[3] >> 3) & 15] *
 			    speed_unit[buf[3] & 7];
-	printk(KERN_DEBUG "%s: max speed = %u kbps\n",
-	       mmc_card_id(card), (unsigned)card->cis.max_dtr/1000);
 
 	return 0;
 }
@@ -114,7 +117,6 @@ static int cistpl_funce_common(struct mmc_card *card,
 static int cistpl_funce_func(struct sdio_func *func,
 			     const unsigned char *buf, unsigned size)
 {
-	unsigned val;
 	unsigned vsn;
 	unsigned min_size;
 
@@ -124,66 +126,8 @@ static int cistpl_funce_func(struct sdio_func *func,
 	if (size < min_size || buf[0] != 1)
 		return -EINVAL;
 
-	/* TPLFE_FUNCTION_INFO */
-	val = buf[1];
-	printk(KERN_DEBUG "%s: TPLFE_FUNCTION_INFO = 0x%02x\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_STD_IO_REV */
-	val = buf[2];
-	printk(KERN_DEBUG "%s: TPLFE_STD_IO_REV = 0x%02x\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_CARD_PSN */
-	val = buf[3] | (buf[4] << 8) | (buf[5] << 16) | (buf[6] << 24);
-	printk(KERN_DEBUG "%s: TPLFE_CARD_PSN = 0x%08x\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_CSA_SIZE */
-	val = buf[7] | (buf[8] << 8) | (buf[9] << 16) | (buf[10] << 24);
-	printk(KERN_DEBUG "%s: TPLFE_CSA_SIZE = 0x%08x\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_CSA_PROPERTY */
-	val = buf[11];
-	printk(KERN_DEBUG "%s: TPLFE_CSA_PROPERTY = 0x%02x\n",
-	       sdio_func_id(func), val);
 	/* TPLFE_MAX_BLK_SIZE */
 	func->max_blksize = buf[12] | (buf[13] << 8);
-	printk(KERN_DEBUG "%s: TPLFE_MAX_BLK_SIZE = %u\n",
-	       sdio_func_id(func), (unsigned)func->max_blksize);
-	/* TPLFE_OCR */
-	val = buf[14] | (buf[15] << 8) | (buf[16] << 16) | (buf[17] << 24);
-	printk(KERN_DEBUG "%s: TPLFE_OCR = 0x%08x\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_OP_MIN_PWR, TPLFE_OP_AVG_PWR, TPLFE_OP_MAX_PWR */
-	printk(KERN_DEBUG "%s: operating current (min/avg/max) = %u/%u/%u mA\n",
-	       sdio_func_id(func), buf[18], buf[19], buf[20]);
-	/* TPLFE_SB_MIN_PWR, TPLFE_SB_AVG_PWR, TPLFE_SB_MAX_PWR */
-	printk(KERN_DEBUG "%s: standby current (min/avg/max) = %u/%u/%u mA\n",
-	       sdio_func_id(func), buf[21], buf[22], buf[23]);
-	/* TPLFE_MIN_BW */
-	val = buf[24] | (buf[25] << 8);
-	printk(KERN_DEBUG "%s: minimum data bandwidth = %u KB/sec\n",
-	       sdio_func_id(func), val);
-	/* TPLFE_OPT_BW */
-	val = buf[26] | (buf[27] << 8);
-	printk(KERN_DEBUG "%s: optimum data bandwidth = %u KB/sec\n",
-	       sdio_func_id(func), val);
-	if (vsn > SDIO_SDIO_REV_1_00) {
-		/* TPLFE_ENABLE_TIMEOUT_VAL */
-		val = buf[28] | (buf[29] << 8);
-		printk(KERN_DEBUG "%s: TPLFE_ENABLE_TIMEOUT_VAL = %u\n",
-		       sdio_func_id(func), val);
-		/* TPLFE_SP_AVG_PWR_3.3V */
-		val = buf[30] | (buf[31] << 8);
-		/* TPLFE_SP_MAX_PWR_3.3V */
-		val = buf[32] | (buf[33] << 8);
-		/* TPLFE_HP_AVG_PWR_3.3V */
-		val = buf[34] | (buf[35] << 8);
-		/* TPLFE_HP_MAX_PWR_3.3V */
-		val = buf[36] | (buf[37] << 8);
-		/* TPLFE_LP_AVG_PWR_3.3V */
-		val = buf[38] | (buf[39] << 8);
-		/* TPLFE_LP_MAX_PWR_3.3V */
-		val = buf[40] | (buf[41] << 8);
-	}
 
 	return 0;
 }
@@ -206,8 +150,7 @@ static int cistpl_funce(struct mmc_card *card, struct sdio_func *func,
 
 	if (ret) {
 		printk(KERN_ERR "%s: bad CISTPL_FUNCE size %u "
-		       "type %u\n", sdio_card_func_id(card, func),
-		       size, buf[0]);
+		       "type %u\n", mmc_hostname(card->host), size, buf[0]);
 		return ret;
 	}
 
@@ -224,10 +167,10 @@ struct cis_tpl {
 };
 
 static const struct cis_tpl cis_tpl_list[] = {
-	{	0x15,	3,	cistpl_vers_1	},
-	{	0x20,	4,	cistpl_manfid	},
-	{	0x21,	2,	cistpl_funcid	},
-	{	0x22,	0,	cistpl_funce	},
+	{	0x15,	3,	cistpl_vers_1		},
+	{	0x20,	4,	cistpl_manfid		},
+	{	0x21,	2,	/* cistpl_funcid */	},
+	{	0x22,	0,	cistpl_funce		},
 };
 
 static int sdio_read_cis(struct mmc_card *card, struct sdio_func *func)
@@ -305,17 +248,16 @@ static int sdio_read_cis(struct mmc_card *card, struct sdio_func *func)
 			prev = &this->next;
 			printk(KERN_DEBUG
 			       "%s: queuing CIS tuple 0x%02x length %u\n",
-			       sdio_card_func_id(card, func),
-			       tpl_code, tpl_link);
+			       mmc_hostname(card->host), tpl_code, tpl_link);
 		} else {
 			const struct cis_tpl *tpl = cis_tpl_list + i;
 			if (tpl_link < tpl->min_size) {
 				printk(KERN_ERR
-				       "%s: bad CIS tuple 0x%02x (length = %u, expected >= %u\n",
-				       sdio_card_func_id(card, func),
+				       "%s: bad CIS tuple 0x%02x (length = %u, expected >= %u)\n",
+				       mmc_hostname(card->host),
 				       tpl_code, tpl_link, tpl->min_size);
 				ret = -EINVAL;
-			} else {
+			} else if (tpl->parse) {
 				ret = tpl->parse(card, func,
 						 this->data, tpl_link);
 			}

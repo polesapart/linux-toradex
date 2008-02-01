@@ -30,7 +30,6 @@ void sdio_claim_host(struct sdio_func *func)
 
 	mmc_claim_host(func->card->host);
 }
-
 EXPORT_SYMBOL_GPL(sdio_claim_host);
 
 /**
@@ -47,7 +46,6 @@ void sdio_release_host(struct sdio_func *func)
 
 	mmc_release_host(func->card->host);
 }
-
 EXPORT_SYMBOL_GPL(sdio_release_host);
 
 /**
@@ -103,7 +101,6 @@ err:
 	pr_debug("SDIO: Failed to enable device %s\n", sdio_func_id(func));
 	return ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_enable_func);
 
 /**
@@ -141,7 +138,6 @@ err:
 	pr_debug("SDIO: Failed to disable device %s\n", sdio_func_id(func));
 	return -EIO;
 }
-
 EXPORT_SYMBOL_GPL(sdio_disable_func);
 
 /**
@@ -284,7 +280,6 @@ unsigned char sdio_readb(struct sdio_func *func, unsigned int addr,
 
 	return val;
 }
-
 EXPORT_SYMBOL_GPL(sdio_readb);
 
 /**
@@ -309,7 +304,6 @@ void sdio_writeb(struct sdio_func *func, unsigned char b, unsigned int addr,
 	if (err_ret)
 		*err_ret = ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_writeb);
 
 /**
@@ -327,7 +321,6 @@ int sdio_memcpy_fromio(struct sdio_func *func, void *dst,
 {
 	return sdio_io_rw_ext_helper(func, 0, addr, 1, dst, count);
 }
-
 EXPORT_SYMBOL_GPL(sdio_memcpy_fromio);
 
 /**
@@ -345,6 +338,7 @@ int sdio_memcpy_toio(struct sdio_func *func, unsigned int addr,
 {
 	return sdio_io_rw_ext_helper(func, 1, addr, 1, src, count);
 }
+EXPORT_SYMBOL_GPL(sdio_memcpy_toio);
 
 /**
  *	sdio_readsb - read from a FIFO on a SDIO function
@@ -379,7 +373,6 @@ int sdio_writesb(struct sdio_func *func, unsigned int addr, void *src,
 {
 	return sdio_io_rw_ext_helper(func, 1, addr, 0, src, count);
 }
-
 EXPORT_SYMBOL_GPL(sdio_writesb);
 
 /**
@@ -409,7 +402,6 @@ unsigned short sdio_readw(struct sdio_func *func, unsigned int addr,
 
 	return le16_to_cpu(*(u16*)func->tmpbuf);
 }
-
 EXPORT_SYMBOL_GPL(sdio_readw);
 
 /**
@@ -434,7 +426,6 @@ void sdio_writew(struct sdio_func *func, unsigned short b, unsigned int addr,
 	if (err_ret)
 		*err_ret = ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_writew);
 
 /**
@@ -465,7 +456,6 @@ unsigned long sdio_readl(struct sdio_func *func, unsigned int addr,
 
 	return le32_to_cpu(*(u32*)func->tmpbuf);
 }
-
 EXPORT_SYMBOL_GPL(sdio_readl);
 
 /**
@@ -490,7 +480,6 @@ void sdio_writel(struct sdio_func *func, unsigned long b, unsigned int addr,
 	if (err_ret)
 		*err_ret = ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_writel);
 
 /**
@@ -523,7 +512,6 @@ unsigned char sdio_f0_readb(struct sdio_func *func, unsigned int addr,
 
 	return val;
 }
-
 EXPORT_SYMBOL_GPL(sdio_f0_readb);
 
 /**
@@ -557,5 +545,4 @@ void sdio_f0_writeb(struct sdio_func *func, unsigned char b, unsigned int addr,
 	if (err_ret)
 		*err_ret = ret;
 }
-
 EXPORT_SYMBOL_GPL(sdio_f0_writeb);

@@ -2,9 +2,7 @@
 # PCCARD (PCMCIA/CardBus) bus subsystem configuration
 #
 
-menu "PCCARD (PCMCIA/CardBus) support"
-
-config PCCARD
+menuconfig PCCARD
 	tristate "PCCard (PCMCIA/CardBus) support"
 	depends on HOTPLUG
 	---help---
@@ -271,6 +269,12 @@ config AT91_CF
 	  Say Y here to support the CompactFlash controller on AT91 chips.
 	  Or choose M to compile the driver as a module named "at91_cf".
 
+config ELECTRA_CF
+	tristate "Electra CompactFlash Controller"
+	depends on PCMCIA && PPC_PASEMI
+	help
+	  Say Y here to support the CompactFlash controller on the
+	  PA Semi Electra eval board.
 config PCMCIA_MX31ADS
 	tristate "MX31ADS PCMCIA support"
 	depends on ARM && MACH_MX31ADS && PCMCIA
@@ -278,7 +282,7 @@ config PCMCIA_MX31ADS
 	  Say Y here to include support for the Freescale i.MX31 PCMCIA controller.
 
 	  This driver is also available as a module called mx31ads_pcmcia.
-
+	  
 config PCCARD_NONSTATIC
 	tristate
 
@@ -286,5 +290,3 @@ config PCCARD_IODYN
 	bool
 
 endif	# PCCARD
-
-endmenu
