@@ -37,7 +37,7 @@
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-
+#include <linux/suspend.h>
 #include <linux/pm.h>
 #include <linux/sched.h>
 #include <linux/proc_fs.h>
@@ -75,7 +75,7 @@ static int mx27_pm_enter(suspend_state_t state)
 /*
  * Called after processes are frozen, but before we shut down devices.
  */
-static int mx27_pm_prepare(suspend_state_t state)
+static int mx27_pm_prepare(void)
 {
 	return 0;
 }
@@ -83,22 +83,21 @@ static int mx27_pm_prepare(suspend_state_t state)
 /*
  * Called after devices are re-setup, but before processes are thawed.
  */
-static int mx27_pm_finish(suspend_state_t state)
+static void mx27_pm_finish(void)
 {
-	return 0;
 }
 
-struct pm_ops mx27_pm_ops = {
+struct platform_suspend_ops mx27_pm_ops = {
 	.prepare = mx27_pm_prepare,
 	.enter = mx27_pm_enter,
 	.finish = mx27_pm_finish,
-	.valid = pm_valid_only_mem,
+	.valid = suspend_valid_only_mem,
 };
 
 static int __init mx27_pm_init(void)
 {
 	pr_debug("Power Management for Freescale MX27\n");
-	pm_set_ops(&mx27_pm_ops);
+	suspend_set_ops(&mx27_pm_ops);
 
 	return 0;
 }
