@@ -96,33 +96,6 @@ int mxc_snoop_get_status(u32 num, u32 * statl, u32 * stath);
 #define GPIO_TO_PORT(n)		(n / GPIO_NUM_PIN)
 #define GPIO_TO_INDEX(n)	(n % GPIO_NUM_PIN)
 
-#ifdef CONFIG_MXC_TZIC
-/*
- *****************************************
- * TZIC Registers                        *
- *****************************************
- */
-
-#define TZIC_BASE               IO_ADDRESS(TZIC_BASE_ADDR)
-#define TZIC_INTCNTL            (TZIC_BASE + 0x0000)	/* control register */
-#define TZIC_INTTYPE            (TZIC_BASE + 0x0004)	/* Controller type register */
-#define TZIC_IMPID              (TZIC_BASE + 0x0008)	/* Distributor Implementer Identification Register */
-#define TZIC_PRIOMASK           (TZIC_BASE + 0x000C)	/* Priority Mask Reg */
-#define TZIC_SYNCCTRL           (TZIC_BASE + 0x0010)	/* Synchronizer Control register */
-#define TZIC_DSMINT             (TZIC_BASE + 0x0014)	/* DSM interrupt Holdoffregister */
-#define TZIC_INTSEC0            (TZIC_BASE + 0x0080)	/* interrupt security register 0 */
-#define TZIC_ENSET0             (TZIC_BASE + 0x0100)	/* Enable Set Register 0 */
-#define TZIC_ENCLEAR0           (TZIC_BASE + 0x0180)	/* Enable Clear Register 0 */
-#define TZIC_SRCSET0            (TZIC_BASE + 0x0200)	/* Source Set Register 0 */
-#define TZIC_SRCCLAR0           (TZIC_BASE + 0x0280)	/* Source Clear Register 0 */
-#define TZIC_PRIORITY0          (TZIC_BASE + 0x0400)	/* Priority Register 0 */
-#define TZIC_PND0               (TZIC_BASE + 0x0D00)	/* Pending Register 0 */
-#define TZIC_HIPND0             (TZIC_BASE + 0x0D80)	/* High Priority Pending Register */
-#define TZIC_WAKEUP0            (TZIC_BASE + 0x0E00)	/* Wakeup Config Register */
-#define TZIC_SWINT              (TZIC_BASE + 0x0F00)	/* Software Interrupt Rigger Register */
-#define TZIC_ID0                (TZIC_BASE + 0x0FD0)	/* Indentification Register 0 */
-
-#else
 /*
  *****************************************
  * AVIC Registers                        *
@@ -155,7 +128,6 @@ int mxc_snoop_get_status(u32 num, u32 * statl, u32 * stath);
 #define AVIC_NIPNDL		(AVIC_BASE + 0x5C)	/* norm int pending low */
 #define AVIC_FIPNDH		(AVIC_BASE + 0x60)	/* fast int pending high */
 #define AVIC_FIPNDL		(AVIC_BASE + 0x64)	/* fast int pending low */
-#endif				/* MXC_SUPPORT_TZIC */
 
 /*
  *****************************************

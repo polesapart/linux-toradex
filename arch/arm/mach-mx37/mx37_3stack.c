@@ -1,0 +1,209 @@
+/*
+ * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ */
+
+/*
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+
+#include <linux/types.h>
+#include <linux/sched.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
+#include <linux/init.h>
+#include <linux/input.h>
+#include <linux/nodemask.h>
+#include <linux/clk.h>
+#include <linux/platform_device.h>
+#include <linux/spi/spi.h>
+#if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/map.h>
+#include <linux/mtd/partitions.h>
+
+#include <asm/mach/flash.h>
+#endif
+
+#include <asm/hardware.h>
+#include <asm/irq.h>
+#include <asm/setup.h>
+#include <asm/mach-types.h>
+#include <asm/mach/arch.h>
+#include <asm/mach/irq.h>
+#include <asm/mach/keypad.h>
+#include <asm/arch/memory.h>
+#include <asm/arch/gpio.h>
+
+#include "board-mx37_3stack.h"
+#include "crm_regs.h"
+#include "iomux.h"
+
+/*!
+ * @file mach-mx37/mx37_3stack.c
+ *
+ * @brief This file contains the board specific initialization routines.
+ *
+ * @ingroup MSL_MX37
+ */
+
+extern void mxc_map_io(void);
+extern void mxc_init_irq(void);
+extern void mxc_cpu_init(void) __init;
+extern struct sys_timer mxc_timer;
+extern void mxc_cpu_common_init(void);
+extern int mxc_clocks_init(void);
+extern void __init early_console_setup(char *);
+
+static void mxc_nop_release(struct device *dev)
+{
+	/* Nothing */
+}
+
+unsigned long board_get_ckih_rate(void)
+{
+	return 24000000;
+}
+
+/* MTD NAND flash */
+#if defined(CONFIG_MTD_NAND_MXC) || defined(CONFIG_MTD_NAND_MXC_MODULE) \
+	|| defined(CONFIG_MTD_NAND_MXC_V2) || defined(CONFIG_MTD_NAND_MXC_V2_MODULE) \
+	|| defined(CONFIG_MTD_NAND_MXC_V3)
+
+static struct mtd_partition mxc_nand_partitions[4] = {
+	{
+	 .name = "IPL-SPL",
+	 .offset = 0,
+	 .size = 2 * 1024 * 1024},
+	{
+	 .name = "nand.kernel",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 4 * 1024 * 1024},
+	{
+	 .name = "nand.rootfs",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 128 * 1024 * 1024},
+	{
+	 .name = "nand.userfs",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = MTDPART_SIZ_FULL},
+};
+
+static struct flash_platform_data mxc_nand_data = {
+	.parts = mxc_nand_partitions,
+	.nr_parts = ARRAY_SIZE(mxc_nand_partitions),
+	.width = 1,
+};
+
+static struct platform_device mxc_nandv2_mtd_device = {
+	.name = "mxc_nandv2_flash",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mxc_nand_data,
+		},
+};
+
+static void mxc_init_nand_mtd(void)
+{
+//      if (__raw_readl(MXC_CCM_RCSR) & MXC_CCM_RCSR_NF16B) {
+//              mxc_nand_data.width = 2;
+//      }
+	(void)platform_device_register(&mxc_nandv2_mtd_device);
+}
+#else
+static inline void mxc_init_nand_mtd(void)
+{
+}
+#endif
+
+static struct spi_board_info mxc_spi_board_info[] __initdata = {
+	{
+	 .modalias = "cpld_spi",
+	 .max_speed_hz = 18000000,
+	 .bus_num = 2,
+	 .chip_select = 0,
+	 },
+	{
+	 .modalias = "lcd_spi",
+	 .max_speed_hz = 500000,
+	 .bus_num = 1,
+	 .chip_select = 2,},
+};
+
+/*!
+ * Board specific fixup function. It is called by \b setup_arch() in
+ * setup.c file very early on during kernel starts. It allows the user to
+ * statically fill in the proper values for the passed-in parameters. None of
+ * the parameters is used currently.
+ *
+ * @param  desc         pointer to \b struct \b machine_desc
+ * @param  tags         pointer to \b struct \b tag
+ * @param  cmdline      pointer to the command line
+ * @param  mi           pointer to \b struct \b meminfo
+ */
+static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
+				   char **cmdline, struct meminfo *mi)
+{
+	mxc_cpu_init();
+
+#ifdef CONFIG_DISCONTIGMEM
+	do {
+		int nid;
+		mi->nr_banks = MXC_NUMNODES;
+		for (nid = 0; nid < mi->nr_banks; nid++) {
+			SET_NODE(mi, nid);
+		}
+	} while (0);
+#endif
+}
+
+/*! PMIC */
+static struct platform_device pmic_device = {
+	.name = "wm8350-imx37-3stack",
+	.id = 0,
+};
+
+static inline void mxc_init_pmic(void)
+{
+	if (platform_device_register(&pmic_device) < 0)
+		printk(KERN_ERR "Error: Registering the PMIC.\n");
+
+}
+
+/*!
+ * Board specific initialization.
+ */
+static void __init mxc_board_init(void)
+{
+	mxc_cpu_common_init();
+	mxc_clocks_init();
+	mxc_gpio_init();
+	early_console_setup(saved_command_line);
+
+	spi_register_board_info(mxc_spi_board_info,
+				ARRAY_SIZE(mxc_spi_board_info));
+	mxc_init_nand_mtd();
+	mxc_init_pmic();
+}
+
+/*
+ * The following uses standard kernel macros define in arch.h in order to
+ * initialize __mach_desc_MX37_3STACK data structure.
+ */
+/* *INDENT-OFF* */
+MACHINE_START(MX37_3DS, "Freescale MX37 3-Stack Board")
+	/* Maintainer: Freescale Semiconductor, Inc. */
+	.phys_io = AIPS1_BASE_ADDR,
+	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.boot_params = PHYS_OFFSET + 0x100,
+	.fixup = fixup_mxc_board,
+	.map_io = mxc_map_io,
+	.init_irq = mxc_init_irq,
+	.init_machine = mxc_board_init,
+	.timer = &mxc_timer,
+MACHINE_END

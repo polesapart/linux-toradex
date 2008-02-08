@@ -46,7 +46,7 @@
 #define SDMA_XTRIG_CONF1        *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x070))
 #define SDMA_XTRIG_CONF2        *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x074))
 
-#if defined(CONFIG_ARCH_MXC91221) || defined(CONFIG_ARCH_MXC92323)
+#if defined(CONFIG_ARCH_MXC91221) || defined(CONFIG_ARCH_MXC92323) || defined(CONFIG_ARCH_MX37)
 #define SDMA_CHNENBL_0          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x200))
 #define SDMA_CHNENBL_1          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x204))
 #define SDMA_CHNENBL_2          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x208))

@@ -85,8 +85,8 @@ static u16 keymapping[12] = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };
@@ -94,7 +94,7 @@ static struct resource mxc_kpp_resources[] = {
 static struct keypad_data keypad_plat_data = {
 	.rowmax = 3,
 	.colmax = 4,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = keymapping,

@@ -23,6 +23,10 @@
 #define PHYS_OFFSET             UL(0xA0000000)
 #endif
 
+#ifdef CONFIG_MACH_MX37_3DS
+#define PHYS_OFFSET             UL(0x40000000)
+#endif
+
 #ifndef PHYS_OFFSET
 #define PHYS_OFFSET	        UL(0x80000000)
 #endif

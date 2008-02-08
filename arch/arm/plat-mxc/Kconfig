@@ -13,6 +13,16 @@ config ARCH_MXC91321
 	select MXC_DSP_BRINGUP
 	select ARCH_HAS_EVTMON
 
+config ARCH_MX37
+    bool "MX37-based"
+	select CPU_V6
+	select CACHE_L2X0
+	#select USB_ARCH_HAS_EHCI
+	select ARCH_HAS_EVTMON
+	select MXC_TZIC
+    help
+      This enables support for systems based on Freescale i.MX37
+
 config ARCH_MX3
 	bool "MX3-based"
 	select CPU_V6
@@ -45,6 +55,8 @@ source "arch/arm/mach-mx21/Kconfig"
 
 source "arch/arm/mach-mx3/Kconfig"
 
+source "arch/arm/mach-mx37/Kconfig"
+
 source "arch/arm/mach-mxc91321/Kconfig"
 
 
@@ -53,6 +65,10 @@ source "arch/arm/mach-mxc91321/Kconfig"
 
 
 endmenu
+
+config MXC_TZIC
+	bool
+	depends on ARCH_MXC
 
 config MXC_DSP_BRINGUP
 	bool

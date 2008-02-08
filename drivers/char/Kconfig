@@ -415,6 +415,7 @@ config MXC_MU
 	bool "MXC Messaging Unit Driver"
 	depends on ARCH_MXC
 	depends on !ARCH_MX3
+	depends on !ARCH_MX37
 	depends on !ARCH_MX27
 	depends on !ARCH_MX21
 	select INPUT
@@ -428,6 +429,7 @@ config MXC_IPC
 	depends on MXC_MU && MXC_SDMA_API
 	depends on ARCH_MXC
 	depends on !ARCH_MX3
+	depends on !ARCH_MX37
 	depends on !ARCH_MX27
 	depends on !ARCH_MX21
 	default y
@@ -440,6 +442,7 @@ config MXC_SUPER_GEM
 	depends on MXC_SDMA_API
 	depends on ARCH_MXC
 	depends on !ARCH_MX3
+	depends on !ARCH_MX37
 	depends on !ARCH_MX27
 	depends on !ARCH_MX21
 	default n
