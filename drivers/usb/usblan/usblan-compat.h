@@ -277,7 +277,7 @@ static void inline SCHEDULE_TIMEOUT(int seconds){
  * @{
  */
 #define CACHE_SYNC_RCV(buf, len) pci_map_single (NULL, (void *) buf, len, PCI_DMA_FROMDEVICE)
-#define CACHE_SYNC_TX(buf, len) consistent_sync (buf, len, PCI_DMA_TODEVICE)
+#define CACHE_SYNC_TX(buf, len) dma_cache_maint (buf, len, PCI_DMA_TODEVICE)
 
 /* @} */
 

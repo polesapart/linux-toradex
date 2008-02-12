@@ -1137,7 +1137,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	raw_write((raw_read(REG_NFC_INTRRUPT) | NFC_INT_MSK), REG_NFC_INTRRUPT);
 
 	init_waitqueue_head(&irq_waitq);
-	err = request_irq(INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
+	err = request_irq(MXC_INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
 	if (err) {
 		goto out_1;
 	}
@@ -1244,7 +1244,7 @@ static int __exit mxcnd_remove(struct platform_device *pdev)
 
 	if (mxc_nand_data) {
 		nand_release(mtd);
-		free_irq(INT_NANDFC, NULL);
+		free_irq(MXC_INT_NANDFC, NULL);
 		kfree(mxc_nand_data);
 	}
 

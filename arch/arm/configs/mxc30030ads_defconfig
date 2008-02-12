@@ -1047,7 +1047,7 @@ CONFIG_MXC_MC13783_POWER=y
 #
 # Advanced Power Management devices
 #
-CONFIG_MXC_DPTC=y
+# CONFIG_MXC_DPTC is not set
 
 #
 # MXC Security Drivers

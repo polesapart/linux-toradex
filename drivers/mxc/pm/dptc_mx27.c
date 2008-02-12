@@ -1348,7 +1348,7 @@ static int __init dptc_mx27_init(void)
 	}
 
 	/* request the DPTC interrupt */
-	res = request_irq(INT_CCM, dptc_mx27_irq, 0, DEVICE_NAME, NULL);
+	res = request_irq(MXC_INT_CCM, dptc_mx27_irq, 0, DEVICE_NAME, NULL);
 
 	/*
 	 * If res is not 0, then where was an error
@@ -1398,7 +1398,7 @@ static void __exit dptc_mx27_cleanup(void)
 	unregister_chrdev(major, DEVICE_NAME);
 
 	/* release the DPTC interrupt */
-	free_irq(INT_CCM, NULL);
+	free_irq(MXC_INT_CCM, NULL);
 
 	/* Unregister low power modes functions */
 	platform_driver_unregister(&mxc_dptc_driver);

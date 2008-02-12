@@ -66,6 +66,8 @@ static int ts_thread(void *arg)
 
 static int __init mxc_ts_init(void)
 {
+	int retval;
+
 	mxc_inputdev = input_allocate_device();
 	if (!mxc_inputdev) {
 		printk(KERN_ERR
@@ -74,10 +76,15 @@ static int __init mxc_ts_init(void)
 	}
 
 	mxc_inputdev->name = MXC_TS_NAME;
-	mxc_inputdev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
-	mxc_inputdev->keybit[LONG(BTN_TOUCH)] |= BIT(BTN_TOUCH);
-	mxc_inputdev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
-	input_register_device(mxc_inputdev);
+	mxc_inputdev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
+	mxc_inputdev->keybit[BIT_WORD(BTN_TOUCH)] |= BIT_MASK(BTN_TOUCH);
+	mxc_inputdev->absbit[0] =
+	    BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) | BIT_MASK(ABS_PRESSURE);
+	retval = input_register_device(mxc_inputdev);
+	if (retval < 0) {
+		input_free_device(mxc_inputdev);
+		return retval;
+	}
 
 	input_ts_installed = 1;
 	kernel_thread(ts_thread, NULL, CLONE_VM | CLONE_FS);

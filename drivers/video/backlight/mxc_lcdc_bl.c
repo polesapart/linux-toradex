@@ -49,7 +49,7 @@ struct mxcbl_dev_data {
 static int mxcbl_send_intensity(struct backlight_device *bd)
 {
 	int intensity = bd->props.brightness;
-	struct mxcbl_dev_data *devdata = class_get_devdata(&bd->class_dev);
+	struct mxcbl_dev_data *devdata = dev_get_drvdata(&bd->dev);
 
 	if (bd->props.power != FB_BLANK_UNBLANK)
 		intensity = 0;
@@ -71,7 +71,7 @@ static int mxcbl_send_intensity(struct backlight_device *bd)
 
 static int mxcbl_get_intensity(struct backlight_device *bd)
 {
-	struct mxcbl_dev_data *devdata = class_get_devdata(&bd->class_dev);
+	struct mxcbl_dev_data *devdata = dev_get_drvdata(&bd->dev);
 	return devdata->intensity;
 }
 

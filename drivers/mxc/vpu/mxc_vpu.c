@@ -417,7 +417,7 @@ static int vpu_dev_probe(struct platform_device *pdev)
 		goto err_out_class;
 	}
 
-	err = request_irq(INT_VPU, vpu_irq_handler, 0, "VPU_CODEC_IRQ",
+	err = request_irq(MXC_INT_VPU, vpu_irq_handler, 0, "VPU_CODEC_IRQ",
 			  (void *)(&vpu_data));
 	if (err)
 		goto err_out_class;
@@ -459,15 +459,11 @@ static int __init vpu_init(void)
 
 static void __exit vpu_exit(void)
 {
-	free_irq(INT_VPU, (void *)(&vpu_data));
+	free_irq(MXC_INT_VPU, (void *)(&vpu_data));
 	if (vpu_major > 0) {
 		class_device_destroy(vpu_class, MKDEV(vpu_major, 0));
 		class_destroy(vpu_class);
-		if (unregister_chrdev(vpu_major, "mxc_vpu") < 0) {
-			printk(KERN_ERR
-			       "Failed to unregister vpu from devfs\n");
-			return;
-		}
+		unregister_chrdev(vpu_major, "mxc_vpu");
 		vpu_major = 0;
 	}
 

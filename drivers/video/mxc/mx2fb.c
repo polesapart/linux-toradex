@@ -1124,7 +1124,7 @@ static void _request_irq(void)
 	/* Read to clear the status */
 	status = __raw_readl(LCDC_REG(LCDC_LISR));
 
-	if (request_irq(INT_LCDC, mx2fb_isr, 0, "LCDC", 0))
+	if (request_irq(MXC_INT_LCDC, mx2fb_isr, 0, "LCDC", 0))
 		pr_info("Request LCDC IRQ failed.\n");
 	else {
 		spin_lock_irqsave(&mx2fb_notifier_list.lock, flags);
@@ -1158,7 +1158,7 @@ static void _free_irq(void)
 	/* Disable all LCDC interrupt */
 	__raw_writel(0x0, LCDC_REG(LCDC_LIER));
 
-	free_irq(INT_LCDC, 0);
+	free_irq(MXC_INT_LCDC, 0);
 }
 
 /*!

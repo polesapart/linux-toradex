@@ -44,6 +44,7 @@
   #define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
 #endif
 
+  #define SMC_IRQ_SENSE		IRQF_TRIGGER_LOW
 
 /*
  * Define the bus width specific IO macros

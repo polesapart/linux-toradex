@@ -122,7 +122,7 @@ static u16 mxckpd_keycodes[] = {
 static struct keypad_data evb_6_by_6_keypad = {
 	.rowmax = 6,
 	.colmax = 6,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = mxckpd_keycodes,
@@ -130,8 +130,8 @@ static struct keypad_data evb_6_by_6_keypad = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };

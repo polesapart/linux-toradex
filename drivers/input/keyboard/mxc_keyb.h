@@ -33,7 +33,7 @@
 /*!
  * Keypad irq number
  */
-#define KPP_IRQ  INT_KPP
+#define KPP_IRQ  MXC_INT_KPP
 
 /*!
  * XLATE mode selection

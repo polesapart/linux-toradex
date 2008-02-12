@@ -423,13 +423,13 @@ static int mxc_scc_remove(struct platform_device *pdev)
 
 	/* Deregister SCM interrupt handler */
 	if (scm_irq_set) {
-		free_irq(INT_SCC_SCM, NULL);
+		free_irq(MXC_INT_SCC_SCM, NULL);
 	}
 
 	/* Deregister SMN interrupt handler */
 	if (smn_irq_set) {
 #ifdef USE_SMN_INTERRUPT
-		free_irq(INT_SCC_SMN, NULL);
+		free_irq(MXC_INT_SCC_SMN, NULL);
 #endif
 	}
 	pr_debug("SCC driver cleaned up.\n");
@@ -842,11 +842,11 @@ static irqreturn_t scc_irq(int irq, void *dev_id)
 	uint32_t scm_status;
 	int handled = 0;	/* assume interrupt isn't from SMN */
 #if defined(USE_SMN_INTERRUPT)
-	int smn_irq = INT_SCC_SMN;	/* SMN interrupt is on a line by itself */
+	int smn_irq = MXC_INT_SCC_SMN;	/* SMN interrupt is on a line by itself */
 #elif defined (NO_SMN_INTERRUPT)
 	int smn_irq = -1;	/* not wired to CPU at all */
 #else
-	int smn_irq = INT_SCC_SCM;	/* SMN interrupt shares a line with SCM */
+	int smn_irq = MXC_INT_SCC_SCM;	/* SMN interrupt shares a line with SCM */
 #endif
 
 	/* Update current state... This will perform callbacks... */
@@ -863,7 +863,7 @@ static irqreturn_t scc_irq(int irq, void *dev_id)
 	scm_status = SCC_READ_REGISTER(SCM_STATUS);
 
 	/* The driver masks interrupts, so this should never happen. */
-	if (irq == INT_SCC_SCM && scm_status & SCM_STATUS_INTERRUPT_STATUS) {
+	if (irq == MXC_INT_SCC_SCM && scm_status & SCM_STATUS_INTERRUPT_STATUS) {
 		/* but if it does, try to prevent it in the future */
 		SCC_WRITE_REGISTER(SCM_INTERRUPT_CTRL,
 				   SCM_INTERRUPT_CTRL_CLEAR_INTERRUPT
@@ -1345,7 +1345,7 @@ static int setup_interrupt_handling(void)
 
 #ifdef USE_SMN_INTERRUPT
 	/* Install interrupt service routine for SMN. */
-	smn_error_code = request_irq(INT_SCC_SMN, scc_irq, 0,
+	smn_error_code = request_irq(MXC_INT_SCC_SMN, scc_irq, 0,
 				     SCC_DRIVER_NAME, NULL);
 	if (smn_error_code != 0) {
 		pr_debug
@@ -1365,7 +1365,7 @@ static int setup_interrupt_handling(void)
 	/*
 	 * Install interrupt service routine for SCM (or both together).
 	 */
-	scm_error_code = request_irq(INT_SCC_SCM, scc_irq, 0,
+	scm_error_code = request_irq(MXC_INT_SCC_SCM, scc_irq, 0,
 				     SCC_DRIVER_NAME, NULL);
 	if (scm_error_code != 0) {
 #ifndef MXC

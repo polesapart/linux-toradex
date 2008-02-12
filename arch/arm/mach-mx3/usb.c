@@ -85,7 +85,7 @@ static struct resource usbh1_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = INT_USB1,
+		.start = MXC_INT_USB1,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -116,7 +116,7 @@ static struct resource usbh2_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = INT_USB2,
+		.start = MXC_INT_USB2,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -179,7 +179,7 @@ static struct resource otg_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = INT_USB3,
+		.start = MXC_INT_USB3,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -258,7 +258,7 @@ static struct resource pindetect_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	{
-		.start = INT_USB3,
+		.start = MXC_INT_USB3,
 		.flags = IORESOURCE_IRQ,
 	},
 };

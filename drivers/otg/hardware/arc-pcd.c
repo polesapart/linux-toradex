@@ -64,7 +64,7 @@ static void arc_read_setup_buffer(struct pcd_instance *pcd, u8 * buffer_ptr)
         struct ep_queue_head    *qh = &udc_controller->ep_qh[0 * 2 + ARC_DIR_OUT];
         int                     timeout;
 
-        consistent_sync(qh, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
+        dma_cache_maint(qh, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
 
         /* C.f 39.16.3.2.1 Setup Phase - Setup Packet Handling (2.3 hardware and later)
          */
@@ -103,8 +103,8 @@ int arc_read_rcv_buffer (struct pcd_instance *pcd, struct usbd_endpoint_instance
         struct usbd_urb         *rx_urb = endpoint->rcv_urb;
 
         /* sync qh and td structures, note that urb-buffer was invalidated in arc_add_buffer_to_dtd() */
-        consistent_sync(qh, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
-        consistent_sync(curr_td, sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
+        dma_cache_maint(qh, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
+        dma_cache_maint(curr_td, sizeof(struct ep_td_struct), DMA_FROM_DEVICE);
 
         if (rx_urb) {
                 int length = rx_urb->buffer_length -
@@ -309,11 +309,11 @@ static void arc_add_buffer_to_dtd (struct pcd_instance *pcd, struct usbd_endpoin
 
                 /* flush cache for IN */
                 if ((dir == ARC_DIR_IN) && urb->actual_length)
-                        consistent_sync(urb->buffer, urb->actual_length, DMA_TO_DEVICE);
+                        dma_cache_maint(urb->buffer, urb->actual_length, DMA_TO_DEVICE);
 
                 /* invalidate cache for OUT */
                 else if ((dir == ARC_DIR_OUT) && urb->buffer_length)
-                        consistent_sync(urb->buffer, urb->alloc_length, DMA_FROM_DEVICE);
+                        dma_cache_maint(urb->buffer, urb->alloc_length, DMA_FROM_DEVICE);
         }
 
         /* Set size and interrupt on each dtd, Clear reserved field,
@@ -325,7 +325,7 @@ static void arc_add_buffer_to_dtd (struct pcd_instance *pcd, struct usbd_endpoin
         dtd->buff_ptr0 = cpu_to_le32(endpoint->active_urb ?  (u32) (virt_to_phys (endpoint->active_urb->buffer + offset)) : 0);
         dtd->next_td_ptr = cpu_to_le32(DTD_NEXT_TERMINATE);
         dtd->next_td_virt = NULL;
-        consistent_sync(dtd, sizeof(struct ep_td_struct), DMA_TO_DEVICE);
+        dma_cache_maint(dtd, sizeof(struct ep_td_struct), DMA_TO_DEVICE);
         privdata->cur_dqh = dQH;
 
         /* Case 1 - Step 1 - Write dQH next pointer and dQH terminate bit to 0 as single DWord */
@@ -334,7 +334,7 @@ static void arc_add_buffer_to_dtd (struct pcd_instance *pcd, struct usbd_endpoin
         /* Case 1 - Step 2 - Clear active and halt bit */
         dQH->size_ioc_int_sts &= le32_to_cpu(~(EP_QUEUE_HEAD_STATUS_ACTIVE | EP_QUEUE_HEAD_STATUS_HALT));
 
-        consistent_sync(dQH, sizeof(struct ep_queue_head), DMA_TO_DEVICE);
+        dma_cache_maint(dQH, sizeof(struct ep_queue_head), DMA_TO_DEVICE);
 
         /* Case 1 - Step 3 - Prime endpoint by writing ENDPTPRIME */
         mask = (dir == ARC_DIR_OUT) ?  (1 << epnum) : (1 << (epnum + 16));
@@ -396,8 +396,8 @@ static void arc_add_buffer_to_dtd (struct pcd_instance *pcd, struct usbd_endpoin
 static void arc_dtd_releases (struct pcd_instance *pcd, struct usbd_endpoint_instance *endpoint, int dir)
 {
         struct arc_private_struct *privdata = endpoint->privdata;
-        consistent_sync(privdata->cur_dtd, sizeof(struct ep_td_struct), (dir == ARC_DIR_OUT) ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
-        consistent_sync(privdata->cur_dqh, sizeof(struct ep_queue_head), (dir == ARC_DIR_OUT) ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+        dma_cache_maint(privdata->cur_dtd, sizeof(struct ep_td_struct), (dir == ARC_DIR_OUT) ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
+        dma_cache_maint(privdata->cur_dqh, sizeof(struct ep_queue_head), (dir == ARC_DIR_OUT) ? DMA_FROM_DEVICE : DMA_TO_DEVICE);
 }
 
 
@@ -502,7 +502,7 @@ void arc_pcd_setup_ep (struct pcd_instance *pcd, unsigned int ep, struct usbd_en
         }
         dQH->max_pkt_length = cpu_to_le32(tmp);
 
-        consistent_sync(dQH, sizeof(struct ep_queue_head), DMA_TO_DEVICE);
+        dma_cache_maint(dQH, sizeof(struct ep_queue_head), DMA_TO_DEVICE);
 
         /* Set the control register of endpoint */
         tmp = dir ?
@@ -525,7 +525,7 @@ void arc_pcd_setup_ep (struct pcd_instance *pcd, unsigned int ep, struct usbd_en
                 dQH = &udc_controller->ep_qh[2 * epnum + dir];
                 tmp = (wMaxPacketSize << EP_QUEUE_HEAD_MAX_PKT_LEN_POS) | EP_QUEUE_HEAD_IOS;
                 dQH->max_pkt_length = le32_to_cpu(tmp);
-                consistent_sync(dQH, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
+                dma_cache_maint(dQH, sizeof(struct ep_queue_head), DMA_FROM_DEVICE);
                 tmp = USBOTG_REG32(0x1c0 + epnum*4);
                 tmp |= EPCTRL_TX_ENABLE;
                 tmp |= ((unsigned int)(type) << EPCTRL_TX_EP_TYPE_SHIFT);
@@ -843,7 +843,7 @@ static irqreturn_t arc_epn_irq(struct pcd_instance *pcd)
                                         TRACE_MSG4(pcd->TAG, "[%2d:%2d] Current dtd is halted size_ioc_sts: %08x errors: %02x",
                                                         bit, ep, le32_to_cpu(cur_dtd->size_ioc_sts), errors);
                                         cur_dtd->size_ioc_sts &= cpu_to_le32(errors);
-                                        consistent_sync(cur_dtd, sizeof(struct ep_td_struct), DMA_TO_DEVICE);
+                                        dma_cache_maint(cur_dtd, sizeof(struct ep_td_struct), DMA_TO_DEVICE);
                                 }
 
                                 if ((pcd_rcv_complete_irq(endpoint, remain_len, 0))) {

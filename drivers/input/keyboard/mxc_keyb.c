@@ -783,9 +783,9 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 	keypad->irq = irq;
 	retval = request_irq(irq, mxc_kpp_interrupt, 0, MOD_NAME, MOD_NAME);
 	if (retval) {
-		pr_debug("KPP: request_irq(%d) returned error %d\n", INT_KPP,
-			 retval);
-		return -1;
+		pr_debug("KPP: request_irq(%d) returned error %d\n",
+			 MXC_INT_KPP, retval);
+		return retval;
 	}
 
 	/* Enable keypad clock */
@@ -835,16 +835,21 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 
 	if ((keypad->matrix == (void *)0)
 	    || (mxckpd_keycodes_size == 0)) {
-		free_irq(irq, MOD_NAME);
-		return -ENODEV;
+		retval = -ENODEV;
+		goto err1;
 	}
 
 	mxckbd_dev = input_allocate_device();
 	if (!mxckbd_dev) {
 		printk(KERN_ERR
 		       "mxckbd_dev: not enough memory for input device\n");
-		free_irq(irq, MOD_NAME);
-		return -ENOMEM;
+		retval = -ENOMEM;
+		goto err1;
+	}
+
+	retval = input_register_device(mxckbd_dev);
+	if (retval < 0) {
+		goto err2;
 	}
 
 	mxckbd_dev->keycode = &mxckpd_keycodes;
@@ -862,9 +867,8 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 	    kmalloc(kpp_dev.kpp_rows * sizeof(release_scancode[0]), GFP_KERNEL);
 
 	if (!press_scancode || !release_scancode) {
-		free_irq(irq, MOD_NAME);
-		mxc_kpp_free_allocated();
-		return -1;
+		retval = -ENOMEM;
+		goto err3;
 	}
 
 	for (i = 0; i < kpp_dev.kpp_rows; i++) {
@@ -876,9 +880,8 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 			    GFP_KERNEL);
 
 		if (!press_scancode[i] || !release_scancode[i]) {
-			free_irq(irq, MOD_NAME);
-			mxc_kpp_free_allocated();
-			return -1;
+			retval = -ENOMEM;
+			goto err3;
 		}
 	}
 
@@ -888,9 +891,8 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 	    kmalloc(kpp_dev.kpp_rows * sizeof(prev_rcmap[0]), GFP_KERNEL);
 
 	if (!cur_rcmap || !prev_rcmap) {
-		free_irq(irq, MOD_NAME);
-		mxc_kpp_free_allocated();
-		return -1;
+		retval = -ENOMEM;
+		goto err3;
 	}
 
 	__set_bit(EV_KEY, mxckbd_dev->evbit);
@@ -911,13 +913,21 @@ static int mxc_kpp_probe(struct platform_device *pdev)
 	/* Initialize the polling timer */
 	init_timer(&kpp_dev.poll_timer);
 
-	input_register_device(mxckbd_dev);
-
 	/* By default, devices should wakeup if they can */
 	/* So keypad is set as "should wakeup" as it can */
 	device_init_wakeup(&pdev->dev, 1);
 
 	return 0;
+
+      err3:
+	mxc_kpp_free_allocated();
+      err2:
+	input_free_device(mxckbd_dev);
+      err1:
+	free_irq(irq, MOD_NAME);
+	clk_disable(kpp_clk);
+	clk_put(kpp_clk);
+	return retval;
 }
 
 /*!

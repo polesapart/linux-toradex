@@ -84,7 +84,7 @@ static struct clk *hmp4e_clk;
 static bool irq_enable = false;
 
 ulong base_port = MPEG4_ENC_BASE_ADDR;
-u32 irq = INT_MPEG4_ENC;
+u32 irq = MXC_INT_MPEG4_ENC;
 
 module_param(base_port, long, 000);
 module_param(irq, int, 000);

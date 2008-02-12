@@ -65,7 +65,7 @@
  *  Register offests.
  */
 #define AIPI_BASE_ADDR          0x10000000
-#define AIPI_BASE_ADDR_VIRT     0xD4000000
+#define AIPI_BASE_ADDR_VIRT     0xFC000000
 #define AIPI_SIZE               SZ_1M
 
 #define DMA_BASE_ADDR           (AIPI_BASE_ADDR + 0x01000)
@@ -130,7 +130,7 @@
 #define AVIC_BASE_ADDR          0x10040000
 
 #define SAHB1_BASE_ADDR         0x80000000
-#define SAHB1_BASE_ADDR_VIRT    0xD4100000
+#define SAHB1_BASE_ADDR_VIRT    0xFC100000
 #define SAHB1_SIZE              SZ_1M
 
 #define CSI_BASE_ADDR           (SAHB1_BASE_ADDR + 0x0000)
@@ -140,7 +140,7 @@
  * NAND, SDRAM, WEIM, M3IF, EMI controllers
  */
 #define X_MEMC_BASE_ADDR        0xD8000000
-#define X_MEMC_BASE_ADDR_VIRT   0xD4200000
+#define X_MEMC_BASE_ADDR_VIRT   0xFC200000
 #define X_MEMC_SIZE             SZ_1M
 
 #define NFC_BASE_ADDR           (X_MEMC_BASE_ADDR)
@@ -160,7 +160,7 @@
 #define CS2_BASE_ADDR           0xD0000000
 #define CS3_BASE_ADDR           0xD2000000
 #define CS4_BASE_ADDR           0xD4000000
-#define CS4_BASE_ADDR_VIRT      0xEB000000
+#define CS4_BASE_ADDR_VIRT      0xF4000000
 #define CS4_SIZE                SZ_1M
 #define CS5_BASE_ADDR           0xD6000000
 #define PCMCIA_MEM_BASE_ADDR    0xDC000000
@@ -204,76 +204,76 @@
 /*
  *  MX27 ADS Interrupt numbers
  */
-#define INT_CCM                 63
-#define INT_IIM                 62
-#define INT_LCDC                61
-#define INT_SLCDC               60
-#define INT_SAHARA              59
-#define INT_SCC_SCM             58
-#define INT_SCC_SMN             57
-#define INT_USB3                56
-#define INT_USB2                55
-#define INT_USB1                54
-#define INT_VPU                53
-#define INT_EMMAPP              52
-#define INT_EMMAPRP             51
-#define INT_FEC                 50
-#define INT_UART5               49
-#define INT_UART6               48
-#define INT_DMACH15             47
-#define INT_DMACH14             46
-#define INT_DMACH13             45
-#define INT_DMACH12             44
-#define INT_DMACH11             43
-#define INT_DMACH10             42
-#define INT_DMACH9              41
-#define INT_DMACH8              40
-#define INT_DMACH7              39
-#define INT_DMACH6              38
-#define INT_DMACH5              37
-#define INT_DMACH4              36
-#define INT_DMACH3              35
-#define INT_DMACH2              34
-#define INT_DMACH1              33
-#define INT_DMACH0              32
-#define INT_CSI                 31
-#define INT_ATA                 30
-#define INT_NANDFC              29
-#define INT_PCMCIA              28
-#define INT_WDOG                27
-#define INT_GPT1                26
-#define INT_GPT2                25
-#define INT_GPT3                24
-#define INT_GPT                 INT_GPT1
-#define INT_PWM                 23
-#define INT_RTC                 22
-#define INT_KPP                 21
-#define INT_UART1               20
-#define INT_UART2               19
-#define INT_UART3               18
-#define INT_UART4               17
-#define INT_CSPI1               16
-#define INT_CSPI2               15
-#define INT_SSI1                14
-#define INT_SSI2                13
-#define INT_I2C                 12
-#define INT_SDHC1               11
-#define INT_SDHC2               10
-#define INT_SDHC3               9
-#define INT_GPIO                8
-#define INT_SDHC                7
-#define INT_CSPI3               6
-#define INT_RTIC                5
-#define INT_GPT4                4
-#define INT_GPT5                3
-#define INT_GPT6                2
-#define INT_I2C2                1
+#define MXC_INT_CCM                 63
+#define MXC_INT_IIM                 62
+#define MXC_INT_LCDC                61
+#define MXC_INT_SLCDC               60
+#define MXC_INT_SAHARA              59
+#define MXC_INT_SCC_SCM             58
+#define MXC_INT_SCC_SMN             57
+#define MXC_INT_USB3                56
+#define MXC_INT_USB2                55
+#define MXC_INT_USB1                54
+#define MXC_INT_VPU                53
+#define MXC_INT_EMMAPP              52
+#define MXC_INT_EMMAPRP             51
+#define MXC_INT_FEC                 50
+#define MXC_INT_UART5               49
+#define MXC_INT_UART6               48
+#define MXC_INT_DMACH15             47
+#define MXC_INT_DMACH14             46
+#define MXC_INT_DMACH13             45
+#define MXC_INT_DMACH12             44
+#define MXC_INT_DMACH11             43
+#define MXC_INT_DMACH10             42
+#define MXC_INT_DMACH9              41
+#define MXC_INT_DMACH8              40
+#define MXC_INT_DMACH7              39
+#define MXC_INT_DMACH6              38
+#define MXC_INT_DMACH5              37
+#define MXC_INT_DMACH4              36
+#define MXC_INT_DMACH3              35
+#define MXC_INT_DMACH2              34
+#define MXC_INT_DMACH1              33
+#define MXC_INT_DMACH0              32
+#define MXC_INT_CSI                 31
+#define MXC_INT_ATA                 30
+#define MXC_INT_NANDFC              29
+#define MXC_INT_PCMCIA              28
+#define MXC_INT_WDOG                27
+#define MXC_INT_GPT1                26
+#define MXC_INT_GPT2                25
+#define MXC_INT_GPT3                24
+#define MXC_INT_GPT                 MXC_INT_GPT1
+#define MXC_INT_PWM                 23
+#define MXC_INT_RTC                 22
+#define MXC_INT_KPP                 21
+#define MXC_INT_UART1               20
+#define MXC_INT_UART2               19
+#define MXC_INT_UART3               18
+#define MXC_INT_UART4               17
+#define MXC_INT_CSPI1               16
+#define MXC_INT_CSPI2               15
+#define MXC_INT_SSI1                14
+#define MXC_INT_SSI2                13
+#define MXC_INT_I2C                 12
+#define MXC_INT_SDHC1               11
+#define MXC_INT_SDHC2               10
+#define MXC_INT_SDHC3               9
+#define MXC_INT_GPIO                8
+#define MXC_INT_SDHC                7
+#define MXC_INT_CSPI3               6
+#define MXC_INT_RTIC                5
+#define MXC_INT_GPT4                4
+#define MXC_INT_GPT5                3
+#define MXC_INT_GPT6                2
+#define MXC_INT_I2C2                1
 
 #define MXC_MAX_INT_LINES       64
 #define MXC_MAX_EXT_LINES       0
 
 #define MXC_MUX_GPIO_INTERRUPTS 1
-#define MXC_GPIO_BASE           (MXC_MAX_INT_LINES)
+#define MXC_GPIO_INT_BASE	(MXC_MAX_INT_LINES)
 
 /*!
  * Number of GPIO port as defined in the IC Spec
@@ -334,11 +334,5 @@
 #define NFMS (*((volatile u32 *)IO_ADDRESS(SYSCTRL_BASE_ADDR+0x14)))
 
 #define NFMS_BIT 5
-
-/*
- * GPT clock source mask and offset bit definition
- */
-#define GPT_CTRL_MASK           0xFFFFFFF1
-#define GPT_CTRL_OFFSET	    	1
 
 #endif				/* __ASM_ARCH_MXC_MX27_H__ */

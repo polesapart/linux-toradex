@@ -283,7 +283,8 @@ static int __devinit mxc_dptc_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&dptc_work, dptc_workqueue_handler);
 
 	/* request the DPTC interrupt */
-	res = request_irq(INT_CCM, dptc_irq, IRQF_DISABLED, "mxc-dptc", NULL);
+	res =
+	    request_irq(MXC_INT_CCM, dptc_irq, IRQF_DISABLED, "mxc-dptc", NULL);
 	if (res) {
 		printk(KERN_ERR "DPTC: Unable to attach to DPTC interrupt");
 		return res;
@@ -400,7 +401,7 @@ static void __exit dptc_cleanup(void)
 	stop_dptc();
 
 	/* release the DPTC interrupt */
-	free_irq(INT_CCM, NULL);
+	free_irq(MXC_INT_CCM, NULL);
 
 	sysfs_remove_file(&dptc_dev->kobj, &dev_attr_enable.attr);
 

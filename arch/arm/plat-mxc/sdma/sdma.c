@@ -1251,7 +1251,7 @@ int __init sdma_init(void)
 
 	init_sdma_pool();
 
-	res = request_irq(INT_SDMA, sdma_int_handler, 0, "mxcsdma", 0);
+	res = request_irq(MXC_INT_SDMA, sdma_int_handler, 0, "mxcsdma", 0);
 
 	if (res < 0) {
 		goto sdma_init_fail;
@@ -1269,7 +1269,7 @@ int __init sdma_init(void)
 			sdma_script_addrs.mxc_sdma_ram_code_start_addr);
 
 	if (res < 0) {
-		free_irq(INT_SDMA, 0);
+		free_irq(MXC_INT_SDMA, 0);
 		goto sdma_init_fail;
 	}
 
@@ -1280,7 +1280,7 @@ int __init sdma_init(void)
 #if defined(CONFIG_MXC_SUPER_GEM)
 	res = init_super_gem();
 	if (res < 0) {
-		free_irq(INT_SDMA, 0);
+		free_irq(MXC_INT_SDMA, 0);
 		goto sdma_init_fail;
 	}
 #endif

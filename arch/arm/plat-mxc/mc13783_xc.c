@@ -42,7 +42,7 @@ static unsigned int p_event;
 PMIC_CONVITY_EVENTS g_event;
 PMIC_CONVITY_HANDLE pmic_handle = (PMIC_CONVITY_HANDLE) NULL;
 
-DECLARE_MUTEX_LOCKED(pmic_mx);
+DECLARE_MUTEX(pmic_mx);
 static struct task_struct *pmic_task;
 
 static void pmic_event_handler(const PMIC_CONVITY_EVENTS event)
@@ -102,6 +102,8 @@ static void pmic_event_handler(const PMIC_CONVITY_EVENTS event)
 static int usb_pmic_mod_init(void)
 {
 	PMIC_STATUS rs = PMIC_ERROR;
+
+	init_MUTEX_LOCKED(&pmic_mx);
 
 	rs = pmic_convity_open(&pmic_handle, USB);
 	if (rs != PMIC_SUCCESS) {

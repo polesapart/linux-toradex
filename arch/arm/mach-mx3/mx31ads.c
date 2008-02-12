@@ -122,8 +122,8 @@ static u16 keymapping[64] = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };
@@ -131,7 +131,7 @@ static struct resource mxc_kpp_resources[] = {
 static struct keypad_data evb_8_by_8_keypad = {
 	.rowmax = 8,
 	.colmax = 8,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = keymapping,
@@ -165,22 +165,21 @@ static inline void mxc_init_keypad(void)
  */
 static struct plat_serial8250_port serial_platform_data[] = {
 	{
-		.membase  = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTA),
-		.mapbase  = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTA),
-		.irq      = EXPIO_INT_XUART_INTA,
-		.uartclk  = 14745600,
-		.regshift = 0,
-		.iotype   = UPIO_MEM,
-		.flags    = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
-	}, {
-		.membase  = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTB),
-		.mapbase  = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTB),
-		.irq      = EXPIO_INT_XUART_INTB,
-		.uartclk  = 14745600,
-		.regshift = 0,
-		.iotype   = UPIO_MEM,
-		.flags    = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,
-	},
+	 .membase = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTA),
+	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTA),
+	 .irq = EXPIO_INT_XUART_INTA,
+	 .uartclk = 14745600,
+	 .regshift = 0,
+	 .iotype = UPIO_MEM,
+	 .flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,},
+	{
+	 .membase = (void *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTB),
+	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTB),
+	 .irq = EXPIO_INT_XUART_INTB,
+	 .uartclk = 14745600,
+	 .regshift = 0,
+	 .iotype = UPIO_MEM,
+	 .flags = UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_AUTO_IRQ,},
 	{},
 };
 
@@ -429,8 +428,8 @@ static struct resource mxcir_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_UART2,
-	       .end = INT_UART2,
+	       .start = MXC_INT_UART2,
+	       .end = MXC_INT_UART2,
 	       .flags = IORESOURCE_IRQ,
 	       },
 	[2] = {
@@ -439,13 +438,13 @@ static struct resource mxcir_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[3] = {
-	       .start = INT_FIRI,
-	       .end = INT_FIRI,
+	       .start = MXC_INT_FIRI,
+	       .end = MXC_INT_FIRI,
 	       .flags = IORESOURCE_IRQ,
 	       },
 	[4] = {
-	       .start = INT_UART2,
-	       .end = INT_UART2,
+	       .start = MXC_INT_UART2,
+	       .end = MXC_INT_UART2,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };

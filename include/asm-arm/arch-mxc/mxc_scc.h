@@ -34,12 +34,12 @@
 /*!
  *  This must be the interrupt line number of the SCM interrupt.
  */
-#define INT_SCM         INT_SCC_SCM
+#define INT_SCM         MXC_INT_SCC_SCM
 
 /*!
  *  if #USE_SMN_INTERRUPT is defined, this must be the interrupt line number of
  *  the SMN interrupt.
  */
-#define INT_SMN         INT_SCC_SMN
+#define INT_SMN         MXC_INT_SCC_SMN
 
 #endif

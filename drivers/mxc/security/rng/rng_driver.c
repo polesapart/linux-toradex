@@ -375,7 +375,7 @@ static void rng_cleanup(void)
 
 		if (rng_irq_set) {
 			/* unmap the interrupts from the IRQ lines */
-			os_deregister_interrupt(INT_RNG);
+			os_deregister_interrupt(MXC_INT_RNG);
 			rng_irq_set = FALSE;
 		}
 		rng_availability = RNG_STATUS_FAILED;
@@ -799,7 +799,7 @@ static os_error_code rng_map_RNG_memory(void)
 /* fn rng_setup_interrupt_handling()                                        */
 /*!***************************************************************************/
 /*!
- * Register #rng_irq() as the interrupt handler for #INT_RNG.
+ * Register #rng_irq() as the interrupt handler for #MXC_INT_RNG.
  *
  * @return OS_ERROR_OK_S on success, os_error_code on failure
  */
@@ -811,7 +811,7 @@ static os_error_code rng_setup_interrupt_handling(void)
 	 * Install interrupt service routine for the RNG. Ignore the
 	 * assigned IRQ number.
 	 */
-	error_code = os_register_interrupt(RNG_DRIVER_NAME, INT_RNG,
+	error_code = os_register_interrupt(RNG_DRIVER_NAME, MXC_INT_RNG,
 					   OS_DEV_ISR_REF(rng_irq));
 	if (error_code != OS_ERROR_OK_S) {
 		pr_debug("RNG Driver: Error installing Interrupt Handler\n");

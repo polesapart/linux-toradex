@@ -61,7 +61,7 @@
 #include "mx31ads-pcmcia.h"
 #include <linux/irq.h>
 
-#define	MX31ADS_PCMCIA_IRQ	INT_PCMCIA
+#define	MX31ADS_PCMCIA_IRQ	MXC_INT_PCMCIA
 
 /*
  * The mapping of window size to bank size value

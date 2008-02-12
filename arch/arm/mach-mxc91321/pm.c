@@ -39,32 +39,24 @@
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <linux/pm.h>
-#include <linux/sched.h>
-#include <linux/proc_fs.h>
+#include <linux/kernel.h>
+#include <linux/suspend.h>
 
-#include <asm/io.h>
 #include <asm/arch/mxc_pm.h>
 
 /*
  * TODO: whatta save?
  */
 
-static int mxc_pm_enter(suspend_state_t state)
+static int mxc_suspend_enter(suspend_state_t state)
 {
 	switch (state) {
 	case PM_SUSPEND_MEM:
 		mxc_pm_lowpower(DSM_MODE);
 		break;
-
 	case PM_SUSPEND_STANDBY:
-		mxc_pm_lowpower(WAIT_MODE);
-		break;
-
-	case PM_SUSPEND_STOP:
 		mxc_pm_lowpower(STOP_MODE);
 		break;
-
 	default:
 		return -1;
 	}
@@ -74,7 +66,7 @@ static int mxc_pm_enter(suspend_state_t state)
 /*
  * Called after processes are frozen, but before we shut down devices.
  */
-static int mxc_pm_prepare(suspend_state_t state)
+static int mxc_suspend_prepare(void)
 {
 	return 0;
 }
@@ -82,21 +74,21 @@ static int mxc_pm_prepare(suspend_state_t state)
 /*
  * Called after devices are re-setup, but before processes are thawed.
  */
-static int mxc_pm_finish(suspend_state_t state)
+static void mxc_suspend_finish(void)
 {
-	return 0;
+	return;
 }
 
-struct pm_ops mxc_pm_ops = {
-	.prepare = mxc_pm_prepare,
-	.enter = mxc_pm_enter,
-	.finish = mxc_pm_finish,
+struct platform_suspend_ops mxc_suspend_ops = {
+	.prepare = mxc_suspend_prepare,
+	.enter = mxc_suspend_enter,
+	.finish = mxc_suspend_finish,
 };
 
 static int __init mxc_pm_init(void)
 {
 	printk(KERN_INFO "Power Management for Freescale MXC91321.\n");
-	pm_set_ops(&mxc_pm_ops);
+	suspend_set_ops(&mxc_suspend_ops);
 
 	return 0;
 }

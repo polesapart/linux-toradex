@@ -184,7 +184,7 @@
  */
 /*! @{*/
 /*! This is System IRQ used by CS8900A for interrupt generation */
-#define CS8900AIRQ              INT_EXT_INT5
+#define CS8900AIRQ              MXC_INT_EXT_INT5
 /*! This is I/O Base address used to access registers of CS8900A on MXC ADS */
 #define CS8900A_BASE_ADDRESS    (PBC_BASE_ADDRESS + PBC_CS8900A_IOBASE + 0x300)
 /*! @} */

@@ -9,6 +9,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <asm/hardware.h>
+
 	@ this macro disables fast irq (not implemented)
 	.macro	disable_fiq
 	.endm

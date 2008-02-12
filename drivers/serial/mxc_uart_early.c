@@ -149,7 +149,7 @@ static int __init parse_options(struct mxc_early_uart_device *device,
 			 device->baud);
 	}
 	printk(KERN_INFO
-	       "MXC_Early serial console at MMIO 0x%lx (options '%s')\n",
+	       "MXC_Early serial console at MMIO 0x%x (options '%s')\n",
 	       port->mapbase, device->options);
 	return 0;
 }

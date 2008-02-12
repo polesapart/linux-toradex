@@ -64,11 +64,6 @@ static const char driver_name[] = MX31_USB_NAME;
 /* arc Proc FS
  */
 
-#define SHOW(s, r, c) seq_printf(s, "%20s [%8x] %08x %s\n", #r, &r, r, c)
-#define BITS(s, c) seq_printf(s, "%24s: ", c);
-#define BIT(s, r, m) seq_printf(s, "%s%s ", #m, (r & m) ? "" : "/");
-#define NL(s) seq_printf(s, "\n");
-
 /*! arc_dev_show - called to display information
  * @param s
  * @param unused
@@ -83,7 +78,6 @@ static int arc_dev_show(struct seq_file *s, void *unused)
 
         seq_printf(s, "\nOTG Registers\n");
 
-        //SHOW(s, UOG_ID, "Host ID");
         seq_printf(s, "\n");
 
         return 0;

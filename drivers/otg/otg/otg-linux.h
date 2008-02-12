@@ -1091,7 +1091,7 @@ static void inline otg_tasklet_exit(struct otg_tasklet *tasklet)
 #if defined(CONFIG_OTG_OLD_TX_CACHE)
 #define CACHE_SYNC_TX(buf, len) consistent_sync (NULL, buf, len, PCI_DMA_TODEVICE)
 #else
-#define CACHE_SYNC_TX(buf, len) consistent_sync (buf, len, PCI_DMA_TODEVICE)
+#define CACHE_SYNC_TX(buf, len) dma_cache_maint (buf, len, PCI_DMA_TODEVICE)
 #endif
 
 /*@}*/

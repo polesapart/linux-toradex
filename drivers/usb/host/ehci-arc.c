@@ -32,7 +32,6 @@
 #include <linux/fsl_devices.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/fsl_xcvr.h>
-#include <asm/arch/fsl_usb.h>
 
 #include "ehci-fsl.h"
 
@@ -87,10 +86,6 @@ static int usb_hcd_fsl_probe(const struct hc_driver *driver,
 		return -ENODEV;
 	}
 
-	retval = fsl_platform_verify(pdev);
-	if (retval)
-		return retval;
-
 	/*
 	 * do platform specific init: check the clock, grab/config pins, etc.
 	 */
@@ -129,7 +124,11 @@ static int usb_hcd_fsl_probe(const struct hc_driver *driver,
 	 * host port doesn't make it thru initializtion.
 	 * ehci_halt(), called by ehci_fsl_setup() returns -ETIMEDOUT
 	 */
-	fsl_platform_set_host_mode(hcd);
+	if (pdata->xcvr_ops && pdata->xcvr_ops->set_host)
+		pdata->xcvr_ops->set_host();
+
+	/* set host mode */
+	writel(readl(hcd->regs + 0x1a8) | USBMODE_CM_HC, hcd->regs + 0x1a8);
 
 	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (retval != 0) {
@@ -206,7 +205,6 @@ static void usb_hcd_fsl_remove(struct usb_hcd *hcd,
 /* called after powerup, by probe or system-pm "wakeup" */
 static int ehci_fsl_reinit(struct ehci_hcd *ehci)
 {
-	fsl_platform_usb_setup(ehci_to_hcd(ehci));
 	ehci_port_power(ehci, 0);
 
 	return 0;
@@ -261,7 +259,7 @@ static const struct hc_driver ehci_arc_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq		= ehci_irq,
-	.flags		= FSL_PLATFORM_HC_FLAGS,
+	.flags		= HCD_USB2 | HCD_MEMORY,
 
 	/*
 	 * basic lifecycle operations

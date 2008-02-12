@@ -485,7 +485,7 @@ static irqreturn_t ocd_ctrl_int_hndlr (int irq, void *dev_id, struct pt_regs *re
  * @param dev_id
  * @param regs
  */
-irqreturn_t pcd_bwkup_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t pcd_bwkup_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");
@@ -499,7 +499,7 @@ irqreturn_t pcd_bwkup_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs
  * @param dev_id
  * @param regs
  */
-irqreturn_t ocd_hnp_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t ocd_hnp_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");
@@ -513,7 +513,7 @@ irqreturn_t ocd_hnp_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
  * @param dev_id
  * @param regs
  */
-irqreturn_t pcd_func_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t pcd_func_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");
@@ -529,7 +529,7 @@ irqreturn_t pcd_func_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
  * @param dev_id
  * @param regs
  */
-irqreturn_t hcd_host_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t hcd_host_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");
@@ -543,7 +543,7 @@ irqreturn_t hcd_host_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
  * @param dev_id
  * @param regs
  */
-irqreturn_t ocd_ctrl_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t ocd_ctrl_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");
@@ -557,7 +557,7 @@ irqreturn_t ocd_ctrl_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
  * @param dev_id
  * @param regs
  */
-irqreturn_t ocd_dma_int_hndlr_isr (int irq, void *dev_id, struct pt_regs *regs)
+irqreturn_t ocd_dma_int_hndlr_isr (int irq, void *dev_id)
 {
         //pcd_instance->otg->interrupts++;
         //TRACE_MSG0(OCD, "--");

@@ -331,8 +331,8 @@ static irqreturn_t prp_isr(int irq, void *dev_id)
  */
 int prp_init(void *dev_id)
 {
-	enable_irq(INT_EMMAPRP);
-	if (request_irq(INT_EMMAPRP, prp_isr, 0, prp_dev, dev_id))
+	enable_irq(MXC_INT_EMMAPRP);
+	if (request_irq(MXC_INT_EMMAPRP, prp_isr, 0, prp_dev, dev_id))
 		return -1;
 	prphw_init();
 
@@ -346,8 +346,8 @@ int prp_init(void *dev_id)
 void prp_exit(void *dev_id)
 {
 	prphw_exit();
-	disable_irq(INT_EMMAPRP);
-	free_irq(INT_EMMAPRP, dev_id);
+	disable_irq(MXC_INT_EMMAPRP);
+	free_irq(MXC_INT_EMMAPRP, dev_id);
 }
 
 /*!

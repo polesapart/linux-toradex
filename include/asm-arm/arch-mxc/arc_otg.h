@@ -209,16 +209,6 @@
 #define  OTGSC_INTERRUPT_STATUS_BITS_MASK	OTGSC_IS_MASK
 #endif
 
-/* x_USBMODE */
-#define USBMODE_SDIS		(1 << 4)	/* stream disable mode */
-#define USBMODE_SLOM		(1 << 3)	/* setup lockout mode */
-#define USBMODE_ES		(1 << 2)	/* (big) endian select */
-#define USBMODE_CM_MASK		(3 << 0)	/* controller mode mask */
-#define USBMODE_CM_HOST		(3 << 0)	/* host */
-#define USBMODE_CM_DEVICE	(2 << 0)	/* device */
-#define USBMODE_CM_reserved	(1 << 0)	/* reserved */
-#define USBMODE_CM_IDLE		(0 << 0)	/* idle */
-
 /* USBCTRL */
 #define UCTRL_OWIR		(1 << 31)	/* OTG wakeup intr request received */
 #define UCTRL_OSIC_MASK		(3 << 29)	/* OTG  Serial Interface Config: */

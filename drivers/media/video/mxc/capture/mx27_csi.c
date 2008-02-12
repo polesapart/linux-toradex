@@ -303,7 +303,7 @@ int32_t __init csi_init_module(void)
 	csihw_reset();
 
 	/* interrupt enable */
-	ret = request_irq(INT_CSI, csi_irq_handler, 0, "csi", 0);
+	ret = request_irq(MXC_INT_CSI, csi_irq_handler, 0, "csi", 0);
 	if (ret)
 		pr_debug("CSI error: irq request fail\n");
 
@@ -313,7 +313,7 @@ int32_t __init csi_init_module(void)
 void __exit csi_cleanup_module(void)
 {
 	/* free irq */
-	free_irq(INT_CSI, 0);
+	free_irq(MXC_INT_CSI, 0);
 
 	clk_disable(&csi_mclk);
 }

@@ -309,15 +309,6 @@ config ARCH_L7200
 	  If you have any questions or comments about the Linux kernel port
 	  to this board, send e-mail to <sjhill@cotw.com>.
 
-config ARCH_MXC
-	bool "Freescale MXC/iMX-based"
-	select ISA
-	select ARCH_MTD_XIP
-	select GENERIC_TIME
-	select GENERIC_CLOCKEVENTS
-	help
-	  Support for Freescale MXC/iMX-based family of processors
-
 config ARCH_KS8695
 	bool "Micrel/Kendin KS8695"
 	select GENERIC_GPIO
@@ -339,6 +330,9 @@ config ARCH_NS9XXX
 config ARCH_MXC
 	bool "Freescale MXC/iMX-based"
 	select ARCH_MTD_XIP
+	select ISA
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
 	help
 	  Support for Freescale MXC/iMX-based family of processors
 
@@ -1019,7 +1013,7 @@ source "drivers/misc/Kconfig"
 if PCMCIA || ARCH_CLPS7500 || ARCH_IOP32X || ARCH_IOP33X || ARCH_IXP4XX \
 	|| ARCH_L7200 || ARCH_LH7A40X || ARCH_PXA || ARCH_RPC \
 	|| ARCH_S3C2410 || ARCH_SA1100 || ARCH_SHARK || FOOTBRIDGE \
-	|| ARCH_IXP23XX || ARCH_MX3 || ARCH_MX27 || ARCH_MX33
+	|| ARCH_IXP23XX || ARCH_MX3 || ARCH_MX27
 source "drivers/ide/Kconfig"
 endif
 

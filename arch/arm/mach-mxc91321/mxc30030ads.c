@@ -80,8 +80,8 @@ static unsigned short mxckpd_keycodes[] = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };
@@ -89,7 +89,7 @@ static struct resource mxc_kpp_resources[] = {
 static struct keypad_data evb_8_by_4_keypad = {
 	.rowmax = 8,
 	.colmax = 4,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 1,
 	.delay = 2,
 	.matrix = mxckpd_keycodes
@@ -273,7 +273,7 @@ static inline void mxc_init_nand_mtd(void)
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "pmic_spi",
-	 .irq = INT_EXT_INT1,
+	 .irq = MXC_INT_EXT_INT1,
 	 .max_speed_hz = 4000000,
 	 .bus_num = 2,
 	 .chip_select = 0,

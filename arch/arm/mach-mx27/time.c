@@ -107,6 +107,8 @@ static void mxc_gpt_set_mode(enum clock_event_mode mode,
 		reg &= ~GPTCR_COMPEN;
 		__raw_writel(reg, MXC_GPT_GPTCR);
 		break;
+	case CLOCK_EVT_MODE_RESUME:
+		break;
 	}
 }
 
@@ -224,7 +226,7 @@ void __init mxc_init_time(void)
 	gpt_clockevent.cpumask = cpumask_of_cpu(0);
 	clockevents_register_device(&gpt_clockevent);
 
-	ret = setup_irq(INT_GPT, &timer_irq);
+	ret = setup_irq(MXC_INT_GPT, &timer_irq);
 	if (ret < 0) {
 		goto err;
 	}

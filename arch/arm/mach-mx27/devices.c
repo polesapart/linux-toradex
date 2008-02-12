@@ -71,7 +71,7 @@ static struct resource rtc_resources[] = {
 	 .flags = IORESOURCE_MEM,
 	 },
 	{
-	 .start = INT_RTC,
+	 .start = MXC_INT_RTC,
 	 .flags = IORESOURCE_IRQ,
 	 },
 };
@@ -165,18 +165,13 @@ static struct resource mxcsdhc1_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_SDHC1,
-	       .end = INT_SDHC1,
+	       .start = MXC_INT_SDHC1,
+	       .end = MXC_INT_SDHC1,
 	       .flags = IORESOURCE_IRQ,
 	       },
 	[2] = {
 	       .start = 0,
 	       .end = 0,
-	       .flags = IORESOURCE_IRQ,
-	       },
-	[3] = {
-	       .start = MXC_SDIO1_CARD_IRQ,
-	       .end = MXC_SDIO1_CARD_IRQ,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -191,18 +186,13 @@ static struct resource mxcsdhc2_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_SDHC2,
-	       .end = INT_SDHC2,
+	       .start = MXC_INT_SDHC2,
+	       .end = MXC_INT_SDHC2,
 	       .flags = IORESOURCE_IRQ,
 	       },
 	[2] = {
 	       .start = 0,
 	       .end = 0,
-	       .flags = IORESOURCE_IRQ,
-	       },
-	[3] = {
-	       .start = MXC_SDIO2_CARD_IRQ,
-	       .end = MXC_SDIO2_CARD_IRQ,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -242,8 +232,8 @@ static struct resource mxcsdhc3_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_SDHC3,
-	       .end = INT_SDHC3,
+	       .start = MXC_INT_SDHC3,
+	       .end = MXC_INT_SDHC3,
 	       .flags = IORESOURCE_IRQ,
 	       },
 	[2] = {
@@ -312,8 +302,8 @@ static struct resource mxcspi1_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_CSPI1,
-	       .end = INT_CSPI1,
+	       .start = MXC_INT_CSPI1,
+	       .end = MXC_INT_CSPI1,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -349,8 +339,8 @@ static struct resource mxcspi2_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_CSPI2,
-	       .end = INT_CSPI2,
+	       .start = MXC_INT_CSPI2,
+	       .end = MXC_INT_CSPI2,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -385,8 +375,8 @@ static struct resource mxcspi3_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_CSPI3,
-	       .end = INT_CSPI3,
+	       .start = MXC_INT_CSPI3,
+	       .end = MXC_INT_CSPI3,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -527,8 +517,8 @@ static struct resource mxci2c1_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_I2C,
-	       .end = INT_I2C,
+	       .start = MXC_INT_I2C,
+	       .end = MXC_INT_I2C,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -550,8 +540,8 @@ static struct resource mxci2c2_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = INT_I2C2,
-	       .end = INT_I2C2,
+	       .start = MXC_INT_I2C2,
+	       .end = MXC_INT_I2C2,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -629,38 +619,38 @@ struct mxc_gpio_port mxc_gpio_ports[GPIO_PORT_NUM] = {
 	{
 	 .num = 0,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR),
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE,
 	 },
 	{
 	 .num = 1,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR) + 0x100,
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE + GPIO_NUM_PIN,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE + GPIO_NUM_PIN,
 	 },
 	{
 	 .num = 2,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR) + 0x200,
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE + GPIO_NUM_PIN * 2,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE + GPIO_NUM_PIN * 2,
 	 },
 	{
 	 .num = 3,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR) + 0x300,
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE + GPIO_NUM_PIN * 3,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE + GPIO_NUM_PIN * 3,
 	 },
 	{
 	 .num = 4,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR) + 0x400,
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE + GPIO_NUM_PIN * 4,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE + GPIO_NUM_PIN * 4,
 	 },
 	{
 	 .num = 5,
 	 .base = IO_ADDRESS(GPIO_BASE_ADDR) + 0x500,
-	 .irq = INT_GPIO,
-	 .virtual_irq_start = MXC_GPIO_BASE + GPIO_NUM_PIN * 5,
+	 .irq = MXC_INT_GPIO,
+	 .virtual_irq_start = MXC_GPIO_INT_BASE + GPIO_NUM_PIN * 5,
 	 },
 };
 

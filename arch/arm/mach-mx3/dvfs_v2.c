@@ -443,7 +443,7 @@ static int __init dvfs_init(void)
 	}
 
 	/* request the DVFS interrupt */
-	err = request_irq(INT_DVFS, dvfs_irq, IRQF_DISABLED, "dvfs", NULL);
+	err = request_irq(MXC_INT_DVFS, dvfs_irq, IRQF_DISABLED, "dvfs", NULL);
 	if (err) {
 		printk(KERN_ERR "DVFS: Unable to attach to DVFS interrupt");
 	}
@@ -463,7 +463,7 @@ static void __exit dvfs_cleanup(void)
 	stop_dvfs();
 
 	/* release the DVFS interrupt */
-	free_irq(INT_DVFS, NULL);
+	free_irq(MXC_INT_DVFS, NULL);
 
 	dvfs_sysdev_ctrl_exit();
 

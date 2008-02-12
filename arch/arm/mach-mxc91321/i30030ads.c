@@ -85,7 +85,7 @@ static unsigned short mxckpd_keycodes[] = {
 static struct keypad_data evb_8_by_4_keypad = {
 	.rowmax = 8,
 	.colmax = 4,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 1,
 	.delay = 2,
 	.matrix = mxckpd_keycodes,
@@ -93,8 +93,8 @@ static struct keypad_data evb_8_by_4_keypad = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };

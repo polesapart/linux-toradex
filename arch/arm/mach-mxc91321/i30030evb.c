@@ -96,8 +96,8 @@ static u16 keymapping[64] = {
 
 static struct resource mxc_kpp_resources[] = {
 	[0] = {
-	       .start = INT_KPP,
-	       .end = INT_KPP,
+	       .start = MXC_INT_KPP,
+	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
 	       }
 };
@@ -105,7 +105,7 @@ static struct resource mxc_kpp_resources[] = {
 static struct keypad_data evb_8_by_8_keypad = {
 	.rowmax = 8,
 	.colmax = 8,
-	.irq = INT_KPP,
+	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = keymapping
@@ -142,7 +142,7 @@ static struct plat_serial8250_port serial_platform_data[] = {
 	{
 	 .membase = (void __iomem *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTA),
 	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTA),
-	 .irq = INT_EXT_INT6,
+	 .irq = MXC_INT_EXT_INT6,
 	 .uartclk = 14745600,
 	 .regshift = 1,
 	 .iotype = UPIO_MEM,
@@ -151,7 +151,7 @@ static struct plat_serial8250_port serial_platform_data[] = {
 	{
 	 .membase = (void __iomem *)(PBC_BASE_ADDRESS + PBC_SC16C652_UARTB),
 	 .mapbase = (unsigned long)(CS4_BASE_ADDR + PBC_SC16C652_UARTB),
-	 .irq = INT_EXT_INT7,
+	 .irq = MXC_INT_EXT_INT7,
 	 .uartclk = 14745600,
 	 .regshift = 1,
 	 .iotype = UPIO_MEM,

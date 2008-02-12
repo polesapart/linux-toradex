@@ -301,7 +301,7 @@ void mxc_pm_lowpower(int mode)
 		/* State Retention mode */
 		lpm = 2;
 		/* Disable timer interrupt */
-		disable_irq(INT_GPT);
+		disable_irq(MXC_INT_GPT);
 		enable_flag = 1;
 		break;
 
@@ -309,7 +309,7 @@ void mxc_pm_lowpower(int mode)
 		/* Deep Sleep Mode */
 		lpm = 3;
 		/* Disable timer interrupt */
-		disable_irq(INT_GPT);
+		disable_irq(MXC_INT_GPT);
 		enable_flag = 1;
 		/* Enabled Well Bias
 		 * SBYCS = 0, MCU clock source is disabled*/
@@ -334,7 +334,7 @@ void mxc_pm_lowpower(int mode)
 
 	if (enable_flag) {
 		/* Enable timer interrupt */
-		enable_irq(INT_GPT);
+		enable_irq(MXC_INT_GPT);
 	}
 	local_irq_enable();
 }

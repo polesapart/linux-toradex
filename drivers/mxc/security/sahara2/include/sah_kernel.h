@@ -31,7 +31,7 @@
     || defined(CONFIG_ARCH_MXC92323)
 #include <asm/arch/hardware.h>
 #define SAHA_BASE_ADDR SAHARA_BASE_ADDR
-#define SAHARA_IRQ     INT_SAHARA
+#define SAHARA_IRQ     MXC_INT_SAHARA
 #else
 #include <asm/arch/mx2.h>
 #endif

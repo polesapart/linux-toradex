@@ -858,7 +858,8 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 
 	hwif->dmatable_cpu = NULL;
 	hwif->dmatable_dma = 0;
-	hwif->speedproc = mxc_ide_set_speed;
+	hwif->set_dma_mode = mxc_ide_set_speed;
+	hwif->set_pio_mode = mxc_ide_set_speed;
 	hwif->resetproc = mxc_ide_resetproc;
 	hwif->autodma = 0;
 

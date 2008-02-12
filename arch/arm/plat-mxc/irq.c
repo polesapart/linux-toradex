@@ -41,14 +41,14 @@ static uint32_t suspend_wakeup_low, suspend_wakeup_high;
 #ifdef EDIO_BASE_ADDR
 
 static const int mxc_edio_irq_map[] = {
-	INT_EXT_INT0,
-	INT_EXT_INT1,
-	INT_EXT_INT2,
-	INT_EXT_INT3,
-	INT_EXT_INT4,
-	INT_EXT_INT5,
-	INT_EXT_INT6,
-	INT_EXT_INT7,
+	MXC_INT_EXT_INT0,
+	MXC_INT_EXT_INT1,
+	MXC_INT_EXT_INT2,
+	MXC_INT_EXT_INT3,
+	MXC_INT_EXT_INT4,
+	MXC_INT_EXT_INT5,
+	MXC_INT_EXT_INT6,
+	MXC_INT_EXT_INT7,
 };
 
 static u32 edio_irq_type[MXC_MAX_EXT_LINES] = {

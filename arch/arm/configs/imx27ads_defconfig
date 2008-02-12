@@ -577,7 +577,7 @@ CONFIG_IDE_PROC_FS=y
 CONFIG_IDE_GENERIC=y
 # CONFIG_IDEPCI_PCIBUS_ORDER is not set
 # CONFIG_IDE_ARM is not set
-CONFIG_BLK_DEV_IDE_MXC=y
+# CONFIG_BLK_DEV_IDE_MXC is not set
 # CONFIG_IDE_CHIPSETS is not set
 CONFIG_BLK_DEV_IDEDMA=y
 # CONFIG_BLK_DEV_HD is not set
@@ -1390,7 +1390,7 @@ CONFIG_MXC_MC13783_POWER=y
 #
 # Advanced Power Management devices
 #
-CONFIG_MX27_DPTC=y
+# CONFIG_MX27_DPTC is not set
 
 #
 # MXC Security Drivers

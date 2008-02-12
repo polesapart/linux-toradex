@@ -377,7 +377,7 @@
 #define MXC_INT_IIM		19
 #define MXC_INT_SIM2		20
 #define MXC_INT_SIM1		21
-#define MXC_INT_RNGA		22
+#define MXC_INT_RNG		22
 #define MXC_INT_EVTMON		23
 #define MXC_INT_KPP		24
 #define MXC_INT_RTC		25
@@ -427,7 +427,7 @@
 /*!
  * Interrupt Number for ARM11 PMU
  */
-#define ARM11_PMU_IRQ		INT_EVTMON
+#define ARM11_PMU_IRQ		MXC_INT_EVTMON
 
 /*!
  * Number of GPIO port as defined in the IC Spec

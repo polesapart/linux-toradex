@@ -92,7 +92,7 @@ int mxc_snoop_get_status(u32 num, u32 * statl, u32 * stath);
 #endif				/* __ASSEMBLY__ */
 
 #define IOMUX_TO_GPIO(pin) 	((((unsigned int)pin >> MUX_IO_P) * GPIO_NUM_PIN) + ((pin >> MUX_IO_I) & ((1 << (MUX_IO_P - MUX_IO_I)) -1)))
-#define IOMUX_TO_IRQ(pin)	(MXC_GPIO_BASE + IOMUX_TO_GPIO(pin))
+#define IOMUX_TO_IRQ(pin)	(MXC_GPIO_INT_BASE + IOMUX_TO_GPIO(pin))
 #define GPIO_TO_PORT(n)		(n / GPIO_NUM_PIN)
 #define GPIO_TO_INDEX(n)	(n % GPIO_NUM_PIN)
 

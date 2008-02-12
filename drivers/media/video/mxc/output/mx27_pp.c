@@ -125,8 +125,8 @@ int pp_init(vout_data * vout)
 {
 	pphw_init();
 	pphw_enable(0);
-	enable_irq(INT_EMMAPP);
-	return request_irq(INT_EMMAPP, pp_isr, 0, pp_dev, vout);
+	enable_irq(MXC_INT_EMMAPP);
+	return request_irq(MXC_INT_EMMAPP, pp_isr, 0, pp_dev, vout);
 }
 
 /*!
@@ -135,8 +135,8 @@ int pp_init(vout_data * vout)
  */
 void pp_exit(vout_data * vout)
 {
-	disable_irq(INT_EMMAPP);
-	free_irq(INT_EMMAPP, vout);
+	disable_irq(MXC_INT_EMMAPP);
+	free_irq(MXC_INT_EMMAPP, vout);
 	pphw_enable(0);
 	pphw_exit();
 }

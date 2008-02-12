@@ -105,7 +105,7 @@
  * number of the ANDed interrupt in case the interrupts are muxed. There exists
  * a define like this for each UART port.
  */
-#define UART1_INT1              INT_UART1
+#define UART1_INT1              MXC_INT_UART1
 /*!
  * This define specifies the receiver interrupt number. If the interrupts of
  * the UART are muxed, then we specify here a dummy value -1. There exists a
@@ -126,19 +126,19 @@
 #define UART1_SHARED_PERI       -1
 /* UART 2 configuration */
 #define UART2_MUX_INTS          INTS_MUXED
-#define UART2_INT1              INT_UART2
+#define UART2_INT1              MXC_INT_UART2
 #define UART2_INT2              -1
 #define UART2_INT3              -1
 #define UART2_SHARED_PERI       -1
 /* UART 3 configuration */
 #define UART3_MUX_INTS          INTS_MUXED
-#define UART3_INT1              INT_UART3
+#define UART3_INT1              MXC_INT_UART3
 #define UART3_INT2              -1
 #define UART3_INT3              -1
 #define UART3_SHARED_PERI       SPBA_UART3
 /* UART 4 configuration */
 #define UART4_MUX_INTS          INTS_MUXED
-#define UART4_INT1              INT_UART4_FIRI_OR
+#define UART4_INT1              MXC_INT_UART4_FIRI_OR
 #define UART4_INT2              -1
 #define UART4_INT3              -1
 #define UART4_SHARED_PERI       SPBA_UART4

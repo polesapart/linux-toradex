@@ -209,10 +209,6 @@ static void send_prog_page(u8 buf_id, bool bSpareOnly)
 	if (!is2k_Pagesize) {
 		if (bSpareOnly) {
 			NFC_CONFIG1 |= NFC_SP_EN;
-			/* Workaround ecc status register error for spare-only read */
-			if (cpu_is_mxc91131_rev(CHIP_REV_2_0) >= 1) {
-				NFC_CONFIG1 &= ~(NFC_SP_EN);
-			}
 		} else {
 			NFC_CONFIG1 &= ~(NFC_SP_EN);
 		}
@@ -366,10 +362,6 @@ static void send_read_page(u8 buf_id, bool bSpareOnly)
 	if (!is2k_Pagesize) {
 		if (bSpareOnly) {
 			NFC_CONFIG1 |= NFC_SP_EN;
-			/* Workaround ecc status register error for spare-only read */
-			if (cpu_is_mxc91131_rev(CHIP_REV_2_0) >= 1) {
-				NFC_CONFIG1 &= ~(NFC_SP_EN);
-			}
 		} else {
 			NFC_CONFIG1 &= ~(NFC_SP_EN);
 		}
@@ -386,13 +378,7 @@ static void send_read_page(u8 buf_id, bool bSpareOnly)
 	   NFC for the second page.
 	   Correct single bit error in driver */
 
-	/* Removed NFC workaround in MXC91231-P2.1 */
-	if (cpu_is_mxc91231_rev(CHIP_REV_2_1) < 0) {
-		mxc_nd_correct_ecc(buf_id, bSpareOnly);
-	} else {
-		mxc_nd_correct_ecc(buf_id, bSpareOnly);
-	}
-
+	mxc_nd_correct_ecc(buf_id, bSpareOnly);
 }
 
 /*!
@@ -1162,7 +1148,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 
 	NFC_CONFIG1 |= NFC_INT_MSK;
 	init_waitqueue_head(&irq_waitq);
-	err = request_irq(INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
+	err = request_irq(MXC_INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
 	if (err) {
 		goto out_1;
 	}
@@ -1191,10 +1177,6 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	NFC_UNLOCKSTART_BLKADDR = 0x0;
 	NFC_UNLOCKEND_BLKADDR = 0x4000;
 
-	/* support for One Flash Clock cycle new in rev 2.0 */
-	if (cpu_is_mxc91131_rev(CHIP_REV_2_0) >= 1) {
-		NFC_CONFIG1 |= (NFC_ONE_CYCLE);
-	}
 	/* Unlock Block Command for given address range */
 	NFC_WRPROT = 0x4;
 
@@ -1262,7 +1244,7 @@ static int __exit mxcnd_remove(struct platform_device *pdev)
 
 	if (mxc_nand_data) {
 		nand_release(mtd);
-		free_irq(INT_NANDFC, NULL);
+		free_irq(MXC_INT_NANDFC, NULL);
 		kfree(mxc_nand_data);
 	}
 

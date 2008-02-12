@@ -29,8 +29,8 @@
 
 #define MXC_IRQ_TO_EXPIO(irq)	(irq - MXC_EXP_IO_BASE)
 
-#define MXC_IRQ_TO_GPIO(irq)	(irq - MXC_GPIO_BASE)
-#define MXC_GPIO_TO_IRQ(x)	(MXC_GPIO_BASE + x)
+#define MXC_IRQ_TO_GPIO(irq)	(irq - MXC_GPIO_INT_BASE)
+#define MXC_GPIO_TO_IRQ(x)	(MXC_GPIO_INT_BASE + x)
 
 /*!
  * Number of normal interrupts
