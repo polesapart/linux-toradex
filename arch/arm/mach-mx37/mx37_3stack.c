@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -34,14 +34,11 @@
 #include <asm/setup.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include <asm/mach/irq.h>
 #include <asm/mach/keypad.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
-
 #include "board-mx37_3stack.h"
 #include "crm_regs.h"
-#include "iomux.h"
 
 /*!
  * @file mach-mx37/mx37_3stack.c
@@ -124,7 +121,7 @@ static inline void mxc_init_nand_mtd(void)
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "cpld_spi",
-	 .max_speed_hz = 18000000,
+	 .max_speed_hz = 27000000,
 	 .bus_num = 2,
 	 .chip_select = 0,
 	 },
@@ -134,6 +131,43 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	 .bus_num = 1,
 	 .chip_select = 2,},
 };
+
+/*lan9217 device*/
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+static struct resource smsc911x_resources[] = {
+	{
+	 .start = LAN9217_BASE_ADDR,
+	 .end = LAN9217_BASE_ADDR + 255,
+	 .flags = IORESOURCE_MEM,
+	 },
+	{
+	 .start = MXC_EXP_IO_BASE,
+	 .flags = IORESOURCE_IRQ,
+	 },
+};
+static struct platform_device smsc_lan9217_device = {
+	.name = "smsc911x",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		},
+	.num_resources = ARRAY_SIZE(smsc911x_resources),
+	.resource = smsc911x_resources,
+};
+
+static int __init mxc_init_enet(void)
+{
+	(void)platform_device_register(&smsc_lan9217_device);
+	return 0;
+}
+#else
+static int __init mxc_init_enet(void)
+{
+	return 0;
+}
+#endif
+
+late_initcall(mxc_init_enet);
 
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
@@ -184,7 +218,6 @@ static void __init mxc_board_init(void)
 	mxc_clocks_init();
 	mxc_gpio_init();
 	early_console_setup(saved_command_line);
-
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 	mxc_init_nand_mtd();
