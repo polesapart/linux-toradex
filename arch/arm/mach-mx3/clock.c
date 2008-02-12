@@ -1156,6 +1156,11 @@ int __init mxc_clocks_init(void)
 		clk_register(&vl2cc_clk);
 	}
 
+	/* CCMR stby control */
+	reg = __raw_readl(MXC_CCM_CCMR);
+	reg |= MXC_CCM_CCMR_VSTBY;
+	__raw_writel(reg, MXC_CCM_CCMR);
+
 	/* Turn off all possible clocks */
 	__raw_writel(MXC_CCM_CGR0_GPT_MASK, MXC_CCM_CGR0);
 	__raw_writel(0, MXC_CCM_CGR1);

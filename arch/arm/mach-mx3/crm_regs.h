@@ -48,6 +48,7 @@
 #define MXC_CCM_PDR2		(MXC_CCM_BASE + 0x64)
 
 /* Register bit definitions */
+#define MXC_CCM_CCMR_VSTBY                      (1 << 28)
 #define MXC_CCM_CCMR_WBEN                       (1 << 27)
 #define MXC_CCM_CCMR_CSCS                       (1 << 25)
 #define MXC_CCM_CCMR_PERCS                      (1 << 24)
