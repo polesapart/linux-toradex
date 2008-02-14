@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -42,99 +42,56 @@
 #include <asm/io.h>
 #include <asm/arch/gpio.h>
 
-#ifdef CONFIG_ARCH_MX27
-#include "mxc_spi_mx27.h"
+#if defined(CONFIG_ARCH_MX27)
+#include "mxc_spi_rev_0_0.h"
+#elif defined(CONFIG_ARCH_MX37)
+#include "mxc_spi_rev_2_3.h"
 #else
 #include "mxc_spi.h"
 #endif
 
-#ifdef CONFIG_SPI_MXC_TEST_LOOPBACK
-struct spi_chip_info {
-	int lb_enable;
-};
-
-static struct spi_chip_info lb_chip_info = {
-	.lb_enable = 1,
-};
-
-static struct spi_board_info loopback_info[] = {
-#ifdef CONFIG_SPI_MXC_SELECT1
-	{
-	 .modalias = "loopback_spi",
-	 .controller_data = &lb_chip_info,
-	 .irq = 0,
-	 .max_speed_hz = 4000000,
-	 .bus_num = 1,
-	 .chip_select = 4,
-	 },
-#endif
-#ifdef CONFIG_SPI_MXC_SELECT2
-	{
-	 .modalias = "loopback_spi",
-	 .controller_data = &lb_chip_info,
-	 .irq = 0,
-	 .max_speed_hz = 4000000,
-	 .bus_num = 2,
-	 .chip_select = 4,
-	 },
-#endif
-#ifdef CONFIG_SPI_MXC_SELECT3
-	{
-	 .modalias = "loopback_spi",
-	 .controller_data = &lb_chip_info,
-	 .irq = 0,
-	 .max_speed_hz = 4000000,
-	 .bus_num = 3,
-	 .chip_select = 4,
-	 },
-#endif
-};
-#endif
-
-extern void gpio_spi_active(int cspi_mod);
-extern void gpio_spi_inactive(int cspi_mod);
-
-static struct mxc_spi_unique_def spi_ver_0_7 = {
-	.intr_bit_shift = MXC_CSPIINT_IRQSHIFT_0_7,
-	.cs_shift = MXC_CSPICTRL_CSSHIFT_0_7,
-	.bc_shift = MXC_CSPICTRL_BCSHIFT_0_7,
-	.bc_mask = MXC_CSPICTRL_BCMASK_0_7,
-	.drctrl_shift = MXC_CSPICTRL_DRCTRLSHIFT_0_7,
-	.xfer_complete = MXC_CSPISTAT_TC_0_7,
-	.bc_overflow = MXC_CSPISTAT_BO_0_7,
-};
-
-static struct mxc_spi_unique_def spi_ver_0_5 = {
-	.intr_bit_shift = MXC_CSPIINT_IRQSHIFT_0_5,
-	.cs_shift = MXC_CSPICTRL_CSSHIFT_0_5,
-	.bc_shift = MXC_CSPICTRL_BCSHIFT_0_5,
-	.bc_mask = MXC_CSPICTRL_BCMASK_0_5,
-	.drctrl_shift = MXC_CSPICTRL_DRCTRLSHIFT_0_5,
-	.xfer_complete = MXC_CSPISTAT_TC_0_5,
-	.bc_overflow = MXC_CSPISTAT_BO_0_5,
-};
-
-static struct mxc_spi_unique_def spi_ver_0_4 = {
-	.intr_bit_shift = MXC_CSPIINT_IRQSHIFT_0_4,
-	.cs_shift = MXC_CSPICTRL_CSSHIFT_0_4,
-	.bc_shift = MXC_CSPICTRL_BCSHIFT_0_4,
-	.bc_mask = MXC_CSPICTRL_BCMASK_0_4,
-	.drctrl_shift = MXC_CSPICTRL_DRCTRLSHIFT_0_4,
-	.xfer_complete = MXC_CSPISTAT_TC_0_4,
-	.bc_overflow = MXC_CSPISTAT_BO_0_4,
-};
-
-static struct mxc_spi_unique_def spi_ver_0_0 = {
-	.intr_bit_shift = MXC_CSPIINT_IRQSHIFT_0_0,
-	.cs_shift = MXC_CSPICTRL_CSSHIFT_0_0,
-	.bc_shift = MXC_CSPICTRL_BCSHIFT_0_0,
-	.bc_mask = MXC_CSPICTRL_BCMASK_0_0,
-	.drctrl_shift = MXC_CSPICTRL_DRCTRLSHIFT_0_0,
-	.xfer_complete = MXC_CSPISTAT_TC_0_0,
-	.bc_overflow = MXC_CSPISTAT_BO_0_0,
+/*!
+ * @struct mxc_spi_unique_def
+ * @brief This structure contains information that differs with
+ * SPI master controller hardware version
+ */
+struct mxc_spi_unique_def {
+	/*!
+	 * Width of valid bits in MXC_CSPIINT.
+	 */
+	unsigned int intr_bit_shift;
+	/*!
+	 * Chip Select shift.
+	 */
+	unsigned int cs_shift;
+	/*!
+	 * Bit count shift.
+	 */
+	unsigned int bc_shift;
+	/*!
+	 * Bit count mask.
+	 */
+	unsigned int bc_mask;
+	/*!
+	 * Data Control shift.
+	 */
+	unsigned int drctrl_shift;
+	/*!
+	 * Transfer Complete shift.
+	 */
+	unsigned int xfer_complete;
+	/*!
+	 * Bit counnter overflow shift.
+	 */
+	unsigned int bc_overflow;
+	/*!
+	 * FIFO Size.
+	 */
+	unsigned int fifo_size;
 };
 
 struct mxc_spi;
+
 /*!
  * Structure to group together all the data buffers and functions
  * used in data transfers.
@@ -208,6 +165,107 @@ struct mxc_spi {
 	 */
 	struct mxc_spi_unique_def *spi_ver_def;
 };
+
+#ifdef CONFIG_SPI_MXC_TEST_LOOPBACK
+struct spi_chip_info {
+	int lb_enable;
+};
+
+static struct spi_chip_info lb_chip_info = {
+	.lb_enable = 1,
+};
+
+static struct spi_board_info loopback_info[] = {
+#ifdef CONFIG_SPI_MXC_SELECT1
+	{
+	 .modalias = "loopback_spi",
+	 .controller_data = &lb_chip_info,
+	 .irq = 0,
+	 .max_speed_hz = 4000000,
+	 .bus_num = 1,
+	 .chip_select = 4,
+	 },
+#endif
+#ifdef CONFIG_SPI_MXC_SELECT2
+	{
+	 .modalias = "loopback_spi",
+	 .controller_data = &lb_chip_info,
+	 .irq = 0,
+	 .max_speed_hz = 4000000,
+	 .bus_num = 2,
+	 .chip_select = 4,
+	 },
+#endif
+#ifdef CONFIG_SPI_MXC_SELECT3
+	{
+	 .modalias = "loopback_spi",
+	 .controller_data = &lb_chip_info,
+	 .irq = 0,
+	 .max_speed_hz = 4000000,
+	 .bus_num = 3,
+	 .chip_select = 4,
+	 },
+#endif
+};
+#endif
+
+static struct mxc_spi_unique_def spi_ver_2_3 = {
+	.intr_bit_shift = 8,
+	.cs_shift = 18,
+	.bc_shift = 20,
+	.bc_mask = 0xFFF,
+	.drctrl_shift = 16,
+	.xfer_complete = (1 << 7),
+	.bc_overflow = 0,
+	.fifo_size = 64,
+};
+
+static struct mxc_spi_unique_def spi_ver_0_7 = {
+	.intr_bit_shift = 8,
+	.cs_shift = 12,
+	.bc_shift = 20,
+	.bc_mask = 0xFFF,
+	.drctrl_shift = 8,
+	.xfer_complete = (1 << 7),
+	.bc_overflow = 0,
+	.fifo_size = 8,
+};
+
+static struct mxc_spi_unique_def spi_ver_0_5 = {
+	.intr_bit_shift = 9,
+	.cs_shift = 12,
+	.bc_shift = 20,
+	.bc_mask = 0xFFF,
+	.drctrl_shift = 8,
+	.xfer_complete = (1 << 8),
+	.bc_overflow = (1 << 7),
+	.fifo_size = 8,
+};
+
+static struct mxc_spi_unique_def spi_ver_0_4 = {
+	.intr_bit_shift = 9,
+	.cs_shift = 24,
+	.bc_shift = 8,
+	.bc_mask = 0x1F,
+	.drctrl_shift = 20,
+	.xfer_complete = (1 << 8),
+	.bc_overflow = (1 << 7),
+	.fifo_size = 8,
+};
+
+static struct mxc_spi_unique_def spi_ver_0_0 = {
+	.intr_bit_shift = 18,
+	.cs_shift = 19,
+	.bc_shift = 0,
+	.bc_mask = 0x1F,
+	.drctrl_shift = 12,
+	.xfer_complete = (1 << 3),
+	.bc_overflow = (1 << 8),
+	.fifo_size = 8,
+};
+
+extern void gpio_spi_active(int cspi_mod);
+extern void gpio_spi_inactive(int cspi_mod);
 
 #define MXC_SPI_BUF_RX(type)	\
 void mxc_spi_buf_rx_##type(struct mxc_spi *master_drv_data, u32 val)\
@@ -298,28 +356,24 @@ static unsigned int spi_find_baudrate(struct mxc_spi *master_data,
 }
 
 /*!
- * This function gets the received data.
- *
- * @param        base   the CSPI base address
- *
- * @return       This function returns Rx FIFO data read.
- */
-static unsigned int spi_get_rx_data(void *base)
-{
-	return __raw_readl(base + MXC_CSPIRXDATA);
-}
-
-/*!
  * This function loads the transmit fifo.
  *
- * @param        base   the CSPI base address
- * @param        val    the data to put in the TxFIFO
+ * @param  base             the CSPI base address
+ * @param  count            number of words to put in the TxFIFO
+ * @param  master_drv_data  spi master structure
  */
-static void spi_put_tx_data(void *base, unsigned int val)
+static void spi_put_tx_data(void *base, unsigned int count,
+			    struct mxc_spi *master_drv_data)
 {
 	unsigned int ctrl_reg;
+	unsigned int data;
+	int i = 0;
 
-	__raw_writel(val, base + MXC_CSPITXDATA);
+	/* Perform Tx transaction */
+	for (i = 0; i < count; i++) {
+		data = master_drv_data->transfer.tx_get(master_drv_data);
+		__raw_writel(data, base + MXC_CSPITXDATA);
+	}
 
 	ctrl_reg = __raw_readl(base + MXC_CSPICTRL);
 
@@ -343,7 +397,9 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
 	struct mxc_spi_xfer *ptransfer;
 	struct mxc_spi_unique_def *spi_ver_def;
 	unsigned int ctrl_reg;
+	unsigned int config_reg;
 	unsigned int ctrl_mask;
+	unsigned int config_mask;
 	unsigned int xfer_len;
 
 	if (is_active == BITBANG_CS_INACTIVE) {
@@ -358,30 +414,95 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
 
 	xfer_len = spi->bits_per_word;
 
-	/* Control Register Settings for transfer to this slave */
+	if (spi_ver_def == &spi_ver_2_3) {
+		/* Control Register Settings for transfer to this slave */
 
-	ctrl_reg = __raw_readl(master_drv_data->base + MXC_CSPICTRL);
+		ctrl_reg = __raw_readl(master_drv_data->base + MXC_CSPICTRL);
+		config_reg =
+		    __raw_readl(master_drv_data->base + MXC_CSPICONFIG);
 
-	ctrl_mask =
-	    (MXC_CSPICTRL_LOWPOL | MXC_CSPICTRL_PHA | MXC_CSPICTRL_HIGHSSPOL |
-	     MXC_CSPICTRL_CSMASK << spi_ver_def->cs_shift |
-	     MXC_CSPICTRL_DATAMASK << MXC_CSPICTRL_DATASHIFT |
-	     spi_ver_def->bc_mask << spi_ver_def->bc_shift);
-	ctrl_reg &= ~ctrl_mask;
+		ctrl_mask =
+		    (MXC_CSPICTRL_CSMASK << spi_ver_def->cs_shift |
+		     MXC_CSPICTRL_DATAMASK << MXC_CSPICTRL_DATASHIFT |
+		     MXC_CSPICTRL_MODEMASK << MXC_CSPICTRL_MODESHIFT |
+		     spi_ver_def->bc_mask << spi_ver_def->bc_shift);
 
-	ctrl_reg |=
-	    ((spi->chip_select & MXC_CSPICTRL_CSMASK) << spi_ver_def->cs_shift);
-	ctrl_reg |= spi_find_baudrate(master_drv_data, spi->max_speed_hz);
-	ctrl_reg |=
-	    (((xfer_len - 1) & spi_ver_def->bc_mask) << spi_ver_def->bc_shift);
-	if (spi->mode & SPI_CPHA)
-		ctrl_reg |= MXC_CSPICTRL_PHA;
-	if (!(spi->mode & SPI_CPOL))
-		ctrl_reg |= MXC_CSPICTRL_LOWPOL;
-	if (spi->mode & SPI_CS_HIGH)
-		ctrl_reg |= MXC_CSPICTRL_HIGHSSPOL;
+		config_mask =
+		    (MXC_SCLKPOLMASK << MXC_LOWPOLSHIFT |
+		     MXC_PHAMASK << MXC_PHASHIFT |
+		     MXC_SSCTLMASK << MXC_SSCTLSHIFT |
+		     MXC_SSPOLMASK << MXC_SSPOLSHIFT);
 
-	__raw_writel(ctrl_reg, master_drv_data->base + MXC_CSPICTRL);
+		ctrl_reg &= ~ctrl_mask;
+		config_reg &= ~config_mask;
+
+		ctrl_reg |=
+		    ((spi->chip_select & MXC_CSPICTRL_CSMASK) << spi_ver_def->
+		     cs_shift);
+		ctrl_reg |=
+		    (((1 << spi->
+		       chip_select) & MXC_CSPICTRL_MODEMASK) <<
+		     MXC_CSPICTRL_MODESHIFT);
+		ctrl_reg |=
+		    spi_find_baudrate(master_drv_data, spi->max_speed_hz);
+		ctrl_reg |=
+		    (((xfer_len -
+		       1) & spi_ver_def->bc_mask) << spi_ver_def->bc_shift);
+
+		if (spi->mode & SPI_CPHA)
+			config_reg |=
+			    (((1 << spi->
+			       chip_select) & MXC_PHAMASK) << MXC_PHASHIFT);
+		if ((spi->mode & SPI_CPOL))
+			config_reg |=
+			    (((1 << spi->
+			       chip_select) & MXC_SCLKPOLMASK) <<
+			     MXC_LOWPOLSHIFT);
+		if (spi->mode & SPI_CS_HIGH)
+			config_reg |=
+			    (((1 << spi->
+			       chip_select) & MXC_SSPOLMASK) << MXC_SSPOLSHIFT);
+		config_reg |=
+		    (((1 << spi->
+		       chip_select) & MXC_SSCTLMASK) << MXC_SSCTLSHIFT);
+
+		__raw_writel(ctrl_reg, master_drv_data->base + MXC_CSPICTRL);
+		__raw_writel(config_reg,
+			     master_drv_data->base + MXC_CSPICONFIG);
+	} else {
+		/* Control Register Settings for transfer to this slave */
+
+		ctrl_reg = __raw_readl(master_drv_data->base + MXC_CSPICTRL);
+
+		ctrl_mask =
+		    (MXC_SCLKPOLMASK << MXC_LOWPOLSHIFT |
+		     MXC_PHAMASK << MXC_PHASHIFT |
+		     MXC_SSCTLMASK << MXC_SSCTLSHIFT |
+		     MXC_SSPOLMASK << MXC_SSPOLSHIFT |
+		     MXC_CSPICTRL_MODEMASK << MXC_CSPICTRL_MODESHIFT |
+		     MXC_CSPICTRL_CSMASK << spi_ver_def->cs_shift |
+		     MXC_CSPICTRL_DATAMASK << MXC_CSPICTRL_DATASHIFT |
+		     spi_ver_def->bc_mask << spi_ver_def->bc_shift);
+		ctrl_reg &= ~ctrl_mask;
+
+		ctrl_reg |=
+		    (((spi->chip_select & MXC_CSPICTRL_CSMASK) << spi_ver_def->
+		      cs_shift) | MXC_CSPICTRL_MODEMASK <<
+		     MXC_CSPICTRL_MODESHIFT);
+		ctrl_reg |=
+		    spi_find_baudrate(master_drv_data, spi->max_speed_hz);
+		ctrl_reg |=
+		    (((xfer_len -
+		       1) & spi_ver_def->bc_mask) << spi_ver_def->bc_shift);
+		if (spi->mode & SPI_CPHA)
+			ctrl_reg |= MXC_PHAMASK << MXC_PHASHIFT;
+		if (!(spi->mode & SPI_CPOL))
+			ctrl_reg |= MXC_SCLKPOLMASK << MXC_LOWPOLSHIFT;
+		if (spi->mode & SPI_CS_HIGH)
+			ctrl_reg |= MXC_SSPOLMASK << MXC_SSPOLSHIFT;
+
+		__raw_writel(ctrl_reg, master_drv_data->base + MXC_CSPICTRL);
+	}
 
 	/* Initialize the functions for transfer */
 	ptransfer = &master_drv_data->transfer;
@@ -391,7 +512,7 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
 	} else if (xfer_len <= 16) {
 		ptransfer->rx_get = mxc_spi_buf_rx_u16;
 		ptransfer->tx_get = mxc_spi_buf_tx_u16;
-	} else if (xfer_len <= 32) {
+	} else {
 		ptransfer->rx_get = mxc_spi_buf_rx_u32;
 		ptransfer->tx_get = mxc_spi_buf_tx_u32;
 	}
@@ -423,37 +544,40 @@ static irqreturn_t mxc_spi_isr(int irq, void *dev_id)
 	struct mxc_spi *master_drv_data = dev_id;
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int status;
+	int fifo_size;
+	unsigned int pass_counter;
+
+	fifo_size = master_drv_data->spi_ver_def->fifo_size;
+	pass_counter = fifo_size;
 
 	/* Read the interrupt status register to determine the source */
 	status = __raw_readl(master_drv_data->base + MXC_CSPISTAT);
-
-	/* Rx is given higher priority - Handle it first */
-	if (status & MXC_CSPISTAT_RR) {
-		u32 rx_tmp = spi_get_rx_data(master_drv_data->base);
+	do {
+		u32 rx_tmp =
+		    __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
 
 		if (master_drv_data->transfer.rx_buf)
 			master_drv_data->transfer.rx_get(master_drv_data,
 							 rx_tmp);
-
+		(master_drv_data->transfer.count)--;
 		ret = IRQ_HANDLED;
-	}
+		if (pass_counter-- == 0) {
+			break;
+		}
+		status = __raw_readl(master_drv_data->base + MXC_CSPISTAT);
+	} while (status & MXC_CSPISTAT_RR);
 
-	(master_drv_data->transfer.count)--;
-	/* Handle the Tx now */
 	if (master_drv_data->transfer.count) {
 		if (master_drv_data->transfer.tx_buf) {
-			u32 tx_tmp =
-			    master_drv_data->transfer.tx_get(master_drv_data);
-
-			spi_put_tx_data(master_drv_data->base, tx_tmp);
+			u32 count = (master_drv_data->transfer.count >
+				     fifo_size) ? fifo_size :
+			    master_drv_data->transfer.count;
+			spi_put_tx_data(master_drv_data->base, count,
+					master_drv_data);
 		}
 	} else {
 		complete(&master_drv_data->xfer_done);
 	}
-
-	/* Clear the interrupt status */
-	//__raw_writel(spi_ver_def->spi_status_transfer_complete,
-	//           master_drv_data->base + MXC_CSPISTAT);
 
 	return ret;
 }
@@ -466,17 +590,58 @@ static irqreturn_t mxc_spi_isr(int irq, void *dev_id)
  */
 int mxc_spi_setup(struct spi_device *spi)
 {
-	struct mxc_spi *master_data = spi_master_get_devdata(spi->master);
-
-	if ((spi->max_speed_hz < 0)
-	    || (spi->max_speed_hz > (master_data->spi_ipg_clk / 4)))
+	if (spi->max_speed_hz < 0) {
 		return -EINVAL;
+	}
 
 	if (!spi->bits_per_word)
 		spi->bits_per_word = 8;
 
 	pr_debug("%s: mode %d, %u bpw, %d hz\n", __FUNCTION__,
 		 spi->mode, spi->bits_per_word, spi->max_speed_hz);
+
+	return 0;
+}
+
+/*!
+ * This function is called when the data has to transfer from/to the
+ * current SPI device in poll mode
+ *
+ * @param        spi        the current spi device
+ * @param        t          the transfer request - read/write buffer pairs
+ *
+ * @return       Returns 0 on success.
+ */
+int mxc_spi_poll_transfer(struct spi_device *spi, struct spi_transfer *t)
+{
+	struct mxc_spi *master_drv_data = NULL;
+	int count, i;
+	volatile unsigned int status;
+	u32 rx_tmp;
+	u32 fifo_size;
+
+	mxc_spi_chipselect(spi, BITBANG_CS_ACTIVE);
+
+	/* Get the master controller driver data from spi device's master */
+	master_drv_data = spi_master_get_devdata(spi->master);
+
+	/* Modify the Tx, Rx, Count */
+	master_drv_data->transfer.tx_buf = t->tx_buf;
+	master_drv_data->transfer.rx_buf = t->rx_buf;
+	master_drv_data->transfer.count = t->len;
+	fifo_size = master_drv_data->spi_ver_def->fifo_size;
+
+	count = (t->len > fifo_size) ? fifo_size : t->len;
+	spi_put_tx_data(master_drv_data->base, count, master_drv_data);
+
+	while ((((status = __raw_readl(master_drv_data->base + MXC_CSPITEST)) &
+		 MXC_CSPITEST_RXCNT_MASK) >> MXC_CSPITEST_RXCNT_OFF) != count) {
+	}
+
+	for (i = 0; i < count; i++) {
+		rx_tmp = __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
+		master_drv_data->transfer.rx_get(master_drv_data, rx_tmp);
+	}
 
 	return 0;
 }
@@ -495,6 +660,8 @@ int mxc_spi_setup(struct spi_device *spi)
 int mxc_spi_transfer(struct spi_device *spi, struct spi_transfer *t)
 {
 	struct mxc_spi *master_drv_data = NULL;
+	int count;
+	u32 fifo_size;
 
 	/* Get the master controller driver data from spi device's master */
 
@@ -505,16 +672,17 @@ int mxc_spi_transfer(struct spi_device *spi, struct spi_transfer *t)
 	master_drv_data->transfer.tx_buf = t->tx_buf;
 	master_drv_data->transfer.rx_buf = t->rx_buf;
 	master_drv_data->transfer.count = t->len;
+	fifo_size = master_drv_data->spi_ver_def->fifo_size;
 	INIT_COMPLETION(master_drv_data->xfer_done);
 
 	/* Enable the Rx Interrupts */
 
 	spi_enable_interrupt(master_drv_data, MXC_CSPIINT_RREN);
+	count = (t->len > fifo_size) ? fifo_size : t->len;
 
-	/* Perform single Tx transaction */
+	/* Perform Tx transaction */
 
-	spi_put_tx_data(master_drv_data->base,
-			master_drv_data->transfer.tx_get(master_drv_data));
+	spi_put_tx_data(master_drv_data->base, count, master_drv_data);
 
 	/* Wait for transfer completion */
 
@@ -658,6 +826,8 @@ static int mxc_spi_probe(struct platform_device *pdev)
 		master_drv_data->spi_ver_def = &spi_ver_0_4;
 	} else if (spi_ver == 0) {
 		master_drv_data->spi_ver_def = &spi_ver_0_0;
+	} else if (spi_ver == 23) {
+		master_drv_data->spi_ver_def = &spi_ver_2_3;
 	}
 
 	dev_dbg(&pdev->dev, "SPI_REV 0.%d\n", spi_ver);
@@ -671,8 +841,7 @@ static int mxc_spi_probe(struct platform_device *pdev)
 	__raw_writel(MXC_CSPIRESET_START,
 		     master_drv_data->base + MXC_CSPIRESET);
 	udelay(1);
-	__raw_writel(MXC_CSPICTRL_ENABLE | MXC_CSPICTRL_MASTER,
-		     master_drv_data->base + MXC_CSPICTRL);
+	__raw_writel(MXC_CSPICTRL_ENABLE, master_drv_data->base + MXC_CSPICTRL);
 	__raw_writel(MXC_CSPIPERIOD_32KHZ,
 		     master_drv_data->base + MXC_CSPIPERIOD);
 	__raw_writel(0, master_drv_data->base + MXC_CSPIINT);
@@ -855,8 +1024,7 @@ static int mxc_spi_resume(struct platform_device *pdev)
 	clk_enable(master_drv_data->clk);
 
 	spi_bitbang_resume(&master_drv_data->mxc_bitbang);
-	__raw_writel(MXC_CSPICTRL_ENABLE | MXC_CSPICTRL_MASTER,
-		     master_drv_data->base + MXC_CSPICTRL);
+	__raw_writel(MXC_CSPICTRL_ENABLE, master_drv_data->base + MXC_CSPICTRL);
 
 	return 0;
 }

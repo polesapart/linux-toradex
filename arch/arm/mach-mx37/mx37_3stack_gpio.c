@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -106,7 +106,36 @@ EXPORT_SYMBOL(config_uartdma_event);
  */
 void gpio_spi_active(int cspi_mod)
 {
- /*TODO*/}
+	switch (cspi_mod) {
+	case 0:
+		break;
+	case 1:
+		/* SPI2 */
+		mxc_request_iomux(MX37_PIN_CSPI2_MISO, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX37_PIN_CSPI2_MISO, PAD_CTL_SRE_FAST);
+		mxc_iomux_set_pad(MX37_PIN_GRP_H9, PAD_CTL_HYS_ENABLE);
+
+		mxc_request_iomux(MX37_PIN_CSPI2_MOSI, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX37_PIN_CSPI2_MOSI, PAD_CTL_SRE_FAST);
+
+		mxc_request_iomux(MX37_PIN_UART1_CTS, IOMUX_CONFIG_ALT3);
+		mxc_iomux_set_pad(MX37_PIN_UART1_CTS, PAD_CTL_HYS_ENABLE |
+				  PAD_CTL_PKE_ENABLE);
+
+		mxc_request_iomux(MX37_PIN_CSPI2_SCLK, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX37_PIN_CSPI2_SCLK, PAD_CTL_HYS_ENABLE |
+				  PAD_CTL_SRE_FAST);
+
+		mxc_request_iomux(MX37_PIN_CSPI2_SS0, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX37_PIN_CSPI2_SS0, PAD_CTL_SRE_FAST);
+		mxc_iomux_set_pad(MX37_PIN_GRP_H10, PAD_CTL_HYS_ENABLE);
+		break;
+	case 2:
+		break;
+	default:
+		break;
+	}
+}
 
 /*!
  * Setup GPIO for a CSPI device to be inactive
@@ -115,7 +144,7 @@ void gpio_spi_active(int cspi_mod)
  */
 void gpio_spi_inactive(int cspi_mod)
 {
- /*TODO*/}
+}
 
 /*!
  * Setup 1-Wire to be active
@@ -142,6 +171,7 @@ EXPORT_SYMBOL(gpio_owire_inactive);
 void gpio_i2c_active(int i2c_num)
 {
 	iomux_pad_config_t regval = 0;
+
 	switch (i2c_num) {
 	case 0:
 		/* Touch */
@@ -178,8 +208,6 @@ void gpio_i2c_active(int i2c_num)
 				  (IOMUX_CONFIG_SION | IOMUX_CONFIG_ALT2));
 		break;
 	case 2:
-		//mxc_request_iomux(MX37_PIN_CSPI2_MOSI, CONFIG_ALT1); /* I2C3_SDA */
-		//mxc_request_iomux(MX37_PIN_CSPI2_SCLK, CONFIG_ALT1); /* I2C3_SCLK */
 		break;
 	default:
 		break;
@@ -223,11 +251,8 @@ void gpio_activate_audio_ports(void)
 	mxc_iomux_set_pad(MX37_PIN_AUD5_WB_FS, PAD_CTL_100K_PU | pad_val);
 	mxc_request_iomux(MX37_PIN_AUD5_WB_FS, IOMUX_CONFIG_ALT0);
 
-	pad_val = mxc_iomux_get_pad(MX37_PIN_GRP_H5);
 	/* Enable hysteresis for AUD5_WB_CK, AUD5_WB_RXD, AUD5_WB_TXD, AUD5_WB_FS */
-	pad_val |= PAD_CTL_HYS_ENABLE;
-	mxc_iomux_set_pad(MX37_PIN_GRP_H5, pad_val);
-
+	mxc_iomux_set_pad(MX37_PIN_GRP_H5, PAD_CTL_HYS_ENABLE);
 }
 
 EXPORT_SYMBOL(gpio_activate_audio_ports);
