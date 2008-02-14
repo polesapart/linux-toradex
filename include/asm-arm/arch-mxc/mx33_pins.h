@@ -1,0 +1,296 @@
+/*
+ * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ */
+
+/*
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
+ */
+#ifndef __ASM_ARCH_MXC_MX33_PINS_H__
+#define __ASM_ARCH_MXC_MX33_PINS_H__
+
+#ifndef __ASSEMBLY__
+
+/*!
+ * @name IOMUX/PAD Bit field definitions
+ */
+
+/*! @{ */
+
+/*!
+ * In order to identify pins more effectively, each mux-controlled pin's
+ * enumerated value is constructed in the following way:
+ *
+ * -------------------------------------------------------------------
+ * 31-29 | 28 - 24 |  23    | 22 - 20 | 19  - 10| 9 - 0
+ * -------------------------------------------------------------------
+ * IO_P  |  IO_I   | RESV_I |  GPIO_I | PAD_I  | MUX_I
+ * -------------------------------------------------------------------
+ *
+ * Bit 0 to 9 contains MUX_I used to identify the register
+ * offset (0-based. base is IOMUX_module_base + 0x20) defined in the Section
+ * "sw_pad_ctl & sw_mux_ctl details" of the IC Spec. The
+ * similar field definitions are used for the pad control register.
+ * For example, the MX33_PIN_I2C1_CLK is defined in the enumeration:
+ *    ( (8 - MUX_I_START) << MUX_I)|( (0x38C - PAD_I_START) << PAD_I)
+ * It means the mux control register is at register offset 8. The pad control
+ * register offset is: 0x38C and also occupy the least significant bits
+ * within the register.
+ */
+
+/*!
+ * Starting bit position within each entry of \b iomux_pins to represent the
+ * gpio port number (0-based) for that pin. For non-gpio pins, the bits will
+ * be all 1's for error checking in the functions. (gpio port 7 is invalid)
+ */
+#define MUX_IO_P	29
+
+/*!
+ * Starting bit position within each entry of \b iomux_pins to represent the
+ * gpio offset bit (0-based) for that pin. For non-gpio pins, the bits will
+ * be all 0's since they are don't cares. So for port 2 pin 21, bit 31-24
+ * will be (1 << MUX_IO_P) | (21 << MUX_IO_I).
+ */
+#define MUX_IO_I	24
+
+/*!
+ * Starting bit position within each entry of \b iomux_pins to represent the
+ * MUX control register index (0-based)
+ */
+#define MUX_I		0
+
+/*!
+ * Starting bit position within each entry of \b iomux_pins to represent the
+ * PAD control register index (0-based)
+ */
+#define PAD_I		10
+
+/*!
+ * Starting bit position within each entry of \b iomux_pins to represent which
+ * mux mode is for GPIO (0-based)
+ */
+#define GPIO_I		20
+
+/*!
+ * Starting bit position which is reserved.
+ */
+#define RESV_I		23
+
+#define MUX_I_START  0x0008
+#define PAD_I_START  0x0274
+
+#define NO_PAD	(((1<<(RESV_I-PAD_I))-1) + PAD_I_START)
+
+#define _MXC_BUILD_PIN(gp,gi, ga, mi, pi) \
+	(((gp) << MUX_IO_P) | ((gi) << MUX_IO_I) | \
+	((mi - MUX_I_START) << MUX_I) | \
+	((pi - PAD_I_START) << PAD_I) | \
+	((ga)<< GPIO_I) )
+
+#define _MXC_BUILD_GPIO_PIN(gp,gi,ga,mi,pi) _MXC_BUILD_PIN(gp,gi,ga, mi,pi)
+#define _MXC_BUILD_NON_GPIO_PIN(mi,pi) 	_MXC_BUILD_PIN(7,0,0,mi,pi)
+
+#define PIN_TO_IOMUX_INDEX(pin) ((pin >> MUX_I) & ((1 << (PAD_I - MUX_I)) - 1))
+#define PIN_TO_IOPAD_INDEX(pin) ((pin >> PAD_I) & ((1 << (GPIO_I - PAD_I)) - 1))
+#define PIN_TO_IOGPIO_INDEX(pin) ((pin >> GPIO_I) & ((1 << (RESV_I - GPIO_I)) - 1))
+
+#define PIN_TO_IOMUX_OFFSET(pin) (PIN_TO_IOMUX_INDEX(pin) + MUX_I_START)
+#define PIN_TO_IOPAD_OFFSET(pin) (PIN_TO_IOPAD_INDEX(pin) + PAD_I_START)
+
+#define MUX_PIN_NUM_MAX ((PAD_I_START - MUX_I_START)>>2)
+/*! @} End IOMUX/PAD Bit field definitions */
+
+/*!
+ * This enumeration is constructed based on the Section
+ * "sw_pad_ctl & sw_mux_ctl details" of the MX33 IC Spec. Each enumerated
+ * value is constructed based on the rules described above.
+ */
+typedef enum iomux_pins {
+	MX33_PIN_I2C1_CLK = _MXC_BUILD_GPIO_PIN(0, 9, 2, 0x008, 0x38C),
+	MX33_PIN_I2C1_DAT = _MXC_BUILD_GPIO_PIN(0, 10, 2, 0x00C, 0x390),
+
+	MX33_PIN_AUD3_BB_TXD = _MXC_BUILD_GPIO_PIN(0, 11, 2, 0x10, 0x394),
+	MX33_PIN_AUD3_BB_RXD = _MXC_BUILD_GPIO_PIN(0, 12, 2, 0x14, 0x398),
+	MX33_PIN_AUD3_BB_CK = _MXC_BUILD_GPIO_PIN(0, 13, 2, 0x18, 0x39C),
+	MX33_PIN_AUD3_BB_FS = _MXC_BUILD_GPIO_PIN(0, 14, 2, 0x1C, 0x3A0),
+	MX33_PIN_AUD5_RXFS = _MXC_BUILD_GPIO_PIN(0, 15, 2, 0x20, 0x3A4),
+	MX33_PIN_AUD5_RXC = _MXC_BUILD_GPIO_PIN(0, 16, 2, 0x24, 0x3A8),
+	MX33_PIN_AUD5_WB_TXD = _MXC_BUILD_GPIO_PIN(0, 17, 2, 0x28, 0x3AC),
+	MX33_PIN_AUD5_WB_RXD = _MXC_BUILD_GPIO_PIN(0, 18, 2, 0x2C, 0x3B0),
+	MX33_PIN_AUD5_WB_CK = _MXC_BUILD_GPIO_PIN(0, 19, 2, 0x30, 0x3B4),
+	MX33_PIN_AUD5_WB_FS = _MXC_BUILD_GPIO_PIN(0, 20, 2, 0x34, 0x3B8),
+	MX33_PIN_AUD6_BT_TXD = _MXC_BUILD_GPIO_PIN(0, 21, 2, 0x38, 0x3BC),
+	MX33_PIN_AUD6_BT_RXD = _MXC_BUILD_GPIO_PIN(0, 22, 2, 0x3C, 0x3C0),
+	MX33_PIN_AUD6_BT_CK = _MXC_BUILD_GPIO_PIN(0, 23, 2, 0x40, 0x3C4),
+	MX33_PIN_AUD6_BT_FS = _MXC_BUILD_GPIO_PIN(0, 24, 2, 0x44, 0x3C8),
+
+	MX33_PIN_CSPI1_MOSI = _MXC_BUILD_GPIO_PIN(0, 25, 2, 0x48, 0x3CC),
+	MX33_PIN_CSPI1_MISO = _MXC_BUILD_GPIO_PIN(0, 26, 2, 0x4C, 0x3D0),
+	MX33_PIN_CSPI1_SS0 = _MXC_BUILD_GPIO_PIN(0, 27, 2, 0x50, 0x3D4),
+	MX33_PIN_CSPI1_SS1 = _MXC_BUILD_GPIO_PIN(0, 28, 2, 0x54, 0x3D8),
+	MX33_PIN_CSPI1_SCLK = _MXC_BUILD_GPIO_PIN(0, 29, 2, 0x58, 0x3DC),
+	MX33_PIN_CSPI2_MOSI = _MXC_BUILD_GPIO_PIN(0, 30, 2, 0x5C, 0x3E0),
+	MX33_PIN_CSPI2_MISO = _MXC_BUILD_GPIO_PIN(0, 31, 2, 0x60, 0x3E4),
+	MX33_PIN_CSPI2_SS0 = _MXC_BUILD_NON_GPIO_PIN(0x64, 0x3E8),
+	MX33_PIN_CSPI2_SS1 = _MXC_BUILD_NON_GPIO_PIN(0x68, 0x3EC),
+	MX33_PIN_CSPI2_SCLK = _MXC_BUILD_GPIO_PIN(1, 0, 2, 0x6C, 0x3F0),
+	MX33_PIN_CSPI3_MOSI = _MXC_BUILD_GPIO_PIN(1, 1, 2, 0x70, 0x3F4),
+	MX33_PIN_CSPI3_MISO = _MXC_BUILD_GPIO_PIN(1, 2, 2, 0x74, 0x3F8),
+	MX33_PIN_CSPI3_SCLK = _MXC_BUILD_GPIO_PIN(1, 3, 2, 0x78, 0x3FC),
+
+	MX33_PIN_UART1_RXD = _MXC_BUILD_GPIO_PIN(1, 4, 2, 0x7C, 0x400),
+	MX33_PIN_UART1_TXD = _MXC_BUILD_GPIO_PIN(1, 5, 2, 0x80, 0x404),
+	MX33_PIN_UART1_RTS = _MXC_BUILD_GPIO_PIN(1, 6, 2, 0x84, 0x408),
+	MX33_PIN_UART1_CTS = _MXC_BUILD_GPIO_PIN(1, 7, 2, 0x88, 0x40C),
+	MX33_PIN_UART2_RXD = _MXC_BUILD_GPIO_PIN(1, 8, 2, 0x8C, 0x410),
+	MX33_PIN_UART2_TXD = _MXC_BUILD_GPIO_PIN(1, 9, 2, 0x90, 0x414),
+	MX33_PIN_UART2_RTS = _MXC_BUILD_GPIO_PIN(1, 10, 2, 0x94, 0x418),
+	MX33_PIN_UART2_CTS = _MXC_BUILD_GPIO_PIN(1, 11, 2, 0x98, 0x41C),
+	MX33_PIN_UART1_DTR = _MXC_BUILD_GPIO_PIN(1, 12, 2, 0x9C, 0x420),
+	MX33_PIN_UART1_DSR = _MXC_BUILD_GPIO_PIN(1, 13, 2, 0xA0, 0x424),
+	MX33_PIN_UART1_RI = _MXC_BUILD_GPIO_PIN(1, 14, 2, 0xA4, 0x428),
+	MX33_PIN_UART1_DCD = _MXC_BUILD_GPIO_PIN(1, 15, 2, 0xA8, 0x42C),
+
+	MX33_PIN_OWIRE_LINE = _MXC_BUILD_GPIO_PIN(1, 16, 2, 0xAC, 0x430),
+
+	MX33_PIN_KEY_ROW0 = _MXC_BUILD_NON_GPIO_PIN(0xB0, 0x434),
+	MX33_PIN_KEY_ROW1 = _MXC_BUILD_NON_GPIO_PIN(0xB4, 0x438),
+	MX33_PIN_KEY_ROW2 = _MXC_BUILD_NON_GPIO_PIN(0xB8, 0x43C),
+	MX33_PIN_KEY_ROW3 = _MXC_BUILD_GPIO_PIN(1, 17, 2, 0xBC, 0x440),
+	MX33_PIN_KEY_ROW4 = _MXC_BUILD_GPIO_PIN(1, 18, 2, 0xC0, 0x444),
+	MX33_PIN_KEY_ROW5 = _MXC_BUILD_GPIO_PIN(1, 19, 2, 0xC4, 0x448),
+	MX33_PIN_KEY_ROW6 = _MXC_BUILD_GPIO_PIN(1, 20, 2, 0xC8, 0x44C),
+	MX33_PIN_KEY_ROW7 = _MXC_BUILD_GPIO_PIN(1, 21, 2, 0xCC, 0x450),
+	MX33_PIN_KEY_COL0 = _MXC_BUILD_GPIO_PIN(1, 22, 2, 0xD0, 0x454),
+	MX33_PIN_KEY_COL1 = _MXC_BUILD_GPIO_PIN(1, 23, 2, 0xD4, 0x458),
+	MX33_PIN_KEY_COL2 = _MXC_BUILD_GPIO_PIN(1, 24, 2, 0xD8, 0x45C),
+	MX33_PIN_KEY_COL3 = _MXC_BUILD_GPIO_PIN(1, 25, 2, 0xDC, 0x460),
+	MX33_PIN_KEY_COL4 = _MXC_BUILD_GPIO_PIN(1, 26, 2, 0xE0, 0x464),
+	MX33_PIN_KEY_COL5 = _MXC_BUILD_GPIO_PIN(1, 27, 2, 0xE4, 0x468),
+	MX33_PIN_KEY_COL6 = _MXC_BUILD_GPIO_PIN(1, 28, 2, 0xE8, 0x46C),
+	MX33_PIN_KEY_COL7 = _MXC_BUILD_GPIO_PIN(1, 29, 2, 0xEC, 0x470),
+
+	MX33_PIN_JTAG_DE_B = _MXC_BUILD_NON_GPIO_PIN(0xF0, 0x474),
+
+	MX33_PIN_USBOTG_CLK = _MXC_BUILD_GPIO_PIN(1, 30, 2, 0xF4, 0x478),
+	MX33_PIN_USBOTG_DIR = _MXC_BUILD_GPIO_PIN(1, 31, 2, 0xF8, 0x47C),
+	MX33_PIN_USBOTG_STP = _MXC_BUILD_GPIO_PIN(3, 28, 2, 0xFC, 0x480),
+	MX33_PIN_USBOTG_NXT = _MXC_BUILD_GPIO_PIN(3, 29, 2, 0x100, 0x484),
+	MX33_PIN_USBOTG_DATA0 = _MXC_BUILD_GPIO_PIN(3, 30, 2, 0x104, 0x488),
+	MX33_PIN_USBOTG_DATA1 = _MXC_BUILD_GPIO_PIN(3, 31, 2, 0x108, 0x48C),
+	MX33_PIN_USBOTG_DATA2 = _MXC_BUILD_GPIO_PIN(2, 31, 2, 0x10C, 0x490),
+	MX33_PIN_USBOTG_DATA3 = _MXC_BUILD_GPIO_PIN(2, 20, 2, 0x110, 0x494),
+	MX33_PIN_USBOTG_DATA4 = _MXC_BUILD_GPIO_PIN(2, 0, 2, 0x114, 0x498),
+	MX33_PIN_USBOTG_DATA5 = _MXC_BUILD_GPIO_PIN(2, 1, 2, 0x118, 0x49C),
+	MX33_PIN_USBOTG_DATA6 = _MXC_BUILD_GPIO_PIN(2, 2, 2, 0x11C, 0x4A0),
+	MX33_PIN_USBOTG_DATA7 = _MXC_BUILD_GPIO_PIN(2, 3, 2, 0x120, 0x4A4),
+
+	MX33_PIN_USBH2_CLK = _MXC_BUILD_NON_GPIO_PIN(0x124, 0x4A8),
+	MX33_PIN_USBH2_DIR = _MXC_BUILD_NON_GPIO_PIN(0x128, 0x4AC),
+	MX33_PIN_USBH2_STP = _MXC_BUILD_NON_GPIO_PIN(0x12C, 0x4B0),
+	MX33_PIN_USBH2_NXT = _MXC_BUILD_NON_GPIO_PIN(0x130, 0x4B4),
+	MX33_PIN_USBH2_DATA0 = _MXC_BUILD_GPIO_PIN(2, 21, 6, 0x134, 0x4B8),
+	MX33_PIN_USBH2_DATA1 = _MXC_BUILD_GPIO_PIN(2, 4, 2, 0x138, 0x4BC),
+	MX33_PIN_USBH2_DATA2 = _MXC_BUILD_GPIO_PIN(2, 5, 2, 0x13C, 0x4C0),
+	MX33_PIN_USBH2_DATA3 = _MXC_BUILD_NON_GPIO_PIN(0x140, 0x4C4),
+	MX33_PIN_USBH2_DATA4 = _MXC_BUILD_GPIO_PIN(3, 21, 2, 0x144, 0x4C8),
+	MX33_PIN_USBH2_DATA5 = _MXC_BUILD_GPIO_PIN(3, 22, 2, 0x148, 0x4CC),
+	MX33_PIN_USBH2_DATA6 = _MXC_BUILD_GPIO_PIN(3, 23, 2, 0x14C, 0x4D0),
+	MX33_PIN_USBH2_DATA7 = _MXC_BUILD_NON_GPIO_PIN(0x150, 0x4D4),
+	MX33_PIN_USBH1_CLK = _MXC_BUILD_GPIO_PIN(2, 17, 2, 0x154, 0x4D8),
+	MX33_PIN_USBH1_DIR = _MXC_BUILD_GPIO_PIN(2, 18, 2, 0x158, 0x4DC),
+	MX33_PIN_USBH1_STP = _MXC_BUILD_GPIO_PIN(2, 19, 2, 0x15C, 0x4E0),
+	MX33_PIN_USBH1_NXT = _MXC_BUILD_GPIO_PIN(2, 22, 2, 0x160, 0x4E4),
+	MX33_PIN_USBH1_DATA0 = _MXC_BUILD_GPIO_PIN(2, 25, 3, 0x164, 0x4E8),
+	MX33_PIN_USBH1_DATA1 = _MXC_BUILD_GPIO_PIN(2, 6, 4, 0x168, 0x4EC),
+	MX33_PIN_USBH1_DATA2 = _MXC_BUILD_GPIO_PIN(2, 7, 4, 0x16C, 0x4F0),
+	MX33_PIN_USBH1_DATA3 = _MXC_BUILD_GPIO_PIN(2, 8, 4, 0x170, 0x4F4),
+	MX33_PIN_USBH1_DATA4 = _MXC_BUILD_GPIO_PIN(2, 9, 4, 0x174, 0x4F8),
+	MX33_PIN_USBH1_DATA5 = _MXC_BUILD_GPIO_PIN(2, 10, 4, 0x178, 0x4FC),
+	MX33_PIN_USBH1_DATA6 = _MXC_BUILD_GPIO_PIN(2, 11, 4, 0x17C, 0x500),
+	MX33_PIN_USBH1_DATA7 = _MXC_BUILD_GPIO_PIN(2, 12, 4, 0x180, 0x504),
+
+	MX33_PIN_DISPB2_SER_DIN = _MXC_BUILD_GPIO_PIN(2, 13, 4, 0x184, 0x508),
+	MX33_PIN_DISPB2_SER_DIO = _MXC_BUILD_GPIO_PIN(2, 14, 4, 0x188, 0x50C),
+	MX33_PIN_DISPB2_SER_CLK = _MXC_BUILD_GPIO_PIN(2, 15, 4, 0x18C, 0x510),
+	MX33_PIN_DISPB2_SER_RS = _MXC_BUILD_GPIO_PIN(2, 16, 4, 0x190, 0x514),
+	MX33_PIN_DISP1_DAT18 = _MXC_BUILD_NON_GPIO_PIN(0x194, 0x518),
+	MX33_PIN_DISP1_DAT19 = _MXC_BUILD_NON_GPIO_PIN(0x198, 0x51C),
+	MX33_PIN_DISP1_DAT20 = _MXC_BUILD_NON_GPIO_PIN(0x19C, 0x520),
+	MX33_PIN_DISP1_DAT21 = _MXC_BUILD_NON_GPIO_PIN(0x1A0, 0x524),
+	MX33_PIN_DISP1_DAT22 = _MXC_BUILD_GPIO_PIN(2, 26, 4, 0x1A4, 0x528),
+	MX33_PIN_DISP1_DAT23 = _MXC_BUILD_GPIO_PIN(2, 27, 4, 0x1A8, 0x52C),
+
+	/* TODO::
+	 * There are two pins which must configure PAD but it is not muxing.
+	 * So I hope it is configured in bootloader.
+	 */
+	MX33_PIN_SD1_CMD = _MXC_BUILD_NON_GPIO_PIN(0x1AC, 0x538),
+	MX33_PIN_SD1_CLK = _MXC_BUILD_NON_GPIO_PIN(0x1B0, 0x53C),
+	MX33_PIN_SD1_DATA0 = _MXC_BUILD_NON_GPIO_PIN(0x1B4, 0x540),
+	MX33_PIN_SD1_DATA1 = _MXC_BUILD_GPIO_PIN(2, 23, 4, 0x1B8, 0x544),
+	MX33_PIN_SD1_DATA2 = _MXC_BUILD_GPIO_PIN(2, 24, 4, 0x1BC, 0x548),
+	MX33_PIN_SD1_DATA3 = _MXC_BUILD_NON_GPIO_PIN(0x1C0, 0x54C),
+	MX33_PIN_SD2_CMD = _MXC_BUILD_NON_GPIO_PIN(0x1C4, 0x550),
+	MX33_PIN_SD2_CLK = _MXC_BUILD_NON_GPIO_PIN(0x1C8, 0x554),
+	MX33_PIN_SD2_DATA0 = _MXC_BUILD_GPIO_PIN(3, 24, 4, 0x1CC, 0x558),
+	MX33_PIN_SD2_DATA1 = _MXC_BUILD_GPIO_PIN(3, 25, 4, 0x1D0, 0x55C),
+	MX33_PIN_SD2_DATA2 = _MXC_BUILD_GPIO_PIN(3, 26, 4, 0x1D4, 0x560),
+	MX33_PIN_SD2_DATA3 = _MXC_BUILD_GPIO_PIN(3, 27, 4, 0x1D8, 0x564),
+	MX33_PIN_SD3_CMD = _MXC_BUILD_NON_GPIO_PIN(0x1DC, 0x568),
+	MX33_PIN_SD3_CLK = _MXC_BUILD_NON_GPIO_PIN(0x1E0, 0x56C),
+	MX33_PIN_SD3_DATA0 = _MXC_BUILD_NON_GPIO_PIN(0x1E4, 0x570),
+	MX33_PIN_SD3_DATA1 = _MXC_BUILD_GPIO_PIN(2, 29, 4, 0x1E8, 0x574),
+	MX33_PIN_SD3_DATA2 = _MXC_BUILD_GPIO_PIN(2, 30, 4, 0x1EC, 0x578),
+	MX33_PIN_SD3_DATA3 = _MXC_BUILD_NON_GPIO_PIN(0x1F0, 0x57C),
+	MX33_PIN_SD3_DATA4 = _MXC_BUILD_GPIO_PIN(3, 0, 4, 0x1F4, 0x580),
+	MX33_PIN_SD3_DATA5 = _MXC_BUILD_GPIO_PIN(3, 1, 4, 0x1F8, 0x584),
+	MX33_PIN_SD3_DATA6 = _MXC_BUILD_GPIO_PIN(3, 2, 4, 0x1FC, 0x588),
+	MX33_PIN_SD3_DATA7 = _MXC_BUILD_GPIO_PIN(3, 3, 4, 0x200, 0x58C),
+
+	MX33_PIN_ATA_CS0 = _MXC_BUILD_GPIO_PIN(3, 4, 4, 0x204, 0x590),
+	MX33_PIN_ATA_CS1 = _MXC_BUILD_GPIO_PIN(3, 5, 4, 0x208, 0x594),
+	MX33_PIN_ATA_DIOR = _MXC_BUILD_GPIO_PIN(3, 6, 4, 0x20C, 0x598),
+	MX33_PIN_ATA_DIOW = _MXC_BUILD_GPIO_PIN(3, 7, 4, 0x210, 0x59C),
+	MX33_PIN_ATA_DMACK = _MXC_BUILD_GPIO_PIN(3, 8, 4, 0x214, 0x5A0),
+	MX33_PIN_ATA_RESET_B = _MXC_BUILD_GPIO_PIN(3, 9, 4, 0x218, 0x5A4),
+
+	MX33_PIN_CLKO = _MXC_BUILD_NON_GPIO_PIN(0x21C, 0x5A8),
+
+	/* TODO:: PMIC pin just has PAD register 0x05AC */
+
+	MX33_PIN_CLK_SS = _MXC_BUILD_GPIO_PIN(3, 10, 0, 0x220, 0x5B0),
+
+	MX33_PIN_ATA_IORDY = _MXC_BUILD_GPIO_PIN(3, 11, 4, 0x224, 0x5B4),
+
+	MX33_PIN_TIM_CAPTURE = _MXC_BUILD_GPIO_PIN(3, 12, 4, 0x228, 0x5B8),
+	MX33_PIN_TIM_COMPARE = _MXC_BUILD_GPIO_PIN(3, 13, 4, 0x22C, 0x5BC),
+
+	MX33_PIN_WDOG_RST = _MXC_BUILD_GPIO_PIN(2, 28, 4, 0x230, 0x5C0),
+
+	MX33_PIN_PWMO = _MXC_BUILD_GPIO_PIN(3, 14, 4, 0x234, 0x5C4),
+
+	MX33_PIN_GPIO1_0 = _MXC_BUILD_GPIO_PIN(0, 0, 0, 0x238, 0x5C8),
+	MX33_PIN_GPIO1_1 = _MXC_BUILD_GPIO_PIN(0, 1, 0, 0x23C, 0x5CC),
+	MX33_PIN_GPIO1_2 = _MXC_BUILD_GPIO_PIN(0, 2, 0, 0x240, 0x5D0),
+	MX33_PIN_GPIO1_3 = _MXC_BUILD_GPIO_PIN(0, 3, 0, 0x244, 0x5D4),
+	MX33_PIN_GPIO1_4 = _MXC_BUILD_GPIO_PIN(0, 4, 0, 0x248, 0x5D8),
+	MX33_PIN_GPIO1_5 = _MXC_BUILD_GPIO_PIN(0, 5, 0, 0x24C, 0x5DC),
+	MX33_PIN_GPIO1_6 = _MXC_BUILD_GPIO_PIN(0, 6, 0, 0x250, 0x5E0),
+	MX33_PIN_GPIO1_7 = _MXC_BUILD_GPIO_PIN(0, 7, 1, 0x254, NO_PAD),
+	MX33_PIN_GPIO1_8 = _MXC_BUILD_GPIO_PIN(0, 8, 0, 0x258, 0x5E4),
+
+	MX33_PIN_SIM_CLK = _MXC_BUILD_GPIO_PIN(3, 15, 2, 0x25C, 0x5E8),
+	MX33_PIN_SIM_RST = _MXC_BUILD_GPIO_PIN(3, 16, 2, 0x260, NO_PAD),
+	MX33_PIN_SIM_VEN = _MXC_BUILD_GPIO_PIN(3, 17, 2, 0x264, NO_PAD),
+	MX33_PIN_SIM_TX = _MXC_BUILD_GPIO_PIN(3, 18, 2, 0x268, 0x5EC),
+	MX33_PIN_SIM_RX = _MXC_BUILD_GPIO_PIN(3, 19, 2, 0x26C, 0x5F0),
+	MX33_PIN_SIM_PD = _MXC_BUILD_GPIO_PIN(3, 20, 2, 0x270, 0x5F4)
+} iomux_pin_name_t;
+
+#endif
+#endif

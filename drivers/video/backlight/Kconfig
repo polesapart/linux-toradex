@@ -90,3 +90,26 @@ config BACKLIGHT_CARILLO_RANCH
 	help
 	  If you have a Intel LE80578 (Carillo Ranch) say Y to enable the
 	  backlight driver.
+
+menuconfig BACKLIGHT_MXC
+	bool "Freescale MXC/i.MX Backlight Drivers"
+	depends on BACKLIGHT_CLASS_DEVICE && ARCH_MXC
+	default y
+	help
+	  If you have a Freescale MC13783 PMIC, say y to enable the
+	  backlight driver.
+
+config BACKLIGHT_MXC_IPU
+	tristate "IPU PWM Backlight Driver"
+	depends on BACKLIGHT_MXC && MXC_IPU
+	default y
+
+config BACKLIGHT_MXC_LCDC
+	tristate "LCDC PWM Backlight Driver"
+	depends on BACKLIGHT_MXC && (ARCH_MX21 || ARCH_MX27)
+	default y
+
+config BACKLIGHT_MXC_PMIC
+	tristate "PMIC Backlight Driver"
+	depends on BACKLIGHT_MXC && MXC_MC13783_LIGHT && MXC_MC13783_POWER
+	default y

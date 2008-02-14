@@ -138,7 +138,17 @@ endif
  machine-$(CONFIG_ARCH_DAVINCI)	   := davinci
  machine-$(CONFIG_ARCH_KS8695)     := ks8695
   incdir-$(CONFIG_ARCH_MXC)	   := mxc
+ machine-$(CONFIG_ARCH_MX33)	   := mx33
  machine-$(CONFIG_ARCH_MX3)	   := mx3
+ machine-$(CONFIG_ARCH_MX27)	   := mx27
+ machine-$(CONFIG_ARCH_MX21)	   := mx21
+ machine-$(CONFIG_ARCH_MXC91331)   := mxc91321
+ machine-$(CONFIG_ARCH_MXC91321)   := mxc91321
+ machine-$(CONFIG_ARCH_MXC91311)   := mxc91311
+ machine-$(CONFIG_ARCH_MXC92323)   := mxc92323
+ machine-$(CONFIG_ARCH_MXC91231)   := mxc91231
+ machine-$(CONFIG_ARCH_MXC91221)   := mxc91221
+ machine-$(CONFIG_ARCH_MXC91131)   := mxc91131
 
 ifeq ($(CONFIG_ARCH_EBSA110),y)
 # This is what happens if you forget the IOCS16 line.

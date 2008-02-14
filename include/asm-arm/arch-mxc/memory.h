@@ -11,14 +11,64 @@
 #ifndef __ASM_ARCH_MXC_MEMORY_H__
 #define __ASM_ARCH_MXC_MEMORY_H__
 
-#include <asm/hardware.h>
+#include <asm/page.h>
+#include <asm/sizes.h>
+
+/* Start of physical RAM */
+#ifdef CONFIG_MACH_MXC30031ADS
+#define PHYS_OFFSET             UL(0x90000000)
+#endif
+
+#ifdef CONFIG_MACH_MX27ADS
+#define PHYS_OFFSET             UL(0xA0000000)
+#endif
+
+#ifndef PHYS_OFFSET
+#define PHYS_OFFSET	        UL(0x80000000)
+#endif
+
+/* Size of contiguous memory for DMA and other h/w blocks */
+#define CONSISTENT_DMA_SIZE	SZ_8M
 
 /*!
- * @file memory.h
+ * @defgroup Memory_MX27 Memory Map
+ * @ingroup MSL_MX27
+ */
+/*!
+ * @defgroup Memory_MX31 Memory Map
+ * @ingroup MSL_MX31
+ */
+/*!
+ * @defgroup Memory_MXC91321 Memory Map
+ * @ingroup MSL_MXC91321
+ */
+
+/*!
+ * @file arch-mxc/memory.h
  * @brief This file contains macros needed by the Linux kernel and drivers.
  *
- * @ingroup Memory
+ * @ingroup Memory_MX27 Memory_MX31 Memory_MXC91321
  */
+#ifndef __ASSEMBLY__
+
+#define MXC_DMA_ZONE_SIZE	((12 * SZ_1M) >> PAGE_SHIFT)
+
+static inline void __arch_adjust_zones(int node, unsigned long *zone_size,
+				       unsigned long *zhole_size)
+{
+	if (node != 0)
+		return;
+	/* Create separate zone to reserve memory for DMA */
+	zone_size[1] = zone_size[0] - MXC_DMA_ZONE_SIZE;
+	zone_size[0] = MXC_DMA_ZONE_SIZE;
+	zhole_size[1] = zhole_size[0];
+	zhole_size[0] = 0;
+}
+
+#define arch_adjust_zones(node, size, holes) \
+	__arch_adjust_zones(node, size, holes)
+
+#endif
 
 /*!
  * Virtual view <-> DMA view memory address translations

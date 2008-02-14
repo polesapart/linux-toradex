@@ -33,6 +33,7 @@ config OPROFILE_ARMV6
 	depends on OPROFILE && CPU_V6 && !SMP
 	default y
 	select OPROFILE_ARM11_CORE
+	select OPROFILE_ARM11_EVTMON if ARCH_HAS_EVTMON
 
 config OPROFILE_MPCORE
 	bool
@@ -41,6 +42,9 @@ config OPROFILE_MPCORE
 	select OPROFILE_ARM11_CORE
 
 config OPROFILE_ARM11_CORE
+	bool
+
+config OPROFILE_ARM11_EVTMON
 	bool
 
 config MARKERS

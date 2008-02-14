@@ -130,3 +130,12 @@ config MMC_SPI
 
 	  If unsure, or if your system has no SPI master driver, say N.
 
+	  If unsure, say N.
+
+config MMC_MXC
+	tristate "Freescale MXC Multimedia Card Interface support"
+	depends on ARCH_MXC && MMC
+	help
+	  This selects the Freescale MXC Multimedia card Interface.
+	  If you have a MXC platform with a Multimedia Card slot,
+	  say Y or M here.

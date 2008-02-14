@@ -411,6 +411,57 @@ config SGI_MBCS
          If you have an SGI Altix with an attached SABrick
          say Y or M here, otherwise say N.
 
+config MXC_MU
+	bool "MXC Messaging Unit Driver"
+	depends on ARCH_MXC
+	depends on !ARCH_MX3
+	depends on !ARCH_MX33
+	depends on !ARCH_MX27
+	depends on !ARCH_MX21
+	select INPUT
+	default y
+	---help---
+	  This module is called from other modules for
+	  message transfers between MCU and DSP core.
+
+config MXC_IPC
+	bool "MXC IPC driver"
+	depends on MXC_MU && MXC_SDMA_API
+	depends on ARCH_MXC
+	depends on !ARCH_MX3
+	depends on !ARCH_MX33
+	depends on !ARCH_MX27
+	depends on !ARCH_MX21
+	default y
+	---help---
+	  This module is called from other modules for
+	  message and data transfers between MCU and DSP core.
+
+config MXC_SUPER_GEM
+	bool "MXC Super GEM"
+	depends on MXC_SDMA_API
+	depends on ARCH_MXC
+	depends on !ARCH_MX3
+	depends on !ARCH_MX33
+	depends on !ARCH_MX27
+	depends on !ARCH_MX21
+	default n
+	---help---
+	  Super GEM module called for transfers between MCU and DSP core.
+
+config MXC_SDMA_TTY
+	tristate "MXC SDMA TTY Driver"
+	depends on ARCH_MXC && MXC_SDMA_API
+	depends on !ARCH_MX3
+	depends on !ARCH_MX33
+	depends on !ARCH_MX21
+	depends on !ARCH_MX27
+	select INPUT
+	default y
+	---help---
+	  This module is called from other modules for
+	  data transfers between MCU and DSP core.
+
 source "drivers/serial/Kconfig"
 
 config UNIX98_PTYS

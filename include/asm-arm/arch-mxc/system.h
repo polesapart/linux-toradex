@@ -22,29 +22,23 @@
 #define __ASM_ARCH_MXC_SYSTEM_H__
 
 /*!
- * @file system.h
+ * @file arch-mxc/system.h
  * @brief This file contains idle and reset functions.
  *
- * @ingroup System
+ * @ingroup MSL_MX27 MSL_MX31 MSL_MXC91321
  */
 
 /*!
  * This function puts the CPU into idle mode. It is called by default_idle()
  * in process.c file.
  */
-static inline void arch_idle(void)
-{
-	cpu_do_idle();
-}
+extern void arch_idle(void);
 
 /*
  * This function resets the system. It is called by machine_restart().
  *
  * @param  mode         indicates different kinds of resets
  */
-static inline void arch_reset(char mode)
-{
-	cpu_reset(0);
-}
+extern void arch_reset(char mode);
 
 #endif				/* __ASM_ARCH_MXC_SYSTEM_H__ */

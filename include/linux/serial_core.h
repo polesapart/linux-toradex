@@ -149,6 +149,8 @@
 /* Freescale ColdFire */
 #define PORT_MCF	78
 
+/* Freescale Semiconductor MXC fmaily */
+#define PORT_MXC        79
 
 #ifdef __KERNEL__
 
