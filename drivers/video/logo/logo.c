@@ -36,6 +36,7 @@ extern const struct linux_logo logo_superh_mono;
 extern const struct linux_logo logo_superh_vga16;
 extern const struct linux_logo logo_superh_clut224;
 extern const struct linux_logo logo_m32r_clut224;
+extern const struct linux_logo logo_ts_clut224;
 
 static int nologo;
 module_param(nologo, bool, 0);
@@ -120,6 +121,11 @@ const struct linux_logo * __init_refok fb_find_logo(int depth)
 		/* M32R Linux logo */
 		logo = &logo_m32r_clut224;
 #endif
+#ifdef CONFIG_LOGO_TS_CLUT224
+		/* TimeSys Linux logo */
+		logo = &logo_ts_clut224;
+#endif
+
 	}
 	return logo;
 }
