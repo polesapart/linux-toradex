@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -25,8 +25,8 @@
 #include <linux/platform_device.h>
 #include <asm/ioctl.h>
 #include <asm/arch/pmic_power.h>
+#include <asm/arch/pmic_status.h>
 
-#include "../core/pmic_config.h"
 #include "pmic_power_defs.h"
 
 static bool VBKUP1_EN = false;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -13,6 +13,7 @@
 #ifndef __ASM_ARCH_MXC_PMIC_STATUS_H__
 #define __ASM_ARCH_MXC_PMIC_STATUS_H__
 #include <asm-generic/errno-base.h>
+#include <asm/uaccess.h>	/* copy_{from,to}_user() */
 /*!
  * @file arch-mxc/pmic_status.h
  * @brief PMIC APIs return code definition.
@@ -49,5 +50,31 @@ typedef enum {
 					   completed because there are too many
 					   PMIC client requests */
 } PMIC_STATUS;
+
+/*
+ * Bitfield macros that use rely on bitfield width/shift information.
+ */
+#define BITFMASK(field) (((1U << (field ## _WID)) - 1) << (field ## _LSH))
+#define BITFVAL(field, val) ((val) << (field ## _LSH))
+#define BITFEXT(var, bit) ((var & BITFMASK(bit)) >> (bit ## _LSH))
+
+/*
+ * Macros implementing error handling
+ */
+#define CHECK_ERROR(a)			\
+do {					\
+		int ret = (a); 			\
+		if (ret != PMIC_SUCCESS)	\
+	return ret; 			\
+} while (0)
+
+#define CHECK_ERROR_KFREE(func, freeptrs) \
+do { \
+	int ret = (func); \
+	if (ret != PMIC_SUCCESS) { \
+		freeptrs;	\
+		return ret;	\
+	}	\
+} while (0);
 
 #endif				/* __ASM_ARCH_MXC_PMIC_STATUS_H__ */

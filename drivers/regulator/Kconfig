@@ -17,5 +17,8 @@ config REGULATOR_DEBUG
 	help
 	  Say yes here to enable debugging support.
 
-
+config REGULATOR_MC13783
+    tristate "MC13783 Regulator Support"
+        depends on REGULATOR
+        depends on MXC_PMIC_MC13783
 endmenu

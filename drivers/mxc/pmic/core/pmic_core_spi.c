@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -99,6 +99,7 @@ static void pmic_pdev_register(void)
 	platform_device_register(&rtc_ldm);
 	platform_device_register(&power_ldm);
 	platform_device_register(&light_ldm);
+	reg_mc13783_probe();
 }
 
 /*!
@@ -318,7 +319,7 @@ static void __exit pmic_exit(void)
 /*
  * Module entry points
  */
-subsys_initcall(pmic_init);
+subsys_initcall_sync(pmic_init);
 module_exit(pmic_exit);
 
 MODULE_DESCRIPTION("Core/Protocol driver for PMIC");

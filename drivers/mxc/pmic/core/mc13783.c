@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -31,10 +31,9 @@
 
 #include <asm/uaccess.h>
 #include <asm/arch/gpio.h>
-
 #include <asm/arch/pmic_external.h>
 #include <asm/arch/pmic_status.h>
-#include "pmic_config.h"
+
 #include "pmic.h"
 
 /*

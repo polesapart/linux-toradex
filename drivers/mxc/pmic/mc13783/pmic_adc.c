@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -31,8 +31,8 @@
 
 #include <asm/arch/pmic_adc.h>
 #include <asm/arch/pmic_power.h>
+#include <asm/arch/pmic_status.h>
 
-#include "../core/pmic_config.h"
 #include "../core/pmic.h"
 #include "pmic_adc_defs.h"
 

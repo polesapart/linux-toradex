@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -30,9 +30,9 @@
 
 #include <asm/arch/pmic_battery.h>
 #include <asm/arch/pmic_adc.h>
+#include <asm/arch/pmic_status.h>
 
 #include "pmic_battery_defs.h"
-#include "../core/pmic_config.h"
 
 static int pmic_battery_major;
 

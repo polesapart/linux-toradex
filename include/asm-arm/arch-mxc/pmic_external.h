@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -875,6 +875,12 @@ bool pmic_check_sensor(t_sensor sensor);
 */
 PMIC_STATUS pmic_get_sensors(t_sensor_bits * sensor_bits);
 
+/*!
+ * This function is used to initialize the regulator for MC13783.
+ *
+ * @return      Returns 0.
+ */
+int reg_mc13783_probe(void);
 #endif				/* __KERNEL__ */
 
 #endif				/* __ASM_ARCH_MXC_PMIC_EXTERNAL_H__ */

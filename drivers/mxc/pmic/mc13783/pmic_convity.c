@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -39,8 +39,7 @@
 #include <linux/spinlock.h>	/* For spinlock interface.                 */
 #include <asm/arch/pmic_convity.h>	/* For PMIC Connectivity driver interface. */
 #include <asm/arch/pmic_adc.h>	/* For PMIC ADC driver interface.          */
-
-#include "../core/pmic_config.h"
+#include <asm/arch/pmic_status.h>
 
 /*
  * mc13783 Connectivity API
