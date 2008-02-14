@@ -28,7 +28,6 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/clk.h>
-#include <asm/arch/mxc_i2c.h>
 #include "mxc_v4l2_capture.h"
 
 #define MC521DA_I2C_ADDRESS	0x22
@@ -272,53 +271,14 @@ static struct i2c_client mc521da_i2c_client = {
 	.driver = &mc521da_i2c_driver,
 };
 
-/*
- * Function definitions
- */
-static int mc521da_i2c_client_xfer(unsigned int addr, char *reg,
-				   int reg_len, char *buf, int num,
-				   int tran_flag)
+static inline int mc521da_read_reg(u8 reg)
 {
-	struct i2c_msg msg[2];
-	int ret;
-
-	msg[0].addr = addr;
-	msg[0].len = reg_len;
-	msg[0].buf = reg;
-	msg[0].flags = tran_flag;
-	msg[0].flags &= ~I2C_M_RD;
-
-	msg[1].addr = addr;
-	msg[1].len = num;
-	msg[1].buf = buf;
-	msg[1].flags = tran_flag;
-
-	if (tran_flag & MXC_I2C_FLAG_READ) {
-		msg[1].flags |= I2C_M_RD;
-	} else {
-		msg[1].flags &= ~I2C_M_RD;
-	}
-
-	ret = i2c_transfer(mc521da_i2c_client.adapter, msg, 2);
-	if (ret >= 0)
-		return 0;
-
-	return ret;
+	return i2c_smbus_read_byte_data(&mc521da_i2c_client, reg);
 }
 
-static int mc521da_read_reg(u8 * reg, u8 * val)
+static inline int mc521da_write_reg(u8 reg, u8 val)
 {
-	return mc521da_i2c_client_xfer(MC521DA_I2C_ADDRESS, reg, 1, val, 1,
-				       MXC_I2C_FLAG_READ);
-}
-
-static int mc521da_write_reg(u8 reg, u8 val)
-{
-	u8 temp1, temp2;
-	temp1 = reg;
-	temp2 = val;
-	return mc521da_i2c_client_xfer(MC521DA_I2C_ADDRESS, &temp1, 1, &temp2,
-				       1, 0);
+	return i2c_smbus_write_byte_data(&mc521da_i2c_client, reg, val);
 }
 
 static int mc521da_write_regs(const struct mc521da_reg reglist[])
@@ -343,7 +303,7 @@ static int mc521da_write_regs(const struct mc521da_reg reglist[])
  */
 static u8 mc521da_sensor_downscale(bool downscale)
 {
-	u8 reg[1], data;
+	u8 data;
 	u32 i = 0;
 
 	if (downscale == true) {
@@ -357,10 +317,9 @@ static u8 mc521da_sensor_downscale(bool downscale)
 		mc521da_write_reg(0x00, 0x8C);
 
 		/* Wait for changes to take effect */
-		reg[0] = 0x00;
 		while (i < 256) {
 			i++;
-			mc521da_read_reg(reg, &data);
+			data = mc521da_read_reg(0x00);
 			if ((data & 0x80) == 0)
 				break;
 			msleep(5);
@@ -388,10 +347,9 @@ static u8 mc521da_sensor_downscale(bool downscale)
 		mc521da_write_reg(0x00, 0x84);
 
 		/* Wait for changes to take effect */
-		reg[0] = 0x00;
 		while (i < 256) {
 			i++;
-			mc521da_read_reg(reg, &data);
+			data = mc521da_read_reg(0x00);
 			if ((data & 0x80) == 0)
 				break;
 			msleep(5);
@@ -550,29 +508,15 @@ mc521da_set_color(int bright, int saturation, int red, int green, int blue)
 static void
 mc521da_get_color(int *bright, int *saturation, int *red, int *green, int *blue)
 {
-	u8 reg[1];
-	u8 *pdata;
-
 	*saturation = 0;
 
 	/* Select ISP */
 	mc521da_write_reg(0xff, 0x02);
 
-	reg[0] = 0x41;
-	pdata = (u8 *) bright;
-	mc521da_read_reg(reg, pdata);
-
-	reg[0] = 0xCA;
-	pdata = (u8 *) red;
-	mc521da_read_reg(reg, pdata);
-
-	reg[0] = 0xCB;
-	pdata = (u8 *) green;
-	mc521da_read_reg(reg, pdata);
-
-	reg[0] = 0xCC;
-	pdata = (u8 *) blue;
-	mc521da_read_reg(reg, pdata);
+	*bright = mc521da_read_reg(0x41);
+	*red = mc521da_read_reg(0xCA);
+	*green = mc521da_read_reg(0xCB);
+	*blue = mc521da_read_reg(0xCC);
 }
 
 struct camera_sensor camera_sensor_if = {

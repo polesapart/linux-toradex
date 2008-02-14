@@ -28,7 +28,6 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/clk.h>
-#include <asm/arch/mxc_i2c.h>
 #include "mxc_v4l2_capture.h"
 #include "mt9v111.h"
 
@@ -77,63 +76,21 @@ static struct i2c_client mt9v111_i2c_client = {
  * Function definitions
  */
 
-static u16 mt9v111_endian_swap16(u16 data)
-{
-	u16 temp;
-
-	temp = data;
-	temp = ((data >> 8) & 0xff) | ((data << 8) & 0xff00);
-
-	return temp;
-}
-
-static int mt9v111_i2c_client_xfer(unsigned int addr, char *reg, int reg_len,
-				   char *buf, int num, int tran_flag)
-{
-	struct i2c_msg msg[2];
-	int ret;
-
-	msg[0].addr = addr;
-	msg[0].len = reg_len;
-	msg[0].buf = reg;
-	msg[0].flags = tran_flag;
-	msg[0].flags &= ~I2C_M_RD;
-
-	msg[1].addr = addr;
-	msg[1].len = num;
-	msg[1].buf = buf;
-	msg[1].flags = tran_flag;
-
-	if (tran_flag & MXC_I2C_FLAG_READ) {
-		msg[1].flags |= I2C_M_RD;
-	} else {
-		msg[1].flags &= ~I2C_M_RD;
-	}
-
-	ret = i2c_transfer(mt9v111_i2c_client.adapter, msg, 2);
-	if (ret >= 0)
-		return 0;
-
-	return ret;
-}
-
 #ifdef MT9V111_DEBUG
-static int mt9v111_read_reg(u8 * reg, u16 * val)
+static inline int mt9v111_read_reg(u8 reg)
 {
-	return mt9v111_i2c_client_xfer(MT9V111_I2C_ADDRESS, reg, 1,
-				       (u8 *) val, 2, MXC_I2C_FLAG_READ);
+	int val = i2c_smbus_read_word_data(&mt9v111_i2c_client, reg);
+	if (val != -1)
+		val = cpu_to_be16(val);
+	return val;
 }
 #endif
 
-static int mt9v111_write_reg(u8 reg, u16 val)
+static inline int mt9v111_write_reg(u8 reg, u16 val)
 {
-	u8 temp1;
-	u16 temp2;
-	temp1 = reg;
-	temp2 = mt9v111_endian_swap16(val);
 	pr_debug("write reg %x val %x.\n", reg, val);
-	return mt9v111_i2c_client_xfer(MT9V111_I2C_ADDRESS, &temp1, 1,
-				       (u8 *) & temp2, 2, 0);
+	return i2c_smbus_write_word_data(&mt9v111_i2c_client, reg,
+					 cpu_to_be16(val));
 }
 
 /*!
@@ -539,42 +496,31 @@ struct camera_sensor camera_sensor_if = {
  */
 static void mt9v111_test_pattern(bool flag)
 {
-	u8 reg;
 	u16 data;
 
 	// switch to sensor registers
-	reg = MT9V111I_ADDR_SPACE_SEL;
-	data = MT9V111I_SEL_SCA;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(MT9V111I_ADDR_SPACE_SEL, MT9V111I_SEL_SCA);
 
 	if (flag == true) {
 		testpattern = MT9V111S_OUTCTRL_TEST_MODE;
 
-		reg = MT9V111S_ROW_NOISE_CTRL;
-		data = mt9v111_read_reg(&reg, &data) & 0xBF;
-		data = mt9v111_endian_swap16(data);
-		mt9v111_write_reg(reg, data);
+		data = mt9v111_read_reg(MT9V111S_ROW_NOISE_CTRL) & 0xBF;
+		mt9v111_write_reg(MT9V111S_ROW_NOISE_CTRL, data);
 
-		reg = MT9V111S_TEST_DATA;
-		data = 0;
-		mt9v111_write_reg(reg, data);
+		mt9v111_write_reg(MT9V111S_TEST_DATA, 0);
 
-		reg = MT9V111S_OUTPUT_CTRL;
 		// changes take effect
 		data = MT9V111S_OUTCTRL_CHIP_ENABLE | testpattern | 0x3000;
-		mt9v111_write_reg(reg, data);
+		mt9v111_write_reg(MT9V111S_OUTPUT_CTRL, data);
 	} else {
 		testpattern = 0;
 
-		reg = MT9V111S_ROW_NOISE_CTRL;
-		data = mt9v111_read_reg(&reg, &data) | 0x40;
-		data = mt9v111_endian_swap16(data);
-		mt9v111_write_reg(reg, data);
+		data = mt9v111_read_reg(MT9V111S_ROW_NOISE_CTRL) | 0x40;
+		mt9v111_write_reg(MT9V111S_ROW_NOISE_CTRL, data);
 
-		reg = MT9V111S_OUTPUT_CTRL;
 		// changes take effect
 		data = MT9V111S_OUTCTRL_CHIP_ENABLE | testpattern | 0x3000;
-		mt9v111_write_reg(reg, data);
+		mt9v111_write_reg(MT9V111S_OUTPUT_CTRL, data);
 	}
 }
 #endif

@@ -8,7 +8,7 @@ config VIDEO_MXC_IPU_CAMERA
 
 config VIDEO_MXC_EMMA_CAMERA
 	tristate "MX27 eMMA support"
-	depends on VIDEO_MXC_CAMERA && MXC_EMMA && FB_MXC_SYNC_PANEL && (MXC_CAMERA_MICRON111 || MXC_CAMERA_MC521DA)
+	depends on VIDEO_MXC_CAMERA && MXC_EMMA && FB_MXC_SYNC_PANEL
 	select VIDEO_MXC_OPL
 	default y
 
@@ -25,37 +25,25 @@ config VIDEO_MXC_CSI_DMA
 choice
 	prompt "Select Camera"
 	default MXC_CAMERA_MICRON111
-	depends on (VIDEO_MXC_CAMERA && I2C_MXC)
+	depends on VIDEO_MXC_CAMERA
 
 config MXC_CAMERA_MC521DA
 	tristate "Magnachip mc521da camera support"
-	depends on ((!MACH_I30030ADS) && (!MACH_MXC30030ADS))
+	select I2C_MXC
 	---help---
 	  If you plan to use the mc521da Camera with your MXC system, say Y here.
 
 config MXC_CAMERA_MICRON111
 	tristate "Micron mt9v111 camera support"
-	depends on ((!MACH_I30030ADS) && (!MACH_MXC30030ADS))
+	select I2C_MXC
 	---help---
 	  If you plan to use the mt9v111 Camera with your MXC system, say Y here.
 
-config MXC_CAMERA_S5K3AAEX
-	tristate "Sumsung s5k3aaex camera support"
-	depends on ((MACH_I30030ADS || MACH_MXC30030ADS))
-	---help---
-	  If you plan to use the s5k3aaex Camera with your MXC system, say Y here.
-	  Will be replaced by Magna hv7161.
-
-config MXC_CAMERA_HV7161
-	tristate "Magna Hv7161 camera support"
-	depends on ((MACH_I30030ADS || MACH_MXC30030ADS))
-	---help---
-	  If you plan to use the magna hv7161 Camera with your MXC system, say Y here.
 endchoice
 
 config MXC_IPU_PRP_VF_SDC
 	tristate "Pre-Processor VF SDC library"
-	depends on (VIDEO_MXC_IPU_CAMERA && FB_MXC_SYNC_PANEL && (MXC_CAMERA_MC521DA || MXC_CAMERA_MICRON111 || MXC_CAMERA_S5K3AAEX || MXC_CAMERA_HV7161))
+	depends on VIDEO_MXC_IPU_CAMERA && FB_MXC_SYNC_PANEL
 	default y
 	---help---
 	  Use case PRP_VF_SDC:
@@ -68,7 +56,7 @@ config MXC_IPU_PRP_VF_SDC
 
 config MXC_IPU_PRP_VF_ADC
 	tristate "Pre-Processor VF ADC library"
-	depends on (VIDEO_MXC_IPU_CAMERA && FB_MXC_ASYNC_PANEL && (MXC_CAMERA_MC521DA || MXC_CAMERA_MICRON111 || MXC_CAMERA_S5K3AAEX || MXC_CAMERA_HV7161))
+	depends on VIDEO_MXC_IPU_CAMERA && FB_MXC_ASYNC_PANEL
 	default y
 	---help---
 	  Use case PRP_VF_ADC:
@@ -78,7 +66,7 @@ config MXC_IPU_PRP_VF_ADC
 
 config MXC_IPU_PRP_ENC
 	tristate "Pre-processor Encoder library"
-	depends on (VIDEO_MXC_IPU_CAMERA && (MXC_CAMERA_MC521DA || MXC_CAMERA_MICRON111 || MXC_CAMERA_S5K3AAEX || MXC_CAMERA_HV7161))
+	depends on VIDEO_MXC_IPU_CAMERA
 	default y
 	---help---
 	  Use case PRP_ENC:
