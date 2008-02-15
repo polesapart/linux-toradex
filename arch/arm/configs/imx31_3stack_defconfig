@@ -479,7 +479,12 @@ CONFIG_MTD_NAND_MXC_V2=y
 #
 # Voltage and Current regulators
 #
-# CONFIG_REGULATOR is not set
+CONFIG_REGULATOR_API=y
+CONFIG_REGULATOR=y
+CONFIG_REGULATOR_MC13783=y
+
+#
+#
 # CONFIG_PARPORT is not set
 # CONFIG_PNP is not set
 CONFIG_BLK_DEV=y
