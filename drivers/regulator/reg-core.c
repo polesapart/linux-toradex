@@ -271,11 +271,11 @@ static struct regulator_load *create_load_dev(struct regulator *regulator,
 		goto err_out;
 	}
 	err = sysfs_create_link(&regulator->cdev.kobj, &dev->kobj,
-		dev->kobj.name);
+		kobject_name(&dev->kobj));
 	if (err) {
 		printk
 		(KERN_WARNING "%s : could not add device link %s err %d\n",
-			__func__, dev->kobj.name, err);
+			__func__, kobject_name(&dev->kobj), err);
 		goto err_out;
 	}
 	return load;
@@ -331,7 +331,7 @@ void regulator_put(struct regulator *regulator, struct device *dev)
 	if (!dev)
 		goto put;
 
-	sysfs_remove_link(&regulator->cdev.kobj, dev->kobj.name);
+	sysfs_remove_link(&regulator->cdev.kobj, kobject_name(&dev->kobj));
 	list_for_each_entry_safe(load, l, &regulator->user_list, list) {
 		device_remove_file(dev, &load->dev_attr);
 		list_del(&load->list);
@@ -670,7 +670,7 @@ int regulator_set_platform_source(struct regulator *regulator,
 		"source");
 	if (err)
 	printk(KERN_WARNING "%s : could not add device link %s err %d\n",
-			__func__, parent->cdev.kobj.name, err);
+			__func__, kobject_name(&parent->cdev.kobj), err);
 	mutex_unlock(&list_mutex);
 
 	return 0;
