@@ -29,8 +29,8 @@
 #define DAM_PTCR7	(*((volatile u32 *)(AUDMUX_IO_BASE_ADDR + 0x30)))
 #define DAM_PDCR7	(*((volatile u32 *)(AUDMUX_IO_BASE_ADDR + 0x34)))
 #define DAM_CNMCR	(*((volatile u32 *)(AUDMUX_IO_BASE_ADDR + 0x38)))
-#define DAM_PTCR(a)	(*((volatile u32 *)(AUDMUX_IO_BASE_ADDR + a*8)))
-#define DAM_PDCR(a)	(*((volatile u32 *)(AUDMUX_IO_BASE_ADDR + 4 + a*8)))
+#define DAM_PTCR(a)	(*((u32 *)(AUDMUX_IO_BASE_ADDR + (a-1)*8)))
+#define DAM_PDCR(a)	(*((u32 *)(AUDMUX_IO_BASE_ADDR + 4 + (a-1)*8)))
 
 #define AUDMUX_PTCR_TFSDIR		(1 << 31)
 #define AUDMUX_PTCR_TFSSEL(x, y)		((x << 30) | (((y - 1) & 0x7) << 27))

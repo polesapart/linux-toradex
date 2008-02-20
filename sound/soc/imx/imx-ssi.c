@@ -5,7 +5,7 @@
  * Author: Liam Girdwood
  *         liam.girdwood@wolfsonmicro.com or linux@wolfsonmicro.com
  *
- *  Based on mxc-alsa-mc13783 (C) 2006 Freescale.
+ * Based on mxc-alsa-mc13783 (C) 2006-2008 Freescale Semiconductor, Inc.
  *
  *  This program is free software; you can redistribute  it and/or modify it
  *  under  the terms of  the GNU General  Public License as published by the
@@ -14,8 +14,8 @@
  *
  *  Revision history
  *    29th Aug 2006   Initial version.
- * 
- * TODO: 
+ *
+ * TODO:
  *   Need to rework SSI register defs when new defs go into mainline.
  *   Add support for TDM and FIFO 1.
  *
@@ -71,104 +71,6 @@
 
 static int ssi_active[2] = { 0, 0 };
 
-static struct mxc_pcm_dma_params imx_ssi1_pcm_stereo_out0 = {
-	.name = "SSI1 PCM Stereo out 0",
-	.params = {
-		   .bd_number = 32,
-		   .word_size = TRANSFER_16BIT,
-		   .transfer_type = emi_2_per,
-		   .watermark_level = SDMA_TXFIFO_WATERMARK,
-		   .per_address = SSI1_BASE_ADDR,
-		   .event_id = DMA_REQ_SSI1_TX1,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi1_pcm_stereo_out1 = {
-	.name = "SSI1 PCM Stereo out 1",
-	.params = {
-		   .bd_number = 32,
-		   .word_size = TRANSFER_16BIT,
-		   .transfer_type = emi_2_per,
-		   .watermark_level = SDMA_TXFIFO_WATERMARK,
-		   .per_address = SSI1_BASE_ADDR + 0x4,
-		   .event_id = DMA_REQ_SSI1_TX2,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi1_pcm_stereo_in0 = {
-	.name = "SSI1 PCM Stereo in 0",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = per_2_emi,
-		   .watermark_level = SDMA_RXFIFO_WATERMARK,
-		   .per_address = SSI1_BASE_ADDR + 0x8,
-		   .event_id = DMA_REQ_SSI1_RX1,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi1_pcm_stereo_in1 = {
-	.name = "SSI1 PCM Stereo in 1",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = per_2_emi,
-		   .watermark_level = SDMA_RXFIFO_WATERMARK,
-		   .per_address = SSI1_BASE_ADDR + 0xc,
-		   .event_id = DMA_REQ_SSI1_RX2,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi2_pcm_stereo_out0 = {
-	.name = "SSI2 PCM Stereo out 0",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = emi_2_per,
-		   .watermark_level = SDMA_TXFIFO_WATERMARK,
-		   .per_address = SSI2_BASE_ADDR,
-		   .event_id = DMA_REQ_SSI2_TX1,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi2_pcm_stereo_out1 = {
-	.name = "SSI2 PCM Stereo out 1",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = emi_2_per,
-		   .watermark_level = SDMA_TXFIFO_WATERMARK,
-		   .per_address = SSI2_BASE_ADDR + 0x4,
-		   .event_id = DMA_REQ_SSI2_TX2,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi2_pcm_stereo_in0 = {
-	.name = "SSI2 PCM Stereo in 0",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = per_2_emi,
-		   .watermark_level = SDMA_RXFIFO_WATERMARK,
-		   .per_address = SSI2_BASE_ADDR + 0x8,
-		   .event_id = DMA_REQ_SSI2_RX1,
-		   .peripheral_type = SSI,
-		   },
-};
-
-static struct mxc_pcm_dma_params imx_ssi2_pcm_stereo_in1 = {
-	.name = "SSI2 PCM Stereo in 1",
-	.params = {
-		   .bd_number = 1,
-		   .transfer_type = per_2_emi,
-		   .watermark_level = SDMA_RXFIFO_WATERMARK,
-		   .per_address = SSI2_BASE_ADDR + 0xc,
-		   .event_id = DMA_REQ_SSI2_RX2,
-		   .peripheral_type = SSI,
-		   },
-};
-
 /*
  * SSI system clock configuration.
  * Should only be called when port is inactive (i.e. SSIEN = 0).
@@ -178,7 +80,7 @@ static int imx_ssi_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 {
 	u32 scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR;
 	else
 		scr = SSI2_SCR;
@@ -197,7 +99,7 @@ static int imx_ssi_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		SSI1_SCR = scr;
 	else
 		SSI2_SCR = scr;
@@ -214,7 +116,7 @@ static int imx_ssi_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 {
 	u32 stccr, srccr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		if (SSI1_SCR & SSI_SCR_SSIEN)
 			return 0;
 
@@ -257,7 +159,7 @@ static int imx_ssi_set_dai_clkdiv(struct snd_soc_dai *cpu_dai,
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCCR = stccr;
 		SSI1_SRCCR = srccr;
 	} else {
@@ -276,7 +178,7 @@ static int imx_ssi_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 {
 	u32 stmsk, srmsk, stccr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		if (SSI1_SCR & SSI_SCR_SSIEN)
 			return 0;
 		stccr = SSI1_STCCR;
@@ -290,7 +192,7 @@ static int imx_ssi_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai,
 	stccr &= ~SSI_STCCR_DC_MASK;
 	stccr |= SSI_STCCR_DC(slots - 1);
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STMSK = stmsk;
 		SSI1_SRMSK = srmsk;
 		SSI1_SRCCR = SSI1_STCCR = stccr;
@@ -313,7 +215,7 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 {
 	u32 stcr = 0, srcr = 0, scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR & ~(SSI_SCR_SYN | SSI_SCR_NET);
 	else
 		scr = SSI2_SCR & ~(SSI_SCR_SYN | SSI_SCR_NET);
@@ -393,14 +295,14 @@ static int imx_ssi_set_dai_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 	if (fmt & SND_SOC_DAIFMT_TDM)
 		scr |= SSI_SCR_NET;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCR = stcr;
 		SSI1_SRCR = srcr;
 		SSI1_SCR = scr;
 	} else {
 		SSI2_STCR = stcr;
 		SSI2_SRCR = srcr;
-		SSI1_SCR = scr;
+		SSI2_SCR = scr;
 	}
 	SSI_DUMP();
 	return 0;
@@ -413,13 +315,13 @@ static int imx_ssi_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_link *pcm_link = substream->private_data;
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 
-	/* we cant really change any SSI values after SSI is enabled 
+	/* we cant really change any SSI values after SSI is enabled
 	 * need to fix in software for max flexibility - lrg */
 	if (cpu_dai->active)
 		return 0;
 
 	/* reset the SSI port - Sect 45.4.4 */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 
 		if (ssi_active[SSI1_PORT]++)
 			return 0;
@@ -429,7 +331,7 @@ static int imx_ssi_startup(struct snd_pcm_substream *substream)
 		clk_enable(ssi_clk);
 
 		/* BIG FAT WARNING
-		 * SDMA FIFO watermark must == SSI FIFO watermark for 
+		 * SDMA FIFO watermark must == SSI FIFO watermark for
 		 * best results.
 		 */
 		SSI1_SFCSR = SSI_SFCSR_RFWM1(SSI_RXFIFO_WATERMARK) |
@@ -442,6 +344,8 @@ static int imx_ssi_startup(struct snd_pcm_substream *substream)
 			return 0;
 
 		SSI2_SCR = 0;
+		ssi_clk = clk_get(NULL, "ssi_clk.1");
+		clk_enable(ssi_clk);
 
 		/* above warning applies here too */
 		SSI2_SFCSR = SSI_SFCSR_RFWM1(SSI_RXFIFO_WATERMARK) |
@@ -461,7 +365,7 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	u32 stccr, stcr, sier;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		stccr = SSI1_STCCR & ~SSI_STCCR_WL_MASK;
 		stcr = SSI1_STCR;
 		sier = SSI1_SIER;
@@ -489,10 +393,10 @@ static int imx_ssi_hw_tx_params(struct snd_pcm_substream *substream,
 		stcr |= SSI_STCR_TFEN0;
 	else
 		stcr |= SSI_STCR_TFEN1;
-	sier |= SSI_SIER_TDMAE | SSI_SIER_TFE0_EN | SSI_SIER_TFE1_EN |
-	    SSI_SIER_TUE0_EN | SSI_SIER_TUE1_EN;
+	sier |= SSI_SIER_TDMAE	/*| SSI_SIER_TFE0_EN | SSI_SIER_TFE1_EN |
+				   SSI_SIER_TUE0_EN | SSI_SIER_TUE1_EN */ ;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_STCR = stcr;
 		SSI1_STCCR = stccr;
 		SSI1_SIER = sier;
@@ -512,7 +416,7 @@ static int imx_ssi_hw_rx_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	u32 srccr, srcr, sier;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		srccr = SSI1_SRCCR & ~SSI_SRCCR_WL_MASK;
 		srcr = SSI1_SRCR;
 		sier = SSI1_SIER;
@@ -540,10 +444,10 @@ static int imx_ssi_hw_rx_params(struct snd_pcm_substream *substream,
 		srcr |= SSI_SRCR_RFEN0;
 	else
 		srcr |= SSI_SRCR_RFEN1;
-	sier |= SSI_SIER_RDMAE | SSI_SIER_RFF0_EN | SSI_SIER_RFF1_EN |
+	sier |= SSI_SIER_RDMAE /*| SSI_SIER_RFF0_EN | SSI_SIER_RFF1_EN */  |
 	    SSI_SIER_ROE0_EN | SSI_SIER_ROE1_EN;;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		SSI1_SRCR = srcr;
 		SSI1_SRCCR = srccr;
 		SSI1_SIER = sier;
@@ -564,27 +468,14 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_link *pcm_link = substream->private_data;
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	int id;
+
+	id = cpu_dai->id;
 
 	/* Tx/Rx config */
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		/* set up DMA params */
-		switch (cpu_dai->id) {
-		case IMX_DAI_SSI0:
-			cpu_dai->dma_data = &imx_ssi1_pcm_stereo_out0;
-			break;
-		case IMX_DAI_SSI1:
-			cpu_dai->dma_data = &imx_ssi1_pcm_stereo_out1;
-			break;
-		case IMX_DAI_SSI2:
-			cpu_dai->dma_data = &imx_ssi2_pcm_stereo_out0;
-			break;
-		case IMX_DAI_SSI3:
-			cpu_dai->dma_data = &imx_ssi2_pcm_stereo_out1;
-			break;
-		}
-
 		/* cant change any parameters when SSI is running */
-		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+		if (id == IMX_DAI_SSI0 || id == IMX_DAI_SSI1) {
 			if (SSI1_SCR & SSI_SCR_SSIEN)
 				return 0;
 		} else {
@@ -593,24 +484,8 @@ static int imx_ssi_hw_params(struct snd_pcm_substream *substream,
 		}
 		return imx_ssi_hw_tx_params(substream, params);
 	} else {
-		/* set up DMA params */
-		switch (cpu_dai->id) {
-		case IMX_DAI_SSI0:
-			cpu_dai->dma_data = &imx_ssi1_pcm_stereo_in0;
-			break;
-		case IMX_DAI_SSI1:
-			cpu_dai->dma_data = &imx_ssi1_pcm_stereo_in1;
-			break;
-		case IMX_DAI_SSI2:
-			cpu_dai->dma_data = &imx_ssi2_pcm_stereo_in0;
-			break;
-		case IMX_DAI_SSI3:
-			cpu_dai->dma_data = &imx_ssi2_pcm_stereo_in1;
-			break;
-		}
-
 		/* cant change any parameters when SSI is running */
-		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+		if (id == IMX_DAI_SSI0 || id == IMX_DAI_SSI1) {
 			if (SSI1_SCR & SSI_SCR_SSIEN)
 				return 0;
 		} else {
@@ -627,9 +502,9 @@ static int imx_ssi_prepare(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	u32 scr;
 
-	/* enable the SSI port, note that no other port config 
+	/* enable the SSI port, note that no other port config
 	 * should happen after SSIEN is set */
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1) {
 		scr = SSI1_SCR;
 		SSI1_SCR = scr | SSI_SCR_SSIEN;
 	} else {
@@ -646,7 +521,7 @@ static int imx_ssi_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
 	u32 scr;
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		scr = SSI1_SCR;
 	else
 		scr = SSI2_SCR;
@@ -672,7 +547,7 @@ static int imx_ssi_trigger(struct snd_pcm_substream *substream, int cmd)
 		return -EINVAL;
 	}
 
-	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2)
+	if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI1)
 		SSI1_SCR = scr;
 	else
 		SSI2_SCR = scr;
@@ -685,11 +560,14 @@ static void imx_ssi_shutdown(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_link *pcm_link = substream->private_data;
 	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
+	int id;
+
+	id = cpu_dai->id;
 
 	/* shutdown SSI if neither Tx or Rx is active */
 	if (!cpu_dai->active) {
 
-		if (cpu_dai->id == IMX_DAI_SSI0 || cpu_dai->id == IMX_DAI_SSI2) {
+		if (id == IMX_DAI_SSI0 || id == IMX_DAI_SSI1) {
 
 			if (--ssi_active[SSI1_PORT] > 1)
 				return;
@@ -703,6 +581,7 @@ static void imx_ssi_shutdown(struct snd_pcm_substream *substream)
 				return;
 			SSI2_SCR = 0;
 
+			clk_put(ssi_clk);
 		}
 	}
 }
@@ -804,6 +683,26 @@ const char imx_ssi_4[SND_SOC_DAI_NAME_SIZE] = {
 
 EXPORT_SYMBOL_GPL(imx_ssi_4);
 
+static int underrun_counter;
+
+static irqreturn_t ssi1_irq(int irq, void *dev_id)
+{
+	if (underrun_counter++ % 1000 == 0)
+		printk(KERN_ERR "ssi1_irq SISR %x SIER %x underruns=%d\n",
+		       SSI1_SISR, SSI1_SIER, underrun_counter);
+	SSI1_SISR = SSI_SIER_TUE0_EN;
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t ssi2_irq(int irq, void *dev_id)
+{
+	if (underrun_counter++ % 1000 == 0)
+		printk(KERN_ERR "ssi2_irq SISR %x SIER %x underruns=%d\n",
+		       SSI2_SISR, SSI2_SIER, underrun_counter);
+	SSI2_SISR = SSI_SIER_TUE0_EN;
+	return IRQ_HANDLED;
+}
+
 static int imx_ssi_probe(struct device *dev)
 {
 	struct snd_soc_dai *dai = to_snd_soc_dai(dev);
@@ -827,6 +726,22 @@ static int imx_ssi_probe(struct device *dev)
 	dai->capture = &imx_ssi_capture;
 	dai->playback = &imx_ssi_playback;
 	snd_soc_register_cpu_dai(dai);
+
+	if (request_irq(MXC_INT_SSI1, ssi1_irq, 0, "ssi1", dai)) {
+		printk(KERN_ERR "%s: failure requesting irq %s\n",
+		       __func__, "ssi1");
+		return -EBUSY;
+	}
+
+	if (request_irq(MXC_INT_SSI2, ssi2_irq, 0, "ssi2", dai)) {
+		printk(KERN_ERR "%s: failure requesting irq %s\n",
+		       __func__, "ssi2");
+		return -EBUSY;
+	}
+
+	SSI1_SIER = SSI_SIER_TIE | SSI_SIER_TUE0_EN;
+	SSI2_SIER = SSI_SIER_TIE | SSI_SIER_TUE0_EN;
+
 	return 0;
 }
 

@@ -185,9 +185,9 @@
 #define SSI_SACNT_AC97EN      (x << 0)
 
 /* SDMA & SSI watermarks for FIFO's */
-#define SDMA_TXFIFO_WATERMARK				0x2
+#define SDMA_TXFIFO_WATERMARK				0x4
 #define SDMA_RXFIFO_WATERMARK				0x6
-#define SSI_TXFIFO_WATERMARK				0x2
+#define SSI_TXFIFO_WATERMARK				0x4
 #define SSI_RXFIFO_WATERMARK				0x6
 
 /* i.MX DAI SSP ID's */

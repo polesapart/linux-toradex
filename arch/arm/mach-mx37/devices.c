@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -184,89 +184,6 @@ static void mxc_init_ipu(void)
 }
 #else
 static inline void mxc_init_ipu(void)
-{
-}
-#endif
-
-#if  defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE)
-static struct mxc_audio_platform_data mxc_audio_data = {
-	.ssi_num = 2,
-	.src_port = 0,
-};
-
-static struct platform_device mxc_alsa_device = {
-	.name = "mxc_alsa",
-	.id = 0,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mxc_audio_data,
-		},
-
-};
-
-static void mxc_init_audio(void)
-{
-	platform_device_register(&mxc_alsa_device);
-}
-#else
-
-static void mxc_init_audio(void)
-{
-}
-
-#endif
-
-#if defined(CONFIG_MXC_SSI) || defined(CONFIG_MXC_SSI_MODULE)
-/*!
- * Resource definition for the SSI
- */
-static struct resource mxcssi2_resources[] = {
-	[0] = {
-	       .start = SSI2_BASE_ADDR,
-	       .end = SSI2_BASE_ADDR + SZ_4K - 1,
-	       .flags = IORESOURCE_MEM,
-	       },
-};
-
-static struct resource mxcssi1_resources[] = {
-	[0] = {
-	       .start = SSI1_BASE_ADDR,
-	       .end = SSI1_BASE_ADDR + SZ_4K - 1,
-	       .flags = IORESOURCE_MEM,
-	       },
-};
-
-/*! Device Definition for MXC SSI */
-static struct platform_device mxc_ssi1_device = {
-	.name = "mxc_ssi",
-	.id = 0,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mxc_audio_data,
-		},
-	.num_resources = ARRAY_SIZE(mxcssi1_resources),
-	.resource = mxcssi1_resources,
-};
-
-static struct platform_device mxc_ssi2_device = {
-	.name = "mxc_ssi",
-	.id = 1,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mxc_audio_data,
-		},
-	.num_resources = ARRAY_SIZE(mxcssi2_resources),
-	.resource = mxcssi2_resources,
-};
-
-static void mxc_init_ssi(void)
-{
-	platform_device_register(&mxc_ssi1_device);
-	platform_device_register(&mxc_ssi2_device);
-}
-#else
-
-static void mxc_init_ssi(void)
 {
 }
 #endif
@@ -596,9 +513,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_rtc();
 	mxc_init_owire();
 	mxc_init_scc();
-	mxc_init_ssi();
 	mxc_init_dma();
-	mxc_init_audio();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);

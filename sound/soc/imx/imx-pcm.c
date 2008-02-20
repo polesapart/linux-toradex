@@ -6,7 +6,7 @@
  *         liam.girdwood@wolfsonmicro.com or linux@wolfsonmicro.com
  *
  * Based on imx31-pcm.c by	Nicolas Pitre, (C) 2004 MontaVista Software, Inc.
- * and on mxc-alsa-mc13783 (C) 2006 Freescale.
+ * and on mxc-alsa-mc13783 (C) 2006-2008 Freescale.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -32,6 +32,7 @@
 #include <asm/hardware.h>
 
 #include "imx-pcm.h"
+#include "imx-ssi.h"
 
 /* debug */
 #define IMX_PCM_DEBUG 0
@@ -73,6 +74,51 @@ struct mxc_runtime_data {
 	int old_offset;
 	int dma_alloc;
 };
+
+static int imx_get_sdma_transfer(int format, int dai_port, int stream_type)
+{
+	int transfer = -1;
+
+	if ((dai_port == IMX_DAI_SSI0) || (dai_port == IMX_DAI_SSI1)) {
+		if (stream_type == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (format == SNDRV_PCM_FORMAT_S16_LE) {
+				transfer = MXC_DMA_SSI1_16BIT_TX0;
+			} else if (format == SNDRV_PCM_FORMAT_S24_LE) {
+				transfer = MXC_DMA_SSI1_24BIT_TX0;
+			} else if (format == SNDRV_PCM_FORMAT_S20_3LE) {
+				transfer = MXC_DMA_SSI1_24BIT_TX0;
+			}
+		} else {
+			if (format == SNDRV_PCM_FORMAT_S16_LE) {
+				transfer = MXC_DMA_SSI1_16BIT_RX0;
+			} else if (format == SNDRV_PCM_FORMAT_S24_LE) {
+				transfer = MXC_DMA_SSI1_24BIT_RX0;
+			} else if (format == SNDRV_PCM_FORMAT_S20_3LE) {
+				transfer = MXC_DMA_SSI1_24BIT_RX0;
+			}
+		}
+	} else if ((dai_port == IMX_DAI_SSI2) || (dai_port == IMX_DAI_SSI3)) {
+		if (stream_type == SNDRV_PCM_STREAM_PLAYBACK) {
+			if (format == SNDRV_PCM_FORMAT_S16_LE) {
+				transfer = MXC_DMA_SSI2_16BIT_TX0;
+			} else if (format == SNDRV_PCM_FORMAT_S24_LE) {
+				transfer = MXC_DMA_SSI2_24BIT_TX0;
+			} else if (format == SNDRV_PCM_FORMAT_S20_3LE) {
+				transfer = MXC_DMA_SSI2_24BIT_TX0;
+			}
+		} else {
+			if (format == SNDRV_PCM_FORMAT_S16_LE) {
+				transfer = MXC_DMA_SSI2_16BIT_RX0;
+			} else if (format == SNDRV_PCM_FORMAT_S24_LE) {
+				transfer = MXC_DMA_SSI2_24BIT_RX0;
+			} else if (format == SNDRV_PCM_FORMAT_S20_3LE) {
+				transfer = MXC_DMA_SSI2_24BIT_RX0;
+			}
+		}
+	}
+
+	return transfer;
+}
 
 static void audio_stop_dma(struct snd_pcm_substream *substream)
 {
@@ -216,17 +262,23 @@ static int imx_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct mxc_runtime_data *prtd = runtime->private_data;
 	struct snd_soc_pcm_link *pcm_link = substream->private_data;
-	struct snd_soc_dai *cpu_dai = pcm_link->cpu_dai;
-	struct mxc_pcm_dma_params *dma = cpu_dai->dma_data;
 	int ret = 0, channel = 0;
+	int transfer = 0;
+
+	transfer = imx_get_sdma_transfer(params_format(params),
+					 pcm_link->cpu_dai->id,
+					 substream->stream);
+
+	if (transfer < 0) {
+		printk(KERN_ERR "imx-pcm: invaild sdma transfer type");
+		return -1;
+	}
 
 	/* only allocate the DMA chn once */
 	if (!prtd->dma_alloc) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 
-			channel =
-			    mxc_dma_request(MXC_DMA_SSI1_16BIT_TX0,
-					    "ALSA TX SDMA");
+			channel = mxc_dma_request(transfer, "ALSA TX SDMA");
 			if (channel < 0) {
 				printk(KERN_ERR
 				       "imx-pcm: error requesting a write dma channel\n");
@@ -237,9 +289,7 @@ static int imx_pcm_hw_params(struct snd_pcm_substream *substream,
 						   (void *)substream);
 
 		} else {
-			channel =
-			    mxc_dma_request(MXC_DMA_SSI1_16BIT_RX0,
-					    "ALSA RX SDMA");
+			channel = mxc_dma_request(transfer, "ALSA RX SDMA");
 			if (channel < 0) {
 				printk(KERN_ERR
 				       "imx-pcm: error requesting a read dma channel\n");
@@ -251,17 +301,6 @@ static int imx_pcm_hw_params(struct snd_pcm_substream *substream,
 
 		/* set up chn with params */
 		//      dma->params.callback = audio_dma_irq;
-		dma->params.arg = substream;
-
-		switch (params_format(params)) {
-		case SNDRV_PCM_FORMAT_S16_LE:
-			dma->params.word_size = TRANSFER_16BIT;
-			break;
-		case SNDRV_PCM_FORMAT_S20_3LE:
-		case SNDRV_PCM_FORMAT_S24_LE:
-			dma->params.word_size = TRANSFER_24BIT;
-			break;
-		}
 
 	}
 #if IMX31_DMA_BOUNCE
@@ -305,6 +344,7 @@ static int imx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		prtd->dma_active = 0;
 		/* requested stream startup */
 		prtd->active = 1;
+		ret = dma_new_period(substream);
 		ret = dma_new_period(substream);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:

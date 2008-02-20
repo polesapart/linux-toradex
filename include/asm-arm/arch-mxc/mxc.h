@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -76,10 +76,14 @@ struct mxc_ir_platform_data {
 struct mxc_i2c_platform_data {
 	u32 i2c_clk;
 };
-/*This struct is to define the number of SSIs on a platform and the DAM source port config*/
+/*This struct is to define the number of SSIs on a platform,
+DAM source port config, DAM external port config, and Regulator names*/
 struct mxc_audio_platform_data {
 	int ssi_num;
 	int src_port;
+	int ext_port;
+	char *regulator1;
+	char *regulator2;
 };
 
 extern void mxc_wd_reset(void);

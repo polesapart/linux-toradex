@@ -33,6 +33,7 @@
 #include <asm/arch/dma.h>
 #include <asm/arch/spba.h>
 #include <asm/arch/clock.h>
+#include <asm/arch/mxc.h>
 #include "board-mx37_3stack.h"
 
 /*
@@ -40,7 +41,15 @@
  */
 #define BATTERY 0
 
-extern const char imx37_3stack_audio[32];
+/* extern const char imx_3stack_audio[32]; */
+
+struct mxc_audio_platform_data imx_3stack_audio_platform_data = {
+	.ssi_num = 2,
+	.src_port = 2,
+	.ext_port = 5,
+	.regulator1 = "DCDC6",
+	.regulator2 = "DCDC3"
+};
 extern struct led_trigger *imx32ads_led_trigger;
 
 /* program WM8350 so board will boot from WM8350 supplies */
@@ -434,11 +443,12 @@ int wm8350_init(struct wm8350 *wm8350)
 #endif
 	/* register sound */
 	printk("Registering imx37_snd_device");
-	imx_snd_device = platform_device_alloc(imx37_3stack_audio, -1);
+	imx_snd_device = platform_device_alloc("wm8350-imx-3stack-audio", -1);
 	if (!imx_snd_device) {
 		ret = -ENOMEM;
 		goto err;
 	}
+	imx_snd_device->dev.platform_data = &imx_3stack_audio_platform_data;
 	platform_set_drvdata(imx_snd_device, &wm8350->audio);
 	ret = platform_device_add(imx_snd_device);
 	if (ret)
