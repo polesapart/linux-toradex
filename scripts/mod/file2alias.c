@@ -29,9 +29,7 @@ typedef Elf64_Addr	kernel_ulong_t;
 
 #include <ctype.h>
 
-typedef uint32_t	__u32;
-typedef uint16_t	__u16;
-typedef unsigned char	__u8;
+#include <asm/types.h>
 
 /* Big exception to the "don't include kernel headers into userspace, which
  * even potentially has different endianness and word sizes, since
@@ -287,6 +285,14 @@ static int do_serio_entry(const char *filename,
 	ADD(alias, "id", id->id != SERIO_ANY, id->id);
 	ADD(alias, "ex", id->extra != SERIO_ANY, id->extra);
 
+	return 1;
+}
+
+/* looks like: "acpi:ACPI0003 or acpi:PNP0C0B" or "acpi:LNXVIDEO" */
+static int do_acpi_entry(const char *filename,
+			struct acpi_device_id *id, char *alias)
+{
+	sprintf(alias, "acpi*:%s:", id->id);
 	return 1;
 }
 
@@ -567,6 +573,10 @@ void handle_moddevtable(struct module *mod, struct elf_info *info,
 		do_table(symval, sym->st_size,
 			 sizeof(struct serio_device_id), "serio",
 			 do_serio_entry, mod);
+	else if (sym_is(symname, "__mod_acpi_device_table"))
+		do_table(symval, sym->st_size,
+			 sizeof(struct acpi_device_id), "acpi",
+			 do_acpi_entry, mod);
 	else if (sym_is(symname, "__mod_pnp_device_table"))
 		do_table(symval, sym->st_size,
 			 sizeof(struct pnp_device_id), "pnp",

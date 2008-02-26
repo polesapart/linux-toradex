@@ -50,6 +50,31 @@ UTS_VERSION="$UTS_VERSION $CONFIG_FLAGS $TIMESTAMP"
 UTS_LEN=64
 UTS_TRUNCATE="sed -e s/\(.\{1,$UTS_LEN\}\).*/\1/"
 
+#
+# Strip trailing arguments from ${CC} but
+# keep any prefixed environment variables.
+#
+CCNOARGS=""
+for word in ${CC}; do
+    case $word in
+	*=* )
+	    if [ "${CCNOARGS}"x = x ]; then
+		CCNOARGS="${word}"
+	    else
+		CCNOARGS="${CCNOARGS} ${word}"
+	    fi
+	    ;;
+	* )
+	    break
+	    ;;
+    esac
+done
+if [ "${CCNOARGS}"x = x ]; then
+    CCNOARGS="${word}"
+else
+    CCNOARGS="${CCNOARGS} ${word}"
+fi
+
 # Generate a temporary compile.h
 
 ( echo /\* This file is auto generated, version $VERSION \*/
@@ -71,7 +96,7 @@ UTS_TRUNCATE="sed -e s/\(.\{1,$UTS_LEN\}\).*/\1/"
     echo \#define LINUX_COMPILE_DOMAIN
   fi
 
-  echo \#define LINUX_COMPILER \"`$CC -v 2>&1 | tail -n 1`\"
+  echo \#define LINUX_COMPILER \"`$CCNOARGS -v 2>&1 | grep '^gcc version'`\"
 ) > .tmpcompile
 
 # Only replace the real compile.h if the new one is different,

@@ -293,7 +293,11 @@ static void dptc_workqueue_handler(struct work_struct *work)
 	pr_debug("DCVR1 = 0x%lx ", mxc_ccm_get_reg(MXC_CCM_DCVR1));
 	pr_debug("DCVR2 = 0x%lx ", mxc_ccm_get_reg(MXC_CCM_DCVR2));
 	pr_debug("DCVR3 = 0x%lx ", mxc_ccm_get_reg(MXC_CCM_DCVR3));
+
+#ifndef CONFIG_MXC_DVFS_SDMA
 	pr_debug("PTVAI = 0x%lx\n", ptvai);
+#endif
+
 }
 
 /*!

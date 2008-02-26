@@ -497,11 +497,7 @@ static void __exit vpu_exit(void)
 	if (vpu_major > 0) {
 		class_device_destroy(vpu_class, MKDEV(vpu_major, 0));
 		class_destroy(vpu_class);
-		if (unregister_chrdev(vpu_major, "mxc_vpu") < 0) {
-			printk(KERN_ERR
-			       "Failed to unregister vpu from devfs\n");
-			return;
-		}
+		unregister_chrdev(vpu_major, "mxc_vpu");
 		vpu_major = 0;
 	}
 

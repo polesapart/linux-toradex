@@ -11,6 +11,13 @@
 
 #include "elfconfig.h"
 
+#if defined(__CYGWIN__)
+#undef ELF_ST_BIND
+#undef ELF_ST_TYPE
+#undef ELF_R_SYM
+#undef ELF_R_TYPE
+#endif
+
 #if KERNEL_ELFCLASS == ELFCLASS32
 
 #define Elf_Ehdr    Elf32_Ehdr
@@ -59,6 +66,9 @@ typedef union
 
 #define ELF64_MIPS_R_SYM(i) \
   ((__extension__ (_Elf64_Mips_R_Info_union)(i)).r_info_fields.r_sym)
+
+#define ELF64_MIPS_R_TYPE(i) \
+  ((__extension__ (_Elf64_Mips_R_Info_union)(i)).r_info_fields.r_type1)
 
 #if KERNEL_ELFDATA != HOST_ELFDATA
 

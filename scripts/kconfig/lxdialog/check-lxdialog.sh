@@ -4,7 +4,7 @@
 # What library to link
 ldflags()
 {
-	for ext in so a dylib ; do
+	for ext in so a dylib dll ; do
 		for lib in ncursesw ncurses curses ; do
 			$cc -print-file-name=lib${lib}.${ext} | grep -q /
 			if [ $? -eq 0 ]; then
@@ -51,7 +51,7 @@ usage() {
 	printf "Usage: $0 [-check compiler options|-header|-library]\n"
 }
 
-if [ $# == 0 ]; then
+if [ $# -eq 0 ]; then
 	usage
 	exit 1
 fi

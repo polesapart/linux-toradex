@@ -25,7 +25,7 @@
 
 #define __MXC_BOOT_UNCOMPRESS
 
-#include <asm/arch/hardware.h>
+#include <asm/hardware.h>
 
 unsigned int system_rev;
 
@@ -50,15 +50,17 @@ static void putc(int ch)
 {
 	static unsigned long serial_port = 0;
 
-	if (unlikely(serial_port == 0)) do {
-		serial_port = UART1_BASE_ADDR;
-		if (UART(UCR1) & UCR1_UARTEN)
-			break;
-		serial_port = UART2_BASE_ADDR;
-		if (UART(UCR1) & UCR1_UARTEN)
-			break;
-		return;
-	} while (0);
+	if (unlikely(serial_port == 0)) {
+		do {
+			serial_port = UART1_BASE_ADDR;
+			if (UART(UCR1) & UCR1_UARTEN)
+				break;
+			serial_port = UART2_BASE_ADDR;
+			if (UART(UCR1) & UCR1_UARTEN)
+				break;
+			return;
+		} while (0);
+	}
 
 	while (!(UART(USR2) & USR2_TXFE))
 		barrier();

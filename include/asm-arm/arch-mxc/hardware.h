@@ -22,6 +22,10 @@
 
 #include <asm/sizes.h>
 
+#include <asm/arch/mx31.h>
+
+#include <asm/arch/mxc.h>
+
 /*!
  * defines PCIO_BASE (not used but needed for compilation)
  */

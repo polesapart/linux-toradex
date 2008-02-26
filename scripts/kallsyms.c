@@ -24,14 +24,12 @@
  *
  */
 
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#define KSYM_NAME_LEN		127
+#define KSYM_NAME_LEN		128
 
 
 struct sym_entry {
@@ -254,7 +252,7 @@ static void write_src(void)
 	unsigned int i, k, off;
 	unsigned int best_idx[256];
 	unsigned int *markers;
-	char buf[KSYM_NAME_LEN+1];
+	char buf[KSYM_NAME_LEN];
 
 	printf("#include <asm/types.h>\n");
 	printf("#if BITS_PER_LONG == 64\n");
@@ -378,6 +376,69 @@ static void build_initial_tok_table(void)
 	table_cnt = pos;
 }
 
+static void *find_token(unsigned char *str, int len, unsigned char *token)
+{
+	int i;
+
+	for (i = 0; i < len - 1; i++) {
+		if (str[i] == token[0] && str[i+1] == token[1])
+			return &str[i];
+	}
+	return NULL;
+}
+
+#ifndef memmem
+/* Copyright (C) 1991,92,93,94,96,97,98,2000,2004 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
+
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
+
+/* Return the first occurrence of NEEDLE in HAYSTACK.  */
+void *
+memmem (haystack, haystack_len, needle, needle_len)
+     const void *haystack;
+     size_t haystack_len;
+     const void *needle;
+     size_t needle_len;
+{
+  const char *begin;
+  const char *const last_possible
+    = (const char *) haystack + haystack_len - needle_len;
+
+  if (needle_len == 0)
+    /* The first occurrence of the empty string is deemed to occur at
+       the beginning of the string.  */
+    return (void *) haystack;
+
+  /* Sanity check, otherwise the loop might search through the whole
+     memory.  */
+  if (haystack_len < needle_len)
+    return NULL;
+
+  for (begin = (const char *) haystack; begin <= last_possible; ++begin)
+    if (begin[0] == ((const char *) needle)[0] &&
+	!memcmp ((const void *) &begin[1],
+		 (const void *) ((const char *) needle + 1),
+		 needle_len - 1))
+      return (void *) begin;
+
+  return NULL;
+}
+#endif /* ! memmem */
+
 /* replace a given token in all the valid symbols. Use the sampled symbols
  * to update the counts */
 static void compress_symbols(unsigned char *str, int idx)
@@ -391,7 +452,7 @@ static void compress_symbols(unsigned char *str, int idx)
 		p1 = table[i].sym;
 
 		/* find the token on the symbol */
-		p2 = memmem(p1, len, str, 2);
+		p2 = find_token(p1, len, str);
 		if (!p2) continue;
 
 		/* decrease the counts for this symbol's tokens */
@@ -410,7 +471,7 @@ static void compress_symbols(unsigned char *str, int idx)
 			if (size < 2) break;
 
 			/* find the token on the symbol */
-			p2 = memmem(p1, size, str, 2);
+			p2 = find_token(p1, size, str);
 
 		} while (p2);
 
