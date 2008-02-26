@@ -65,11 +65,12 @@ static int fsl_check_usbclk(void)
 	usb_clk = clk_get(NULL, "usb_clk");
 	freq = clk_get_rate(usb_clk);
 	clk_put(usb_clk);
+/*
 	if ((freq < 59999000) || (freq > 60001000)) {
 		printk(KERN_ERR "USB_CLK=%lu, should be 60MHz\n", freq);
 		return -1;
 	}
-
+*/
 	return 0;
 }
 
