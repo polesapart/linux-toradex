@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -1203,9 +1203,6 @@ int32_t ipu_disable_channel(ipu_channel_t channel, bool wait_for_stop)
 	/* Disable DMA channel(s) */
 	reg = __raw_readl(IDMAC_CHA_EN);
 	__raw_writel(reg & ~chan_mask, IDMAC_CHA_EN);
-
-	/* Reset to buffer 0 */
-	__raw_writel(chan_mask, IPU_CHA_CUR_BUF);
 
 	/* Clear DMA related interrupts */
 	__raw_writel(chan_mask, IPU_INT_STAT_1);
