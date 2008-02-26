@@ -23,6 +23,13 @@
 /*! Allow IO space to be anywhere in the memory */
 #define IO_SPACE_LIMIT 0xffffffff
 
+extern void __iomem *__mxc_ioremap(unsigned long cookie, size_t size,
+				unsigned int mtype);
+extern void __mxc_iounmap(void __iomem *addr);
+
+#define __arch_ioremap(a, s, f) __mxc_ioremap(a, s, f)
+#define __arch_iounmap(a)        __mxc_iounmap(a)
+
 /*!
  * io address mapping macro
  */
