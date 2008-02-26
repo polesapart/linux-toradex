@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.24
-# Thu Feb 14 14:03:37 2008
+# Tue Feb 19 12:19:19 2008
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -216,7 +216,7 @@ CONFIG_GENERIC_CLOCKEVENTS_BUILD=y
 CONFIG_PREEMPT=y
 CONFIG_HZ=100
 CONFIG_AEABI=y
-CONFIG_OABI_COMPAT=y
+# CONFIG_OABI_COMPAT is not set
 # CONFIG_ARCH_DISCONTIGMEM_ENABLE is not set
 CONFIG_SELECT_MEMORY_MODEL=y
 CONFIG_FLATMEM_MANUAL=y
@@ -250,8 +250,6 @@ CONFIG_CMDLINE="noinitrd console=ttymxc0 root=/dev/mtdblock2 rw ip=off"
 #
 # At least one emulation must be selected
 #
-# CONFIG_FPE_NWFPE is not set
-# CONFIG_FPE_FASTFPE is not set
 # CONFIG_VFP is not set
 
 #
@@ -540,7 +538,47 @@ CONFIG_BLK_DEV_RAM_BLOCKSIZE=1024
 # CONFIG_ATA_OVER_ETH is not set
 CONFIG_MISC_DEVICES=y
 # CONFIG_EEPROM_93CX6 is not set
-# CONFIG_IDE is not set
+CONFIG_IDE=m
+CONFIG_IDE_MAX_HWIFS=4
+CONFIG_BLK_DEV_IDE=m
+
+#
+# Please see Documentation/ide.txt for help/info on IDE drives
+#
+# CONFIG_BLK_DEV_IDE_SATA is not set
+CONFIG_BLK_DEV_IDEDISK=m
+# CONFIG_IDEDISK_MULTI_MODE is not set
+# CONFIG_BLK_DEV_IDECD is not set
+# CONFIG_BLK_DEV_IDETAPE is not set
+# CONFIG_BLK_DEV_IDEFLOPPY is not set
+# CONFIG_BLK_DEV_IDESCSI is not set
+# CONFIG_IDE_TASK_IOCTL is not set
+CONFIG_IDE_PROC_FS=y
+
+#
+# IDE chipset support/bugfixes
+#
+CONFIG_IDE_GENERIC=m
+# CONFIG_BLK_DEV_PLATFORM is not set
+# CONFIG_IDE_ARM is not set
+CONFIG_BLK_DEV_IDE_MXC=m
+
+#
+# Other IDE chipsets support
+#
+
+#
+# Note: most of these also require special kernel boot parameters
+#
+# CONFIG_BLK_DEV_4DRIVES is not set
+# CONFIG_BLK_DEV_ALI14XX is not set
+# CONFIG_BLK_DEV_DTC2278 is not set
+# CONFIG_BLK_DEV_HT6560B is not set
+# CONFIG_BLK_DEV_QD65XX is not set
+# CONFIG_BLK_DEV_UMC8672 is not set
+CONFIG_BLK_DEV_IDEDMA=y
+CONFIG_IDE_ARCH_OBSOLETE_INIT=y
+# CONFIG_BLK_DEV_HD is not set
 
 #
 # SCSI device support
@@ -978,8 +1016,8 @@ CONFIG_FONT_8x16=y
 CONFIG_LOGO=y
 # CONFIG_LOGO_LINUX_MONO is not set
 # CONFIG_LOGO_LINUX_VGA16 is not set
-# CONFIG_LOGO_LINUX_CLUT224 is not set
-# CONFIG_LOGO_MX27ADS_CLUT224 is not set
+CONFIG_LOGO_LINUX_CLUT224=y
+CONFIG_LOGO_MX27ADS_CLUT224=y
 CONFIG_LOGO_TS_CLUT224=y
 
 #

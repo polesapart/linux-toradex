@@ -32,7 +32,7 @@
 
 #ifdef CONFIG_ARCH_MXC
 #define IDE_ARCH_ACK_INTR
-#define ide_ack_intr(hwif)      ((hwif)->hw.ack_intr ? (hwif)->hw.ack_intr(hwif) : 1)
+#define ide_ack_intr(hwif)      ((hwif)->ack_intr(hwif))
 #endif /* CONFIG_ARCH_MXC */
 
 #endif /* __KERNEL__ */

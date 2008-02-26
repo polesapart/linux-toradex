@@ -49,7 +49,7 @@
 
 extern void gpio_ata_active(void);
 extern void gpio_ata_inactive(void);
-static int mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode);
+static void mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode);
 static void mxc_ide_dma_callback(void *arg, int error, unsigned int count);
 
 static struct clk *ata_clk;
@@ -253,10 +253,11 @@ static void mxc_ide_selectproc(ide_drive_t * drive)
  * @param   drive       Specifies the drive
  * @param   pio    Specifies the PIO mode number desired
  */
-static void mxc_ide_tune(ide_drive_t * drive, u8 pio)
+static void mxc_ide_set_pio_mode(ide_drive_t * drive, u8 pio)
 {
-	set_ata_bus_timing(pio, PIO);
+  set_ata_bus_timing(pio, PIO);
 }
+
 
 /*!
  * Hardware-specific interrupt service routine for the ATA driver,
@@ -293,9 +294,9 @@ static int mxc_ide_ack_intr(struct hwif_s *hw)
  *
  * @param       xfer_mode   Specifies the desired transfer mode
  *
- * @return      EINVAL      Illegal mode specified
  */
-static int mxc_ide_set_speed(ide_drive_t * drive, u8 xfer_mode)
+#warning Revisit
+static void mxc_ide_set_dma_mode(ide_drive_t * drive, const u8 xfer_mode)
 {
 	mxc_ide_private_t *priv = (mxc_ide_private_t *) HWIF(drive)->hwif_data;
 
@@ -309,24 +310,24 @@ static int mxc_ide_set_speed(ide_drive_t * drive, u8 xfer_mode)
 	case XFER_UDMA_1:
 	case XFER_UDMA_0:
 		priv->ultra = 1;
-		return set_ata_bus_timing(xfer_mode - XFER_UDMA_0, UDMA);
+		set_ata_bus_timing(xfer_mode - XFER_UDMA_0, UDMA);
 		break;
 	case XFER_MW_DMA_2:
 	case XFER_MW_DMA_1:
 	case XFER_MW_DMA_0:
 		priv->ultra = 0;
-		return set_ata_bus_timing(xfer_mode - XFER_MW_DMA_0, MDMA);
+		set_ata_bus_timing(xfer_mode - XFER_MW_DMA_0, MDMA);
 		break;
 	case XFER_PIO_4:
 	case XFER_PIO_3:
 	case XFER_PIO_2:
 	case XFER_PIO_1:
 	case XFER_PIO_0:
-		return set_ata_bus_timing(xfer_mode - XFER_PIO_0, PIO);
+		set_ata_bus_timing(xfer_mode - XFER_PIO_0, PIO);
 		break;
 	}
 
-	return -EINVAL;
+	return;
 }
 
 /*!
@@ -385,39 +386,6 @@ static int mxc_ide_dma_on(ide_drive_t * drive)
 	return 0;
 }
 
-/*!
- * Turn on DMA if the drive can handle it.
- *
- * @param       drive       Specifies the drive
- *
- * @return      0 if successful
- */
-static int mxc_ide_dma_check(ide_drive_t * drive)
-{
-	struct hd_driveid *id = drive->id;
-	if (id && (id->capability & 1)) {
-		/*
-		 * Enable DMA on any drive that has
-		 * UltraDMA (mode 0/1/2/3/4/5/6) enabled
-		 */
-		if ((id->field_valid & 4) && ((id->dma_ultra >> 8) & 0x7f))
-			return HWIF(drive)->ide_dma_on(drive);
-		/*
-		 * Enable DMA on any drive that has mode2 DMA
-		 * (multi or single) enabled
-		 */
-		if (id->field_valid & 2)	/* regular DMA */
-			if ((id->dma_mword & 0x404) == 0x404 ||
-			    (id->dma_1word & 0x404) == 0x404)
-				return HWIF(drive)->ide_dma_on(drive);
-
-		/* Consult the list of known "good" drives */
-		if (__ide_dma_good_drive(drive))
-			return HWIF(drive)->ide_dma_on(drive);
-	}
-	HWIF(drive)->dma_off_quietly(drive);
-	return 0;
-}
 
 /*!
  * The DMA is done, and the drive is done.  We'll check the BD array for
@@ -516,14 +484,13 @@ static void mxc_ide_set_intrq(ide_hwif_t * hwif, intrq_which_t which)
  *
  * @return      0 = success, non-zero otherwise
  */
-static int mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode)
+static void mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode)
 {
-	int err;
-	ide_hwif_t *hwif = HWIF(drive);
+        ide_hwif_t *hwif = HWIF(drive);
 	mxc_ide_private_t *priv = (mxc_ide_private_t *) (hwif->hwif_data);
 	u8 prev = priv->enable;
 
-	mxc_ide_set_speed(drive, xfer_mode);
+	mxc_ide_set_dma_mode(drive, xfer_mode);
 
 	/*
 	 * Work around an ADS hardware bug:
@@ -543,8 +510,6 @@ static int mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode)
 	priv->enable = 0;
 	ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
 
-	err = ide_config_drive_speed(drive, xfer_mode);
-
 	if (ATA_RAW_READ(MXC_IDE_INTR_PENDING) &
 	    (MXC_IDE_INTR_ATA_INTRQ2 | MXC_IDE_INTR_ATA_INTRQ1)) {
 		/*
@@ -563,8 +528,6 @@ static int mxc_ide_config_drive(ide_drive_t * drive, u8 xfer_mode)
 
 	priv->enable = prev;
 	ATA_RAW_WRITE(prev, MXC_IDE_INTR_ENABLE);
-
-	return err;
 }
 
 /*!
@@ -856,10 +819,13 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 
 	hwif->dmatable_cpu = NULL;
 	hwif->dmatable_dma = 0;
-	hwif->speedproc = mxc_ide_set_speed;
-	hwif->resetproc = mxc_ide_resetproc;
-	hwif->autodma = 0;
+	hwif->set_dma_mode = &mxc_ide_set_dma_mode;
+	hwif->set_pio_mode = &mxc_ide_set_pio_mode;
+	
 
+	//	hwif->speedproc = mxc_ide_set_speed;
+	hwif->resetproc = mxc_ide_resetproc;
+	
 	/*
 	 * Allocate and setup the DMA channels
 	 */
@@ -885,7 +851,6 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	/*
 	 * All ready now
 	 */
-	hwif->atapi_dma = 1;
 	hwif->ultra_mask = 0x7f;
 	hwif->mwdma_mask = 0x07;
 	hwif->swdma_mask = 0x07;
@@ -897,7 +862,6 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	  
 	hwif->dma_off_quietly = mxc_ide_dma_off_quietly;
 	hwif->ide_dma_on = mxc_ide_dma_on;
-	hwif->ide_dma_check = mxc_ide_dma_check;
 	hwif->dma_setup = mxc_ide_dma_setup;
 	hwif->dma_exec_cmd = mxc_ide_dma_exec_cmd;
 	hwif->dma_start = mxc_ide_dma_start;
@@ -912,7 +876,6 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	return;
 
       err_out:
-	hwif->atapi_dma = 0;
 	if (priv->dma_read_chan >= 0)
 		mxc_dma_free(priv->dma_read_chan);
 	if (priv->dma_write_chan >= 0)
@@ -960,10 +923,9 @@ mxc_ide_register(unsigned long base, unsigned int aux, int irq,
 	hw.ack_intr = &mxc_ide_ack_intr;
 
 	*hwifp = hwif;
-	ide_register_hw(&hw, 0, hwifp);
+	ide_register_hw(&hw, NULL, 0, hwifp);
 
 	hwif->selectproc = &mxc_ide_selectproc;
-	hwif->tuneproc = &mxc_ide_tune;
 	hwif->maskproc = &mxc_ide_maskproc;
 	hwif->hwif_data = (void *)priv;
 	mxc_ide_set_intrq(hwif, INTRQ_MCU);
@@ -983,10 +945,6 @@ mxc_ide_register(unsigned long base, unsigned int aux, int irq,
 	}
 
 	mxc_ide_dma_init(hwif);
-
-	for (i = 0; i < MAX_DRIVES; i++) {
-		mxc_ide_dma_check(hwif->drives + i);
-	}
 
 	return 0;
 }
