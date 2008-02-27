@@ -58,6 +58,22 @@ struct fb_videomode mxcfb_modedb[] = {
 	 "TV-VGA", 60, 640, 480, 40574, 35, 45, 9, 1, 46, 5,
 	 0, FB_VMODE_NONINTERLACED, 0,
 	 },
+	{
+          /* 640x480 @ 60 Hz */
+          "Sharp-VGA",
+          60, 640, 480,   // 60 Hz, 640x480
+          35285,      // 35.285 ns clock period
+          128, 128,   // left & right margin
+          34, 10,      // upper & lower margin
+          2, 2,      // hsync & vsync len
+          0
+          //| FB_SYNC_CLK_IDLE_EN
+          | FB_SYNC_OE_ACT_HIGH
+          //| FB_SYNC_HOR_HIGH_ACT
+          ,
+          FB_VMODE_NONINTERLACED,
+          0,
+          },
 };
 
 int mxcfb_modedb_sz = ARRAY_SIZE(mxcfb_modedb);
