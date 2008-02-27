@@ -45,7 +45,6 @@ obj-y				+= auxdisplay/
 obj-$(CONFIG_MTD)		+= mtd/
 obj-$(CONFIG_SPI)		+= spi/
 obj-$(CONFIG_PCCARD)		+= pcmcia/
-obj-$(CONFIG_PMIC)		+= pmic/
 obj-$(CONFIG_DIO)		+= dio/
 obj-$(CONFIG_SBUS)		+= sbus/
 obj-$(CONFIG_KVM)		+= kvm/

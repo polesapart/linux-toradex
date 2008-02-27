@@ -996,8 +996,6 @@ source "drivers/base/Kconfig"
 
 source "drivers/connector/Kconfig"
 
-source "drivers/pmic/Kconfig"
-
 if ALIGNMENT_TRAP || !CPU_CP15_MMU
 source "drivers/mtd/Kconfig"
 endif

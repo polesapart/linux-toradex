@@ -16,7 +16,9 @@
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/platform_device.h>
-#include <linux/pmic/wm8350.h>
+#include <linux/regulator/wm8350/wm8350.h>
+#include <linux/regulator/wm8350/wm8350-bus.h>
+#include <linux/regulator/wm8350/wm8350-audio.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -25,8 +27,6 @@
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-
-#include "wm8350.h"
 
 #define AUDIO_NAME "WM8350"
 #define WM8350_VERSION "0.4"
@@ -765,14 +765,14 @@ static int wm8350_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	u16 fll_4;
 	
 	switch(clk_id) {
-	case WM3850_MCLK_SEL_MCLK:
+	case WM8350_MCLK_SEL_MCLK:
 		wm8350_clear_bits(wm8350, WM8350_CLOCK_CONTROL_1, 
 			WM8350_MCLK_SEL);
 		break;
-	case WM3850_MCLK_SEL_PLL_MCLK:
-	case WM3850_MCLK_SEL_PLL_DAC:
-	case WM3850_MCLK_SEL_PLL_ADC:
-	case WM3850_MCLK_SEL_PLL_32K:
+	case WM8350_MCLK_SEL_PLL_MCLK:
+	case WM8350_MCLK_SEL_PLL_DAC:
+	case WM8350_MCLK_SEL_PLL_ADC:
+	case WM8350_MCLK_SEL_PLL_32K:
 		wm8350_set_bits(wm8350, WM8350_CLOCK_CONTROL_1, 
 			WM8350_MCLK_SEL);
 		fll_4 = wm8350_codec_read(codec, WM8350_FLL_CONTROL_4) & 
@@ -783,7 +783,7 @@ static int wm8350_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	}
 		
 	/* MCLK direction */
-	if (dir == WM3850_MCLK_DIR_OUT)
+	if (dir == WM8350_MCLK_DIR_OUT)
 		wm8350_set_bits(wm8350, WM8350_CLOCK_CONTROL_2, 
 			WM8350_MCLK_DIR);
 	else 
@@ -1075,7 +1075,7 @@ static int wm8350_set_tristate(struct snd_soc_dai *codec_dai,
 static int wm8350_dapm_event(struct snd_soc_codec *codec, int event)
 {
 	struct wm8350 *wm8350 = codec->control_data;
-	struct wm8350_platform_data *platform = codec->platform_data;
+	struct wm8350_audio_platform_data *platform = codec->platform_data;
 	u16 pm1;
 	
 	snd_assert(wm8350 != NULL, return -EINVAL);

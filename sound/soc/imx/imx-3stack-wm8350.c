@@ -1,5 +1,5 @@
 /*
- * imx37-3stack-wm8350.c  --  i.MX37 3Stack Driver for Wolfson WM8350 Codec
+ * imx-3stack-wm8350.c  --  i.MX 3Stack Driver for Wolfson WM8350 Codec
  *
  * Copyright 2007 Wolfson Microelectronics PLC.
  * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
@@ -26,7 +26,9 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/err.h>
-#include <linux/pmic/wm8350.h>
+#include <linux/regulator/wm8350/wm8350.h>
+#include <linux/regulator/wm8350/wm8350-audio.h>
+#include <linux/regulator/wm8350/wm8350-bus.h>
 #include <sound/driver.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -42,7 +44,6 @@
 
 #include "imx-ssi.h"
 #include "imx-pcm.h"
-#include "../sound/soc/codecs/wm8350.h"
 
 extern void gpio_activate_audio_ports(void);
 
@@ -169,7 +170,7 @@ static int imx_3stack_hifi_hw_params(struct snd_pcm_substream *substream,
 	cpu_dai->ops->set_fmt(cpu_dai, dai_format);
 
 	/* set 32KHZ as the codec system clock for DAC and ADC */
-	codec_dai->ops->set_sysclk(codec_dai, WM3850_MCLK_SEL_PLL_32K,
+	codec_dai->ops->set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_32K,
 				   wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
 
 #else
@@ -185,7 +186,7 @@ static int imx_3stack_hifi_hw_params(struct snd_pcm_substream *substream,
 	cpu_dai->ops->set_fmt(cpu_dai, dai_format);
 
 	/* set DAC LRC as the codec system clock for DAC and ADC */
-	codec_dai->ops->set_sysclk(codec_dai, WM3850_MCLK_SEL_PLL_DAC,
+	codec_dai->ops->set_sysclk(codec_dai, WM8350_MCLK_SEL_PLL_DAC,
 				   wm8350_audio[i].sysclk, SND_SOC_CLOCK_IN);
 #endif
 
@@ -246,7 +247,7 @@ static struct snd_soc_ops imx_3stack_hifi_ops = {
 };
 
 /* need to refine these */
-static struct wm8350_platform_data imx_3stack_wm8350_setup = {
+static struct wm8350_audio_platform_data imx_3stack_wm8350_setup = {
 	.vmid_discharge_msecs = 1000,
 	.drain_msecs = 30,
 	.cap_discharge_msecs = 700,
@@ -407,9 +408,10 @@ static int imx_3stack_wm8350_audio_resume(struct platform_device *dev)
 #define imx_3stack_wm8350_audio_resume	NULL
 #endif
 
-static void imx_3stack_jack_handler(struct wm8350 *wm8350, int irq)
+static void imx_3stack_jack_handler(struct wm8350 *wm8350, int irq, void *data)
 {
-	struct snd_soc_machine *machine = &wm8350->audio;
+	struct snd_soc_machine *machine =
+	    (struct snd_soc_machine *)&wm8350->audio;
 	u16 reg;
 
 	/* debounce for 200ms */
@@ -430,6 +432,7 @@ int mach_probe(struct snd_soc_machine *machine)
 	struct snd_soc_codec *codec;
 	struct snd_soc_pcm_link *pcm_link;
 	struct wm8350 *wm8350 = to_wm8350_from_audio(machine);
+
 	int i, ret;
 	u16 reg;
 
@@ -477,7 +480,7 @@ int mach_probe(struct snd_soc_machine *machine)
 	reg = wm8350_reg_read(wm8350, WM8350_JACK_DETECT);
 	wm8350_reg_write(wm8350, WM8350_JACK_DETECT, reg | WM8350_JDR_ENA);
 	wm8350_register_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R,
-			    imx_3stack_jack_handler);
+			    imx_3stack_jack_handler, NULL);
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_CODEC_JCK_DET_R);
 
 	/* register card with ALSA upper layers */

@@ -10,8 +10,8 @@
 #include <linux/irq.h>
 #include <linux/leds.h>
 #include <linux/fb.h>
-#include <linux/pmic.h>
-#include <linux/pmic/wm8350.h>
+#include <linux/regulator/regulator.h>
+#include <linux/regulator/wm8350/wm8350-bus.h>
 
 #define WM8350_I2C_ADDR         (0x34 >> 1)
 

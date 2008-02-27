@@ -21,4 +21,33 @@ config REGULATOR_MC13783
     tristate "MC13783 Regulator Support"
         depends on REGULATOR
         depends on MXC_PMIC_MC13783
+
+config REGULATOR_WM8350
+    tristate "WM8350 Regulator Support"
+        depends on REGULATOR
+        depends on !MXC_PMIC_MC13783
+
+menu "WM8350 Config Mode"
+depends on REGULATOR_WM8350
+
+choice
+	prompt "WM8350 Configuration Mode"
+	default PMIC_WM8350_MODE_0
+
+config PMIC_WM8350_MODE_0
+	bool "Mode 0"
+
+config PMIC_WM8350_MODE_1
+	bool "Mode 1"
+
+config PMIC_WM8350_MODE_2
+	bool "Mode 2"
+
+config PMIC_WM8350_MODE_3
+	bool "Mode 3"
+
+endchoice
+
+endmenu
+
 endmenu

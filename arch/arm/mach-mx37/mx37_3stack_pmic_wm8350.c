@@ -23,12 +23,15 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/err.h>
-#include <linux/pmic/wm8350.h>
+#include <linux/regulator/regulator-platform.h>
+#include <linux/regulator/wm8350/wm8350.h>
+#include <linux/regulator/wm8350/wm8350-pmic.h>
+#include <linux/regulator/wm8350/wm8350-gpio.h>
+#include <linux/regulator/wm8350/wm8350-bus.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/leds.h>
 #include <linux/fb.h>
-#include <linux/pmic.h>
 
 #include <asm/arch/dma.h>
 #include <asm/arch/spba.h>
@@ -50,85 +53,6 @@ struct mxc_audio_platform_data imx_3stack_audio_platform_data = {
 	.regulator1 = "DCDC6",
 	.regulator2 = "DCDC3"
 };
-extern struct led_trigger *imx32ads_led_trigger;
-
-/* program WM8350 so board will boot from WM8350 supplies */
-static int program = 0;
-module_param(program, int, 0);
-MODULE_PARM_DESC(program, "program initial DCDC & LDO values");
-
-/*
- * Program WM8350 with initial DCDC & LDO values.
- */
-static int program_wm8350(struct wm8350 *wm8350)
-{
-	struct wm8350_pmic *pmic = &wm8350->pmic;
-	u16 val;
-
-	wm8350_reg_unlock(wm8350);
-
-	/* DCDC1 @ 1.6 V  CPU */
-	wm8350_dcdc_set_voltage(pmic, WM8350_DCDC_1, 1600);
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_1, 1, 0,
-			     WM8350_DC1_ERRACT_SHUTDOWN_SYS);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_1, 1);
-
-	/* DCDC3 @ 2.8 V  Peripherals & IO */
-	wm8350_dcdc_set_voltage(pmic, WM8350_DCDC_3, 2800);
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_3, 1, 0, WM8350_DC1_ERRACT_NONE);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_3, 1);
-
-	/* DCDC4 @ 1.8 V Peripherals & IO */
-	wm8350_dcdc_set_voltage(pmic, WM8350_DCDC_4, 1800);
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_4, 1, 0, WM8350_DC1_ERRACT_NONE);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_4, 1);
-
-	/* DCDC6 @ 1.8 V DDR Memory */
-	wm8350_dcdc_set_voltage(pmic, WM8350_DCDC_6, 1800);
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_6, 1, 0, WM8350_DC1_ERRACT_NONE);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_6, 1);
-
-	/* DCDC2 @  OFF - 5.5V SW3 output */
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_2, 1, 0,
-			     WM8350_DC1_ERRACT_SHUTDOWN_CONV);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_2, 0);
-
-	/* DCDC5 @  OFF  - White LEDS */
-	wm8350_dcdc_set_slot(pmic, WM8350_DCDC_5, 1, 1,
-			     WM8350_DC1_ERRACT_SHUTDOWN_CONV);
-	wm8350_dcdc_enable(pmic, WM8350_DCDC_5, 0);
-
-	/* LDO1 @ 2.8 V Peripherals MMC & Camera */
-	wm8350_ldo_set_voltage(pmic, WM8350_LDO_1, 2800);
-	wm8350_ldo_set_slot(pmic, WM8350_LDO_1, 1, 0);
-	wm8350_ldo_enable(pmic, WM8350_LDO_1, 1);
-
-	/* LDO2 @ 3.3 V */
-	wm8350_ldo_set_voltage(pmic, WM8350_LDO_2, 3300);
-	wm8350_ldo_set_slot(pmic, WM8350_LDO_2, 1, 0);
-	wm8350_ldo_enable(pmic, WM8350_LDO_2, 1);
-
-	/* LDO3 @ 1.5 V VDIG, VGEN */
-	wm8350_ldo_set_voltage(pmic, WM8350_LDO_3, 1500);
-	wm8350_ldo_set_slot(pmic, WM8350_LDO_3, 1, 0);
-	wm8350_ldo_enable(pmic, WM8350_LDO_3, 1);
-
-	/* LDO4 @ 2.6 V Transceivers */
-	wm8350_ldo_set_voltage(pmic, WM8350_LDO_4, 2600);
-	wm8350_ldo_set_slot(pmic, WM8350_LDO_4, 1, 0);
-	wm8350_ldo_enable(pmic, WM8350_LDO_4, 1);
-
-	val = wm8350_reg_read(wm8350, WM8350_INTERFACE_CONTROL) &
-	    ~(WM8350_RECONFIG_AT_ON | WM8350_USE_DEV_PINS |
-	      WM8350_SPI_3WIRE | WM8350_SPI_4WIRE);
-	wm8350_reg_write(wm8350, WM8350_INTERFACE_CONTROL,
-			 val | WM8350_CONFIG_DONE | WM8350_AUTOINC);
-
-	/* dummy read required when changing Sec -> Pri I2C */
-	printk("dummy read %x\n", wm8350_reg_read(wm8350, 176));
-	printk("now press button and then swap jumpers if leds work\n");
-	return 0;
-}
 
 #ifdef NOT_PORTED_TO_IMX37_3STACK_YET
 
@@ -139,114 +63,17 @@ static void imx37_3stack_switch_handler(struct wm8350 *wm8350, int irq)
 #endif
 static struct platform_device *imx_snd_device;
 
-/* i.MX CPU voltage scaling */
-struct pm_circuit imx_cpu_circuit = {
-	.name = "imx_cpu",
-	.regulator_id = WM8350_DCDC_1,
-	.load = PM_LOAD_CPU,
-	.mV_range = {
-		     .dmin = 1400,
-		     .dmax = 1600,
-		     },
-};
-
-/* i.MX 3stack System IO */
-struct pm_circuit imx_io_hi_circuit = {
-	.name = "imx_io_hi",
-	.regulator_id = WM8350_DCDC_3,
-	.load = PM_LOAD_SYS_IO,
-	.mV_range = {
-		     .sval = 2700,
-		     },
-};
-
-/* i.MX 3stack System IO */
-struct pm_circuit imx_io_lo_circuit = {
-	.name = "imx_io_lo",
-	.regulator_id = WM8350_DCDC_4,
-	.load = PM_LOAD_SYS_IO,
-	.mV_range = {
-		     .sval = 1800,
-		     },
-};
-
-/* i.MX 3stack System IO */
-struct pm_circuit imx_io_gen_circuit = {
-	.name = "imx_io_gen",
-	.regulator_id = WM8350_LDO_3,
-	.load = PM_LOAD_SYS_IO,
-	.mV_range = {
-		     .sval = 1500,
-		     },
-};
-
-/* i.MX 3stack DDR RAM */
-struct pm_circuit imx_mem_circuit = {
-	.name = "imx_memory",
-	.regulator_id = WM8350_DCDC_6,
-	.load = PM_LOAD_MEM,
-	.mV_range = {
-		     .sval = 1800,
-		     },
-};
-
-/* i.MX 3stack & MMC & MStick */
-struct pm_circuit imx_vcam_circuit = {
-	.name = "imx_vcam",
-	.regulator_id = WM8350_LDO_1,
-	.load = PM_LOAD_MMC | PM_LOAD_MSTICK | PM_LOAD_CAMERA,
-	.mV_range = {
-		     .sval = 2800,
-		     },
-};
-
-/* i.MX 3stack SIM Card */
-struct pm_circuit imx_vsim_circuit = {
-	.name = "imx_vsim",
-	.regulator_id = WM8350_LDO_2,
-	.load = PM_LOAD_SIM | PM_LOAD_AUDIO,
-	.mV_range = {
-		     .sval = 3300,
-		     },
-};
-
-/* i.MX 3stack Tranceivers and other peripherals */
-struct pm_circuit imx_transceiver_circuit = {
-	.name = "imx_transceiver",
-	.regulator_id = WM8350_LDO_4,
-	.load = PM_LOAD_SERIAL | PM_LOAD_USB | PM_LOAD_IRDA | PM_LOAD_LCD |
-	    PM_LOAD_TV | PM_LOAD_DISK | PM_LOAD_MMC,
-	.mV_range = {
-		     .sval = 2800,
-		     },
-};
-
 void wm8350_free(struct wm8350 *wm8350)
 {
 #if BATTERY
 	struct wm8350_power *power = &wm8350->power;
 #endif
 
-	pm_unregister_circuit(&imx_cpu_circuit);
-	pm_unregister_circuit(&imx_io_hi_circuit);
-	pm_unregister_circuit(&imx_io_lo_circuit);
-	pm_unregister_circuit(&imx_io_gen_circuit);
-	pm_unregister_circuit(&imx_mem_circuit);
-	pm_unregister_circuit(&imx_vcam_circuit);
-	pm_unregister_circuit(&imx_vsim_circuit);
-	pm_unregister_circuit(&imx_transceiver_circuit);
-#ifdef NOT_PORTED_TO_IMX37
-	/* make sure DCDC1 is back at 1.6 volts so we can safely reboot */
-	/* DCDC1 @ 1.6 V */
-	wm8350_dcdc_set_voltage(&wm8350->pmic, WM8350_DCDC_1, 1600);
-	wm8350_dcdc_set_slot(&wm8350->pmic, WM8350_DCDC_1, 1, 0,
-			     WM8350_DC1_ERRACT_SHUTDOWN_SYS);
-	wm8350_dcdc_enable(&wm8350->pmic, WM8350_DCDC_1, 1);
-#endif
 	wm8350_mask_irq(wm8350, WM8350_IRQ_GPIO(7));
 	wm8350_free_irq(wm8350, WM8350_IRQ_GPIO(7));
 	wm8350_mask_irq(wm8350, WM8350_IRQ_WKUP_ONKEY);
 	wm8350_free_irq(wm8350, WM8350_IRQ_WKUP_ONKEY);
+
 #if BATTERY
 	wm8350_charger_enable(power, 0);
 	wm8350_fast_charger_enable(power, 0);
@@ -255,21 +82,16 @@ void wm8350_free(struct wm8350 *wm8350)
 		free_irq(wm8350->nirq, wm8350);
 
 	flush_scheduled_work();
-#ifdef MXC_DPTC
-	mxc_pmic_unregister(&wm8350->pmic);
-#endif
+
 	if (wm8350->pmic.dev.is_registered)
 		device_unregister(&wm8350->pmic.dev);
 	if (wm8350->rtc.dev.is_registered)
 		device_unregister(&wm8350->rtc.dev);
-	if (wm8350->led.dev.is_registered)
-		device_unregister(&wm8350->led.dev);
 	if (wm8350->wdg.dev.is_registered)
 		device_unregister(&wm8350->wdg.dev);
 	if (wm8350->power.dev.is_registered)
 		device_unregister(&wm8350->power.dev);
-	if (wm8350->backlight.dev.is_registered)
-		device_unregister(&wm8350->backlight.dev);
+
 	platform_device_unregister(imx_snd_device);
 }
 
@@ -314,10 +136,9 @@ static int config_gpios(struct wm8350 *wm8350)
 			   WM8350_GPIO_PULL_DOWN, WM8350_GPIO_INVERT_OFF,
 			   WM8350_GPIO_DEBOUNCE_OFF);
 
-	/* Hibernate -- needs level but GPIO5 is edge so we
-	 * will only wake with PWR_ON switch atm */
-	wm8350_gpio_config(wm8350, 5, WM8350_GPIO_DIR_IN,
-			   WM8350_GPIO5_HIBERNATE_IN, WM8350_GPIO_ACTIVE_HIGH,
+	/* Hibernate -- GPIO 7 */
+	wm8350_gpio_config(wm8350, 7, WM8350_GPIO_DIR_IN,
+			   WM8350_GPIO7_HIBERNATE_IN, WM8350_GPIO_ACTIVE_HIGH,
 			   WM8350_GPIO_PULL_DOWN, WM8350_GPIO_INVERT_OFF,
 			   WM8350_GPIO_DEBOUNCE_OFF);
 
@@ -332,7 +153,7 @@ static int config_gpios(struct wm8350 *wm8350)
 			   WM8350_GPIO_ACTIVE_HIGH, WM8350_GPIO_PULL_DOWN,
 			   WM8350_GPIO_INVERT_OFF, WM8350_GPIO_DEBOUNCE_ON);
 	wm8350_register_irq(wm8350, WM8350_IRQ_GPIO(7),
-			    imx37_3stack_switch_handler);
+			    imx37_3stack_switch_handler, NULL);
 	wm8350_unmask_irq(wm8350, WM8350_IRQ_GPIO(7));
 
 	/* PWR_FAIL */
@@ -384,63 +205,41 @@ static int config_hibernate(struct wm8350 *wm8350)
 				     WM8350_LDO_HIB_MODE_DIS);
 	return 0;
 }
-#endif				//NOT_PORTED_TO_IMX37_3STACK_YET
+#endif
+
+struct regulation_constraints led_regulation_constraints = {
+	.min_uA = 0,
+	.max_uA = 19727,
+	.valid_ops_mask = REGULATOR_CHANGE_CURRENT,
+};
+
+struct regulation_constraints dvfs_regulation_constraints = {
+	.min_uV = mV_to_uV(1300),
+	.max_uV = mV_to_uV(1600),
+	.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_MODE,
+};
+
+static void set_regulator_constraints(struct wm8350 *wm8350)
+{
+	regulator_set_platform_constraints("DCDC1",
+					   &dvfs_regulation_constraints);
+	regulator_set_platform_constraints("ISINKA",
+					   &led_regulation_constraints);
+}
 
 int wm8350_init(struct wm8350 *wm8350)
 {
-	int ret;
+	int ret = 0;
 
-	if (program) {
-		/* once only...
-		 * or if VRTC batt discharges and there is no PIC */
-		program_wm8350(wm8350);
-		return -EBUSY;
-	}
-
-	/* configure system power circuits */
-	pm_register_circuit(&imx_cpu_circuit);
-	pm_register_circuit(&imx_io_hi_circuit);
-	pm_register_circuit(&imx_io_lo_circuit);
-	pm_register_circuit(&imx_io_gen_circuit);
-	pm_register_circuit(&imx_mem_circuit);
-	pm_register_circuit(&imx_vcam_circuit);
-	pm_register_circuit(&imx_vsim_circuit);
-	pm_register_circuit(&imx_transceiver_circuit);
-
-	/* backlight properties */
-	wm8350->backlight.props.max_brightness = 10;
-	wm8350->backlight.props.power = FB_BLANK_UNBLANK;
-	wm8350->backlight.props.brightness = 5;
-	wm8350->backlight.dcdc = WM8350_DCDC_2;
-	wm8350->backlight.isink = WM8350_ISINK_B;
-	wm8350->backlight.retries = 5;
-
-	/* LED properties */
-	wm8350->led.dcdc = WM8350_DCDC_5;
-	wm8350->led.isink = WM8350_ISINK_A;
-	wm8350->led.retries = 5;
-	wm8350->led.half_value = 986376;
-	wm8350->led.full_value = 1972752;
-
-	/* RTC periodic irq :-
-	 * If we had a dedicated RTC PER IRQ pin we could add it here. */
-	wm8350->rtc.per_irq = 0;
-
-	/* now register all i.MX37 3STACK WM8350 client devices */
+	/* register regulator and set constraints */
 	wm8350_device_register_pmic(wm8350);
+	set_regulator_constraints(wm8350);
 #ifdef NOT_PORTED_TO_IMX37
 	wm8350_device_register_rtc(wm8350);
 	wm8350_device_register_wdg(wm8350);
-	wm8350_device_register_led(wm8350);
 	wm8350_device_register_power(wm8350);
-	wm8350_device_register_backlight(wm8350);
-	/* make sure DCDC1 is back at 1.6 volts so we can safely work */
-	/* DCDC1 @ 1.6 V */
-	wm8350_dcdc_set_voltage(&wm8350->pmic, WM8350_DCDC_1, 1600);
-	wm8350_dcdc_set_slot(&wm8350->pmic, WM8350_DCDC_1, 1, 0,
-			     WM8350_DC1_ERRACT_SHUTDOWN_SYS);
-	wm8350_dcdc_enable(&wm8350->pmic, WM8350_DCDC_1, 1);
 #endif
+
 	/* register sound */
 	printk("Registering imx37_snd_device");
 	imx_snd_device = platform_device_alloc("wm8350-imx-3stack-audio", -1);
@@ -486,11 +285,6 @@ int wm8350_init(struct wm8350 *wm8350)
 	schedule_work(&wm8350->work);
 #endif
 
-#ifdef MXC_DPTC
-	/* DPTC reg */
-	mxc_pmic_register(&wm8350->pmic, wm8350_dcdc_set_voltage);
-#endif
-
 #if BATTERY
 	/* not much use without a battery atm */
 	wm8350_init_battery(wm8350);
@@ -499,6 +293,7 @@ int wm8350_init(struct wm8350 *wm8350)
 	return ret;
       snd_err:
 	platform_device_put(imx_snd_device);
+
       err:
 	printk("wm8350_init() FAILED");
 	kfree(wm8350->reg_cache);

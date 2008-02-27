@@ -22,15 +22,24 @@
 #include <linux/device.h>
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
-#include <linux/pmic/wm8350.h>
+#include <linux/regulator/wm8350/wm8350.h>
+#include <linux/regulator/wm8350/wm8350-bus.h>
+#include <linux/regulator/wm8350/wm8350-pmic.h>
+#include <linux/regulator/wm8350/wm8350-gpio.h>
+#include <linux/regulator/wm8350/wm8350-comparator.h>
+#include <linux/regulator/wm8350/wm8350-supply.h>
+#include <linux/regulator/wm8350/wm8350-audio.h>
 #include <linux/delay.h>
 
 #define WM8350_BUS_VERSION "0.4"
 #define WM8350_UNLOCK_KEY 0x0013
 #define WM8350_LOCK_KEY 0x0000
 
+#define WM8350_CLOCK_CONTROL_1                  0x28
+#define WM8350_AIF_TEST                         0x74
+
 /* debug */
-#define WM8350_BUS_DEBUG 0  
+#define WM8350_BUS_DEBUG 0
 #if WM8350_BUS_DEBUG
 #define dbg(format, arg...) printk(format, ## arg)
 #define dump(regs, src) do { \
@@ -82,6 +91,7 @@ static DEFINE_MUTEX(io_mutex);
 static DEFINE_MUTEX(reg_lock_mutex);
 static DEFINE_MUTEX(auxadc_mutex);
 
+#ifdef CONFIG_I2C
 static int wm8350_read_i2c_device(struct wm8350 *wm8350, char reg,
 	int bytes, char *dest)
 {
@@ -106,7 +116,9 @@ static int wm8350_write_i2c_device(struct wm8350 *wm8350, char reg,
 	memcpy(&msg[1], src, bytes);
 	return i2c_master_send(wm8350->i2c_client, msg, bytes + 1);
 }
+#endif
 
+#ifdef CONFIG_SPI
 static int wm8350_read_spi_device(struct wm8350 *wm8350, char reg,
 	int bytes, char *dest)
 {
@@ -122,12 +134,8 @@ static int wm8350_read_spi_device(struct wm8350 *wm8350, char reg,
 	tx_msg[2] = 0;
 	tx_msg[3] = 0;
 
-//	ret = spi_write_then_read(wm8350->spi_device, tx_msg, 4, rx_msg, 4);
-        ret=0;
-        rx_msg[2]=0;
-        rx_msg[3]=0;
-	
-        if (ret < 0) {
+	ret = spi_write_then_read(wm8350->spi_device, tx_msg, 4, rx_msg, 4);
+	if (ret < 0) {
 		printk(KERN_ERR "%s: io failure %d\n", __func__, ret);
 		return 0;
 	}
@@ -150,8 +158,9 @@ static int wm8350_write_spi_device(struct wm8350 *wm8350, char reg,
 	msg[1] = reg; 
 	msg[2] = *src++;
 	msg[3] = *src;
-	return 0;//spi_write(wm8350->spi_device, msg, 4);
+	return spi_write(wm8350->spi_device, msg, 4);
 }
+#endif
 
 /* mask in WM8350 read bits */
 static inline void wm8350_mask_read(u8 reg, int bytes, u16 *buf)
@@ -438,17 +447,29 @@ int wm8350_set_io(struct wm8350 *wm8350, int io, wm8350_hw_read_t read_dev,
 	mutex_lock(&io_mutex);
 	switch (io) {
 	case WM8350_IO_I2C:
+#ifdef CONFIG_I2C
 		wm8350->read_dev = wm8350_read_i2c_device;
 		wm8350->write_dev = wm8350_write_i2c_device;
 		break;
+#else
+		printk(KERN_ERR "wm8350: I2C not selected.\n");
+		wm8350->read_dev = NULL;
+		wm8350->write_dev = NULL;
+		mutex_unlock(&io_mutex);
+		return -EINVAL;
+#endif
 	case WM8350_IO_SPI:
+#ifdef CONFIG_SPI
 		wm8350->read_dev = wm8350_read_spi_device;
 		wm8350->write_dev = wm8350_write_spi_device;
 		break;
-	case WM8350_IO_CUSTOM:
-		wm8350->read_dev = read_dev;
-		wm8350->write_dev = write_dev;
-		break;
+#else
+		printk(KERN_ERR "wm8350: SPI not selected.\n");
+		wm8350->read_dev = NULL;
+		wm8350->write_dev = NULL;
+		mutex_unlock(&io_mutex);
+		return -EINVAL;
+#endif
 	default:
 		printk(KERN_ERR "wm8350: invalid IO mechanism\n");
 		wm8350->read_dev = NULL;
@@ -480,6 +501,7 @@ int wm8350_create_cache(struct wm8350 *wm8350)
 	/* TODO: check if we are virgin state so we don't have to do this */
 	/* refresh cache with chip regs as some registers can survive reboot */
 	for (i = 0; i < WM8350_MAX_REGISTER; i++) {
+		/* audio register range */
 		if (wm8350_reg_io_map[i].readable &&
 			(i < WM8350_CLOCK_CONTROL_1 || i > WM8350_AIF_TEST)) {
 			ret = wm8350->read_dev(wm8350, i, 2, (char*)&value);
@@ -504,8 +526,9 @@ EXPORT_SYMBOL_GPL(wm8350_create_cache);
 static void wm8350_irq_call_worker(struct wm8350 *wm8350, int irq)
 {
 	mutex_lock(&wm8350->work_mutex);
-	if (wm8350->handler[irq])
-		wm8350->handler[irq](wm8350, irq);
+
+	if (wm8350->irq[irq].handler)
+		wm8350->irq[irq].handler(wm8350, irq, wm8350->irq[irq].data);
 	else {
 		mutex_unlock(&wm8350->work_mutex);
 		printk(KERN_ERR "wm8350: irq %d nobody cared. now masked.\n",
@@ -677,16 +700,17 @@ void wm8350_irq_worker(struct work_struct *work)
 EXPORT_SYMBOL_GPL(wm8350_irq_worker);
 
 int wm8350_register_irq(struct wm8350 *wm8350, int irq,
-	void (*handler)(struct wm8350 *, int))
+	void (*handler)(struct wm8350 *, int, void*), void *data)
 {
 	if (irq < 0 || irq > WM8350_NUM_IRQ || !handler)
 		return -EINVAL;
 
-	if (wm8350->handler[irq])
+	if (wm8350->irq[irq].handler)
 		return -EBUSY;
 
 	mutex_lock(&wm8350->work_mutex);
-	wm8350->handler[irq] = handler;
+	wm8350->irq[irq].handler = handler;
+	wm8350->irq[irq].data = data;
 	mutex_unlock(&wm8350->work_mutex);
 	return 0;
 }
@@ -698,7 +722,7 @@ int wm8350_free_irq(struct wm8350 *wm8350, int irq)
 		return -EINVAL;
 
 	mutex_lock(&wm8350->work_mutex);
-	wm8350->handler[irq] = NULL;
+	wm8350->irq[irq].handler = NULL;
 	mutex_unlock(&wm8350->work_mutex);
 	return 0;
 }
@@ -1398,44 +1422,6 @@ int wm8350_device_register_rtc(struct wm8350 *wm8350)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(wm8350_device_register_rtc);
-
-static void wm8350_led_dev_release(struct device *dev){}
-
-int wm8350_device_register_led(struct wm8350 *wm8350)
-{
-	int ret;
-
-	strcpy(wm8350->led.dev.bus_id, "wm8350-led");
-	wm8350->led.dev.bus = &wm8350_bus_type;
-	wm8350->led.dev.parent = &wm8350->i2c_client->dev;
-	wm8350->led.dev.release = wm8350_led_dev_release;
-
-	ret = device_register(&wm8350->led.dev);
-	if (ret < 0)
-		printk(KERN_ERR "failed to register WM8350 LED device\n");
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(wm8350_device_register_led);
-
-static void wm8350_backlight_dev_release(struct device *dev){}
-
-int wm8350_device_register_backlight(struct wm8350 *wm8350)
-{
-	int ret;
-
-	strcpy(wm8350->backlight.dev.bus_id, "wm8350-bl");
-	wm8350->backlight.dev.bus = &wm8350_bus_type;
-	wm8350->backlight.dev.parent = &wm8350->i2c_client->dev;
-	wm8350->backlight.dev.release = wm8350_backlight_dev_release;
-
-	ret = device_register(&wm8350->backlight.dev);
-	if (ret < 0)
-		printk(KERN_ERR "failed to register WM8350 backlight device\n");
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(wm8350_device_register_backlight);
 
 static void wm8350_wdg_dev_release(struct device *dev){}
 
