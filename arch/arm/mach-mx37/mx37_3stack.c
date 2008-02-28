@@ -47,7 +47,6 @@
  *
  * @ingroup MSL_MX37
  */
-
 extern void mxc_map_io(void);
 extern void mxc_init_irq(void);
 extern void mxc_cpu_init(void) __init;
@@ -61,9 +60,13 @@ static void mxc_nop_release(struct device *dev)
 	/* Nothing */
 }
 
-unsigned long board_get_ckih_rate(void)
+/* Get reference input clocks */
+void board_ref_clk_rate(unsigned long *ckil, unsigned long *osc,
+			unsigned long *ckih)
 {
-	return 24000000;
+	*ckil = 32768;
+	*osc = 24000000;
+	*ckih = 22579200;
 }
 
 /* MTD NAND flash */
