@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -287,7 +287,7 @@ static int mxc_kpp_scan_matrix(void)
 		 * 4. Configure columns as open-drain
 		 */
 		reg_val = __raw_readw(KPCR);
-		reg_val |= ((1 << MAXCOL) - 1) << 8;
+		reg_val |= ((1 << kpp_dev.kpp_cols) - 1) << 8;
 		__raw_writew(reg_val, KPCR);
 
 		/*
