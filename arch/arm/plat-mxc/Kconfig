@@ -86,6 +86,14 @@ config MXC_FB_IRAM
 	bool
 	depends on ARCH_MXC
 
+config DMA_ZONE_SIZE
+	int "DMA memory zone size"
+	range 0 32
+	default 24
+	help
+	  This is the size in MB for the DMA zone. The DMA zone is used for
+	  dedicated memory for large contiguous video buffers
+
 config ISP1504_MXC
 	bool "ISP1504 transceiver support"
 	depends on USB_ARCH_HAS_EHCI

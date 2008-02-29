@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -32,7 +32,7 @@
 #endif
 
 /* Size of contiguous memory for DMA and other h/w blocks */
-#define CONSISTENT_DMA_SIZE	SZ_8M
+#define CONSISTENT_DMA_SIZE	(14 * SZ_1M)
 
 /*!
  * @defgroup Memory_MX27 Memory Map
@@ -55,7 +55,11 @@
  */
 #ifndef __ASSEMBLY__
 
+#ifdef CONFIG_DMA_ZONE_SIZE
+#define MXC_DMA_ZONE_SIZE	((CONFIG_DMA_ZONE_SIZE * SZ_1M) >> PAGE_SHIFT)
+#else
 #define MXC_DMA_ZONE_SIZE	((12 * SZ_1M) >> PAGE_SHIFT)
+#endif
 
 static inline void __arch_adjust_zones(int node, unsigned long *zone_size,
 				       unsigned long *zhole_size)
