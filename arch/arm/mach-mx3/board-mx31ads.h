@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -14,6 +14,7 @@
 #ifndef __ASM_ARCH_MXC_BOARD_MX31ADS_H__
 #define __ASM_ARCH_MXC_BOARD_MX31ADS_H__
 
+#ifdef CONFIG_MACH_MX31ADS
 /*!
  * @defgroup BRDCFG_MX31 Board Configuration Options
  * @ingroup MSL_MX31
@@ -321,4 +322,5 @@
 #define MXC_BD_LED_OFF(led) \
         __raw_writew(led, PBC_BASE_ADDRESS + PBC_BCTRL1_CLEAR)
 
+#endif				/* CONFIG_MACH_MX31ADS */
 #endif				/* __ASM_ARCH_MXC_BOARD_MX31ADS_H__ */

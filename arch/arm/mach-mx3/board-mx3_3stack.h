@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -14,17 +14,18 @@
 #ifndef __ASM_ARCH_MXC_BOARD_MX31PDK_H__
 #define __ASM_ARCH_MXC_BOARD_MX31PDK_H__
 
+#ifdef CONFIG_MACH_MX31_3DS
 /*!
  * @defgroup BRDCFG_MX31 Board Configuration Options
  * @ingroup MSL_MX31
  */
 
 /*!
- * @file mach-mx3/board-mx31ads.h
+ * @file mach-mx3/board-mx3_3stack.h
  *
  * @brief This file contains all the board level configuration options.
  *
- * It currently hold the options defined for MX31 ADS Platform.
+ * It currently hold the options defined for MX31 3STACK Platform.
  *
  * @ingroup BRDCFG_MX31
  */
@@ -109,5 +110,37 @@
 #define MAGIC_NUMBER2_REG	0x48
 /* CPLD code version */
 #define CPLD_CODE_VER_REG	0x50
+/* magic word for debug CPLD */
+#define MAGIC_NUMBER3_REG	0x58
+/* module reset register*/
+#define MODULE_RESET_REG	0x60
+/* CPU ID and Personality ID */
+#define MCU_BOARD_ID_REG	0x68
 
+/* interrupts like external uart , external ethernet etc*/
+#define EXPIO_PARENT_INT	IOMUX_TO_IRQ(MX31_PIN_GPIO1_1)
+
+#define EXPIO_INT_ENET		(MXC_EXP_IO_BASE + 0)
+#define EXPIO_INT_XUART_A 	(MXC_EXP_IO_BASE + 1)
+#define EXPIO_INT_XUART_B 	(MXC_EXP_IO_BASE + 2)
+#define EXPIO_INT_BUTTON_A 	(MXC_EXP_IO_BASE + 3)
+#define EXPIO_INT_BUTTON_B 	(MXC_EXP_IO_BASE + 4)
+
+/*! This is System IRQ used by LAN9217 */
+#define LAN9217_IRQ	EXPIO_INT_ENET
+
+/*! LED definition*/
+#define MXC_BD_LED1	(1)
+#define MXC_BD_LED2	(1 << 1)
+#define MXC_BD_LED3	(1 << 2)
+#define MXC_BD_LED4	(1 << 3)
+#define MXC_BD_LED5	(1 << 4)
+#define MXC_BD_LED6	(1 << 5)
+#define MXC_BD_LED7	(1 << 6)
+#define MXC_BD_LED8	(1 << 7)
+
+#define MXC_BD_LED_ON(led)
+#define MXC_BD_LED_OFF(led)
+
+#endif				/* CONFIG_MACH_MX31_3DS */
 #endif				/* __ASM_ARCH_MXC_BOARD_MX31PDK_H__ */

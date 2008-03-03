@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -238,8 +238,6 @@ void gpio_spi_active(int cspi_mod)
 				  INPUTCONFIG_FUNC);
 		mxc_request_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_FUNC,
 				  INPUTCONFIG_FUNC);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS1, OUTPUTCONFIG_FUNC,
-				  INPUTCONFIG_FUNC);
 		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_FUNC,
 				  INPUTCONFIG_FUNC);
 		break;
@@ -308,6 +306,18 @@ void gpio_spi_inactive(int cspi_mod)
 		break;
 	case 1:
 		/* SPI2 */
+		mxc_request_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
+		mxc_request_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
+		mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
+		mxc_request_iomux(MX31_PIN_CSPI2_SPI_RDY, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
+		mxc_request_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
+		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_GPIO);
 		break;
 	case 2:
 		/* SPI3 */
@@ -567,6 +577,8 @@ int sdhc_write_protect(void)
 		return 0;
 }
 
+EXPORT_SYMBOL(sdhc_write_protect);
+
 /*!
  * Setup GPIO for LCD to be active
  *
@@ -644,11 +656,6 @@ void gpio_sensor_active(void)
 	mxc_set_gpio_direction(MX31_PIN_CSI_D5, 0);
 	mxc_set_gpio_dataout(MX31_PIN_CSI_D5, 0);
 
-	/*mxc_request_iomux(MX31_PIN_SRX0, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
-	   mxc_set_gpio_direction(MX31_PIN_SRX0, 0);
-	   mxc_set_gpio_dataout(MX31_PIN_SRX0, 0);
-	   mdelay(100);
-	   mxc_set_gpio_dataout(MX31_PIN_SRX0, 1); */
 	mxc_request_iomux(MX31_PIN_CSI_D6, OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC);
 	mxc_request_iomux(MX31_PIN_CSI_D7, OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC);
 	mxc_request_iomux(MX31_PIN_CSI_D8, OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC);
@@ -1125,4 +1132,49 @@ void gpio_usbotg_hs_inactive(void)
 }
 
 EXPORT_SYMBOL(gpio_usbotg_hs_inactive);
+
+/*!
+ * USB OTG FS port
+ */
+int gpio_usbotg_fs_active(void)
+{
+	if (mxc_request_iomux(MX31_PIN_USBOTG_DATA0,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA1,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA2,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA3,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA4,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA5,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA6,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DATA7,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_CLK,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_DIR,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_NXT,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USBOTG_STP,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC) ||
+	    mxc_request_iomux(MX31_PIN_USB_PWR,
+			      OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC))
+		return -EINVAL;
+	return 0;
+}
+
+EXPORT_SYMBOL(gpio_usbotg_fs_active);
+
+void gpio_usbotg_fs_inactive(void)
+{
+	/* Do nothing as  pins doesn't have/support GPIO mode */
+
+}
+
+EXPORT_SYMBOL(gpio_usbotg_fs_inactive);
 

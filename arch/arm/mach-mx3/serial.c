@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -25,6 +25,7 @@
 #include <asm/arch/spba.h>
 #include "serial.h"
 #include "board-mx31ads.h"
+#include "board-mx3_3stack.h"
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 
@@ -35,7 +36,7 @@
  * passes back the appropriate port structure as an argument to the control
  * functions.
  */
-static uart_mxc_port mxc_ports[] = {
+static uart_mxc_port mxc_ports[MXC_UART_NR] = {
 	[0] = {
 	       .port = {
 			.membase = (void *)IO_ADDRESS(UART1_BASE_ADDR),
@@ -92,6 +93,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .ir_tx_inv = MXC_IRDA_TX_INV,
 	       .ir_rx_inv = MXC_IRDA_RX_INV,
 	       },
+#if UART3_ENABLED == 1
 	[2] = {
 	       .port = {
 			.membase = (void *)IO_ADDRESS(UART3_BASE_ADDR),
@@ -120,6 +122,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .ir_tx_inv = MXC_IRDA_TX_INV,
 	       .ir_rx_inv = MXC_IRDA_RX_INV,
 	       },
+#endif
 #if UART4_ENABLED == 1
 	[3] = {
 	       .port = {
@@ -150,6 +153,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .ir_rx_inv = MXC_IRDA_RX_INV,
 	       },
 #endif
+#if UART5_ENABLED == 1
 	[4] = {
 	       .port = {
 			.membase = (void *)IO_ADDRESS(UART5_BASE_ADDR),
@@ -178,6 +182,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .ir_tx_inv = MXC_IRDA_TX_INV,
 	       .ir_rx_inv = MXC_IRDA_RX_INV,
 	       },
+#endif
 };
 
 static struct platform_device mxc_uart_device1 = {
@@ -196,6 +201,7 @@ static struct platform_device mxc_uart_device2 = {
 		},
 };
 
+#if UART3_ENABLED == 1
 static struct platform_device mxc_uart_device3 = {
 	.name = "mxcintuart",
 	.id = 2,
@@ -203,6 +209,7 @@ static struct platform_device mxc_uart_device3 = {
 		.platform_data = &mxc_ports[2],
 		},
 };
+#endif
 
 #if UART4_ENABLED == 1
 static struct platform_device mxc_uart_device4 = {
@@ -214,6 +221,7 @@ static struct platform_device mxc_uart_device4 = {
 };
 #endif
 
+#if UART5_ENABLED == 1
 static struct platform_device mxc_uart_device5 = {
 	.name = "mxcintuart",
 	.id = 4,
@@ -221,6 +229,7 @@ static struct platform_device mxc_uart_device5 = {
 		.platform_data = &mxc_ports[4],
 		},
 };
+#endif
 
 static int __init mxc_init_uart(void)
 {

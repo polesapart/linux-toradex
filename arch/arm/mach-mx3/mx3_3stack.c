@@ -126,7 +126,7 @@ static inline void mxc_init_keypad(void)
 #if defined(CONFIG_MTD_NAND_MXC) || defined(CONFIG_MTD_NAND_MXC_MODULE) \
 	|| defined(CONFIG_MTD_NAND_MXC_V2) || defined(CONFIG_MTD_NAND_MXC_V2_MODULE)
 
-static struct mtd_partition mxc_nand_partitions[4] = {
+static struct mtd_partition mxc_nand_partitions[] = {
 	{
 	 .name = "IPL-SPL",
 	 .offset = 0,
@@ -138,7 +138,11 @@ static struct mtd_partition mxc_nand_partitions[4] = {
 	{
 	 .name = "nand.rootfs",
 	 .offset = MTDPART_OFS_APPEND,
-	 .size = 22 * 1024 * 1024},
+	 .size = 96 * 1024 * 1024},
+	{
+	 .name = "nand.configure",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 8 * 1024 * 1024},
 	{
 	 .name = "nand.userfs",
 	 .offset = MTDPART_OFS_APPEND,
@@ -222,20 +226,21 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 };
 
 /*lan9217 device*/
-#if defined(CONFIG_SMC911X) || defined(CONFIG_SMC911X_MODULE)
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 static struct resource smsc911x_resources[] = {
 	{
 	 .start = LAN9217_BASE_ADDR,
-	 .end = LAN9217_BASE_ADDR + 255,
+	 .end = LAN9217_BASE_ADDR + 0x100,
 	 .flags = IORESOURCE_MEM,
 	 },
 	{
-	 .start = MXC_EXP_IO_BASE,
+	 .start = LAN9217_IRQ,
+	 .end = LAN9217_IRQ,
 	 .flags = IORESOURCE_IRQ,
 	 },
 };
 static struct platform_device smsc_lan9217_device = {
-	.name = "smc911x",
+	.name = "smsc911x",
 	.id = 0,
 	.dev = {
 		.release = mxc_nop_release,
@@ -432,7 +437,10 @@ static int __init mxc_expio_init(void)
 		return -ENOMEM;
 
 	if ((__raw_readw(brd_io + MAGIC_NUMBER1_REG) != 0xAAAA) ||
-	    (__raw_readw(brd_io + MAGIC_NUMBER2_REG) != 0x5555)) {
+	    (__raw_readw(brd_io + MAGIC_NUMBER2_REG) != 0x5555) ||
+	    (__raw_readw(brd_io + MAGIC_NUMBER3_REG) != 0xCAFE)) {
+		iounmap((void *)brd_io);
+		brd_io = 0;
 		return -ENODEV;
 	}
 
@@ -457,9 +465,8 @@ static int __init mxc_expio_init(void)
 		set_irq_handler(i, handle_level_irq);
 		set_irq_flags(i, IRQF_VALID);
 	}
-	set_irq_type(IOMUX_TO_IRQ(MX31_PIN_GPIO1_1), IRQT_LOW);
-	set_irq_chained_handler(IOMUX_TO_IRQ(MX31_PIN_GPIO1_1),
-				mxc_expio_irq_handler);
+	set_irq_type(EXPIO_PARENT_INT, IRQT_LOW);
+	set_irq_chained_handler(EXPIO_PARENT_INT, mxc_expio_irq_handler);
 
 	return 0;
 }
@@ -489,12 +496,10 @@ static void __init mxc_init_pmic_audio(void)
 	pll_clk = clk_get(NULL, "usb_pll");
 	ssi_clk = clk_get(NULL, "ssi_clk.0");
 	clk_set_parent(ssi_clk, pll_clk);
-	clk_enable(ssi_clk);
 	clk_put(ssi_clk);
 
 	ssi_clk = clk_get(NULL, "ssi_clk.1");
 	clk_set_parent(ssi_clk, pll_clk);
-	clk_enable(ssi_clk);
 	clk_put(ssi_clk);
 	clk_put(pll_clk);
 
@@ -588,11 +593,6 @@ static void __init mxc_board_init(void)
 #define PLL_532MHZ		PLL_PCTL_REG(1, 13, 10, 3)
 #define PLL_399MHZ		PLL_PCTL_REG(1, 52, 7, 35)
 #define PLL_133MHZ		PLL_PCTL_REG(2, 26, 5, 3)
-
-/* For 27MHz input clock */
-#define PLL_532_8MHZ		PLL_PCTL_REG(1, 15, 9, 13)
-#define PLL_399_6MHZ		PLL_PCTL_REG(1, 18, 7, 7)
-#define PLL_133_2MHZ		PLL_PCTL_REG(3, 5, 7, 2)
 
 #define PDR0_REG(mcu, max, hsp, ipg, nfc)	\
 	(MXC_CCM_PDR0_MCU_DIV_##mcu | MXC_CCM_PDR0_MAX_DIV_##max | \
