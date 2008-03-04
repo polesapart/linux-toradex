@@ -1,6 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.24
+# Mon Feb 25 13:31:49 2008
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -918,6 +919,8 @@ CONFIG_RTC_LIB=y
 #
 # MXC VPU(Video Processing Unit) support
 #
+CONFIG_MXC_VPU=y
+# CONFIG_MXC_VPU_DEBUG is not set
 
 #
 # File systems

@@ -6,10 +6,11 @@ menu "MXC VPU(Video Processing Unit) support"
 
 config MXC_VPU
 	  tristate "Support for MXC VPU(Video Processing Unit)"
-	  depends on (ARCH_MX3 || ARCH_MX27 || ARCH_MXC92323)
+	  depends on (ARCH_MX3 || ARCH_MX27 || ARCH_MXC92323 || ARCH_MX37)
 	  default y
 	---help---
-	  The VPU codec device provides codec function for H.264/MPEG4/H.263
+	  The VPU codec device provides codec function for H.264/MPEG4/H.263,
+	  as well as MPEG2/VC-1/DivX on some platforms.
 
 config MXC_VPU_DEBUG
 	bool "MXC VPU debugging"

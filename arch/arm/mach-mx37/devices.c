@@ -491,6 +491,27 @@ struct mxc_gpio_port mxc_gpio_ports[GPIO_PORT_NUM] = {
 	 },
 };
 
+#if defined(CONFIG_MXC_VPU) || defined(CONFIG_MXC_VPU_MODULE)
+/*! Platform Data for MXC VPU */
+static struct platform_device mxcvpu_device = {
+	.name = "mxc_vpu",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		},
+};
+
+static inline void mxc_init_vpu(void)
+{
+	if (platform_device_register(&mxcvpu_device) < 0)
+		printk(KERN_ERR "Error: Registering the VPU.\n");
+}
+#else
+static inline void mxc_init_vpu(void)
+{
+}
+#endif
+
 static struct platform_device mxc_dma_device = {
 	.name = "mxc_dma",
 	.id = 0,
@@ -514,6 +535,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_owire();
 	mxc_init_scc();
 	mxc_init_dma();
+	mxc_init_vpu();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);
