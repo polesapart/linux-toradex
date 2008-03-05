@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -2294,6 +2294,19 @@ PMIC_STATUS pmic_audio_output_enable_phantom_ground(void);
  *                                   be disabled.
  */
 PMIC_STATUS pmic_audio_output_disable_phantom_ground(void);
+
+/*!
+ * @brief Enable/Disable fm output
+ *
+ * This function enables/disables the fm output.
+ *
+ * @param[in]   enable		     True to enable and false to disable
+ *
+ * @retval      PMIC_SUCCESS         If the fm output  was
+ *                                   successfully enable or disabled
+ * @retval      PMIC_ERROR           If the operation fails
+ */
+PMIC_STATUS pmic_audio_fm_output_enable(bool enable);
 
 /*@}*/
 

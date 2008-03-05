@@ -474,8 +474,6 @@ static int __init mxc_expio_init(void)
 #if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
 static void __init mxc_init_pmic_audio(void)
 {
-	struct clk *pll_clk;
-	struct clk *ssi_clk;
 	struct clk *ckih_clk;
 	struct clk *cko_clk;
 
@@ -491,17 +489,6 @@ static void __init mxc_init_pmic_audio(void)
 	}
 	clk_put(ckih_clk);
 	clk_put(cko_clk);
-
-	/* Assign USBPLL to be used by SSI1/2 */
-	pll_clk = clk_get(NULL, "usb_pll");
-	ssi_clk = clk_get(NULL, "ssi_clk.0");
-	clk_set_parent(ssi_clk, pll_clk);
-	clk_put(ssi_clk);
-
-	ssi_clk = clk_get(NULL, "ssi_clk.1");
-	clk_set_parent(ssi_clk, pll_clk);
-	clk_put(ssi_clk);
-	clk_put(pll_clk);
 
 	/* config Audio ports (4 & 5) */
 	mxc_request_iomux(MX31_PIN_SCK4, OUTPUTCONFIG_FUNC, INPUTCONFIG_FUNC);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -66,6 +66,8 @@
 #include "mxc-alsa-pmic.h"
 #include "mxc-alsa-common.h"
 #include <linux/fs.h>
+#include <linux/clk.h>
+
 /*
  * PMIC driver buffer policy.
  * Customize here if the sound is not correct
@@ -2784,6 +2786,7 @@ static int snd_card_mxc_audio_playback_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime;
 	int stream_id = -1;
 	int err;
+	audio_stream_t *s;
 	PMIC_AUDIO_HANDLE temp_handle;
 	int device = -1;
 
@@ -2799,6 +2802,7 @@ static int snd_card_mxc_audio_playback_open(struct snd_pcm_substream *substream)
 		stream_id = 3;
 	}
 
+	s = &chip->s[stream_id];
 	err = -1;
 
 	if (stream_id == 0) {
@@ -2893,6 +2897,10 @@ static int snd_card_mxc_audio_playback_open(struct snd_pcm_substream *substream)
 				     audio_playback_dma_callback,
 				     stream_id)) < 0)
 		goto exit_err;
+
+	/* enable ssi clock */
+	clk_enable(audio_data->ssi_clk[s->ssi]);
+
 	return 0;
       exit_err:
 #ifdef CONFIG_SND_MXC_PMIC_IRAM
@@ -2968,6 +2976,8 @@ static int snd_card_mxc_audio_playback_close(struct snd_pcm_substream
 	if (stream_id == 0)
 		mxc_snd_pcm_iram_put();
 #endif				/*CONFIG_SND_MXC_PMIC_IRAM */
+	/* disable ssi clock */
+	clk_disable(audio_data->ssi_clk[ssi]);
 
 	return 0;
 }
@@ -3006,6 +3016,9 @@ static int snd_card_mxc_audio_capture_close(struct snd_pcm_substream *substream)
 	mxc_dma_free((mxc_audio->s[1]).dma_wchannel);
 
 	chip->s[substream->pstr->stream].stream = NULL;
+
+	/* disable ssi clock */
+	clk_disable(audio_data->ssi_clk[ssi]);
 
 	return 0;
 }
@@ -3156,10 +3169,12 @@ static int snd_card_mxc_audio_capture_open(struct snd_pcm_substream *substream)
 	int stream_id;
 	int err;
 	PMIC_AUDIO_HANDLE temp_handle;
+	audio_stream_t *s;
 
 	chip = snd_pcm_substream_chip(substream);
 	runtime = substream->runtime;
 	stream_id = substream->pstr->stream;
+	s = &chip->s[stream_id];
 	err = -1;
 
 	if ((audio_data->ssi_num == 1)
@@ -3206,6 +3221,9 @@ static int snd_card_mxc_audio_capture_open(struct snd_pcm_substream *substream)
 	if (err < 0) {
 		return err;
 	}
+
+	/* enable ssi clock */
+	clk_enable(audio_data->ssi_clk[s->ssi]);
 
 	msleep(50);
 
@@ -3824,6 +3842,12 @@ static int __init mxc_alsa_audio_probe(struct platform_device *pdev)
 
 static int mxc_alsa_audio_remove(struct platform_device *dev)
 {
+	if (audio_data->ssi_num == 1) {
+		clk_put(audio_data->ssi_clk[SSI1]);
+	} else {
+		clk_put(audio_data->ssi_clk[SSI1]);
+		clk_put(audio_data->ssi_clk[SSI2]);
+	}
 	snd_card_free(mxc_audio->card);
 	kfree(mxc_audio);
 	platform_set_drvdata(dev, NULL);

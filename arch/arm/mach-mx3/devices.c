@@ -9,7 +9,7 @@
  * licensed "as is" without any warranty of any kind, whether express
  * or implied.
  *
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -20,6 +20,7 @@
 #include <linux/spi/spi.h>
 
 #include <asm/hardware.h>
+#include <asm/mach-types.h>
 #include <asm/arch/pmic_external.h>
 #include <asm/arch/pmic_power.h>
 #include <asm/arch/mmc.h>
@@ -249,10 +250,7 @@ static inline void mxc_init_ipu(void)
 #endif
 
 #if  defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE)
-static struct mxc_audio_platform_data mxc_audio_data = {
-	.ssi_num = 2,
-	.src_port = 0,
-};
+static struct mxc_audio_platform_data mxc_audio_data;
 
 static struct platform_device mxc_alsa_device = {
 	.name = "mxc_alsa",
@@ -266,6 +264,19 @@ static struct platform_device mxc_alsa_device = {
 
 static void mxc_init_audio(void)
 {
+	struct clk *pll_clk;
+	pll_clk = clk_get(NULL, "usb_pll");
+	mxc_audio_data.ssi_clk[0] = clk_get(NULL, "ssi_clk.0");
+	clk_set_parent(mxc_audio_data.ssi_clk[0], pll_clk);
+	if (machine_is_mx31_3ds()) {
+		mxc_audio_data.ssi_num = 1;
+	} else {
+		mxc_audio_data.ssi_num = 2;
+		mxc_audio_data.ssi_clk[1] = clk_get(NULL, "ssi_clk.1");
+		clk_set_parent(mxc_audio_data.ssi_clk[1], pll_clk);
+	}
+	clk_put(pll_clk);
+	mxc_audio_data.src_port = 0;
 	platform_device_register(&mxc_alsa_device);
 }
 #else

@@ -619,8 +619,6 @@ extern void gpio_activate_audio_ports(void);
 
 static void __init mxc_init_pmic_audio(void)
 {
-	struct clk *pll_clk;
-	struct clk *ssi_clk;
 	struct clk *ckih_clk;
 	struct clk *cko_clk;
 
@@ -636,19 +634,6 @@ static void __init mxc_init_pmic_audio(void)
 	}
 	clk_put(ckih_clk);
 	clk_put(cko_clk);
-
-	/* Assign USBPLL to be used by SSI1/2 */
-	pll_clk = clk_get(NULL, "usb_pll");
-	ssi_clk = clk_get(NULL, "ssi_clk.0");
-	clk_set_parent(ssi_clk, pll_clk);
-	clk_enable(ssi_clk);
-	clk_put(ssi_clk);
-
-	ssi_clk = clk_get(NULL, "ssi_clk.1");
-	clk_set_parent(ssi_clk, pll_clk);
-	clk_enable(ssi_clk);
-	clk_put(ssi_clk);
-	clk_put(pll_clk);
 
 	gpio_activate_audio_ports();
 }

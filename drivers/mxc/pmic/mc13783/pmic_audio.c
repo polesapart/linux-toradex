@@ -131,7 +131,7 @@ EXPORT_SYMBOL(pmic_audio_output_get_config);
 EXPORT_SYMBOL(pmic_audio_output_enable_phantom_ground);
 EXPORT_SYMBOL(pmic_audio_output_disable_phantom_ground);
 EXPORT_SYMBOL(pmic_audio_set_autodetect);
-
+EXPORT_SYMBOL(pmic_audio_fm_output_enable);
 #ifdef DEBUG_AUDIO
 EXPORT_SYMBOL(pmic_audio_dump_registers);
 #endif				/* DEBUG_AUDIO */
@@ -1304,12 +1304,25 @@ PMIC_STATUS pmic_audio_enable(const PMIC_AUDIO_HANDLE handle)
 	const unsigned int STDAC_ENABLE = SET_BITS(regST_DAC, STDCEN, 1);
 	const unsigned int VCODEC_ENABLE = SET_BITS(regAUD_CODEC, CDCEN, 1);
 	PMIC_STATUS rc = PMIC_PARAMETER_ERROR;
+	unsigned int reg_write = 0;
+	unsigned int reg_mask = 0;
 
 	/* Use a critical section to ensure a consistent hardware state. */
 	if (down_interruptible(&mutex))
 		return PMIC_SYSTEM_ERROR_EINTR;
 
 	if ((handle == stDAC.handle) && (stDAC.handleState == HANDLE_IN_USE)) {
+		pmic_write_reg(REG_AUDIO_RX_0, AUDIO_BIAS_ENABLE,
+			       AUDIO_BIAS_ENABLE);
+		reg_mask =
+		    SET_BITS(regAUDIO_RX_0, HSDETEN,
+			     1) | SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
+		reg_write =
+		    SET_BITS(regAUDIO_RX_0, HSDETEN,
+			     1) | SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
+		rc = pmic_write_reg(REG_AUDIO_RX_0, reg_write, reg_mask);
+		if (rc == PMIC_SUCCESS)
+			pr_debug("pmic_audio_enable\n");
 		/* We can enable the Stereo DAC. */
 		rc = pmic_write_reg(REG_AUDIO_STEREO_DAC,
 				    STDAC_ENABLE, STDAC_ENABLE);
@@ -1323,6 +1336,12 @@ PMIC_STATUS pmic_audio_enable(const PMIC_AUDIO_HANDLE handle)
 		/* Must first set the audio bias bit to power up the audio circuits. */
 		pmic_write_reg(REG_AUDIO_RX_0, AUDIO_BIAS_ENABLE,
 			       AUDIO_BIAS_ENABLE);
+		reg_mask = SET_BITS(regAUDIO_RX_0, HSDETEN, 1) |
+		    SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
+		reg_write = SET_BITS(regAUDIO_RX_0, HSDETEN, 1) |
+		    SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
+		rc = pmic_write_reg(REG_AUDIO_RX_0, reg_write, reg_mask);
+
 		/* Then we can enable the Voice CODEC. */
 		rc = pmic_write_reg(REG_AUDIO_CODEC, VCODEC_ENABLE,
 				    VCODEC_ENABLE);
@@ -5735,6 +5754,49 @@ static PMIC_STATUS pmic_audio_deregister(void *callback,
 		spin_unlock_irqrestore(&lock, flags);
 	}
 
+	return rc;
+}
+
+/*!
+ * @brief enable/disable fm output.
+ *
+ * @param[in]   enable            true to enable false to disable
+ */
+PMIC_STATUS pmic_audio_fm_output_enable(bool enable)
+{
+	unsigned int reg_mask = 0;
+	unsigned int reg_write = 0;
+	PMIC_STATUS rc = PMIC_PARAMETER_ERROR;
+	if (enable) {
+		pmic_audio_antipop_enable(ANTI_POP_RAMP_FAST);
+		reg_mask |= SET_BITS(regAUDIO_RX_0, AHSLEN, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, AHSLEN, 1);
+		reg_mask |= SET_BITS(regAUDIO_RX_0, AHSREN, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, AHSREN, 1);
+
+		reg_mask |= SET_BITS(regAUDIO_RX_0, AHSSEL, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, AHSSEL, 1);
+
+		reg_mask |= SET_BITS(regAUDIO_RX_0, ADDRXIN, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, ADDRXIN, 1);
+
+		reg_mask |= SET_BITS(regAUDIO_RX_0, HSPGDIS, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, HSPGDIS, 0);
+	} else {
+		reg_mask |= SET_BITS(regAUDIO_RX_0, ADDRXIN, 1);
+		reg_write |= SET_BITS(regAUDIO_RX_0, ADDRXIN, 0);
+	}
+	rc = pmic_write_reg(REG_AUDIO_RX_0, reg_write, reg_mask);
+	if (rc != PMIC_SUCCESS)
+		return rc;
+	if (enable) {
+		reg_mask = SET_BITS(regAUDIO_RX_1, ARXINEN, 1);
+		reg_write = SET_BITS(regAUDIO_RX_1, ARXINEN, 1);
+	} else {
+		reg_mask = SET_BITS(regAUDIO_RX_1, ARXINEN, 1);
+		reg_write = SET_BITS(regAUDIO_RX_1, ARXINEN, 0);
+	}
+	rc = pmic_write_reg(REG_AUDIO_RX_1, reg_write, reg_mask);
 	return rc;
 }
 

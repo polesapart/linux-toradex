@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -70,7 +70,7 @@ static DEFINE_SPINLOCK(clockfw_lock);
 struct clk *clk_get(struct device *dev, const char *id)
 {
 	struct clk *p, *clk = ERR_PTR(-ENOENT);
-	int idno;
+	int idno, len;
 	char *str;
 
 	if (id == NULL)
@@ -93,12 +93,12 @@ struct clk *clk_get(struct device *dev, const char *id)
 
 	str = strrchr(id, '.');
 	if (str) {
-		str[0] = '\0';
+		len = str - id;
 		str++;
 		idno = simple_strtol(str, NULL, 10);
 		list_for_each_entry(p, &clocks, node) {
-			if (p->id == idno &&
-			    strcmp(id, p->name) == 0 &&
+			if (p->id == idno && (strlen(p->name) == len) &&
+			    strncmp(id, p->name, len) == 0 &&
 			    try_module_get(p->owner)) {
 				clk = p;
 				goto found;
