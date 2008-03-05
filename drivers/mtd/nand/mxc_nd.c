@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -94,6 +94,28 @@ static struct nand_ecclayout nand_hw_eccoob_16 = {
 	.eccbytes = 5,
 	.eccpos = {6, 7, 8, 9, 10},
 	.oobfree = {{0, 6}, {12, 4}}
+};
+
+static struct nand_ecclayout nand_hw_eccoob_2k = {
+	.eccbytes = 20,
+	.eccpos = {6, 7, 8, 9, 10, 22, 23, 24, 25, 26,
+		   38, 39, 40, 41, 42, 54, 55, 56, 57, 58},
+	.oobfree = {
+		    {.offset = 0,
+		     .length = 5},
+
+		    {.offset = 11,
+		     .length = 10},
+
+		    {.offset = 27,
+		     .length = 10},
+
+		    {.offset = 43,
+		     .length = 10},
+
+		    {.offset = 59,
+		     .length = 5}
+		    }
 };
 
 /*!
@@ -951,7 +973,8 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		 */
 		send_addr(0, page_addr == -1);
 		if (is2k_Pagesize)
-			send_addr(0, false);	/* another col addr cycle for 2k page */
+			/* another col addr cycle for 2k page */
+			send_addr(0, false);
 	}
 
 	/*
@@ -961,17 +984,23 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		send_addr((page_addr & 0xff), false);	/* paddr_0 - p_addr_7 */
 
 		if (is2k_Pagesize) {
-			send_addr((page_addr >> 8) & 0xFF, false);
-			if (mtd->size >= 0x42000000) {
+			/* One more address cycle for higher density devices */
+			if (mtd->size >= 0x10000000) {
+				/* paddr_8 - paddr_15 */
+				send_addr((page_addr >> 8) & 0xff, false);
 				send_addr((page_addr >> 16) & 0xff, true);
-			}
+			} else
+				/* paddr_8 - paddr_15 */
+				send_addr((page_addr >> 8) & 0xff, true);
 		} else {
 			/* One more address cycle for higher density devices */
 			if (mtd->size >= 0x4000000) {
-				send_addr((page_addr >> 8) & 0xff, false);	/* paddr_8 - paddr_15 */
+				/* paddr_8 - paddr_15 */
+				send_addr((page_addr >> 8) & 0xff, false);
 				send_addr((page_addr >> 16) & 0xff, true);
 			} else
-				send_addr((page_addr >> 8) & 0xff, true);	/* paddr_8 - paddr_15 */
+				/* paddr_8 - paddr_15 */
+				send_addr((page_addr >> 8) & 0xff, true);
 		}
 	}
 
@@ -1056,6 +1085,8 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 		is2k_Pagesize = 0;
 	}
 
+	if (is2k_Pagesize)
+		this->ecc.layout = &nand_hw_eccoob_2k;
 	this->bbt_td = NULL;
 	this->bbt_md = NULL;
 
