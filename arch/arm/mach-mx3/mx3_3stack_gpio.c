@@ -1003,6 +1003,13 @@ int gpio_usbh2_active(void)
 			  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
 	mxc_iomux_set_pad(MX31_PIN_PC_RW_B,
 			  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
+
+	mxc_request_iomux(MX31_PIN_USB_BYP, OUTPUTCONFIG_GPIO,
+			INPUTCONFIG_NONE);
+	mxc_set_gpio_direction(MX31_PIN_USB_BYP, 0);
+	mxc_set_gpio_dataout(MX31_PIN_USB_BYP, 0);
+	mdelay(1);
+	mxc_set_gpio_dataout(MX31_PIN_USB_BYP, 1);
 	return 0;
 }
 
@@ -1060,6 +1067,9 @@ void gpio_usbh2_inactive(void)
 		       OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
 	mxc_free_iomux(MX31_PIN_PC_RW_B,		/* USBH2_DATA7 */
 		       OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+
+	mxc_free_iomux(MX31_PIN_USB_BYP,		/* USBH2 PHY reset */
+			OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
 }
 
 EXPORT_SYMBOL(gpio_usbh2_inactive);
@@ -1120,6 +1130,15 @@ int gpio_usbotg_hs_active(void)
 			  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
 	mxc_iomux_set_pad(MX31_PIN_USBOTG_STP,
 			  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
+
+	/* reset transceiver */
+	mxc_request_iomux(MX31_PIN_USB_PWR, OUTPUTCONFIG_GPIO,
+		INPUTCONFIG_GPIO);
+	mxc_set_gpio_direction(MX31_PIN_USB_PWR, 0);
+	mxc_set_gpio_dataout(MX31_PIN_USB_PWR, 0);
+	mdelay(1);
+	mxc_set_gpio_dataout(MX31_PIN_USB_PWR, 1);
+
 	return 0;
 }
 
@@ -1127,8 +1146,8 @@ EXPORT_SYMBOL(gpio_usbotg_hs_active);
 
 void gpio_usbotg_hs_inactive(void)
 {
-	/* Do nothing as  pins doesn't have/support GPIO mode */
-
+	mxc_free_iomux(MX31_PIN_USB_PWR, OUTPUTCONFIG_GPIO,
+		INPUTCONFIG_GPIO);
 }
 
 EXPORT_SYMBOL(gpio_usbotg_hs_inactive);

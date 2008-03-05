@@ -1743,6 +1743,21 @@ static void setup_received_irq(struct arcotg_udc *udc,
 	}
 
 	if (!handled) {
+		/*!
+		 *  0x66 - Device_Reset_Request of Still Image Capture Device,
+		 *  0x22 - SET_CONTROL_LINE_STATE of Communication Device
+		 */
+		if (setup->bRequest == 0x66 || setup->bRequest == 0x22) {
+			udc->ep0_dir = USB_DIR_IN;
+			udc->driver->setup(&udc->gadget,
+					   &udc->local_setup_buff);
+			udc->ep0_state = WAIT_FOR_OUT_STATUS;
+			return;
+		}
+		/* 0x65 - Get_Extended_Event_Data of Still Image Capture Device */
+		if (setup->bRequest == 0x65)
+			return;
+
 		if (udc->driver->setup(&udc->gadget, &udc->local_setup_buff)
 		    != 0) {
 			Ep0Stall(udc);

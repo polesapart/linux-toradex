@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -21,12 +21,14 @@
 
 #include <asm/hardware.h>
 #include <asm/arch/arc_otg.h>
+#include <asm/mach-types.h>
 
 /* ISP 1504 register addresses */
 #define ISP1504_VID_LOW		0x00	/* Vendor ID low */
 #define ISP1504_VID_HIGH	0x01	/* Vendor ID high */
 #define ISP1504_PID_LOW		0x02	/* Product ID low */
 #define ISP1504_PID_HIGH	0x03	/* Product ID high */
+#define ISP1504_FUNC		0x04	/* Function Control */
 #define ISP1504_ITFCTL		0x07	/* Interface Control */
 #define ISP1504_OTGCTL		0x0A	/* OTG Control */
 
@@ -43,6 +45,12 @@
 #define DM_PULL_DOWN		(1 << 2)	/* enable DM Pull Down */
 #define DP_PULL_DOWN		(1 << 1)	/* enable DP Pull Down */
 #define ID_PULL_UP		(1 << 0)	/* enable ID Pull Up */
+
+/* 1504 OTG Function Control Register bits */
+#define SUSPENDM		(1 << 6)	/* places the PHY into
+						   low-power mode      */
+#define DRV_RESET		(1 << 5)	/* Active HIGH transceiver
+						   reset                  */
 
 /*!
  * read ULPI register 'reg' thru VIEWPORT register 'view'
@@ -123,7 +131,8 @@ extern int gpio_usbotg_hs_active(void);
 
 static void isp1508_fix(u32 * view)
 {
-	gpio_usbotg_hs_active();
+	if (!machine_is_mx31_3ds())
+		gpio_usbotg_hs_active();
 
 	/* Set bits IND_PASS_THRU and IND_COMPL */
 	isp1504_set(0x60, ISP1504_ITFCTL, view);
@@ -199,11 +208,21 @@ static void isp1504_uninit(struct fsl_xcvr_ops *this)
 	pr_debug("%s:\n", __FUNCTION__);
 }
 
+static void isp1504_suspend(struct fsl_xcvr_ops *this)
+{
+	pr_debug("%s\n", __func__);
+
+	/* send suspend command */
+	isp1504_clear(SUSPENDM, ISP1504_FUNC, &UOG_ULPIVIEW);
+	pr_debug("%s.\n", __func__);
+}
+
 static struct fsl_xcvr_ops isp1504_ops = {
 	.name = "isp1504",
 	.xcvr_type = PORTSC_PTS_ULPI,
 	.init = isp1504_init,
 	.uninit = isp1504_uninit,
+	.suspend = isp1504_suspend,
 	.set_host = NULL,
 	.set_device = NULL,
 	.set_vbus_power = isp1504_set_vbus_power,
@@ -211,12 +230,17 @@ static struct fsl_xcvr_ops isp1504_ops = {
 };
 
 extern void fsl_usb_xcvr_register(struct fsl_xcvr_ops *xcvr_ops);
+extern int fsl_usb_xcvr_suspend(struct fsl_xcvr_ops *xcvr_ops);
 
 static int __init isp1504xc_init(void)
 {
 	pr_debug("%s\n", __FUNCTION__);
 
 	fsl_usb_xcvr_register(&isp1504_ops);
+
+	/* suspend isp1504 */
+	if (fsl_usb_xcvr_suspend(&isp1504_ops))
+		pr_debug("%s: failed to suspend isp1504\n", __func__);
 
 	return 0;
 }

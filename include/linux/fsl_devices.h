@@ -123,6 +123,7 @@ struct fsl_usb2_platform_data {
 	int does_otg;
 	unsigned power_budget;	/* for hcd->power_budget */
 	struct fsl_xcvr_ops *xcvr_ops;
+	struct fsl_xcvr_power *xcvr_pwr;
 	int (*gpio_usb_active) (void);
 	void (*gpio_usb_inactive) (void);
 };

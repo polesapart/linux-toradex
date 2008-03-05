@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -37,6 +37,8 @@
 #include <linux/fsl_devices.h>
 #include <linux/usb/fsl_xcvr.h>
 #include <linux/usb/otg.h>
+#include <linux/regulator/regulator.h>
+#include <linux/delay.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -103,7 +105,7 @@ static struct fsl_usb2_platform_data usbh2_config = {
 	.platform_uninit   = fsl_usb_host_uninit,
 	.usbmode           = (u32) &UH2_USBMODE,
 	.viewport          = (u32) &UH2_ULPIVIEW,
-	.power_budget      = 150,		/* 150 mA max power */
+	.power_budget      = 250,		/* 250 mA max power */
 	.gpio_usb_active   = gpio_usbh2_active,
 	.gpio_usb_inactive = gpio_usbh2_inactive,
 	.transceiver       = "isp1504",
@@ -120,6 +122,38 @@ static struct resource usbh2_resources[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+
+void usbh2_get_xcvr_power(struct device *dev)
+{
+	struct regulator *usbh2_regux;
+
+	usbh2_regux = regulator_get(dev, "GPO1");
+	regulator_enable(usbh2_regux);
+	((struct fsl_usb2_platform_data *)dev->platform_data)->
+		xcvr_pwr->regu1 = usbh2_regux;
+
+	usbh2_regux = regulator_get(dev, "GPO3");
+	regulator_enable(usbh2_regux);
+	((struct fsl_usb2_platform_data *)dev->platform_data)->
+		xcvr_pwr->regu2 = usbh2_regux;
+}
+EXPORT_SYMBOL(usbh2_get_xcvr_power);
+
+void usbh2_put_xcvr_power(struct device *dev)
+{
+	struct regulator *usbh2_regux;
+
+	usbh2_regux = ((struct fsl_usb2_platform_data *)dev->
+			platform_data)->xcvr_pwr->regu2;
+	regulator_disable(usbh2_regux);
+	regulator_put(usbh2_regux, dev);
+
+	usbh2_regux = ((struct fsl_usb2_platform_data *)dev->
+			platform_data)->xcvr_pwr->regu1;
+	regulator_disable(usbh2_regux);
+	regulator_put(usbh2_regux, dev);
+}
+EXPORT_SYMBOL(usbh2_put_xcvr_power);
 /* *INDENT-ON* */
 #endif
 
@@ -165,7 +199,7 @@ static struct fsl_usb2_platform_data mxc_isp1504_config = {
 	.usbmode           = (u32) &UOG_USBMODE,
 	.viewport          = (u32) &UOG_ULPIVIEW,
 	.does_otg          = 1,
-	.power_budget      = 150, /* 150 mA max power */
+	.power_budget      = 250, /* 250 mA max power */
 	.gpio_usb_active   = gpio_usbotg_hs_active,
 	.gpio_usb_inactive = gpio_usbotg_hs_inactive,
 	.transceiver       = "isp1504",

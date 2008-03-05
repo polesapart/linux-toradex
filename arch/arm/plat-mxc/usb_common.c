@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *	otg_{get,set}_transceiver() are from arm/plat-omap/usb.c.
  *	which is Copyright (C) 2004 Texas Instruments, Inc.
@@ -40,7 +40,9 @@
 #include <linux/fsl_devices.h>
 #include <linux/usb/otg.h>
 #include <linux/usb/fsl_xcvr.h>
+#include <linux/regulator/regulator.h>
 #include <asm/arch/arc_otg.h>
+#include <asm/mach-types.h>
 
 #define MXC_NUMBER_USB_TRANSCEIVER 6
 struct fsl_xcvr_ops *g_xc_ops[MXC_NUMBER_USB_TRANSCEIVER] = { NULL };
@@ -320,12 +322,15 @@ static void usbh2_set_ulpi_xcvr(void)
 	    UCTRL_H2DT |	/* disable H2 TLL */
 	    UCTRL_H2PM;		/* power mask */
 
-	UH2_PORTSC1 &= ~PORTSC_PTS_MASK;	/* set ULPI xcvr */
-	UH2_PORTSC1 |= PORTSC_PTS_ULPI;
+	/* set ULPI xcvr */
+	UH2_PORTSC1 = (UH2_PORTSC1 & (~PORTSC_PTS_MASK)) | PORTSC_PTS_ULPI;
 
 	/* Turn off the usbpll for ulpi tranceivers */
 	clk_disable(usb_clk);
 }
+
+extern void usbh2_get_xcvr_power(struct device *dev);
+extern void usbh2_put_xcvr_power(struct device *dev);
 
 int fsl_usb_host_init(struct platform_device *pdev)
 {
@@ -348,6 +353,17 @@ int fsl_usb_host_init(struct platform_device *pdev)
 
 	if (fsl_check_usbclk() != 0)
 		return -EINVAL;
+
+	/* set host2 usb phy usb3317 power supply for imx31 3 stack */
+	if ((pdata->xcvr_type == PORTSC_PTS_ULPI) && (machine_is_mx31_3ds())) {
+		pdata->xcvr_pwr =
+		    kmalloc(sizeof(struct fsl_xcvr_power), GFP_KERNEL);
+		if (!(pdata->xcvr_pwr))
+			return -ENOMEM;
+
+		pdata->xcvr_pwr->usb_pdev = pdev;
+		usbh2_get_xcvr_power(&(pdev->dev));
+	}
 
 	pr_debug("%s: grab pins\n", __FUNCTION__);
 	if (pdata->gpio_usb_active())
@@ -392,6 +408,11 @@ void fsl_usb_host_uninit(struct fsl_usb2_platform_data *pdata)
 	pdata->gpio_usb_inactive();
 	if (pdata->xcvr_type == PORTSC_PTS_SERIAL)
 		clk_disable(usb_clk);
+	else if ((pdata->xcvr_type == PORTSC_PTS_ULPI)
+		 && (machine_is_mx31_3ds())) {
+		usbh2_put_xcvr_power(&(pdata->xcvr_pwr->usb_pdev->dev));
+		kfree(pdata->xcvr_pwr);
+	}
 }
 
 EXPORT_SYMBOL(fsl_usb_host_uninit);
@@ -490,6 +511,35 @@ static void otg_set_ulpi_xcvr(void)
 	clk_disable(usb_clk);
 }
 
+extern int gpio_usbotg_hs_active(void);
+extern int gpio_usbotg_hs_inactive(void);
+
+int fsl_usb_xcvr_suspend(struct fsl_xcvr_ops *xcvr_ops)
+{
+	if (!machine_is_mx31_3ds())
+		return -ECANCELED;
+
+	if (xcvr_ops->xcvr_type == PORTSC_PTS_ULPI) {
+		if (fsl_check_usbclk() != 0)
+			return -EINVAL;
+		if (gpio_usbotg_hs_active())
+			return -EINVAL;
+		clk_enable(usb_clk);
+
+		otg_set_ulpi_xcvr();
+
+		if (xcvr_ops->suspend)
+			/* suspend transceiver */
+			xcvr_ops->suspend(xcvr_ops);
+
+		gpio_usbotg_hs_inactive();
+		clk_disable(usb_clk);
+	}
+	return 0;
+}
+
+EXPORT_SYMBOL(fsl_usb_xcvr_suspend);
+
 static int otg_used = 0;
 
 int usbotg_init(struct platform_device *pdev)
@@ -565,6 +615,12 @@ void usbotg_uninit(struct fsl_usb2_platform_data *pdata)
 
 		pdata->regs = NULL;
 		pdata->r_start = pdata->r_len = 0;
+
+		if (machine_is_mx31_3ds()) {
+			if (pdata->xcvr_ops && pdata->xcvr_ops->suspend)
+				pdata->xcvr_ops->suspend(pdata->xcvr_ops);
+			clk_disable(usb_clk);
+		}
 
 		pdata->gpio_usb_inactive();
 		if (pdata->xcvr_type == PORTSC_PTS_SERIAL)
