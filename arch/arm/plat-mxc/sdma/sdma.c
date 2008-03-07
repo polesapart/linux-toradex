@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -40,7 +40,7 @@
 
 #include "iapi.h"
 
-#define M3_BASE_ADDRESS 0x80000000
+#define M3_BASE_ADDRESS CSD0_BASE_ADDR
 #define CHAD(ch) sdma_data[0].cd->ccb_ptr[ch].channelDescriptor
 
 /*!
