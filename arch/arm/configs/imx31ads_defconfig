@@ -602,7 +602,7 @@ CONFIG_IDE_PROC_FS=y
 CONFIG_IDE_GENERIC=m
 # CONFIG_BLK_DEV_PLATFORM is not set
 # CONFIG_IDE_ARM is not set
-# CONFIG_BLK_DEV_IDE_MXC is not set
+CONFIG_BLK_DEV_IDE_MXC=m
 
 #
 # Other IDE chipsets support

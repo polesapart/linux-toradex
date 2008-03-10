@@ -5,7 +5,7 @@
  * Copyright (c) 2003-2004 Simtec Electronics
  *  Ben Dooks <ben@simtec.co.uk>
  *
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,9 @@
 #include <asm/delay.h>
 #include <asm/hardware.h>
 #include <asm/arch/dma.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/regulator.h>
+
 #include "mxc_ide.h"
 
 extern void gpio_ata_active(void);
@@ -248,17 +251,6 @@ static void mxc_ide_selectproc(ide_drive_t * drive)
 }
 
 /*!
- * Called to set the PIO mode.
- *
- * @param   drive       Specifies the drive
- * @param   pio    Specifies the PIO mode number desired
- */
-static void mxc_ide_tune(ide_drive_t * drive, u8 pio)
-{
-	set_ata_bus_timing(pio, PIO);
-}
-
-/*!
  * Hardware-specific interrupt service routine for the ATA driver,
  * called mainly just to dismiss the interrupt at the hardware, and
  * to indicate whether there actually was an interrupt pending.
@@ -295,7 +287,7 @@ static int mxc_ide_ack_intr(struct hwif_s *hw)
  *
  * @return      EINVAL      Illegal mode specified
  */
-static int mxc_ide_set_speed(ide_drive_t * drive, u8 xfer_mode)
+static void mxc_ide_set_speed(ide_drive_t *drive, u8 xfer_mode)
 {
 	mxc_ide_private_t *priv = (mxc_ide_private_t *) HWIF(drive)->hwif_data;
 
@@ -309,24 +301,24 @@ static int mxc_ide_set_speed(ide_drive_t * drive, u8 xfer_mode)
 	case XFER_UDMA_1:
 	case XFER_UDMA_0:
 		priv->ultra = 1;
-		return set_ata_bus_timing(xfer_mode - XFER_UDMA_0, UDMA);
+		set_ata_bus_timing(xfer_mode - XFER_UDMA_0, UDMA);
 		break;
 	case XFER_MW_DMA_2:
 	case XFER_MW_DMA_1:
 	case XFER_MW_DMA_0:
 		priv->ultra = 0;
-		return set_ata_bus_timing(xfer_mode - XFER_MW_DMA_0, MDMA);
+		set_ata_bus_timing(xfer_mode - XFER_MW_DMA_0, MDMA);
 		break;
 	case XFER_PIO_4:
 	case XFER_PIO_3:
 	case XFER_PIO_2:
 	case XFER_PIO_1:
 	case XFER_PIO_0:
-		return set_ata_bus_timing(xfer_mode - XFER_PIO_0, PIO);
+		set_ata_bus_timing(xfer_mode - XFER_PIO_0, PIO);
 		break;
 	}
 
-	return -EINVAL;
+	return;
 }
 
 /*!
@@ -364,6 +356,8 @@ static void mxc_ide_resetproc(ide_drive_t * drive)
  */
 static int mxc_ide_dma_on(ide_drive_t * drive)
 {
+	int rc = 0;
+
 	/* consult the list of known "bad" drives */
 	if (__ide_dma_bad_drive(drive))
 		return 1;
@@ -373,8 +367,9 @@ static int mxc_ide_dma_on(ide_drive_t * drive)
 	 * need an Ultra-100 cable (the 80 pin type with
 	 * ground leads between all the signals)
 	 */
-	printk(KERN_INFO "%s: enabling UDMA3 mode\n", drive->name);
-	mxc_ide_config_drive(drive, XFER_UDMA_3);
+	rc = mxc_ide_config_drive(drive, XFER_UDMA_3);
+	printk(KERN_INFO "%s: enabling UDMA3 mode %s\n", drive->name,
+	       rc == 0 ? "success" : "failed");
 	drive->using_dma = 1;
 
 	blk_queue_max_hw_segments(drive->queue, MXC_IDE_DMA_BD_NR);
@@ -412,8 +407,7 @@ static int mxc_ide_dma_check(ide_drive_t * drive)
 				return HWIF(drive)->ide_dma_on(drive);
 
 		/* Consult the list of known "good" drives */
-		if (__ide_dma_good_drive(drive))
-			return HWIF(drive)->ide_dma_on(drive);
+		return HWIF(drive)->ide_dma_on(drive);
 	}
 	HWIF(drive)->dma_off_quietly(drive);
 	return 0;
@@ -829,9 +823,9 @@ static void mxc_ide_dma_host_on(ide_drive_t * drive)
  *
  * @return      0 if successful, non-zero otherwise
  */
-static int mxc_ide_dma_timeout(ide_drive_t * drive)
+static void mxc_ide_dma_timeout(ide_drive_t *drive)
 {
-	return 0;
+	return;
 }
 
 /*!
@@ -841,9 +835,9 @@ static int mxc_ide_dma_timeout(ide_drive_t * drive)
  *
  * @return      0 if successful, non-zero otherwise
  */
-static int mxc_ide_dma_lost_irq(ide_drive_t * drive)
+static void mxc_ide_dma_lost_irq(ide_drive_t *drive)
 {
-	return 0;
+	return;
 }
 
 /*!
@@ -861,7 +855,6 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	hwif->set_dma_mode = mxc_ide_set_speed;
 	hwif->set_pio_mode = mxc_ide_set_speed;
 	hwif->resetproc = mxc_ide_resetproc;
-	hwif->autodma = 0;
 
 	/*
 	 * Allocate and setup the DMA channels
@@ -888,15 +881,12 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	/*
 	 * All ready now
 	 */
-	hwif->atapi_dma = 1;
 	hwif->ultra_mask = 0x7f;
 	hwif->mwdma_mask = 0x07;
 	hwif->swdma_mask = 0x07;
-	hwif->udma_four = 1;
 
 	hwif->dma_off_quietly = mxc_ide_dma_off_quietly;
 	hwif->ide_dma_on = mxc_ide_dma_on;
-	hwif->ide_dma_check = mxc_ide_dma_check;
 	hwif->dma_setup = mxc_ide_dma_setup;
 	hwif->dma_exec_cmd = mxc_ide_dma_exec_cmd;
 	hwif->dma_start = mxc_ide_dma_start;
@@ -904,14 +894,13 @@ static void mxc_ide_dma_init(ide_hwif_t * hwif)
 	hwif->ide_dma_test_irq = mxc_ide_dma_test_irq;
 	hwif->dma_host_off = mxc_ide_dma_host_off;
 	hwif->dma_host_on = mxc_ide_dma_host_on;
-	hwif->ide_dma_timeout = mxc_ide_dma_timeout;
-	hwif->ide_dma_lostirq = mxc_ide_dma_lost_irq;
+	hwif->dma_timeout = mxc_ide_dma_timeout;
+	hwif->dma_lost_irq = mxc_ide_dma_lost_irq;
 
 	hwif->hwif_data = (void *)priv;
 	return;
 
       err_out:
-	hwif->atapi_dma = 0;
 	if (priv->dma_read_chan >= 0)
 		mxc_dma_free(priv->dma_read_chan);
 	if (priv->dma_write_chan >= 0)
@@ -959,10 +948,9 @@ mxc_ide_register(unsigned long base, unsigned int aux, int irq,
 	hw.ack_intr = &mxc_ide_ack_intr;
 
 	*hwifp = hwif;
-	ide_register_hw(&hw, 0, hwifp);
+	ide_register_hw(&hw, NULL, 0, hwifp);
 
 	hwif->selectproc = &mxc_ide_selectproc;
-	hwif->tuneproc = &mxc_ide_tune;
 	hwif->maskproc = &mxc_ide_maskproc;
 	hwif->hwif_data = (void *)priv;
 	mxc_ide_set_intrq(hwif, INTRQ_MCU);
@@ -991,22 +979,180 @@ mxc_ide_register(unsigned long base, unsigned int aux, int irq,
 }
 
 /*!
- * Driver initialization routine.  Prepares the hardware for ATA activity.
+ * This function is called to put the ATA in a low power state. Refer to the
+ * document driver-model/driver.txt in the kernel source tree for more
+ * information.
+ *
+ * @param   pdev  the device structure used to give information on which ATA
+ *                device to suspend
+ * @param   state the power state the device is entering
+ *
+ * @return  The function always returns 0.
  */
-static int __init mxc_ide_init(void)
+static int mxc_ide_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct mxc_ide_platform_data *ide_plat = pdev->dev.platform_data;
+	ide_hwif_t *hwif = &ide_hwifs[0];
+	mxc_ide_private_t *priv = (mxc_ide_private_t *) (hwif->hwif_data);
+
+	/*
+	 * Disable hardware interrupts.
+	 * Be carefully, the system would halt if there is no pwr supply
+	 */
+	if (priv->attached == 1)
+		ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
+
+	if (priv->dma_read_chan >= 0) {
+		mxc_dma_disable(priv->dma_read_chan);
+		mxc_dma_free(priv->dma_read_chan);
+	}
+	if (priv->dma_write_chan >= 0) {
+		mxc_dma_disable(priv->dma_write_chan);
+		mxc_dma_free(priv->dma_write_chan);
+	}
+
+	/*
+	 * Turn off the power
+	 */
+	/* There is a HDD disk attached on the ata bus */
+	if (priv->attached == 1) {
+		/* power off the ATA pwr supply */
+		if (ide_plat->power_drive)
+			regulator_disable((struct regulator *)ide_plat->
+					  power_drive);
+		if (ide_plat->power_io) {
+			regulator_disable((struct regulator *)ide_plat->
+					  power_io);
+		}
+		gpio_ata_inactive();
+	}
+
+	return 0;
+}
+
+static int mxc_ide_resume(struct platform_device *pdev)
+{
+	struct mxc_ide_platform_data *ide_plat = pdev->dev.platform_data;
+	ide_hwif_t *hwif = &ide_hwifs[0];
+	mxc_ide_private_t *priv = (mxc_ide_private_t *) (hwif->hwif_data);
+
+	/* There is a HDD disk attached on the ata bus */
+	if (priv->attached == 1) {
+		/* Select group B pins, and enable the interface */
+		gpio_ata_active();
+		/* power up the ATA pwr supply */
+		if (ide_plat->power_drive) {
+			if (regulator_enable
+			    ((struct regulator *)ide_plat->power_drive))
+				printk(KERN_INFO "enable power_drive error.\n");
+		}
+		if (ide_plat->power_io) {
+			if (regulator_enable
+			    ((struct regulator *)ide_plat->power_io))
+				printk(KERN_INFO "enable power_io error.\n");
+		}
+
+		/* Deassert the reset bit to enable the interface */
+		ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B, MXC_IDE_ATA_CONTROL);
+
+		/* Set initial timing and mode */
+		set_ata_bus_timing(4, PIO);
+
+		/* Reset the interface */
+		mxc_ide_resetproc(NULL);
+	}
+
+	priv->dma_read_chan = mxc_dma_request(MXC_DMA_ATA_RX, "MXC ATA RX");
+	if (priv->dma_read_chan < 0) {
+		printk(KERN_ERR "%s: couldn't get RX DMA channel\n",
+		       hwif->name);
+		return -EAGAIN;
+	}
+	priv->dma_write_chan = mxc_dma_request(MXC_DMA_ATA_TX, "MXC ATA TX");
+	if (priv->dma_write_chan < 0) {
+		if (priv->dma_read_chan > 0)
+			mxc_dma_free(priv->dma_read_chan);
+
+		printk(KERN_ERR "%s: couldn't get TX DMA channel\n",
+		       hwif->name);
+		return -EAGAIN;
+	}
+
+	return 0;
+}
+
+/*!
+ * Driver initialization routine.  Prepares the hardware for ATA activity.
+ *
+ * @param   pdev  the device structure used to store device specific
+ *                information that is used by the suspend, resume and remove
+ *                functions.
+ *
+ * @return  The function returns 0 on successful.
+ *          Otherwise returns specific error code.
+ */
+static int mxc_ide_probe(struct platform_device *pdev)
 {
 	int index = 0;
 	mxc_ide_private_t *priv;
+	struct mxc_ide_platform_data *ide_plat = pdev->dev.platform_data;
+	struct regulator *regulator_drive, *regulator_io;
 
 	printk(KERN_INFO
-	       "MXC: IDE driver, (c) 2004-2006 Freescale Semiconductor\n");
+	       "MXC: IDE driver, (c) 2004-2008 Freescale Semiconductor\n");
+
+	if (!ide_plat)
+		return -EINVAL;
 
 	ata_clk = clk_get(NULL, "ata_clk");
-	clk_enable(ata_clk);
+	if (ata_clk) {
+		if (clk_enable(ata_clk)) {
+			printk(KERN_INFO "enable clk error.\n");
+			goto ERR_NODEV;
+		}
+	} else {
+		printk(KERN_INFO "MXC: IDE driver, can't get clk\n");
+		goto ERR_NODEV;
+	}
+
+	/* Enable the hdd disk power supply */
+
 	ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B, MXC_IDE_ATA_CONTROL);
 
 	/* Select group B pins, and enable the interface */
 	gpio_ata_active();
+
+	/*
+	 * Enable the power to HDD
+	 */
+	if (ide_plat->power_drive != NULL) {
+		regulator_drive = regulator_get(&pdev->dev,
+						ide_plat->power_drive);
+		if (IS_ERR(regulator_drive)) {
+			printk(KERN_INFO "MXC: IDE driver, can't get power\n");
+			goto ERR_NODEV;
+		} else {
+			if (regulator_enable(regulator_drive)) {
+				printk(KERN_INFO "enable regulator error.\n");
+				goto ERR_NODEV;
+			}
+		}
+	} else
+		regulator_drive = NULL;
+
+	if (ide_plat->power_io != NULL) {
+		regulator_io = regulator_get(&pdev->dev, ide_plat->power_io);
+		if (IS_ERR(regulator_io)) {
+			printk(KERN_INFO "MXC: IDE driver, can't get power\n");
+			goto ERR_NODEV;
+		} else {
+			if (regulator_enable(regulator_io)) {
+				printk(KERN_INFO "enable regulator error.\n");
+				goto ERR_NODEV;
+			}
+		}
+	} else
+		regulator_io = NULL;
 
 	/* Set initial timing and mode */
 
@@ -1029,14 +1175,23 @@ static int __init mxc_ide_init(void)
 	priv = (mxc_ide_private_t *) kmalloc(sizeof *priv, GFP_KERNEL);
 	if (priv == NULL) {
 		ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
+		if (regulator_drive) {
+			regulator_disable(regulator_drive);
+			regulator_put(regulator_drive, priv->dev);
+		}
+		if (regulator_io) {
+			regulator_disable(regulator_io);
+			regulator_put(regulator_io, priv->dev);
+		}
 		gpio_ata_inactive();
-		return ENOMEM;
+		goto ERR_NOMEM;
 	}
 
 	memset(priv, 0, sizeof *priv);
 	priv->dev = NULL;	// dma_map_sg() ignores it anyway
 	priv->dma_read_chan = -1;
 	priv->dma_write_chan = -1;
+	priv->attached = 1;
 
 	/*
 	 * Now register
@@ -1045,12 +1200,27 @@ static int __init mxc_ide_init(void)
 	index =
 	    mxc_ide_register(IDE_ARM_IO, IDE_ARM_CTL, IDE_ARM_IRQ, &ifs[0],
 			     priv);
-	if (index == -1) {
+	if (index < 0) {
 		printk(KERN_ERR "Unable to register the MXC IDE driver\n");
 		ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
+
+		/*
+		 * If there is no hdd disk, turn off the clock and power
+		 */
+		/* Poweroff the HDD */
+		clk_disable(ata_clk);
+		priv->attached = 0;
+		if (regulator_drive) {
+			regulator_disable(regulator_drive);
+			regulator_put(regulator_drive, priv->dev);
+		}
+		if (regulator_io) {
+			regulator_disable(regulator_io);
+			regulator_put(regulator_io, priv->dev);
+		}
 		gpio_ata_inactive();
 		kfree(priv);
-		return ENODEV;
+		goto ERR_NODEV;
 	}
 #ifdef ATA_USE_IORDY
 	/* turn on IORDY protocol */
@@ -1059,15 +1229,28 @@ static int __init mxc_ide_init(void)
 	ATA_RAW_WRITE(MXC_IDE_CTRL_ATA_RST_B | MXC_IDE_CTRL_IORDY_EN,
 		      MXC_IDE_ATA_CONTROL);
 #endif
-
+	ide_plat->power_drive = (char *)regulator_drive;
+	ide_plat->power_io = (char *)regulator_io;
 	return 0;
+
+ERR_NODEV:
+	return -ENODEV;
+ERR_NOMEM:
+	return -ENOMEM;
+
 }
 
 /*!
  * Driver exit routine.  Clean up.
+ *
+ * @param   pdev  the device structure used to give information on which ATA
+ *                to remove
+ *
+ * @return  The function always returns 0.
  */
-static void __exit mxc_ide_exit(void)
+static int mxc_ide_remove(struct platform_device *pdev)
 {
+	struct mxc_ide_platform_data *ide_plat = pdev->dev.platform_data;
 	ide_hwif_t *hwif = ifs[0];
 	mxc_ide_private_t *priv;
 
@@ -1075,17 +1258,13 @@ static void __exit mxc_ide_exit(void)
 	priv = (mxc_ide_private_t *) hwif->hwif_data;
 	BUG_ON(!priv);
 
-	/*
-	 * Unregister the interface at the IDE layer.  This should shut
-	 * down any drives and pending I/O.
-	 */
 	ide_unregister(hwif->index);
 
 	/*
 	 * Disable hardware interrupts.
 	 */
-	ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
-
+	if (priv->attached)
+		ATA_RAW_WRITE(0, MXC_IDE_INTR_ENABLE);
 	/*
 	 * Deallocate DMA channels.  Free's BDs and everything.
 	 */
@@ -1107,11 +1286,68 @@ static void __exit mxc_ide_exit(void)
 	gpio_ata_inactive();
 
 	/*
+	 * Turn off the power
+	 */
+	/* Disable power supply */
+	if (priv->attached) {
+		priv->attached = 0;
+		if (ide_plat->power_drive) {
+			regulator_disable((struct regulator *)ide_plat->
+					  power_drive);
+			regulator_put((struct regulator *)ide_plat->power_drive,
+				      priv->dev);
+			ide_plat->power_drive = NULL;
+		}
+		if (ide_plat->power_io) {
+			regulator_disable((struct regulator *)ide_plat->
+					  power_io);
+			regulator_put((struct regulator *)ide_plat->power_io,
+				      priv->dev);
+			ide_plat->power_io = NULL;
+		}
+	}
+
+	/*
 	 * Free the private structure.
 	 */
 	kfree(priv);
 	hwif->hwif_data = NULL;
 
+	return 0;
+}
+
+/*!
+ * MXC IDE host operations structure.
+ * These functions are registered with IDE/ATA Bus protocol driver.
+ */
+static struct platform_driver mxc_ide_driver = {
+	.driver = {
+		   .name = "mxc_ide",
+		   },
+	.probe = mxc_ide_probe,
+	.remove = mxc_ide_remove,
+	.suspend = mxc_ide_suspend,
+	.resume = mxc_ide_resume,
+};
+
+/*!
+ * This function is used to initialize the IDE driver module. The function
+ * registers the power management callback functions with the kernel and also
+ * registers the IDE callback functions with the core ATA driver.
+ *
+ * @return  The function returns 0 on success and a non-zero value on failure.
+ */
+static int __init mxc_ide_init(void)
+{
+	return platform_driver_register(&mxc_ide_driver);
+}
+
+/*!
+ * This function is used to cleanup all resources before the driver exits.
+ */
+static void __exit mxc_ide_exit(void)
+{
+	platform_driver_unregister(&mxc_ide_driver);
 }
 
 module_init(mxc_ide_init);

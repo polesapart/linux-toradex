@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -27,7 +27,7 @@
 
 #define IDE_ARM_IO   IO_ADDRESS((ATA_BASE_ADDR + 0xA0) )
 #define IDE_ARM_CTL  IO_ADDRESS((ATA_BASE_ADDR + 0xD8) )
-#define IDE_ARM_IRQ  INT_ATA
+#define IDE_ARM_IRQ  MXC_INT_ATA
 
 /*
  * Interface control registers
@@ -113,6 +113,7 @@ typedef struct {
 	int ultra;		/*!< Remember when we're in ultra mode */
 	int dma_stat;		/*!< the state of DMA request */
 	u8 enable;		/*!< Current hardware interrupt mask */
+	u8 attached;		/*!< device attached or not */
 } mxc_ide_private_t;
 
 /*! ATA transfer mode for set_ata_bus_timing() */

@@ -92,6 +92,12 @@ struct mxc_lcd_platform_data {
 	void (*reset) (void);
 };
 
+/*! Platform data for the IDE drive structure. */
+struct mxc_ide_platform_data {
+	char *power_drive;	/*!< The power pointer */
+	char *power_io;		/*!< The power pointer */
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);

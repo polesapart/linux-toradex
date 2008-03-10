@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Deep Blue Solutions Ltd
  *  Copyright (C) 2002 Shane Nay (shane@minirl.com)
- *  Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2006-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -719,6 +719,35 @@ static void __inline mxc_init_pmic_audio(void)
 }
 #endif
 
+/* IDE device data */
+#if defined(CONFIG_BLK_DEV_IDE_MXC) || defined(CONFIG_BLK_DEV_IDE_MXC_MODULE)
+
+/*! Platform Data for MXC IDE */
+static struct mxc_ide_platform_data mxc_ide_data = {
+	.power_drive = NULL,
+	.power_io = NULL,
+};
+
+static struct platform_device mxc_ide_device = {
+	.name = "mxc_ide",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mxc_ide_data,
+		},
+};
+
+static inline void mxc_init_ide(void)
+{
+	if (platform_device_register(&mxc_ide_device) < 0)
+		printk(KERN_ERR "Error: Registering the ide.\n");
+}
+#else
+static inline void mxc_init_ide(void)
+{
+}
+#endif
+
 static __init void mxc_board_init(void)
 {
 	pr_info("AIPI VA base: 0x%x\n", IO_ADDRESS(AIPI_BASE_ADDR));
@@ -744,6 +773,7 @@ static __init void mxc_board_init(void)
 
 	mxc_init_fb();
 	mxc_init_bl();
+	mxc_init_ide();
 }
 
 static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
