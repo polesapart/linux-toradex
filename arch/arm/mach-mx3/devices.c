@@ -81,6 +81,8 @@ void mxc_sdma_get_script_info(sdma_script_start_addrs * sdma_script_addr)
 		sdma_script_addr->mxc_sdma_app_2_mcu_addr =
 		    app_2_mcu_patched_ADDR_2;
 		sdma_script_addr->mxc_sdma_ap_2_ap_addr = ap_2_ap_ADDR_2;
+		sdma_script_addr->mxc_sdma_ap_2_ap_fixed_addr =
+		    ap_2_ap_fixed_addr_ADDR_2;
 		sdma_script_addr->mxc_sdma_ap_2_bp_addr = ap_2_bp_ADDR_2;
 		sdma_script_addr->mxc_sdma_bp_2_ap_addr = bp_2_ap_ADDR_2;
 		sdma_script_addr->mxc_sdma_loopback_on_dsp_side_addr = -1;

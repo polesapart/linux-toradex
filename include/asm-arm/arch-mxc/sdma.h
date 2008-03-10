@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -53,6 +53,8 @@
 #define MAX_DMA_CHANNELS 0
 #endif
 
+#define MXC_FIFO_MEM_DEST_FIXED   0x1
+#define MXC_FIFO_MEM_SRC_FIXED    0x2
 /*!
  * This enumerates  transfer types
  */
@@ -97,7 +99,8 @@ typedef enum {
 	EXT,			/*!< External peripheral */
 	MSHC,			/*!< Memory Stick Host Controller */
 	DSP,			/*!< DSP */
-	MEMORY			/*!< Memory */
+	MEMORY,			/*!< Memory */
+	FIFO_MEMORY		/*!< FIFO type Memory */
 } sdma_periphT;
 
 #ifndef TRANSFER_32BIT
@@ -190,6 +193,8 @@ typedef struct {
 	int mxc_sdma_ap_2_ap_addr;
 	/*! address of ap_2_bp script */
 	int mxc_sdma_ap_2_bp_addr;
+	/*! address of ap_2_ap_fixed script */
+	int mxc_sdma_ap_2_ap_fixed_addr;
 	/*! address of bp_2_ap script */
 	int mxc_sdma_bp_2_ap_addr;
 	/*! address of loopback_on_dsp_side script */

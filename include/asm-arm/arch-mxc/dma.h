@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -77,6 +77,7 @@ typedef enum mxc_dma_device {
 	MXC_DMA_ATA_RX,
 	MXC_DMA_ATA_TX,
 	MXC_DMA_MEMORY,
+	MXC_DMA_FIFO_MEMORY,
 	MXC_DMA_DSP_PACKET_DATA0_RD,
 	MXC_DMA_DSP_PACKET_DATA0_WR,
 	MXC_DMA_DSP_PACKET_DATA1_RD,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -321,6 +321,13 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
 				chnl_param.transfer_type = dsp_2_emi;
 			} else {
 				chnl_param.transfer_type = emi_2_dsp;
+			}
+		} else if (chnl_param.peripheral_type == FIFO_MEMORY) {
+			if (mode == MXC_DMA_MODE_READ) {
+				chnl_param.per_address = MXC_FIFO_MEM_SRC_FIXED;
+			} else {
+				chnl_param.per_address =
+				    MXC_FIFO_MEM_DEST_FIXED;
 			}
 		} else {
 			if (mode == MXC_DMA_MODE_READ) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -194,6 +194,7 @@
 #define MXC_DMA_CHANNEL_ATA_RX  MXC_DMA_DYNAMIC_CHANNEL
 #define MXC_DMA_CHANNEL_ATA_TX  MXC_DMA_DYNAMIC_CHANNEL
 #define MXC_DMA_CHANNEL_MEMORY  MXC_DMA_DYNAMIC_CHANNEL
+#define MXC_DMA_CHANNEL_FIFO_MEMORY  MXC_DMA_DYNAMIC_CHANNEL
 
 /*
  * AIPS 2
@@ -457,4 +458,4 @@
 #define NFMS_NF_DWIDTH 		31
 #define NFMS_NF_PG_SZ 		30
 
-#endif			/*  __ASM_ARCH_MXC_MX31_H__ */
+#endif				/*  __ASM_ARCH_MXC_MX31_H__ */

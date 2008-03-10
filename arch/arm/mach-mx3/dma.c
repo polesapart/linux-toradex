@@ -1,5 +1,5 @@
 /*
- *  Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -615,6 +615,19 @@ static mxc_sdma_channel_params_t mxc_sdma_memory_params = {
 	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
+static mxc_sdma_channel_params_t mxc_sdma_fifo_memory_params = {
+	.chnl_params = {
+			.peripheral_type = FIFO_MEMORY,
+			.per_address = MXC_FIFO_MEM_DEST_FIXED,
+			.transfer_type = emi_2_emi,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			.event_id = 0,
+			},
+	.channel_num = MXC_DMA_CHANNEL_FIFO_MEMORY,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
 static mxc_sdma_channel_params_t mxc_sdma_ata_rx_params = {
 	.chnl_params = {
 			.watermark_level = MXC_IDE_DMA_WATERMARK,
@@ -686,6 +699,7 @@ static mxc_sdma_info_entry_t mxc_sdma_active_dma_info[] = {
 	{MXC_DMA_FIR_RX, &mxc_sdma_fir_rx_params},
 	{MXC_DMA_FIR_TX, &mxc_sdma_fir_tx_params},
 	{MXC_DMA_MEMORY, &mxc_sdma_memory_params},
+	{MXC_DMA_FIFO_MEMORY, &mxc_sdma_fifo_memory_params},
 	{MXC_DMA_ATA_RX, &mxc_sdma_ata_rx_params},
 	{MXC_DMA_ATA_TX, &mxc_sdma_ata_tx_params},
 };
