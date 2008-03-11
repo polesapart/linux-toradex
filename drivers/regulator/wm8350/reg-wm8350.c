@@ -74,13 +74,13 @@ static int wm8350_isink_set_current(struct regulator *reg, int uA)
 		val = wm8350_reg_read(wm8350, WM8350_CURRENT_SINK_DRIVER_A) &
 			~WM8350_CS1_ISEL_MASK;
 		wm8350_reg_write(wm8350, WM8350_CURRENT_SINK_DRIVER_A, val |
-			get_isink_val(uA));
+			WM8350_CS1_ENABLE | get_isink_val(uA));
 		break;
 	case WM8350_ISINK_B:
 		val = wm8350_reg_read(wm8350, WM8350_CURRENT_SINK_DRIVER_B) &
 			~WM8350_CS1_ISEL_MASK;
 		wm8350_reg_write(wm8350, WM8350_CURRENT_SINK_DRIVER_B, val |
-			get_isink_val(uA));
+			WM8350_CS2_ENABLE | get_isink_val(uA));
 		break;
 	default:
 		return -EINVAL;

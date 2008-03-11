@@ -209,7 +209,7 @@ static int config_hibernate(struct wm8350 *wm8350)
 
 struct regulation_constraints led_regulation_constraints = {
 	.min_uA = 0,
-	.max_uA = 19727,
+	.max_uA = 230000,
 	.valid_ops_mask = REGULATOR_CHANGE_CURRENT,
 };
 
@@ -227,6 +227,43 @@ static void set_regulator_constraints(struct wm8350 *wm8350)
 					   &led_regulation_constraints);
 }
 
+static void wm8350_nop_release(struct device *dev)
+{
+	/* Nothing */
+}
+
+struct wm8350_bl_platform_data wm8350_bl_data = {
+	.isink = WM8350_ISINK_A,
+	.dcdc = WM8350_DCDC_5,
+	.voltage_ramp = WM8350_DC5_RMP_20V,
+	.retries = 5,
+	.max_brightness = 63,
+	.power = FB_BLANK_UNBLANK,
+	.brightness = 50,
+};
+
+static struct platform_device mxc_wm8350_devices[] = {
+	{
+	 .name = "wm8350-bl",
+	 .id = 2,
+	 .dev = {
+		 .release = wm8350_nop_release,
+		 .platform_data = &wm8350_bl_data,
+		 },
+	 },
+};
+
+static inline void mxc_init_wm8350(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(mxc_wm8350_devices); i++) {
+		if (platform_device_register(&mxc_wm8350_devices[i]) < 0)
+			dev_err(&mxc_wm8350_devices[i].dev,
+				"Unable to register WM8350 device\n");
+	}
+}
+
 int wm8350_init(struct wm8350 *wm8350)
 {
 	int ret = 0;
@@ -239,6 +276,7 @@ int wm8350_init(struct wm8350 *wm8350)
 	wm8350_device_register_wdg(wm8350);
 	wm8350_device_register_power(wm8350);
 #endif
+	mxc_init_wm8350();
 
 	/* register sound */
 	printk("Registering imx37_snd_device");

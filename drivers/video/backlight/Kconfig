@@ -113,3 +113,8 @@ config BACKLIGHT_MXC_PMIC
 	tristate "PMIC Backlight Driver"
 	depends on BACKLIGHT_MXC && MXC_MC13783_LIGHT && MXC_MC13783_POWER
 	default y
+    
+config BACKLIGHT_WM8350
+    tristate "WM8350 Backlight Driver"
+    depends on BACKLIGHT_MXC && REGULATOR_WM8350
+    default y

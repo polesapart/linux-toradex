@@ -84,6 +84,7 @@
 #define WM8350_CS1_ISEL_SHIFT                        0  /* CS1_ISEL - [5:0] */
 
 /* Bit values for R172 (0xAC) */
+#define WM8350_CS1_ENABLE                       0x8000  /* CS1_ENA */
 #define WM8350_CS1_HIB_MODE_DISABLE                  0  /* Disable current sink in hibernate */
 #define WM8350_CS1_HIB_MODE_LEAVE                    1  /* Leave current sink as-is in hibernate */
 
@@ -102,7 +103,7 @@
 /*
  * R174 (0xAE) - Current Sink Driver B
  */
-// lg #define WM8350_CS2_ENA                          0x8000  /* CS2_ENA */
+#define WM8350_CS2_ENABLE                      0x8000  /* CS2_ENA */
 #define WM8350_CS2_HIB_MODE                     0x1000  /* CS2_HIB_MODE */
 #define WM8350_CS2_ISEL_MASK                    0x003F  /* CS2_ISEL - [5:0] */
 
