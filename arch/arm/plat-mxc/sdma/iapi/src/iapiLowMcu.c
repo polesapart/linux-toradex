@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *
  * The code contained herein is licensed under the GNU General Public
@@ -167,7 +167,7 @@ iapi_InitChannelTables(void)
 {
 
   /* No channel is enabled*/
-  iapi_memset((void *)&SDMA_CHNENBL_0, 0x00, sizeof(unsigned long)*CH_NUM);
+  iapi_memset((void *)&SDMA_CHNENBL_0, 0x00, sizeof(unsigned long)*EVENTS_NUM);
   /* All channels have priority 0*/
   iapi_memset((void *)&SDMA_CHNPRI_0, 0x00, sizeof(unsigned long)*CH_NUM);
 }
@@ -499,7 +499,7 @@ iapi_lowSetChannelEventMapping(unsigned char event, unsigned long channel_map)
   int result = IAPI_SUCCESS;
 
   /* Check validity of event*/
-  if(event < CH_NUM)
+  if (event < EVENTS_NUM)
   {
       channelEnableMatx = &SDMA_CHNENBL_0;
       channelEnableMatx[event] |= channel_map;

@@ -60,6 +60,11 @@
  */
 #define MXC_SDMA_DSPDMA         0
 
+/*!
+ * Define this option to specify we are using the newer SDMA module.
+ */
+#define MXC_SDMA_V2
+
 /*
  * IRAM
  */

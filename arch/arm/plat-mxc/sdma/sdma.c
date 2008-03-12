@@ -89,7 +89,7 @@ typedef struct {
 	__u32 watermark_level;
 	/*! Peripheral event id */
 	int event_id;
-	/*! Peripheral event id2 (for ATA only) */
+	/*! Peripheral event id2 (for channels that use 2 events) */
 	int event_id2;
 	/*! Running status (boolean)  */
 	int running;
@@ -381,6 +381,8 @@ static int sdma_load_context(int channel, dma_channel_params * p)
 {
 	script_data context;
 	int res;
+	int event1_greater_than_32;
+	int event2_greater_than_32;
 
 	res = 0;
 
@@ -391,16 +393,44 @@ static int sdma_load_context(int channel, dma_channel_params * p)
 	if (context.load_address > 0) {
 		if ((p->peripheral_type != MEMORY)
 		    && (p->peripheral_type != DSP)) {
-			/* Watermark Level */
-			context.wml = p->watermark_level;
-			/* Event mask */
-			if (p->event_id) {
-				context.event_mask1 = 0x1 << p->event_id;
-			}
-			/* Event mask2 (ATA) */
+			/* Handle multiple event channels differently */
 			if (p->event_id2) {
-				context.event_mask2 = 0x1 << p->event_id2;
+				if (p->event_id2 < 32) {
+					context.event_mask2 =
+					    0x1 << p->event_id2;
+					event2_greater_than_32 = 0;
+				} else {
+					context.event_mask2 =
+					    0x1 << (p->event_id2 - 32);
+					event2_greater_than_32 = 1 << 31;
+				}
+				if (p->event_id < 32) {
+					context.event_mask1 =
+					    0x1 << p->event_id;
+					event1_greater_than_32 = 0;
+				} else {
+					context.event_mask1 =
+					    0x1 << (p->event_id - 32);
+					event1_greater_than_32 = 1 << 30;
+				}
+			} else {
+				event1_greater_than_32 = 0;
+				event2_greater_than_32 = 0;
+				if (p->event_id < 32) {
+					context.event_mask1 =
+					    0x1 << p->event_id;
+					context.event_mask2 = 0;
+				} else {
+					context.event_mask1 = 0;
+					context.event_mask2 =
+					    0x1 << (p->event_id - 32);
+				}
 			}
+			/* Watermark Level */
+			context.wml =
+			    event2_greater_than_32 | event1_greater_than_32 |
+			    p->watermark_level;
+
 			/* Address */
 			context.shp_addr = (unsigned long)(p->per_address);
 			iapi_IoCtl(sdma_data[channel].cd,
@@ -482,7 +512,7 @@ descriptors (0x%x)\n", err);
 								  0x1 <<
 								  channel);
 			}
-			if (!err && p->peripheral_type == ATA && p->event_id2) {
+			if (!err && p->event_id2) {
 				err = iapi_SetChannelEventMapping(p->event_id2,
 								  0x1 <<
 								  channel);

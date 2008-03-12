@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *
  * The code contained herein is licensed under the GNU General Public
@@ -2610,13 +2610,15 @@ IRQ_Handler(void)
     */
    if(SDMA_DI != 0)
    {
-     chNum = (CH_NUM - 1 - quartz_FF1(SDMA_DI));
+     chNum = (unsigned char)(CH_NUM - 1 - quartz_FF1(SDMA_DI));
+     intrReg = (unsigned int)(1 << chNum);
    }
    else
    {
      chNum = 32;
+     intrReg = 0;
    }
-   intrReg = 1 << chNum;
+
    while (intrReg != 0)
    {
       SDMA_DI &= intrReg;
@@ -2630,8 +2632,8 @@ IRQ_Handler(void)
                                  userArgTable[chNum]);
       }
 
-      chNum = (CH_NUM - 1 - quartz_FF1(SDMA_DI));
-      intrReg = 1 << chNum;
+      chNum = (unsigned char)(CH_NUM - 1 - quartz_FF1(SDMA_DI));
+      intrReg = (unsigned int)(1 << chNum);
    }
 
    /* Enable interrupts */
@@ -2764,7 +2766,7 @@ unsigned long iapi_GetError(channelDescriptor * cd_p)
  */
 int iapi_GetCount(channelDescriptor * cd_p)
 {
-   return (cd_p->ccb_ptr->currentBDptr->mode.count);
+   return (int)(cd_p->ccb_ptr->currentBDptr->mode.count);
 }
 
 /* ***************************************************************************/

@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -11,12 +11,12 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-#ifndef _mcuEpm_h
-#define _mcuEpm_h
+#ifndef __ASM_ARCH_MXC_SDMA_REGS_H__
+#define __ASM_ARCH_MXC_SDMA_REGS_H__
 
 #include <asm/arch/hardware.h>
 
-/*MCU_sdma (sdma.0.) regs definition */
+/* SDMA Reg definition */
 #define SDMA_BASE_IO_ADDR IO_ADDRESS(SDMA_BASE_ADDR)
 
 #define SDMA_H_C0PTR            *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x000))
@@ -46,7 +46,7 @@
 #define SDMA_XTRIG_CONF1        *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x070))
 #define SDMA_XTRIG_CONF2        *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x074))
 
-#if defined(CONFIG_ARCH_MXC91221) || defined(CONFIG_ARCH_MXC92323) || defined(CONFIG_ARCH_MX37)
+#ifdef MXC_SDMA_V2
 #define SDMA_CHNENBL_0          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x200))
 #define SDMA_CHNENBL_1          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x204))
 #define SDMA_CHNENBL_2          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x208))
@@ -106,6 +106,7 @@
 #define SDMA_ONCE_PCMATCH       *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x31C))
 
 #else
+
 #define SDMA_CHNENBL_0          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x080))
 #define SDMA_CHNENBL_1          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x084))
 #define SDMA_CHNENBL_2          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x088))
@@ -148,7 +149,7 @@
 #define SDMA_ONCE_EDM           *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x218))
 #define SDMA_ONCE_PCMATCH       *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x21C))
 
-#endif
+#endif /* MXC_SDMA_V2 */
 
 #define SDMA_CHNPRI_0           *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x100))
 #define SDMA_CHNPRI_1           *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x104))
@@ -182,21 +183,5 @@
 #define SDMA_CHNPRI_29          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x174))
 #define SDMA_CHNPRI_30          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x178))
 #define SDMA_CHNPRI_31          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x17C))
-#define SDMA_CHNPRI_32          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x180))
-#define SDMA_CHNPRI_33          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x184))
-#define SDMA_CHNPRI_34          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x188))
-#define SDMA_CHNPRI_35          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x18C))
-#define SDMA_CHNPRI_36          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x190))
-#define SDMA_CHNPRI_37          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x194))
-#define SDMA_CHNPRI_38          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x198))
-#define SDMA_CHNPRI_39          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x19C))
-#define SDMA_CHNPRI_40          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1A0))
-#define SDMA_CHNPRI_41          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1A4))
-#define SDMA_CHNPRI_42          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1A8))
-#define SDMA_CHNPRI_43          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1AC))
-#define SDMA_CHNPRI_44          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1B0))
-#define SDMA_CHNPRI_45          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1B4))
-#define SDMA_CHNPRI_46          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1B8))
-#define SDMA_CHNPRI_47          *((volatile unsigned long *)(SDMA_BASE_IO_ADDR + 0x1BC))
 
 #endif /* _mcuEpm_h */

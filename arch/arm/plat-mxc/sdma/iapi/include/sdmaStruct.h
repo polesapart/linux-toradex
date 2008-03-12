@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *
  * The code contained herein is licensed under the GNU General Public
@@ -51,9 +51,17 @@
 #endif
 
 /**
- * Number of channel
+ * Number of channels
  */
 #define CH_NUM  32
+/**
+ * Number of events
+ */
+#ifdef MXC_SDMA_V2
+#define EVENTS_NUM   48
+#else
+#define EVENTS_NUM   32
+#endif
 /**
  * Channel configuration
  */
