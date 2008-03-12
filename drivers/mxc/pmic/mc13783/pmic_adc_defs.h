@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -283,7 +283,7 @@ static int pmic_adc_filter(t_touch_screen * ts_curr);
  * @return      This function returns index of ADC to be used (0 or 1) if successful.
                 return -1 if error.
  */
-int mc13783_adc_request(void);
+int mc13783_adc_request(bool read_ts);
 
 /*!
  * This function is used to update buffer of touch screen value in read mode.

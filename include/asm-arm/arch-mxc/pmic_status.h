@@ -13,7 +13,9 @@
 #ifndef __ASM_ARCH_MXC_PMIC_STATUS_H__
 #define __ASM_ARCH_MXC_PMIC_STATUS_H__
 #include <asm-generic/errno-base.h>
+#ifdef __KERNEL__
 #include <asm/uaccess.h>	/* copy_{from,to}_user() */
+#endif
 /*!
  * @file arch-mxc/pmic_status.h
  * @brief PMIC APIs return code definition.

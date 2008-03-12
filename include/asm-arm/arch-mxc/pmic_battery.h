@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -85,6 +85,32 @@
  * Argument type: int
  */
 #define PMIC_BATT_SET_THRESHOLD	                 _IOW('p', 0xc9, int)
+
+/*!
+ * Get the charger voltage.
+ * Argument type: int
+ */
+#define PMIC_BATT_GET_CHARGER_VOLTAGE		_IOR('p', 0xca, int)
+/*!
+ * Get the battery voltage.
+ * Argument type: int
+ */
+#define PMIC_BATT_GET_BATTERY_VOLTAGE		_IOR('p', 0xcb, int)
+/*!
+ * Get the battery current.
+ * Argument type: int
+ */
+#define PMIC_BATT_GET_BATTERY_CURRENT		_IOR('p', 0xcc, int)
+/*!
+ * Get the charger sensor.
+ * Argument type: int
+ */
+#define PMIC_BATT_GET_CHARGER_SENSOR		_IOR('p', 0xcd, int)
+/*!
+ * Get the battery temperature.
+ * Argument type: int
+ */
+#define PMIC_BATT_GET_BATTERY_TEMPERATURE	_IOR('p', 0xce, int)
 /*! @} */
 
 /*!
@@ -153,6 +179,20 @@ typedef enum {
 	 */
 	BAT_IT_BELOW_THRESHOLD,
 } t_batt_event;
+
+/*START: for 3ds hw event*/
+/*!
+ * Battery event type enum
+ */
+enum {
+	BAT_EVENT_CHARGER_PLUG = 0x01,
+	BAT_EVENT_CHARGER_UNPLUG = 0x02,
+	BAT_EVENT_CHARGER_OVERVOLTAGE = 0x04,
+	BAT_EVENT_BATTERY_LOW = 0x08,
+	BAT_EVENT_POWER_FAILED = 0x10,
+	BAT_EVENT_CHARGER_FULL = 0x20,
+} t_bat_event;
+/*END: for 3ds hw event*/
 
 /*!
  * This structure is used for the following battery changer control

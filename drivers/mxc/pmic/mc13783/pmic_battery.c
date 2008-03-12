@@ -34,6 +34,11 @@
 
 #include "pmic_battery_defs.h"
 
+#include <asm/arch/pmic_power.h>
+#ifdef MXC_HWEVENT
+#include <../drivers/mxc/hw_event/mxc_hw_event.h>
+#endif
+
 static int pmic_battery_major;
 
 /*!
@@ -70,6 +75,89 @@ EXPORT_SYMBOL(pmic_batt_set_unregulated);
 EXPORT_SYMBOL(pmic_batt_set_5k_pull);
 EXPORT_SYMBOL(pmic_batt_event_subscribe);
 EXPORT_SYMBOL(pmic_batt_event_unsubscribe);
+
+static DECLARE_MUTEX(count_mutex);	/* open count mutex */
+static int open_count;		/* open count for device file */
+
+/*!
+ * Callback function for events, we want on MGN board
+ */
+static void callback_chg_detect(void)
+{
+#ifdef MXC_HWEVENT
+	t_sensor_bits sensor;
+	struct mxc_hw_event event = { HWE_BAT_CHARGER_PLUG, 0 };
+
+	pr_debug("In callback_chg_detect\n");
+
+	/* get sensor values */
+	pmic_get_sensors(&sensor);
+
+	pr_debug("Callback, charger detect:%d\n", sensor.sense_chgdets);
+
+	if (sensor.sense_chgdets)
+		event.args = 1;
+	else
+		event.args = 0;
+	/* send hardware event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
+
+static void callback_low_battery(void)
+{
+#ifdef MXC_HWEVENT
+	struct mxc_hw_event event = { HWE_BAT_BATTERY_LOW, 0 };
+
+	pr_debug("In callback_low_battery\n");
+	/* send hardware event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
+
+static void callback_power_fail(void)
+{
+#ifdef MXC_HWEVENT
+	struct mxc_hw_event event = { HWE_BAT_POWER_FAILED, 0 };
+
+	pr_debug("In callback_power_fail\n");
+	/* send hardware event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
+
+static void callback_chg_overvoltage(void)
+{
+#ifdef MXC_HWEVENT
+	struct mxc_hw_event event = { HWE_BAT_CHARGER_OVERVOLTAGE, 0 };
+
+	pr_debug("In callback_chg_overvoltage\n");
+	/* send hardware event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
+
+static void callback_chg_full(void)
+{
+#ifdef MXC_HWEVENT
+	t_sensor_bits sensor;
+	struct mxc_hw_event event = { HWE_BAT_CHARGER_FULL, 0 };
+
+	pr_debug("In callback_chg_full\n");
+
+	/* disable charge function */
+	pmic_batt_disable_charger(BATT_MAIN_CHGR);
+
+	/* get charger sensor */
+	pmic_get_sensors(&sensor);
+
+	/* if did not detect the charger */
+	if (sensor.sense_chgdets)
+		return;
+	/* send hardware event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
 
 /*!
  * This is the suspend of power management for the pmic battery API.
@@ -131,9 +219,8 @@ PMIC_STATUS pmic_batt_enable_charger(t_batt_charger chgr,
 	mask = 0;
 	reg = 0;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	switch (chgr) {
 	case BATT_MAIN_CHGR:
@@ -183,10 +270,8 @@ PMIC_STATUS pmic_batt_disable_charger(t_batt_charger chgr)
 	mask = 0;
 	reg = 0;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
-
 	switch (chgr) {
 	case BATT_MAIN_CHGR:
 		val = BITFVAL(MC13783_BATT_DAC_DAC, 0) |
@@ -237,9 +322,8 @@ PMIC_STATUS pmic_batt_set_charger(t_batt_charger chgr,
 	mask = 0;
 	reg = 0;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	switch (chgr) {
 	case BATT_MAIN_CHGR:
@@ -287,9 +371,8 @@ PMIC_STATUS pmic_batt_get_charger_setting(t_batt_charger chgr,
 
 	reg = 0;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	switch (chgr) {
 	case BATT_MAIN_CHGR:
@@ -329,6 +412,93 @@ PMIC_STATUS pmic_batt_get_charger_setting(t_batt_charger chgr,
 }
 
 /*!
+ * This function is retrives the main battery voltage.
+ *
+ * @param      b_voltage   Output parameter for voltage setting.
+ *
+ * @return     This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_batt_get_batt_voltage(unsigned short *b_voltage)
+{
+	t_channel channel;
+	unsigned short result[8];
+
+	if (suspend_flag == 1)
+		return PMIC_ERROR;
+	channel = BATTERY_VOLTAGE;
+	CHECK_ERROR(pmic_adc_convert(channel, result));
+	*b_voltage = result[0];
+
+	return PMIC_SUCCESS;
+}
+
+/*!
+ * This function is retrives the main battery current.
+ *
+ * @param      b_current   Output parameter for current setting.
+ *
+ * @return     This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_batt_get_batt_current(unsigned short *b_current)
+{
+	t_channel channel;
+	unsigned short result[8];
+
+	if (suspend_flag == 1)
+		return PMIC_ERROR;
+
+	channel = BATTERY_CURRENT;
+	CHECK_ERROR(pmic_adc_convert(channel, result));
+	*b_current = result[0];
+
+	return PMIC_SUCCESS;
+}
+
+/*!
+ * This function is retrives the main battery temperature.
+ *
+ * @param      b_temper   Output parameter for temperature setting.
+ *
+ * @return     This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_batt_get_batt_temperature(unsigned short *b_temper)
+{
+	t_channel channel;
+	unsigned short result[8];
+
+	if (suspend_flag == 1)
+		return PMIC_ERROR;
+
+	channel = GEN_PURPOSE_AD5;
+	CHECK_ERROR(pmic_adc_convert(channel, result));
+	*b_temper = result[0];
+
+	return PMIC_SUCCESS;
+}
+
+/*!
+ * This function is retrives the main battery charging voltage.
+ *
+ * @param      c_voltage   Output parameter for charging voltage setting.
+ *
+ * @return     This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_batt_get_charge_voltage(unsigned short *c_voltage)
+{
+	t_channel channel;
+	unsigned short result[8];
+
+	if (suspend_flag == 1)
+		return PMIC_ERROR;
+
+	channel = CHARGE_VOLTAGE;
+	CHECK_ERROR(pmic_adc_convert(channel, result));
+	*c_voltage = result[0];
+
+	return PMIC_SUCCESS;
+}
+
+/*!
  * This function is retrives the main battery charging current.
  *
  * @param      c_current   Output parameter for charging current setting.
@@ -340,9 +510,8 @@ PMIC_STATUS pmic_batt_get_charge_current(unsigned short *c_current)
 	t_channel channel;
 	unsigned short result[8];
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	channel = CHARGE_CURRENT;
 	CHECK_ERROR(pmic_adc_convert(channel, result));
@@ -382,9 +551,8 @@ PMIC_STATUS pmic_batt_bp_enable_eol(t_bp_threshold typical)
 {
 	unsigned int val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_EOL_CMP_EN,
 		      MC13783_BATT_DAC_EOL_CMP_EN_ENABLE) |
@@ -406,9 +574,8 @@ PMIC_STATUS pmic_batt_disable_eol(void)
 {
 	unsigned int val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_EOL_CMP_EN,
 		      MC13783_BATT_DAC_EOL_CMP_EN_DISABLE);
@@ -430,9 +597,9 @@ PMIC_STATUS pmic_batt_disable_eol(void)
 PMIC_STATUS pmic_batt_set_out_control(t_control control)
 {
 	unsigned int val, mask;
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
+
 	switch (control) {
 	case CONTROL_HARDWARE:
 		val = BITFVAL(MC13783_BATT_DAC_FETOVRD_EN, 0) |
@@ -471,12 +638,12 @@ PMIC_STATUS pmic_batt_set_threshold(int threshold)
 {
 	unsigned int val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
-	if (threshold > BAT_THRESHOLD_MAX) {
+
+	if (threshold > BAT_THRESHOLD_MAX)
 		return PMIC_PARAMETER_ERROR;
-	}
+
 	val = BITFVAL(MC13783_BATT_DAC_OVCTRL, threshold);
 	mask = BITFMASK(MC13783_BATT_DAC_OVCTRL);
 	CHECK_ERROR(pmic_write_reg(REG_CHARGER, val, mask));
@@ -495,9 +662,8 @@ PMIC_STATUS pmic_batt_led_control(bool on)
 {
 	unsigned val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_LED_EN, on);
 	mask = BITFMASK(MC13783_BATT_DAC_LED_EN);
@@ -519,9 +685,8 @@ PMIC_STATUS pmic_batt_set_reverse_supply(bool enable)
 {
 	unsigned val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_REVERSE_SUPPLY, enable);
 	mask = BITFMASK(MC13783_BATT_DAC_REVERSE_SUPPLY);
@@ -543,9 +708,8 @@ PMIC_STATUS pmic_batt_set_unregulated(bool enable)
 {
 	unsigned val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_UNREGULATED, enable);
 	mask = BITFMASK(MC13783_BATT_DAC_UNREGULATED);
@@ -568,9 +732,8 @@ PMIC_STATUS pmic_batt_set_5k_pull(bool enable)
 {
 	unsigned val, mask;
 
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
 
 	val = BITFVAL(MC13783_BATT_DAC_5K, enable);
 	mask = BITFMASK(MC13783_BATT_DAC_5K);
@@ -598,7 +761,7 @@ PMIC_STATUS mc13783_battery_event(t_batt_event event, void *callback, bool sub)
 	bat_callback.param = NULL;
 	switch (event) {
 	case BAT_IT_CHG_DET:
-		bat_event = EVENT_WLOWI;
+		bat_event = EVENT_CHGDETI;
 		break;
 	case BAT_IT_CHG_OVERVOLT:
 		bat_event = EVENT_CHGOVI;
@@ -619,9 +782,9 @@ PMIC_STATUS mc13783_battery_event(t_batt_event event, void *callback, bool sub)
 		return PMIC_PARAMETER_ERROR;
 	}
 	if (sub == true) {
-		CHECK_ERROR(pmic_event_subscribe(event, bat_callback));
+		CHECK_ERROR(pmic_event_subscribe(bat_event, bat_callback));
 	} else {
-		CHECK_ERROR(pmic_event_unsubscribe(event, bat_callback));
+		CHECK_ERROR(pmic_event_unsubscribe(bat_event, bat_callback));
 	}
 	return 0;
 }
@@ -636,9 +799,9 @@ PMIC_STATUS mc13783_battery_event(t_batt_event event, void *callback, bool sub)
  */
 PMIC_STATUS pmic_batt_event_subscribe(t_batt_event event, void *callback)
 {
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
+
 	return mc13783_battery_event(event, callback, true);
 }
 
@@ -652,9 +815,9 @@ PMIC_STATUS pmic_batt_event_subscribe(t_batt_event event, void *callback)
  */
 PMIC_STATUS pmic_batt_event_unsubscribe(t_batt_event event, void *callback)
 {
-	if (suspend_flag == 1) {
+	if (suspend_flag == 1)
 		return PMIC_ERROR;
-	}
+
 	return mc13783_battery_event(event, callback, false);
 }
 
@@ -672,6 +835,7 @@ static int pmic_battery_ioctl(struct inode *inode, struct file *file,
 {
 	t_charger_setting *chgr_setting = NULL;
 	unsigned short c_current;
+	unsigned int bc_info;
 	t_eol_setting *eol_setting;
 
 	if (_IOC_TYPE(cmd) != 'p')
@@ -747,12 +911,58 @@ static int pmic_battery_ioctl(struct inode *inode, struct file *file,
 		kfree(chgr_setting);
 		break;
 
+	case PMIC_BATT_GET_CHARGER_SENSOR:
+		{
+			t_sensor_bits sensor;
+			pmic_get_sensors(&sensor);
+			if (copy_to_user
+			    ((unsigned int *)arg, &sensor.sense_chgdets,
+			     sizeof(unsigned int)))
+				return -EFAULT;
+
+			break;
+		}
+	case PMIC_BATT_GET_BATTERY_VOLTAGE:
+		CHECK_ERROR(pmic_batt_get_batt_voltage(&c_current));
+		bc_info = (unsigned int)c_current * 2300 / 1023 + 2400;
+		if (copy_to_user((unsigned int *)arg, &bc_info,
+				 sizeof(unsigned int)))
+			return -EFAULT;
+
+		break;
+
+	case PMIC_BATT_GET_BATTERY_CURRENT:
+		CHECK_ERROR(pmic_batt_get_batt_current(&c_current));
+		bc_info = (unsigned int)c_current * 5750 / 1023;
+		if (copy_to_user((unsigned int *)arg, &bc_info,
+				 sizeof(unsigned int)))
+			return -EFAULT;
+		break;
+
+	case PMIC_BATT_GET_BATTERY_TEMPERATURE:
+		CHECK_ERROR(pmic_batt_get_batt_temperature(&c_current));
+		bc_info = (unsigned int)c_current;
+		if (copy_to_user((unsigned int *)arg, &bc_info,
+				 sizeof(unsigned int)))
+			return -EFAULT;
+
+		break;
+
+	case PMIC_BATT_GET_CHARGER_VOLTAGE:
+		CHECK_ERROR(pmic_batt_get_charge_voltage(&c_current));
+		bc_info = (unsigned int)c_current * 23000 / 1023;
+		if (copy_to_user((unsigned int *)arg, &bc_info,
+				 sizeof(unsigned int)))
+			return -EFAULT;
+
+		break;
+
 	case PMIC_BATT_GET_CHARGER_CURRENT:
 		CHECK_ERROR(pmic_batt_get_charge_current(&c_current));
-		if (copy_to_user((unsigned char *)arg, &c_current,
-				 sizeof(unsigned char *))) {
+		bc_info = (unsigned int)c_current * 5750 / 1023;
+		if (copy_to_user((unsigned int *)arg, &bc_info,
+				 sizeof(unsigned int)))
 			return -EFAULT;
-		}
 
 		break;
 
@@ -821,7 +1031,60 @@ static int pmic_battery_open(struct inode *inode, struct file *file)
 			return -ERESTARTSYS;
 		}
 	}
+
+	/* check open count, if open firstly, register callbacks */
+	down(&count_mutex);
+	if (open_count++ > 0) {
+		up(&count_mutex);
+		return 0;
+	}
+
+	pr_debug("Subscribe the callbacks\n");
+	/* register battery event callback */
+	if (pmic_batt_event_subscribe(BAT_IT_CHG_DET, callback_chg_detect)) {
+		pr_debug("Failed to subscribe the charger detect callback\n");
+		goto event_err1;
+	}
+	if (pmic_power_event_sub(PWR_IT_LOBATLI, callback_power_fail)) {
+		pr_debug("Failed to subscribe the power failed callback\n");
+		goto event_err2;
+	}
+	if (pmic_power_event_sub(PWR_IT_LOBATHI, callback_low_battery)) {
+		pr_debug("Failed to subscribe the low battery callback\n");
+		goto event_err3;
+	}
+	if (pmic_batt_event_subscribe
+	    (BAT_IT_CHG_OVERVOLT, callback_chg_overvoltage)) {
+		pr_debug("Failed to subscribe the low battery callback\n");
+		goto event_err4;
+	}
+	if (pmic_batt_event_subscribe
+	    (BAT_IT_BELOW_THRESHOLD, callback_chg_full)) {
+		pr_debug("Failed to subscribe the charge full callback\n");
+		goto event_err5;
+	}
+
+	up(&count_mutex);
+
 	return 0;
+
+	/* un-subscribe the event callbacks */
+event_err5:
+	pmic_batt_event_unsubscribe(BAT_IT_CHG_OVERVOLT,
+				    callback_chg_overvoltage);
+event_err4:
+	pmic_power_event_unsub(PWR_IT_LOBATHI, callback_low_battery);
+event_err3:
+	pmic_power_event_unsub(PWR_IT_LOBATLI, callback_power_fail);
+event_err2:
+	pmic_batt_event_unsubscribe(BAT_IT_CHG_DET, callback_chg_detect);
+event_err1:
+
+	open_count--;
+	up(&count_mutex);
+
+	return -EFAULT;
+
 }
 
 /*!
@@ -840,6 +1103,23 @@ static int pmic_battery_release(struct inode *inode, struct file *file)
 			return -ERESTARTSYS;
 		}
 	}
+
+	/* check open count, if open firstly, register callbacks */
+	down(&count_mutex);
+	if (--open_count == 0) {
+		/* unregister these event callback */
+		pr_debug("Unsubscribe the callbacks\n");
+		pmic_batt_event_unsubscribe(BAT_IT_BELOW_THRESHOLD,
+					    callback_chg_full);
+		pmic_batt_event_unsubscribe(BAT_IT_CHG_OVERVOLT,
+					    callback_chg_overvoltage);
+		pmic_power_event_unsub(PWR_IT_LOBATHI, callback_low_battery);
+		pmic_power_event_unsub(PWR_IT_LOBATLI, callback_power_fail);
+		pmic_batt_event_unsubscribe(BAT_IT_CHG_DET,
+					    callback_chg_detect);
+	}
+	up(&count_mutex);
+
 	return 0;
 }
 
@@ -887,6 +1167,9 @@ static int pmic_battery_probe(struct platform_device *pdev)
 		ret = PTR_ERR(temp_class);
 		goto err_out2;
 	}
+
+	pmic_batt_led_control(true);
+	pmic_batt_set_5k_pull(true);
 
 	printk(KERN_INFO "PMIC Battery successfully probed\n");
 

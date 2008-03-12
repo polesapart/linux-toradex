@@ -21,13 +21,21 @@
 /*
  * Includes
  */
-
+#define DEBUG
 #include <linux/platform_device.h>
 #include <asm/ioctl.h>
 #include <asm/arch/pmic_power.h>
 #include <asm/arch/pmic_status.h>
 
 #include "pmic_power_defs.h"
+
+#ifdef CONFIG_MXC_HWEVENT
+#include <../drivers/mxc/hw_event/mxc_hw_event.h>
+#endif
+
+#include <asm/mach-types.h>
+
+#define MC13783_REGCTRL_GPOx_MASK 0x18000
 
 static bool VBKUP1_EN = false;
 static bool VBKUP2_EN = false;
@@ -3036,6 +3044,26 @@ PMIC_STATUS pmic_power_event_unsub(t_pwr_int event, void *callback)
 	return pmic_power_event(event, callback, false);
 }
 
+void pmic_power_key_callback(void)
+{
+#ifdef MXC_HWEVENT
+	/*read the power key is pressed or up */
+	t_sensor_bits sense;
+	struct mxc_hw_event event = { HWE_POWER_KEY, 0 };
+
+	pmic_get_sensors(&sense);
+	if (sense.sense_onofd1s) {
+		pr_debug("PMIC Power key up\n");
+		event.args = PWRK_UNPRESS;
+	} else {
+		pr_debug("PMIC Power key pressed\n");
+		event.args = PWRK_PRESS;
+	}
+	/* send hw event */
+	hw_event_send(HWE_DEF_PRIORITY, event);
+#endif
+}
+
 /*
  * Init and Exit
  */
@@ -3059,10 +3087,12 @@ static struct platform_driver pmic_power_driver_ldm = {
 static int __init pmic_power_init(void)
 {
 	pr_debug("PMIC Power driver loading..\n");
+	pmic_power_event_sub(PWR_IT_ONOFD1I, pmic_power_key_callback);
 	return platform_driver_register(&pmic_power_driver_ldm);
 }
 static void __exit pmic_power_exit(void)
 {
+	pmic_power_event_unsub(PWR_IT_ONOFD1I, pmic_power_key_callback);
 	platform_driver_unregister(&pmic_power_driver_ldm);
 	pr_debug("PMIC Power driver successfully unloaded\n");
 }
@@ -3071,7 +3101,7 @@ static void __exit pmic_power_exit(void)
  * Module entry points
  */
 
-subsys_initcall(pmic_power_init);
+subsys_initcall_sync(pmic_power_init);
 module_exit(pmic_power_exit);
 
 MODULE_DESCRIPTION("pmic_power driver");

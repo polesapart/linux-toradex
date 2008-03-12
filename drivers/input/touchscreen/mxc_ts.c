@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -49,8 +49,8 @@ static int ts_thread(void *arg)
 	while (input_ts_installed) {
 		try_to_freeze();
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
-		pmic_adc_get_touch_sample(&ts_sample, !wait);
-
+		if (0 != pmic_adc_get_touch_sample(&ts_sample, !wait))
+			continue;
 		input_report_abs(mxc_inputdev, ABS_X, ts_sample.x_position);
 		input_report_abs(mxc_inputdev, ABS_Y, ts_sample.y_position);
 		input_report_abs(mxc_inputdev, ABS_PRESSURE,
