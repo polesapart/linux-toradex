@@ -99,6 +99,13 @@ struct mxc_ide_platform_data {
 	char *power_io;		/*!< The power pointer */
 };
 
+struct mxc_camera_platform_data {
+	char *core_regulator;
+	char *io_regulator;
+	char *analog_regulator;
+	char *gpo_regulator;
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);

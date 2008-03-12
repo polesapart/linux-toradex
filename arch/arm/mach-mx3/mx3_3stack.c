@@ -29,6 +29,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
+#include <linux/i2c.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -208,6 +209,21 @@ static struct mxc_lcd_platform_data lcd_data = {
 	.io_reg = "VGEN",
 	.core_reg = "VMMC1",
 	.reset = lcd_reset,
+};
+
+static struct mxc_camera_platform_data camera_data = {
+	.core_regulator = "VVIB",
+	.io_regulator = "VMMC1",
+	.analog_regulator = "SW2B_NORMAL",
+	.gpo_regulator = "GPO3",
+};
+
+static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
+	{
+	 .driver_name = "ov2640",
+	 .addr = 0x30,
+	 .platform_data = (void *)&camera_data,
+	 },
 };
 
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
@@ -595,6 +611,8 @@ static void __init mxc_board_init(void)
 	mxc_init_nand_mtd();
 	mxc_init_hp_detect();
 
+	i2c_register_board_info(0, mxc_i2c_board_info,
+				ARRAY_SIZE(mxc_i2c_board_info));
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 

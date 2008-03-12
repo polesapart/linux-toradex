@@ -19,3 +19,6 @@ obj-$(CONFIG_MXC_CAMERA_HV7161) += hv7161_camera.o
 
 s5k3aaex_camera-objs := s5k3aaex.o sensor_clock.o
 obj-$(CONFIG_MXC_CAMERA_S5K3AAEX) += s5k3aaex_camera.o
+
+ov2640_camera-objs := ov2640.o sensor_clock.o
+obj-$(CONFIG_MXC_CAMERA_OV2640) += ov2640_camera.o

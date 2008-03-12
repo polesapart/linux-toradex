@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -1140,6 +1140,11 @@ mxc_v4l_do_ioctl(struct inode *inode, struct file *file,
 
 			mxc_streamoff(cam);
 			mxc_free_frame_buf(cam);
+			cam->enc_counter = 0;
+			cam->skip_frame = 0;
+			INIT_LIST_HEAD(&cam->ready_q);
+			INIT_LIST_HEAD(&cam->working_q);
+			INIT_LIST_HEAD(&cam->done_q);
 
 			retval = mxc_allocate_frame_buf(cam, req->count);
 			break;
