@@ -23,7 +23,6 @@
 #include <asm/mach-types.h>
 #include <asm/arch/pmic_external.h>
 #include <asm/arch/pmic_power.h>
-#include <asm/arch/mmc.h>
 
 #include <asm/arch/spba.h>
 #include "iomux.h"
@@ -359,114 +358,6 @@ static void mxc_init_scc(void)
 }
 #else
 static inline void mxc_init_scc(void)
-{
-}
-#endif
-/* MMC device data */
-
-#if defined(CONFIG_MMC_MXC) || defined(CONFIG_MMC_MXC_MODULE)
-
-extern unsigned int sdhc_get_card_det_status(struct device *dev);
-extern int sdhc_init_card_det(int id);
-
-static struct mxc_mmc_platform_data mmc_data = {
-	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30,
-	.min_clk = 150000,
-	.max_clk = 25000000,
-	.card_inserted_state = 1,
-	.status = sdhc_get_card_det_status,
-};
-
-/*!
- * Resource definition for the SDHC1
- */
-static struct resource mxcsdhc1_resources[] = {
-	[0] = {
-	       .start = MMC_SDHC1_BASE_ADDR,
-	       .end = MMC_SDHC1_BASE_ADDR + SZ_16K - 1,
-	       .flags = IORESOURCE_MEM,
-	       },
-	[1] = {
-	       .start = MXC_INT_MMC_SDHC1,
-	       .end = MXC_INT_MMC_SDHC1,
-	       .flags = IORESOURCE_IRQ,
-	       },
-	[2] = {
-	       .start = 0,
-	       .end = 0,
-	       .flags = IORESOURCE_IRQ,
-	       },
-};
-
-/*!
- * Resource definition for the SDHC2
- */
-static struct resource mxcsdhc2_resources[] = {
-	[0] = {
-	       .start = MMC_SDHC2_BASE_ADDR,
-	       .end = MMC_SDHC2_BASE_ADDR + SZ_16K - 1,
-	       .flags = IORESOURCE_MEM,
-	       },
-	[1] = {
-	       .start = MXC_INT_MMC_SDHC2,
-	       .end = MXC_INT_MMC_SDHC2,
-	       .flags = IORESOURCE_IRQ,
-	       },
-	[2] = {
-	       .start = 0,
-	       .end = 0,
-	       .flags = IORESOURCE_IRQ,
-	       },
-};
-
-/*! Device Definition for MXC SDHC1 */
-static struct platform_device mxcsdhc1_device = {
-	.name = "mxcmci",
-	.id = 0,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mmc_data,
-		},
-	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
-	.resource = mxcsdhc1_resources,
-};
-
-/*! Device Definition for MXC SDHC2 */
-static struct platform_device mxcsdhc2_device = {
-	.name = "mxcmci",
-	.id = 1,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mmc_data,
-		},
-	.num_resources = ARRAY_SIZE(mxcsdhc2_resources),
-	.resource = mxcsdhc2_resources,
-};
-
-static inline void mxc_init_mmc(void)
-{
-	int cd_irq;
-
-	cd_irq = sdhc_init_card_det(0);
-	if (cd_irq) {
-		mxcsdhc1_device.resource[2].start = cd_irq;
-		mxcsdhc1_device.resource[2].end = cd_irq;
-	}
-	cd_irq = 0;
-	/* set cd_irq = 0 here to disable sdhc2 */
-	/* cd_irq = sdhc_init_card_det(1); */
-	if (cd_irq) {
-		mxcsdhc2_device.resource[2].start = cd_irq;
-		mxcsdhc2_device.resource[2].end = cd_irq;
-	}
-
-	spba_take_ownership(SPBA_SDHC1, SPBA_MASTER_A | SPBA_MASTER_C);
-	(void)platform_device_register(&mxcsdhc1_device);
-	spba_take_ownership(SPBA_SDHC2, SPBA_MASTER_A | SPBA_MASTER_C);
-	(void)platform_device_register(&mxcsdhc2_device);
-}
-#else
-static inline void mxc_init_mmc(void)
 {
 }
 #endif
@@ -878,7 +769,6 @@ static int __init mxc_init_devices(void)
 {
 	mxc_init_wdt();
 	mxc_init_ipu();
-	mxc_init_mmc();
 	mxc_init_spi();
 	mxc_init_i2c();
 	mxc_init_rtc();

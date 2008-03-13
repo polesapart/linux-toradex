@@ -18,6 +18,7 @@
 #include <asm/io.h>
 #include <asm/hardware.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/pmic_adc.h>
 #include "board-mx3_3stack.h"
 #include "iomux.h"
 
@@ -437,13 +438,6 @@ void gpio_sdhc_active(int module)
 				  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
 		mxc_iomux_set_pad(MX31_PIN_SD1_DATA3,
 				  (PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST));
-
-		/* Buffer Enable Pin, Active HI */
-		mxc_request_iomux(MX31_PIN_GPIO3_0, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_set_gpio_direction(MX31_PIN_GPIO3_0, 0);
-		mdelay(10);
-		mxc_set_gpio_dataout(MX31_PIN_GPIO3_0, 1);
 		break;
 	case 1:
 		mxc_request_iomux(MX31_PIN_PC_CD2_B, OUTPUTCONFIG_ALT1,
@@ -503,8 +497,6 @@ void gpio_sdhc_inactive(int module)
 
 		/* Buffer Enable Pin of SD, Active HI */
 		mxc_set_gpio_dataout(MX31_PIN_GPIO3_0, 0);
-		mxc_free_iomux(MX31_PIN_GPIO3_0, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
 		break;
 	case 1:
 		/* TODO:what are the pins for SDHC2? */
@@ -533,11 +525,23 @@ EXPORT_SYMBOL(gpio_sdhc_inactive);
  */
 int sdhc_get_card_det_status(struct device *dev)
 {
+	int ret;
+
 	if (to_platform_device(dev)->id == 0) {
-		return mxc_get_gpio_datain(MX31_PIN_GPIO3_1);
-	} else {
+		ret = mxc_get_gpio_datain(MX31_PIN_GPIO3_1);
+		/*
+		 * Active the Buffer Enable Pin only if there is
+		 * a card in slot.
+		 * To fix the card voltage issue caused by
+		 * bi-directional chip TXB0108 on 3Stack
+		 */
+		if (ret)
+			mxc_set_gpio_dataout(MX31_PIN_GPIO3_0, 0);
+		else
+			mxc_set_gpio_dataout(MX31_PIN_GPIO3_0, 1);
+		return ret;
+	} else
 		return mxc_get_gpio_datain(MX31_PIN_GPIO1_2);
-	}
 }
 
 EXPORT_SYMBOL(sdhc_get_card_det_status);
@@ -548,6 +552,13 @@ EXPORT_SYMBOL(sdhc_get_card_det_status);
 int sdhc_init_card_det(int id)
 {
 	if (id == 0) {
+		/* Buffer Enable Pin, Active HI */
+		mxc_request_iomux(MX31_PIN_GPIO3_0, OUTPUTCONFIG_GPIO,
+				  INPUTCONFIG_NONE);
+		mxc_set_gpio_direction(MX31_PIN_GPIO3_0, 0);
+		mxc_set_gpio_dataout(MX31_PIN_GPIO3_0, 0);
+
+		/* CD Pin */
 		mxc_request_iomux(MX31_PIN_GPIO3_1, OUTPUTCONFIG_GPIO,
 				  INPUTCONFIG_GPIO);
 		mxc_iomux_set_pad(MX31_PIN_GPIO3_1, PAD_CTL_PKE_NONE);
@@ -570,7 +581,7 @@ int sdhc_write_protect(void)
 {
 	unsigned short rc = 0;
 
-//      pmic_adc_convert(GEN_PURPOSE_AD7, &rc);
+	pmic_adc_convert(GEN_PURPOSE_AD7, &rc);
 	if (rc > 0)
 		return 1;
 	else

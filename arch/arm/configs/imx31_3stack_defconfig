@@ -1236,7 +1236,7 @@ CONFIG_MMC_BLOCK_BOUNCE=y
 # MMC/SD Host Controller Drivers
 #
 # CONFIG_MMC_SPI is not set
-# CONFIG_MMC_MXC is not set
+CONFIG_MMC_MXC=y
 # CONFIG_NEW_LEDS is not set
 CONFIG_RTC_LIB=y
 CONFIG_RTC_CLASS=y

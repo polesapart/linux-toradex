@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -22,6 +22,8 @@ struct mxc_mmc_platform_data {
 	unsigned int card_inserted_state;
 //      u32 (*translate_vdd)(struct device *, unsigned int);
 	unsigned int (*status) (struct device *);
+	int (*wp_status) (void);
+	char *power_mmc;
 };
 
 #endif

@@ -13,7 +13,7 @@
  */
 
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -54,6 +54,7 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 #include <linux/clk.h>
+#include <linux/regulator/regulator.h>
 
 #include <asm/dma.h>
 #include <asm/io.h>
@@ -65,29 +66,7 @@
 
 #include "mxc_mmc.h"
 
-#if defined(CONFIG_MXC_MC13783_POWER)
-#include <asm/arch/pmic_power.h>
-#endif
-
 #define RSP_TYPE(x)	((x) & ~(MMC_RSP_BUSY|MMC_RSP_OPCODE))
-
-static const int vdd_mapping[] = {
-	0, 0,
-	0,			/* MMC_VDD_160 */
-	0, 0,
-	1,			/* MMC_VDD_180 */
-	0,
-	2,			/* MMC_VDD_200 */
-	0, 0, 0, 0, 0,
-	3,			/* MMC_VDD_260 */
-	4,			/* MMC_VDD_270 */
-	5,			/* MMC_VDD_280 */
-	6,			/* MMC_VDD_290 */
-	7,			/* MMC_VDD_300 */
-	7,			/* MMC_VDD_310 - HACK for LP1070, actually 3.0V */
-	7,			/* MMC_VDD_320 - HACK for LP1070, actually 3.0V */
-	0, 0, 0, 0
-};
 
 /*
  * This define is used to test the driver without using DMA
@@ -269,6 +248,16 @@ struct mxcmci_host {
 	 * - currently unused
 	 */
 	unsigned int cmdat;
+
+	/*!
+	 * Regulator
+	 */
+	struct regulator *regulator_mmc;
+
+	/*!
+	 * Current vdd settting
+	 */
+	int current_vdd;
 
 	/*!
 	 * Power mode - currently unused
@@ -896,13 +885,11 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	/*This variable holds the value of clock prescaler */
 	int prescaler;
 	int clk_rate = clk_get_rate(host->clk);
+	int voltage = 0;
 #ifdef MXC_MMC_DMA_ENABLE
 	mxc_dma_device_t dev_id = 0;
 #endif
 
-#if defined(CONFIG_MXC_MC13783_POWER)
-	t_regulator_voltage voltage;
-#endif
 	pr_debug("%s: clock %u, bus %lu, power %u, vdd %u\n", DRIVER_NAME,
 		 ios->clock, 1UL << ios->bus_width, ios->power_mode, ios->vdd);
 
@@ -933,44 +920,27 @@ static void mxcmci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	}
 #endif
 
-#if defined(CONFIG_MXC_MC13783_POWER)
-	switch (ios->power_mode) {
-	case MMC_POWER_UP:
-		if (host->id == 0) {
-			voltage.vmmc1 = vdd_mapping[ios->vdd];
-			pmic_power_regulator_set_voltage(REGU_VMMC1, voltage);
-			pmic_power_regulator_set_lp_mode(REGU_VMMC1,
-							 LOW_POWER_DISABLED);
-			pmic_power_regulator_on(REGU_VMMC1);
-		}
-		if (host->id == 1) {
-			voltage.vmmc2 = vdd_mapping[ios->vdd];
-			pmic_power_regulator_set_voltage(REGU_VMMC2, voltage);
-			pmic_power_regulator_set_lp_mode(REGU_VMMC2,
-							 LOW_POWER_DISABLED);
-			pmic_power_regulator_on(REGU_VMMC2);
-		}
-		pr_debug("mmc power on\n");
-		msleep(300);
-		break;
-	case MMC_POWER_OFF:
-		if (host->id == 0) {
-			pmic_power_regulator_set_lp_mode(REGU_VMMC1,
-							 LOW_POWER_EN);
-			pmic_power_regulator_off(REGU_VMMC1);
-		}
-
-		if (host->id == 1) {
-			pmic_power_regulator_set_lp_mode(REGU_VMMC2,
-							 LOW_POWER_EN);
-			pmic_power_regulator_off(REGU_VMMC2);
-		}
-		pr_debug("mmc power off\n");
-		break;
-	default:
-		break;
+	if ((ios->vdd != host->current_vdd) && host->regulator_mmc) {
+		if (ios->vdd == 7)
+			voltage = 1800000;
+		else if (ios->vdd >= 8)
+			voltage = 2000000 + (ios->vdd - 8) * 100000;
+		regulator_set_voltage(host->regulator_mmc, voltage);
 	}
-#endif
+	host->current_vdd = ios->vdd;
+
+	if (ios->power_mode != host->power_mode && host->regulator_mmc) {
+		if (ios->power_mode == MMC_POWER_UP) {
+			if (regulator_enable(host->regulator_mmc) == 0) {
+				pr_debug("mmc power on\n");
+				msleep(300);
+			}
+		} else if (ios->power_mode == MMC_POWER_OFF) {
+			regulator_disable(host->regulator_mmc);
+			pr_debug("mmc power off\n");
+		}
+	}
+	host->power_mode = ios->power_mode;
 
 	/*
 	 *  Vary divider first, then prescaler.
@@ -1041,6 +1011,16 @@ static void mxcmci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+static int mxcmci_get_ro(struct mmc_host *mmc)
+{
+	struct mxcmci_host *host = mmc_priv(mmc);
+
+	if (host->plat_data->wp_status)
+		return host->plat_data->wp_status();
+	else
+		return 0;
+}
+
 /*!
  * MMC/SD host operations structure.
  * These functions are registered with MMC/SD Bus protocol driver.
@@ -1048,6 +1028,7 @@ static void mxcmci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 static struct mmc_host_ops mxcmci_ops = {
 	.request = mxcmci_request,
 	.set_ios = mxcmci_set_ios,
+	.get_ro = mxcmci_get_ro,
 	.enable_sdio_irq = mxcmci_enable_sdio_irq,
 };
 
@@ -1164,18 +1145,23 @@ static int mxcmci_probe(struct platform_device *pdev)
 	if (!mmc) {
 		return -ENOMEM;
 	}
+	host = mmc_priv(mmc);
 	platform_set_drvdata(pdev, mmc);
 
 	mmc->ops = &mxcmci_ops;
 	mmc->ocr_avail = mmc_plat->ocr_mask;
 
 	/* Hack to work with LP1070 */
-	mmc->ocr_avail |= MMC_VDD_31_32;
+	if (mmc->ocr_avail && ~(MMC_VDD_31_32 - 1) == 0)
+		mmc->ocr_avail |= MMC_VDD_31_32;
 
 	mmc->max_phys_segs = NR_SG;
 	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ;
 
-	host = mmc_priv(mmc);
+	mmc->f_min = mmc_plat->min_clk;
+	mmc->f_max = mmc_plat->max_clk;
+
+	spin_lock_init(&host->lock);
 	host->mmc = mmc;
 	host->dma = -1;
 	host->dma_dir = DMA_NONE;
@@ -1185,21 +1171,29 @@ static int mxcmci_probe(struct platform_device *pdev)
 	host->plat_data = mmc_plat;
 	if (!host->plat_data) {
 		ret = -EINVAL;
-		goto out;
+		goto out0;
+	}
+
+	gpio_sdhc_active(pdev->id);
+
+	/* Get pwr supply for SDHC */
+	if (NULL != mmc_plat->power_mmc) {
+		host->regulator_mmc =
+		    regulator_get(&pdev->dev, mmc_plat->power_mmc);
+		if (IS_ERR(host->regulator_mmc)) {
+			ret = PTR_ERR(host->regulator_mmc);
+			goto out1;
+		}
 	}
 
 	host->clk = clk_get(&pdev->dev, "sdhc_clk");
+	pr_debug("SDHC:%d clock:%lu\n", pdev->id, clk_get_rate(host->clk));
 	clk_enable(host->clk);
 
-	mmc->f_min = mmc_plat->min_clk;
-	mmc->f_max = mmc_plat->max_clk;
-	pr_debug("SDHC:%d clock:%lu\n", pdev->id, clk_get_rate(host->clk));
-
-	spin_lock_init(&host->lock);
 	host->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!host->res) {
 		ret = -ENOMEM;
-		goto out;
+		goto out2;
 	}
 
 	if (!request_mem_region(host->res->start,
@@ -1207,23 +1201,23 @@ static int mxcmci_probe(struct platform_device *pdev)
 				host->res->start + 1, pdev->name)) {
 		printk(KERN_ERR "request_mem_region failed\n");
 		ret = -ENOMEM;
-		goto out;
+		goto out2;
 	}
 	host->base = (void *)IO_ADDRESS(host->res->start);
 	if (!host->base) {
 		ret = -ENOMEM;
-		goto out1;
+		goto out3;
 	}
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (!host->irq) {
 		ret = -ENOMEM;
-		goto out1;
+		goto out3;
 	}
 
 	host->detect_irq = platform_get_irq(pdev, 1);
 	if (!host->detect_irq) {
-		goto out1;
+		goto out3;
 	}
 
 	do {
@@ -1239,7 +1233,7 @@ static int mxcmci_probe(struct platform_device *pdev)
 	ret =
 	    request_irq(host->detect_irq, mxcmci_gpio_irq, 0, pdev->name, host);
 	if (ret) {
-		goto out1;
+		goto out3;
 	}
 
 	mxcmci_softreset(host);
@@ -1255,30 +1249,30 @@ static int mxcmci_probe(struct platform_device *pdev)
 
 	ret = request_irq(host->irq, mxcmci_irq, 0, pdev->name, host);
 	if (ret) {
-		goto out3;
+		goto out4;
 	}
 
-	gpio_sdhc_active(pdev->id);
-
 	if ((ret = mmc_add_host(mmc)) < 0) {
-		goto out4;
+		goto out5;
 	}
 
 	printk(KERN_INFO "%s-%d found\n", pdev->name, pdev->id);
 
 	return 0;
 
-      out4:
-	gpio_sdhc_inactive(pdev->id);
+      out5:
 	free_irq(host->irq, host);
-      out3:
+      out4:
 	free_irq(host->detect_irq, host);
-	pr_debug("%s: Error in initializing....", pdev->name);
-      out1:
+      out3:
 	release_mem_region(pdev->resource[0].start,
 			   pdev->resource[0].end - pdev->resource[0].start + 1);
-      out:
+      out2:
 	clk_disable(host->clk);
+	regulator_put(host->regulator_mmc, &pdev->dev);
+      out1:
+	gpio_sdhc_inactive(pdev->id);
+      out0:
 	mmc_free_host(mmc);
 	platform_set_drvdata(pdev, NULL);
 	return ret;
@@ -1296,7 +1290,6 @@ static int mxcmci_probe(struct platform_device *pdev)
 static int mxcmci_remove(struct platform_device *pdev)
 {
 	struct mmc_host *mmc = platform_get_drvdata(pdev);
-	platform_set_drvdata(pdev, NULL);
 
 	if (mmc) {
 		struct mxcmci_host *host = mmc_priv(mmc);
@@ -1310,8 +1303,11 @@ static int mxcmci_remove(struct platform_device *pdev)
 		release_mem_region(host->res->start,
 				   host->res->end - host->res->start + 1);
 		mmc_free_host(mmc);
+		if (NULL != host->regulator_mmc)
+			regulator_put(host->regulator_mmc, &pdev->dev);
 		gpio_sdhc_inactive(pdev->id);
 	}
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 
@@ -1338,7 +1334,20 @@ static int mxcmci_suspend(struct platform_device *pdev, pm_message_t state)
 		host->mxc_mmc_suspend_flag = 1;
 		ret = mmc_suspend_host(mmc, state);
 	}
+
 	clk_disable(host->clk);
+	/*
+	 * The CD INT should be disabled in the suspend
+	 * and enabled in resumed.
+	 * Otherwise, the system would be halt when wake
+	 * up with the situation that there is a card
+	 * insertion during the system is in suspend mode.
+	 */
+	disable_irq(host->detect_irq);
+
+	if (host->regulator_mmc)
+		regulator_disable(host->regulator_mmc);
+	gpio_sdhc_inactive(pdev->id);
 
 	return ret;
 }
@@ -1367,12 +1376,22 @@ static int mxcmci_resume(struct platform_device *pdev)
 	if (!host->mxc_mmc_suspend_flag) {
 		return 0;
 	}
+
+	gpio_sdhc_active(pdev->id);
+
+	/* enable pwr supply for SDHC */
+	if (host->regulator_mmc)
+		regulator_enable(host->regulator_mmc);
+
 	clk_enable(host->clk);
 
 	if (mmc) {
 		ret = mmc_resume_host(mmc);
 		host->mxc_mmc_suspend_flag = 0;
 	}
+
+	enable_irq(host->detect_irq);
+
 	return ret;
 }
 #else
