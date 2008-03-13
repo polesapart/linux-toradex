@@ -141,8 +141,7 @@
 #define IS_4BIT_ECC			1
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
-#define SET_NFMS(v)	\
-	raw_write((raw_read(NFMS) | (v)),NFMS)
+#define SET_NFMS(v)	(NFMS |= (v));
 
 #define WRITE_NFC_IP_REG(val,reg) \
 	raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),  REG_NFC_OPS_STAT)
@@ -302,8 +301,7 @@
 #define IS_4BIT_ECC       1
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
-#define SET_NFMS(v)	\
-	raw_write((raw_read(NFMS) | (v)),NFMS)
+#define SET_NFMS(v)	(NFMS |= (v));
 
 #define WRITE_NFC_IP_REG(val,reg) \
 	raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),  REG_NFC_OPS_STAT)
