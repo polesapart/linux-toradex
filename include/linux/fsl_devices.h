@@ -6,7 +6,7 @@
  *
  * Maintainer: Kumar Gala <galak@kernel.crashing.org>
  *
- * Copyright 2004 Freescale Semiconductor, Inc
+ * Copyright 2004-2008 Freescale Semiconductor, Inc
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -142,6 +142,17 @@ struct fsl_spi_platform_data {
 	void (*deactivate_cs) (u8 cs, u8 polarity);
 	u32 sysclk;
 };
+
+struct fsl_ata_platform_data {
+       int     udma_mask;      /* UDMA modes h/w can handle */
+       int     fifo_alarm;     /* value for fifo_alarm reg */
+       int     max_sg;         /* longest sglist h/w can handle */
+       int     (*init)(struct platform_device *pdev);
+       void    (*exit)(void);
+	   char    *io_reg;
+	   char    *core_reg;
+};
+
 
 struct mpc8xx_pcmcia_ops {
 	void(*hw_ctrl)(int slot, int enable);

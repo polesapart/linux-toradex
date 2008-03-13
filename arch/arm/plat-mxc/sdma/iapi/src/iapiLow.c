@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  *
  * The code contained herein is licensed under the GNU General Public
@@ -123,8 +123,7 @@ iapi_ChangeCallbackISR (channelDescriptor * cd_p,
 void
 iapi_lowSynchChannel (unsigned char channel)
 {
-  //while (! ( (1UL << channel) & iapi_SDMAIntr ) ) ;
-  GOTO_SLEEP(channel);
+  while (!((1UL << channel) & iapi_SDMAIntr)) ;
   iapi_SDMAIntr &= ~(1UL << channel);
 }
 
@@ -148,3 +147,4 @@ iapi_SetBufferDescriptor( bufferDescriptor * bd_p, unsigned char command,
   }
   bd_p->extBufferAddr = extBufferAddr;
 }
+
