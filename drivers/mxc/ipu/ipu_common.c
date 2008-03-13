@@ -135,7 +135,7 @@ int ipu_probe(struct platform_device *pdev)
 	__raw_writel(0x0000C000L, IDMAC_CHA_PRI);
 
 	/* Set to max back to back burst requests */
-	__raw_writel(0x00000070L, IDMAC_CONF);
+	__raw_writel(0x00000000L, IDMAC_CONF);
 
 	register_ipu_device();
 
