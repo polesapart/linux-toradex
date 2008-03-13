@@ -41,6 +41,9 @@ static unsigned short normal_i2c[] = { WM8350_I2C_ADDR, I2C_CLIENT_END };
 /* Magic definition of all other variables and things */
 I2C_CLIENT_INSMOD;
 
+extern int wm8350_pmu_init(void);
+extern void wm8350_pmu_exit(void);
+
 static int wm8350_pmic_i2c_detect(struct i2c_adapter *adap, int addr, int kind)
 {
 	struct wm8350* wm8350;
@@ -90,6 +93,12 @@ static int wm8350_pmic_i2c_detect(struct i2c_adapter *adap, int addr, int kind)
 		goto err;
 	}
 
+	ret = bus_register(&wm8350_bus_type);
+	if (ret < 0)
+		goto err;
+
+	wm8350_pmu_init();
+
 	ret = wm8350_init(wm8350);
 	if (ret == 0)
 		return ret;
@@ -109,6 +118,8 @@ static int wm8350_i2c_detach(struct i2c_client *client)
 	struct wm8350 *wm8350 = i2c_get_clientdata(client);
 
 	wm8350_free(wm8350);
+	wm8350_pmu_exit();
+	bus_unregister(&wm8350_bus_type);
 	i2c_detach_client(client);
 	kfree(client);
 	if (wm8350->reg_cache)

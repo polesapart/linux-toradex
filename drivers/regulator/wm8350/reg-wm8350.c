@@ -997,18 +997,15 @@ struct device_driver wm8350_driver = {
 	.remove = wm8350_remove,
 };
 
-static int __devinit wm8350_pmu_init(void)
+int wm8350_pmu_init(void)
 {
 	return driver_register(&wm8350_driver);
 }
 
-static void wm8350_pmu_exit(void)
+void wm8350_pmu_exit(void)
 {
 	driver_unregister(&wm8350_driver);
 }
-
-module_init(wm8350_pmu_init);
-module_exit(wm8350_pmu_exit);
 
 /* Module information */
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com,\

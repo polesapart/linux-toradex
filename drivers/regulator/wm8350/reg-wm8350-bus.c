@@ -1496,20 +1496,6 @@ struct bus_type wm8350_bus_type = {
 };
 EXPORT_SYMBOL(wm8350_bus_type);
 
-static int __init wm8350_bus_init(void)
-{
-	printk("WM8350 Bus Manager %s\n", WM8350_BUS_VERSION);
-	return bus_register(&wm8350_bus_type);
-}
-subsys_initcall(wm8350_bus_init);
-
-static void __exit wm8350_bus_exit(void)
-{
-	bus_unregister(&wm8350_bus_type);
-}
-
-module_exit(wm8350_bus_exit);
-
 MODULE_AUTHOR("Liam Girdwood, liam.girdwood@wolfsonmicro.com, www.wolfsonmicro.com");
 MODULE_DESCRIPTION("WM8350 PMIC Bus driver");
 MODULE_LICENSE("GPL");

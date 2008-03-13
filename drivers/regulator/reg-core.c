@@ -390,8 +390,7 @@ static int __regulator_disable(struct regulator *regulator)
 {
 	int ret = 0;
 
-	if (regulator->use_count == 1) {
-
+	if (regulator->use_count > 0 && !(--regulator->use_count)) {
 		if (regulator->ops->disable) {
 			ret = regulator->ops->disable(regulator);
 			if (ret < 0)
@@ -400,7 +399,6 @@ static int __regulator_disable(struct regulator *regulator)
 		if (regulator->parent)
 			__regulator_disable(regulator->parent);
 	}
-	regulator->use_count--;
 out:
 	return ret;
 }
