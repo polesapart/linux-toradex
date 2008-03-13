@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -22,7 +22,8 @@
  * hardware flow control (set this option to 0) or hardware-driven hardware
  * flow control (set this option to 1).
  */
-#define UART1_HW_FLOW           1
+/* UART used as wakeup source */
+#define UART1_HW_FLOW           0
 /*!
  * This specifies the threshold at which the CTS pin is deasserted by the
  * RXFIFO. Set this value in Decimal to anything from 0 to 32 for

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -1791,12 +1791,6 @@ static int mxcuart_suspend(struct platform_device *pdev, pm_message_t state)
 		umxc->port.info->tty->hw_stopped = 1;
 	}
 
-	if (device_may_wakeup(&pdev->dev)) {
-		/* UART RTS signal is used as wakeup source */
-		writel(MXC_UARTUCR1_RTSDEN, umxc->port.membase + MXC_UARTUCR1);
-		gpio_uart_active(umxc->port.line, umxc->ir_mode);
-	}
-
 	return 0;
 }
 
@@ -1820,10 +1814,7 @@ static int mxcuart_resume(struct platform_device *pdev)
 	if (umxc->port.info && umxc->port.info->flags & UIF_INITIALIZED) {
 		umxc->port.info->tty->hw_stopped = 0;
 	}
-	if (device_may_wakeup(&pdev->dev)) {
-		writel(0, umxc->port.membase + MXC_UARTUCR1);
-		gpio_uart_inactive(umxc->port.line, umxc->ir_mode);
-	}
+
 	uart_resume_port(&mxc_reg, &umxc->port);
 
 	return 0;
@@ -1863,7 +1854,6 @@ static int mxcuart_probe(struct platform_device *pdev)
 
 		uart_add_one_port(&mxc_reg, &mxc_ports[id]->port);
 		platform_set_drvdata(pdev, mxc_ports[id]);
-		pdev->dev.power.can_wakeup = 1;
 	}
 	return 0;
 }
