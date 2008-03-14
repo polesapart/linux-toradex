@@ -88,7 +88,7 @@ static inline void mxc_init_owire(void)
 }
 #endif
 
-#if defined(CONFIG_RTC_MXC) || defined(CONFIG_RTC_MXC_MODULE)
+#if defined(CONFIG_RTC_DRV_MXC_V2) || defined(CONFIG_RTC_DRV_MXC_V2_MODULE)
 static struct resource rtc_resources[] = {
 	{
 	 .start = SRTC_BASE_ADDR,
@@ -96,7 +96,7 @@ static struct resource rtc_resources[] = {
 	 .flags = IORESOURCE_MEM,
 	 },
 	{
-	 .start = MXC_INT_RTC,
+	 .start = MXC_INT_SRTC_NTZ,
 	 .flags = IORESOURCE_IRQ,
 	 },
 };

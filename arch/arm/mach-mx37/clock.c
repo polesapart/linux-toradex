@@ -1725,6 +1725,16 @@ static struct clk pgc_clk = {
 	.recalc = _clk_pgc_recalc,
 };
 
+static struct clk rtc_clk = {
+	.name = "rtc_clk",
+	.parent = &ckil_clk,
+	.secondary = &ipg_clk,
+	.enable = _clk_enable,
+	.enable_reg = MXC_CCM_CCGR4,
+	.enable_shift = MXC_CCM_CCGR4_CG13_OFFSET,
+	.disable = _clk_disable,
+};
+
 static struct clk *mxc_clks[] = {
 	&osc_clk,
 	&ckih_clk,
@@ -1804,6 +1814,7 @@ static struct clk *mxc_clks[] = {
 	&vpu_clk[1],
 	&lpsr_clk,
 	&pgc_clk,
+	&rtc_clk,
 };
 
 static void clk_tree_init(void)

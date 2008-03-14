@@ -468,4 +468,11 @@ config RTC_MXC
 	help
 	  Support for Freescale RTC MXC
 
+config RTC_DRV_MXC_V2
+	tristate "Freescale MXC Secure Real Time Clock"
+	depends on ARCH_MXC
+	depends on RTC_CLASS
+	help
+	  Support for Freescale SRTC MXC
+
 endif # RTC_CLASS
