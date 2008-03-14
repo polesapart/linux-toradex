@@ -100,7 +100,8 @@ typedef enum {
 	MSHC,			/*!< Memory Stick Host Controller */
 	DSP,			/*!< DSP */
 	MEMORY,			/*!< Memory */
-	FIFO_MEMORY		/*!< FIFO type Memory */
+	FIFO_MEMORY,		/*!< FIFO type Memory */
+	SPDIF			/*!< SPDIF */
 } sdma_periphT;
 
 #ifndef TRANSFER_32BIT
@@ -247,6 +248,9 @@ typedef struct {
 	int mxc_sdma_mshc_2_mcu_addr;
 	/*! address of mcu_2_mshc script */
 	int mxc_sdma_mcu_2_mshc_addr;
+
+	/*! address of mcu_2_spdif script */
+	int mxc_sdma_mcu_2_spdif_addr;
 
 	/*! address of dptc_dvfs script */
 	int mxc_sdma_dptc_dvfs_addr;

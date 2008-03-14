@@ -361,6 +361,14 @@ static unsigned short sdma_get_pc(sdma_periphT peripheral_type,
 		}
 	} else if (peripheral_type == FIFO_MEMORY) {
 		res = sdma_script_addrs.mxc_sdma_ap_2_ap_fixed_addr;
+	} else if (peripheral_type == SPDIF) {
+		switch (transfer_type) {
+		case emi_2_per:
+			res = sdma_script_addrs.mxc_sdma_mcu_2_spdif_addr;
+			break;
+		default:
+			res = -EINVAL;
+		}
 	}
 
 	if (res < 0) {

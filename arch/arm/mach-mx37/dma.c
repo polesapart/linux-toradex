@@ -23,6 +23,8 @@
 #define MXC_SSI_RX1_REG           0xC
 #define MXC_SSI_TXFIFO_WML        0x4
 #define MXC_SSI_RXFIFO_WML        0x6
+#define MXC_SPDIF_TXFIFO_WML      0x0
+#define MXC_SPDIF_TX_REG          0x2C
 
 typedef struct mxc_sdma_info_entry_s {
 	mxc_dma_device_t device;
@@ -488,6 +490,35 @@ static mxc_sdma_channel_params_t mxc_sdma_ata_tx_params = {
 	.channel_num = MXC_DMA_CHANNEL_ATA_TX,
 	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
+
+static mxc_sdma_channel_params_t mxc_sdma_spdif_16bit_tx_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SPDIF_TXFIFO_WML,
+			.per_address = SPDIF_BASE_ADDR + MXC_SPDIF_TX_REG,
+			.peripheral_type = SPDIF,
+			.transfer_type = emi_2_per,
+			.event_id = DMA_REQ_SPDIF_TX,
+			.bd_number = 32,
+			.word_size = TRANSFER_16BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_SPDIF_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
+static mxc_sdma_channel_params_t mxc_sdma_spdif_32bit_tx_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SPDIF_TXFIFO_WML,
+			.per_address = SPDIF_BASE_ADDR + MXC_SPDIF_TX_REG,
+			.peripheral_type = SPDIF,
+			.transfer_type = emi_2_per,
+			.event_id = DMA_REQ_SPDIF_TX,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_SPDIF_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
 static mxc_sdma_info_entry_t mxc_sdma_active_dma_info[] = {
 	{MXC_DMA_UART1_RX, &mxc_sdma_uart1_rx_params},
 	{MXC_DMA_UART1_TX, &mxc_sdma_uart1_tx_params},
@@ -522,6 +553,8 @@ static mxc_sdma_info_entry_t mxc_sdma_active_dma_info[] = {
 	{MXC_DMA_MEMORY, &mxc_sdma_memory_params},
 	{MXC_DMA_ATA_RX, &mxc_sdma_ata_rx_params},
 	{MXC_DMA_ATA_TX, &mxc_sdma_ata_tx_params},
+	{MXC_DMA_SPDIF_16BIT_TX, &mxc_sdma_spdif_16bit_tx_params},
+	{MXC_DMA_SPDIF_32BIT_TX, &mxc_sdma_spdif_32bit_tx_params},
 };
 
 static int mxc_sdma_info_entrys =

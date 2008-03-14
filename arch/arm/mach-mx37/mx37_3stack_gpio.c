@@ -474,3 +474,22 @@ void gpio_fec_inactive(void)
  /*TODO*/}
 
 EXPORT_SYMBOL(gpio_fec_inactive);
+
+void gpio_spdif_active(void)
+{
+	iomux_pad_config_t regval = 0;
+	regval =
+	    PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_PKE_ENABLE |
+	    PAD_CTL_100K_PU;
+	mxc_iomux_set_pad(MX37_PIN_AUD3_BB_RXD, regval);
+	mxc_request_iomux(MX37_PIN_AUD3_BB_RXD, IOMUX_CONFIG_ALT1);
+}
+
+EXPORT_SYMBOL(gpio_spdif_active);
+
+void gpio_spdif_inactive(void)
+{
+	mxc_free_iomux(MX37_PIN_AUD3_BB_RXD, IOMUX_CONFIG_ALT1);
+}
+
+EXPORT_SYMBOL(gpio_spdif_inactive);

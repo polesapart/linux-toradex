@@ -87,6 +87,14 @@ struct mxc_audio_platform_data {
 	char *regulator2;
 };
 
+struct mxc_spdif_platform_data {
+	int spdif_tx;
+	int spdif_rx;
+	int spdif_clk_44100;
+	int spdif_clk_48000;
+	struct clk *spdif_clk;
+};
+
 struct mxc_lcd_platform_data {
 	char *io_reg;
 	char *core_reg;

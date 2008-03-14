@@ -26,6 +26,8 @@
 #include <asm/arch/sdma.h>
 #include "sdma_script_code.h"
 
+extern void gpio_spdif_active(void);
+
 void mxc_sdma_get_script_info(sdma_script_start_addrs * sdma_script_addr)
 {
 	sdma_script_addr->mxc_sdma_app_2_mcu_addr = app_2_mcu_ADDR;
@@ -57,6 +59,7 @@ void mxc_sdma_get_script_info(sdma_script_start_addrs * sdma_script_addr)
 	sdma_script_addr->mxc_sdma_shp_2_per_addr = -1;
 	sdma_script_addr->mxc_sdma_uart_2_per_addr = -1;
 	sdma_script_addr->mxc_sdma_app_2_per_addr = -1;
+	sdma_script_addr->mxc_sdma_mcu_2_spdif_addr = mcu_2_spdif_marley_ADDR;
 }
 
 static void mxc_nop_release(struct device *dev)
@@ -525,6 +528,45 @@ static inline void mxc_init_dma(void)
 	(void)platform_device_register(&mxc_dma_device);
 }
 
+static struct resource spdif_resources[] = {
+	{
+	 .start = SPDIF_BASE_ADDR,
+	 .end = SPDIF_BASE_ADDR + 0x50,
+	 .flags = IORESOURCE_MEM,
+	 },
+};
+
+static struct mxc_spdif_platform_data mxc_spdif_data = {
+	.spdif_tx = 1,
+	.spdif_rx = 0,
+	.spdif_clk_44100 = 0,
+	.spdif_clk_48000 = 3,
+	.spdif_clk = NULL,
+};
+
+static struct platform_device mxc_alsa_spdif_device = {
+	.name = "mxc_alsa_spdif",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mxc_spdif_data,
+		},
+	.num_resources = ARRAY_SIZE(spdif_resources),
+	.resource = &spdif_resources,
+};
+
+static inline void mxc_init_spdif(void)
+{
+	struct clk *ckih_clk;
+	ckih_clk = clk_get(NULL, "ckih");
+	mxc_spdif_data.spdif_clk = clk_get(NULL, "spdif_xtal_clk");
+	clk_set_parent(mxc_spdif_data.spdif_clk, ckih_clk);
+	clk_put(ckih_clk);
+	clk_put(mxc_spdif_data.spdif_clk);
+	gpio_spdif_active();
+	platform_device_register(&mxc_alsa_spdif_device);
+}
+
 static int __init mxc_init_devices(void)
 {
 	mxc_init_wdt();
@@ -536,6 +578,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_scc();
 	mxc_init_dma();
 	mxc_init_vpu();
+	mxc_init_spdif();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);
