@@ -21,7 +21,7 @@
 /*
  * Includes
  */
-#define DEBUG
+
 #include <linux/platform_device.h>
 #include <asm/ioctl.h>
 #include <asm/arch/pmic_power.h>
@@ -30,7 +30,7 @@
 #include "pmic_power_defs.h"
 
 #ifdef CONFIG_MXC_HWEVENT
-#include <../drivers/mxc/hw_event/mxc_hw_event.h>
+#include <asm/arch/hw_events.h>
 #endif
 
 #include <asm/mach-types.h>
@@ -3046,7 +3046,7 @@ PMIC_STATUS pmic_power_event_unsub(t_pwr_int event, void *callback)
 
 void pmic_power_key_callback(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	/*read the power key is pressed or up */
 	t_sensor_bits sense;
 	struct mxc_hw_event event = { HWE_POWER_KEY, 0 };
@@ -3060,7 +3060,7 @@ void pmic_power_key_callback(void)
 		event.args = PWRK_PRESS;
 	}
 	/* send hw event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 

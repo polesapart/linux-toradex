@@ -1353,6 +1353,11 @@ CONFIG_MXC_HMP4E=y
 # CONFIG_MXC_HMP4E_DEBUG is not set
 
 #
+# MXC HARDWARE EVENT
+#
+CONFIG_MXC_HWEVENT=y
+
+#
 # MXC VPU(Video Processing Unit) support
 #
 # CONFIG_MXC_VPU is not set
