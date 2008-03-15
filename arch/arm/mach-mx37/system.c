@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -11,6 +11,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <linux/kernel.h>
 #include <linux/clk.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
@@ -32,13 +33,71 @@
 
 extern int mxc_jtag_enabled;
 
+/* set cpu low power mode before WFI instruction */
+void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
+{
+	u32 plat_lpc, gpc_pgr, arm_srpgcr, empgcr0, empgcr1, ccm_clpcr;
+
+	/* always allow platform to issue a deep sleep mode request */
+	plat_lpc = __raw_readl(MXC_ARM1176_PLAT_LPC) &
+	    ~(MXC_ARM1176_PLAT_LPC_DSM);
+
+	ccm_clpcr = __raw_readl(MXC_CCM_CLPCR) & ~(MXC_CCM_CLPCR_LPM_MASK);
+	gpc_pgr = __raw_readl(MXC_GPC_PGR) & ~(MXC_GPC_PGR_ARMPG_MASK);
+	arm_srpgcr = __raw_readl(MXC_SRPGC_ARM_SRPGCR) & ~(MXC_SRPGCR_PCR);
+	empgcr0 = __raw_readl(MXC_EMPGC0_ARM_EMPGCR) & ~(MXC_EMPGCR_PCR);
+	empgcr1 = __raw_readl(MXC_EMPGC1_ARM_EMPGCR) & ~(MXC_EMPGCR_PCR);
+
+	switch (mode) {
+	case WAIT_CLOCKED:
+		break;
+	case WAIT_UNCLOCKED:
+		ccm_clpcr |= (0x1 << MXC_CCM_CLPCR_LPM_OFFSET);
+		break;
+	case WAIT_UNCLOCKED_POWER_OFF:
+	case STOP_POWER_OFF:
+		plat_lpc |= MXC_ARM1176_PLAT_LPC_DSM;
+		if (mode == WAIT_UNCLOCKED_POWER_OFF)
+			ccm_clpcr |= (0x1 << MXC_CCM_CLPCR_LPM_OFFSET);
+		else
+			ccm_clpcr |= (0x2 << MXC_CCM_CLPCR_LPM_OFFSET);
+
+		gpc_pgr |= (0x1 << MXC_GPC_PGR_ARMPG_OFFSET);
+		arm_srpgcr |= MXC_SRPGCR_PCR;
+		empgcr0 |= MXC_EMPGCR_PCR;
+		empgcr1 |= MXC_EMPGCR_PCR;
+		if (tzic_enable_wake(1) != 0)
+			return;
+		break;
+	case STOP_POWER_ON:
+		ccm_clpcr |= (0x2 << MXC_CCM_CLPCR_LPM_OFFSET);
+		break;
+	default:
+		printk(KERN_WARNING "UNKNOWN cpu power mode: %d\n", mode);
+		return;
+	}
+	__raw_writel(plat_lpc, MXC_ARM1176_PLAT_LPC);
+	__raw_writel(ccm_clpcr, MXC_CCM_CLPCR);
+	__raw_writel(gpc_pgr, MXC_GPC_PGR);
+	__raw_writel(arm_srpgcr, MXC_SRPGC_ARM_SRPGCR);
+	/* __raw_writel(empgcr0, MXC_EMPGC0_ARM_EMPGCR); TODO: system crash */
+	__raw_writel(empgcr1, MXC_EMPGC1_ARM_EMPGCR);
+}
+
+/* To change the idle power mode, need to set arch_idle_mode to a different
+ * power mode as in enum mxc_cpu_pwr_mode.
+ * May allow dynamically changing the idle mode.
+ */
+static int arch_idle_mode = WAIT_UNCLOCKED_POWER_OFF;
+
 /*!
  * This function puts the CPU into idle mode. It is called by default_idle()
  * in process.c file.
  */
 void arch_idle(void)
 {
-	if (!mxc_jtag_enabled) {
+	if (likely(!mxc_jtag_enabled)) {
+		mxc_cpu_lp_set(arch_idle_mode);
 		cpu_do_idle();
 	}
 }

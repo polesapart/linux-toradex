@@ -19,7 +19,7 @@
 #include <linux/types.h>
 
 /*!
- * @ingroup MSL_MX27 MSL_MX31 MSL_MXC91321
+ * @ingroup MSL_MX27 MSL_MX31 MSL_MXC91321  MSL_MX37
  */
 /*!
  * gpio port structure
@@ -206,6 +206,17 @@ void dptc_disable(void);
  *
  */
 void dptc_enable(void);
+
+enum mxc_cpu_pwr_mode {
+	WAIT_CLOCKED,		/* wfi only */
+	WAIT_UNCLOCKED,		/* WAIT */
+	WAIT_UNCLOCKED_POWER_OFF,	/* WAIT + SRPG */
+	STOP_POWER_ON,		/* just STOP */
+	STOP_POWER_OFF,		/* STOP + SRPG */
+};
+
+void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode);
+int tzic_enable_wake(int is_idle);
 
 #endif
 

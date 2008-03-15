@@ -1,5 +1,5 @@
 /*
- *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -73,6 +73,8 @@ static void mxc_unmask_irq(unsigned int irq)
 	__raw_writel(1 << off, TZIC_ENSET0 + (index << 2));
 }
 
+static unsigned int wakeup_intr[4];
+
 /*!
  * Set interrupt number "irq" in the TZIC as a wake-up source.
  *
@@ -84,20 +86,18 @@ static void mxc_unmask_irq(unsigned int irq)
  */
 static int mxc_set_wake_irq(unsigned int irq, unsigned int enable)
 {
-	int index, off;
-	u32 reg;
+	unsigned int index, off;
 
 	index = irq >> 5;
 	off = irq & 0x1F;
-	reg = __raw_readl(TZIC_WAKEUP0 + (index << 2));
 
-	if (enable) {
-		reg |= (1 << off);
-	} else {
-		reg &= ~(1 << off);
-	}
+	if (index > 3)
+		return -1;
 
-	__raw_writel(reg, TZIC_WAKEUP0 + (index << 2));
+	if (enable)
+		wakeup_intr[index] |= (1 << off);
+	else
+		wakeup_intr[index] &= ~(1 << off);
 
 	return 0;
 }
@@ -147,4 +147,33 @@ void __init mxc_init_irq(void)
 	}
 
 	printk(KERN_INFO "MXC IRQ initialized\n");
+}
+
+/*!
+ * enable wakeup interrupt
+ *
+ * @param is_idle		1 if called in idle loop (enset registers);
+ *				0 to be used when called from low power entry
+ * @return			0 if successful; non-zero otherwise
+ */
+int tzic_enable_wake(int is_idle)
+{
+	unsigned int i, v;
+
+	__raw_writel(1, TZIC_DSMINT);
+	if (unlikely(__raw_readl(TZIC_DSMINT) == 0))
+		return -EAGAIN;
+
+	if (likely(is_idle)) {
+		for (i = 0; i < 4; i++) {
+			v = __raw_readl(TZIC_ENSET0 + i * 4);
+			__raw_writel(v, TZIC_WAKEUP0 + i * 4);
+		}
+	} else {
+		for (i = 0; i < 4; i++) {
+			v = wakeup_intr[i];
+			__raw_writel(v, TZIC_WAKEUP0 + i * 4);
+		}
+	}
+	return 0;
 }
