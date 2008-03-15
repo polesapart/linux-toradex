@@ -148,6 +148,8 @@
 
 #endif
 
+#define GET_NFC_ECC_STATUS() raw_read(REG_NFC_ECC_STATUS_RESULT);
+
 /*!
  * Set 1 to specific operation bit, rest to 0 in LAUNCH_NFC Register for
  * Specific operation
@@ -305,6 +307,9 @@
 
 #define WRITE_NFC_IP_REG(val,reg) \
 	raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),  REG_NFC_OPS_STAT)
+
+#define GET_NFC_ECC_STATUS() raw_read(REG_NFC_ECC_STATUS_RESULT);
+
 /*!
  * Set INT to 0, Set 1 to specific operation bit, rest to 0 in LAUNCH_NFC Register for
  * Specific operation

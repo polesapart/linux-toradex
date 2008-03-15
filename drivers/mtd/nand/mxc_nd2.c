@@ -397,7 +397,7 @@ static void mxc_nand_enable_hwecc(struct mtd_info *mtd, int mode)
  */
 static int mxc_check_ecc_status(struct mtd_info *mtd)
 {
-	u16 ecc_stat, err;
+	u32 ecc_stat, err;
 	int no_subpages = 1;
 	int ret = 0;
 	u8 ecc_bit_mask, err_limit;
@@ -407,7 +407,7 @@ static int mxc_check_ecc_status(struct mtd_info *mtd)
 
 	no_subpages = mtd->writesize >> 9;
 
-	ecc_stat = raw_read(REG_NFC_ECC_STATUS_RESULT);
+	ecc_stat = GET_NFC_ECC_STATUS();
 	do {
 		err = ecc_stat & ecc_bit_mask;
 		if (err > err_limit) {
