@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -55,8 +55,8 @@
 #include "../mach-mx27/crm_regs.h"
 #endif
 
-int dptc_is_active;
-int turbo_mode_active;
+static int dptc_is_active;
+static int turbo_mode_active;
 
 static int curr_wp;
 static u32 ptvai;
@@ -157,14 +157,11 @@ static void dptc_workqueue_handler(struct work_struct *work)
 	}
 }
 
+/* Start DPTC unconditionally */
 static int start_dptc(void)
 {
 	u32 pmcr0, flags;
 	unsigned long cpu_rate;
-
-	if (dptc_is_active) {
-		return 0;
-	}
 
 	spin_lock_irqsave(&mxc_dptc_lock, flags);
 
@@ -184,8 +181,6 @@ static int start_dptc(void)
 
 	__raw_writel(pmcr0, MXC_CCM_PMCR0);
 
-	dptc_is_active = 1;
-
 	spin_unlock_irqrestore(&mxc_dptc_lock, flags);
 
 	pr_info("DPTC has been started \n");
@@ -199,13 +194,10 @@ static int start_dptc(void)
 	return -1;
 }
 
+/* Stop DPTC unconditionally */
 static void stop_dptc(void)
 {
 	u32 pmcr0;
-
-	if (!dptc_is_active) {
-		return;
-	}
 
 	pmcr0 = __raw_readl(MXC_CCM_PMCR0);
 
@@ -214,8 +206,6 @@ static void stop_dptc(void)
 	    (~MXC_CCM_PMCR0_DPVCR);
 
 	__raw_writel(pmcr0, MXC_CCM_PMCR0);
-
-	dptc_is_active = 0;
 
 	/* Restore Turbo Mode voltage to highest wp */
 	update_dptc_wp(0);
@@ -230,8 +220,12 @@ static void stop_dptc(void)
  */
 void dptc_disable(void)
 {
-	turbo_mode_active = 0;
+	if (!dptc_is_active)
+		return;
+
 	stop_dptc();
+	dptc_is_active = 0;
+	turbo_mode_active = 0;
 }
 
 /*!
@@ -240,8 +234,11 @@ void dptc_disable(void)
  */
 void dptc_enable(void)
 {
-	turbo_mode_active = 1;
+	if (dptc_is_active)
+		return;
 	start_dptc();
+	dptc_is_active = 1;
+	turbo_mode_active = 1;
 }
 
 static ssize_t dptc_show(struct device *dev, struct device_attribute *attr,
@@ -342,7 +339,8 @@ static int __devinit mxc_dptc_probe(struct platform_device *pdev)
  */
 static int mxc_dptc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	dptc_disable();
+	if (dptc_is_active)
+		stop_dptc();
 
 	return 0;
 }
@@ -358,7 +356,8 @@ static int mxc_dptc_suspend(struct platform_device *pdev, pm_message_t state)
  */
 static int mxc_dptc_resume(struct platform_device *pdev)
 {
-	dptc_enable();
+	if (dptc_is_active)
+		start_dptc();
 
 	return 0;
 }
