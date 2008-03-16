@@ -21,35 +21,15 @@
  */
 
 #include <linux/init.h>
-#include <linux/types.h>
-#include <linux/mm.h>
-#include <linux/interrupt.h>
-#include <linux/platform_device.h>
 #include <linux/clk.h>
+#include <linux/dma-mapping.h>
 #include <asm/arch/dma.h>
 #include <asm/arch/hardware.h>
-
-#include <asm/semaphore.h>
-#include <linux/spinlock.h>
-
-#include <asm/uaccess.h>
-#include <linux/device.h>
-#include <linux/dma-mapping.h>
-
-#include "iapi.h"
 
 #ifdef CONFIG_MXC_SDMA_API
 
 static mxc_dma_channel_t mxc_sdma_channels[MAX_DMA_CHANNELS];
 static mxc_dma_channel_private_t mxc_sdma_private[MAX_DMA_CHANNELS];
-
-#define SDMA_SLEEP_STATE (0x6 << 12)
-#define SDMA_STATE_MASK  (0xF << 12)
-
-/*!
- * To indicate whether SDMA engine is suspending
- */
-static int suspend_flag = 0;
 
 extern struct clk *mxc_sdma_ahb_clk, *mxc_sdma_ipg_clk;
 
@@ -118,10 +98,6 @@ int mxc_dma_request(mxc_dma_device_t channel_id, char *dev_name)
 	mxc_sdma_channel_params_t *chnl;
 	mxc_dma_channel_private_t *data_priv;
 	int ret = 0, i = 0, channel_num = 0;
-
-	if (suspend_flag == 1) {
-		return -EBUSY;
-	}
 
 	chnl = mxc_sdma_get_channel_params(channel_id);
 	if (chnl == NULL) {
@@ -288,10 +264,6 @@ int mxc_dma_config(int channel_num, mxc_dma_requestbuf_t * dma_buf,
 	dma_channel_params chnl_param;
 	dma_request_t request_t;
 
-	if (suspend_flag == 1) {
-		return -EBUSY;
-	}
-
 	if ((channel_num >= MAX_DMA_CHANNELS) || (channel_num < 0)) {
 		return -EINVAL;
 	}
@@ -432,10 +404,6 @@ int mxc_dma_sg_config(int channel_num, struct scatterlist *sg,
 	int ret = 0, i = 0;
 	mxc_dma_requestbuf_t *dma_buf;
 
-	if (suspend_flag == 1) {
-		return -EBUSY;
-	}
-
 	if ((channel_num >= MAX_DMA_CHANNELS) || (channel_num < 0)) {
 		return -EINVAL;
 	}
@@ -523,10 +491,6 @@ int mxc_dma_callback_set(int channel_num,
  */
 int mxc_dma_disable(int channel_num)
 {
-	if (suspend_flag == 1) {
-		return -EBUSY;
-	}
-
 	if ((channel_num >= MAX_DMA_CHANNELS) || (channel_num < 0)) {
 		return -EINVAL;
 	}
@@ -551,10 +515,6 @@ int mxc_dma_disable(int channel_num)
  */
 int mxc_dma_enable(int channel_num)
 {
-	if (suspend_flag == 1) {
-		return -EBUSY;
-	}
-
 	if ((channel_num >= MAX_DMA_CHANNELS) || (channel_num < 0)) {
 		return -EINVAL;
 	}
@@ -566,54 +526,6 @@ int mxc_dma_enable(int channel_num)
 	mxc_dma_start(channel_num);
 	return 0;
 }
-
-/*!
- * This function is called to put the SDMA in a low power state.
- *
- * @param   pdev  the device structure
- * @param   state the power state the device is entering
- *
- * @return  The function always returns 0.
- */
-static int mxc_dma_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	if ((SDMA_ONCE_STAT & SDMA_STATE_MASK) == SDMA_SLEEP_STATE) {
-		suspend_flag = 1;
-		clk_disable(mxc_sdma_ahb_clk);
-		clk_disable(mxc_sdma_ipg_clk);
-
-		return 0;
-	} else {
-		return -EAGAIN;
-	}
-}
-
-/*!
- * This function is called to resume the MU from a low power state.
- *
- * @param   dev   the device structure
- *
- * @return  The function always returns 0.
- */
-static int mxc_dma_resume(struct platform_device *pdev)
-{
-	clk_enable(mxc_sdma_ahb_clk);
-	clk_enable(mxc_sdma_ipg_clk);
-	suspend_flag = 0;
-
-	return 0;
-}
-
-/*!
- * This structure contains pointers to the power management callback functions.
- */
-static struct platform_driver mxc_dma_driver = {
-	.driver = {
-		   .name = "mxc_dma",
-		   },
-	.suspend = mxc_dma_suspend,
-	.resume = mxc_dma_resume,
-};
 
 /*!
  * Initializes dma structure with dma_operations
@@ -637,11 +549,6 @@ static int __init mxc_dma_init(void)
 	 * requests
 	 */
 	mxc_get_static_channels(mxc_sdma_channels);
-
-	if (platform_driver_register(&mxc_dma_driver) != 0) {
-		printk(KERN_ERR "Driver register failed for mxc_dma_driver\n");
-		return -ENODEV;
-	}
 
 	return 0;
 }
