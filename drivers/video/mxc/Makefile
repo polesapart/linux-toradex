@@ -16,4 +16,5 @@ endif
 endif
 obj-$(CONFIG_FB_MXC_EPSON_VGA_SYNC_PANEL)   += mxcfb_epson_vga.o
 obj-$(CONFIG_FB_MXC_TVOUT_CH7024)           += ch7024.o
+obj-$(CONFIG_FB_MXC_TVOUT_TVE)              += tve.o
 

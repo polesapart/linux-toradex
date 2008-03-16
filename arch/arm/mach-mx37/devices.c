@@ -473,6 +473,32 @@ static inline void mxc_init_i2c(void)
 }
 #endif
 
+static struct resource tve_resources[] = {
+	{
+	 .start = TVE_BASE_ADDR,
+	 .end = TVE_BASE_ADDR + SZ_4K - 1,
+	 .flags = IORESOURCE_MEM,
+	 },
+	{
+	 .start = MXC_INT_TVOUT,
+	 .flags = IORESOURCE_IRQ,
+	 },
+};
+
+static struct platform_device mxc_tve_device = {
+	.name = "tve",
+	.dev = {
+		.release = mxc_nop_release,
+		},
+	.num_resources = ARRAY_SIZE(tve_resources),
+	.resource = tve_resources,
+};
+
+void __init mxc_init_tve(void)
+{
+	platform_device_register(&mxc_tve_device);
+}
+
 struct mxc_gpio_port mxc_gpio_ports[GPIO_PORT_NUM] = {
 	{
 	 .num = 0,
@@ -582,6 +608,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_dma();
 	mxc_init_vpu();
 	mxc_init_spdif();
+	mxc_init_tve();
 
 	/* SPBA configuration for SSI2 - SDMA and MCU are set */
 	spba_take_ownership(SPBA_SSI2, SPBA_MASTER_C | SPBA_MASTER_A);
