@@ -18,6 +18,9 @@
  * Ported to MXC91321 by Armin Kuster
  * Copyright (c) 2006 MontaVista Software, Inc.
  *
+ * Added .valid hook in mxc_suspend_ops
+ * Copyright 2008 Freescale Semiconductor, Inc. All Rights Reserved.
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2 of the License, or (at your
@@ -79,7 +82,13 @@ static void mxc_suspend_finish(void)
 	return;
 }
 
+static int mxc_pm_valid(suspend_state_t state)
+{
+	return (state > PM_SUSPEND_ON && state <= PM_SUSPEND_MAX);
+}
+
 struct platform_suspend_ops mxc_suspend_ops = {
+	.valid = mxc_pm_valid,
 	.prepare = mxc_suspend_prepare,
 	.enter = mxc_suspend_enter,
 	.finish = mxc_suspend_finish,

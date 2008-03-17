@@ -15,7 +15,7 @@
  * Cleanup 2004 for OMAP1510/1610 by Dirk Behme <dirk.behme@de.bosch.com>
  *
  * Modified for the MX31
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -79,7 +79,13 @@ static void mx31_suspend_finish(void)
 	return;
 }
 
+static int mx31_pm_valid(suspend_state_t state)
+{
+	return (state > PM_SUSPEND_ON && state <= PM_SUSPEND_MAX);
+}
+
 struct platform_suspend_ops mx31_suspend_ops = {
+	.valid = mx31_pm_valid,
 	.prepare = mx31_suspend_prepare,
 	.enter = mx31_suspend_enter,
 	.finish = mx31_suspend_finish,
