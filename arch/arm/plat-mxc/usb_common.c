@@ -50,6 +50,8 @@ struct fsl_xcvr_ops *g_xc_ops[MXC_NUMBER_USB_TRANSCEIVER] = { NULL };
 static struct clk *usb_clk;
 static struct clk *usb_ahb_clk;
 
+extern int gpio_usbotg_hs_active(void);
+extern int gpio_usbotg_hs_inactive(void);
 /*
  * make sure USB_CLK is running at 60 MHz +/- 1000 Hz
  */
@@ -511,9 +513,6 @@ static void otg_set_ulpi_xcvr(void)
 	clk_disable(usb_clk);
 }
 
-extern int gpio_usbotg_hs_active(void);
-extern int gpio_usbotg_hs_inactive(void);
-
 int fsl_usb_xcvr_suspend(struct fsl_xcvr_ops *xcvr_ops)
 {
 	if (!machine_is_mx31_3ds())
@@ -539,6 +538,31 @@ int fsl_usb_xcvr_suspend(struct fsl_xcvr_ops *xcvr_ops)
 }
 
 EXPORT_SYMBOL(fsl_usb_xcvr_suspend);
+
+static void otg_set_utmi_xcvr(void)
+{
+	u32 tmp;
+
+	USBCTRL &= ~UCTRL_OSIC_MASK;
+	USBCTRL |= UCTRL_OUIE |	/* ULPI intr enable */
+	    UCTRL_OWIE |	/* OTG wakeup intr enable */
+	    UCTRL_OPM;		/* power mask */
+
+	/* set UTMI xcvr */
+	tmp = UOG_PORTSC1 & ~PORTSC_PTS_MASK;
+	tmp |= PORTSC_PTS_UTMI;
+	UOG_PORTSC1 = tmp;
+
+	/* need to reset the controller here so that the ID pin
+	 * is correctly detected.
+	 */
+	UOG_USBCMD |= UCMD_RESET;
+
+	/* allow controller to reset, and leave time for
+	 * the ULPI transceiver to reset too.
+	 */
+	msleep(100);
+}
 
 static int otg_used = 0;
 
@@ -589,6 +613,8 @@ int usbotg_init(struct platform_device *pdev)
 			otg_set_serial_xcvr();
 		} else if (xops->xcvr_type == PORTSC_PTS_ULPI) {
 			otg_set_ulpi_xcvr();
+		} else if (xops->xcvr_type == PORTSC_PTS_UTMI) {
+			otg_set_utmi_xcvr();
 		}
 	} else {
 		fsl_usb_mem_map(pdev);

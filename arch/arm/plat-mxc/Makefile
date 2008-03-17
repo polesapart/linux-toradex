@@ -19,7 +19,7 @@ obj-$(CONFIG_ARCH_MX21) += dma_mx2.o
 obj-$(CONFIG_ARCH_MX27) += dma_mx2.o usb_common.o
 obj-$(CONFIG_ARCH_MX3) += dptc.o usb_common.o
 obj-$(CONFIG_ARCH_MXC91321) += dptc.o
-
+obj-$(CONFIG_ARCH_MX37)     += usb_common.o utmixc.o
 obj-$(CONFIG_MXC_DSP_BRINGUP) += dsp_bringup.o
 
 # LEDs support

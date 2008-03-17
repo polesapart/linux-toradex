@@ -1978,7 +1978,8 @@ static void dtd_complete_irq(struct arcotg_udc *udc)
 	usb_slave_regs->endptcomplete = bit_pos;
 
 	/* Clear the buffer if the ACK was missing from the IN ep */
-	if (usb_slave_regs->endptstatus & 0x10000)
+	if ((usb_slave_regs->endptstatus & 0x10000)
+	    && !(usb_slave_regs->endptstatus & 1))
 		usb_slave_regs->endptflush |= 0x10000;
 
 	bit_pos = le32_to_cpu(bit_pos);

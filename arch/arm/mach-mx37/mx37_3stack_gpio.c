@@ -374,40 +374,6 @@ void gpio_ata_inactive(void)
 EXPORT_SYMBOL(gpio_ata_inactive);
 
 /*
- * USB Host 1
- * pins conflict with SPI1, ATA, UART3
- */
-int gpio_usbh1_active(void)
-{
-	 /*TODO*/ return 0;
-}
-
-EXPORT_SYMBOL(gpio_usbh1_active);
-
-void gpio_usbh1_inactive(void)
-{
- /*TODO*/}
-
-EXPORT_SYMBOL(gpio_usbh1_inactive);
-
-/*
- * USB Host 2
- * pins conflict with UART5, PCMCIA
- */
-int gpio_usbh2_active(void)
-{
-	 /*TODO*/ return 0;
-}
-
-EXPORT_SYMBOL(gpio_usbh2_active);
-
-void gpio_usbh2_inactive(void)
-{
- /*TODO*/}
-
-EXPORT_SYMBOL(gpio_usbh2_inactive);
-
-/*
  * USB OTG HS port
  */
 int gpio_usbotg_hs_active(void)
@@ -422,22 +388,6 @@ void gpio_usbotg_hs_inactive(void)
  /*TODO*/}
 
 EXPORT_SYMBOL(gpio_usbotg_hs_inactive);
-
-/*
- * USB OTG FS port
- */
-int gpio_usbotg_fs_active(void)
-{
-	 /*TODO*/ return 0;
-}
-
-EXPORT_SYMBOL(gpio_usbotg_fs_active);
-
-void gpio_usbotg_fs_inactive(void)
-{
- /*TODO*/}
-
-EXPORT_SYMBOL(gpio_usbotg_fs_inactive);
 
 /*!
  * Setup GPIO for PCMCIA interface

@@ -1250,8 +1250,9 @@ static struct clk usboh2_clk[] = {
 	 .secondary = &usboh2_clk[1],
 	 },
 	{
-	 .name = "usboh2_ipg_clk",
-	 .parent = &ipg_clk,
+	 .name = "usb_ahb_clk",
+	 .parent = &ahb_clk,
+	 .secondary = &ipg_clk,
 	 .enable = _clk_enable,
 	 .enable_reg = MXC_CCM_CCGR2,
 	 .enable_shift = MXC_CCM_CCGR2_CG11_OFFSET,
@@ -1725,6 +1726,21 @@ static struct clk pgc_clk = {
 	.recalc = _clk_pgc_recalc,
 };
 
+/*usb OTG clock */
+/*Notes: in mx37, usb clock get from UTMI PHY, always 60MHz*/
+
+static struct clk usb_clk = {
+	.name = "usb_clk",
+	.rate = 60000000,
+};
+static struct clk usb_utmi_clk = {
+	.name = "usb_utmi_clk",
+	.enable = _clk_enable,
+	.enable_reg = MXC_CCM_CSCMR1,
+	.enable_shift = MXC_CCM_CSCMR1_USB_PHY_CLK_SEL_OFFSET,
+	.disable = _clk_disable,
+};
+
 static struct clk rtc_clk = {
 	.name = "rtc_clk",
 	.parent = &ckil_clk,
@@ -1797,6 +1813,8 @@ static struct clk *mxc_clks[] = {
 	&usboh2_clk[0],
 	&usboh2_clk[1],
 	&usb_phy_clk,
+	&usb_utmi_clk,
+	&usb_clk,
 	&esdhc1_clk[0],
 	&esdhc1_clk[1],
 	&esdhc2_clk[0],
