@@ -169,7 +169,7 @@ static void __exit wm8350_pmic_exit(void)
 	i2c_del_driver(&wm8350_i2c_driver);
 }
 
-module_init(wm8350_pmic_init);
+subsys_initcall(wm8350_pmic_init);
 module_exit(wm8350_pmic_exit);
 
 MODULE_AUTHOR("Liam Girdwood");

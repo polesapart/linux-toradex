@@ -13,6 +13,7 @@
 
 #include <linux/types.h>
 #include <linux/sched.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/init.h>
@@ -38,6 +39,7 @@
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
 #include "board-mx37_3stack.h"
+#include "iomux.h"
 #include "crm_regs.h"
 
 /*!
@@ -129,6 +131,30 @@ static inline void mxc_init_nand_mtd(void)
 }
 #endif
 
+static void lcd_reset(void)
+{
+	static int first;
+
+	/* ensure that LCDIO(1.8V) has been turn on */
+	/* active reset line GPIO */
+	if (!first) {
+		mxc_request_iomux(MX37_PIN_GPIO1_5, IOMUX_CONFIG_GPIO);
+		first = 1;
+	}
+	mxc_set_gpio_dataout(MX37_PIN_GPIO1_5, 0);
+	mxc_set_gpio_direction(MX37_PIN_GPIO1_5, 0);
+	/* do reset */
+	msleep(10);		/* tRES >= 100us */
+	mxc_set_gpio_dataout(MX37_PIN_GPIO1_5, 1);
+	msleep(60);
+}
+
+static struct mxc_lcd_platform_data lcd_data = {
+	.core_reg = "LDO1",
+	.io_reg = "DCDC6",
+	.reset = lcd_reset,
+};
+
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "cpld_spi",
@@ -138,10 +164,51 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	 },
 	{
 	 .modalias = "lcd_spi",
-	 .max_speed_hz = 500000,
-	 .bus_num = 1,
-	 .chip_select = 2,},
+	 .max_speed_hz = 5000000,
+	 .bus_num = 2,
+	 .platform_data = &lcd_data,
+	 .chip_select = 1,},
 };
+
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+static struct platform_device mxc_fb_device[] = {
+	{
+	 .name = "mxc_sdc_fb",
+	 .id = 0,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .coherent_dma_mask = 0xFFFFFFFF,
+		 },
+	 },
+	{
+	 .name = "mxc_sdc_fb",
+	 .id = 1,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .coherent_dma_mask = 0xFFFFFFFF,
+		 },
+	 },
+	{
+	 .name = "mxc_sdc_fb",
+	 .id = 2,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .coherent_dma_mask = 0xFFFFFFFF,
+		 },
+	 },
+};
+
+static void mxc_init_fb(void)
+{
+	(void)platform_device_register(&mxc_fb_device[0]);
+	(void)platform_device_register(&mxc_fb_device[1]);
+	(void)platform_device_register(&mxc_fb_device[2]);
+}
+#else
+static inline void mxc_init_fb(void)
+{
+}
+#endif
 
 /*lan9217 device*/
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
@@ -219,6 +286,8 @@ static void __init mxc_board_init(void)
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 	mxc_init_nand_mtd();
+
+	mxc_init_fb();
 }
 
 /*

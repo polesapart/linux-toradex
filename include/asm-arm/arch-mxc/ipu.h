@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc.
  */
 
 /*
@@ -72,7 +72,7 @@ typedef enum {
 
 /*  IPU Pixel format definitions */
 /*  Four-character-code (FOURCC) */
-#define ipu_fourcc(a,b,c,d)\
+#define fourcc(a, b, c, d)\
         (((__u32)(a)<<0)|((__u32)(b)<<8)|((__u32)(c)<<16)|((__u32)(d)<<24))
 
 /*!
@@ -85,53 +85,66 @@ typedef enum {
 /*! @{ */
 /*! @name Generic or Raw Data Formats */
 /*! @{ */
-#define IPU_PIX_FMT_GENERIC ipu_fourcc('I','P','U','0')	/*!< IPU Generic Data */
-#define IPU_PIX_FMT_GENERIC_32 ipu_fourcc('I','P','U','1')	/*!< IPU Generic Data */
+#define IPU_PIX_FMT_GENERIC fourcc('I', 'P', 'U', '0')	/*!< IPU Generic Data */
+#define IPU_PIX_FMT_GENERIC_32 fourcc('I', 'P', 'U', '1')	/*!< IPU Generic Data */
 /*! @} */
 /*! @name RGB Formats */
 /*! @{ */
-#define IPU_PIX_FMT_RGB332  ipu_fourcc('R','G','B','1')	/*!<  8  RGB-3-3-2     */
-#define IPU_PIX_FMT_RGB555  ipu_fourcc('R','G','B','O')	/*!< 16  RGB-5-5-5     */
-#define IPU_PIX_FMT_RGB565  ipu_fourcc('R','G','B','P')	/*!< 16  RGB-5-6-5     */
-#define IPU_PIX_FMT_RGB666  ipu_fourcc('R','G','B','6')	/*!< 18  RGB-6-6-6     */
-#define IPU_PIX_FMT_BGR666  ipu_fourcc('B','G','R','6')	/*!< 18  BGR-6-6-6     */
-#define IPU_PIX_FMT_BGR24   ipu_fourcc('B','G','R','3')	/*!< 24  BGR-8-8-8     */
-#define IPU_PIX_FMT_RGB24   ipu_fourcc('R','G','B','3')	/*!< 24  RGB-8-8-8     */
-#define IPU_PIX_FMT_BGR32   ipu_fourcc('B','G','R','4')	/*!< 32  BGR-8-8-8-8   */
-#define IPU_PIX_FMT_BGRA32  ipu_fourcc('B','G','R','A')	/*!< 32  BGR-8-8-8-8   */
-#define IPU_PIX_FMT_RGB32   ipu_fourcc('R','G','B','4')	/*!< 32  RGB-8-8-8-8   */
-#define IPU_PIX_FMT_RGBA32  ipu_fourcc('R','G','B','A')	/*!< 32  RGB-8-8-8-8   */
-#define IPU_PIX_FMT_ABGR32  ipu_fourcc('A','B','G','R')	/*!< 32  ABGR-8-8-8-8  */
+#define IPU_PIX_FMT_RGB332  fourcc('R', 'G', 'B', '1')	/*!<  8  RGB-3-3-2    */
+#define IPU_PIX_FMT_RGB555  fourcc('R', 'G', 'B', 'O')	/*!< 16  RGB-5-5-5    */
+#define IPU_PIX_FMT_RGB565  fourcc('R', 'G', 'B', 'P')	/*!< 1 6  RGB-5-6-5   */
+#define IPU_PIX_FMT_RGB666  fourcc('R', 'G', 'B', '6')	/*!< 18  RGB-6-6-6    */
+#define IPU_PIX_FMT_BGR666  fourcc('B', 'G', 'R', '6')	/*!< 18  BGR-6-6-6    */
+#define IPU_PIX_FMT_BGR24   fourcc('B', 'G', 'R', '3')	/*!< 24  BGR-8-8-8    */
+#define IPU_PIX_FMT_RGB24   fourcc('R', 'G', 'B', '3')	/*!< 24  RGB-8-8-8    */
+#define IPU_PIX_FMT_BGR32   fourcc('B', 'G', 'R', '4')	/*!< 32  BGR-8-8-8-8  */
+#define IPU_PIX_FMT_BGRA32  fourcc('B', 'G', 'R', 'A')	/*!< 32  BGR-8-8-8-8  */
+#define IPU_PIX_FMT_RGB32   fourcc('R', 'G', 'B', '4')	/*!< 32  RGB-8-8-8-8  */
+#define IPU_PIX_FMT_RGBA32  fourcc('R', 'G', 'B', 'A')	/*!< 32  RGB-8-8-8-8  */
+#define IPU_PIX_FMT_ABGR32  fourcc('A', 'B', 'G', 'R')	/*!< 32  ABGR-8-8-8-8 */
 /*! @} */
 /*! @name YUV Interleaved Formats */
 /*! @{ */
-#define IPU_PIX_FMT_YUYV    ipu_fourcc('Y','U','Y','V')	/*!< 16  YUV 4:2:2     */
-#define IPU_PIX_FMT_UYVY    ipu_fourcc('U','Y','V','Y')	/*!< 16  YUV 4:2:2     */
-#define IPU_PIX_FMT_Y41P    ipu_fourcc('Y','4','1','P')	/*!< 12  YUV 4:1:1     */
+#define IPU_PIX_FMT_YUYV    fourcc('Y', 'U', 'Y', 'V')	/*!< 16 YUV 4:2:2 */
+#define IPU_PIX_FMT_UYVY    fourcc('U', 'Y', 'V', 'Y')	/*!< 16 YUV 4:2:2 */
+#define IPU_PIX_FMT_Y41P    fourcc('Y', '4', '1', 'P')	/*!< 12 YUV 4:1:1 */
+#define IPU_PIX_FMT_YUV444  fourcc('Y', '4', '4', '4')	/*!< 24 YUV 4:4:4 */
 /*! @} */
 /*! @name YUV Planar Formats */
 /*! @{ */
-#define IPU_PIX_FMT_GREY    ipu_fourcc('G','R','E','Y')	/*!< 8  Greyscale     */
-#define IPU_PIX_FMT_YVU410P ipu_fourcc('Y','V','U','9')	/*!< 9  YVU 4:1:0     */
-#define IPU_PIX_FMT_YUV410P ipu_fourcc('Y','U','V','9')	/*!< 9  YUV 4:1:0     */
-#define IPU_PIX_FMT_YVU420P ipu_fourcc('Y','V','1','2')	/*!< 12  YVU 4:2:0     */
-#define IPU_PIX_FMT_YUV420P ipu_fourcc('I','4','2','0')	/*!< 12  YUV420 planar */
-#define IPU_PIX_FMT_YUV420P2 ipu_fourcc('Y','U','1','2')	/*!< 12  YUV 4:2:0 planar */
-#define IPU_PIX_FMT_YVU422P ipu_fourcc('Y','V','1','6')	/*!< 16  YVU422 planar */
-#define IPU_PIX_FMT_YUV422P ipu_fourcc('4','2','2','P')	/*!< 16  YUV422 planar */
+#define IPU_PIX_FMT_GREY    fourcc('G', 'R', 'E', 'Y')	/*!< 8  Greyscale */
+#define IPU_PIX_FMT_YVU410P fourcc('Y', 'V', 'U', '9')	/*!< 9  YVU 4:1:0 */
+#define IPU_PIX_FMT_YUV410P fourcc('Y', 'U', 'V', '9')	/*!< 9  YUV 4:1:0 */
+#define IPU_PIX_FMT_YVU420P fourcc('Y', 'V', '1', '2')	/*!< 12 YVU 4:2:0 */
+#define IPU_PIX_FMT_YUV420P fourcc('I', '4', '2', '0')	/*!< 12 YUV 4:2:0 */
+#define IPU_PIX_FMT_YUV420P2 fourcc('Y', 'U', '1', '2')	/*!< 12 YUV 4:2:0 */
+#define IPU_PIX_FMT_YVU422P fourcc('Y', 'V', '1', '6')	/*!< 16 YVU 4:2:2 */
+#define IPU_PIX_FMT_YUV422P fourcc('4', '2', '2', 'P')	/*!< 16 YUV 4:2:2 */
 /*! @} */
-
-/*#define IPU_PIX_FMT_YUV411P ipu_fourcc('4','1','1','P')  16  YVU411 planar */
-/*#define IPU_PIX_FMT_YYUV    ipu_fourcc('Y','Y','U','V')  16  YUV 4:2:2     */
 
 /* IPU Driver channels definitions.	*/
 /* Note these are different from IDMA channels */
+#ifdef CONFIG_MXC_IPU_V1
 #define _MAKE_CHAN(num, in, out, sec)    ((num << 24) | (sec << 16) | (out << 8) | in)
 #define IPU_CHAN_ID(ch)         (ch >> 24)
 #define IPU_CHAN_SEC_DMA(ch)    ((uint32_t) (ch >> 16) & 0xFF)
 #define IPU_CHAN_OUT_DMA(ch)    ((uint32_t) (ch >> 8) & 0xFF)
 #define IPU_CHAN_IN_DMA(ch)     ((uint32_t) (ch & 0xFF))
 
+#else
+#define IPU_MAX_CH	32
+#define _MAKE_CHAN(num, v_in, g_in, a_in, out) \
+	((num << 24) | (v_in << 18) | (g_in << 12) | (a_in << 6) | out)
+#define _MAKE_ALT_CHAN(ch)		(ch | (IPU_MAX_CH << 24))
+#define IPU_CHAN_ID(ch)			(ch >> 24)
+#define IPU_CHAN_ALT(ch)		(ch & 0x02000000)
+#define IPU_CHAN_ALPHA_IN_DMA(ch)	((uint32_t) (ch >> 6) & 0x3F)
+#define IPU_CHAN_GRAPH_IN_DMA(ch)	((uint32_t) (ch >> 12) & 0x3F)
+#define IPU_CHAN_VIDEO_IN_DMA(ch)	((uint32_t) (ch >> 18) & 0x3F)
+#define IPU_CHAN_OUT_DMA(ch)		((uint32_t) (ch & 0x3F))
+#define NO_DMA 0x3F
+#define ALT	1
+#endif
 /*!
  * Enumeration of IPU logical channels. An IPU logical channel is defined as a
  * combination of an input (memory to IPU), output (IPU to memory), and/or
@@ -139,6 +152,8 @@ typedef enum {
  * Some channels consist of only an input or output.
  */
 typedef enum {
+	CHAN_NONE = -1,
+#ifdef CONFIG_MXC_IPU_V1
 	CSI_MEM = _MAKE_CHAN(1, 0xFF, 7, 0xFF),	/*!< CSI raw sensor data to memory */
 
 	CSI_PRP_ENC_MEM = _MAKE_CHAN(2, 0xFF, 0, 0xFF),	/*!< CSI to IC Encoder PreProcessing to Memory */
@@ -159,6 +174,9 @@ typedef enum {
 	MEM_SDC_FG = _MAKE_CHAN(15, 15, 0xFF, 0xFF),	/*!< Memory to SDC Foreground plane */
 	MEM_SDC_MASK = _MAKE_CHAN(16, 16, 0xFF, 0xFF),	/*!< Memory to SDC Mask */
 
+	MEM_BG_SYNC = MEM_SDC_BG,
+	MEM_FG_SYNC = MEM_SDC_FG,
+
 	ADC_SYS1 = _MAKE_CHAN(17, 18, 22, 20),	/*!< Memory to ADC System Channel 1 */
 	ADC_SYS2 = _MAKE_CHAN(18, 19, 23, 21),	/*!< Memory to ADC System Channel 2 */
 
@@ -166,16 +184,42 @@ typedef enum {
 	MEM_PF_U_MEM = _MAKE_CHAN(20, 27, 30, 25),	/*!< U and PF Memory to Post-filter to U Memory */
 	MEM_PF_V_MEM = _MAKE_CHAN(21, 28, 31, 0xFF),	/*!< V Memory to Post-filter to V Memory */
 
-	CHAN_NONE = 0xFFFFFFFF,
+	MEM_DC_SYNC = CHAN_NONE,
+#else
+	MEM_ROT_ENC_MEM = _MAKE_CHAN(1, 45, NO_DMA, NO_DMA, 48),
+	MEM_ROT_VF_MEM = _MAKE_CHAN(2, 46, NO_DMA, NO_DMA, 49),
+	MEM_ROT_PP_MEM = _MAKE_CHAN(3, 47, NO_DMA, NO_DMA, 50),
+
+	MEM_PRP_ENC_MEM = _MAKE_CHAN(4, 12, 14, 17, 20),
+	MEM_PRP_VF_MEM = _MAKE_CHAN(5, 12, 14, 17, 21),
+	MEM_PP_MEM = _MAKE_CHAN(6, 11, 15, 18, 22),
+
+	MEM_DC_SYNC = _MAKE_CHAN(7, 28, NO_DMA, NO_DMA, NO_DMA),
+	MEM_DC_ASYNC = _MAKE_CHAN(8, 41, NO_DMA, NO_DMA, NO_DMA),
+	MEM_BG_SYNC = _MAKE_CHAN(9, 23, NO_DMA, 51, NO_DMA),
+	MEM_FG_SYNC = _MAKE_CHAN(10, 27, NO_DMA, 31, NO_DMA),
+
+	MEM_BG_ASYNC0 = _MAKE_CHAN(11, 24, NO_DMA, 52, NO_DMA),
+	MEM_FG_ASYNC0 = _MAKE_CHAN(12, 29, NO_DMA, 33, NO_DMA),
+	MEM_BG_ASYNC1 = _MAKE_ALT_CHAN(MEM_BG_ASYNC0),
+	MEM_FG_ASYNC1 = _MAKE_ALT_CHAN(MEM_FG_ASYNC0),
+
+	MEM_PP_ADC = CHAN_NONE,
+	ADC_SYS2 = CHAN_NONE,
+#endif
+
 } ipu_channel_t;
 
 /*!
  * Enumeration of types of buffers for a logical channel.
  */
 typedef enum {
-	IPU_INPUT_BUFFER,	/*!< Buffer for input to IPU */
-	IPU_OUTPUT_BUFFER,	/*!< Buffer for output from IPU */
-	IPU_SEC_INPUT_BUFFER,	/*!< Buffer for second input to IPU */
+	IPU_OUTPUT_BUFFER = 0,	/*!< Buffer for output from IPU */
+	IPU_ALPHA_IN_BUFFER = 1,	/*!< Buffer for input to IPU */
+	IPU_GRAPH_IN_BUFFER = 2,	/*!< Buffer for input to IPU */
+	IPU_VIDEO_IN_BUFFER = 3,	/*!< Buffer for input to IPU */
+	IPU_INPUT_BUFFER = IPU_VIDEO_IN_BUFFER,
+	IPU_SEC_INPUT_BUFFER = IPU_GRAPH_IN_BUFFER,
 } ipu_buffer_t;
 
 /*!
@@ -187,17 +231,6 @@ typedef enum {
 	DISP2,
 	DISP3
 } display_port_t;
-
-/*!
- * Enumeration of ADC channels.
-typedef enum
-{
-        PRPCHAN,
-        PPCHAN,
-        SYSCHAN1,
-        SYSCHAN2
-}sys_channel_t;
- */
 
 /*!
  * Enumeration of ADC channel operation mode.
@@ -323,17 +356,30 @@ typedef union {
 		uint32_t out_left;
 		uint32_t out_top;
 	} mem_pp_adc;
-
 	struct {
 		pf_operation_t operation;
 	} mem_pf_mem;
-
+	struct {
+		uint32_t di;
+		bool interlaced;
+	} mem_dc_sync;
 	struct {
 		uint32_t temp;
 	} mem_sdc_fg;
 	struct {
+		uint32_t di;
+		uint32_t in_pixel_fmt;
+		uint32_t out_pixel_fmt;
+		bool interlaced;
+	} mem_dp_bg_sync;
+	struct {
 		uint32_t temp;
 	} mem_sdc_bg;
+	struct {
+		uint32_t di;
+		uint32_t in_pixel_fmt;
+		uint32_t out_pixel_fmt;
+	} mem_dp_fg_sync;
 	struct {
 		display_port_t disp;
 		mcu_mode_t ch_mode;
@@ -352,6 +398,7 @@ typedef union {
  * Enumeration of IPU interrupt sources.
  */
 enum ipu_irq_line {
+#ifdef CONFIG_MXC_IPU_V1
 	IPU_IRQ_PRP_ENC_OUT_EOF = 0,
 	IPU_IRQ_PRP_VF_OUT_EOF = 1,
 	IPU_IRQ_PP_OUT_EOF = 2,
@@ -366,8 +413,10 @@ enum ipu_irq_line {
 	IPU_IRQ_PRP_VF_ROT_IN_EOF = 11,
 	IPU_IRQ_PP_ROT_OUT_EOF = 12,
 	IPU_IRQ_PP_ROT_IN_EOF = 13,
-	IPU_IRQ_SDC_BG_EOF = 14,
-	IPU_IRQ_SDC_FG_EOF = 15,
+	IPU_IRQ_BG_SYNC_EOF = 14,
+	IPU_IRQ_SDC_BG_EOF = IPU_IRQ_BG_SYNC_EOF,
+	IPU_IRQ_FG_SYNC_EOF = 15,
+	IPU_IRQ_SDC_FG_EOF = IPU_IRQ_FG_SYNC_EOF,
 	IPU_IRQ_SDC_MASK_EOF = 16,
 	IPU_IRQ_SDC_BG_PART_EOF = 17,
 	IPU_IRQ_ADC_SYS1_WR_EOF = 18,
@@ -482,6 +531,49 @@ enum ipu_irq_line {
 	IPU_IRQ_DI_LLA_LOCK_ERR = 141,
 	IPU_IRQ_AHB_M1_ERR = 142,
 	IPU_IRQ_AHB_M12_ERR = 143,
+#else
+	IPU_IRQ_PP_IN_EOF = 11,
+	IPU_IRQ_PRP_IN_EOF = 12,
+	IPU_IRQ_PRP_GRAPH_IN_EOF = 14,
+	IPU_IRQ_PP_GRAPH_IN_EOF = 15,
+	IPU_IRQ_PRP_ALPHA_IN_EOF = 17,
+	IPU_IRQ_PP_ALPHA_IN_EOF = 18,
+	IPU_IRQ_PRP_ENC_OUT_EOF = 20,
+	IPU_IRQ_PRP_VF_OUT_EOF = 21,
+	IPU_IRQ_PP_OUT_EOF = 22,
+	IPU_IRQ_BG_SYNC_EOF = 23,
+	IPU_IRQ_BG_ASYNC_EOF = 24,
+	IPU_IRQ_FG_SYNC_EOF = 27,
+	IPU_IRQ_DC_SYNC_EOF = 28,
+	IPU_IRQ_FG_ASYNC_EOF = 29,
+	IPU_IRQ_FG_ALPHA_SYNC_EOF = 31,
+
+	IPU_IRQ_FG_ALPHA_ASYNC_EOF = 33,
+	IPU_IRQ_DC_READ_EOF = 40,
+	IPU_IRQ_DC_ASYNC_EOF = 41,
+	IPU_IRQ_DC_CMD1_EOF = 42,
+	IPU_IRQ_DC_CMD2_EOF = 43,
+	IPU_IRQ_DC_MASK_EOF = 44,
+	IPU_IRQ_PRP_ENC_ROT_OUT_EOF = 45,
+	IPU_IRQ_PRP_VF_ROT_OUT_EOF = 46,
+	IPU_IRQ_PP_ROT_OUT_EOF = 47,
+	IPU_IRQ_PRP_ENC_ROT_IN_EOF = 48,
+	IPU_IRQ_PRP_VF_ROT_IN_EOF = 49,
+	IPU_IRQ_PP_ROT_IN_EOF = 50,
+	IPU_IRQ_BG_ALPHA_SYNC_EOF = 51,
+	IPU_IRQ_BG_ALPHA_ASYNC_EOF = 52,
+
+	IPU_IRQ_DP_SF_START = 448 + 2,
+	IPU_IRQ_DP_SF_END = 448 + 3,
+	IPU_IRQ_DC_FC_0 = 448 + 8,
+	IPU_IRQ_DC_FC_1 = 448 + 9,
+	IPU_IRQ_DC_FC_2 = 448 + 10,
+	IPU_IRQ_DC_FC_3 = 448 + 11,
+	IPU_IRQ_DC_FC_4 = 448 + 12,
+	IPU_IRQ_DC_FC_6 = 448 + 13,
+	IPU_IRQ_VSYNC_PRE_0 = 448 + 14,
+	IPU_IRQ_VSYNC_PRE_1 = 448 + 15,
+#endif
 
 	IPU_IRQ_COUNT
 };
@@ -491,6 +583,9 @@ enum ipu_irq_line {
  */
 typedef struct {
 	unsigned datamask_en:1;
+	unsigned ext_clk:1;
+	unsigned interlaced:1;
+	unsigned odd_field_first:1;
 	unsigned clksel_en:1;
 	unsigned clkidle_en:1;
 	unsigned data_pol:1;	/* true = inverted */
@@ -672,6 +767,15 @@ typedef struct {
 int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t * params);
 void ipu_uninit_channel(ipu_channel_t channel);
 
+static inline bool ipu_can_rotate_in_place(ipu_rotate_mode_t rot)
+{
+#ifdef CONFIG_MXC_IPU_V1
+	return (rot < IPU_ROTATE_90_RIGHT);
+#else
+	return (rot < IPU_ROTATE_HORIZ_FLIP);
+#endif
+}
+
 int32_t ipu_init_channel_buffer(ipu_channel_t channel, ipu_buffer_t type,
 				uint32_t pixel_fmt,
 				uint16_t width, uint16_t height,
@@ -713,12 +817,29 @@ int32_t ipu_sdc_init_panel(ipu_panel_t panel,
 			   uint16_t hEndWidth, uint16_t vStartWidth,
 			   uint16_t vSyncWidth, uint16_t vEndWidth,
 			   ipu_di_signal_cfg_t sig);
+
 int32_t ipu_sdc_set_window_pos(ipu_channel_t channel, int16_t x_pos,
 			       int16_t y_pos);
 int32_t ipu_sdc_set_global_alpha(bool enable, uint8_t alpha);
 int32_t ipu_sdc_set_color_key(ipu_channel_t channel, bool enable,
 			      uint32_t colorKey);
 int32_t ipu_sdc_set_brightness(uint8_t value);
+
+int32_t ipu_init_sync_panel(int disp,
+			    uint32_t pixel_clk,
+			    uint16_t width, uint16_t height,
+			    uint32_t pixel_fmt,
+			    uint16_t h_start_width, uint16_t h_sync_width,
+			    uint16_t h_end_width, uint16_t v_start_width,
+			    uint16_t v_sync_width, uint16_t v_end_width,
+			    uint32_t v_to_h_sync, ipu_di_signal_cfg_t sig);
+
+int32_t ipu_disp_set_window_pos(ipu_channel_t channel, int16_t x_pos,
+				int16_t y_pos);
+int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, bool enable,
+				  uint8_t alpha);
+int32_t ipu_disp_set_color_key(ipu_channel_t channel, bool enable,
+			       uint32_t colorKey);
 
 /* ADC API */
 int32_t ipu_adc_write_template(display_port_t disp, uint32_t * pCmd,
@@ -771,7 +892,6 @@ int32_t ipu_pf_set_pause_row(uint32_t pause_row);
 uint32_t bytes_per_pixel(uint32_t fmt);
 
 /* New added for IPU-lib functionality*/
-
 int ipu_open(void);
 int ipu_register_generic_isr(int irq, void *dev);
 void ipu_close(void);

@@ -51,7 +51,7 @@ static struct fb_videomode video_modes[] = {
 	{
 	 /* 480x640 @ 60 Hz */
 	 "Epson-VGA", 60, 480, 640, 41701, 0, 41, 10, 5, 20, 10,
-	 FB_SYNC_CLK_INVERT,
+	 FB_SYNC_CLK_INVERT | FB_SYNC_OE_ACT_HIGH,
 	 FB_VMODE_NONINTERLACED,
 	 0,},
 };
@@ -121,16 +121,21 @@ static int __devinit lcd_spi_probe(struct spi_device *spi)
 	lcd_spi = spi;
 
 	if (plat) {
+		io_reg = regulator_get(&spi->dev, plat->io_reg);
+		if (!IS_ERR(io_reg)) {
+			regulator_set_voltage(io_reg, 1800000);
+			regulator_enable(io_reg);
+		}
+		core_reg = regulator_get(&spi->dev, plat->core_reg);
+		if (!IS_ERR(core_reg)) {
+			regulator_set_voltage(core_reg, 2800000);
+			regulator_enable(core_reg);
+		}
+
 		lcd_reset = plat->reset;
 		if (lcd_reset)
 			lcd_reset();
 
-		io_reg = regulator_get(&spi->dev, plat->io_reg);
-		regulator_set_voltage(io_reg, 1800000);
-		regulator_enable(io_reg);
-		core_reg = regulator_get(&spi->dev, plat->core_reg);
-		regulator_set_voltage(core_reg, 2800000);
-		regulator_enable(core_reg);
 	}
 
 	spi->bits_per_word = 9;

@@ -1,4 +1,5 @@
-obj-$(CONFIG_MXC_IPU)			+= ipu/
+obj-$(CONFIG_MXC_IPU_V1)			+= ipu/
+obj-$(CONFIG_MXC_IPU_V3)			+= ipu3/
 obj-$(CONFIG_MXC_SSI)               	+= ssi/
 obj-$(CONFIG_MXC_DAM)               	+= dam/
 

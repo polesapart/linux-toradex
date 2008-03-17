@@ -1,19 +1,5 @@
-menu "MXC IPU"
-
-config MXC_IPU
-	bool "MXC Image Processing Unit"
-	depends on ARCH_MXC
-	depends on !ARCH_MX21
-	depends on !ARCH_MX27
-	help
-	  If you plan to use the Image Processing unit in the MXC, say
-	  Y here. If unsure, select Y.
-
-config MXC_IPU_LPMC
+config MXC_IPU_V1
 	bool
-	depends on MXC_IPU
-	default y if ARCH_MXC91231
 
 source "drivers/mxc/ipu/pf/Kconfig"
 
-endmenu

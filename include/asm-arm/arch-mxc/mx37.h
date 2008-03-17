@@ -226,6 +226,7 @@
 /*
  * Memory regions and CS
  */
+#define IPU_CTRL_BASE_ADDR	0x80000000
 #define CSD0_BASE_ADDR          0x40000000
 #define CSD1_BASE_ADDR          0x50000000
 

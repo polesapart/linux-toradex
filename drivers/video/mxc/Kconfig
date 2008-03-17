@@ -54,23 +54,6 @@ config FB_MXC_EPSON_PANEL
 	default n
 	bool "Epson 176x220 Panel"
 
-if MACH_I30030ADS
-config FB_MXC_EPSON_QVGA_PANEL
-    depends on FB_MXC_ASYNC_PANEL
-	default y
-	bool "Epson 240x320 Panel"
-endif
-
-if (MACH_MXC30030ADS || MACH_MXC30031ADS)
-config FB_MXC_TOSHIBA_QVGA_PANEL
-    depends on FB_MXC_ASYNC_PANEL
-	bool "Toshiba 240x320 Panel"
-
-config FB_MXC_SHARP_128_PANEL
-    depends on FB_MXC_ASYNC_PANEL
-	bool "Sharp 128x128 Panel"
-endif
-
 endmenu
 
 choice

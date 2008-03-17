@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -220,6 +220,22 @@ static u32 fmt_to_bpp(u32 pixelformat)
 	return bpp;
 }
 
+static u32 bpp_to_fmt(struct fb_info *fbi)
+{
+	if (fbi->var.nonstd)
+		return fbi->var.nonstd;
+
+	if (fbi->var.bits_per_pixel == 24)
+		return V4L2_PIX_FMT_BGR24;
+	else if (fbi->var.bits_per_pixel == 32)
+		return V4L2_PIX_FMT_BGR32;
+	else if (fbi->var.bits_per_pixel == 16)
+		return V4L2_PIX_FMT_RGB565;
+
+	return 0;
+}
+
+
 static void mxc_v4l2out_timer_handler(unsigned long arg)
 {
 	int index;
@@ -406,7 +422,8 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 #ifdef CONFIG_FB_MXC_ASYNC_PANEL
 	if (vout->cur_disp_output < DISP3) {
 		mxcfb_set_refresh_mode(fbi, MXCFB_REFRESH_OFF, 0);
-		if (vout->rotate < IPU_ROTATE_90_RIGHT) {
+		fbi = NULL;
+		if (ipu_can_rotate_in_place(vout->rotate)) {
 			dev_dbg(dev, "Using PP direct to ADC channel\n");
 			use_direct_adc = true;
 			vout->display_ch = MEM_PP_ADC;
@@ -519,11 +536,30 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		dev_dbg(dev, "Using SDC channel\n");
 
 		fbvar = fbi->var;
-		fbvar.xres = fbvar.xres_virtual = out_width;
-		fbvar.yres = out_height;
-		fbvar.yres_virtual = out_height * 2;
-		fbvar.bits_per_pixel = 16;
-		fb_set_var(fbi, &fbvar);
+
+		if (vout->cur_disp_output == 3) {
+			vout->display_ch = MEM_FG_SYNC;
+			fbvar.bits_per_pixel = 16;
+			fbvar.nonstd = IPU_PIX_FMT_UYVY;
+
+			fbvar.xres = fbvar.xres_virtual = out_width;
+			fbvar.yres = out_height;
+			fbvar.yres_virtual = out_height * 2;
+
+			fb_set_var(fbi, &fbvar);
+		} else if (vout->cur_disp_output == 5) {
+			vout->display_ch = MEM_DC_SYNC;
+			fbvar.bits_per_pixel = 16;
+			fbvar.nonstd = IPU_PIX_FMT_UYVY;
+
+			fbvar.xres = fbvar.xres_virtual = out_width;
+			fbvar.yres = out_height;
+			fbvar.yres_virtual = out_height * 2;
+
+			fb_set_var(fbi, &fbvar);
+		} else {
+			vout->display_ch = MEM_BG_SYNC;
+		}
 
 		fb_pos.x = vout->crop_current.left;
 		fb_pos.y = vout->crop_current.top;
@@ -536,12 +572,7 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		    (fbi->fix.line_length * fbi->var.yres);
 		vout->display_buf_size = vout->crop_current.width *
 		    vout->crop_current.height *
-		    fmt_to_bpp(SDC_FG_FB_FORMAT) / 8;
-
-		if (vout->cur_disp_output == 3)
-			vout->display_ch = MEM_SDC_FG;
-		else
-			vout->display_ch = MEM_SDC_BG;
+		    fbi->var.bits_per_pixel / 8;
 
 		vout->post_proc_ch = MEM_PP_MEM;
 	}
@@ -558,7 +589,10 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		params.mem_pp_mem.in_pixel_fmt = vout->v2f.fmt.pix.pixelformat;
 		params.mem_pp_mem.out_width = out_width;
 		params.mem_pp_mem.out_height = out_height;
-		params.mem_pp_mem.out_pixel_fmt = SDC_FG_FB_FORMAT;
+		if (vout->display_ch == ADC_SYS2)
+			params.mem_pp_mem.out_pixel_fmt = SDC_FG_FB_FORMAT;
+		else
+			params.mem_pp_mem.out_pixel_fmt = bpp_to_fmt(fbi);
 		if (ipu_init_channel(vout->post_proc_ch, &params) != 0) {
 			dev_err(dev, "Error initializing PP channel\n");
 			return -EINVAL;
@@ -582,7 +616,7 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 			return -EINVAL;
 		}
 
-		if (vout->rotate >= IPU_ROTATE_90_RIGHT) {
+		if (!ipu_can_rotate_in_place(vout->rotate)) {
 			if (vout->rot_pp_bufs[0]) {
 				mxc_free_buffers(vout->rot_pp_bufs,
 						 vout->rot_pp_bufs_vaddr, 2,
@@ -629,8 +663,10 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 			}
 
 			/* swap width and height */
-			out_width = vout->crop_current.width;
-			out_height = vout->crop_current.height;
+			if (vout->rotate >= IPU_ROTATE_90_RIGHT) {
+				out_width = vout->crop_current.width;
+				out_height = vout->crop_current.height;
+			}
 
 			if (ipu_init_channel_buffer(MEM_ROT_PP_MEM,
 						    IPU_OUTPUT_BUFFER,
@@ -687,8 +723,8 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		ipu_select_buffer(vout->post_proc_ch, IPU_OUTPUT_BUFFER, 1);
 
 		ipu_enable_channel(vout->post_proc_ch);
-		if ((vout->display_ch == MEM_SDC_FG) ||
-		    (vout->display_ch == MEM_SDC_BG)) {
+
+		if (fbi) {
 			acquire_console_sem();
 			fb_blank(fbi, FB_BLANK_UNBLANK);
 			release_console_sem();
@@ -740,7 +776,7 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 	spin_unlock_irqrestore(&g_lock, lockflag);
 
 	if (vout->post_proc_ch == MEM_PP_MEM) {	/* SDC or ADC with Rotation */
-		if (vout->rotate >= IPU_ROTATE_90_RIGHT) {
+		if (!ipu_can_rotate_in_place(vout->rotate)) {
 			ipu_unlink_channels(MEM_PP_MEM, MEM_ROT_PP_MEM);
 			ipu_unlink_channels(MEM_ROT_PP_MEM, vout->display_ch);
 			ipu_disable_channel(MEM_ROT_PP_MEM, true);
@@ -748,13 +784,15 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 			ipu_unlink_channels(MEM_PP_MEM, vout->display_ch);
 		}
 		ipu_disable_channel(MEM_PP_MEM, true);
-		if ((vout->display_ch != MEM_SDC_FG) &&
-		    (vout->display_ch != MEM_SDC_BG)) {
+
+		if (vout->display_ch == ADC_SYS2) {
 			ipu_disable_channel(vout->display_ch, true);
 			ipu_uninit_channel(vout->display_ch);
 		} else {
 			fbi->var.activate |= FB_ACTIVATE_FORCE;
 			fb_set_var(fbi, &fbi->var);
+			vout->display_bufs[0] = 0;
+			vout->display_bufs[1] = 0;
 		}
 
 		ipu_uninit_channel(MEM_PP_MEM);
@@ -1316,6 +1354,7 @@ mxc_v4l2out_do_ioctl(struct inode *inode, struct file *file,
 				retval = -EINVAL;
 				break;
 			}
+
 			cap->bounds = vout->crop_bounds[vout->cur_disp_output];
 			cap->defrect = vout->crop_bounds[vout->cur_disp_output];
 			retval = 0;
@@ -1408,8 +1447,10 @@ mxc_v4l2out_do_ioctl(struct inode *inode, struct file *file,
 	case VIDIOC_S_OUTPUT:
 		{
 			int *p_output_num = arg;
+			int fbnum;
+			struct v4l2_rect *b;
 
-			if ((*p_output_num >= 5) ||
+			if ((*p_output_num >= MXC_V4L2_OUT_NUM_OUTPUTS) ||
 			    (vout->output_enabled[*p_output_num] == false)) {
 				retval = -EINVAL;
 				break;
@@ -1421,8 +1462,18 @@ mxc_v4l2out_do_ioctl(struct inode *inode, struct file *file,
 			}
 
 			vout->cur_disp_output = *p_output_num;
-			vout->crop_current =
-			    vout->crop_bounds[vout->cur_disp_output];
+
+			/* Update bounds in case they have changed */
+			b = &vout->crop_bounds[vout->cur_disp_output];
+
+			fbnum = vout->output_fb_num[vout->cur_disp_output];
+			if (vout->cur_disp_output == 3)
+				fbnum = vout->output_fb_num[4];
+
+			b->width = registered_fb[fbnum]->var.xres;
+			b->height = registered_fb[fbnum]->var.yres;
+
+			vout->crop_current = *b;
 			break;
 		}
 	case VIDIOC_ENUM_FMT:
@@ -1610,9 +1661,11 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 		char *idstr = registered_fb[i]->fix.id;
 		if (strncmp(idstr, "DISP", 4) == 0) {
 			int disp_num = idstr[4] - '0';
-			if ((disp_num == 3) &&
-			    (strncmp(idstr, "DISP3 BG", 8) == 0)) {
-				disp_num = 4;
+			if (disp_num == 3) {
+				if (strcmp(idstr, "DISP3 BG - DI1") == 0)
+					disp_num = 5;
+				else if (strncmp(idstr, "DISP3 BG", 8) == 0)
+					disp_num = 4;
 			}
 			vout->crop_bounds[disp_num].left = 0;
 			vout->crop_bounds[disp_num].top = 0;

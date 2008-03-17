@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -36,7 +36,7 @@
 #define MIN_FRAME_NUM 2
 #define MAX_FRAME_NUM 30
 
-#define MXC_V4L2_OUT_NUM_OUTPUTS        5
+#define MXC_V4L2_OUT_NUM_OUTPUTS        6
 #define MXC_V4L2_OUT_2_SDC              0
 #define MXC_V4L2_OUT_2_ADC              1
 

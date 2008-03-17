@@ -152,7 +152,10 @@ static inline void mxc_init_wdt(void)
 }
 #endif
 
-#if defined(CONFIG_MXC_IPU) || defined(CONFIG_MXC_IPU_MODULE)
+#if defined(CONFIG_MXC_IPU_V3) || defined(CONFIG_MXC_IPU_V3_MODULE)
+static struct mxc_ipu_config mxc_ipu_data = {
+	.rev = 1,
+};
 
 static struct resource ipu_resources[] = {
 	{

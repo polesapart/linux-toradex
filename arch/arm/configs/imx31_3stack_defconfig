@@ -1293,11 +1293,8 @@ CONFIG_RTC_MXC=y
 #
 # MXC support drivers
 #
-
-#
-# MXC IPU
-#
 CONFIG_MXC_IPU=y
+CONFIG_MXC_IPU_V1=y
 CONFIG_MXC_IPU_PF=y
 
 #
