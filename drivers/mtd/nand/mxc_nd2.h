@@ -376,20 +376,20 @@
 #define NFC_SET_RBA(val,buf_id)
 
 #define READ_PAGE()   \
-{                     \
+do {                     \
 	send_read_page(0);  \
 	send_read_page(1);  \
 	send_read_page(2);  \
 	send_read_page(3);  \
-}
+} while (0)
 
 #define PROG_PAGE()   \
-{                     \
+do {                     \
 	send_prog_page(0);  \
 	send_prog_page(1);  \
 	send_prog_page(2);  \
 	send_prog_page(3);  \
-}
+} while (0)
 
 #define CHECK_NFC_RB            1
 
