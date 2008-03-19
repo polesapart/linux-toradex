@@ -264,7 +264,7 @@ static int spdif_tx_init(void)
 {
 	unsigned long value;
 
-	value = 0x20514;
+	value = 0x20414;
 	__raw_writel(value, SPDIF_REG_SCR + spdif_base_addr);
 
 	value = 0xc0000;

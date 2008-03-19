@@ -947,7 +947,7 @@ CONFIG_SND_VERBOSE_PROCFS=y
 #
 # ALSA ARM devices
 #
-# CONFIG_SND_MXC_SPDIF is not set
+CONFIG_SND_MXC_SPDIF=y
 
 #
 # SPI devices
