@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -23,6 +23,8 @@
 
 #define PRE_DIV_MIN_FREQ    10000000	/* Minimum Frequency after Predivider */
 #define PROPAGATE_RATE_DIS  2
+
+extern void dptc_suspend(void);
 
 static int cpu_clk_set_wp(int wp);
 struct timer_list dptcen_timer;
@@ -1340,6 +1342,8 @@ static int cpu_clk_set_wp(int wp)
 		dptcen_timer.function = dptcen_after_timeout;
 		dptcen_timer.data = wp;
 		add_timer(&dptcen_timer);
+	} else {
+		dptc_suspend();
 	}
 
 	return 0;

@@ -214,6 +214,29 @@ static void stop_dptc(void)
 	pr_info("DPTC has been stopped\n");
 }
 
+/*
+  this function does not change the working point. It can be
+ called from an interrupt context.
+*/
+void dptc_suspend(void)
+{
+	u32 pmcr0;
+
+	if (!dptc_is_active)
+		return;
+
+
+	pmcr0 = __raw_readl(MXC_CCM_PMCR0);
+
+	/* disable DPTC and mask its interrupt */
+	pmcr0 = ((pmcr0 & ~(MXC_CCM_PMCR0_DPTEN)) | MXC_CCM_PMCR0_PTVAIM) &
+	    (~MXC_CCM_PMCR0_DPVCR);
+
+	__raw_writel(pmcr0, MXC_CCM_PMCR0);
+
+}
+
+
 /*!
  * This function is called to put the DPTC in a low power state.
  *
