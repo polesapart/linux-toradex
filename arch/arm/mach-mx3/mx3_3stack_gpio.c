@@ -112,17 +112,15 @@ void gpio_uart_inactive(int port, int no_irda)
 	case 1:
 		mxc_request_gpio(MX31_PIN_TXD2);
 		mxc_request_gpio(MX31_PIN_RXD2);
-		mxc_request_gpio(MX31_PIN_RTS2);
-		mxc_request_gpio(MX31_PIN_CTS2);
 
 		mxc_free_iomux(MX31_PIN_TXD2, OUTPUTCONFIG_GPIO,
 			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_RXD2, OUTPUTCONFIG_GPIO,
 			       INPUTCONFIG_GPIO);
-		mxc_free_iomux(MX31_PIN_RTS2, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_GPIO);
-		mxc_free_iomux(MX31_PIN_CTS2, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_GPIO);
+		mxc_free_iomux(MX31_PIN_RTS2, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CTS2, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
 		break;
 	default:
 		break;
