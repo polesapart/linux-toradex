@@ -1094,8 +1094,8 @@ static int mxc_alsa_spdif_remove(struct platform_device *pdev)
   *
   * @return              0 on success, -1 otherwise.
   */
-static int snd_mxc_spdif_suspend(struct platform_device *pdev,
-				 pm_message_t state)
+static int mxc_alsa_spdif_suspend(struct platform_device *pdev,
+				  pm_message_t state)
 {
 	return 0;
 }
@@ -1110,7 +1110,7 @@ static int snd_mxc_spdif_suspend(struct platform_device *pdev,
   *
   * @return              0 on success, -1 otherwise.
   */
-static int snd_mxc_spdif_resume(struct platform_device *pdev)
+static int mxc_alsa_spdif_resume(struct platform_device *pdev)
 {
 	return 0;
 }
