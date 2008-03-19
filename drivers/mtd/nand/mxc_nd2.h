@@ -110,10 +110,6 @@
 #define SPAS_MASK			0xFF00FFFF
 #define IS_4BIT_ECC			\
 	((raw_read(NFC_CONFIG2) & NFC_ECC_MODE_4) >> 6)
-/* Dummy define for compilation. Not used */
-#define BAD_BLK_MARKER_MA		0
-/* Dummy define for compilation. Not used */
-#define BAD_BLK_MARKER_SP		0
 
 #define SET_SPAS(v)			\
 	raw_write(((raw_read(NFC_CONFIG2) & SPAS_MASK) | ((v) << 16)), NFC_CONFIG2)
@@ -295,11 +291,6 @@
 #define SPARE_COUNT       4
 #define SPARE_SIZE        (SPARE_LEN * SPARE_COUNT)
 
-/* read column 464-465 byte but only 464 for bad block marker */
-#define BAD_BLK_MARKER_MA	IO_ADDRESS(NFC_BASE_ADDR + 0x600 + 464)
-/* read column 0-1 byte, but only 1 is used for swapped main area data */
-#define BAD_BLK_MARKER_SP	IO_ADDRESS(NFC_BASE_ADDR + 0x800)
-
 #define IS_4BIT_ECC       1
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
@@ -393,15 +384,6 @@ do {                     \
 
 #define CHECK_NFC_RB            1
 
-#endif
-
-#ifndef BAD_BLK_MARKER_MA
-#define BAD_BLK_OFFSET_MA	(0x600 + 464)
-#define BAD_BLK_OFFSET_SP	0x800
-/* read column 464-465 byte but only 464 for bad block marker */
-#define BAD_BLK_MARKER_MA	IO_ADDRESS(NFC_BASE_ADDR_AXI + BAD_BLK_OFFSET_MA)
-/* read column 0-1 byte, but only 1 is used for swapped main area data */
-#define BAD_BLK_MARKER_SP	IO_ADDRESS(NFC_BASE_ADDR_AXI + BAD_BLK_OFFSET_SP)
 #endif
 
 #endif				/* __MXC_ND2_H__ */

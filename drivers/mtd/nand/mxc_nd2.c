@@ -32,8 +32,6 @@
 /* Global address Variables */
 static u32 nfc_axi_base, nfc_ip_base;
 
-static void mxc_swap_2k_bi_main_sp(void);
-
 struct mxc_mtd_s {
 	struct mtd_info mtd;
 	struct nand_chip nand;
@@ -601,8 +599,7 @@ static int mxc_nand_verify_buf(struct mtd_info *mtd, const u_char * buf,
 	volatile u32 *mainBuf = (u32 *) MAIN_AREA0;
 	/* check for 32-bit alignment? */
 	uint32_t *p = (uint32_t *) buf;
-	if (IS_2K_PAGE_NAND)
-		mxc_swap_2k_bi_main_sp();
+
 	for (; len > 0; len -= 4) {
 		if (*p++ != *mainBuf++) {
 			return -EFAULT;
@@ -691,8 +688,6 @@ static void read_full_page(struct mtd_info *mtd, int page_addr)
 	if (IS_LARGE_PAGE_NAND) {
 		send_cmd(NAND_CMD_READSTART, false);
 		READ_PAGE();
-		if (IS_2K_PAGE_NAND)
-			mxc_swap_2k_bi_main_sp();
 	} else {
 		send_read_page(0);
 	}
@@ -899,28 +894,6 @@ static int mxc_nand_write_oob(struct mtd_info *mtd, struct nand_chip *chip,
 	return 0;
 }
 
-/*
- * This function does the trick of swapping the 464th byte in the last RAM
- * buffer in the main area with the 0th byte in the spare area. This seems
- * to be the optimal way of addressing the NFC imcompatibility problem with
- * the NAND flash out of factory in terms of BI field.
- * Note: this function only operates on the NFC's internal RAM buffers and
- *       for 2K page only.
- */
-static void mxc_swap_2k_bi_main_sp(void)
-{
-	u16 tmp1, tmp2, new_tmp1;
-
-	tmp1 = __raw_readw(BAD_BLK_MARKER_MA);
-	tmp2 = __raw_readw(BAD_BLK_MARKER_SP);
-	new_tmp1 = (tmp1 & 0xFF00) | (tmp2 >> 8);
-	tmp2 = (tmp1 << 8) | (tmp2 & 0xFF);
-	__raw_writew(new_tmp1, BAD_BLK_MARKER_MA);
-	__raw_writew(tmp2, BAD_BLK_MARKER_SP);
-
-}
-
-/* Kevin: This is solid but need to optimize the nfc_memcpy */
 static int mxc_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
 			      uint8_t * buf)
 {
@@ -936,10 +909,6 @@ static int mxc_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
 			pr_debug("%d Symbol Correctable RS-ECC Error\n", stat);
 	}
 
-	if (IS_2K_PAGE_NAND) {
-		mxc_swap_2k_bi_main_sp();
-	}
-
 	nfc_memcpy((void *)buf, (void *)MAIN_AREA0, mtd->writesize);
 
 	return 0;
@@ -950,10 +919,6 @@ static void mxc_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 				const uint8_t * buf)
 {
 	memcpy((void *)MAIN_AREA0, buf, mtd->writesize);
-
-	if (IS_2K_PAGE_NAND) {
-		mxc_swap_2k_bi_main_sp();
-	}
 }
 
 /* Define some generic bad / good block scan pattern which are used
@@ -1021,13 +986,10 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	/* jffs2 not write oob */
 	mtd->flags &= ~MTD_OOB_WRITEABLE;
 
-	if (IS_4K_PAGE_NAND) {
-		this->bbt_td = &bbt_main_descr;
-		this->bbt_md = &bbt_mirror_descr;
-	} else {
-		this->bbt_td = NULL;
-		this->bbt_md = NULL;
-	}
+	/* use flash based bbt */
+	this->bbt_td = &bbt_main_descr;
+	this->bbt_md = &bbt_mirror_descr;
+
 	if (!this->badblock_pattern) {
 		this->badblock_pattern = (mtd->writesize > 512) ?
 		    &largepage_memorybased : &smallpage_memorybased;
