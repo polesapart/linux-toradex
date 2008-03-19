@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
+#include <linux/i2c.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -155,6 +156,14 @@ static struct mxc_lcd_platform_data lcd_data = {
 	.reset = lcd_reset,
 };
 
+static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
+	{
+	 .driver_name = "TSC2007",
+	 .addr = 0x48,
+	 .irq = IOMUX_TO_IRQ(MX37_PIN_AUD5_RXFS),
+	 },
+};
+
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "cpld_spi",
@@ -207,6 +216,26 @@ static void mxc_init_fb(void)
 #else
 static inline void mxc_init_fb(void)
 {
+}
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_TSC2007) || defined(CONFIG_TOUCHSCREEN_TSC2007_MODULE)
+
+static int __init mxc_init_touchscreen(void)
+{
+	int pad_val;
+
+	mxc_request_iomux(MX37_PIN_AUD5_RXFS, IOMUX_CONFIG_GPIO);
+	pad_val = PAD_CTL_PKE_ENABLE | PAD_CTL_100K_PU;
+	mxc_iomux_set_pad(MX37_PIN_AUD5_RXFS, pad_val);
+	mxc_set_gpio_direction(MX37_PIN_AUD5_RXFS, 1);
+
+	return 0;
+}
+#else
+static int __init mxc_init_touchscreen(void)
+{
+	return 0;
 }
 #endif
 
@@ -283,11 +312,15 @@ static void __init mxc_board_init(void)
 	mxc_clocks_init();
 	mxc_gpio_init();
 	early_console_setup(saved_command_line);
+	i2c_register_board_info(0, mxc_i2c0_board_info,
+				ARRAY_SIZE(mxc_i2c0_board_info));
+
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 	mxc_init_nand_mtd();
 
 	mxc_init_fb();
+	mxc_init_touchscreen();
 }
 
 /*

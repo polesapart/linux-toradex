@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -261,6 +261,7 @@ typedef enum iomux_pins {
 	MX37_PIN_GPIO1_7 = _MXC_BUILD_GPIO_PIN(0, 7, 0, 0x22C, 0x484),
 	MX37_PIN_GRP_H10 = _MXC_BUILD_NON_GPIO_PIN(0x230, 0x490),
 	MX37_PIN_GRP_H9 = _MXC_BUILD_NON_GPIO_PIN(0x230, 0x494),
+	MX37_PIN_GRP_H3 = _MXC_BUILD_NON_GPIO_PIN(0x230, 0x4D0),
 	MX37_PIN_GRP_H5 = _MXC_BUILD_NON_GPIO_PIN(0x230, 0x4EC),
 } iomux_pin_name_t;
 

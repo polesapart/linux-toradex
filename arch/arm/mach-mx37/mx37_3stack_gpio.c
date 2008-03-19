@@ -19,6 +19,7 @@
 #include <asm/hardware.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/gpio.h>
+
 #include "iomux.h"
 
 /*!
@@ -176,19 +177,19 @@ void gpio_i2c_active(int i2c_num)
 	case 0:
 		/* Touch */
 		/* select I2C1_SCK as daisy chain input */
+		mxc_request_iomux(MX37_PIN_I2C1_CLK, IOMUX_CONFIG_ALT0);
 		mxc_iomux_set_input(MUX_IN_I2C1_SCL, INPUT_CTL_PATH1);
 		/* OpenDrain enabled, 100k PU enabled */
-		mxc_iomux_set_pad(MX37_PIN_I2C1_CLK,
-				  PAD_CTL_100K_PU |
-				  PAD_CTL_ODE_OPENDRAIN_ENABLE);
-		mxc_request_iomux(MX37_PIN_I2C1_CLK, IOMUX_CONFIG_ALT0);
+		regval =
+		    PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_100K_PU |
+		    PAD_CTL_PKE_ENABLE;
+		mxc_iomux_set_pad(MX37_PIN_I2C1_CLK, regval);
+
 		/*select I2C1_SDA as daisy chain input */
-		mxc_iomux_set_input(MUX_IN_I2C1_SDA, INPUT_CTL_PATH1);
-		/* OpenDrain enabled, 100k PU enabled */
-		mxc_iomux_set_pad(MX37_PIN_I2C1_DAT,
-				  PAD_CTL_100K_PU |
-				  PAD_CTL_ODE_OPENDRAIN_ENABLE);
 		mxc_request_iomux(MX37_PIN_I2C1_DAT, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_input(MUX_IN_I2C1_SDA, INPUT_CTL_PATH1);
+		mxc_iomux_set_pad(MX37_PIN_I2C1_DAT, regval);
+		mxc_iomux_set_pad(MX37_PIN_GRP_H3, PAD_CTL_HYS_ENABLE);
 		break;
 	case 1:
 		/* PMIC */

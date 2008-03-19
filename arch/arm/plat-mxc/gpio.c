@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -343,9 +343,10 @@ static void mxc_gpio_irq_handler(u32 irq, struct irq_desc *desc)
 	int_valid = __raw_readl(isr_reg) & imr_val;
 
 	if (unlikely(!int_valid)) {
-		printk(KERN_ERR "\nGPIO port: %d Spurious interrupt:0x%0x\n\n",
-		       port->num, int_valid);
-		BUG();		/* oops */
+		printk(KERN_DEBUG
+		       "\nGPIO port: %d Spurious interrupt:0x%0x Mask: %x\n\n",
+		       port->num, int_valid, imr_val);
+		return;
 	}
 
 	gpio_irq = port->virtual_irq_start;
