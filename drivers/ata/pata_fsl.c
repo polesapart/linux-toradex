@@ -674,6 +674,16 @@ static int __devexit pata_fsl_remove(struct platform_device *pdev)
 	clk_put(priv->clk);
 	priv->clk = NULL;
 
+	/* Disable Core regulator & IO Regulator */
+	if (plat->core_reg != NULL) {
+		regulator_disable(core_reg);
+		regulator_put(core_reg, &pdev->dev);
+	}
+	if (plat->io_reg != NULL) {
+		regulator_disable(io_reg);
+		regulator_put(io_reg, &pdev->dev);
+	}
+
 	if (plat->exit)
 		plat->exit();
 

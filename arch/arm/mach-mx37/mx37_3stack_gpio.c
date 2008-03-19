@@ -360,7 +360,101 @@ EXPORT_SYMBOL(gpio_sensor_inactive);
  */
 void gpio_ata_active(void)
 {
- /*TODO*/}
+	/*IOMUX Settings */
+	/*PATA_DMARQ_B */
+	mxc_request_iomux(MX37_PIN_NANDF_RE_B, IOMUX_CONFIG_ALT1);
+	/*PATA_DIOR */
+	mxc_request_iomux(MX37_PIN_NANDF_ALE, IOMUX_CONFIG_ALT1);
+	/*PATA_DIOW */
+	mxc_request_iomux(MX37_PIN_NANDF_CLE, IOMUX_CONFIG_ALT1);
+	/*PATA_DMACK */
+	mxc_request_iomux(MX37_PIN_NANDF_WP_B, IOMUX_CONFIG_ALT1);
+	/*PATA_RESET_B */
+	mxc_request_iomux(MX37_PIN_NANDF_RB, IOMUX_CONFIG_ALT1);
+	/*PATA_IORDY */
+	mxc_request_iomux(MX37_PIN_NANDF_CS0, IOMUX_CONFIG_ALT1);
+	/*PATA_INTRQ_B */
+	mxc_request_iomux(MX37_PIN_NANDF_CS1, IOMUX_CONFIG_ALT1);
+	/*PATA_CS_0 */
+	mxc_request_iomux(MX37_PIN_NANDF_CS2, IOMUX_CONFIG_ALT1);
+	/*PATA_CS_1 */
+	mxc_request_iomux(MX37_PIN_NANDF_CS3, IOMUX_CONFIG_ALT1);
+
+	/*PATA_D0 */
+	mxc_request_iomux(MX37_PIN_EIM_D0, IOMUX_CONFIG_ALT1);
+	/*PATA_D1 */
+	mxc_request_iomux(MX37_PIN_EIM_D1, IOMUX_CONFIG_ALT1);
+	/*PATA_D2 */
+	mxc_request_iomux(MX37_PIN_EIM_D2, IOMUX_CONFIG_ALT1);
+	/*PATA_D3 */
+	mxc_request_iomux(MX37_PIN_EIM_D3, IOMUX_CONFIG_ALT1);
+	/*PATA_D4 */
+	mxc_request_iomux(MX37_PIN_EIM_D4, IOMUX_CONFIG_ALT1);
+	/*PATA_D5 */
+	mxc_request_iomux(MX37_PIN_EIM_D5, IOMUX_CONFIG_ALT1);
+	/*PATA_D6 */
+	mxc_request_iomux(MX37_PIN_EIM_D6, IOMUX_CONFIG_ALT1);
+	/*PATA_D7 */
+	mxc_request_iomux(MX37_PIN_EIM_D7, IOMUX_CONFIG_ALT1);
+	/*PATA_D8 */
+	mxc_request_iomux(MX37_PIN_EIM_D8, IOMUX_CONFIG_ALT1);
+	/*PATA_D9 */
+	mxc_request_iomux(MX37_PIN_EIM_D9, IOMUX_CONFIG_ALT1);
+	/*PATA_D10 */
+	mxc_request_iomux(MX37_PIN_EIM_D10, IOMUX_CONFIG_ALT1);
+	/*PATA_D11 */
+	mxc_request_iomux(MX37_PIN_EIM_D11, IOMUX_CONFIG_ALT1);
+	/*PATA_D12 */
+	mxc_request_iomux(MX37_PIN_EIM_D12, IOMUX_CONFIG_ALT1);
+	/*PATA_D13 */
+	mxc_request_iomux(MX37_PIN_EIM_D13, IOMUX_CONFIG_ALT1);
+	/*PATA_D14 */
+	mxc_request_iomux(MX37_PIN_EIM_D14, IOMUX_CONFIG_ALT1);
+	/*PATA_D15 */
+	mxc_request_iomux(MX37_PIN_EIM_D15, IOMUX_CONFIG_ALT1);
+	/*PATA_DA0 */
+	mxc_request_iomux(MX37_PIN_SD2_DATA3, IOMUX_CONFIG_ALT1);
+	/*PATA_DA1 */
+	mxc_request_iomux(MX37_PIN_SD2_DATA2, IOMUX_CONFIG_ALT1);
+	/*PATA_DA2 */
+	mxc_request_iomux(MX37_PIN_SD2_DATA1, IOMUX_CONFIG_ALT1);
+
+	/* BUFFER_ENABLE - HDD_ENABLE_B  */
+	mxc_request_iomux(MX37_PIN_NANDF_WE_B, IOMUX_CONFIG_ALT1);
+
+	/* IOMUX Pad Settings */
+	mxc_iomux_set_pad(MX37_PIN_EIM_D0, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D1, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D2, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D3, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D4, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D5, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D6, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D7, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D8, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D9, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D10, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D11, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D12, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D13, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D14, 0xc0);
+	mxc_iomux_set_pad(MX37_PIN_EIM_D15, 0xc0);
+
+	mxc_iomux_set_pad(MX37_PIN_NANDF_RE_B, 0x0080);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_CS1, 0x0020);
+	mxc_iomux_set_pad(MX37_PIN_SD2_DATA3, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_SD2_DATA2, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_SD2_DATA1, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_ALE, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_CS2, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_CS3, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_WE_B, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_CLE, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_WP_B, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_RB, 0x00);
+	mxc_iomux_set_pad(MX37_PIN_NANDF_CS0, 0x0020);
+
+}
 
 EXPORT_SYMBOL(gpio_ata_active);
 
@@ -370,7 +464,45 @@ EXPORT_SYMBOL(gpio_ata_active);
  */
 void gpio_ata_inactive(void)
 {
- /*TODO*/}
+	/*Turn off the IOMUX for ATA group B signals */
+	mxc_request_iomux(MX37_PIN_EIM_D0, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D1, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D2, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D3, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D4, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D5, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D6, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D7, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D8, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D9, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D10, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D11, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D12, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D13, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D14, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_EIM_D15, IOMUX_CONFIG_ALT0);
+
+	/* Config the multiplex pin of ATA interface DIR, DA0-2, INTRQ, DMARQ */
+	mxc_request_iomux(MX37_PIN_NANDF_RE_B, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_CS1, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_SD2_DATA3, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_SD2_DATA2, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_SD2_DATA1, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_ALE, IOMUX_CONFIG_ALT0);
+
+	/* HDD_BUFF_EN (H:A->B, L:B->A) and HDD_ENABLE_B(H:Disable,L:Enable) */
+	mxc_free_iomux(MX37_PIN_NANDF_WE_B, IOMUX_CONFIG_ALT0);
+
+	/* These ATA pins are common to Group A and Group B */
+	mxc_request_iomux(MX37_PIN_NANDF_CS2, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_CS3, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_ALE, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_CLE, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_WP_B, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_RB, IOMUX_CONFIG_ALT0);
+	mxc_request_iomux(MX37_PIN_NANDF_CS0, IOMUX_CONFIG_ALT0);
+
+}
 
 EXPORT_SYMBOL(gpio_ata_inactive);
 

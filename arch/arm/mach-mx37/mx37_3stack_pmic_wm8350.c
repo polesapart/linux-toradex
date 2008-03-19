@@ -278,6 +278,16 @@ int wm8350_init(struct wm8350 *wm8350)
 #endif
 	mxc_init_wm8350();
 
+	/*Note: Needs to be moved into a regulator function. */
+	/* Configuring -- GPIO 7 pin */
+	if (wm8350_gpio_config(wm8350, 7, WM8350_GPIO_DIR_OUT, 0,
+			       WM8350_GPIO_ACTIVE_LOW, WM8350_GPIO_PULL_NONE,
+			       WM8350_GPIO_INVERT_OFF,
+			       WM8350_GPIO_DEBOUNCE_OFF) == 0)
+		wm8350_gpio_set_status(wm8350, 7, 1);
+	else
+		printk(KERN_ERR "Error in setting Wolfson GPIO pin 7 \n");
+
 	/* register sound */
 	printk("Registering imx37_snd_device");
 	imx_snd_device = platform_device_alloc("wm8350-imx-3stack-audio", -1);
