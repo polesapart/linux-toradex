@@ -15,26 +15,20 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
-#include <linux/mtd/partitions.h>
 #include <linux/interrupt.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/err.h>
-
-#include <asm/mach/flash.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
 #include <asm/io.h>
+#include <asm/mach/flash.h>
 
 #include "mxc_nd.h"
 
-/*!
- * Number of static partitions on NAND Flash.
- */
-#define NUM_PARTITIONS    (sizeof(partition_info)/sizeof(struct mtd_partition))
-
-#define DVR_VER "2.0"
+#define DVR_VER "2.1"
 
 struct mxc_mtd_s {
 	struct mtd_info mtd;
@@ -43,7 +37,7 @@ struct mxc_mtd_s {
 	struct device *dev;
 };
 
-static struct mxc_mtd_s *mxc_nand_data = NULL;
+static struct mxc_mtd_s *mxc_nand_data;
 
 /*
  * Define delays in microsec for NAND device operations
@@ -1112,6 +1106,9 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 
 	if (is2k_Pagesize)
 		this->ecc.layout = &nand_hw_eccoob_2k;
+
+	/* jffs2 not write oob */
+	mtd->flags &= ~MTD_OOB_WRITEABLE;
 
 	/* use flash based bbt */
 	this->bbt_td = &bbt_main_descr;
