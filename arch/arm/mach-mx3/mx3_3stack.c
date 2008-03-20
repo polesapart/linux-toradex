@@ -31,6 +31,8 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/i2c.h>
+#include <linux/regulator/regulator-platform.h>
+#include <linux/regulator/regulator.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -482,6 +484,23 @@ static int __init mxc_expio_init(void)
 
 	return 0;
 }
+
+static int __init mxc_init_regulator(void)
+{
+	struct regulator *gpo1;
+	struct regulator *gpo2;
+
+	gpo1 = regulator_get(NULL, "GPO1");
+	gpo2 = regulator_get(NULL, "GPO2");
+	if (!(IS_ERR(gpo1) || IS_ERR(gpo2)))
+		regulator_set_platform_source(gpo2, gpo1);
+	else
+		printk(KERN_ERR "Unable to set GPO1 be the parent of GPO2\n");
+
+	return 0;
+}
+
+module_init(mxc_init_regulator);
 
 #if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
 static void __init mxc_init_pmic_audio(void)

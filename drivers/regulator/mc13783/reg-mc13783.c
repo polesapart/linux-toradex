@@ -2945,8 +2945,6 @@ int reg_mc13783_probe(void)
 	int ret11 = 0;
 	int i = 0;
 
-	printk(KERN_INFO "MC13783 regulator successfully probed\n");
-
 	for (i = 0; i < ARRAY_SIZE(reg_mc13783); i++) {
 		ret11 = regulator_register(&reg_mc13783[i].regulator);
 		regulator_set_platform_constraints(reg_mc13783[i].regulator.
@@ -2964,8 +2962,11 @@ int reg_mc13783_probe(void)
 		}
 	}
 
+	printk(KERN_INFO "MC13783 regulator successfully probed\n");
+
 	return 0;
 }
+
 EXPORT_SYMBOL(reg_mc13783_probe);
 
 /* Module information */
