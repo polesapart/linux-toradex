@@ -1117,6 +1117,9 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	this->bbt_td = &bbt_main_descr;
 	this->bbt_md = &bbt_mirror_descr;
 
+	/* update flash based bbt */
+	this->options |= NAND_USE_FLASH_BBT;
+
 	if (!this->badblock_pattern) {
 		if (mtd->writesize == 2048)
 			this->badblock_pattern = &smallpage_memorybased;

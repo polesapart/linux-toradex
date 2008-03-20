@@ -990,6 +990,9 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	this->bbt_td = &bbt_main_descr;
 	this->bbt_md = &bbt_mirror_descr;
 
+	/* update flash based bbt */
+	this->options |= NAND_USE_FLASH_BBT;
+
 	if (!this->badblock_pattern) {
 		this->badblock_pattern = (mtd->writesize > 512) ?
 		    &largepage_memorybased : &smallpage_memorybased;
@@ -1052,8 +1055,6 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	this->read_buf = mxc_nand_read_buf;
 	this->verify_buf = mxc_nand_verify_buf;
 	this->scan_bbt = mxc_nand_scan_bbt;
-	if (IS_4K_PAGE_NAND)
-		this->options |= NAND_USE_FLASH_BBT;	/* always use flash based bbt */
 
 	/* NAND bus width determines access funtions used by upper layer */
 	if (flash->width == 2) {
