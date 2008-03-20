@@ -225,7 +225,6 @@ void dptc_suspend(void)
 	if (!dptc_is_active)
 		return;
 
-
 	pmcr0 = __raw_readl(MXC_CCM_PMCR0);
 
 	/* disable DPTC and mask its interrupt */
@@ -233,9 +232,7 @@ void dptc_suspend(void)
 	    (~MXC_CCM_PMCR0_DPVCR);
 
 	__raw_writel(pmcr0, MXC_CCM_PMCR0);
-
 }
-
 
 /*!
  * This function is called to put the DPTC in a low power state.
@@ -299,6 +296,22 @@ static int __devinit mxc_dptc_probe(struct platform_device *pdev)
 {
 	int res = 0;
 	u32 pmcr0 = __raw_readl(MXC_CCM_PMCR0);
+	struct clk *ckih_clk;
+
+	dptc_dev = &pdev->dev;
+	dptc_wp_allfreq = pdev->dev.platform_data;
+	if (dptc_wp_allfreq == NULL) {
+		ckih_clk = clk_get(NULL, "ckih");
+		if (cpu_is_mx31() &
+		    (mxc_cpu_is_rev(CHIP_REV_2_0) < 0) &
+		    (clk_get_rate(ckih_clk) == 27000000))
+			printk(KERN_ERR "DPTC: DPTC not supported on TO1.x \
+					& ckih = 27M\n");
+		else
+			printk(KERN_ERR "DPTC: Pointer to DPTC table is NULL\
+					not started\n");
+		return -1;
+	}
 
 	INIT_DELAYED_WORK(&dptc_work, dptc_workqueue_handler);
 
@@ -326,7 +339,6 @@ static int __devinit mxc_dptc_probe(struct platform_device *pdev)
 
 	__raw_writel(pmcr0, MXC_CCM_PMCR0);
 
-	dptc_dev = &pdev->dev;
 	res = sysfs_create_file(&dptc_dev->kobj, &dev_attr_enable.attr);
 	if (res) {
 		printk(KERN_ERR
@@ -339,10 +351,7 @@ static int __devinit mxc_dptc_probe(struct platform_device *pdev)
 		return res;
 	}
 
-	dptc_wp_allfreq = pdev->dev.platform_data;
-
 	curr_wp = 0;
-
 	update_dptc_wp(curr_wp);
 
 	cpu_clk = clk_get(NULL, "cpu_clk");
