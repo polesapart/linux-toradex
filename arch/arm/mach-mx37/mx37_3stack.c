@@ -78,7 +78,7 @@ void board_ref_clk_rate(unsigned long *ckil, unsigned long *osc,
 
 static struct mtd_partition mxc_nand_partitions[] = {
 	{
-	 .name = "bootloader",
+	 .name = "nand.bootloader",
 	 .offset = 0,
 	 .size = 2 * 1024 * 1024},
 	{

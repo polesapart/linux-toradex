@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Deep Blue Solutions Ltd
  *  Copyright (C) 2002 Shane Nay (shane@minirl.com)
- *  Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2008 Freescale Semiconductor, Inc. All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -200,13 +200,13 @@ static void mxc_init_nor_mtd(void)
 
 static struct mtd_partition mxc_nand_partitions[4] = {
 	{
-	 .name = "IPL-SPL",
+	 .name = "nand.bootloader",
 	 .offset = 0,
-	 .size = 128 * 1024},
+	 .size = 1024 * 1024},
 	{
 	 .name = "nand.kernel",
 	 .offset = MTDPART_OFS_APPEND,
-	 .size = 4 * 1024 * 1024},
+	 .size = 5 * 1024 * 1024},
 	{
 	 .name = "nand.rootfs",
 	 .offset = MTDPART_OFS_APPEND,
