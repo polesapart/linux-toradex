@@ -114,6 +114,8 @@ typedef struct {
 	int dma_stat;		/*!< the state of DMA request */
 	u8 enable;		/*!< Current hardware interrupt mask */
 	u8 attached;		/*!< device attached or not */
+	struct regulator *regulator_drive;
+	struct regulator *regulator_io;
 } mxc_ide_private_t;
 
 /*! ATA transfer mode for set_ata_bus_timing() */
