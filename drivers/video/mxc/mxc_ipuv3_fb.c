@@ -465,16 +465,23 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 		}
 	case MXCFB_WAIT_FOR_VSYNC:
 		{
-			init_completion(&mxc_fbi->vsync_complete);
+			if (mxc_fbi->blank != FB_BLANK_UNBLANK)
+				break;
 
 			down(&mxc_fbi->flip_sem);
+			init_completion(&mxc_fbi->vsync_complete);
+
+			ipu_clear_irq(mxc_fbi->ipu_ch_irq);
 			ipu_enable_irq(mxc_fbi->ipu_ch_irq);
 			retval = wait_for_completion_interruptible_timeout(
 				&mxc_fbi->vsync_complete, 1 * HZ);
-			if (retval > 0) {
+			if (retval == 0) {
 				dev_err(fbi->device,
-					"MXCFB_WAIT_FOR_VSYNC: timeout\n");
+					"MXCFB_WAIT_FOR_VSYNC: timeout %d\n",
+					retval);
 				retval = -ETIME;
+			} else if (retval > 0) {
+				retval = 0;
 			}
 			break;
 		}
@@ -619,6 +626,9 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 
 	dev_dbg(info->device, "Updating SDC BG buf %d address=0x%08lX\n",
 		mxc_fbi->cur_ipu_buf, base);
+
+	down(&mxc_fbi->flip_sem);
+	init_completion(&mxc_fbi->vsync_complete);
 
 	mxc_fbi->cur_ipu_buf = !mxc_fbi->cur_ipu_buf;
 	if (ipu_update_channel_buffer(mxc_fbi->ipu_ch, IPU_INPUT_BUFFER,
@@ -977,12 +987,14 @@ static int mxcfb_probe(struct platform_device *pdev)
 		mxcfbi->ipu_di = pdev->id;
 		ipu_disp_set_global_alpha(MEM_BG_SYNC, true, 0x80);
 		ipu_disp_set_color_key(MEM_BG_SYNC, false, 0);
+		mxcfbi->blank = FB_BLANK_UNBLANK;
 
 		strcpy(fbi->fix.id, "DISP3 BG");
 	} else if (pdev->id == 1) {
 		mxcfbi->ipu_ch_irq = IPU_IRQ_DC_SYNC_EOF;
 		mxcfbi->ipu_ch = MEM_DC_SYNC;
 		mxcfbi->ipu_di = pdev->id;
+		mxcfbi->blank = FB_BLANK_POWERDOWN;
 
 		strcpy(fbi->fix.id, "DISP3 BG - DI1");
 	} else if (pdev->id == 2) {	/* Overlay */
@@ -990,6 +1002,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 		mxcfbi->ipu_ch = MEM_FG_SYNC;
 		mxcfbi->ipu_di = -1;
 		mxcfbi->overlay = true;
+		mxcfbi->blank = FB_BLANK_POWERDOWN;
 
 		strcpy(fbi->fix.id, "DISP3 FG");
 	}
@@ -1006,8 +1019,6 @@ static int mxcfb_probe(struct platform_device *pdev)
 #ifndef CONFIG_FB_MXC_INTERNAL_MEM
 	fbi->var.yres_virtual = fbi->var.yres * 2;
 #endif
-
-	mxcfbi->blank = FB_BLANK_UNBLANK;
 
 	/* Need dummy values until real panel is configured */
 	fbi->var.xres = 240;

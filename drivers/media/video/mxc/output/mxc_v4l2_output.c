@@ -396,6 +396,7 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 	u16 out_height;
 	ipu_channel_t display_input_ch = MEM_PP_MEM;
 	bool use_direct_adc = false;
+	mm_segment_t old_fs;
 
 	if (!vout)
 		return -EINVAL;
@@ -563,9 +564,13 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 
 		fb_pos.x = vout->crop_current.left;
 		fb_pos.y = vout->crop_current.top;
-		if (fbi->fbops->fb_ioctl)
+		if (fbi->fbops->fb_ioctl) {
+			old_fs = get_fs();
+			set_fs(KERNEL_DS);
 			fbi->fbops->fb_ioctl(fbi, MXCFB_SET_OVERLAY_POS,
 					     (unsigned long)&fb_pos);
+			set_fs(old_fs);
+		}
 
 		vout->display_bufs[0] = fbi->fix.smem_start;
 		vout->display_bufs[1] = fbi->fix.smem_start +
