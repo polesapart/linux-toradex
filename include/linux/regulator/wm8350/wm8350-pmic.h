@@ -786,6 +786,8 @@ struct wm8350_led_platform_data {
 	int full_value;
 };
 
+struct fb_info;
+
 /*
  * WM8350 Backlight platform data
  */
@@ -797,6 +799,7 @@ struct wm8350_bl_platform_data {
 	int max_brightness;
 	int power;
 	int brightness;
+	int (*check_fb)(struct fb_info *);
 };
 
 #endif

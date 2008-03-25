@@ -232,6 +232,11 @@ static void wm8350_nop_release(struct device *dev)
 	/* Nothing */
 }
 
+static int wm8350_check_fb(struct fb_info *info)
+{
+	return (to_platform_device(info->device)->id == 0);
+}
+
 struct wm8350_bl_platform_data wm8350_bl_data = {
 	.isink = WM8350_ISINK_A,
 	.dcdc = WM8350_DCDC_5,
@@ -240,6 +245,7 @@ struct wm8350_bl_platform_data wm8350_bl_data = {
 	.max_brightness = 63,
 	.power = FB_BLANK_UNBLANK,
 	.brightness = 50,
+	.check_fb = wm8350_check_fb,
 };
 
 static struct platform_device mxc_wm8350_devices[] = {

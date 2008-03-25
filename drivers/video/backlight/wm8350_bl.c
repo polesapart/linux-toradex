@@ -206,6 +206,8 @@ static int wm8350_bl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, bl);
 	pmic = regulator_get_drvdata(bl->isink);
 
+	wm8350_bl_ops.check_fb = pdata->check_fb;
+
 	bl->device = backlight_device_register(pdev->dev.bus_id, &pdev->dev,
 		bl, &wm8350_bl_ops);
 	if (IS_ERR(bl->device)) {
