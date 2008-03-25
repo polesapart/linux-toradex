@@ -15,6 +15,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
 
 #include <linux/spi/spi.h>
 
@@ -437,9 +438,9 @@ static struct platform_device mxc_alsa_device = {
 static void mxc_init_audio(void)
 {
 	mxc_audio_data.ssi_clk[0] = clk_get(NULL, "ssi_clk.0");
-	clk_put(audio_data->ssi_clk[0]);
+	clk_put(mxc_audio_data.ssi_clk[0]);
 	mxc_audio_data.ssi_clk[1] = clk_get(NULL, "ssi_clk.1");
-	clk_put(audio_data->ssi_clk[1]);
+	clk_put(mxc_audio_data.ssi_clk[1]);
 	mxc_audio_data.ssi_num = 2;
 	mxc_audio_data.src_port = 0;
 	platform_device_register(&mxc_alsa_device);
