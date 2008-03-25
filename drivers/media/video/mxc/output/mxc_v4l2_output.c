@@ -235,7 +235,6 @@ static u32 bpp_to_fmt(struct fb_info *fbi)
 	return 0;
 }
 
-
 static void mxc_v4l2out_timer_handler(unsigned long arg)
 {
 	int index;
@@ -576,8 +575,7 @@ static int mxc_v4l2out_streamon(vout_data * vout)
 		vout->display_bufs[1] = fbi->fix.smem_start +
 		    (fbi->fix.line_length * fbi->var.yres);
 		vout->display_buf_size = vout->crop_current.width *
-		    vout->crop_current.height *
-		    fbi->var.bits_per_pixel / 8;
+		    vout->crop_current.height * fbi->var.bits_per_pixel / 8;
 
 		vout->post_proc_ch = MEM_PP_MEM;
 	}
@@ -785,6 +783,12 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 			ipu_unlink_channels(MEM_PP_MEM, MEM_ROT_PP_MEM);
 			ipu_unlink_channels(MEM_ROT_PP_MEM, vout->display_ch);
 			ipu_disable_channel(MEM_ROT_PP_MEM, true);
+
+			if (vout->rot_pp_bufs[0]) {
+				mxc_free_buffers(vout->rot_pp_bufs,
+						 vout->rot_pp_bufs_vaddr, 2,
+						 vout->display_buf_size);
+			}
 		} else {
 			ipu_unlink_channels(MEM_PP_MEM, vout->display_ch);
 		}
@@ -801,7 +805,7 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 		}
 
 		ipu_uninit_channel(MEM_PP_MEM);
-		if (vout->rotate >= IPU_ROTATE_90_RIGHT)
+		if (!ipu_can_rotate_in_place(vout->rotate))
 			ipu_uninit_channel(MEM_ROT_PP_MEM);
 	} else {		/* ADC Direct */
 		ipu_disable_channel(MEM_PP_ADC, true);
@@ -817,13 +821,14 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 
 	vout->state = STATE_STREAM_OFF;
 
-	if (vout->display_bufs[0] != 0) {
-		mxc_free_buffers(vout->display_bufs,
-				 vout->display_bufs_vaddr, 2,
-				 vout->display_buf_size);
-	}
 #ifdef CONFIG_FB_MXC_ASYNC_PANEL
 	if (vout->cur_disp_output < DISP3) {
+		if (vout->display_bufs[0] != 0) {
+			mxc_free_buffers(vout->display_bufs,
+					 vout->display_bufs_vaddr, 2,
+					 vout->display_buf_size);
+		}
+
 		mxcfb_set_refresh_mode(registered_fb
 				       [vout->
 					output_fb_num[vout->cur_disp_output]],
@@ -932,6 +937,9 @@ static int mxc_v4l2out_s_fmt(vout_data * vout, struct v4l2_format *f)
 			retval = -EFAULT;
 			goto err0;
 		}
+	} else {
+		vout->offset.u_offset = 0;
+		vout->offset.v_offset = 0;
 	}
 
 	retval = 0;
