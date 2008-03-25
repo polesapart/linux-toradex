@@ -268,12 +268,14 @@ static void mxc_init_audio(void)
 	pll_clk = clk_get(NULL, "usb_pll");
 	mxc_audio_data.ssi_clk[0] = clk_get(NULL, "ssi_clk.0");
 	clk_set_parent(mxc_audio_data.ssi_clk[0], pll_clk);
+	clk_put(mxc_audio_data.ssi_clk[0]);
 	if (machine_is_mx31_3ds()) {
 		mxc_audio_data.ssi_num = 1;
 	} else {
 		mxc_audio_data.ssi_num = 2;
 		mxc_audio_data.ssi_clk[1] = clk_get(NULL, "ssi_clk.1");
 		clk_set_parent(mxc_audio_data.ssi_clk[1], pll_clk);
+		clk_put(mxc_audio_data.ssi_clk[1]);
 	}
 	clk_put(pll_clk);
 	mxc_audio_data.src_port = 0;

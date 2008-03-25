@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -357,3 +357,5 @@ int mxc_alsa_create_ctl(struct snd_card *card, void *p_value)
 
 	return 0;
 }
+
+EXPORT_SYMBOL(mxc_alsa_create_ctl);

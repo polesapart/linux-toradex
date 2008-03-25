@@ -681,12 +681,13 @@ static inline int mxc_init_extuart(void)
 }
 #endif
 
-#if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
+#if (defined(CONFIG_MXC_PMIC_MC13783) || \
+	defined(CONFIG_MXC_PMIC_MC13783_MODULE)) \
+	&& (defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE))
 extern void gpio_ssi_active(int ssi_num);
 
 static void __init mxc_init_pmic_audio(void)
 {
-	struct clk *ssi_clk;
 	struct clk *ckih_clk;
 	struct clk *cko_clk;
 
@@ -702,13 +703,6 @@ static void __init mxc_init_pmic_audio(void)
 	}
 	clk_put(ckih_clk);
 	clk_put(cko_clk);
-
-	ssi_clk = clk_get(NULL, "ssi_clk.0");
-	clk_enable(ssi_clk);
-	clk_put(ssi_clk);
-	ssi_clk = clk_get(NULL, "ssi_clk.1");
-	clk_enable(ssi_clk);
-	clk_put(ssi_clk);
 
 	gpio_ssi_active(0);
 	gpio_ssi_active(1);

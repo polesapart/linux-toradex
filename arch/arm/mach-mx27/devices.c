@@ -9,7 +9,7 @@
  * licensed "as is" without any warranty of any kind, whether express
  * or implied.
  *
- * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -422,10 +422,7 @@ static inline void mxc_init_spi(void)
 #endif
 
 #if defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE)
-static struct mxc_audio_platform_data mxc_audio_data = {
-	.ssi_num = 2,
-	.src_port = 0,
-};
+static struct mxc_audio_platform_data mxc_audio_data;
 
 static struct platform_device mxc_alsa_device = {
 	.name = "mxc_alsa",
@@ -439,6 +436,12 @@ static struct platform_device mxc_alsa_device = {
 
 static void mxc_init_audio(void)
 {
+	mxc_audio_data.ssi_clk[0] = clk_get(NULL, "ssi_clk.0");
+	clk_put(audio_data->ssi_clk[0]);
+	mxc_audio_data.ssi_clk[1] = clk_get(NULL, "ssi_clk.1");
+	clk_put(audio_data->ssi_clk[1]);
+	mxc_audio_data.ssi_num = 2;
+	mxc_audio_data.src_port = 0;
 	platform_device_register(&mxc_alsa_device);
 }
 #else

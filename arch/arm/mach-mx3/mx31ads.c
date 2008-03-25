@@ -734,7 +734,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	mxc_cpu_init();
 }
 
-#if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
+#if (defined(CONFIG_MXC_PMIC_MC13783) || \
+	defined(CONFIG_MXC_PMIC_MC13783_MODULE)) \
+	&& (defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE))
 extern void gpio_activate_audio_ports(void);
 
 static void __init mxc_init_pmic_audio(void)

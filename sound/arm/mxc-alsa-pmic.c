@@ -502,8 +502,6 @@ static struct snd_pcm_hw_constraint_list hw_capture_rates = {
 	.mask = 0,
 };
 
-static struct platform_device *device;
-
 #ifdef CONFIG_HEADSET_DETECT_ENABLE
 static PMIC_HS_STATE hs_state;
 
@@ -1147,12 +1145,16 @@ int set_mixer_input_device(PMIC_AUDIO_HANDLE handle, INPUT_DEVICES dev,
 	return 0;
 }
 
+EXPORT_SYMBOL(set_mixer_input_device);
+
 int get_mixer_input_device()
 {
 	int val;
 	val = audio_mixer_control.input_device;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_input_device);
 
 /*!
   * This function sets the PMIC input device's gain.
@@ -1189,12 +1191,16 @@ int set_mixer_input_gain(PMIC_AUDIO_HANDLE handle, int val)
 	return 0;
 }
 
+EXPORT_SYMBOL(set_mixer_input_gain);
+
 int get_mixer_input_gain()
 {
 	int val;
 	val = audio_mixer_control.input_volume;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_input_gain);
 
 /*!
   * This function sets the PMIC output device's volume.
@@ -1238,12 +1244,16 @@ int set_mixer_output_volume(PMIC_AUDIO_HANDLE handle, int volume,
 	return 0;
 }
 
+EXPORT_SYMBOL(set_mixer_output_volume);
+
 int get_mixer_output_volume()
 {
 	int val;
 	val = audio_mixer_control.master_volume_out;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_output_volume);
 
 /*!
   * This function sets the PMIC output device's balance.
@@ -1292,12 +1302,16 @@ int set_mixer_output_balance(int bal)
 	return 0;
 }
 
+EXPORT_SYMBOL(set_mixer_output_balance);
+
 int get_mixer_output_balance()
 {
 	int val;
 	val = audio_mixer_control.mixer_balance;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_output_balance);
 
 /*!
   * This function sets the PMIC output device's mono adder config.
@@ -1325,12 +1339,16 @@ int set_mixer_output_mono_adder(PMIC_AUDIO_MONO_ADDER_MODE mode)
 	return 0;
 }
 
+EXPORT_SYMBOL(set_mixer_output_mono_adder);
+
 int get_mixer_output_mono_adder()
 {
 	int val;
 	val = audio_mixer_control.mixer_mono_adder;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_output_mono_adder);
 
 /*!
   * This function sets the output device(s) in PMIC. It takes an
@@ -1482,12 +1500,16 @@ int set_mixer_output_device(PMIC_AUDIO_HANDLE handle, OUTPUT_SOURCE src,
 
 }
 
+EXPORT_SYMBOL(set_mixer_output_device);
+
 int get_mixer_output_device()
 {
 	int val;
 	val = audio_mixer_control.output_device;
 	return val;
 }
+
+EXPORT_SYMBOL(get_mixer_output_device);
 
 /*!
   * This function configures the CODEC for playback/recording.
@@ -3842,12 +3864,6 @@ static int __init mxc_alsa_audio_probe(struct platform_device *pdev)
 
 static int mxc_alsa_audio_remove(struct platform_device *dev)
 {
-	if (audio_data->ssi_num == 1) {
-		clk_put(audio_data->ssi_clk[SSI1]);
-	} else {
-		clk_put(audio_data->ssi_clk[SSI1]);
-		clk_put(audio_data->ssi_clk[SSI2]);
-	}
 	snd_card_free(mxc_audio->card);
 	kfree(mxc_audio);
 	platform_set_drvdata(dev, NULL);
@@ -3879,7 +3895,6 @@ static int __init mxc_alsa_audio_init(void)
 
 static void __exit mxc_alsa_audio_exit(void)
 {
-	platform_device_unregister(device);
 	platform_driver_unregister(&mxc_alsa_audio_driver);
 }
 

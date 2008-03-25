@@ -113,6 +113,7 @@ EXPORT_SYMBOL(pmic_audio_stdac_enable_mixer);
 EXPORT_SYMBOL(pmic_audio_stdac_disable_mixer);
 EXPORT_SYMBOL(pmic_audio_output_set_port);
 EXPORT_SYMBOL(pmic_audio_output_get_port);
+EXPORT_SYMBOL(pmic_audio_output_clear_port);
 EXPORT_SYMBOL(pmic_audio_output_set_stereo_in_gain);
 EXPORT_SYMBOL(pmic_audio_output_get_stereo_in_gain);
 EXPORT_SYMBOL(pmic_audio_output_set_pgaGain);

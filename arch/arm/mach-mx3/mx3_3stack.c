@@ -503,7 +503,9 @@ static int __init mxc_init_regulator(void)
 
 module_init(mxc_init_regulator);
 
-#if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
+#if (defined(CONFIG_MXC_PMIC_MC13783) || \
+	defined(CONFIG_MXC_PMIC_MC13783_MODULE)) \
+	&& (defined(CONFIG_SND_MXC_PMIC) || defined(CONFIG_SND_MXC_PMIC_MODULE))
 static void __init mxc_init_pmic_audio(void)
 {
 	struct clk *ckih_clk;

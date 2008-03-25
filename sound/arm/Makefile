@@ -18,7 +18,8 @@ snd-pxa2xx-ac97-objs		:= pxa2xx-ac97.o
 # Define the header file locations for PMIC drivers.
 #
 CFLAGS_mxc-alsa-pmic.o  = -I$(TOPDIR)/drivers/mxc
-obj-$(CONFIG_SND_MXC_PMIC)	+= mxc-alsa-pmic.o mxc-alsa-mixer.o
+obj-$(CONFIG_SND_MXC_PMIC)	+= snd-mxc-alsa.o
+snd-mxc-alsa-objs		:= mxc-alsa-pmic.o mxc-alsa-mixer.o
 
 CFLGS_mxc_alsa_spdif.o = -I$(TOPDIR)/drivers/mxc
 obj-$(CONFIG_SND_MXC_SPDIF)	+= mxc-alsa-spdif.o
