@@ -66,6 +66,7 @@ typedef enum {
 	per_2_int,		/*!< Peripheral to internal RAM */
 	per_2_emi,		/*!< Peripheral to internal EMI memory */
 	per_2_dsp,		/*!< Peripheral to DSP memory */
+	per_2_per,		/*!< Peripheral to Peripheral */
 	int_2_per,		/*!< Internal RAM to peripheral */
 	int_2_int,		/*!< Internal RAM to Internal RAM */
 	int_2_emi,		/*!< Internal RAM to EMI memory */
@@ -98,10 +99,14 @@ typedef enum {
 	CCM,			/*!< CCM */
 	EXT,			/*!< External peripheral */
 	MSHC,			/*!< Memory Stick Host Controller */
+	MSHC_SP,		/*!< Shared Memory Stick Host Controller */
 	DSP,			/*!< DSP */
 	MEMORY,			/*!< Memory */
 	FIFO_MEMORY,		/*!< FIFO type Memory */
-	SPDIF			/*!< SPDIF */
+	SPDIF,			/*!< SPDIF */
+	IPU_MEMORY,		/*!< IPU Memory */
+	ASRC,			/*!< ASRC */
+	ESAI,			/*!< ESAI */
 } sdma_periphT;
 
 #ifndef TRANSFER_32BIT
@@ -249,8 +254,16 @@ typedef struct {
 	/*! address of mcu_2_mshc script */
 	int mxc_sdma_mcu_2_mshc_addr;
 
+	/*! address of spdif_2_mcu script */
+	int mxc_sdma_spdif_2_mcu_addr;
 	/*! address of mcu_2_spdif script */
 	int mxc_sdma_mcu_2_spdif_addr;
+
+	/*! address of ext_mem_2_ipu script */
+	int mxc_sdma_ext_mem_2_ipu_addr;
+
+	/*! address of descrambler script */
+	int mxc_sdma_descrambler_addr;
 
 	/*! address of dptc_dvfs script */
 	int mxc_sdma_dptc_dvfs_addr;

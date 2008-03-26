@@ -25,7 +25,7 @@
  * Copyright (c) 2004-2006 Macq Electronique SA.
  */
 /*
- * Copyright 2006-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2006-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 #include <linux/module.h>
@@ -694,7 +694,6 @@ while (!((status = bdp->cbd_sc) & BD_ENET_RX_EMPTY)) {
 			skb_reserve(skb, 2);    /*skip 2bytes, so ipheader is align 4bytes*/
 			skb_put(skb,pkt_len-4); /* Make room */
 		skb_copy_to_linear_data(skb, data, pkt_len-4);
-					pkt_len-4, 0);
 		} else {
 			struct sk_buff * pskb = fep->rx_skbuff[rx_index];
 
@@ -2057,8 +2056,8 @@ static void __inline__ fec_arch_exit(void)
 static void __inline__ fec_request_intrs(struct net_device *dev)
 {
 	/* Setup interrupt handlers. */
-	if (request_irq(INT_FEC, fec_enet_interrupt, 0, "fec", dev) != 0)
-		panic("FEC: Could not allocate FEC IRQ(%d)!\n", INT_FEC);
+	if (request_irq(MXC_INT_FEC, fec_enet_interrupt, 0, "fec", dev) != 0)
+		panic("FEC: Could not allocate FEC IRQ(%d)!\n", MXC_INT_FEC);
 	/* TODO: disable now due to CPLD issue */
 	if (request_irq(expio_intr_fec, mii_link_interrupt, 0, "fec(MII)", dev) != 0)
 		panic("FEC: Could not allocate FEC(MII) IRQ(%d)!\n", expio_intr_fec);
@@ -2380,7 +2379,6 @@ static void mii_display_config(struct work_struct *work)
 {
 	struct fec_enet_private *fep = container_of(work, struct fec_enet_private, phy_task);
 	struct net_device *dev = fep->netdev;
-	struct net_device *dev = fep->net;
 	uint status = fep->phy_status;
 
 	/*
@@ -2418,7 +2416,6 @@ static void mii_relink(struct work_struct *work)
 {
 	struct fec_enet_private *fep = container_of(work, struct fec_enet_private, phy_task);
 	struct net_device *dev = fep->netdev;
-	struct net_device *dev = fep->net;
 	int duplex;
 
 	/*
@@ -3063,7 +3060,7 @@ fec_stop(struct net_device *dev)
 static int __init fec_enet_module_init(void)
 {
 	struct net_device *dev;
-	int i, j, err;
+	int i, err;
 	DECLARE_MAC_BUF(mac);
 
 	printk("FEC ENET Version 0.2\n");

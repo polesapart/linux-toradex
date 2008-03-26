@@ -1,5 +1,5 @@
 /*
- *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -12,7 +12,7 @@
  * @file arch-mxc/hardware.h
  * @brief This file contains the hardware definitions of the board.
  *
- * @ingroup MSL_MX27 MSL_MX31 MSL_MX37 MSL_MXC91321
+ * @ingroup MSL_MX27 MSL_MX31 MSL_MX35 MSL_MX37 MSL_MXC91321
  */
 #ifndef __ASM_ARCH_MXC_HARDWARE_H__
 #define __ASM_ARCH_MXC_HARDWARE_H__
@@ -72,6 +72,13 @@ static inline int type## _rev (int rev)		\
 #define cpu_is_mx32()		(0)
 #endif
 
+#ifdef CONFIG_ARCH_MX35
+#include <asm/arch/mx35.h>
+#define cpu_is_mx35()   (1)
+#else
+#define cpu_is_mx35()   (0)
+#endif
+
 #ifdef CONFIG_ARCH_MX37
 #include <asm/arch/mx37.h>
 #define cpu_is_mx37()   (1)
@@ -110,6 +117,7 @@ MXC_REV(cpu_is_mx21);
 MXC_REV(cpu_is_mx27);
 MXC_REV(cpu_is_mx31);
 MXC_REV(cpu_is_mx32);
+MXC_REV(cpu_is_mx35);
 MXC_REV(cpu_is_mx37);
 #endif
 

@@ -15,7 +15,7 @@
 #include <asm/sizes.h>
 
 /* Start of physical RAM */
-#ifdef CONFIG_MACH_MXC30031ADS
+#if defined(CONFIG_MACH_MXC30031ADS) || defined(CONFIG_MACH_MX35EVB)
 #define PHYS_OFFSET             UL(0x90000000)
 #endif
 
