@@ -121,6 +121,19 @@ struct mxc_camera_platform_data {
 	char *gpo_regulator;
 };
 
+/*gpo1-3 is in fixed state by hardware design,
+ * only deal with reset pin and clock_enable pin
+ * only poll mode can be used to control the chip,
+ * interrupt mode is not supported by 3ds*/
+struct mxc_fm_platform_data {
+	char *reg_vio;
+	char *reg_vdd;
+	void (*gpio_get) (void);
+	void (*gpio_put) (void);
+	void (*reset) (void);
+	void (*clock_ctl) (int flag);
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);

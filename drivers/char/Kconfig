@@ -411,6 +411,9 @@ config SGI_MBCS
          If you have an SGI Altix with an attached SABrick
          say Y or M here, otherwise say N.
 
+config FM_SI4702
+	tristate "SI4702 FM device driver"
+
 config MXC_MU
 	bool "MXC Messaging Unit Driver"
 	depends on ARCH_MXC

@@ -231,6 +231,43 @@ struct mxc_tvout_platform_data tvout_data = {
 	.detect_line = MX31_PIN_BATT_LINE,
 };
 
+void si4702_reset(void)
+{
+	mxc_set_gpio_dataout(MX31_PIN_SRST0, 0);
+	mdelay(100);
+	mxc_set_gpio_dataout(MX31_PIN_SRST0, 1);
+	mdelay(100);
+}
+
+void si4702_clock_ctl(int flag)
+{
+	mxc_set_gpio_dataout(MX31_PIN_SIMPD0, flag);
+}
+
+static void si4702_gpio_get(void)
+{
+	/* reset pin */
+	mxc_request_iomux(MX31_PIN_SRST0, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+	mxc_set_gpio_direction(MX31_PIN_SRST0, 0);
+
+	mxc_request_iomux(MX31_PIN_SIMPD0, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+	mxc_set_gpio_direction(MX31_PIN_SIMPD0, 0);
+}
+
+static void si4702_gpio_put(void)
+{
+	mxc_free_iomux(MX31_PIN_SRST0, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+	mxc_free_iomux(MX31_PIN_SIMPD0, OUTPUTCONFIG_GPIO, INPUTCONFIG_NONE);
+}
+
+static struct mxc_fm_platform_data si4702_data = {
+	.reg_vio = "GPO3",
+	.reg_vdd = "VMMC1",
+	.gpio_get = si4702_gpio_get,
+	.gpio_put = si4702_gpio_put,
+	.reset = si4702_reset,
+	.clock_ctl = si4702_clock_ctl,
+};
 static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "ov2640",
@@ -241,6 +278,11 @@ static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	 .addr = 0x76,
 	 .platform_data = (void *)&tvout_data,
 	 .irq = IOMUX_TO_IRQ(MX31_PIN_BATT_LINE),},
+	{
+	 .driver_name = "si4702",
+	 .addr = 0x10,
+	 .platform_data = (void *)&si4702_data,
+	 },
 };
 
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
