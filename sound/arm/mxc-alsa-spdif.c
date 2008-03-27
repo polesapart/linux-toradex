@@ -752,7 +752,9 @@ static struct snd_pcm_hardware snd_spdif_playback_hw = {
 	     SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_HALF_DUPLEX |
 	     SNDRV_PCM_INFO_MMAP_VALID | SNDRV_PCM_INFO_PAUSE |
 	     SNDRV_PCM_INFO_RESUME),
-	.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	.formats =
+	    SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE |
+	    SNDRV_PCM_FMTBIT_S24_LE,
 	.rates =
 	    SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
 	.rate_min = 32000,
@@ -1043,7 +1045,7 @@ static int mxc_alsa_spdif_probe(struct platform_device
 			  snd_ctl_new1(&snd_mxc_spdif_playback,
 				       &mxc_spdif_control));
 	if (err < 0)
-		return err;
+		goto nodev;
 
 	if (chip->mxc_spdif_tx)
 		spin_lock_init(&chip->s[SNDRV_PCM_STREAM_PLAYBACK].dma_lock);

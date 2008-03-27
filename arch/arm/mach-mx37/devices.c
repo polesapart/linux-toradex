@@ -581,7 +581,7 @@ static struct platform_device mxc_alsa_spdif_device = {
 		.platform_data = &mxc_spdif_data,
 		},
 	.num_resources = ARRAY_SIZE(spdif_resources),
-	.resource = &spdif_resources,
+	.resource = spdif_resources,
 };
 
 static inline void mxc_init_spdif(void)
