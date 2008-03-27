@@ -421,9 +421,9 @@
 /*!
  * NFMS bit in RCSR register for pagesize of nandflash
  */
-#define NFMS		(*((volatile u32 *)IO_ADDRESS(CCM_BASE_ADDR+0xc)))
-#define NFMS_BIT 		30
-#define NFMS_NF_DWIDTH 		31
-#define NFMS_NF_PG_SZ 		30
+#define NFMS		(*((volatile u32 *)IO_ADDRESS(CCM_BASE_ADDR+0x18)))
+#define NFMS_BIT		8
+#define NFMS_NF_DWIDTH		14
+#define NFMS_NF_PG_SZ		8
 
 #endif				/*  __ASM_ARCH_MXC_MX35_H__ */

@@ -134,17 +134,18 @@ static void mxc_init_nor_mtd(void)
 
 /* MTD NAND flash */
 
-#if defined(CONFIG_MTD_NAND_MXC) || defined(CONFIG_MTD_NAND_MXC_MODULE)
+#if defined(CONFIG_MTD_NAND_MXC) || defined(CONFIG_MTD_NAND_MXC_MODULE)	\
+|| defined(CONFIG_MTD_NAND_MXC_V2) || defined(CONFIG_MTD_NAND_MXC_V2_MODULE)
 
 static struct mtd_partition mxc_nand_partitions[] = {
 	{
-	 .name = "IPL-SPL",
+	 .name = "nand.bootloader",
 	 .offset = 0,
-	 .size = 256 * 1024},
+	 .size = 1024 * 1024},
 	{
 	 .name = "nand.kernel",
 	 .offset = MTDPART_OFS_APPEND,
-	 .size = 4 * 1024 * 1024},
+	 .size = 5 * 1024 * 1024},
 	{
 	 .name = "nand.rootfs",
 	 .offset = MTDPART_OFS_APPEND,
@@ -166,7 +167,7 @@ static struct flash_platform_data mxc_nand_data = {
 };
 
 static struct platform_device mxc_nand_mtd_device = {
-	.name = "mxc_nand_flash",
+	.name = "mxc_nandv2_flash",
 	.id = 0,
 	.dev = {
 		.release = mxc_nop_release,

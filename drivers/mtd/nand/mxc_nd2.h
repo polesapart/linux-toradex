@@ -71,36 +71,36 @@
 /*!
  * Addresses for NFC RAM BUFFER Main area 0
  */
-#define MAIN_AREA0        		((volatile u16 *)(nfc_axi_base + 0x000))
-#define MAIN_AREA1        		((volatile u16 *)(nfc_axi_base + 0x200))
-#define MAIN_AREA2        		((volatile u16 *)(nfc_axi_base + 0x400))
-#define MAIN_AREA3        		((volatile u16 *)(nfc_axi_base + 0x600))
+#define MAIN_AREA0        		((u16 *)(nfc_axi_base + 0x000))
+#define MAIN_AREA1        		((u16 *)(nfc_axi_base + 0x200))
+#define MAIN_AREA2        		((u16 *)(nfc_axi_base + 0x400))
+#define MAIN_AREA3        		((u16 *)(nfc_axi_base + 0x600))
 
 #ifdef CONFIG_ARCH_MXC_HAS_NFC_V3_1
-#define MAIN_AREA4        		((volatile u16 *)(nfc_axi_base + 0x800))
-#define MAIN_AREA5        		((volatile u16 *)(nfc_axi_base + 0xa00))
-#define MAIN_AREA6        		((volatile u16 *)(nfc_axi_base + 0xc00))
-#define MAIN_AREA7        		((volatile u16 *)(nfc_axi_base + 0xe00))
+#define MAIN_AREA4        		((u16 *)(nfc_axi_base + 0x800))
+#define MAIN_AREA5        		((u16 *)(nfc_axi_base + 0xa00))
+#define MAIN_AREA6        		((u16 *)(nfc_axi_base + 0xc00))
+#define MAIN_AREA7        		((u16 *)(nfc_axi_base + 0xe00))
 
 /*!
  * Addresses for NFC SPARE BUFFER Spare area 0
  */
-#define SPARE_AREA0       		((volatile u16 *)(nfc_axi_base + 0x1000))
-#define SPARE_AREA1       		((volatile u16 *)(nfc_axi_base + 0x1040))
-#define SPARE_AREA2       		((volatile u16 *)(nfc_axi_base + 0x1080))
-#define SPARE_AREA3       		((volatile u16 *)(nfc_axi_base + 0x10c0))
-#define SPARE_AREA4       		((volatile u16 *)(nfc_axi_base + 0x1100))
-#define SPARE_AREA5       		((volatile u16 *)(nfc_axi_base + 0x1140))
-#define SPARE_AREA6       		((volatile u16 *)(nfc_axi_base + 0x1180))
-#define SPARE_AREA7       		((volatile u16 *)(nfc_axi_base + 0x11c0))
+#define SPARE_AREA0       		((u16 *)(nfc_axi_base + 0x1000))
+#define SPARE_AREA1       		((u16 *)(nfc_axi_base + 0x1040))
+#define SPARE_AREA2       		((u16 *)(nfc_axi_base + 0x1080))
+#define SPARE_AREA3       		((u16 *)(nfc_axi_base + 0x10c0))
+#define SPARE_AREA4       		((u16 *)(nfc_axi_base + 0x1100))
+#define SPARE_AREA5       		((u16 *)(nfc_axi_base + 0x1140))
+#define SPARE_AREA6       		((u16 *)(nfc_axi_base + 0x1180))
+#define SPARE_AREA7       		((u16 *)(nfc_axi_base + 0x11c0))
 #define SPARE_LEN			64
 #define SPARE_COUNT			8
 #define SPARE_SIZE			(SPARE_LEN * SPARE_COUNT)
 #else
-#define SPARE_AREA0       		((volatile u16 *)(nfc_axi_base + 0x800))
-#define SPARE_AREA1       		((volatile u16 *)(nfc_axi_base + 0x810))
-#define SPARE_AREA2       		((volatile u16 *)(nfc_axi_base + 0x820))
-#define SPARE_AREA3       		((volatile u16 *)(nfc_axi_base + 0x830))
+#define SPARE_AREA0       		((u16 *)(nfc_axi_base + 0x800))
+#define SPARE_AREA1       		((u16 *)(nfc_axi_base + 0x810))
+#define SPARE_AREA2       		((u16 *)(nfc_axi_base + 0x820))
+#define SPARE_AREA3       		((u16 *)(nfc_axi_base + 0x830))
 #define SPARE_LEN			16
 #define SPARE_COUNT			4
 #define SPARE_SIZE			(SPARE_LEN * SPARE_COUNT)
@@ -126,7 +126,7 @@
 #define WRITE_NFC_IP_REG(val,reg) 			\
 	do {	 					\
 		raw_write(NFC_IPC_CREQ, NFC_IPC);	\
-		while(!((*(volatile u32*)NFC_IPC & NFC_IPC_ACK)>>1));\
+		while (!((raw_read(NFC_IPC) & NFC_IPC_ACK)>>1));\
 		raw_write(val, reg);			\
 		raw_write(0, NFC_IPC);			\
 	} while(0)
@@ -137,7 +137,7 @@
 #define IS_4BIT_ECC			1
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
-#define SET_NFMS(v)	(NFMS |= (v));
+#define SET_NFMS(v)	(NFMS |= (v))
 
 #define WRITE_NFC_IP_REG(val,reg) \
 	raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),  REG_NFC_OPS_STAT)
@@ -197,10 +197,10 @@
 #ifdef CONFIG_ARCH_MXC_HAS_NFC_V3_1
 #define NFC_ECC_MODE_4    		(1 << 6)
 #define NFC_ECC_MODE_8			~(1 << 6)
-#define NFC_SPAS_16			16
-#define NFC_SPAS_64			64
-#define NFC_SPAS_128			128
-#define NFC_SPAS_218			218
+#define NFC_SPAS_16			8
+#define NFC_SPAS_64		 	32
+#define NFC_SPAS_128			64
+#define NFC_SPAS_218		 	109
 #define NFC_IPC_CREQ			(1 << 0)
 #define NFC_IPC_ACK			(1 << 1)
 #endif
@@ -257,44 +257,127 @@
 /*
  * Addresses for NFC registers
  */
-#define NFC_BUF_SIZE            (nfc_ip_base + 0xE00)
-#define NFC_BUF_ADDR            (nfc_ip_base + 0xE04)
-#define NFC_FLASH_ADDR          (nfc_ip_base + 0xE06)
-#define NFC_FLASH_CMD           (nfc_ip_base + 0xE08)
-#define NFC_CONFIG              (nfc_ip_base + 0xE0A)
-#define NFC_ECC_STATUS_RESULT   (nfc_ip_base + 0xE0C)
-#define NFC_RSLTMAIN_AREA       (nfc_ip_base + 0xE0E)
-#define NFC_RSLTSPARE_AREA      (nfc_ip_base + 0xE10)
-#define NFC_WRPROT              (nfc_ip_base + 0xE12)
-#define NFC_UNLOCKSTART_BLKADDR (nfc_ip_base + 0xE14)
-#define NFC_UNLOCKEND_BLKADDR   (nfc_ip_base + 0xE16)
-#define NFC_NF_WRPRST           (nfc_ip_base + 0xE18)
-#define NFC_CONFIG1             (nfc_ip_base + 0xE1A)
-#define NFC_CONFIG2             (nfc_ip_base + 0xE1C)
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define NFC_REG_BASE	(nfc_ip_base + 0x1000)
+#else
+#define NFC_REG_BASE	nfc_ip_base
+#endif
+#define NFC_BUF_SIZE            (NFC_REG_BASE + 0xE00)
+#define NFC_BUF_ADDR            (NFC_REG_BASE + 0xE04)
+#define NFC_FLASH_ADDR          (NFC_REG_BASE + 0xE06)
+#define NFC_FLASH_CMD           (NFC_REG_BASE + 0xE08)
+#define NFC_CONFIG              (NFC_REG_BASE + 0xE0A)
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define NFC_ECC_STATUS_RESULT	(NFC_REG_BASE + 0xE0C)
+#define NFC_ECC_STATUS_RESULT_1	(NFC_REG_BASE + 0xE0C)
+#define NFC_ECC_STATUS_RESULT_2	(NFC_REG_BASE + 0xE0E)
+#define NFC_SPAS		(NFC_REG_BASE + 0xE10)
+#else
+#define NFC_ECC_STATUS_RESULT   (NFC_REG_BASE + 0xE0C)
+#define NFC_RSLTMAIN_AREA       (NFC_REG_BASE + 0xE0E)
+#define NFC_RSLTSPARE_AREA      (NFC_REG_BASE + 0xE10)
+#endif
+#define NFC_WRPROT              (NFC_REG_BASE + 0xE12)
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define NFC_UNLOCKSTART_BLKADDR  (NFC_REG_BASE + 0xE20)
+#define NFC_UNLOCKEND_BLKADDR    (NFC_REG_BASE + 0xE22)
+#define NFC_UNLOCKSTART_BLKADDR1 (NFC_REG_BASE + 0xE24)
+#define NFC_UNLOCKEND_BLKADDR1   (NFC_REG_BASE + 0xE26)
+#define NFC_UNLOCKSTART_BLKADDR2 (NFC_REG_BASE + 0xE28)
+#define NFC_UNLOCKEND_BLKADDR2   (NFC_REG_BASE + 0xE2A)
+#define NFC_UNLOCKSTART_BLKADDR3 (NFC_REG_BASE + 0xE2C)
+#define NFC_UNLOCKEND_BLKADDR3   (NFC_REG_BASE + 0xE2E)
+#else
+#define NFC_UNLOCKSTART_BLKADDR  (NFC_REG_BASE + 0xE14)
+#define NFC_UNLOCKEND_BLKADDR    (NFC_REG_BASE + 0xE16)
+#endif
+#define NFC_NF_WRPRST            (NFC_REG_BASE + 0xE18)
+#define NFC_CONFIG1              (NFC_REG_BASE + 0xE1A)
+#define NFC_CONFIG2              (NFC_REG_BASE + 0xE1C)
 
 /*!
  * Addresses for NFC RAM BUFFER Main area 0
  */
-#define MAIN_AREA0        (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x000)
-#define MAIN_AREA1        (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x200)
-#define MAIN_AREA2        (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x400)
-#define MAIN_AREA3        (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x600)
+#define MAIN_AREA0      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x000)
+#define MAIN_AREA1      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x200)
+#define MAIN_AREA2      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x400)
+#define MAIN_AREA3      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x600)
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define MAIN_AREA4      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x800)
+#define MAIN_AREA5      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0xA00)
+#define MAIN_AREA6      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0xC00)
+#define MAIN_AREA7      (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0xE00)
+#endif
 
 /*!
  * Addresses for NFC SPARE BUFFER Spare area 0
  */
-#define SPARE_AREA0       (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x800)
-#define SPARE_AREA1       (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x810)
-#define SPARE_AREA2       (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x820)
-#define SPARE_AREA3       (volatile u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x830)
-#define SPARE_LEN         16
-#define SPARE_COUNT       4
-#define SPARE_SIZE        (SPARE_LEN * SPARE_COUNT)
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define SPARE_AREA0     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1000)
+#define SPARE_AREA1     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1040)
+#define SPARE_AREA2     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1080)
+#define SPARE_AREA3     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x10C0)
+#define SPARE_AREA4     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1100)
+#define SPARE_AREA5     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1140)
+#define SPARE_AREA6     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x1180)
+#define SPARE_AREA7     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x11C0)
+#define SPARE_LEN	64
+#define SPARE_COUNT	8
+#else
+#define SPARE_AREA0     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x800)
+#define SPARE_AREA1     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x810)
+#define SPARE_AREA2     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x820)
+#define SPARE_AREA3     (u16 *)IO_ADDRESS(NFC_BASE_ADDR + 0x830)
+#define SPARE_LEN       16
+#define SPARE_COUNT     4
+#endif
+#define SPARE_SIZE      (SPARE_LEN * SPARE_COUNT)
 
-#define IS_4BIT_ECC       1
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define REG_NFC_ECC_MODE NFC_CONFIG1
+#define SPAS_SHIFT		(0)
+#define REG_NFC_SPAS NFC_SPAS
+#define SPAS_MASK	(0xFF00)
+#define IS_4BIT_ECC			\
+	((raw_read(REG_NFC_ECC_MODE) & NFC_ECC_MODE_4) >> 0)
+
+#define SET_SPAS(v)			\
+	raw_write(((raw_read(REG_NFC_SPAS) & SPAS_MASK) | ((v<<SPAS_SHIFT))), \
+								REG_NFC_SPAS)
+
+#define SET_ECC_MODE(v) 		 \
+do {	\
+	if ((v) == NFC_SPAS_218)  {	\
+		raw_write((raw_read(REG_NFC_ECC_MODE) & NFC_ECC_MODE_8), \
+							REG_NFC_ECC_MODE); \
+	} else {	\
+		raw_write((raw_read(REG_NFC_ECC_MODE) | NFC_ECC_MODE_4), \
+							REG_NFC_ECC_MODE); \
+	}	\
+} while (0)
+
+#define GET_ECC_STATUS()  __raw_readl(REG_NFC_ECC_STATUS_RESULT);
+#define SET_NFMS(v)	\
+do {	\
+	(NFMS |= (v));	\
+	if (((v) & (1 << NFMS_NF_PG_SZ))) {	\
+		if (IS_2K_PAGE_NAND) {	\
+			SET_SPAS(NFC_SPAS_64);	\
+		} else if (IS_4K_PAGE_NAND) {       \
+			SET_SPAS(NFC_SPAS_128);	\
+		} else {	\
+			SET_SPAS(NFC_SPAS_16);	\
+		}	\
+		SET_ECC_MODE(NFC_SPAS_128); \
+	}	\
+} while (0)
+#else
+#define IS_4BIT_ECC			(1)
 #define SET_SPAS(v)
 #define SET_ECC_MODE(v)
-#define SET_NFMS(v)	(NFMS |= (v));
+#define GET_ECC_STATUS()  raw_read(REG_NFC_ECC_STATUS_RESULT);
+#define SET_NFMS(v)     (NFMS |= (v))
+#endif
 
 #define WRITE_NFC_IP_REG(val,reg) \
 	raw_write((raw_read(REG_NFC_OPS_STAT) & ~NFC_OPS_STAT),  REG_NFC_OPS_STAT)
@@ -330,6 +413,14 @@
 #define NFC_FLASH_ADDR_SHIFT 		0
 #define NFC_UNLOCK_END_ADDR_SHIFT	0
 
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define NFC_ECC_MODE_4    		 (1<<0)
+#define NFC_ECC_MODE_8			 ~(1<<0)
+#define NFC_SPAS_16			 8
+#define NFC_SPAS_64			 32
+#define NFC_SPAS_128			 64
+#define NFC_SPAS_218			 109
+#endif
 /* NFC Register Mapping */
 #define REG_NFC_OPS_STAT		NFC_CONFIG2
 #define REG_NFC_INTRRUPT		NFC_CONFIG1
@@ -365,7 +456,10 @@
 /* NULL Definitions */
 #define ACK_OPS
 #define NFC_SET_RBA(val,buf_id)
-
+#ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
+#define READ_PAGE()	send_read_page(0)
+#define PROG_PAGE() 	send_prog_page(0)
+#else
 #define READ_PAGE()   \
 do {                     \
 	send_read_page(0);  \
@@ -381,7 +475,7 @@ do {                     \
 	send_prog_page(2);  \
 	send_prog_page(3);  \
 } while (0)
-
+#endif
 #define CHECK_NFC_RB            1
 
 #endif

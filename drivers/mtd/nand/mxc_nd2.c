@@ -910,7 +910,8 @@ static int mxc_nand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
 	}
 
 	nfc_memcpy((void *)buf, (void *)MAIN_AREA0, mtd->writesize);
-
+	copy_spare(mtd, (void *)chip->oob_poi, (void *)SPARE_AREA0,
+		   mtd->oobsize, true);
 	return 0;
 }
 
@@ -919,6 +920,8 @@ static void mxc_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 				const uint8_t * buf)
 {
 	memcpy((void *)MAIN_AREA0, buf, mtd->writesize);
+	copy_spare(mtd, (char *)chip->oob_poi, (char *)SPARE_AREA0,
+		   mtd->oobsize, false);
 }
 
 /* Define some generic bad / good block scan pattern which are used
@@ -1022,7 +1025,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	nfc_ip_base = IO_ADDRESS(NFC_BASE_ADDR);
 
 	/* Resetting  NFC */
-	raw_write(NFC_RST, REG_NFC_RST);
+	raw_write((raw_read(REG_NFC_RST) | NFC_RST), REG_NFC_RST);
 
 	/* Allocate memory for MTD device structure and private data */
 	mxc_nand_data = kzalloc(sizeof(struct mxc_mtd_s), GFP_KERNEL);
