@@ -192,25 +192,37 @@ EXPORT_SYMBOL(gpio_fec_inactive);
  */
 void gpio_i2c_active(int i2c_num)
 {
+
+#define PAD_CONFIG (PAD_CTL_HYS_SCHMITZ | PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD | PAD_CTL_ODE_OpenDrain)
+
 	switch (i2c_num) {
 	case 0:
 		mxc_request_iomux(MX35_PIN_I2C1_CLK, MUX_CONFIG_SION);
 		mxc_request_iomux(MX35_PIN_I2C1_DAT, MUX_CONFIG_SION);
 
-		mxc_iomux_set_pad(MX35_PIN_I2C1_CLK, 0x1e8);
-		mxc_iomux_set_pad(MX35_PIN_I2C1_DAT, 0x1e8);
+		mxc_iomux_set_pad(MX35_PIN_I2C1_CLK, PAD_CONFIG);
+		mxc_iomux_set_pad(MX35_PIN_I2C1_DAT, PAD_CONFIG);
 		break;
 	case 1:
 		mxc_request_iomux(MX35_PIN_I2C2_CLK, MUX_CONFIG_SION);
 		mxc_request_iomux(MX35_PIN_I2C2_DAT, MUX_CONFIG_SION);
 
-		mxc_iomux_set_pad(MX35_PIN_I2C2_CLK, 0x1e8);
-		mxc_iomux_set_pad(MX35_PIN_I2C2_DAT, 0x1e8);
+		mxc_iomux_set_pad(MX35_PIN_I2C2_CLK, PAD_CONFIG);
+		mxc_iomux_set_pad(MX35_PIN_I2C2_DAT, PAD_CONFIG);
 
+		break;
+	case 2:
+		mxc_request_iomux(MX35_PIN_TX3_RX2, MUX_CONFIG_ALT1);
+		mxc_request_iomux(MX35_PIN_TX2_RX3, MUX_CONFIG_ALT1);
+		mxc_iomux_set_pad(MX35_PIN_TX3_RX2, PAD_CONFIG);
+		mxc_iomux_set_pad(MX35_PIN_TX2_RX3, PAD_CONFIG);
 		break;
 	default:
 		break;
 	}
+
+#undef PAD_CONFIG
+
 }
 
 EXPORT_SYMBOL(gpio_i2c_active);
@@ -222,7 +234,18 @@ EXPORT_SYMBOL(gpio_i2c_active);
  */
 void gpio_i2c_inactive(int i2c_num)
 {
-	/*TODO:complete inactive function */
+	switch (i2c_num) {
+	case 0:
+		break;
+	case 1:
+		break;
+	case 2:
+		mxc_request_iomux(MX35_PIN_TX3_RX2, MUX_CONFIG_GPIO);
+		mxc_request_iomux(MX35_PIN_TX2_RX3, MUX_CONFIG_GPIO);
+		break;
+	default:
+		break;
+	}
 }
 
 EXPORT_SYMBOL(gpio_i2c_inactive);
