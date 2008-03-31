@@ -36,7 +36,7 @@
 
 #include <asm/arch/pmic_power.h>
 #ifdef CONFIG_MXC_HWEVENT
-#include <../drivers/mxc/hw_event/mxc_hw_event.h>
+#include <asm/arch/hw_events.h>
 #endif
 
 static int pmic_battery_major;
@@ -100,7 +100,7 @@ static void callback_chg_detect(void)
 	else
 		event.args = 0;
 	/* send hardware event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 
@@ -111,7 +111,7 @@ static void callback_low_battery(void)
 
 	pr_debug("In callback_low_battery\n");
 	/* send hardware event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 
@@ -122,7 +122,7 @@ static void callback_power_fail(void)
 
 	pr_debug("In callback_power_fail\n");
 	/* send hardware event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 
@@ -133,7 +133,7 @@ static void callback_chg_overvoltage(void)
 
 	pr_debug("In callback_chg_overvoltage\n");
 	/* send hardware event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 
@@ -155,7 +155,7 @@ static void callback_chg_full(void)
 	if (sensor.sense_chgdets)
 		return;
 	/* send hardware event */
-	hw_event_send(HWE_DEF_PRIORITY, event);
+	hw_event_send(HWE_DEF_PRIORITY, &event);
 #endif
 }
 
