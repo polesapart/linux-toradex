@@ -35,7 +35,7 @@
 #include "pmic_battery_defs.h"
 
 #include <asm/arch/pmic_power.h>
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 #include <../drivers/mxc/hw_event/mxc_hw_event.h>
 #endif
 
@@ -84,7 +84,7 @@ static int open_count;		/* open count for device file */
  */
 static void callback_chg_detect(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	t_sensor_bits sensor;
 	struct mxc_hw_event event = { HWE_BAT_CHARGER_PLUG, 0 };
 
@@ -106,7 +106,7 @@ static void callback_chg_detect(void)
 
 static void callback_low_battery(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	struct mxc_hw_event event = { HWE_BAT_BATTERY_LOW, 0 };
 
 	pr_debug("In callback_low_battery\n");
@@ -117,7 +117,7 @@ static void callback_low_battery(void)
 
 static void callback_power_fail(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	struct mxc_hw_event event = { HWE_BAT_POWER_FAILED, 0 };
 
 	pr_debug("In callback_power_fail\n");
@@ -128,7 +128,7 @@ static void callback_power_fail(void)
 
 static void callback_chg_overvoltage(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	struct mxc_hw_event event = { HWE_BAT_CHARGER_OVERVOLTAGE, 0 };
 
 	pr_debug("In callback_chg_overvoltage\n");
@@ -139,7 +139,7 @@ static void callback_chg_overvoltage(void)
 
 static void callback_chg_full(void)
 {
-#ifdef MXC_HWEVENT
+#ifdef CONFIG_MXC_HWEVENT
 	t_sensor_bits sensor;
 	struct mxc_hw_event event = { HWE_BAT_CHARGER_FULL, 0 };
 

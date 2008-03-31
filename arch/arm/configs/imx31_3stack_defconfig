@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.24
-# Thu Mar 20 14:44:17 2008
+# Mon Mar 31 09:56:31 2008
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -529,7 +529,7 @@ CONFIG_BLK_DEV_IDE_MXC=m
 # CONFIG_BLK_DEV_HT6560B is not set
 # CONFIG_BLK_DEV_QD65XX is not set
 # CONFIG_BLK_DEV_UMC8672 is not set
-# CONFIG_BLK_DEV_IDEDMA is not set
+CONFIG_BLK_DEV_IDEDMA=y
 CONFIG_IDE_ARCH_OBSOLETE_INIT=y
 # CONFIG_BLK_DEV_HD is not set
 
@@ -590,7 +590,6 @@ CONFIG_SCSI_LOWLEVEL=y
 CONFIG_ATA=m
 # CONFIG_ATA_NONSTANDARD is not set
 # CONFIG_PATA_LEGACY is not set
-# CONFIG_PATA_PCMCIA is not set
 # CONFIG_PATA_QDI is not set
 # CONFIG_PATA_WINBOND_VLB is not set
 # CONFIG_PATA_PLATFORM is not set
@@ -714,6 +713,7 @@ CONFIG_VT_CONSOLE=y
 CONFIG_HW_CONSOLE=y
 # CONFIG_VT_HW_CONSOLE_BINDING is not set
 # CONFIG_SERIAL_NONSTANDARD is not set
+CONFIG_FM_SI4702=m
 
 #
 # Serial drivers

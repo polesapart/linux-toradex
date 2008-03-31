@@ -1,6 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.24
+# Mon Mar 31 09:55:31 2008
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -546,7 +547,6 @@ CONFIG_SCSI_LOWLEVEL=y
 CONFIG_ATA=m
 # CONFIG_ATA_NONSTANDARD is not set
 # CONFIG_PATA_LEGACY is not set
-# CONFIG_PATA_PCMCIA is not set
 # CONFIG_PATA_QDI is not set
 # CONFIG_PATA_WINBOND_VLB is not set
 # CONFIG_PATA_PLATFORM is not set
@@ -665,6 +665,7 @@ CONFIG_VT_CONSOLE=y
 CONFIG_HW_CONSOLE=y
 # CONFIG_VT_HW_CONSOLE_BINDING is not set
 # CONFIG_SERIAL_NONSTANDARD is not set
+# CONFIG_FM_SI4702 is not set
 
 #
 # Serial drivers
@@ -1272,6 +1273,7 @@ CONFIG_ENABLE_MUST_CHECK=y
 # CONFIG_DEBUG_FS is not set
 # CONFIG_HEADERS_CHECK is not set
 # CONFIG_DEBUG_KERNEL is not set
+# CONFIG_SLUB_DEBUG_ON is not set
 # CONFIG_DEBUG_BUGVERBOSE is not set
 CONFIG_FRAME_POINTER=y
 # CONFIG_SAMPLES is not set

@@ -804,9 +804,6 @@ static void __init mxc_board_init(void)
 
 	i2c_register_board_info(0, mxc_i2c_board_info,
 				ARRAY_SIZE(mxc_i2c_board_info));
-
-	i2c_register_board_info(0, mxc_i2c_board_info,
-				ARRAY_SIZE(mxc_i2c_board_info));
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 
