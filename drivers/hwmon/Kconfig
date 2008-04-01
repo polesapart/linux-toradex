@@ -763,4 +763,8 @@ config HWMON_DEBUG_CHIP
 	  a problem with I2C support and want to see more of what is going
 	  on.
 
+config MXC_MMA7450
+	tristate "MMA7450 device driver"
+	depends on MACH_MX31_3DS
+	default n
 endif # HWMON

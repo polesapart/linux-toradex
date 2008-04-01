@@ -268,6 +268,34 @@ static struct mxc_fm_platform_data si4702_data = {
 	.reset = si4702_reset,
 	.clock_ctl = si4702_clock_ctl,
 };
+
+/* setup GPIO for mma7450 */
+static void gpio_mma7450_get(void)
+{
+	mxc_request_iomux(MX31_PIN_STX0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_iomux_set_pad(MX31_PIN_STX0, PAD_CTL_PKE_NONE);
+	mxc_set_gpio_direction(MX31_PIN_STX0, 1);
+
+	mxc_request_iomux(MX31_PIN_SRX0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_iomux_set_pad(MX31_PIN_SRX0, PAD_CTL_PKE_NONE);
+	mxc_set_gpio_direction(MX31_PIN_SRX0, 1);
+}
+
+static void gpio_mma7450_put(void)
+{
+	mxc_free_iomux(MX31_PIN_STX0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_SRX0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+}
+
+static struct mxc_mma7450_platform_data mma7450_data = {
+	.reg_dvdd_io = "GPO3",
+	.reg_avdd = "VMMC1",
+	.gpio_pin_get = gpio_mma7450_get,
+	.gpio_pin_put = gpio_mma7450_put,
+	.int1 = IOMUX_TO_IRQ(MX31_PIN_STX0),
+	.int2 = IOMUX_TO_IRQ(MX31_PIN_SRX0),
+};
+
 static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "ov2640",
@@ -282,6 +310,11 @@ static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	 .driver_name = "si4702",
 	 .addr = 0x10,
 	 .platform_data = (void *)&si4702_data,
+	 },
+	{
+	 .driver_name = "mma7450",
+	 .addr = 0x1d,
+	 .platform_data = (void *)&mma7450_data,
 	 },
 };
 
@@ -763,11 +796,11 @@ static void __init mxc_init_pata(void)
 {
 	(void)platform_device_register(&pata_fsl_device);
 }
-#else				/* CONFIG_PATA_FSL */
+#else /* CONFIG_PATA_FSL */
 static void __init mxc_init_pata(void)
 {
 }
-#endif				/* CONFIG_PATA_FSL */
+#endif /* CONFIG_PATA_FSL */
 
 /*!
  * Board specific initialization.

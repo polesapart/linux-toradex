@@ -134,6 +134,15 @@ struct mxc_fm_platform_data {
 	void (*clock_ctl) (int flag);
 };
 
+struct mxc_mma7450_platform_data {
+	char *reg_dvdd_io;
+	char *reg_avdd;
+	void (*gpio_pin_get) (void);
+	void (*gpio_pin_put) (void);
+	int int1;
+	int int2;
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);
@@ -141,7 +150,7 @@ unsigned long board_get_ckih_rate(void);
 int mxc_snoop_set_config(u32 num, unsigned long base, int size);
 int mxc_snoop_get_status(u32 num, u32 * statl, u32 * stath);
 
-#endif				/* __ASSEMBLY__ */
+#endif /* __ASSEMBLY__ */
 
 #define IOMUX_TO_GPIO(pin) 	((((unsigned int)pin >> MUX_IO_P) * GPIO_NUM_PIN) + ((pin >> MUX_IO_I) & ((1 << (MUX_IO_P - MUX_IO_I)) -1)))
 #define IOMUX_TO_IRQ(pin)	(MXC_GPIO_INT_BASE + IOMUX_TO_GPIO(pin))
@@ -248,4 +257,4 @@ int tzic_enable_wake(int is_idle);
 
 #endif
 
-#endif				/*  __ASM_ARCH_MXC_H__ */
+#endif /*  __ASM_ARCH_MXC_H__ */
