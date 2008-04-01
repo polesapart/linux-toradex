@@ -367,6 +367,7 @@ static int ch7024_enable(void)
 		regulator_enable(core_reg);
 		regulator_enable(io_reg);
 		regulator_enable(analog_reg);
+		msleep(200);
 		enabled = 1;
 		ch7024_write_reg(CH7024_POWER, 0x00);
 		pr_debug("CH7024 power on.\n");
@@ -399,7 +400,6 @@ static int ch7024_detect(void)
 		set_irq_type(ch7024_client->irq, IRQF_TRIGGER_FALLING);
 
 		en = ch7024_enable();
-		msleep(100);
 
 		ch7024_write_reg(CH7024_DAC_TRIM, 0xB4);
 		msleep(50);
@@ -426,7 +426,7 @@ static irqreturn_t hp_detect_handler(int irq, void *data)
 static void hp_detect_wq_handler(struct work_struct *work)
 {
 	int detect;
-	struct mxc_hw_event event = {HWE_PHONEJACK_PLUG, 0};
+	struct mxc_hw_event event = { HWE_PHONEJACK_PLUG, 0 };
 
 	detect = ch7024_detect();
 
@@ -692,7 +692,7 @@ static int ch7024_probe(struct i2c_client *client)
 	regulator_enable(io_reg);
 	regulator_enable(core_reg);
 	regulator_enable(analog_reg);
-	msleep(10);
+	msleep(200);
 
 	id = ch7024_read_reg(CH7024_DEVID);
 
