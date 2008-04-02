@@ -178,6 +178,101 @@ static inline void mxc_init_ipu(void)
 }
 #endif
 
+/* SPI controller and device data */
+#if defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE)
+
+#ifdef CONFIG_SPI_MXC_SELECT1
+/*!
+ * Resource definition for the CSPI1
+ */
+static struct resource mxcspi1_resources[] = {
+	[0] = {
+	       .start = CSPI1_BASE_ADDR,
+	       .end = CSPI1_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_CSPI1,
+	       .end = MXC_INT_CSPI1,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Platform Data for MXC CSPI1 */
+static struct mxc_spi_master mxcspi1_data = {
+	.maxchipselect = 4,
+	.spi_version = 7,
+};
+
+/*! Device Definition for MXC CSPI1 */
+static struct platform_device mxcspi1_device = {
+	.name = "mxc_spi",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mxcspi1_data,
+		},
+	.num_resources = ARRAY_SIZE(mxcspi1_resources),
+	.resource = mxcspi1_resources,
+};
+
+#endif				/* CONFIG_SPI_MXC_SELECT1 */
+
+#ifdef CONFIG_SPI_MXC_SELECT2
+/*!
+ * Resource definition for the CSPI2
+ */
+static struct resource mxcspi2_resources[] = {
+	[0] = {
+	       .start = CSPI2_BASE_ADDR,
+	       .end = CSPI2_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_CSPI2,
+	       .end = MXC_INT_CSPI2,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Platform Data for MXC CSPI2 */
+static struct mxc_spi_master mxcspi2_data = {
+	.maxchipselect = 4,
+	.spi_version = 7,
+};
+
+/*! Device Definition for MXC CSPI2 */
+static struct platform_device mxcspi2_device = {
+	.name = "mxc_spi",
+	.id = 1,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mxcspi2_data,
+		},
+	.num_resources = ARRAY_SIZE(mxcspi2_resources),
+	.resource = mxcspi2_resources,
+};
+#endif				/* CONFIG_SPI_MXC_SELECT2 */
+
+static inline void mxc_init_spi(void)
+{
+	/* SPBA configuration for CSPI2 - MCU is set */
+	spba_take_ownership(SPBA_CSPI2, SPBA_MASTER_A);
+#ifdef CONFIG_SPI_MXC_SELECT1
+	if (platform_device_register(&mxcspi1_device) < 0)
+		printk(KERN_ERR "Error: Registering the SPI Controller_1\n");
+#endif				/* CONFIG_SPI_MXC_SELECT1 */
+#ifdef CONFIG_SPI_MXC_SELECT2
+	if (platform_device_register(&mxcspi2_device) < 0)
+		printk(KERN_ERR "Error: Registering the SPI Controller_2\n");
+#endif				/* CONFIG_SPI_MXC_SELECT2 */
+}
+#else
+static inline void mxc_init_spi(void)
+{
+}
+#endif
+
 /* I2C controller and device data */
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
@@ -341,6 +436,7 @@ static int __init mxc_init_devices(void)
 {
 	mxc_init_wdt();
 	mxc_init_ipu();
+	mxc_init_spi();
 	mxc_init_i2c();
 	mxc_init_rtc();
 	mxc_init_dma();

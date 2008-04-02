@@ -249,3 +249,91 @@ void gpio_i2c_inactive(int i2c_num)
 }
 
 EXPORT_SYMBOL(gpio_i2c_inactive);
+
+/*!
+ * Setup GPIO for a CSPI device to be active
+ *
+ * @param  cspi_mod         an CSPI device
+ */
+void gpio_spi_active(int cspi_mod)
+{
+	switch (cspi_mod) {
+	case 0:
+		/* SPI1 */
+		mxc_request_iomux(MX35_PIN_CSPI1_MOSI, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_CSPI1_MISO, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_CSPI1_SS0, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_CSPI1_SS1, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_CSPI1_SCLK, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_CSPI1_SPI_RDY, MUX_CONFIG_FUNC);
+
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_MOSI,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PD | PAD_CTL_DRV_NORMAL);
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_MISO,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PD | PAD_CTL_DRV_NORMAL);
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_SS0,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PU | PAD_CTL_ODE_CMOS |
+				  PAD_CTL_DRV_NORMAL);
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_SS1,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PU | PAD_CTL_ODE_CMOS |
+				  PAD_CTL_DRV_NORMAL);
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_SCLK,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PD | PAD_CTL_DRV_NORMAL);
+		mxc_iomux_set_pad(MX35_PIN_CSPI1_SPI_RDY,
+				  PAD_CTL_DRV_3_3V | PAD_CTL_HYS_SCHMITZ |
+				  PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PUD |
+				  PAD_CTL_100K_PU | PAD_CTL_DRV_NORMAL);
+		break;
+	case 1:
+		/* SPI2 */
+		break;
+	default:
+		break;
+	}
+}
+
+EXPORT_SYMBOL(gpio_spi_active);
+
+/*!
+ * Setup GPIO for a CSPI device to be inactive
+ *
+ * @param  cspi_mod         a CSPI device
+ */
+void gpio_spi_inactive(int cspi_mod)
+{
+	switch (cspi_mod) {
+	case 0:
+		/* SPI1 */
+		mxc_request_gpio(MX35_PIN_CSPI1_MOSI);
+		mxc_request_gpio(MX35_PIN_CSPI1_MISO);
+		mxc_request_gpio(MX35_PIN_CSPI1_SS0);
+		mxc_request_gpio(MX35_PIN_CSPI1_SS1);
+		mxc_request_gpio(MX35_PIN_CSPI1_SCLK);
+		mxc_request_gpio(MX35_PIN_CSPI1_SPI_RDY);
+
+		mxc_free_iomux(MX35_PIN_CSPI1_MOSI, MUX_CONFIG_GPIO);
+		mxc_free_iomux(MX35_PIN_CSPI1_MISO, MUX_CONFIG_GPIO);
+		mxc_free_iomux(MX35_PIN_CSPI1_SS0, MUX_CONFIG_GPIO);
+		mxc_free_iomux(MX35_PIN_CSPI1_SS1, MUX_CONFIG_GPIO);
+		mxc_free_iomux(MX35_PIN_CSPI1_SCLK, MUX_CONFIG_GPIO);
+		mxc_free_iomux(MX35_PIN_CSPI1_SPI_RDY, MUX_CONFIG_GPIO);
+		break;
+	case 1:
+		/* SPI2 */
+		break;
+	default:
+		break;
+	}
+}
+
+EXPORT_SYMBOL(gpio_spi_inactive);

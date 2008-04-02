@@ -634,6 +634,10 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
 		if (spi->mode & SPI_CS_HIGH)
 			ctrl_reg |=
 			    spi_ver_def->mode_mask << spi_ver_def->ss_pol_shift;
+		if (spi_ver_def == &spi_ver_0_7)
+			ctrl_reg |=
+			    spi_ver_def->mode_mask << spi_ver_def->
+			    ss_ctrl_shift;
 
 		__raw_writel(ctrl_reg, master_drv_data->base + MXC_CSPICTRL);
 	}

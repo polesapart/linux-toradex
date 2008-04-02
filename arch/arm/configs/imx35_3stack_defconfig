@@ -738,8 +738,17 @@ CONFIG_I2C_MXC=y
 #
 # SPI support
 #
-# CONFIG_SPI is not set
-# CONFIG_SPI_MASTER is not set
+CONFIG_SPI=y
+CONFIG_SPI_MASTER=y
+
+#
+# SPI Master Controller Drivers
+#
+CONFIG_SPI_BITBANG=y
+CONFIG_SPI_MXC=y
+# CONFIG_SPI_MXC_TEST_LOOPBACK is not set
+CONFIG_SPI_MXC_SELECT1=y
+# CONFIG_SPI_MXC_SELECT2 is not set
 # CONFIG_W1 is not set
 # CONFIG_POWER_SUPPLY is not set
 # CONFIG_HWMON is not set
