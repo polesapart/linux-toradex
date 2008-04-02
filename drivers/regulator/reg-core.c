@@ -224,6 +224,21 @@ static ssize_t regulator_enabled_use_count(struct class_device *cdev, char *buf)
 	return sprintf(buf, "%d\n", regulator->use_count);
 }
 
+static ssize_t regulator_ctl(struct class_device *cdev,
+	const char *buf, size_t count)
+{
+	struct regulator *regulator = to_regulator(cdev);
+	if (buf[0] == '0') {
+		printk(KERN_WARNING"disable regulator.\n");
+		if (regulator_disable(regulator))
+			printk(KERN_ERR"disable regulator failed.\n");
+	} else {
+		printk(KERN_WARNING"enable regulator.\n");
+		if (regulator_enable(regulator))
+			printk(KERN_ERR"enable regulator failed.\n");
+	}
+	return count;
+}
 
 static struct class_device_attribute regulator_dev_attrs[] = {
 	__ATTR(uV, 0444, regulator_uV_show, NULL),
@@ -235,6 +250,7 @@ static struct class_device_attribute regulator_dev_attrs[] = {
 	__ATTR(valid_modes, 0444, regulator_constraint_modes_show, NULL),
 	__ATTR(total_uA_load, 0444, regulator_total_dev_load, NULL),
 	__ATTR(enabled_count, 0444, regulator_enabled_use_count, NULL),
+	__ATTR(ctl, 0666, NULL, regulator_ctl),
 	__ATTR_NULL,
 };
 

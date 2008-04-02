@@ -50,4 +50,9 @@ endchoice
 
 endmenu
 
+config REGULATOR_MAX8660
+    tristate "MAX8660 Regulator Support"
+       depends on REGULATOR
+       depends on MXC_PMIC_MC9SDZ60
+
 endmenu

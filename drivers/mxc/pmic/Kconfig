@@ -13,9 +13,16 @@ config MXC_SPI_PMIC_CORE
 	SPI should be providing the interface between the PMIC and the MCU.
 	You must select the SPI driver support to enable this option.
 
+config MXC_I2C_MCU_PMIC_CORE
+        tristate "MCU PMIC Protocol support (I2C interface)"
+        depends on ARCH_MXC
+        default n
+        ---help---
+        This is the PMIC core/protocol driver for the MX35 3DS MCU PMIC
+
 config MXC_PMIC
 	boolean
-	default MXC_SPI_PMIC_CORE
+	default (MXC_SPI_PMIC_CORE || MXC_I2C_MCU_PMIC_CORE)
 
 config MXC_PMIC_CHARDEV
 	tristate "MXC PMIC device interface"
@@ -58,5 +65,14 @@ config MXC_PMIC_FIXARB
             a hardware modification to the RF Deck that connects the Sphinx
             card (with the sc55112 PMIC) to the MXC91131 EVB.
 
+config MXC_PMIC_MC9SDZ60
+        tristate "MC9sDZ60 Client Drivers"
+        depends on MXC_I2C_MCU_PMIC_CORE
+        depends on !ARCH_MXC91131
+        default n
+        ---help---
+        This is the MXC MC9sDZ60(MCU) PMIC client drivers support.
+
+source "drivers/mxc/pmic/mc9sdz60/Kconfig"
 
 endmenu

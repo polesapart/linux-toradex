@@ -129,6 +129,8 @@ typedef struct {
 #define PMIC_MAX_EVENTS		48
 
 #define PMIC_ARBITRATION	"NULL"
+
+#ifdef CONFIG_MXC_PMIC_MC13783
 /*!
  * This is the enumeration of register names of MC13783
  */
@@ -804,6 +806,98 @@ typedef struct {
 	bool sense_clks;
 } t_sensor_bits;
 
+#endif				/*CONFIG_MXC_PMIC_MC13783 */
+
+#ifdef CONFIG_MXC_PMIC_MC9SDZ60
+
+typedef enum {
+
+	/*reg names for mcu */
+	REG_MCU_VERSION = 0,
+	REG_MCU_SECS,
+	REG_MCU_MINS,
+	REG_MCU_HRS,
+	REG_MCU_DAY,
+	REG_MCU_DATE,
+	REG_MCU_MONTH,
+	REG_MCU_YEAR,
+	REG_MCU_ALARM_SECS,
+	REG_MCU_ALARM_MINS,
+	REG_MCU_ALARM_HRS,
+	REG_MCU_TS_CONTROL,
+	REG_MCU_X_LOW,
+	REG_MCU_Y_LOW,
+	REG_MCU_XY_HIGH,
+	REG_MCU_X_LEFT_LOW,
+	REG_MCU_X_LEFT_HIGH,
+	REG_MCU_X_RIGHT,
+	REG_MCU_Y_TOP_LOW,
+	REG_MCU_Y_TOP_HIGH,
+	REG_MCU_Y_BOTTOM,
+	REG_MCU_RESET_1,
+	REG_MCU_RESET_2,
+	REG_MCU_POWER_CTL,
+	REG_MCU_DELAY_CONFIG,
+	REG_MCU_GPIO_1,
+	REG_MCU_GPIO_2,
+	REG_MCU_KPD_1,
+	REG_MCU_KPD_2,
+	REG_MCU_KPD_CONTROL,
+	REG_MCU_INT_ENABLE_1,
+	REG_MCU_INT_ENABLE_2,
+	REG_MCU_INT_FLAG_1,
+	REG_MCU_INT_FLAG_2,
+
+	/* reg names for max8660 */
+	REG_MAX8660_OUTPUT_ENABLE_1,
+	REG_MAX8660_OUTPUT_ENABLE_2,
+	REG_MAX8660_VOLT_CHANGE_CONTROL_1,
+	REG_MAX8660_V3_TARGET_VOLT_1,
+	REG_MAX8660_V3_TARGET_VOLT_2,
+	REG_MAX8660_V4_TARGET_VOLT_1,
+	REG_MAX8660_V4_TARGET_VOLT_2,
+	REG_MAX8660_V5_TARGET_VOLT_1,
+	REG_MAX8660_V5_TARGET_VOLT_2,
+	REG_MAX8660_V6V7_TARGET_VOLT,
+	REG_MAX8660_FORCE_PWM
+} pmic_reg;
+
+typedef enum {
+	EVENT_HEADPHONE_DET = 0,
+	EVENT_GPS_INT = 1,
+	EVENT_SD1_DET = 2,
+	EVENT_SD1_WP = 3,
+	EVENT_SD2_DET = 4,
+	EVENT_SD2_WP = 5,
+	EVENT_POWER_KEY = 6,
+
+	/* part 2 */
+	EVENT_RTC = 7,
+	EVENT_TS_ADC = 8,
+	EVENT_KEYPAD = 9
+} type_event;
+
+typedef enum {
+
+	MCU_GPIO_REG_RESET_1,
+	MCU_GPIO_REG_RESET_2,
+	MCU_GPIO_REG_POWER_CONTROL,
+	MCU_GPIO_REG_GPIO_CONTROL_1,
+	MCU_GPIO_REG_GPIO_CONTROL_2,
+} t_mcu_gpio_reg;
+
+typedef enum {
+
+	MCU_SENSOR_NOT_SUPPORT
+} t_sensor;
+
+typedef enum {
+
+	MCU_SENSOR_BIT_NOT_SUPPORT
+} t_sensor_bits;
+
+#endif				/* MXC_PMIC_MC9SDZ60 */
+
 /* EXPORTED FUNCTIONS */
 #ifdef __KERNEL__
 
@@ -874,6 +968,12 @@ bool pmic_check_sensor(t_sensor sensor);
 * @return       This function returns PMIC_SUCCESS if successful.
 */
 PMIC_STATUS pmic_get_sensors(t_sensor_bits * sensor_bits);
+
+PMIC_STATUS pmic_gpio_set_bit_val(t_mcu_gpio_reg reg, unsigned int bit,
+				  unsigned int val);
+
+PMIC_STATUS pmic_gpio_get_bit_val(t_mcu_gpio_reg reg, unsigned int bit,
+				  unsigned int *val);
 
 #ifdef CONFIG_REGULATOR_MC13783
 /*!
