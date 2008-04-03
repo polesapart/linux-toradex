@@ -867,7 +867,8 @@ PMIC_STATUS pmic_audio_set_autodetect(int val)
 		return status;
 	reg_mask = 0;
 	if (val == 1) {
-		reg_write = SET_BITS(regAUDIO_RX_0, HSDETEN, 1);
+		reg_write = SET_BITS(regAUDIO_RX_0, HSDETEN, 1) |
+			SET_BITS(regAUDIO_RX_0, HSDETAUTOB, 1);
 	} else {
 		reg_write = 0;
 	}

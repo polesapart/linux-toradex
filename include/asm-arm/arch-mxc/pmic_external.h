@@ -969,11 +969,13 @@ bool pmic_check_sensor(t_sensor sensor);
 */
 PMIC_STATUS pmic_get_sensors(t_sensor_bits * sensor_bits);
 
+#ifdef CONFIG_MXC_PMIC_MC9SDZ60
 PMIC_STATUS pmic_gpio_set_bit_val(t_mcu_gpio_reg reg, unsigned int bit,
 				  unsigned int val);
 
 PMIC_STATUS pmic_gpio_get_bit_val(t_mcu_gpio_reg reg, unsigned int bit,
 				  unsigned int *val);
+#endif
 
 #ifdef CONFIG_REGULATOR_MC13783
 /*!
