@@ -202,6 +202,9 @@ static int mxcfb_set_par(struct fb_info *fbi)
 
 	ipu_init_channel(mxc_fbi->ipu_ch, NULL);
 
+	/* Clear the screen */
+	memset((char *)fbi->screen_base, 0, fbi->fix.smem_len);
+
 	if (mxc_fbi->ipu_ch == MEM_SDC_BG) {
 		memset(&sig_cfg, 0, sizeof(sig_cfg));
 		if (fbi->var.sync & FB_SYNC_HOR_HIGH_ACT)

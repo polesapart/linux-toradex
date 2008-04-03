@@ -800,6 +800,13 @@ static int mxc_v4l2out_streamoff(vout_data * vout)
 		} else {
 			fbi->var.activate |= FB_ACTIVATE_FORCE;
 			fb_set_var(fbi, &fbi->var);
+
+			if (vout->display_ch == MEM_FG_SYNC) {
+				acquire_console_sem();
+				fb_blank(fbi, FB_BLANK_POWERDOWN);
+				release_console_sem();
+			}
+
 			vout->display_bufs[0] = 0;
 			vout->display_bufs[1] = 0;
 		}
