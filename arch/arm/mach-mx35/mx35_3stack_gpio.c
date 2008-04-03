@@ -337,3 +337,44 @@ void gpio_spi_inactive(int cspi_mod)
 }
 
 EXPORT_SYMBOL(gpio_spi_inactive);
+
+/*!
+ * Setup GPIO for LCD to be active
+ */
+void gpio_lcd_active(void)
+{
+	mxc_request_iomux(MX35_PIN_LD0, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD1, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD2, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD3, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD4, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD5, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD6, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD7, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD8, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD9, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD10, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD11, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD12, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD13, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD14, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD15, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD16, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_LD17, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_D3_VSYNC, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_D3_HSYNC, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_D3_FPSHIFT, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_D3_DRDY, MUX_CONFIG_FUNC);
+	mxc_request_iomux(MX35_PIN_CONTRAST, MUX_CONFIG_FUNC);
+}
+
+EXPORT_SYMBOL(gpio_lcd_active);
+
+/*!
+ * Setup GPIO for LCD to be inactive
+ */
+void gpio_lcd_inactive(void)
+{
+}
+
+EXPORT_SYMBOL(gpio_lcd_inactive);

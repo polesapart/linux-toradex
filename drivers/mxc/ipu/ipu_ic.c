@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -35,6 +35,7 @@ enum {
 	IC_TASK_POST_PROCESSOR
 };
 
+extern int g_ipu_hw_rev;
 static void _init_csc(uint8_t ic_task, ipu_color_space_t in_format,
 		      ipu_color_space_t out_format);
 static bool _calc_resize_coeffs(uint32_t inSize, uint32_t outSize,
@@ -421,14 +422,26 @@ static void _init_csc(uint8_t ic_task, ipu_color_space_t in_format,
 	uint32_t param[2];
 	uint32_t address = 0;
 
-	if (ic_task == IC_TASK_VIEWFINDER) {
-		address = 0x5A5 << 3;
-	} else if (ic_task == IC_TASK_ENCODER) {
-		address = 0x2D1 << 3;
-	} else if (ic_task == IC_TASK_POST_PROCESSOR) {
-		address = 0x87C << 3;
+	if (g_ipu_hw_rev > 1) {
+		if (ic_task == IC_TASK_VIEWFINDER) {
+			address = 0x645 << 3;
+		} else if (ic_task == IC_TASK_ENCODER) {
+			address = 0x321 << 3;
+		} else if (ic_task == IC_TASK_POST_PROCESSOR) {
+			address = 0x96C << 3;
+		} else {
+			BUG();
+		}
 	} else {
-		BUG();
+		if (ic_task == IC_TASK_VIEWFINDER) {
+			address = 0x5a5 << 3;
+		} else if (ic_task == IC_TASK_ENCODER) {
+			address = 0x2d1 << 3;
+		} else if (ic_task == IC_TASK_POST_PROCESSOR) {
+			address = 0x87c << 3;
+		} else {
+			BUG();
+		}
 	}
 
 	if ((in_format == YCbCr) && (out_format == RGB)) {

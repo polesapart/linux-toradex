@@ -188,6 +188,71 @@ static inline void mxc_init_nand_mtd(void)
 }
 #endif
 
+static struct mxc_lcd_platform_data lcd_data = {
+	.io_reg = "LCD"
+};
+
+static struct platform_device lcd_dev = {
+	.name = "lcd_claa",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = (void *)&lcd_data,
+		},
+};
+
+static void mxc_init_lcd(void)
+{
+	platform_device_register(&lcd_dev);
+}
+
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+/* mxc lcd driver */
+static struct platform_device mxc_fb_device = {
+	.name = "mxc_sdc_fb",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.coherent_dma_mask = 0xFFFFFFFF,
+		},
+};
+
+static void mxc_init_fb(void)
+{
+	(void)platform_device_register(&mxc_fb_device);
+}
+#else
+static inline void mxc_init_fb(void)
+{
+}
+#endif
+
+#if defined(CONFIG_BACKLIGHT_MXC)
+static struct platform_device mxcbl_devices[] = {
+#if defined(CONFIG_BACKLIGHT_MXC_IPU) || defined(CONFIG_BACKLIGHT_MXC_IPU_MODULE)
+	{
+	 .name = "mxc_ipu_bl",
+	 .id = 0,
+	 .dev = {
+		 .platform_data = (void *)3,	/* DISP # for this backlight */
+		 },
+	 }
+#endif
+};
+
+static inline void mxc_init_bl(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(mxcbl_devices); i++) {
+		platform_device_register(&mxcbl_devices[i]);
+	}
+}
+#else
+static inline void mxc_init_bl(void)
+{
+}
+#endif
+
 static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "mc9sdz60",
@@ -279,6 +344,10 @@ static void __init mxc_board_init(void)
 	mxc_init_enet();
 	mxc_init_nor_mtd();
 	mxc_init_nand_mtd();
+
+	mxc_init_lcd();
+	mxc_init_fb();
+	mxc_init_bl();
 
 	i2c_register_board_info(0, mxc_i2c_board_info,
 				ARRAY_SIZE(mxc_i2c_board_info));
