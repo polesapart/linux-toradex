@@ -563,15 +563,28 @@ static int __init mxc_expio_init(void)
 
 static int __init mxc_init_regulator(void)
 {
+	int err;
 	struct regulator *gpo1;
 	struct regulator *gpo2;
+	struct regulator *gpo3;
+	struct regulator *gpo4;
 
 	gpo1 = regulator_get(NULL, "GPO1");
 	gpo2 = regulator_get(NULL, "GPO2");
-	if (!(IS_ERR(gpo1) || IS_ERR(gpo2)))
-		regulator_set_platform_source(gpo2, gpo1);
-	else
+	gpo3 = regulator_get(NULL, "GPO3");
+	gpo4 = regulator_get(NULL, "GPO4");
+
+	err = regulator_set_platform_source(gpo2, gpo1);
+	if (err)
 		printk(KERN_ERR "Unable to set GPO1 be the parent of GPO2\n");
+
+	err = regulator_set_platform_source(gpo3, gpo1);
+	if (err)
+		printk(KERN_ERR "Unable to set GPO1 be the parent of GPO3\n");
+
+	err = regulator_set_platform_source(gpo4, gpo1);
+	if (err)
+		printk(KERN_ERR "Unable to set GPO1 be the parent of GPO4\n");
 
 	return 0;
 }
@@ -796,11 +809,11 @@ static void __init mxc_init_pata(void)
 {
 	(void)platform_device_register(&pata_fsl_device);
 }
-#else /* CONFIG_PATA_FSL */
+#else				/* CONFIG_PATA_FSL */
 static void __init mxc_init_pata(void)
 {
 }
-#endif /* CONFIG_PATA_FSL */
+#endif				/* CONFIG_PATA_FSL */
 
 /*!
  * Board specific initialization.
