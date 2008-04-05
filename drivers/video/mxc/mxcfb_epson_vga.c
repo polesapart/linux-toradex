@@ -166,6 +166,16 @@ static int __devexit lcd_spi_remove(struct spi_device *spi)
 	return 0;
 }
 
+static int lcd_suspend(struct spi_device *spi, pm_message_t message)
+{
+	return 0;
+}
+
+static int lcd_resume(struct spi_device *spi)
+{
+	return 0;
+}
+
 /*!
  * spi driver structure for LTV350QV
  */
@@ -177,6 +187,8 @@ static struct spi_driver lcd_spi_dev_driver = {
 		   },
 	.probe = lcd_spi_probe,
 	.remove = __devexit_p(lcd_spi_remove),
+	.suspend = lcd_suspend,
+	.resume = lcd_resume,
 };
 
 #define param(x) ((x) | 0x100)

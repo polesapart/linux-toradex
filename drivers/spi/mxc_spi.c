@@ -1098,6 +1098,9 @@ static int suspend_devices(struct device *dev, void *pm_message)
 {
 	pm_message_t *state = pm_message;
 
+	if (!dev->driver)
+		return 0;
+
 	if (dev->power.power_state.event != state->event) {
 		dev_warn(dev, "mismatch in pm state request\n");
 		return -1;

@@ -1160,7 +1160,7 @@ int __init mxc_clocks_init(void)
 
 	/* CCMR stby control */
 	reg = __raw_readl(MXC_CCM_CCMR);
-	reg |= MXC_CCM_CCMR_VSTBY;
+	reg |= MXC_CCM_CCMR_VSTBY | MXC_CCM_CCMR_WAMO;
 	__raw_writel(reg, MXC_CCM_CCMR);
 
 	/* Turn off all possible clocks */

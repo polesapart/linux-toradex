@@ -189,20 +189,21 @@ EXPORT_SYMBOL(gpio_keypad_active);
  */
 void gpio_keypad_inactive(void)
 {
-	mxc_request_iomux(MX31_PIN_KEY_COL0, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_COL1, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_COL2, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_COL3, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_ROW0, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_ROW1, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
-	mxc_request_iomux(MX31_PIN_KEY_ROW2, OUTPUTCONFIG_GPIO,
-			  INPUTCONFIG_GPIO);
+	mxc_request_gpio(MX31_PIN_KEY_COL0);
+	mxc_request_gpio(MX31_PIN_KEY_COL1);
+	mxc_request_gpio(MX31_PIN_KEY_COL2);
+	mxc_request_gpio(MX31_PIN_KEY_COL3);
+	mxc_request_gpio(MX31_PIN_KEY_ROW0);
+	mxc_request_gpio(MX31_PIN_KEY_ROW1);
+	mxc_request_gpio(MX31_PIN_KEY_ROW2);
+
+	mxc_free_iomux(MX31_PIN_KEY_COL0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_COL1, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_COL2, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_COL3, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_ROW0, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_ROW1, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
+	mxc_free_iomux(MX31_PIN_KEY_ROW2, OUTPUTCONFIG_GPIO, INPUTCONFIG_GPIO);
 }
 
 EXPORT_SYMBOL(gpio_keypad_inactive);
@@ -298,25 +299,25 @@ void gpio_spi_inactive(int cspi_mod)
 		/* setup GPR for CSPI BB */
 		iomux_config_gpr(MUX_PGP_CSPI_BB, false);
 		/* CSPI1 clock and RDY use full UART ALT1 mode */
-		mxc_free_iomux(MX31_PIN_DSR_DCE1, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_GPIO);
-		mxc_free_iomux(MX31_PIN_RI_DCE1, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_GPIO);
+		mxc_free_iomux(MX31_PIN_DSR_DCE1, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_RI_DCE1, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
 		break;
 	case 1:
 		/* SPI2 */
-		mxc_request_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SPI_RDY, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
-		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_GPIO);
+		mxc_free_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CSPI2_SPI_RDY, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CSPI2_SS0, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
 		break;
 	case 2:
 		/* SPI3 */
@@ -367,21 +368,21 @@ void gpio_i2c_inactive(int i2c_num)
 {
 	switch (i2c_num) {
 	case 0:
-		mxc_request_iomux(MX31_PIN_I2C_CLK, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_FUNC);
-		mxc_request_iomux(MX31_PIN_I2C_DAT, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_I2C_CLK, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
+		mxc_free_iomux(MX31_PIN_I2C_DAT, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_FUNC);
 		break;
 	case 1:
-		mxc_request_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_ALT1);
-		mxc_request_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_ALT1);
+		mxc_free_iomux(MX31_PIN_CSPI2_MOSI, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_ALT1);
+		mxc_free_iomux(MX31_PIN_CSPI2_MISO, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_ALT1);
 		break;
 	case 2:
-		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_GPIO,
+		mxc_request_iomux(MX31_PIN_CSPI2_SS2, OUTPUTCONFIG_FUNC,
 				  INPUTCONFIG_ALT1);
-		mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_GPIO,
+		mxc_request_iomux(MX31_PIN_CSPI2_SCLK, OUTPUTCONFIG_FUNC,
 				  INPUTCONFIG_ALT1);
 		break;
 	default:
@@ -467,18 +468,25 @@ void gpio_sdhc_inactive(int module)
 {
 	switch (module) {
 	case 0:
-		mxc_request_iomux(MX31_PIN_SD1_CLK, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_SD1_CMD, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_SD1_DATA0, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_SD1_DATA1, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_SD1_DATA2, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_SD1_DATA3, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
+		mxc_request_gpio(MX31_PIN_SD1_CLK);
+		mxc_request_gpio(MX31_PIN_SD1_CMD);
+		mxc_request_gpio(MX31_PIN_SD1_DATA0);
+		mxc_request_gpio(MX31_PIN_SD1_DATA1);
+		mxc_request_gpio(MX31_PIN_SD1_DATA2);
+		mxc_request_gpio(MX31_PIN_SD1_DATA3);
+
+		mxc_free_iomux(MX31_PIN_SD1_CLK, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_SD1_CMD, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_SD1_DATA0, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_SD1_DATA1, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_SD1_DATA2, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_SD1_DATA3, OUTPUTCONFIG_GPIO,
+			       INPUTCONFIG_NONE);
 
 		mxc_iomux_set_pad(MX31_PIN_SD1_CLK,
 				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
@@ -498,18 +506,18 @@ void gpio_sdhc_inactive(int module)
 		break;
 	case 1:
 		/* TODO:what are the pins for SDHC2? */
-		mxc_request_iomux(MX31_PIN_PC_CD2_B, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_PC_CD1_B, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_PC_WAIT_B, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_PC_READY, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_PC_VS1, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
-		mxc_request_iomux(MX31_PIN_PC_PWRON, OUTPUTCONFIG_GPIO,
-				  INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_CD2_B, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_CD1_B, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_WAIT_B, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_READY, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_VS1, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
+		mxc_free_iomux(MX31_PIN_PC_PWRON, OUTPUTCONFIG_FUNC,
+			       INPUTCONFIG_NONE);
 		break;
 	default:
 		break;
