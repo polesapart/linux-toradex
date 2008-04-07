@@ -1890,7 +1890,7 @@ static void clk_tree_init(void)
 	} else if (reg == 1) {
 		ddr_clk.parent = &axi_b_clk;
 	} else if (reg == 2) {
-		ddr_clk.parent = &axi_b_clk;
+		ddr_clk.parent = &axi_c_clk;
 	} else {
 		ddr_clk.parent = &emi_core_clk;
 	}
