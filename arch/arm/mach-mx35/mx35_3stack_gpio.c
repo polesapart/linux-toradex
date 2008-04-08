@@ -378,3 +378,22 @@ void gpio_lcd_inactive(void)
 }
 
 EXPORT_SYMBOL(gpio_lcd_inactive);
+
+/*!
+ * Setup pin for touchscreen
+ */
+void gpio_tsc_active(void)
+{
+	unsigned int pad_val = PAD_CTL_PKE_ENABLE | PAD_CTL_100K_PU;
+	mxc_request_iomux(MX35_PIN_CAPTURE, MUX_CONFIG_GPIO);
+	mxc_iomux_set_pad(MX35_PIN_CAPTURE, pad_val);
+	mxc_set_gpio_direction(MX35_PIN_CAPTURE, 1);
+}
+
+/*!
+ * Release pin for touchscreen
+ */
+void gpio_tsc_inactive(void)
+{
+	mxc_free_iomux(MX35_PIN_CAPTURE, MUX_CONFIG_GPIO);
+}

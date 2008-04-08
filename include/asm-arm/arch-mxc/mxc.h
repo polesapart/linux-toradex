@@ -101,6 +101,12 @@ struct mxc_lcd_platform_data {
 	void (*reset) (void);
 };
 
+struct mxc_tsc_platform_data {
+	char *vdd_reg;
+	void (*active) (void);
+	void (*inactive) (void);
+};
+
 struct mxc_tvout_platform_data {
 	char *io_reg;
 	char *core_reg;
@@ -150,7 +156,7 @@ unsigned long board_get_ckih_rate(void);
 int mxc_snoop_set_config(u32 num, unsigned long base, int size);
 int mxc_snoop_get_status(u32 num, u32 * statl, u32 * stath);
 
-#endif /* __ASSEMBLY__ */
+#endif				/* __ASSEMBLY__ */
 
 #define IOMUX_TO_GPIO(pin) 	((((unsigned int)pin >> MUX_IO_P) * GPIO_NUM_PIN) + ((pin >> MUX_IO_I) & ((1 << (MUX_IO_P - MUX_IO_I)) -1)))
 #define IOMUX_TO_IRQ(pin)	(MXC_GPIO_INT_BASE + IOMUX_TO_GPIO(pin))
@@ -257,4 +263,4 @@ int tzic_enable_wake(int is_idle);
 
 #endif
 
-#endif /*  __ASM_ARCH_MXC_H__ */
+#endif				/*  __ASM_ARCH_MXC_H__ */

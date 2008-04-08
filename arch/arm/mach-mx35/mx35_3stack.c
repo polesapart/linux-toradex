@@ -253,6 +253,12 @@ static inline void mxc_init_bl(void)
 }
 #endif
 
+static struct mxc_tsc_platform_data tsc2007_data = {
+	.vdd_reg = "SW1",
+	.active = gpio_tsc_active,
+	.inactive = gpio_tsc_inactive,
+};
+
 static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "mc9sdz60",
@@ -261,6 +267,12 @@ static struct i2c_board_info mxc_i2c_board_info[] __initdata = {
 	{
 	 .driver_name = "max8660",
 	 .addr = 0x34,
+	 },
+	{
+	 .driver_name = "TSC2007",
+	 .addr = 0x48,
+	 .platform_data = &tsc2007_data,
+	 .irq = IOMUX_TO_IRQ(MX35_PIN_CAPTURE),
 	 },
 };
 

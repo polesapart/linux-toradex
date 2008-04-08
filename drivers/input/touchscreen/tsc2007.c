@@ -35,6 +35,7 @@
 #include <linux/kthread.h>
 #include <linux/input.h>
 #include <linux/delay.h>
+#include <linux/regulator/regulator.h>
 #include <asm/mach/irq.h>
 
 #define DRIVER_NAME "TSC2007"
@@ -76,6 +77,7 @@ struct tsc2007_data {
 	struct completion penup_completion;
 	enum tsc2007_m m;
 	int penirq;
+	struct regulator *vdd_reg;
 };
 
 static int tsc2007_read(struct tsc2007_data *data,
@@ -105,7 +107,7 @@ static int tsc2007_read(struct tsc2007_data *data,
 	}
 
 	return 0;
-err:
+      err:
 	return -ENODEV;
 }
 
@@ -169,8 +171,13 @@ static int tsc2007ts_thread(void *v)
 	while (1) {
 		unsigned int x = 0, y = 0, p = 0;
 
+		if (kthread_should_stop())
+			break;
 		/* Wait for an Pen down interrupt */
-		wait_for_completion(&d->penirq_completion);
+		if (wait_for_completion_interruptible_timeout
+		    (&d->penirq_completion, HZ) <= 0)
+			continue;
+
 		tsc2007_read_xpos(d, PD_PENIRQ_DISARM, &x);
 		tsc2007_read_ypos(d, PD_PENIRQ_DISARM, &y);
 		tsc2007_read_pressure(d, PD_PENIRQ_DISARM, &p);
@@ -204,8 +211,6 @@ static int tsc2007ts_thread(void *v)
 		tsc2007_read(d, MEAS_TEMP0, PD_PENIRQ_ARM, 0);
 		enable_irq(d->penirq);
 
-		if (kthread_should_stop())
-			break;
 	}
 
 	d->ts_thread_cnt = 0;
@@ -220,11 +225,22 @@ static int tsc2007_idev_open(struct input_dev *idev)
 	d->penirq_timer.data = (unsigned long)d;
 	d->penirq_timer.function = tsc2007_pen_up;
 
+	init_completion(&d->penup_completion);
+
 	d->tstask = kthread_run(tsc2007ts_thread, d, DRIVER_NAME "tsd");
 	if (IS_ERR(d->tstask))
 		ret = PTR_ERR(d->tstask);
 
 	return ret;
+}
+
+static void tsc2007_idev_close(struct input_dev *idev)
+{
+	struct tsc2007_data *d = idev->private;
+	if (!IS_ERR(d->tstask))
+		kthread_stop(d->tstask);
+
+	del_timer_sync(&d->penirq_timer);
 }
 
 static int tsc2007_driver_register(struct tsc2007_data *data)
@@ -236,6 +252,8 @@ static int tsc2007_driver_register(struct tsc2007_data *data)
 	data->penirq_timer.data = (unsigned long)data;
 	data->penirq_timer.function = tsc2007_pen_up;
 
+	init_completion(&data->penirq_completion);
+
 	if (data->penirq) {
 		ret =
 		    request_irq(data->penirq, tsc2007_penirq, IRQT_LOW,
@@ -243,8 +261,6 @@ static int tsc2007_driver_register(struct tsc2007_data *data)
 		if (!ret) {
 			printk(KERN_INFO "%s: Registering Touchscreen device\n",
 			       __func__);
-			init_completion(&data->penirq_completion);
-			init_completion(&data->penup_completion);
 		} else {
 			printk(KERN_ERR "%s: Cannot grab irq %d\n",
 			       __func__, data->penirq);
@@ -256,6 +272,7 @@ static int tsc2007_driver_register(struct tsc2007_data *data)
 	idev->name = DRIVER_NAME;
 	idev->evbit[0] = BIT(EV_ABS);
 	idev->open = tsc2007_idev_open;
+	idev->close = tsc2007_idev_close;
 	idev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
 	input_set_abs_params(idev, ABS_X, 0, ADC_MAX, 0, 0);
 	input_set_abs_params(idev, ABS_Y, 0, ADC_MAX, 0, 0);
@@ -271,8 +288,8 @@ static int tsc2007_i2c_remove(struct i2c_client *client)
 {
 	int err;
 	struct tsc2007_data *d = i2c_get_clientdata(client);
+	struct mxc_tsc_platform_data *tsc_data;
 
-	kthread_stop(d->tstask);
 	free_irq(d->penirq, d);
 	input_unregister_device(d->idev);
 
@@ -283,12 +300,22 @@ static int tsc2007_i2c_remove(struct i2c_client *client)
 		return err;
 	}
 
+	tsc_data = (struct mxc_tsc_platform_data *)(client->dev).platform_data;
+	if (tsc_data && tsc_data->inactive)
+		tsc_data->inactive();
+
+	if (d->vdd_reg) {
+		regulator_disable(d->vdd_reg);
+		regulator_put(d->vdd_reg, &client->dev);
+		d->vdd_reg = NULL;
+	}
 	return 0;
 }
 
 static int tsc2007_i2c_probe(struct i2c_client *client)
 {
 	struct tsc2007_data *data;
+	struct mxc_tsc_platform_data *tsc_data;
 	int err = 0;
 
 	data = kzalloc(sizeof(struct tsc2007_data), GFP_KERNEL);
@@ -298,6 +325,16 @@ static int tsc2007_i2c_probe(struct i2c_client *client)
 	i2c_set_clientdata(client, data);
 	data->client = client;
 	data->penirq = client->irq;
+
+	tsc_data = (struct mxc_tsc_platform_data *)(client->dev).platform_data;
+	if (tsc_data && tsc_data->vdd_reg) {
+		data->vdd_reg = regulator_get(&client->dev, tsc_data->vdd_reg);
+		if (data->vdd_reg)
+			regulator_enable(data->vdd_reg);
+		if (tsc_data->active)
+			tsc_data->active();
+	} else
+		data->vdd_reg = NULL;
 
 	err = tsc2007_powerdown(data);
 	if (err >= 0) {
@@ -310,7 +347,7 @@ static int tsc2007_i2c_probe(struct i2c_client *client)
 		return 0;
 	}
 
-exit:
+      exit:
 	return err;
 }
 

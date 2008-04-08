@@ -167,6 +167,8 @@ extern struct sys_timer mxc_timer;
 extern void mxc_cpu_common_init(void);
 extern int mxc_clocks_init(void);
 extern void __init early_console_setup(char *);
+extern void gpio_tsc_active(void);
+extern void gpio_tsc_inactive(void);
 
 #endif				/* CONFIG_MACH_MX35_3DS */
 #endif				/* __ASM_ARCH_MXC_BOARD_MX35_3STACK_H__ */
