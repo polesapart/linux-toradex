@@ -23,7 +23,7 @@
 #include "iomux.h"
 
 /*!
- * @file mx31ads_gpio.c
+ * @file mx37_3stack_gpio.c
  *
  * @brief This file contains all the GPIO setup functions for the board.
  *
@@ -597,6 +597,48 @@ void gpio_ata_inactive(void)
 }
 
 EXPORT_SYMBOL(gpio_ata_inactive);
+
+/*!
+ * Setup GPIO for Keypad  to be active
+ *
+ */
+void gpio_keypad_active(void)
+{
+	int pad_val;
+
+	/*
+	 * Configure the IOMUX control register for keypad signals.
+	 */
+	/*KEY_INT */
+	mxc_request_iomux(MX37_PIN_GPIO1_3, IOMUX_CONFIG_ALT0);
+	/*KEY_WAKE */
+	mxc_request_iomux(MX37_PIN_DISP1_DAT18, IOMUX_CONFIG_ALT4);
+
+	/* fast slew rate */
+	pad_val = (PAD_CTL_SRE_FAST | PAD_CTL_PKE_NONE | PAD_CTL_100K_PU);
+	/*KEY_INT */
+	mxc_iomux_set_pad(MX37_PIN_GPIO1_3, pad_val);
+	/*KEY_WAKE */
+	mxc_iomux_set_pad(MX37_PIN_DISP1_DAT18, pad_val);
+
+	mxc_set_gpio_direction(MX37_PIN_DISP1_DAT18, 0);
+	mxc_set_gpio_direction(MX37_PIN_GPIO1_3, 1);
+
+}
+EXPORT_SYMBOL(gpio_keypad_active);
+
+/*!
+ * Setup GPIO for Keypad to be inactive
+ *
+ */
+void gpio_keypad_inactive(void)
+{
+	/*KEY_INT */
+	mxc_request_iomux(MX37_PIN_GPIO1_3, IOMUX_CONFIG_ALT0);
+	/*KEY_WAKE */
+	mxc_request_iomux(MX37_PIN_DISP1_DAT18, IOMUX_CONFIG_ALT0);
+}
+EXPORT_SYMBOL(gpio_keypad_inactive);
 
 /*
  * USB OTG HS port

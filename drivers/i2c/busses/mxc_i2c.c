@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -122,11 +122,25 @@ extern void gpio_i2c_inactive(int i2c_num);
  */
 static void mxc_i2c_stop(mxc_i2c_device * dev)
 {
-	volatile unsigned int cr;
+	unsigned int cr, sr;
+	int retry = 16;
+	spinlock_t lock;
 
+	spin_lock(&lock);
 	cr = readw(dev->membase + MXC_I2CR);
 	cr &= ~(MXC_I2CR_MSTA | MXC_I2CR_MTX);
 	writew(cr, dev->membase + MXC_I2CR);
+
+	/* Wait till the Bus Busy bit is reset */
+	sr = readw(dev->membase + MXC_I2SR);
+	while (retry-- && ((sr & MXC_I2SR_IBB))) {
+		udelay(3);
+		sr = readw(dev->membase + MXC_I2SR);
+	}
+	spin_unlock(&lock);
+	if (retry <= 0)
+		printk(KERN_DEBUG "Could not set I2C Bus Busy bit to zero.\n");
+
 }
 
 /*!

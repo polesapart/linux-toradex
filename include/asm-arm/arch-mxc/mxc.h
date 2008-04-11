@@ -149,6 +149,12 @@ struct mxc_mma7450_platform_data {
 	int int2;
 };
 
+struct mxc_keyp_platform_data {
+	u16 *matrix;
+	void (*active) (void);
+	void (*inactive) (void);
+};
+
 extern void mxc_wd_reset(void);
 extern void mxc_kick_wd(void);
 unsigned long board_get_ckih_rate(void);

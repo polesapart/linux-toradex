@@ -300,4 +300,11 @@ config KEYBOARD_BFIN
 	  To compile this driver as a module, choose M here: the
 	  module will be called bf54x-keys.
 
+config KEYBOARD_MPR084
+	tristate "Freescale MPR084 Touch Keypad Driver"
+	depends on ARCH_MX37
+	help
+	  This is the Keypad driver for the Freescale Proximity Capacitive 
+	  Touch Sensor controller chip.
+
 endif

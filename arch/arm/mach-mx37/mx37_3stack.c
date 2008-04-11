@@ -38,7 +38,6 @@
 #include <asm/setup.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
-#include <asm/mach/keypad.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
 #include <asm/arch/mmc.h>
@@ -159,11 +158,38 @@ static struct mxc_lcd_platform_data lcd_data = {
 	.reset = lcd_reset,
 };
 
+#if defined(CONFIG_KEYBOARD_MPR084) || defined(CONFIG_KEYBOARD_MPR084_MODULE)
+/*!
+ * These functions are used to configure and the GPIO pins for keypad to
+ * activate and deactivate it.
+ */
+extern void gpio_keypad_active(void);
+
+extern void gpio_keypad_inactive(void);
+
+static u16 keymap[] = {
+	KEY_DOWN, KEY_LEFT, KEY_ENTER,
+	KEY_RIGHT, KEY_UP, KEY_LEFTALT,
+	KEY_TAB, KEY_ESC,
+};
+
+static struct mxc_keyp_platform_data keypad_data = {
+	.matrix = keymap,
+	.active = gpio_keypad_active,
+	.inactive = gpio_keypad_inactive,
+};
+#endif
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	{
 	 .driver_name = "TSC2007",
 	 .addr = 0x48,
 	 .irq = IOMUX_TO_IRQ(MX37_PIN_AUD5_RXFS),
+	 },
+	{
+	 .driver_name = "MPR084",
+	 .addr = 0x5D,
+	 .platform_data = &keypad_data,
+	 .irq = IOMUX_TO_IRQ(MX37_PIN_GPIO1_3),
 	 },
 };
 
