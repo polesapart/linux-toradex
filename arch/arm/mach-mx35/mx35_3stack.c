@@ -37,6 +37,7 @@
 #include <asm/mach/irq.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/mmc.h>
 
 #include "board-mx35_3stack.h"
 #include "crm_regs.h"
@@ -316,6 +317,58 @@ unsigned int expio_intr_fec;
 EXPORT_SYMBOL(expio_intr_fec);
 #endif
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+static struct mxc_mmc_platform_data mmc_data = {
+	.ocr_mask = MMC_VDD_32_33,
+	.min_clk = 400000,
+	.max_clk = 52000000,
+	.card_inserted_state = 1,
+	.clock_mmc = "sdhc_clk",
+};
+
+/*!
+ * Resource definition for the SDHC1
+ */
+static struct resource mxcsdhc1_resources[] = {
+	[0] = {
+	       .start = MMC_SDHC1_BASE_ADDR,
+	       .end = MMC_SDHC1_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_MMC_SDHC1,
+	       .end = MXC_INT_MMC_SDHC1,
+	       .flags = IORESOURCE_IRQ,
+	       },
+	[2] = {
+	       .start = 0,
+	       .end = 0,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Device Definition for MXC SDHC1 */
+static struct platform_device mxcsdhc1_device = {
+	.name = "mxsdhci",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mmc_data,
+		},
+	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
+	.resource = mxcsdhc1_resources,
+};
+
+static inline void mxc_init_mmc(void)
+{
+	(void)platform_device_register(&mxcsdhc1_device);
+}
+#else
+static inline void mxc_init_mmc(void)
+{
+}
+#endif
+
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -363,6 +416,7 @@ static void __init mxc_board_init(void)
 
 	i2c_register_board_info(0, mxc_i2c_board_info,
 				ARRAY_SIZE(mxc_i2c_board_info));
+	mxc_init_mmc();
 }
 
 #define PLL_PCTL_REG(brmo, pd, mfd, mfi, mfn)		\

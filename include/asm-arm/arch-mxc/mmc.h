@@ -24,6 +24,7 @@ struct mxc_mmc_platform_data {
 	unsigned int (*status) (struct device *);
 	int (*wp_status) (void);
 	char *power_mmc;
+	char *clock_mmc;
 };
 
 #endif

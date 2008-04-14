@@ -1010,7 +1010,23 @@ CONFIG_USB_ARCH_HAS_HCD=y
 #
 # 
 #
-# CONFIG_MMC is not set
+CONFIG_MMC=m
+# CONFIG_MMC_DEBUG is not set
+# CONFIG_MMC_UNSAFE_RESUME is not set
+
+#
+# MMC/SD Card Drivers
+#
+CONFIG_MMC_BLOCK=m
+CONFIG_MMC_BLOCK_BOUNCE=y
+# CONFIG_SDIO_UART is not set
+
+#
+# MMC/SD Host Controller Drivers
+#
+# CONFIG_MMC_SPI is not set
+# CONFIG_MMC_MXC is not set
+CONFIG_MMC_IMX_ESDHCI=m
 # CONFIG_NEW_LEDS is not set
 CONFIG_RTC_LIB=y
 CONFIG_RTC_CLASS=y

@@ -397,3 +397,82 @@ void gpio_tsc_inactive(void)
 {
 	mxc_free_iomux(MX35_PIN_CAPTURE, MUX_CONFIG_GPIO);
 }
+
+/*!
+ * Setup GPIO for SDHC to be active
+ *
+ * @param module SDHC module number
+ */
+void gpio_sdhc_active(int module)
+{
+	unsigned int pad_val;
+
+	switch (module) {
+	case 0:
+		mxc_request_iomux(MX35_PIN_SD1_CLK,
+				  MUX_CONFIG_FUNC | MUX_CONFIG_SION);
+		mxc_request_iomux(MX35_PIN_SD1_CMD,
+				  MUX_CONFIG_FUNC | MUX_CONFIG_SION);
+		mxc_request_iomux(MX35_PIN_SD1_DATA0, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_SD1_DATA1, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_SD1_DATA2, MUX_CONFIG_FUNC);
+		mxc_request_iomux(MX35_PIN_SD1_DATA3, MUX_CONFIG_FUNC);
+
+		pad_val = PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST;
+
+		mxc_iomux_set_pad(MX35_PIN_SD1_CLK, pad_val);
+		mxc_iomux_set_pad(MX35_PIN_SD1_CMD, pad_val);
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA0, pad_val);
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA1, pad_val);
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA2, pad_val);
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA3, pad_val);
+		break;
+	case 1:
+		break;
+	default:
+		break;
+	}
+}
+
+EXPORT_SYMBOL(gpio_sdhc_active);
+
+/*!
+ * Setup GPIO for SDHC1 to be inactive
+ *
+ * @param module SDHC module number
+ */
+void gpio_sdhc_inactive(int module)
+{
+	switch (module) {
+	case 0:
+		mxc_free_iomux(MX35_PIN_SD1_CLK,
+			       MUX_CONFIG_FUNC | MUX_CONFIG_SION);
+		mxc_free_iomux(MX35_PIN_SD1_CMD,
+			       MUX_CONFIG_FUNC | MUX_CONFIG_SION);
+		mxc_free_iomux(MX35_PIN_SD1_DATA0, MUX_CONFIG_FUNC);
+		mxc_free_iomux(MX35_PIN_SD1_DATA1, MUX_CONFIG_FUNC);
+		mxc_free_iomux(MX35_PIN_SD1_DATA2, MUX_CONFIG_FUNC);
+		mxc_free_iomux(MX35_PIN_SD1_DATA3, MUX_CONFIG_FUNC);
+
+		mxc_iomux_set_pad(MX35_PIN_SD1_CLK,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		mxc_iomux_set_pad(MX35_PIN_SD1_CMD,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA0,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA1,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA2,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		mxc_iomux_set_pad(MX35_PIN_SD1_DATA3,
+				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
+		break;
+	case 1:
+		/* TODO:what are the pins for SDHC2? */
+		break;
+	default:
+		break;
+	}
+}
+
+EXPORT_SYMBOL(gpio_sdhc_inactive);

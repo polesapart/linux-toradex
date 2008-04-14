@@ -33,6 +33,7 @@
 #endif
 
 #include <asm/hardware.h>
+#include <asm/arch/spba.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -40,6 +41,7 @@
 #include <asm/mach/keypad.h>
 #include <asm/arch/memory.h>
 #include <asm/arch/gpio.h>
+#include <asm/arch/mmc.h>
 #include "board-mx37_3stack.h"
 #include "iomux.h"
 #include "crm_regs.h"
@@ -366,6 +368,71 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 #endif
 }
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+extern unsigned int sdhc_get_card_det_status(struct device *dev);
+extern int sdhc_init_card_det(int id);
+
+static struct mxc_mmc_platform_data mmc_data = {
+	.ocr_mask = MMC_VDD_32_33,
+	.min_clk = 400000,
+	.max_clk = 52000000,
+	.card_inserted_state = 1,
+	.status = sdhc_get_card_det_status,
+	.clock_mmc = "esdhc_clk",
+};
+
+/*!
+ * Resource definition for the SDHC1
+ */
+static struct resource mxcsdhc1_resources[] = {
+	[0] = {
+	       .start = MMC_SDHC1_BASE_ADDR,
+	       .end = MMC_SDHC1_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_MMC_SDHC1,
+	       .end = MXC_INT_MMC_SDHC1,
+	       .flags = IORESOURCE_IRQ,
+	       },
+	[2] = {
+	       .start = 0,
+	       .end = 0,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+/*! Device Definition for MXC SDHC1 */
+static struct platform_device mxcsdhc1_device = {
+	.name = "mxsdhci",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mmc_data,
+		},
+	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
+	.resource = mxcsdhc1_resources,
+};
+
+static inline void mxc_init_mmc(void)
+{
+	int cd_irq;
+
+	cd_irq = sdhc_init_card_det(0);
+	if (cd_irq) {
+		mxcsdhc1_device.resource[2].start = cd_irq;
+		mxcsdhc1_device.resource[2].end = cd_irq;
+	}
+
+	spba_take_ownership(SPBA_SDHC1, SPBA_MASTER_A | SPBA_MASTER_C);
+	(void)platform_device_register(&mxcsdhc1_device);
+}
+#else
+static inline void mxc_init_mmc(void)
+{
+}
+#endif
+
 /*!
  * Board specific initialization.
  */
@@ -381,6 +448,7 @@ static void __init mxc_board_init(void)
 	spi_register_board_info(mxc_spi_board_info,
 				ARRAY_SIZE(mxc_spi_board_info));
 	mxc_init_nand_mtd();
+	mxc_init_mmc();
 	mxc_init_pata();
 	mxc_init_fb();
 	mxc_init_touchscreen();

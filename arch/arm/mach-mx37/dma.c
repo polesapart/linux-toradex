@@ -17,6 +17,9 @@
 
 #include "serial.h"
 
+#define MXC_MMC_BUFFER_ACCESS     0x20
+#define MXC_SDHC_MMC_WML          64
+#define MXC_SDHC_SD_WML           256
 #define MXC_SSI_TX0_REG           0x0
 #define MXC_SSI_TX1_REG           0x4
 #define MXC_SSI_RX0_REG           0x8
@@ -112,6 +115,66 @@ static mxc_sdma_channel_params_t mxc_sdma_uart3_tx_params = {
 			.word_size = TRANSFER_8BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_UART3_TX,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
+static mxc_sdma_channel_params_t mxc_sdma_mmc1_width1_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SDHC_MMC_WML,
+			.per_address =
+			MMC_SDHC1_BASE_ADDR + MXC_MMC_BUFFER_ACCESS,
+			.peripheral_type = MMC,
+			.transfer_type = per_2_emi,
+			.event_id = DMA_REQ_SDHC1,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_MMC1,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
+static mxc_sdma_channel_params_t mxc_sdma_mmc1_width4_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SDHC_SD_WML,
+			.per_address =
+			MMC_SDHC1_BASE_ADDR + MXC_MMC_BUFFER_ACCESS,
+			.peripheral_type = MMC,
+			.transfer_type = per_2_emi,
+			.event_id = DMA_REQ_SDHC1,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_MMC1,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
+static mxc_sdma_channel_params_t mxc_sdma_mmc2_width1_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SDHC_MMC_WML,
+			.per_address =
+			MMC_SDHC2_BASE_ADDR + MXC_MMC_BUFFER_ACCESS,
+			.peripheral_type = MMC,
+			.transfer_type = per_2_emi,
+			.event_id = DMA_REQ_SDHC2,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_MMC2,
+	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
+};
+
+static mxc_sdma_channel_params_t mxc_sdma_mmc2_width4_params = {
+	.chnl_params = {
+			.watermark_level = MXC_SDHC_SD_WML,
+			.per_address =
+			MMC_SDHC2_BASE_ADDR + MXC_MMC_BUFFER_ACCESS,
+			.peripheral_type = MMC,
+			.transfer_type = per_2_emi,
+			.event_id = DMA_REQ_SDHC2,
+			.bd_number = 32,
+			.word_size = TRANSFER_32BIT,
+			},
+	.channel_num = MXC_DMA_CHANNEL_MMC2,
 	.chnl_priority = MXC_SDMA_DEFAULT_PRIORITY,
 };
 
@@ -526,6 +589,10 @@ static mxc_sdma_info_entry_t mxc_sdma_active_dma_info[] = {
 	{MXC_DMA_UART2_TX, &mxc_sdma_uart2_tx_params},
 	{MXC_DMA_UART3_RX, &mxc_sdma_uart3_rx_params},
 	{MXC_DMA_UART3_TX, &mxc_sdma_uart3_tx_params},
+	{MXC_DMA_MMC1_WIDTH_1, &mxc_sdma_mmc1_width1_params},
+	{MXC_DMA_MMC1_WIDTH_4, &mxc_sdma_mmc1_width4_params},
+	{MXC_DMA_MMC2_WIDTH_1, &mxc_sdma_mmc2_width1_params},
+	{MXC_DMA_MMC2_WIDTH_4, &mxc_sdma_mmc2_width4_params},
 	{MXC_DMA_SSI1_8BIT_RX0, &mxc_sdma_ssi1_8bit_rx0_params},
 	{MXC_DMA_SSI1_8BIT_TX0, &mxc_sdma_ssi1_8bit_tx0_params},
 	{MXC_DMA_SSI1_16BIT_RX0, &mxc_sdma_ssi1_16bit_rx0_params},
