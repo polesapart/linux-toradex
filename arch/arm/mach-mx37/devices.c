@@ -25,6 +25,7 @@
 #include "iomux.h"
 #include <asm/arch/sdma.h>
 #include "sdma_script_code.h"
+#include <asm/arch/mxc_scc2_driver.h>
 
 extern void gpio_spdif_active(void);
 
@@ -210,6 +211,60 @@ static void mxc_init_scc(void)
 #else
 static inline void mxc_init_scc(void)
 {
+	uint32_t reg_value;
+	uint8_t *UMID_base;
+	uint32_t *MAP_base;
+	uint8_t i;
+	uint32_t partition_no;
+	void *scm_ram_base;
+	void *scc_base;
+
+	scc_base = ioremap((uint32_t) SCC_BASE_ADDR, 0x140);
+	if (scc_base == NULL) {
+		printk(KERN_ERR "FAILED TO MAP IRAM REGS\n");
+		return;
+	}
+	scm_ram_base = ioremap((uint32_t) IRAM_BASE_ADDR, IRAM_SIZE);
+	if (scm_ram_base == NULL) {
+		printk(KERN_ERR "FAILED TO MAP IRAM\n");
+		return;
+	}
+
+	for (partition_no = 0; partition_no < 9; partition_no++) {
+		reg_value = ((partition_no << SCM_ZCMD_PART_SHIFT) &
+			     SCM_ZCMD_PART_MASK) | ((0x03 <<
+						     SCM_ZCMD_CCMD_SHIFT)
+						    & SCM_ZCMD_CCMD_MASK);
+		__raw_writel(reg_value, scc_base + SCM_ZCMD_REG);
+
+		while ((__raw_readl(scc_base + SCM_STATUS_REG) &
+			SCM_STATUS_SRS_READY) != SCM_STATUS_SRS_READY) ;
+
+		__raw_writel(0, scc_base + (SCM_SMID0_REG + 8 * partition_no));
+
+		reg_value = __raw_readl(scc_base + SCM_PART_OWNERS_REG);
+
+		if (((reg_value >> (2 * (partition_no))) & 3) != 3) {
+			printk(KERN_ERR "FAILED TO ACQUIRE IRAM PARTITION\n");
+			iounmap(scm_ram_base);
+			return;
+		}
+
+		MAP_base = scm_ram_base + (partition_no * 0x2000);
+		UMID_base = (uint8_t *) MAP_base + 0x10;
+
+		for (i = 0; i < 16; i++)
+			UMID_base[i] = 0;
+
+		MAP_base[0] = SCM_PERM_NO_ZEROIZE | SCM_PERM_HD_SUP_DISABLE |
+		    SCM_PERM_HD_READ | SCM_PERM_HD_WRITE |
+		    SCM_PERM_TH_READ | SCM_PERM_TH_WRITE;
+
+	}
+	iounmap(scm_ram_base);
+	iounmap(scc_base);
+	printk(KERN_INFO "IRAM READY\n");
+
 }
 #endif
 

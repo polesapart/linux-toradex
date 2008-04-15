@@ -70,7 +70,7 @@
  */
 #define IRAM_BASE_ADDR		0x10000000	/* internal ram */
 #define IRAM_BASE_ADDR_VIRT	0xF8000000
-#define IRAM_SIZE		SZ_128K
+#define IRAM_SIZE			(9*SZ_8K)	/* 72KB */
 
 /*
  * NFC

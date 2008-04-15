@@ -1,6 +1,6 @@
 
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -834,7 +834,7 @@ extern "C" {
 
 /* MASTER ACCESS PERMISSIONS REGISTER */
 /*! SCM Access Permission: Do not zeroize/deallocate partition on SMN Fail state */
-#define SCM_PERM_NO_ZEROIZE	0x10000000
+#define SCM_PERM_NO_ZEROIZE	0x80000000
 /*! SCM Access Permission: Ignore Supervisor/User mode in permission determination */
 #define SCM_PERM_HD_SUP_DISABLE	0x00000800
 /*! SCM Access Permission: Allow Read Access to  Host Domain */
