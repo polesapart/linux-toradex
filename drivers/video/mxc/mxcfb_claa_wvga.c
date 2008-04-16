@@ -120,7 +120,6 @@ static int __devinit lcd_probe(struct platform_device *pdev)
 			plat->reset();
 
 		io_reg = regulator_get(&pdev->dev, plat->io_reg);
-		regulator_enable(io_reg);
 	}
 
 	for (i = 0; i < num_registered_fb; i++) {

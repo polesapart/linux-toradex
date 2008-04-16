@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -148,7 +148,7 @@ static void __exit mxcbl_exit(void)
 	platform_driver_unregister(&mxcbl_driver);
 }
 
-module_init(mxcbl_init);
+late_initcall(mxcbl_init);
 module_exit(mxcbl_exit);
 
 MODULE_DESCRIPTION("Freescale MXC/i.MX IPU PWM Backlight Driver");
