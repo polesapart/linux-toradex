@@ -10,6 +10,11 @@ config SND_MXC_SOC
 config SND_MXC_SOC_SSI
  tristate
 
+config SND_MXC_SOC_IRAM
+ bool "Locate Audio DMA playback buffers in IRAM"
+ help 
+   Say Y if you don't want Audio playback buffers in external ram
+ 
 config SND_SOC_IMX_3STACK_WM8350
  tristate "SoC Audio support for IMX - WM8350"
  select SND_MXC_SOC_SSI

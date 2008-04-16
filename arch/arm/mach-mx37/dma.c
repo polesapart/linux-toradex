@@ -511,6 +511,7 @@ static mxc_sdma_channel_params_t mxc_sdma_ssi2_24bit_tx1_params = {
 			.word_size = TRANSFER_32BIT,
 			},
 	.channel_num = MXC_DMA_CHANNEL_SSI2_TX,
+	.chnl_priority = 2,
 };
 
 static mxc_sdma_channel_params_t mxc_sdma_memory_params = {
@@ -654,7 +655,11 @@ mxc_sdma_channel_params_t *mxc_sdma_get_channel_params(mxc_dma_device_t
  */
 void mxc_get_static_channels(mxc_dma_channel_t * chnl)
 {
-	/* No channels statically allocated for MX37 */
+#ifdef CONFIG_SDMA_IRAM
+	int i;
+	for (i = MXC_DMA_CHANNEL_IRAM; i < MAX_DMA_CHANNELS; i++)
+		chnl[i].dynamic = 0;
+#endif
 }
 
 EXPORT_SYMBOL(mxc_sdma_get_channel_params);

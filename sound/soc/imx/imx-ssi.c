@@ -574,13 +574,14 @@ static void imx_ssi_shutdown(struct snd_pcm_substream *substream)
 
 			SSI1_SCR = 0;
 
+			clk_disable(ssi_clk);
 			clk_put(ssi_clk);
 
 		} else {
 			if (--ssi_active[SSI2_PORT])
 				return;
 			SSI2_SCR = 0;
-
+			clk_disable(ssi_clk);
 			clk_put(ssi_clk);
 		}
 	}
