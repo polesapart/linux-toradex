@@ -187,8 +187,10 @@ static int mxc_i2c_wait_for_tc(mxc_i2c_device * dev, int trans_flag)
  * @param   dev   the mxc i2c structure used to get to the right i2c device
  * @param   *msg  pointer to a message structure that contains the slave
  *                address
+ *
+ * @return  The function returns EBUSY on failure, 0 on success.
  */
-static void mxc_i2c_start(mxc_i2c_device * dev, struct i2c_msg *msg)
+static int mxc_i2c_start(mxc_i2c_device *dev, struct i2c_msg *msg)
 {
 	volatile unsigned int cr, sr;
 	unsigned int addr_trans;
@@ -216,6 +218,7 @@ static void mxc_i2c_start(mxc_i2c_device * dev, struct i2c_msg *msg)
 	}
 	if (retry <= 0) {
 		printk(KERN_DEBUG "Could not grab Bus ownership\n");
+		return -EBUSY;
 	}
 
 	/* Set the Transmit bit */
@@ -224,6 +227,7 @@ static void mxc_i2c_start(mxc_i2c_device * dev, struct i2c_msg *msg)
 	writew(cr, dev->membase + MXC_I2CR);
 
 	writew(addr_trans, dev->membase + MXC_I2DR);
+	return 0;
 }
 
 /*!
@@ -444,7 +448,8 @@ static int mxc_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			/*
 			 * Send a start or repeat start signal
 			 */
-			mxc_i2c_start(dev, &msgs[0]);
+			if (mxc_i2c_start(dev, &msgs[0]))
+				return -EREMOTEIO;
 			/* Wait for the address cycle to complete */
 			if (mxc_i2c_wait_for_tc(dev, msgs[0].flags)) {
 				mxc_i2c_stop(dev);
