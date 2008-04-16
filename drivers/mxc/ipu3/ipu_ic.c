@@ -41,6 +41,19 @@ static bool _calc_resize_coeffs(uint32_t inSize, uint32_t outSize,
 				uint32_t *resizeCoeff,
 				uint32_t *downsizeCoeff);
 
+void ic_dump_register(void)
+{
+	printk(KERN_DEBUG "IC_CONF = \t0x%08X\n", __raw_readl(IC_CONF));
+	printk(KERN_DEBUG "IC_PRP_ENC_RSC = \t0x%08X\n",
+	       __raw_readl(IC_PRP_ENC_RSC));
+	printk(KERN_DEBUG "IC_PRP_VF_RSC = \t0x%08X\n",
+	       __raw_readl(IC_PRP_VF_RSC));
+	printk(KERN_DEBUG "IC_PP_RSC = \t0x%08X\n", __raw_readl(IC_PP_RSC));
+	printk(KERN_DEBUG "IC_IDMAC_1 = \t0x%08X\n", __raw_readl(IC_IDMAC_1));
+	printk(KERN_DEBUG "IC_IDMAC_2 = \t0x%08X\n", __raw_readl(IC_IDMAC_2));
+	printk(KERN_DEBUG "IC_IDMAC_3 = \t0x%08X\n", __raw_readl(IC_IDMAC_3));
+}
+
 void _ipu_ic_enable_task(ipu_channel_t channel)
 {
 	uint32_t ic_conf;
@@ -160,8 +173,13 @@ void _ipu_ic_init_prpvf(ipu_channel_params_t *params, bool src_is_csi)
 		else
 			ic_conf &= ~IC_CONF_KEY_COLOR_EN;
 	} else {
-		ic_conf &= ~IC_CONF_PP_CMB;
+		ic_conf &= ~IC_CONF_PRPVF_CMB;
 	}
+
+	if (src_is_csi)
+		ic_conf &= ~IC_CONF_RWS_EN;
+	else
+		ic_conf |= IC_CONF_RWS_EN;
 
 	__raw_writel(ic_conf, IC_CONF);
 }
@@ -384,6 +402,47 @@ int _ipu_ic_idma_init(int dma_chan, uint16_t width, uint16_t height,
 	} else if (dma_chan == 47) {	/* PP Rot input */
 		ic_idmac_1 &= ~IC_IDMAC_1_PP_ROT_MASK;
 		ic_idmac_1 |= temp_rot << IC_IDMAC_1_PP_ROT_OFFSET;
+	}
+
+	if (dma_chan == 12) {	/* PRP Input - CB6 */
+		if (burst_size == 16)
+			ic_idmac_1 |= IC_IDMAC_1_CB6_BURST_16;
+		else
+			ic_idmac_1 &= ~IC_IDMAC_1_CB6_BURST_16;
+	}
+
+	if (dma_chan == 20) {	/* PRP ENC output - CB0 */
+		if (burst_size == 16)
+			ic_idmac_1 |= IC_IDMAC_1_CB0_BURST_16;
+		else
+			ic_idmac_1 &= ~IC_IDMAC_1_CB0_BURST_16;
+
+		ic_idmac_2 &= ~IC_IDMAC_2_PRPENC_HEIGHT_MASK;
+		ic_idmac_2 |= height << IC_IDMAC_2_PRPENC_HEIGHT_OFFSET;
+
+		ic_idmac_3 &= ~IC_IDMAC_3_PRPENC_WIDTH_MASK;
+		ic_idmac_3 |= width << IC_IDMAC_3_PRPENC_WIDTH_OFFSET;
+
+	} else if (dma_chan == 45) {	/* PRP ENC Rot input */
+		ic_idmac_1 &= ~IC_IDMAC_1_PRPENC_ROT_MASK;
+		ic_idmac_1 |= temp_rot << IC_IDMAC_1_PRPENC_ROT_OFFSET;
+	}
+
+	if (dma_chan == 21) {	/* PRP VF output - CB1 */
+		if (burst_size == 16)
+			ic_idmac_1 |= IC_IDMAC_1_CB1_BURST_16;
+		else
+			ic_idmac_1 &= ~IC_IDMAC_1_CB1_BURST_16;
+
+		ic_idmac_2 &= ~IC_IDMAC_2_PRPVF_HEIGHT_MASK;
+		ic_idmac_2 |= height << IC_IDMAC_2_PRPVF_HEIGHT_OFFSET;
+
+		ic_idmac_3 &= ~IC_IDMAC_3_PRPVF_WIDTH_MASK;
+		ic_idmac_3 |= width << IC_IDMAC_3_PRPVF_WIDTH_OFFSET;
+
+	} else if (dma_chan == 46) {	/* PRP VF Rot input */
+		ic_idmac_1 &= ~IC_IDMAC_1_PRPVF_ROT_MASK;
+		ic_idmac_1 |= temp_rot << IC_IDMAC_1_PRPVF_ROT_OFFSET;
 	}
 	__raw_writel(ic_idmac_1, IC_IDMAC_1);
 	__raw_writel(ic_idmac_2, IC_IDMAC_2);

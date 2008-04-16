@@ -111,8 +111,8 @@ extern u32 *ipu_tpmem_base;
 
 #define IDMAC_CONF		(ipu_idmac_reg + 0x0000)
 #define IDMAC_CHA_EN(ch)	(ipu_idmac_reg + 0x0004/4 + (ch/32))
-#define IDMAC_SEP_ALPHA		(ipu_idmac_reg + 0x000C)
-#define IDMAC_ALT_SEP_ALPHA	(ipu_idmac_reg + 0x0010)
+#define IDMAC_SEP_ALPHA		(ipu_idmac_reg + 0x000C/4)
+#define IDMAC_ALT_SEP_ALPHA	(ipu_idmac_reg + 0x0010/4)
 #define IDMAC_CHA_PRI(ch)	(ipu_idmac_reg + 0x0014/4 + (ch/32))
 #define IDMAC_WM_EN(ch)		(ipu_idmac_reg + 0x001C/4 + (ch/32))
 #define IDMAC_CH_LOCK_EN_2	(ipu_idmac_reg + 0x0024/4)
@@ -248,6 +248,10 @@ enum {
 	FS_DP_SYNC0_SRC_SEL_OFFSET = 0,
 	FS_DP_SYNC1_SRC_SEL_MASK = 0x000000F0,
 	FS_DP_SYNC1_SRC_SEL_OFFSET = 4,
+	FS_DP_ASYNC0_SRC_SEL_MASK = 0x00000F00,
+	FS_DP_ASYNC0_SRC_SEL_OFFSET = 8,
+	FS_DP_ASYNC1_SRC_SEL_MASK = 0x0000F000,
+	FS_DP_ASYNC1_SRC_SEL_OFFSET = 12,
 
 	FS_AUTO_REF_PER_MASK = 0,
 	FS_AUTO_REF_PER_OFFSET = 16,

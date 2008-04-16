@@ -198,7 +198,7 @@ static int ipu_probe(struct platform_device *pdev)
 	__raw_writel(0xFFFFFFFF, IPU_INT_CTRL(10));
 
 	/* DMFC Init */
-	__raw_writel(0x7, DMFC_IC_CTRL);
+	__raw_writel(0x2, DMFC_IC_CTRL);
 	/* 1 - segment 0 and 1; 2, 1C and 2C unused */
 	__raw_writel(0x00000090, DMFC_WR_CHAN);
 	__raw_writel(0x20202000, DMFC_WR_CHAN_DEF);
@@ -241,6 +241,33 @@ int ipu_remove(struct platform_device *pdev)
 void ipu_dump_registers(void)
 {
 	printk(KERN_DEBUG "IPU_CONF = \t0x%08X\n", __raw_readl(IPU_CONF));
+	printk(KERN_DEBUG "IDMAC_CONF = \t0x%08X\n", __raw_readl(IDMAC_CONF));
+	printk(KERN_DEBUG "IDMAC_CHA_EN1 = \t0x%08X\n",
+	       __raw_readl(IDMAC_CHA_EN(0)));
+	printk(KERN_DEBUG "IDMAC_CHA_EN2 = \t0x%08X\n",
+	       __raw_readl(IDMAC_CHA_EN(32)));
+	printk(KERN_DEBUG "IDMAC_CHA_PRI1 = \t0x%08X\n",
+	       __raw_readl(IDMAC_CHA_PRI(0)));
+	printk(KERN_DEBUG "IDMAC_CHA_PRI2 = \t0x%08X\n",
+	       __raw_readl(IDMAC_CHA_PRI(32)));
+	printk(KERN_DEBUG "IDMAC_BAND_EN1 = \t0x%08X\n",
+	       __raw_readl(IDMAC_BAND_EN(0)));
+	printk(KERN_DEBUG "IDMAC_BAND_EN2 = \t0x%08X\n",
+	       __raw_readl(IDMAC_BAND_EN(32)));
+	printk(KERN_DEBUG "IPU_CHA_DB_MODE_SEL0 = \t0x%08X\n",
+	       __raw_readl(IPU_CHA_DB_MODE_SEL(0)));
+	printk(KERN_DEBUG "IPU_CHA_DB_MODE_SEL1 = \t0x%08X\n",
+	       __raw_readl(IPU_CHA_DB_MODE_SEL(32)));
+	printk(KERN_DEBUG "DMFC_WR_CHAN = \t0x%08X\n",
+	       __raw_readl(DMFC_WR_CHAN));
+	printk(KERN_DEBUG "DMFC_WR_CHAN_DEF = \t0x%08X\n",
+	       __raw_readl(DMFC_WR_CHAN_DEF));
+	printk(KERN_DEBUG "DMFC_DP_CHAN = \t0x%08X\n",
+	       __raw_readl(DMFC_DP_CHAN));
+	printk(KERN_DEBUG "DMFC_DP_CHAN_DEF = \t0x%08X\n",
+	       __raw_readl(DMFC_DP_CHAN_DEF));
+	printk(KERN_DEBUG "DMFC_IC_CTRL = \t0x%08X\n",
+	       __raw_readl(DMFC_IC_CTRL));
 	printk(KERN_DEBUG "IPU_FS_PROC_FLOW1 = \t0x%08X\n",
 	       __raw_readl(IPU_FS_PROC_FLOW1));
 	printk(KERN_DEBUG "IPU_FS_PROC_FLOW2 = \t0x%08X\n",
@@ -419,6 +446,8 @@ void ipu_uninit_channel(ipu_channel_t channel)
 	case MEM_PRP_VF_MEM:
 		ipu_ic_use_count--;
 		_ipu_ic_uninit_prpvf();
+		reg = __raw_readl(IPU_FS_PROC_FLOW1);
+		__raw_writel(reg & ~FS_VF_IN_VALID, IPU_FS_PROC_FLOW1);
 		break;
 	case MEM_ROT_VF_MEM:
 		ipu_rot_use_count--;
@@ -428,6 +457,8 @@ void ipu_uninit_channel(ipu_channel_t channel)
 	case MEM_PRP_ENC_MEM:
 		ipu_ic_use_count--;
 		_ipu_ic_uninit_prpenc();
+		reg = __raw_readl(IPU_FS_PROC_FLOW1);
+		__raw_writel(reg & ~FS_ENC_IN_VALID, IPU_FS_PROC_FLOW1);
 		break;
 	case MEM_ROT_ENC_MEM:
 		ipu_rot_use_count--;
@@ -745,6 +776,30 @@ int32_t ipu_link_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 		    proc_dest_sel[IPU_CHAN_ID(dest_ch)] <<
 		    FS_PP_ROT_DEST_SEL_OFFSET;
 		break;
+	case MEM_PRP_ENC_MEM:
+		fs_proc_flow2 &= ~FS_PRPENC_DEST_SEL_MASK;
+		fs_proc_flow2 |=
+		    proc_dest_sel[IPU_CHAN_ID(dest_ch)] <<
+		    FS_PRPENC_DEST_SEL_OFFSET;
+		break;
+	case MEM_ROT_ENC_MEM:
+		fs_proc_flow2 &= ~FS_PRPENC_ROT_DEST_SEL_MASK;
+		fs_proc_flow2 |=
+		    proc_dest_sel[IPU_CHAN_ID(dest_ch)] <<
+		    FS_PRPENC_ROT_DEST_SEL_OFFSET;
+		break;
+	case MEM_PRP_VF_MEM:
+		fs_proc_flow2 &= ~FS_PRPVF_DEST_SEL_MASK;
+		fs_proc_flow2 |=
+		    proc_dest_sel[IPU_CHAN_ID(dest_ch)] <<
+		    FS_PRPVF_DEST_SEL_OFFSET;
+		break;
+	case MEM_ROT_VF_MEM:
+		fs_proc_flow2 &= ~FS_PRPVF_ROT_DEST_SEL_MASK;
+		fs_proc_flow2 |=
+		    proc_dest_sel[IPU_CHAN_ID(dest_ch)] <<
+		    FS_PRPVF_ROT_DEST_SEL_OFFSET;
+		break;
 	default:
 		retval = -EINVAL;
 		goto err;
@@ -762,6 +817,28 @@ int32_t ipu_link_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 		    proc_src_sel[IPU_CHAN_ID(src_ch)] <<
 		    FS_PP_ROT_SRC_SEL_OFFSET;
 		break;
+	case MEM_PRP_ENC_MEM:
+		fs_proc_flow1 &= ~FS_PRP_SRC_SEL_MASK;
+		fs_proc_flow1 |=
+		    proc_src_sel[IPU_CHAN_ID(src_ch)] << FS_PRP_SRC_SEL_OFFSET;
+		break;
+	case MEM_ROT_ENC_MEM:
+		fs_proc_flow1 &= ~FS_PRPENC_ROT_SRC_SEL_MASK;
+		fs_proc_flow1 |=
+		    proc_src_sel[IPU_CHAN_ID(src_ch)] <<
+		    FS_PRPENC_ROT_SRC_SEL_OFFSET;
+		break;
+	case MEM_PRP_VF_MEM:
+		fs_proc_flow1 &= ~FS_PRP_SRC_SEL_MASK;
+		fs_proc_flow1 |=
+		    proc_src_sel[IPU_CHAN_ID(src_ch)] << FS_PRP_SRC_SEL_OFFSET;
+		break;
+	case MEM_ROT_VF_MEM:
+		fs_proc_flow1 &= ~FS_PRPVF_ROT_SRC_SEL_MASK;
+		fs_proc_flow1 |=
+		    proc_src_sel[IPU_CHAN_ID(src_ch)] <<
+		    FS_PRPVF_ROT_SRC_SEL_OFFSET;
+		break;
 	case MEM_DC_SYNC:
 		fs_disp_flow1 &= ~FS_DC1_SRC_SEL_MASK;
 		fs_disp_flow1 |=
@@ -778,6 +855,23 @@ int32_t ipu_link_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 		fs_disp_flow1 |=
 		    disp_src_sel[IPU_CHAN_ID(src_ch)] <<
 		    FS_DP_SYNC1_SRC_SEL_OFFSET;
+		break;
+	case MEM_DC_ASYNC:
+		fs_disp_flow1 &= ~FS_DC2_SRC_SEL_MASK;
+		fs_disp_flow1 |=
+		    disp_src_sel[IPU_CHAN_ID(src_ch)] << FS_DC2_SRC_SEL_OFFSET;
+		break;
+	case MEM_BG_ASYNC0:
+		fs_disp_flow1 &= ~FS_DP_ASYNC0_SRC_SEL_MASK;
+		fs_disp_flow1 |=
+		    disp_src_sel[IPU_CHAN_ID(src_ch)] <<
+		    FS_DP_ASYNC0_SRC_SEL_OFFSET;
+		break;
+	case MEM_FG_ASYNC0:
+		fs_disp_flow1 &= ~FS_DP_ASYNC1_SRC_SEL_MASK;
+		fs_disp_flow1 |=
+		    disp_src_sel[IPU_CHAN_ID(src_ch)] <<
+		    FS_DP_ASYNC1_SRC_SEL_OFFSET;
 		break;
 	default:
 		retval = -EINVAL;
@@ -828,6 +922,18 @@ int32_t ipu_unlink_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 	case MEM_ROT_PP_MEM:
 		fs_proc_flow2 &= ~FS_PP_ROT_DEST_SEL_MASK;
 		break;
+	case MEM_PRP_ENC_MEM:
+		fs_proc_flow2 &= ~FS_PRPENC_DEST_SEL_MASK;
+		break;
+	case MEM_ROT_ENC_MEM:
+		fs_proc_flow2 &= ~FS_PRPENC_ROT_DEST_SEL_MASK;
+		break;
+	case MEM_PRP_VF_MEM:
+		fs_proc_flow2 &= ~FS_PRPVF_DEST_SEL_MASK;
+		break;
+	case MEM_ROT_VF_MEM:
+		fs_proc_flow2 &= ~FS_PRPVF_ROT_DEST_SEL_MASK;
+		break;
 	default:
 		retval = -EINVAL;
 		goto err;
@@ -840,6 +946,18 @@ int32_t ipu_unlink_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 	case MEM_ROT_PP_MEM:
 		fs_proc_flow1 &= ~FS_PP_ROT_SRC_SEL_MASK;
 		break;
+	case MEM_PRP_ENC_MEM:
+		fs_proc_flow1 &= ~FS_PRP_SRC_SEL_MASK;
+		break;
+	case MEM_ROT_ENC_MEM:
+		fs_proc_flow1 &= ~FS_PRPENC_ROT_SRC_SEL_MASK;
+		break;
+	case MEM_PRP_VF_MEM:
+		fs_proc_flow1 &= ~FS_PRP_SRC_SEL_MASK;
+		break;
+	case MEM_ROT_VF_MEM:
+		fs_proc_flow1 &= ~FS_PRPVF_ROT_SRC_SEL_MASK;
+		break;
 	case MEM_DC_SYNC:
 		fs_disp_flow1 &= ~FS_DC1_SRC_SEL_MASK;
 		break;
@@ -848,6 +966,15 @@ int32_t ipu_unlink_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch)
 		break;
 	case MEM_FG_SYNC:
 		fs_disp_flow1 &= ~FS_DP_SYNC1_SRC_SEL_MASK;
+		break;
+	case MEM_DC_ASYNC:
+		fs_disp_flow1 &= ~FS_DC2_SRC_SEL_MASK;
+		break;
+	case MEM_BG_ASYNC0:
+		fs_disp_flow1 &= ~FS_DP_ASYNC0_SRC_SEL_MASK;
+		break;
+	case MEM_FG_ASYNC0:
+		fs_disp_flow1 &= ~FS_DP_ASYNC1_SRC_SEL_MASK;
 		break;
 	default:
 		retval = -EINVAL;
@@ -1328,4 +1455,3 @@ static void __exit ipu_gen_uninit(void)
 }
 
 module_exit(ipu_gen_uninit);
-
