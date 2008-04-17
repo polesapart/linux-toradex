@@ -1044,6 +1044,7 @@ static int mxc_v4l2out_open(struct inode *inode, struct file *file)
 		vout->output_timer.data = (unsigned long)vout;
 
 		vout->state = STATE_STREAM_OFF;
+		vout->rotate = IPU_ROTATE_NONE;
 		g_irq_cnt = g_buf_output_cnt = g_buf_q_cnt = g_buf_dq_cnt = 0;
 
 	}
