@@ -3064,12 +3064,15 @@ void pmic_power_key_callback(void)
 #endif
 }
 
+extern void gpio_on_off_button_active(void);
 /*
  * Init and Exit
  */
 
 static int pmic_power_probe(struct platform_device *pdev)
 {
+	/* configure on/off button */
+	gpio_on_off_button_active();
 	printk(KERN_INFO "PMIC Power successfully probed\n");
 	return 0;
 }
