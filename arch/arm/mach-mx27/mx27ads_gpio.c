@@ -1,5 +1,5 @@
 /*
- *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ *  Copyright 2004-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -159,6 +159,11 @@ void gpio_uart_inactive(int port, int no_irda)
 		break;
 	}
 }
+
+void gpio_on_off_button_active(void)
+{
+}
+EXPORT_SYMBOL(gpio_on_off_button_active);
 
 /*!
  * Configure the IOMUX GPR register to receive shared SDMA UART events

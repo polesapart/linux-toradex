@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2008 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -345,6 +345,11 @@ void gpio_keypad_inactive(void)
 }
 
 EXPORT_SYMBOL(gpio_keypad_inactive);
+
+void gpio_on_off_button_active(void)
+{
+}
+EXPORT_SYMBOL(gpio_on_off_button_active);
 
 /*!
  * Setup GPIO for a CSPI device to be active
