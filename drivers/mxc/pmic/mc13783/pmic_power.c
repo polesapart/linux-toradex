@@ -26,6 +26,9 @@
 #include <asm/ioctl.h>
 #include <asm/arch/pmic_power.h>
 #include <asm/arch/pmic_status.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
 
 #include "pmic_power_defs.h"
 
@@ -3064,16 +3067,43 @@ void pmic_power_key_callback(void)
 #endif
 }
 
-extern void gpio_on_off_button_active(void);
+static irqreturn_t power_key_int(int irq, void *dev_id)
+{
+	pr_info(KERN_INFO "on-off key pressed\n");
+
+	return 0;
+}
+
+extern void gpio_power_key_active(void);
 /*
  * Init and Exit
  */
 
 static int pmic_power_probe(struct platform_device *pdev)
 {
+	int irq, ret;
+
 	/* configure on/off button */
-	gpio_on_off_button_active();
-	printk(KERN_INFO "PMIC Power successfully probed\n");
+	gpio_power_key_active();
+
+	irq = (int)pdev->dev.platform_data;
+
+	if (irq == 0) {
+		pr_info(KERN_INFO "PMIC Power has no platform data\n");
+		goto done;
+	}
+	set_irq_type(irq, IRQF_TRIGGER_RISING);
+
+	ret = request_irq(irq, power_key_int, 0, "power_key", 0);
+	if (ret)
+		pr_info(KERN_ERR "register on-off key interrupt failed\n");
+
+	set_irq_wake(irq, 1);
+	/* gpio1 include on/off interrupt */
+	set_irq_wake(MXC_INT_GPIO1, 1);
+
+done:
+	pr_info(KERN_INFO "PMIC Power successfully probed\n");
 	return 0;
 }
 

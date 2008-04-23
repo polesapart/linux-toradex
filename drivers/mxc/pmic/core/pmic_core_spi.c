@@ -247,6 +247,8 @@ static int __devinit pmic_probe(struct spi_device *spi)
 		return ret;
 	}
 
+	power_ldm.dev.platform_data = spi->dev.platform_data;
+
 	pmic_pdev_register();
 
 	printk(KERN_INFO "Device %s probed\n", spi->dev.bus_id);

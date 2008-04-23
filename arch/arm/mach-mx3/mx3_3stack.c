@@ -324,6 +324,7 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	 .irq = IOMUX_TO_IRQ(MX31_PIN_GPIO1_3),
 	 .max_speed_hz = 4000000,
 	 .bus_num = 2,
+	 .platform_data = (void *)IOMUX_TO_IRQ(MX31_PIN_GPIO1_2),
 	 .chip_select = 2,},
 	{
 	 .modalias = "lcd_spi",

@@ -209,18 +209,15 @@ void gpio_keypad_inactive(void)
 
 EXPORT_SYMBOL(gpio_keypad_inactive);
 
-void gpio_on_off_button_active(void)
+void gpio_power_key_active(void)
 {
 	mxc_request_iomux(MX31_PIN_GPIO1_2, OUTPUTCONFIG_GPIO,
-			INPUTCONFIG_GPIO);
+			  INPUTCONFIG_GPIO);
 	mxc_set_gpio_direction(MX31_PIN_GPIO1_2, 1);
 	mxc_iomux_set_pad(MX31_PIN_GPIO1_2, PAD_CTL_PKE_NONE);
-	set_irq_type(IOMUX_TO_IRQ(MX31_PIN_GPIO1_2), IRQF_TRIGGER_RISING);
-	set_irq_wake(IOMUX_TO_IRQ(MX31_PIN_GPIO1_2), 1);
-	/* gpio1 include on/off interrupt */
-	set_irq_wake(52, 1);
 }
-EXPORT_SYMBOL(gpio_on_off_button_active);
+
+EXPORT_SYMBOL(gpio_power_key_active);
 
 /*!
  * Setup GPIO for a CSPI device to be active
