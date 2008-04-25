@@ -160,10 +160,10 @@ void gpio_uart_inactive(int port, int no_irda)
 	}
 }
 
-void gpio_on_off_button_active(void)
+void gpio_power_key_active(void)
 {
 }
-EXPORT_SYMBOL(gpio_on_off_button_active);
+EXPORT_SYMBOL(gpio_power_key_active);
 
 /*!
  * Configure the IOMUX GPR register to receive shared SDMA UART events

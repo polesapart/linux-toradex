@@ -3099,8 +3099,6 @@ static int pmic_power_probe(struct platform_device *pdev)
 		pr_info(KERN_ERR "register on-off key interrupt failed\n");
 
 	set_irq_wake(irq, 1);
-	/* gpio1 include on/off interrupt */
-	set_irq_wake(MXC_INT_GPIO1, 1);
 
 done:
 	pr_info(KERN_INFO "PMIC Power successfully probed\n");

@@ -346,10 +346,10 @@ void gpio_keypad_inactive(void)
 
 EXPORT_SYMBOL(gpio_keypad_inactive);
 
-void gpio_on_off_button_active(void)
+void gpio_power_key_active(void)
 {
 }
-EXPORT_SYMBOL(gpio_on_off_button_active);
+EXPORT_SYMBOL(gpio_power_key_active);
 
 /*!
  * Setup GPIO for a CSPI device to be active
