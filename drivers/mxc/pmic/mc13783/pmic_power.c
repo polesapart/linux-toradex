@@ -3100,7 +3100,7 @@ static int pmic_power_probe(struct platform_device *pdev)
 
 	set_irq_wake(irq, 1);
 
-done:
+      done:
 	pr_info(KERN_INFO "PMIC Power successfully probed\n");
 	return 0;
 }

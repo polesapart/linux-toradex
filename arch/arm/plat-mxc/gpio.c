@@ -490,10 +490,27 @@ static int gpio_set_wake_irq(u32 irq, u32 enable)
 	if (check_gpio(gpio) < 0)
 		return -ENODEV;
 
-	if (enable)
+	if (enable) {
 		port->suspend_wakeup |= (1 << gpio_idx);
-	else
+#ifdef MXC_GPIO_SPLIT_IRQ_2
+		if (gpio_idx < 16)
+			enable_irq_wake(port->irq_0_15);
+		else
+			enable_irq_wake(port->irq_16_31);
+#else
+		enable_irq_wake(port->irq);
+#endif
+	} else {
 		port->suspend_wakeup &= ~(1 << gpio_idx);
+#ifdef MXC_GPIO_SPLIT_IRQ_2
+		if (gpio_idx < 16)
+			disable_irq_wake(port->irq_0_15);
+		else
+			disable_irq_wake(port->irq_16_31);
+#else
+		disable_irq_wake(port->irq);
+#endif
+	}
 	return 0;
 }
 
@@ -595,15 +612,6 @@ static int mxc_gpio_suspend(struct sys_device *dev, pm_message_t mesg)
 		}
 		port->saved_wakeup = __raw_readl(imr_reg);
 		__raw_writel(port->suspend_wakeup, imr_reg);
-#ifdef MXC_GPIO_SPLIT_IRQ_2
-		if (port->suspend_wakeup & 0xFFFF)
-			enable_irq_wake(port->irq_0_15);
-		if (port->suspend_wakeup & 0xFFFF0000)
-			enable_irq_wake(port->irq_16_31);
-#else
-		if (port->suspend_wakeup)
-			enable_irq_wake(port->irq);
-#endif
 	}
 
 	return 0;
@@ -632,15 +640,6 @@ static int mxc_gpio_resume(struct sys_device *dev)
 		imr_reg = port->base + GPIO_IMR;
 
 		__raw_writel(port->saved_wakeup, imr_reg);
-#ifdef MXC_GPIO_SPLIT_IRQ_2
-		if (port->suspend_wakeup & 0xFFFF)
-			disable_irq_wake(port->irq_0_15);
-		if (port->suspend_wakeup & 0xFFFF0000)
-			disable_irq_wake(port->irq_16_31);
-#else
-		if (port->suspend_wakeup)
-			disable_irq_wake(port->irq);
-#endif
 	}
 
 	return 0;
