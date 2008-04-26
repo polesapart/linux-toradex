@@ -487,17 +487,17 @@ void gpio_sdhc_inactive(int module)
 		mxc_request_gpio(MX31_PIN_SD1_DATA3);
 
 		mxc_free_iomux(MX31_PIN_SD1_CLK, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_SD1_CMD, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_SD1_DATA0, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_SD1_DATA1, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_SD1_DATA2, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 		mxc_free_iomux(MX31_PIN_SD1_DATA3, OUTPUTCONFIG_GPIO,
-			       INPUTCONFIG_NONE);
+			       INPUTCONFIG_GPIO);
 
 		mxc_iomux_set_pad(MX31_PIN_SD1_CLK,
 				  (PAD_CTL_DRV_NORMAL | PAD_CTL_SRE_SLOW));
