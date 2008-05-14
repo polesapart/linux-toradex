@@ -122,7 +122,7 @@ struct dpm_md_opt {
 	struct dpm_regs regs;	/* Register values */
 };
 
-#ifdef CONFIG_MACH_MX27ADS
+#if defined(CONFIG_MACH_MX27ADS) || defined(CONFIG_MACH_MX27LITE)
 #define ARM_MAX 400000000
 #define ARM_MIN 33250000
 #define AHB_MAX 133000000
