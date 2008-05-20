@@ -302,9 +302,14 @@ int gpio_usbotg_hs_active(void)
 	    gpio_request_mux(MX27_PIN_USBOTG_CLK, GPIO_MUX_PRIMARY) ||
 	    gpio_request_mux(MX27_PIN_USBOTG_DATA7, GPIO_MUX_PRIMARY) ||
 
-	    gpio_request_mux(MX27_PIN_USB_OC_B, GPIO_MUX_PRIMARY) ||
-	    gpio_request_mux(MX27_PIN_USB_PWR, GPIO_MUX_PRIMARY))
+	    /* Use TXDM and TXDP pins as power and Overcurrent control */
+	    gpio_request_mux(MX27_PIN_USBH1_TXDM, GPIO_MUX_GPIO) ||
+	    gpio_request_mux(MX27_PIN_USBH1_TXDP, GPIO_MUX_GPIO))
 		return -EINVAL;
+
+	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDM, 0); /* USB1_PWR_nEN */
+	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDP, 1); /* USB1_nOC */
+	mxc_set_gpio_dataout(MX27_PIN_USBH1_TXDM, 0);
 
 	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_CLEAR_REG);
 	//__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC_BCTRL3_CLEAR_REG);
@@ -328,8 +333,8 @@ void gpio_usbotg_hs_inactive(void)
 	gpio_free_mux(MX27_PIN_USBOTG_CLK);
 	gpio_free_mux(MX27_PIN_USBOTG_DATA7);
 
-	gpio_free_mux(MX27_PIN_USB_OC_B);
-	gpio_free_mux(MX27_PIN_USB_PWR);
+	gpio_free_mux(MX27_PIN_USBH1_TXDM);
+	gpio_free_mux(MX27_PIN_USBH1_TXDP);
 	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_SET_REG);
 }
 
