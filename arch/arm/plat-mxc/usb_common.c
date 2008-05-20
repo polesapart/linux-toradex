@@ -320,10 +320,18 @@ static void usbh2_set_ulpi_xcvr(void)
 {
 	pr_debug("%s\n", __FUNCTION__);
 	USBCTRL &= ~(UCTRL_H2SIC_MASK | UCTRL_BPE);	/* disable bypass mode */
+
+#if defined(CONFIG_MACH_MX27LITE)
+	USBCTRL |= UCTRL_H2WIE |	/* wakeup intr enable */
+	    UCTRL_H2UIE |	/* ULPI intr enable */
+	    UCTRL_H2DT |	/* disable H2 TLL */
+	    !UCTRL_H2PM;	/* power mask */
+#else
 	USBCTRL |= UCTRL_H2WIE |	/* wakeup intr enable */
 	    UCTRL_H2UIE |	/* ULPI intr enable */
 	    UCTRL_H2DT |	/* disable H2 TLL */
 	    UCTRL_H2PM;		/* power mask */
+#endif
 
 	UH2_PORTSC1 &= ~PORTSC_PTS_MASK;	/* set ULPI xcvr */
 	UH2_PORTSC1 |= PORTSC_PTS_ULPI;

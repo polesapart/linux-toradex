@@ -244,7 +244,9 @@ int gpio_usbh2_active(void)
 	    gpio_request_mux(MX27_PIN_CSPI2_SCLK, GPIO_MUX_ALT) ||
 	    gpio_request_mux(MX27_PIN_CSPI2_MISO, GPIO_MUX_ALT) ||
 	    gpio_request_mux(MX27_PIN_CSPI2_MOSI, GPIO_MUX_ALT) ||
-	    gpio_request_mux(MX27_PIN_CSPI1_SS2, GPIO_MUX_ALT))
+	    gpio_request_mux(MX27_PIN_CSPI1_SS2, GPIO_MUX_ALT) ||
+	    gpio_request_mux(MX27_PIN_USB_OC_B, GPIO_MUX_PRIMARY) ||
+	    gpio_request_mux(MX27_PIN_USB_PWR, GPIO_MUX_PRIMARY))
 		return -EINVAL;
 
 	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_CLEAR_REG);
@@ -278,6 +280,9 @@ void gpio_usbh2_inactive(void)
 	gpio_set_puen(MX27_PIN_CSPI2_MISO, 1);
 	gpio_set_puen(MX27_PIN_CSPI2_MOSI, 1);
 	gpio_set_puen(MX27_PIN_CSPI1_SS2, 1);
+
+	gpio_free_mux(MX27_PIN_USB_OC_B);
+	gpio_free_mux(MX27_PIN_USB_PWR);
 	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_SET_REG);
 }
 
