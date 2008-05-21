@@ -157,6 +157,7 @@ static struct mxc_mmc_platform_data mmc_data = {
 	.status = sdhc_get_card_det_status,
 };
 
+#ifdef CONFIG_MXC_SDHC1
 /*!
  * Resource definition for the SDHC1
  */
@@ -183,6 +184,20 @@ static struct resource mxcsdhc1_resources[] = {
 	       },
 };
 
+/*! Device Definition for MXC SDHC1 */
+static struct platform_device mxcsdhc1_device = {
+	.name = "mxcmci",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mmc_data,
+		},
+	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
+	.resource = mxcsdhc1_resources,
+};
+#endif
+
+#ifdef CONFIG_MXC_SDHC2
 /*!
  * Resource definition for the SDHC2
  */
@@ -209,18 +224,6 @@ static struct resource mxcsdhc2_resources[] = {
 	       },
 };
 
-/*! Device Definition for MXC SDHC1 */
-static struct platform_device mxcsdhc1_device = {
-	.name = "mxcmci",
-	.id = 0,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mmc_data,
-		},
-	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
-	.resource = mxcsdhc1_resources,
-};
-
 /*! Device Definition for MXC SDHC2 */
 static struct platform_device mxcsdhc2_device = {
 	.name = "mxcmci",
@@ -232,6 +235,7 @@ static struct platform_device mxcsdhc2_device = {
 	.num_resources = ARRAY_SIZE(mxcsdhc2_resources),
 	.resource = mxcsdhc2_resources,
 };
+#endif
 
 #ifdef CONFIG_MXC_SDHC3
 /*!
@@ -277,19 +281,22 @@ static inline void mxc_init_mmc(void)
 {
 	int cd_irq;
 
+#ifdef CONFIG_MXC_SDHC1
 	cd_irq = sdhc_init_card_det(0);
 	if (cd_irq) {
 		mxcsdhc1_device.resource[2].start = cd_irq;
 		mxcsdhc1_device.resource[2].end = cd_irq;
 	}
+	(void)platform_device_register(&mxcsdhc1_device);
+#endif
+#ifdef CONFIG_MXC_SDHC2
 	cd_irq = sdhc_init_card_det(1);
 	if (cd_irq) {
 		mxcsdhc2_device.resource[2].start = cd_irq;
 		mxcsdhc2_device.resource[2].end = cd_irq;
 	}
-
-	(void)platform_device_register(&mxcsdhc1_device);
 	(void)platform_device_register(&mxcsdhc2_device);
+#endif
 #ifdef CONFIG_MXC_SDHC3
 	(void)platform_device_register(&mxcsdhc3_device);
 #endif

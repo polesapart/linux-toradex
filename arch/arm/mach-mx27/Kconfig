@@ -38,6 +38,29 @@ config I2C_MXC_SELECT2
 	help
 	  Enable MX31 I2C2 module.
 
+config MXC_SDHC1
+	bool "Enable SDHC1 module"
+	default n if MACH_MX27LITE
+	default y
+	depends on MMC_MXC
+	help
+	  Enable MX27 Secure Digital Host Controller Interface 1.
+
+config MXC_SDHC2
+	bool "Enable SDHC2 module"
+	default y if MACH_MX27LITE
+	default n
+	depends on MMC_MXC
+	help
+	  Enable MX27 Secure Digital Host Controller Interface 2.
+
+config MXC_SDHC3
+	bool "Enable SDHC3 module"
+	default n
+	depends on MMC_MXC
+	help
+	  Enable MX27 Secure Digital Host Controller Interface 3.
+
 endmenu
 
 endmenu
