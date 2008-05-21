@@ -1,8 +1,10 @@
 /*
- *  Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
- */
-
-/*
+ * mx27lite_gpio.c
+ *
+ * GPIO Assignments for the MX27Litekit
+ *
+ * Copyright 2008 TimeSys Corp.
+ *
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
  * Version 2 or later at the following locations:
@@ -19,25 +21,21 @@
 #include <asm/hardware.h>
 #include <asm/arch/gpio.h>
 
-#include "board-mx27ads.h"
+#include "board-mx27lite.h"
 #include "gpio_mux.h"
 #include "crm_regs.h"
 
 static int g_uart_activated[MXC_UART_NR] = { 0, 0, 0, 0, 0, 0 };
 
-/*!
- * @file mach-mx27/mx27ads_gpio.c
- *
- * @brief This file contains all the GPIO setup functions for the board.
- *
- * @ingroup GPIO_MX27
- */
+/* --------------------------------------------------------------------
+ * UART
+ * -------------------------------------------------------------------- */
 
-/*!
+/*
  * Setup GPIO for a UART port to be active
  *
- * @param  port         a UART port
- * @param  ir_mode      indicates if the port is used for SIR
+ * port         a UART port
+ * ir_mode      indicates if the port is used for SIR
  */
 void gpio_uart_active(int port, int ir_mode)
 {
@@ -70,13 +68,7 @@ void gpio_uart_active(int port, int ir_mode)
 		gpio_request_mux(MX27_PIN_UART3_RXD, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_UART3_CTS, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_UART3_RTS, GPIO_MUX_PRIMARY);
-
-		/* enable or disable the IrDA transceiver based on ir_mode */
-		//if (ir_mode == IRDA)
-		//	__raw_writew(PBC_BCTRL2_IRDA_EN, PBC_BCTRL2_CLEAR_REG);
-		//else
-		//	__raw_writew(PBC_BCTRL2_IRDA_EN, PBC_BCTRL2_SET_REG);
-		//break;
+		break;
 	case 3:
 		gpio_request_mux(MX27_PIN_USBH1_TXDM, GPIO_MUX_ALT);
 		gpio_request_mux(MX27_PIN_USBH1_RXDP, GPIO_MUX_ALT);
@@ -100,11 +92,11 @@ void gpio_uart_active(int port, int ir_mode)
 	}
 }
 
-/*!
+/*
  * Setup GPIO for a UART port to be inactive
  *
- * @param  port         a UART port
- * @param  ir_mode      indicates if the port is used for SIR
+ * port         a UART port
+ * ir_mode      indicates if the port is used for SIR
  */
 void gpio_uart_inactive(int port, int ir_mode)
 {
@@ -161,30 +153,27 @@ void gpio_uart_inactive(int port, int ir_mode)
 	}
 }
 
-/*!
+/*
  * Configure the IOMUX GPR register to receive shared SDMA UART events
  *
- * @param  port         a UART port
+ * port         a UART port
  */
 void config_uartdma_event(int port)
 {
 	return;
 }
 
-/*!
- * Setup GPIO for USB, Total 34 signals
- * PIN Configuration for USBOTG:   High/Full speed OTG
- *	PE2,PE1,PE0,PE24,PE25 -- PRIMARY
- 	PC7 - PC13  -- PRIMARY
- 	PB23,PB24 -- PRIMARY
+/* --------------------------------------------------------------------
+ * USB
+ * -------------------------------------------------------------------- */
 
-  * PIN Configuration for USBH2:    : High/Full/Low speed host
-  *	PA0 - PA4 -- PRIMARY
-       PD19, PD20,PD21,PD22,PD23,PD24,PD26 --Alternate (SECONDARY)
-
-  * PIN Configuration for USBH1:  Full/low speed host
-  *  PB25 - PB31  -- PRIMARY
-      PB22  -- PRIMARY
+/*
+ * Setup GPIO for USBH1 to be active
+ *
+ * USBH1 is not used on the Litekit because its pins are multiplexed
+ * with LCD and OTG.  It may be possible to modify the hardware or use a
+ * different baseboard to use this interface.
+ *
  */
 int gpio_usbh1_active(void)
 {
@@ -198,10 +187,12 @@ int gpio_usbh1_active(void)
 	    gpio_request_mux(MX27_PIN_USBH1_RXDP, GPIO_MUX_PRIMARY))
 		return -EINVAL;
 
-	//__raw_writew(PBC_BCTRL3_FSH_MOD, PBC_BCTRL3_CLEAR_REG);
-	//__raw_writew(PBC_BCTRL3_FSH_VBUS_EN, PBC_BCTRL3_CLEAR_REG);
 	return 0;
 }
+
+/*
+ * Setup GPIO for USBH1 to be inactive
+ */
 void gpio_usbh1_inactive(void)
 {
 	gpio_free_mux(MX27_PIN_USBH1_SUSP);
@@ -212,11 +203,15 @@ void gpio_usbh1_inactive(void)
 	gpio_free_mux(MX27_PIN_USBH1_TXDP);
 	gpio_free_mux(MX27_PIN_USBH1_RXDM);
 	gpio_free_mux(MX27_PIN_USBH1_RXDP);
-	//__raw_writew(PBC_BCTRL3_FSH_VBUS_EN, PBC_BCTRL3_SET_REG);
 }
 
 /*
- * conflicts with CSPI1 (MC13783) and CSPI2 (Connector)
+ * Setup GPIO for USBH2 to be active
+ *
+ * USBH2 conflicts with CSPI1 (MC13783) and CSPI2 (Connector).  CSPI1 is
+ * still usable with USBH2 enabled, but only two of the three slave select
+ * pins are active.
+ *
  */
 int gpio_usbh2_active(void)
 {
@@ -250,9 +245,12 @@ int gpio_usbh2_active(void)
 	    gpio_request_mux(MX27_PIN_USB_PWR, GPIO_MUX_PRIMARY))
 		return -EINVAL;
 
-	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_CLEAR_REG);
 	return 0;
 }
+
+/*
+ * Setup GPIO for USBH2 to be inactive
+ */
 void gpio_usbh2_inactive(void)
 {
 	gpio_free_mux(MX27_PIN_USBH2_CLK);
@@ -284,9 +282,11 @@ void gpio_usbh2_inactive(void)
 
 	gpio_free_mux(MX27_PIN_USB_OC_B);
 	gpio_free_mux(MX27_PIN_USB_PWR);
-	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_SET_REG);
 }
 
+/*
+ * Setup GPIO for USBOTG to be active
+ */
 int gpio_usbotg_hs_active(void)
 {
 	if (gpio_request_mux(MX27_PIN_USBOTG_DATA5, GPIO_MUX_PRIMARY) ||
@@ -312,12 +312,12 @@ int gpio_usbotg_hs_active(void)
 	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDP, 1); /* USB1_nOC */
 	mxc_set_gpio_dataout(MX27_PIN_USBH1_TXDM, 0);
 
-	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_CLEAR_REG);
-	//__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC_BCTRL3_CLEAR_REG);
-
 	return 0;
 }
 
+/*
+ * Setup GPIO for USBOTG to be inactive
+ */
 void gpio_usbotg_hs_inactive(void)
 {
 	gpio_free_mux(MX27_PIN_USBOTG_DATA5);
@@ -336,7 +336,6 @@ void gpio_usbotg_hs_inactive(void)
 
 	gpio_free_mux(MX27_PIN_USBH1_TXDM);
 	gpio_free_mux(MX27_PIN_USBH1_TXDP);
-	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_SET_REG);
 }
 
 int gpio_usbotg_fs_active(void)
@@ -349,21 +348,16 @@ void gpio_usbotg_fs_inactive(void)
 	gpio_usbotg_hs_inactive();
 }
 
-/*!
- * end Setup GPIO for USB
- *
- */
 
-/************************************************************************/
-/* for i2c gpio                                                         */
-/* I2C1:  PD17,PD18 -- Primary 					*/
-/* I2C2:  PC5,PC6    -- Primary					*/
-/************************************************************************/
-/*!
-* Setup GPIO for an I2C device to be active
-*
-* @param  i2c_num         an I2C device
-*/
+/* --------------------------------------------------------------------
+ * I2C
+ * -------------------------------------------------------------------- */
+
+/*
+ * Setup GPIO for I2C device to be active
+ *
+ * i2c_num         an I2C device
+ */
 void gpio_i2c_active(int i2c_num)
 {
 	switch (i2c_num) {
@@ -381,10 +375,10 @@ void gpio_i2c_active(int i2c_num)
 	}
 }
 
-/*!
- *  * Setup GPIO for an I2C device to be inactive
- *   *
- *    * @param  i2c_num         an I2C device
+/*
+ * Setup GPIO for an I2C device to be inactive
+ *
+ * i2c_num         an I2C device
  */
 void gpio_i2c_inactive(int i2c_num)
 {
@@ -402,10 +396,15 @@ void gpio_i2c_inactive(int i2c_num)
 	}
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * CSPI
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for a CSPI device to be active
  *
- * @param  cspi_mod         an CSPI device
+ * cspi_mod         an CSPI device
  */
 void gpio_spi_active(int cspi_mod)
 {
@@ -446,10 +445,10 @@ void gpio_spi_active(int cspi_mod)
 	}
 }
 
-/*!
+/*
  * Setup GPIO for a CSPI device to be inactive
  *
- * @param  cspi_mod         a CSPI device
+ * cspi_mod         a CSPI device
  */
 void gpio_spi_inactive(int cspi_mod)
 {
@@ -488,17 +487,16 @@ void gpio_spi_inactive(int cspi_mod)
 	}
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * NAND
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for a nand flash device to be active
- *
  */
 void gpio_nand_active(void)
 {
-	unsigned long reg;
-	//reg = __raw_readl(IO_ADDRESS(SYSCTRL_BASE_ADDR) + SYS_FMCR);
-	//reg &= ~(1 << 4);
-	//__raw_writel(reg, IO_ADDRESS(SYSCTRL_BASE_ADDR) + SYS_FMCR);
-
 	gpio_request_mux(MX27_PIN_NFRB, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_NFCE_B, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_NFWP_B, GPIO_MUX_PRIMARY);
@@ -508,9 +506,8 @@ void gpio_nand_active(void)
 	gpio_request_mux(MX27_PIN_NFWE_B, GPIO_MUX_PRIMARY);
 }
 
-/*!
+/*
  * Setup GPIO for a nand flash device to be inactive
- *
  */
 void gpio_nand_inactive(void)
 {
@@ -523,9 +520,13 @@ void gpio_nand_inactive(void)
 	gpio_free_mux(MX27_PIN_NFWE_B);
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * CSI (Camera Sensor Interface)
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for CSI device to be active
- *
  */
 void gpio_sensor_active(void)
 {
@@ -541,14 +542,11 @@ void gpio_sensor_active(void)
 	gpio_request_mux(MX27_PIN_CSI_D7, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_CSI_VSYNC, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_CSI_HSYNC, GPIO_MUX_PRIMARY);
-
-#ifdef CONFIG_MXC_CAMERA_MC521DA
-	//__raw_writew(0x100, PBC_BCTRL2_SET_REG);
-#else
-	//__raw_writew(0x400, PBC_BCTRL2_SET_REG);
-#endif
 }
 
+/*
+ * Setup GPIO for CSI device to be inactive
+ */
 void gpio_sensor_inactive(void)
 {
 	gpio_free_mux(MX27_PIN_CSI_D0);
@@ -563,30 +561,20 @@ void gpio_sensor_inactive(void)
 	gpio_free_mux(MX27_PIN_CSI_D7);
 	gpio_free_mux(MX27_PIN_CSI_VSYNC);
 	gpio_free_mux(MX27_PIN_CSI_HSYNC);
-
-#ifdef CONFIG_MXC_CAMERA_MC521DA
-	//__raw_writew(0x100, PBC_BCTRL2_CLEAR_REG);
-#else
-	//__raw_writew(0x400, PBC_BCTRL2_CLEAR_REG);
-#endif
 }
 
 void gpio_sensor_reset(bool flag)
 {
-	u16 temp;
-
-	if (flag) {
-		temp = 0x200;
-		//__raw_writew(temp, PBC_BCTRL2_CLEAR_REG);
-	} else {
-		temp = 0x200;
-//		__raw_writew(temp, PBC_BCTRL2_SET_REG);
-	}
+	/* TODO: Write me */
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * LCD Controller
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for LCDC device to be active
- *
  */
 void gpio_lcdc_active(void)
 {
@@ -619,9 +607,8 @@ void gpio_lcdc_active(void)
 	gpio_request_mux(MX27_PIN_OE_ACD, GPIO_MUX_PRIMARY);
 }
 
-/*!
+/*
  * Setup GPIO for LCDC device to be inactive
- *
  */
 void gpio_lcdc_inactive(void)
 {
@@ -654,9 +641,8 @@ void gpio_lcdc_inactive(void)
 	gpio_free_mux(MX27_PIN_OE_ACD);
 }
 
-/*!
+/*
  * Setup GPIO PA25 low to start hard reset FS453 TV encoder
- *
  */
 void gpio_fs453_reset_low(void)
 {
@@ -672,9 +658,8 @@ void gpio_fs453_reset_low(void)
 	mxc_set_gpio_dataout(MX27_PIN_CLS, 0);
 }
 
-/*!
+/*
  * Setup GPIO PA25 high to end hard reset FS453 TV encoder
- *
  */
 void gpio_fs453_reset_high(void)
 {
@@ -690,9 +675,13 @@ void gpio_fs453_reset_high(void)
 	mxc_set_gpio_dataout(MX27_PIN_CLS, 1);
 }
 
-/*!
- * This function configures the IOMux block for PMIC standard operations.
- *
+
+/* --------------------------------------------------------------------
+ * PMIC/Atlas
+ * -------------------------------------------------------------------- */
+
+/*
+ * Configure the IOMux block for PMIC standard operations.
  */
 void gpio_pmic_active(void)
 {
@@ -700,25 +689,32 @@ void gpio_pmic_active(void)
 	mxc_set_gpio_direction(MX27_PIN_TOUT, 1);
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * Keypad
+ * -------------------------------------------------------------------- */
+
+/*
  * GPIO settings not required for keypad
- *
  */
 void gpio_keypad_active(void)
 {
 }
 
-/*!
+/*
  * GPIO settings not required for keypad
- *
  */
 void gpio_keypad_inactive(void)
 {
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * ATA
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for ATA device to be active
- *
  */
 void gpio_ata_active(void)
 {
@@ -752,20 +748,13 @@ void gpio_ata_active(void)
 	gpio_request_mux(MX27_PIN_IOIS16, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_RW_B, GPIO_MUX_ALT);
 	gpio_request_mux(MX27_PIN_PC_POE, GPIO_MUX_ALT);
-
-	//__raw_writew(PBC_BCTRL2_ATAFEC_EN | PBC_BCTRL2_ATAFEC_SEL |
-	//	     PBC_BCTRL2_ATA_EN, PBC_BCTRL2_CLEAR_REG);
 }
 
-/*!
+/*
  * Setup GPIO for ATA device to be inactive
- *
  */
 void gpio_ata_inactive(void)
 {
-	//__raw_writew(PBC_BCTRL2_ATAFEC_EN | PBC_BCTRL2_ATAFEC_SEL |
-	//	     PBC_BCTRL2_ATA_EN, PBC_BCTRL2_SET_REG);
-
 	gpio_free_mux(MX27_PIN_ATA_DATA0);
 	gpio_free_mux(MX27_PIN_ATA_DATA1);
 	gpio_free_mux(MX27_PIN_ATA_DATA2);
@@ -798,9 +787,13 @@ void gpio_ata_inactive(void)
 	gpio_free_mux(MX27_PIN_PC_POE);
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * Ethernet (FEC)
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for FEC device to be active
- *
  */
 void gpio_fec_active(void)
 {
@@ -840,14 +833,10 @@ void gpio_fec_active(void)
 	mxc_set_gpio_direction(MX27_PIN_SD3_CLK, 0);
 	gpio_request_mux(MX27_PIN_SD3_CMD, GPIO_MUX_OUTPUT1);
 	mxc_set_gpio_direction(MX27_PIN_SD3_CMD, 0);
-
-	//__raw_writew(PBC_BCTRL2_ATAFEC_EN, PBC_BCTRL2_CLEAR_REG);
-	//__raw_writew(PBC_BCTRL2_ATAFEC_SEL, PBC_BCTRL2_SET_REG);
 }
 
-/*!
+/*
  * Setup GPIO for FEC device to be inactive
- *
  */
 void gpio_fec_inactive(void)
 {
@@ -872,25 +861,29 @@ void gpio_fec_inactive(void)
 	gpio_free_mux(MX27_PIN_SD3_CLK);
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * SLCD Controller
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for SLCDC device to be active
- *
  */
 void gpio_slcdc_active(int type)
 {
 	switch (type) {
 	case 0:
-		gpio_request_mux(MX27_PIN_SSI3_CLK, GPIO_MUX_ALT);	/* CLK */
-		gpio_request_mux(MX27_PIN_SSI3_TXDAT, GPIO_MUX_ALT);	/* CS  */
-		gpio_request_mux(MX27_PIN_SSI3_RXDAT, GPIO_MUX_ALT);	/* RS  */
-		gpio_request_mux(MX27_PIN_SSI3_FS, GPIO_MUX_ALT);	/* D0  */
+		gpio_request_mux(MX27_PIN_SSI3_CLK, GPIO_MUX_ALT);   /* CLK */
+		gpio_request_mux(MX27_PIN_SSI3_TXDAT, GPIO_MUX_ALT); /* CS  */
+		gpio_request_mux(MX27_PIN_SSI3_RXDAT, GPIO_MUX_ALT); /* RS  */
+		gpio_request_mux(MX27_PIN_SSI3_FS, GPIO_MUX_ALT);    /* D0  */
 		break;
 
 	case 1:
-		gpio_request_mux(MX27_PIN_SD2_D1, GPIO_MUX_GPIO);	/* CLK */
-		gpio_request_mux(MX27_PIN_SD2_D2, GPIO_MUX_GPIO);	/* D0  */
-		gpio_request_mux(MX27_PIN_SD2_D3, GPIO_MUX_GPIO);	/* RS  */
-		gpio_request_mux(MX27_PIN_SD2_CMD, GPIO_MUX_GPIO);	/* CS  */
+		gpio_request_mux(MX27_PIN_SD2_D1, GPIO_MUX_GPIO);    /* CLK */
+		gpio_request_mux(MX27_PIN_SD2_D2, GPIO_MUX_GPIO);    /* D0  */
+		gpio_request_mux(MX27_PIN_SD2_D3, GPIO_MUX_GPIO);    /* RS  */
+		gpio_request_mux(MX27_PIN_SD2_CMD, GPIO_MUX_GPIO);   /* CS  */
 		break;
 
 	case 2:
@@ -919,9 +912,8 @@ void gpio_slcdc_active(int type)
 	return;
 }
 
-/*!
+/*
  * Setup GPIO for SLCDC device to be inactive
- *
  */
 void gpio_slcdc_inactive(int type)
 {
@@ -966,6 +958,16 @@ void gpio_slcdc_inactive(int type)
 	return;
 }
 
+
+/* --------------------------------------------------------------------
+ * SSI
+ * -------------------------------------------------------------------- */
+
+/*
+ * Setup GPIO for a SSI port to be active
+ *
+ * ssi_num         an SSI port num
+ */
 void gpio_ssi_active(int ssi_num)
 {
 	switch (ssi_num) {
@@ -995,12 +997,11 @@ void gpio_ssi_active(int ssi_num)
 	return;
 }
 
-/*!
- *  * Setup GPIO for a SSI port to be inactive
- *   *
- *    * @param  ssi_num         an SSI port num
+/*
+ * Setup GPIO for a SSI port to be inactive
+ *
+ * ssi_num         an SSI port num
  */
-
 void gpio_ssi_inactive(int ssi_num)
 {
 	switch (ssi_num) {
@@ -1022,14 +1023,18 @@ void gpio_ssi_inactive(int ssi_num)
 	return;
 }
 
-/*!
+
+/* --------------------------------------------------------------------
+ * SDHC (Secure Digital Controller)
+ * -------------------------------------------------------------------- */
+
+/*
  * Setup GPIO for SDHC to be active
  *
- * @param module SDHC module number
+ * module SDHC module number
  */
 void gpio_sdhc_active(int module)
 {
-	u16 data;
 	switch (module) {
 	case 0:
 		gpio_request_mux(MX27_PIN_SD1_CLK, GPIO_MUX_PRIMARY);
@@ -1038,12 +1043,6 @@ void gpio_sdhc_active(int module)
 		gpio_request_mux(MX27_PIN_SD1_D1, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD1_D2, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD1_D3, GPIO_MUX_PRIMARY);
-		/* 22k pull up for sd1 dat3 pins */
-		//data = __raw_readw(IO_ADDRESS(SYSCTRL_BASE_ADDR + 0x54));
-		//data |= 0x0c;
-		//__raw_writew(data, IO_ADDRESS(SYSCTRL_BASE_ADDR + 0x54));
-		/*mxc_clks_enable(SDHC1_CLK);
-		   mxc_clks_enable(PERCLK2); */
 		break;
 	case 1:
 		gpio_request_mux(MX27_PIN_SD2_CLK, GPIO_MUX_PRIMARY);
@@ -1053,18 +1052,11 @@ void gpio_sdhc_active(int module)
 		gpio_request_mux(MX27_PIN_SD2_D2, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD2_D3, GPIO_MUX_PRIMARY);
 
-		// Pins for Write-protect and Chip Select
+		/* Pins for Write-protect and Chip Select */
 		gpio_request_mux(MX27_PIN_USBH1_RCV, GPIO_MUX_GPIO);
 		mxc_set_gpio_direction(MX27_PIN_USBH1_RCV, 1);
 		gpio_request_mux(MX27_PIN_USBH1_SUSP, GPIO_MUX_GPIO);
 		mxc_set_gpio_direction(MX27_PIN_USBH1_SUSP, 1);
-		/* 22k pull up for sd2 pins */
-		//data = __raw_readw(IO_ADDRESS(SYSCTRL_BASE_ADDR + 0x54));
-		//data &= ~0xfff0;
-		//data |= 0xfff0;
-		//__raw_writew(data, IO_ADDRESS(SYSCTRL_BASE_ADDR + 0x54));
-		/*mxc_clks_enable(SDHC2_CLK);
-		   mxc_clks_enable(PERCLK2); */
 		break;
 	case 2:
 		gpio_request_mux(MX27_PIN_SD3_CLK, GPIO_MUX_PRIMARY);
@@ -1073,18 +1065,16 @@ void gpio_sdhc_active(int module)
 		gpio_request_mux(MX27_PIN_ATA_DATA1, GPIO_MUX_ALT);
 		gpio_request_mux(MX27_PIN_ATA_DATA2, GPIO_MUX_ALT);
 		gpio_request_mux(MX27_PIN_ATA_DATA3, GPIO_MUX_ALT);
-		/*mxc_clks_enable(SDHC3_CLK);
-		   mxc_clks_enable(PERCLK2); */
 		break;
 	default:
 		break;
 	}
 }
 
-/*!
+/*
  * Setup GPIO for SDHC1 to be inactive
  *
- * @param module SDHC module number
+ * module SDHC module number
  */
 void gpio_sdhc_inactive(int module)
 {
@@ -1096,7 +1086,6 @@ void gpio_sdhc_inactive(int module)
 		gpio_free_mux(MX27_PIN_SD1_D1);
 		gpio_free_mux(MX27_PIN_SD1_D2);
 		gpio_free_mux(MX27_PIN_SD1_D3);
-		/*mxc_clks_disable(SDHC1_CLK); */
 		break;
 	case 1:
 		gpio_free_mux(MX27_PIN_SD2_CLK);
@@ -1107,7 +1096,6 @@ void gpio_sdhc_inactive(int module)
 		gpio_free_mux(MX27_PIN_SD2_D3);
 		gpio_free_mux(MX27_PIN_USBH1_RCV);
 		gpio_free_mux(MX27_PIN_USBH1_SUSP);
-		/*mxc_clks_disable(SDHC2_CLK); */
 		break;
 	case 2:
 		gpio_free_mux(MX27_PIN_SD3_CLK);
@@ -1116,7 +1104,6 @@ void gpio_sdhc_inactive(int module)
 		gpio_free_mux(MX27_PIN_ATA_DATA1);
 		gpio_free_mux(MX27_PIN_ATA_DATA2);
 		gpio_free_mux(MX27_PIN_ATA_DATA3);
-		/*mxc_clks_disable(SDHC3_CLK); */
 		break;
 	default:
 		break;
@@ -1139,10 +1126,10 @@ int sdhc_init_card_det(int id)
 	int ret = 0;
 	switch (id) {
 	case 0:
-		ret = EXPIO_INT_SD1_EN;
+		ret = 0;
 		break;
 	case 1:
-		ret = EXPIO_INT_SD2_EN;
+		ret = 0;
 		break;
 	default:
 		ret = 0;
@@ -1151,15 +1138,17 @@ int sdhc_init_card_det(int id)
 	return ret;
 }
 
+
+/* --------------------------------------------------------------------
+ * Miscellaneous
+ * -------------------------------------------------------------------- */
+
 /*
  * Power on/off Sharp QVGA panel.
  */
 void board_power_lcd(int on)
 {
-	//if (on)
-	//	__raw_writew(PBC_BCTRL1_LCDON, PBC_BCTRL1_SET_REG);
-	//else
-	//	__raw_writew(PBC_BCTRL1_LCDON, PBC_BCTRL1_CLEAR_REG);
+	/* TODO: Write me */
 }
 
 void gpio_owire_active(void)
