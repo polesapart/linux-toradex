@@ -13,6 +13,7 @@
 
 #include <linux/errno.h>
 #include <linux/module.h>
+#include <linux/platform_device.h>
 #include <linux/device.h>
 #include <asm/io.h>
 #include <asm/hardware.h>
@@ -1051,6 +1052,12 @@ void gpio_sdhc_active(int module)
 		gpio_request_mux(MX27_PIN_SD2_D1, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD2_D2, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD2_D3, GPIO_MUX_PRIMARY);
+
+		// Pins for Write-protect and Chip Select
+		gpio_request_mux(MX27_PIN_USBH1_RCV, GPIO_MUX_GPIO);
+		mxc_set_gpio_direction(MX27_PIN_USBH1_RCV, 1);
+		gpio_request_mux(MX27_PIN_USBH1_SUSP, GPIO_MUX_GPIO);
+		mxc_set_gpio_direction(MX27_PIN_USBH1_SUSP, 1);
 		/* 22k pull up for sd2 pins */
 		//data = __raw_readw(IO_ADDRESS(SYSCTRL_BASE_ADDR + 0x54));
 		//data &= ~0xfff0;
@@ -1098,6 +1105,8 @@ void gpio_sdhc_inactive(int module)
 		gpio_free_mux(MX27_PIN_SD2_D1);
 		gpio_free_mux(MX27_PIN_SD2_D2);
 		gpio_free_mux(MX27_PIN_SD2_D3);
+		gpio_free_mux(MX27_PIN_USBH1_RCV);
+		gpio_free_mux(MX27_PIN_USBH1_SUSP);
 		/*mxc_clks_disable(SDHC2_CLK); */
 		break;
 	case 2:
