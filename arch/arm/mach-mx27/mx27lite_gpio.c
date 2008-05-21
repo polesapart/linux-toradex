@@ -244,7 +244,9 @@ int gpio_usbh2_active(void)
 	    gpio_request_mux(MX27_PIN_CSPI2_SCLK, GPIO_MUX_ALT) ||
 	    gpio_request_mux(MX27_PIN_CSPI2_MISO, GPIO_MUX_ALT) ||
 	    gpio_request_mux(MX27_PIN_CSPI2_MOSI, GPIO_MUX_ALT) ||
-	    gpio_request_mux(MX27_PIN_CSPI1_SS2, GPIO_MUX_ALT))
+	    gpio_request_mux(MX27_PIN_CSPI1_SS2, GPIO_MUX_ALT) ||
+	    gpio_request_mux(MX27_PIN_USB_OC_B, GPIO_MUX_PRIMARY) ||
+	    gpio_request_mux(MX27_PIN_USB_PWR, GPIO_MUX_PRIMARY))
 		return -EINVAL;
 
 	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_CLEAR_REG);
@@ -278,6 +280,9 @@ void gpio_usbh2_inactive(void)
 	gpio_set_puen(MX27_PIN_CSPI2_MISO, 1);
 	gpio_set_puen(MX27_PIN_CSPI2_MOSI, 1);
 	gpio_set_puen(MX27_PIN_CSPI1_SS2, 1);
+
+	gpio_free_mux(MX27_PIN_USB_OC_B);
+	gpio_free_mux(MX27_PIN_USB_PWR);
 	//__raw_writew(PBC_BCTRL3_HSH_EN, PBC_BCTRL3_SET_REG);
 }
 
@@ -297,9 +302,14 @@ int gpio_usbotg_hs_active(void)
 	    gpio_request_mux(MX27_PIN_USBOTG_CLK, GPIO_MUX_PRIMARY) ||
 	    gpio_request_mux(MX27_PIN_USBOTG_DATA7, GPIO_MUX_PRIMARY) ||
 
-	    gpio_request_mux(MX27_PIN_USB_OC_B, GPIO_MUX_PRIMARY) ||
-	    gpio_request_mux(MX27_PIN_USB_PWR, GPIO_MUX_PRIMARY))
+	    /* Use TXDM and TXDP pins as power and Overcurrent control */
+	    gpio_request_mux(MX27_PIN_USBH1_TXDM, GPIO_MUX_GPIO) ||
+	    gpio_request_mux(MX27_PIN_USBH1_TXDP, GPIO_MUX_GPIO))
 		return -EINVAL;
+
+	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDM, 0); /* USB1_PWR_nEN */
+	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDP, 1); /* USB1_nOC */
+	mxc_set_gpio_dataout(MX27_PIN_USBH1_TXDM, 0);
 
 	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_CLEAR_REG);
 	//__raw_writew(PBC_BCTRL3_OTG_VBUS_EN, PBC_BCTRL3_CLEAR_REG);
@@ -323,8 +333,8 @@ void gpio_usbotg_hs_inactive(void)
 	gpio_free_mux(MX27_PIN_USBOTG_CLK);
 	gpio_free_mux(MX27_PIN_USBOTG_DATA7);
 
-	gpio_free_mux(MX27_PIN_USB_OC_B);
-	gpio_free_mux(MX27_PIN_USB_PWR);
+	gpio_free_mux(MX27_PIN_USBH1_TXDM);
+	gpio_free_mux(MX27_PIN_USBH1_TXDP);
 	//__raw_writew(PBC_BCTRL3_OTG_HS_EN, PBC_BCTRL3_SET_REG);
 }
 
@@ -407,7 +417,11 @@ void gpio_spi_active(int cspi_mod)
 		gpio_request_mux(MX27_PIN_CSPI1_RDY, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_CSPI1_SS0, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_CSPI1_SS1, GPIO_MUX_PRIMARY);
+
+/* This pin conflicts with the USB Host 2 Interface. */
+#if !defined(CONFIG_USB_EHCI_ARC_H2)
 		gpio_request_mux(MX27_PIN_CSPI1_SS2, GPIO_MUX_PRIMARY);
+#endif
 		break;
 	case 1:
 		/*SPI2  */
@@ -420,10 +434,10 @@ void gpio_spi_active(int cspi_mod)
 		break;
 	case 2:
 		/*SPI3  */
-		gpio_request_mux(MX27_PIN_SD1_D0, GPIO_MUX_ALT);
-		gpio_request_mux(MX27_PIN_SD1_CMD, GPIO_MUX_ALT);
-		gpio_request_mux(MX27_PIN_SD1_CLK, GPIO_MUX_ALT);
-		gpio_request_mux(MX27_PIN_SD1_D3, GPIO_MUX_ALT);
+		gpio_request_mux(MX27_PIN_SD1_D0, GPIO_MUX_ALT);  /* MISO */
+		gpio_request_mux(MX27_PIN_SD1_CMD, GPIO_MUX_ALT); /* MOSI */
+		gpio_request_mux(MX27_PIN_SD1_CLK, GPIO_MUX_ALT); /* SCLK */
+		gpio_request_mux(MX27_PIN_SD1_D3, GPIO_MUX_ALT);  /* SS */
 		break;
 
 	default:
@@ -447,7 +461,9 @@ void gpio_spi_inactive(int cspi_mod)
 		gpio_free_mux(MX27_PIN_CSPI1_RDY);
 		gpio_free_mux(MX27_PIN_CSPI1_SS0);
 		gpio_free_mux(MX27_PIN_CSPI1_SS1);
+#if !defined(CONFIG_USB_EHCI_ARC_H2)
 		gpio_free_mux(MX27_PIN_CSPI1_SS2);
+#endif
 		break;
 	case 1:
 		/*SPI2  */

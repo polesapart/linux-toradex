@@ -161,37 +161,22 @@ static inline void mxc_init_keypad(void)
 
 static struct mtd_partition mxc_nor_partitions[] = {
 	{
-	 .name = "Bootloader",
-	 .size = 512 * 1024,
+	 .name = "nor.bootloader",
+	 .size = 256 * 1024,
 	 .offset = 0x00000000,
 	 .mask_flags = MTD_WRITEABLE	/* force read-only */
 	 },
 	{
-	 .name = "nor.Kernel",
-	 .size = 2 * 1024 * 1024,
+	 .name = "nor.config",
+	 .size = 64 * 1024,
 	 .offset = MTDPART_OFS_APPEND,
-	 .mask_flags = 0},
-	{
-	 .name = "nor.userfs",
-	 .size = 14 * 1024 * 1024,
-	 .offset = MTDPART_OFS_APPEND,
-	 .mask_flags = 0},
-	{
-	 .name = "nor.rootfs",
-	 .size = 12 * 1024 * 1024,
-	 .offset = MTDPART_OFS_APPEND,
-	 .mask_flags = MTD_WRITEABLE},
-	{
-	 .name = "FIS directory",
-	 .size = 12 * 1024,
-	 .offset = 0x01FE0000,
 	 .mask_flags = MTD_WRITEABLE	/* force read-only */
 	 },
 	{
-	 .name = "Redboot config",
+	 .name = "nor.extra",
 	 .size = MTDPART_SIZ_FULL,
-	 .offset = 0x01FFF000,
-	 .mask_flags = MTD_WRITEABLE	/* force read-only */
+	 .offset = MTDPART_OFS_APPEND,
+	 .mask_flags = 0
 	 },
 };
 
