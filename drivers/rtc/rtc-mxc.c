@@ -317,13 +317,25 @@ static int rtc_update_alarm(struct device *dev, struct rtc_time *alrm)
  */
 static irqreturn_t mxc_rtc_interrupt(int irq, void *dev_id)
 {
-	struct platform_device *pdev = dev_id;
-	struct rtc_plat_data *pdata = platform_get_drvdata(pdev);
-	void __iomem *ioaddr = pdata->ioaddr;
+	struct platform_device *pdev;
+	struct rtc_plat_data *pdata;
+	void __iomem *ioaddr;
 	u32 status;
 	u32 events = 0;
 	spin_lock(&rtc_lock);
-	status = readw(ioaddr + RTC_RTCISR) & readw(ioaddr + RTC_RTCIENR);
+	status = readw(IO_ADDRESS(RTC_BASE_ADDR + RTC_RTCISR)) &
+			readw(IO_ADDRESS(RTC_BASE_ADDR + RTC_RTCIENR));
+
+	/* This IRQ is shared, so make sure an interrupt really occurred */
+	if (unlikely(!status)) {
+		spin_unlock(&rtc_lock);
+		return IRQ_NONE;
+	}
+		
+	pdev = dev_id;
+	pdata = platform_get_drvdata(pdev);
+	ioaddr = pdata->ioaddr;
+
 	/* clear interrupt sources */
 	writew(status, ioaddr + RTC_RTCISR);
 
