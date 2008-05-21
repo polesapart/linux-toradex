@@ -212,6 +212,8 @@ struct fec_enet_private {
 	/* Hardware registers of the FEC device */
 	volatile fec_t	*hwp;
 
+	struct net_device *netdev;
+
 	/* The saved address of a sent-in-place packet/buffer, for skfree(). */
 	unsigned char *tx_bounce[TX_RING_SIZE];
 	struct	sk_buff* tx_skbuff[TX_RING_SIZE];
@@ -226,6 +228,7 @@ struct fec_enet_private {
 	cbd_t	*tx_bd_base;
 	cbd_t	*cur_rx, *cur_tx;		/* The next free ring entry */
 	cbd_t	*dirty_tx;	/* The ring entries to be free()ed. */
+	struct	net_device_stats stats;
 	uint	tx_full;
 	spinlock_t lock;
 
@@ -235,7 +238,6 @@ struct fec_enet_private {
 	uint	phy_speed;
 	phy_info_t const	*phy;
 	struct work_struct phy_task;
-	struct net_device *net;
 
 	uint	sequence_done;
 	uint	mii_phy_task_queued;
@@ -556,6 +558,7 @@ fec_enet_tx(struct net_device *dev)
 	spin_lock(&fep->lock);
 	bdp = fep->dirty_tx;
 
+
 	while (((status = bdp->cbd_sc) & BD_ENET_TX_READY) == 0) {
 		if (bdp == fep->cur_tx && fep->tx_full == 0) break;
 
@@ -652,7 +655,8 @@ while (!((status = bdp->cbd_sc) & BD_ENET_RX_EMPTY)) {
 	 * the last indicator should be set.
 	 */
 	if ((status & BD_ENET_RX_LAST) == 0)
-		printk("FEC ENET: rcv is not +last\n");
+		printk("FEC ENET: rcv is not +last %lu, %lu\n",
+				dev->stats.tx_packets,dev->stats.rx_packets);
 #endif
 
 	if (!fep->opened)
@@ -710,8 +714,10 @@ while (!((status = bdp->cbd_sc) & BD_ENET_RX_EMPTY)) {
 		if ((pkt_len - 4) < fec_copy_threshold) {
 			skb_reserve(skb, 2);    /*skip 2bytes, so ipheader is align 4bytes*/
 			skb_put(skb,pkt_len-4); /* Make room */
-			eth_copy_and_sum(skb, (unsigned char *)data, 
-					pkt_len-4, 0);
+			skb_copy_to_linear_data(skb, (unsigned char *)data,
+					pkt_len-4);
+			//eth_copy_and_sum(skb, (unsigned char *)data, 
+			//		pkt_len-4, 0);
 		} else {
 			struct sk_buff * pskb = fep->rx_skbuff[rx_index];
 			
@@ -957,6 +963,65 @@ static phy_info_t const phy_info_lxt970 = {
 	.startup = phy_cmd_lxt970_startup,
 	.ack_int = phy_cmd_lxt970_ack_int,
 	.shutdown = phy_cmd_lxt970_shutdown
+};
+/* ------------------------------------------------------------------------- */
+/* The Level one LAN8700 is used by many boards				     */
+
+#define MII_LAN8700_IER       30  /* Interrupt Enable Register */
+#define MII_LAN8700_ISR       29  /* Interrupt Status Register */
+#define MII_LAN8700_CSR       20  /* Chip Status Register      */
+
+static void mii_parse_lan8700_csr(uint mii_reg, struct net_device *dev)
+{
+	struct fec_enet_private *fep = netdev_priv(dev);
+	volatile uint *s = &(fep->phy_status);
+	uint status;
+
+	status = *s & ~(PHY_STAT_SPMASK);
+	if (mii_reg & 0x0800) {
+		if (mii_reg & 0x1000)
+			status |= PHY_STAT_100FDX;
+		else
+			status |= PHY_STAT_100HDX;
+	} else {
+		if (mii_reg & 0x1000)
+			status |= PHY_STAT_10FDX;
+		else
+			status |= PHY_STAT_10HDX;
+	}
+	*s = status;
+}
+
+static phy_cmd_t const phy_cmd_lan8700_config[] = {
+		{ mk_mii_read(MII_REG_CR), mii_parse_cr },
+		{ mk_mii_read(MII_REG_ANAR), mii_parse_anar },
+		{ mk_mii_end, }
+	};
+static phy_cmd_t const phy_cmd_lan8700_startup[] = { /* enable interrupts */
+		{ mk_mii_write(MII_LAN8700_IER, 0x0002), NULL },
+		{ mk_mii_write(MII_REG_CR, 0x1200), NULL }, /* autonegotiate */
+		{ mk_mii_end, }
+	};
+static phy_cmd_t const phy_cmd_lan8700_ack_int[] = {
+		/* read SR and ISR to acknowledge */
+		{ mk_mii_read(MII_REG_SR), mii_parse_sr },
+		{ mk_mii_read(MII_LAN8700_ISR), NULL },
+
+		/* find out the current status */
+		{ mk_mii_read(MII_LAN8700_CSR), mii_parse_lan8700_csr },
+		{ mk_mii_end, }
+	};
+static phy_cmd_t const phy_cmd_lan8700_shutdown[] = { /* disable interrupts */
+		{ mk_mii_write(MII_LAN8700_IER, 0x0000), NULL },
+		{ mk_mii_end, }
+	};
+static phy_info_t const phy_info_lan8700 = {
+	.id = 0x00007c0c,
+	.name = "LAN8700",
+	.config = phy_cmd_lan8700_config,
+	.startup = phy_cmd_lan8700_startup,
+	.ack_int = phy_cmd_lan8700_ack_int,
+	.shutdown = phy_cmd_lan8700_shutdown
 };
 
 /* ------------------------------------------------------------------------- */
@@ -1286,6 +1351,7 @@ static phy_info_t phy_info_dp83848= {
 
 static phy_info_t const * const phy_info[] = {
 	&phy_info_lxt970,
+	&phy_info_lan8700,
 	&phy_info_lxt971,
 	&phy_info_qs6612,
 	&phy_info_am79c874,
@@ -2018,7 +2084,6 @@ static void __inline__ fec_unmap_uncache(void *  addr)
 
 extern void gpio_fec_active(void);
 extern void gpio_fec_inactive(void);
-extern unsigned int expio_intr_fec;
 
 /*
  * do some initializtion based architecture of this chip
@@ -2053,10 +2118,26 @@ static void __inline__ fec_request_intrs(struct net_device *dev)
 	/* Setup interrupt handlers. */
 	if (request_irq(INT_FEC, fec_enet_interrupt, 0, "fec", dev) != 0)
 		panic("FEC: Could not allocate FEC IRQ(%d)!\n", INT_FEC);
+
+#if 0
 	/* TODO: disable now due to CPLD issue */
-	if (request_irq(expio_intr_fec, mii_link_interrupt, 0, "fec(MII)", dev) != 0)
-		panic("FEC: Could not allocate FEC(MII) IRQ(%d)!\n", expio_intr_fec);
-	disable_irq(expio_intr_fec);
+	if (request_irq(EXPIO_INT_FEC, mii_link_interrupt, 0, "fec(MII)", dev) != 0)
+		panic("FEC: Could not allocate FEC(MII) IRQ(%d)!\n", EXPIO_INT_FEC);
+	disable_irq(EXPIO_INT_FEC);
+#endif
+}
+
+static void __inline__ fec_release_intrs(struct net_device *dev)
+{
+#if 0
+	disable_irq(EXPIO_INT_FEC);
+#endif
+	disable_irq(INT_FEC);
+
+#if 0
+	free_irq(EXPIO_INT_FEC, dev);
+#endif
+	free_irq(INT_FEC, dev);
 }
 
 static void __inline__ fec_set_mii(struct net_device *dev, struct fec_enet_private *fep)
@@ -2088,29 +2169,58 @@ static void __inline__ fec_get_mac(struct net_device *dev)
 	volatile fec_t *fecp;
 	unsigned char *iap, tmpaddr[ETH_ALEN];
 	int i;
+	unsigned long l;
+	unsigned char mac_preinitialized;
 	unsigned long fec_mac_base = FEC_IIM_BASE + MXC_IIMKEY0;
 	fecp = fep->hwp;
 
-	if (cpu_is_mx27_rev(CHIP_REV_2_0) > 0) {
+	//if (mx27_revision() >= CHIP_REV_2_0) {
 		fec_mac_base = FEC_IIM_BASE + MXC_IIMMAC;
+	//}
+
+	/* check if mac address was already initialized by firmware */
+	l=fecp->fec_addr_low;
+	tmpaddr[0] = (unsigned char)((l & 0xFF000000) >> 24);
+	tmpaddr[1] = (unsigned char)((l & 0x00FF0000) >> 16);
+	tmpaddr[2] = (unsigned char)((l & 0x0000FF00) >> 8);
+	tmpaddr[3] = (unsigned char)((l & 0x000000FF) >> 0);
+	l=fecp->fec_addr_high;
+	tmpaddr[4] = (unsigned char)((l & 0xFF000000) >> 24);
+	tmpaddr[5] = (unsigned char)((l & 0x00FF0000) >> 16);
+
+	for (i=0; i<ETH_ALEN; i++)
+		mac_preinitialized |= tmpaddr[i];
+
+	if (mac_preinitialized) {
+		iap = &tmpaddr[0];
+		goto set_mac;
 	}
 
-	/*
-	 * Get MAC address from IIM.
-	 * If it is all 1's or 0's, use the default.
-	 */
+	/* get mac accress from iim; feature is undocumented */
 	for (i = 0; i < ETH_ALEN; i++) {
 		tmpaddr[ETH_ALEN-1-i] = __raw_readb(fec_mac_base + i * 4);
 	}
 	iap = &tmpaddr[0];
 
-	if ((iap[0] == 0) && (iap[1] == 0) && (iap[2] == 0) &&
-            (iap[3] == 0) && (iap[4] == 0) && (iap[5] == 0))
-                iap = fec_mac_default;
-        if ((iap[0] == 0xff) && (iap[1] == 0xff) && (iap[2] == 0xff) &&
-	    (iap[3] == 0xff) && (iap[4] == 0xff) && (iap[5] == 0xff))
-	        iap = fec_mac_default;
+	mac_preinitialized = 0x00; /* uninitialized if all 00 */
+	for (i=0; i<ETH_ALEN; i++)
+		mac_preinitialized |= tmpaddr[i];
+	if (mac_preinitialized) {
+		iap = fec_mac_default;
+		goto set_mac;
+	}
 
+	mac_preinitialized = 0xff; /* uninitialized if all FF */
+	for (i=0; i<ETH_ALEN; i++)
+		mac_preinitialized &= tmpaddr[i];
+	if (mac_preinitialized != 0xff) {
+		iap = fec_mac_default;
+		goto set_mac;
+	}
+
+	iap = &tmpaddr[0];
+
+set_mac:
         memcpy(dev->dev_addr, iap, ETH_ALEN);
 
         /* Adjust MAC if using default MAC address */
@@ -2120,17 +2230,23 @@ static void __inline__ fec_get_mac(struct net_device *dev)
 
 static void __inline__ fec_enable_phy_intr(void)
 {
-	enable_irq(expio_intr_fec);
+#if 0
+	enable_irq(EXPIO_INT_FEC);
+#endif
 }
 
 static void __inline__ fec_disable_phy_intr(void)
 {
-	disable_irq(expio_intr_fec);
+#if 0
+	disable_irq(EXPIO_INT_FEC);
+#endif
 }
 
 static void __inline__ fec_phy_ack_intr(void)
 {
-	disable_irq(expio_intr_fec);
+#if 0
+	disable_irq(EXPIO_INT_FEC);
+#endif
 }
 
 static void __inline__ fec_localhw_setup(void)
@@ -2140,18 +2256,20 @@ static void __inline__ fec_localhw_setup(void)
 /*
  * invalidate dcache related with the virtual memory range(start, end)
  */
-static void __inline__ fec_dcache_inv_range(void * start, void * end)
+static void __inline__ fec_dcache_inv_range(void *start, void *end)
 {
-	dma_sync_single(NULL, (unsigned long)__pa(start), (unsigned long) (end-start), DMA_FROM_DEVICE);
+	dma_sync_single(NULL, (unsigned long)__pa(start),
+	                (unsigned long)(end - start), DMA_FROM_DEVICE);
 	return ;
 }
 
 /*
  * flush dcache related with the virtual memory range(start, end)
  */
-static void __inline__ fec_dcache_flush_range(void * start, void * end)
+static void __inline__ fec_dcache_flush_range(void *start, void *end)
 {
-	dma_sync_single(NULL, (unsigned long)__pa(start), (unsigned long) (end-start), DMA_BIDIRECTIONAL);
+	dma_sync_single(NULL, (unsigned long)__pa(start),
+	                (unsigned long)(end - start), DMA_BIDIRECTIONAL);
 	return ;
 }
 
@@ -2374,7 +2492,7 @@ static void mii_display_config(struct work_struct *work)
 {
 	struct fec_enet_private *fep =
 		container_of(work, struct fec_enet_private, phy_task);
-	struct net_device *dev = fep->net;
+	struct net_device *dev = fep->netdev;
 	uint status = fep->phy_status;
 
 	/*
@@ -2412,7 +2530,7 @@ static void mii_relink(struct work_struct *work)
 {
 	struct fec_enet_private *fep =
 		container_of(work, struct fec_enet_private, phy_task);
-	struct net_device *dev = fep->net;
+	struct net_device *dev = fep->netdev;
 	int duplex;
 
 	/*
@@ -2521,7 +2639,7 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 	fecp = fep->hwp;
 
 	if (fep->phy_addr < 32) {
-		if ((phytype = (mii_reg & 0xffff)) != 0xffff && phytype != 0) {
+		if ((phytype = (mii_reg & 0xffff)) != 0x7fff && phytype != 0) {
 
 			/* Got first part of ID, now get remainder.
 			*/
@@ -2745,7 +2863,7 @@ int __init fec_enet_init(struct net_device *dev)
 	if (index >= FEC_MAX_PORTS)
 		return -ENXIO;
 
-	fep->net = dev;
+	fep->netdev = dev;
 
 	spin_lock_init(&(fep->lock));
 
