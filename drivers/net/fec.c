@@ -2644,8 +2644,6 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 			/* Got first part of ID, now get remainder.
 			*/
 			fep->phy_id = phytype << 16;
-			printk("phy_addr=%04x, phy_id=0x%08x\n",fep->phy_addr,
-					fep->phy_id);
 			mii_queue(dev, mk_mii_read(MII_REG_PHYIR2),
 							mii_discover_phy3);
 		} else {
