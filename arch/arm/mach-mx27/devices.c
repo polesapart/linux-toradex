@@ -32,10 +32,6 @@
   * @ingroup MSL_MX27
   */
 
-#ifndef CONFIG_MX27_DPTC
-extern struct dptc_wp dptc_wp_allfreq[DPTC_WP_SUPPORTED];
-#endif
-
 static void mxc_nop_release(struct device *dev)
 {
 	/* Nothing */
@@ -591,22 +587,6 @@ struct mxc_gpio_port mxc_gpio_ports[GPIO_PORT_NUM] = {
 	 },
 };
 
-#ifndef CONFIG_MX27_DPTC
-/*! Device Definition for DPTC */
-static struct platform_device mxc_dptc_device = {
-	.name = "mxc_dptc",
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &dptc_wp_allfreq,
-		},
-};
-
-static inline void mxc_init_dptc(void)
-{
-	(void)platform_device_register(&mxc_dptc_device);
-}
-#endif
-
 #if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
 static struct clk *ata_clk;
 extern void gpio_ata_active(void);
@@ -697,9 +677,6 @@ static int __init mxc_init_devices(void)
 	mxc_init_scc();
 	mxc_init_owire();
 	mxc_init_vpu();
-#ifndef CONFIG_MX27_DPTC
-	mxc_init_dptc();
-#endif
 	mxc_init_pata();
 
 	return 0;

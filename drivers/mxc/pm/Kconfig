@@ -6,7 +6,7 @@ menu "Advanced Power Management devices"
 
 config MXC_DPTC
 	bool "MXC DPTC driver"
-	depends on ARCH_MX3 && MXC_PMIC_MC13783
+	depends on ARCH_MX3 && MXC_MC13783_POWER
 	default y
 	help
 	   This selects the Freescale MXC Internal DPTC driver.
@@ -14,7 +14,7 @@ config MXC_DPTC
 
 config MX27_DPTC
 	bool "MXC DPTC driver"
-	depends on ARCH_MX27 && MXC_PMIC_MC13783
+	depends on ARCH_MX27 && MXC_MC13783_POWER
 	default y
 	help
 	   This selects the Freescale MX27 Internal DPTC driver.
