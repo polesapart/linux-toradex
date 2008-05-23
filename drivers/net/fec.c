@@ -2618,7 +2618,7 @@ mii_discover_phy3(uint mii_reg, struct net_device *dev)
 
 	if (phy_info[i])
 		printk(" -- %s\n", phy_info[i]->name);
-	else
+	else 
 		printk(" -- unknown PHY!\n");
 
 	fep->phy = phy_info[i];
@@ -2639,11 +2639,13 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 	fecp = fep->hwp;
 
 	if (fep->phy_addr < 32) {
-		if ((phytype = (mii_reg & 0xffff)) != 0x7fff && phytype != 0) {
+		if ((phytype = (mii_reg & 0x3fff)) != 0x3fff && phytype != 0) {
 
 			/* Got first part of ID, now get remainder.
 			*/
 			fep->phy_id = phytype << 16;
+			printk("phy_addr=%04x, phy_id=0x%08x\n",fep->phy_addr,
+					fep->phy_id);
 			mii_queue(dev, mk_mii_read(MII_REG_PHYIR2),
 							mii_discover_phy3);
 		} else {
