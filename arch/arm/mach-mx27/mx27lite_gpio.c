@@ -605,6 +605,11 @@ void gpio_lcdc_active(void)
 	gpio_request_mux(MX27_PIN_VSYNC, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_CONTRAST, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_OE_ACD, GPIO_MUX_PRIMARY);
+
+	gpio_request_mux(MX27_PIN_SSI2_CLK,GPIO_MUX_GPIO); /* Backlight Power */
+	mxc_set_gpio_direction(MX27_PIN_SSI2_CLK,0);
+	gpio_request_mux(MX27_PIN_USBH1_RXDP,GPIO_MUX_GPIO); /* Panel Power */
+	mxc_set_gpio_direction(MX27_PIN_USBH1_RXDP,0);
 }
 
 /*
@@ -639,6 +644,8 @@ void gpio_lcdc_inactive(void)
 	gpio_free_mux(MX27_PIN_VSYNC);
 	gpio_free_mux(MX27_PIN_CONTRAST);
 	gpio_free_mux(MX27_PIN_OE_ACD);
+	gpio_free_mux(MX27_PIN_SSI2_CLK);
+	gpio_free_mux(MX27_PIN_USBH1_RXDP);
 }
 
 /*
@@ -1148,7 +1155,10 @@ int sdhc_init_card_det(int id)
  */
 void board_power_lcd(int on)
 {
-	/* TODO: Write me */
+	if (on)
+		mxc_set_gpio_dataout(MX27_PIN_USBH1_RXDP,1);
+	else
+		mxc_set_gpio_dataout(MX27_PIN_USBH1_RXDP,0);
 }
 
 void gpio_owire_active(void)
