@@ -317,12 +317,8 @@ static void __init mxc_init_pmic_audio(void)
 	ssi_clk = clk_get(NULL, "ssi_clk.0");
 	clk_enable(ssi_clk);
 	clk_put(ssi_clk);
-	ssi_clk = clk_get(NULL, "ssi_clk.1");
-	clk_enable(ssi_clk);
-	clk_put(ssi_clk);
 
 	gpio_ssi_active(0);
-	gpio_ssi_active(1);
 }
 #else
 static void __init mxc_init_pmic_audio(void)
