@@ -39,13 +39,23 @@
 /* GPIO related defines */
 #if defined(CONFIG_ARCH_MX27)
 enum gpio_reg {
+	GPIO_GDIR = 0x00, /* GPIO_DDIR */
+	GPIO_OCR1 = 0x04,
+	GPIO_OCR2 = 0x08,
+	GPIO_ICONFA1 = 0x0C,
+	GPIO_ICONFA2 = 0x10,
+	GPIO_ICONFB1 = 0x14,
+	GPIO_ICONFB2 = 0x18,
 	GPIO_DR = 0x1C,
-	GPIO_GDIR = 0x00,
-	GPIO_PSR = 0x24,
+	GPIO_GIUS = 0x20,
+	GPIO_SSR = 0x24,
 	GPIO_ICR1 = 0x028,
 	GPIO_ICR2 = 0x2C,
 	GPIO_IMR = 0x30,
 	GPIO_ISR = 0x34,
+	GPIO_GPR = 0x38,
+	GPIO_SWR = 0x3C,
+	GPIO_PUEN = 0x40,
 };
 #else
 enum gpio_reg {
@@ -190,7 +200,11 @@ int mxc_get_gpio_datain(iomux_pin_name_t pin)
 
 	port = get_gpio_port(gpio);
 
+#ifdef CONFIG_ARCH_MX27
+	return (__raw_readl(port->base + GPIO_SSR) >> GPIO_TO_INDEX(gpio)) & 1;
+#else
 	return (__raw_readl(port->base + GPIO_DR) >> GPIO_TO_INDEX(gpio)) & 1;
+#endif
 }
 
 /*
