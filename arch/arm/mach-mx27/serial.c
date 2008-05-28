@@ -23,7 +23,12 @@
 #include <asm/hardware.h>
 #include <asm/arch/mxc_uart.h>
 #include "serial.h"
+
+#ifdef CONFIG_MACH_MX27LITE
+#include "board-mx27lite.h"
+#else
 #include "board-mx27ads.h"
+#endif
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 
@@ -254,14 +259,25 @@ static struct platform_device mxc_uart_device6 = {
 static int __init mxc_init_uart(void)
 {
 	/* Register all the MXC UART platform device structures */
+
+if (UART1_ENABLED == 1)
 	platform_device_register(&mxc_uart_device1);
+
+if (UART2_ENABLED == 1)
 	platform_device_register(&mxc_uart_device2);
+
+if (UART3_ENABLED == 1)
 	platform_device_register(&mxc_uart_device3);
 
+if (UART4_ENABLED == 1)
 	platform_device_register(&mxc_uart_device4);
 
+if (UART5_ENABLED == 1)
 	platform_device_register(&mxc_uart_device5);
+
+if (UART6_ENABLED == 1)
 	platform_device_register(&mxc_uart_device6);
+
 	return 0;
 }
 

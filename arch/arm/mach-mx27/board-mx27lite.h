@@ -47,15 +47,15 @@
 /* UART 1 configuration */
 #define UART1_MODE         MODE_DCE
 #define UART1_IR           NO_IRDA
-#define UART1_ENAB         1
+#define UART1_ENABLED      1
 /* UART 2 configuration */
 #define UART2_MODE         MODE_DCE
 #define UART2_IR           NO_IRDA
-#define UART2_ENABLED      1
+#define UART2_ENABLED      0
 /* UART 3 configuration */
 #define UART3_MODE         MODE_DCE
-#define UART3_IR           IRDA
-#define UART3_ENABLED      1
+#define UART3_IR           NO_IRDA
+#define UART3_ENABLED      0
 /* UART 4 configuration */
 #define UART4_MODE         MODE_DTE
 #define UART4_IR           NO_IRDA
@@ -63,11 +63,11 @@
 /* UART 5 configuration */
 #define UART5_MODE         MODE_DTE
 #define UART5_IR           NO_IRDA
-#define UART5_ENABLED      1
+#define UART5_ENABLED      0
 /* UART 6 configuration */
 #define UART6_MODE         MODE_DTE
 #define UART6_IR           NO_IRDA
-#define UART6_ENABLED      1
+#define UART6_ENABLED      0
 
 #define MXC_LL_UART_PADDR       UART1_BASE_ADDR
 #define MXC_LL_UART_VADDR       AIPI_IO_ADDRESS(UART1_BASE_ADDR)
