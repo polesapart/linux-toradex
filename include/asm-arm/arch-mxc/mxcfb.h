@@ -29,6 +29,9 @@
 #define FB_SYNC_CLK_IDLE_EN	0x10000000
 #define FB_SYNC_SHARP_MODE	0x08000000
 #define FB_SYNC_SWAP_RGB	0x04000000
+#define FB_SYNC_FLM_ACT_LOW	0x01000000
+#define FB_SYNC_LP_ACT_LOW	0x00800000
+#define FB_SYNC_CLK_POS_EDGE	0x00400000
 
 struct mxcfb_gbl_alpha {
 	int enable;

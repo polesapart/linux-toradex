@@ -1066,6 +1066,9 @@ static void _update_lcdc(struct fb_info *info)
 	pcr |= (var->sync & FB_SYNC_CLK_INVERT) ? 0x01000000 : 0;
 	pcr |= (var->sync & FB_SYNC_SHARP_MODE) ? 0x00000040 : 0;
 	pcr |= (var->sync & FB_SYNC_OE_ACT_HIGH) ? 0 : 0x00100000;
+	pcr |= (var->sync & FB_SYNC_FLM_ACT_LOW) ? 0x00800000 : 0;
+	pcr |= (var->sync & FB_SYNC_LP_ACT_LOW) ? 0x00400000 : 0;
+	pcr |= (var->sync & FB_SYNC_CLK_POS_EDGE) ? 0x00200000 : 0;
 	__raw_writel(pcr, LCDC_REG(LCDC_LPCR));
 
 	/* Horizontal and vertical configuration register */
