@@ -232,64 +232,6 @@ static struct spi_board_info mxc_spi_board_info[] __initdata = {
 
 
 /* --------------------------------------------------------------------
- * MMC/SD
- * -------------------------------------------------------------------- */
-#if defined(CONFIG_MMC_MXC) || defined(CONFIG_MMC_MXC_MODULE)
-/*!
- * Check if a SD card has been inserted or not.
- *
- * @param  num		a card number as defined in \b enum \b mxc_card_no
- * @return 0 if a card is not present; non-zero otherwise.
- */
-int mxc_card_detected(enum mxc_card_no num)
-{
-	u32 status;
-
-	status = __raw_readw(PBC_BSTAT1_REG);
-	return ((status & MXC_BSTAT_BIT(num)) == 0);
-}
-EXPORT_SYMBOL(mxc_card_detected);
-
-/*
- * Check if there is any state change by reading the IMR register and the
- * previous and current states of the board status register (offset 0x28).
- * A state change is defined to be card insertion OR removal. So the driver
- * may have to call the mxc_card_detected() function to see if it is card
- * insertion or removal.
- *
- * @param  mask		current IMR value
- * @param  s0		previous status register value (offset 0x28)
- * @param  s1		current status register value (offset 0x28)
- *
- * @return 0 if no card status change OR the corresponding bits in the IMR
- *           (passed in as 'mask') is NOT set.
- *         A non-zero value indicates some card state changes. For example,
- *         0b0001 means SD3 has a card state change (bit0 is set) AND its
- *               associated insertion or removal bits in IMR is SET.
- *         0b0100 means SD1 has a card state change (bit2 is set) AND its
- *               associated insertion or removal bits in IMR is SET.
- *         0b1001 means both MS and SD3 have state changes
- */
-static u32 mxc_card_state_changed(u32 mask, u32 s0, u32 s1)
-{
-	u32 i, retval = 0;
-	u32 stat = (s0 ^ s1) & 0x7800;
-
-	if (stat == 0)
-		return 0;
-
-	for (i = MXC_CARD_MIN; i <= MXC_CARD_MAX; i++) {
-		if ((stat & pbc_card_bit[i][0]) != 0 &&
-		    (mask & (pbc_card_bit[i][1] | pbc_card_bit[i][2])) != 0) {
-			retval |= 1 << i;
-		}
-	}
-	return retval;
-}
-#endif
-
-
-/* --------------------------------------------------------------------
  * PMIC Audio
  * -------------------------------------------------------------------- */
 #if defined(CONFIG_MXC_PMIC_MC13783) && defined(CONFIG_SND_MXC_PMIC)
