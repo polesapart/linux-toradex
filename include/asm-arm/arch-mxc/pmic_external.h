@@ -127,8 +127,6 @@ typedef struct {
 #define PMIC_ALL_BITS           0xFFFFFF
 #define PMIC_MAX_EVENTS		48
 
-#ifdef CONFIG_MXC_PMIC_MC13783
-
 #define PMIC_ARBITRATION	"NULL"
 /*!
  * This is the enumeration of register names of MC13783
@@ -796,7 +794,6 @@ typedef struct {
 	 */
 	bool sense_clks;
 } t_sensor_bits;
-#endif
 
 
 /* EXPORTED FUNCTIONS */

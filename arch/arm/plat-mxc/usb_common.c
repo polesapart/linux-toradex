@@ -333,9 +333,8 @@ static void usbh2_set_ulpi_xcvr(void)
 	    UCTRL_H2PM;		/* power mask */
 #endif
 
-	UH2_PORTSC1 &= ~PORTSC_PTS_MASK;	/* set ULPI xcvr */
-	UH2_PORTSC1 |= PORTSC_PTS_ULPI;
-
+	/* set ULPI xcvr */
+	UH2_PORTSC1 = (UH2_PORTSC1 & ~PORTSC_PTS_MASK) | PORTSC_PTS_ULPI;
 	/* Turn off the usbpll for ulpi tranceivers */
 	clk_disable(usb_clk);
 }
