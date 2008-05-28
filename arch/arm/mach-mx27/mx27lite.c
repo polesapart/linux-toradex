@@ -193,7 +193,7 @@ static void __init mxc_init_nand_mtd(void)
  * -------------------------------------------------------------------- */
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 
-static const char fb_default_mode[] = "Sharp-QVGA";
+static const char fb_default_mode[] = "Sharp-VGA";
 
 /* mxc lcd driver */
 static struct platform_device mxc_fb_device = {

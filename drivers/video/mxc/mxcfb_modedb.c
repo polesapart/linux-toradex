@@ -59,21 +59,35 @@ struct fb_videomode mxcfb_modedb[] = {
 	 0, FB_VMODE_NONINTERLACED, 0,
 	 },
 	{
-          /* 640x480 @ 60 Hz */
-          "Sharp-VGA",
-          60, 640, 480,   // 60 Hz, 640x480
-          35285,      // 35.285 ns clock period
-          128, 128,   // left & right margin
-          34, 10,      // upper & lower margin
-          2, 2,      // hsync & vsync len
-          0
-          //| FB_SYNC_CLK_IDLE_EN
-          | FB_SYNC_OE_ACT_HIGH
-          //| FB_SYNC_HOR_HIGH_ACT
-          ,
-          FB_VMODE_NONINTERLACED,
-          0,
-          },
+	 /* 640x480 @ 60 Hz */
+	 "Sharp-VGA",
+         60, 640, 480,   // 60 Hz, 640x480
+	 35285,      // 35.285 ns clock period
+	 134, 34,   // left & right margin
+	 30, 10,      // upper & lower margin
+	 21, 5,      // hsync & vsync len
+	 0
+	 | FB_SYNC_FLM_ACT_LOW
+	 | FB_SYNC_LP_ACT_LOW
+	 | FB_SYNC_CLK_POS_EDGE
+	 ,
+	 FB_VMODE_NONINTERLACED,
+	 0,
+	},
+	{
+	 /* 800x600 @ 60 Hz */
+	 "Sharp-SVGA",
+	 60, 800, 600, // 60 Hz, 640x480
+	 25000, // 25.000 ns clock period
+	 104, 104, // left & right margin
+	 28, 95, // upper & lower margin
+	 8, 4, // hsync & vsync len
+	 0
+	 | FB_SYNC_OE_ACT_HIGH
+	 ,
+	 FB_VMODE_NONINTERLACED,
+	 0,
+	},
 };
 
 int mxcfb_modedb_sz = ARRAY_SIZE(mxcfb_modedb);
