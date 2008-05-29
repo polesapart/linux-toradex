@@ -1042,6 +1042,8 @@ void gpio_ssi_inactive(int ssi_num)
  */
 void gpio_sdhc_active(int module)
 {
+	u16 data;
+
 	switch (module) {
 	case 0:
 		gpio_request_mux(MX27_PIN_SD1_CLK, GPIO_MUX_PRIMARY);
@@ -1050,6 +1052,11 @@ void gpio_sdhc_active(int module)
 		gpio_request_mux(MX27_PIN_SD1_D1, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD1_D2, GPIO_MUX_PRIMARY);
 		gpio_request_mux(MX27_PIN_SD1_D3, GPIO_MUX_PRIMARY);
+
+		/* 22k pull up for sd1 dat3 pins */
+		data = __raw_readw(SYS_PSCR);
+		data |= 0x0c;
+		__raw_writew(data, SYS_PSCR);
 		break;
 	case 1:
 		gpio_request_mux(MX27_PIN_SD2_CLK, GPIO_MUX_PRIMARY);
@@ -1064,6 +1071,12 @@ void gpio_sdhc_active(int module)
 		mxc_set_gpio_direction(MX27_PIN_USBH1_RCV, 1);
 		gpio_request_mux(MX27_PIN_USBH1_SUSP, GPIO_MUX_GPIO);
 		mxc_set_gpio_direction(MX27_PIN_USBH1_SUSP, 1);
+
+		/* 22k pull up for sd2 pins */
+		data = __raw_readw(SYS_PSCR);
+		data &= ~0xfff0;
+		data |= 0xfff0;
+		__raw_writew(data, SYS_PSCR);
 		break;
 	case 2:
 		gpio_request_mux(MX27_PIN_SD3_CLK, GPIO_MUX_PRIMARY);
@@ -1122,7 +1135,14 @@ void gpio_sdhc_inactive(int module)
  */
 int sdhc_get_card_det_status(struct device *dev)
 {
-	return 0;
+	int ret = 0;
+
+	switch (to_platform_device(dev)->id) {
+	case 1:
+		ret = mxc_get_gpio_datain(MX27_PIN_USBH1_SUSP);
+		break;
+	}
+	return ret;
 }
 
 /*
@@ -1131,15 +1151,10 @@ int sdhc_get_card_det_status(struct device *dev)
 int sdhc_init_card_det(int id)
 {
 	int ret = 0;
+
 	switch (id) {
-	case 0:
-		ret = 0;
-		break;
 	case 1:
-		ret = 0;
-		break;
-	default:
-		ret = 0;
+		ret = IOMUX_TO_IRQ(MX27_PIN_USBH1_SUSP);
 		break;
 	}
 	return ret;
