@@ -497,6 +497,13 @@ void gpio_spi_inactive(int cspi_mod)
  */
 void gpio_nand_active(void)
 {
+	unsigned long reg;
+
+	/* Ensure 8-Bit operation */
+	reg = __raw_readl(SYS_FMCR);
+	reg &= ~(1 << 4);
+	__raw_writel(reg, SYS_FMCR);
+
 	gpio_request_mux(MX27_PIN_NFRB, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_NFCE_B, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_NFWP_B, GPIO_MUX_PRIMARY);
