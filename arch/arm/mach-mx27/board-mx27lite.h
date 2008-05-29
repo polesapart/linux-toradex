@@ -93,6 +93,6 @@ enum mxc_card_no {
 /*
  * MXC PMIC/Atlas Chip Configuration
  */
-#define MXC_PMIC_INT_LINE       IOMUX_TO_IRQ(MX27_PIN_TOUT)
+#define MXC_PMIC_INT_LINE       IOMUX_TO_IRQ(MX27_PIN_SD1_D1)
 
 #endif				/* __BOARD_MX27LITE_H__ */

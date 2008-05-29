@@ -692,8 +692,8 @@ void gpio_fs453_reset_high(void)
  */
 void gpio_pmic_active(void)
 {
-	gpio_config_mux(MX27_PIN_TOUT, GPIO_MUX_GPIO);
-	mxc_set_gpio_direction(MX27_PIN_TOUT, 1);
+	gpio_config_mux(MX27_PIN_SD1_D1, GPIO_MUX_GPIO);
+	mxc_set_gpio_direction(MX27_PIN_SD1_D1, 1);
 }
 
 

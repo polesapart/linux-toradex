@@ -223,7 +223,7 @@ static void __init mxc_init_fb(void)
 static struct spi_board_info mxc_spi_board_info[] __initdata = {
 	{
 	 .modalias = "pmic_spi",
-	 .irq = IOMUX_TO_IRQ(MX27_PIN_TOUT),
+	 .irq = MXC_PMIC_INT_LINE,
 	 .max_speed_hz = 4000000,
 	 .bus_num = 1,
 	 .chip_select = 0,
