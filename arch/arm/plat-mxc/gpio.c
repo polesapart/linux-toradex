@@ -57,6 +57,8 @@ enum gpio_reg {
 	GPIO_SWR = 0x3C,
 	GPIO_PUEN = 0x40,
 };
+
+#define GPIO_PMASK (IO_ADDRESS(GPIO_BASE_ADDR) + 0x600)
 #else
 enum gpio_reg {
 	GPIO_DR = 0x00,
@@ -258,6 +260,24 @@ static inline void _set_gpio_irqenable(struct gpio_port *port, u32 index,
 	__raw_writel(l, reg);
 }
 
+/*
+ * Enable/disable a GPIO port's interrupt.
+ *
+ * @param port		gpio port number (A=0, B=1, etc.)
+ * @param enable	\b #true for enabling the interrupt; \b #false otherwise
+ */
+static inline void _set_gpio_port_irqenable(u32 port, bool enable)
+{
+	u32 reg = GPIO_PMASK;
+	u32 mask = (!enable) ? 0 : 1;
+	u32 l;
+		
+	/* Enable IRQ on port level */
+	l = __raw_readl(reg);
+	l = (l & (~(1 << port))) | (mask << port);
+	__raw_writel(l,reg);
+}
+
 static inline int _request_gpio(struct gpio_port *port, u32 index)
 {
 	spin_lock(&port->lock);
@@ -441,6 +461,10 @@ static void gpio_unmask_irq(u32 irq)
 	struct gpio_port *port = get_gpio_port(gpio);
 
 	_set_gpio_irqenable(port, GPIO_TO_INDEX(gpio), 1);
+
+#if defined(CONFIG_ARCH_MX27)
+	_set_gpio_port_irqenable(GPIO_TO_PORT(gpio), 1);
+#endif
 }
 
 /*
