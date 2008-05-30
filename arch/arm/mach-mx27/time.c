@@ -99,6 +99,7 @@ static void mxc_gpt_set_mode(enum clock_event_mode mode,
 		panic("MXC GPT: CLOCK_EVT_MODE_PERIODIC not supported\n");
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
+	case CLOCK_EVT_MODE_RESUME:
 		break;
 	case CLOCK_EVT_MODE_UNUSED:
 	case CLOCK_EVT_MODE_SHUTDOWN:
