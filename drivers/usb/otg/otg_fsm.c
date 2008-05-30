@@ -17,7 +17,7 @@
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <linux/usb.h>
-#include <linux/usb_gadget.h>
+#include <linux/usb/gadget.h>
 
 #include "otg_fsm.h"
 
