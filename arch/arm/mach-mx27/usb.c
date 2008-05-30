@@ -37,6 +37,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/usb/fsl_xcvr.h>
 #include <linux/usb/otg.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -195,7 +196,7 @@ static void udc_release(struct device *dev)
 	/* normally not freed */
 }
 
-static u64 udc_dmamask = ~(u32) 0;
+static u64 udc_dmamask = DMA_BIT_MASK(32);
 
 #if defined(CONFIG_MC13783_MXC)
 static struct fsl_usb2_platform_data mxc_serial_peripheral_config = {
@@ -232,7 +233,7 @@ static struct platform_device otg_udc_device = {
 	.dev  = {
 		.release           = udc_release,
 		.dma_mask          = &udc_dmamask,
-		.coherent_dma_mask = 0xffffffff,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
 #if defined(CONFIG_MC13783_MXC) || defined(CONFIG_ISP1301_MXC)
 		.platform_data     = &mxc_serial_peripheral_config,
 #elif defined(CONFIG_ISP1504_MXC)
@@ -263,7 +264,7 @@ static struct resource pindetect_resources[] = {
 	},
 };
 
-static u64 pindetect_dmamask = ~(u32) 0;
+static u64 pindetect_dmamask = DMA_BIT_MASK(32);
 
 static struct fsl_usb2_platform_data fsl_otg_config = {
 	.name            = "fsl_arc",
@@ -289,7 +290,7 @@ static struct platform_device fsl_device = {
 	.dev  = {
 		.release           = pindetect_release,
 		.dma_mask          = &pindetect_dmamask,
-		.coherent_dma_mask = 0xffffffff,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
 		.platform_data     = &fsl_otg_config,
 		},
 	.resource      = pindetect_resources,
