@@ -2618,8 +2618,17 @@ mii_discover_phy3(uint mii_reg, struct net_device *dev)
 
 	if (phy_info[i])
 		printk(" -- %s\n", phy_info[i]->name);
-	else 
-		printk(" -- unknown PHY!\n");
+	else {
+		printk(" -- unknown PHY!, forcing LAN8700\n");
+		for(i = 0; phy_info[i]; i++) {
+			if(phy_info[i]->id == 0x7c0c)
+				break;
+		}
+		if (phy_info[i])
+			printk(" -- %s\n", phy_info[i]->name);
+		else
+			printk(" Still -- unknown PHY!\n");
+	}
 
 	fep->phy = phy_info[i];
 	fep->phy_id_done = 1;
@@ -2637,9 +2646,8 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 
 	fep = netdev_priv(dev);
 	fecp = fep->hwp;
-
 	if (fep->phy_addr < 32) {
-		if ((phytype = (mii_reg & 0x3fff)) != 0x3fff && phytype != 0) {
+		if ((phytype = (mii_reg & 0x7fff)) != 0x7fff && phytype != 0) {
 
 			/* Got first part of ID, now get remainder.
 			*/
@@ -2653,9 +2661,11 @@ mii_discover_phy(uint mii_reg, struct net_device *dev)
 		}
 	} else {
 		printk("FEC: No PHY device found.\n");
+		mii_queue(dev, mk_mii_read(MII_REG_PHYIR2),
+						mii_discover_phy3);
 		/* Disable external MII interface */
-		fecp->fec_mii_speed = fep->phy_speed = 0;
-		fec_disable_phy_intr();
+		//fecp->fec_mii_speed = fep->phy_speed = 0;
+		//fec_disable_phy_intr();
 	}
 }
 

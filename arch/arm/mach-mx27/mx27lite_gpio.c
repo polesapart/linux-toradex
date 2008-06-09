@@ -186,7 +186,6 @@ int gpio_usbh1_active(void)
 	    gpio_request_mux(MX27_PIN_USBH1_RXDM, GPIO_MUX_PRIMARY) ||
 	    gpio_request_mux(MX27_PIN_USBH1_RXDP, GPIO_MUX_PRIMARY))
 		return -EINVAL;
-
 	return 0;
 }
 
@@ -311,7 +310,6 @@ int gpio_usbotg_hs_active(void)
 	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDM, 0); /* USB1_PWR_nEN */
 	mxc_set_gpio_direction(MX27_PIN_USBH1_TXDP, 1); /* USB1_nOC */
 	mxc_set_gpio_dataout(MX27_PIN_USBH1_TXDM, 0);
-
 	return 0;
 }
 
@@ -732,6 +730,7 @@ void gpio_keypad_inactive(void)
  */
 void gpio_ata_active(void)
 {
+	printk("\n\nATA active, don't think this is right\n\n");
 	gpio_request_mux(MX27_PIN_ATA_DATA0, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA1, GPIO_MUX_PRIMARY);
 	gpio_request_mux(MX27_PIN_ATA_DATA2, GPIO_MUX_PRIMARY);
@@ -1167,6 +1166,121 @@ int sdhc_init_card_det(int id)
 	return ret;
 }
 
+int gpio_pcmcia_active(void)
+{
+	printk("Setting all pcmcia pins \n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x"
+			"\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x"
+			"\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_PC_CD1_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_CD2_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_WAIT_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_READY),
+			mxc_get_gpio_datain(MX27_PIN_PC_PWRON),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS1),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS1),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS2),
+			mxc_get_gpio_datain(MX27_PIN_PC_BVD1),
+			mxc_get_gpio_datain(MX27_PIN_PC_BVD2),
+			mxc_get_gpio_datain(MX27_PIN_PC_RST),
+			mxc_get_gpio_datain(MX27_PIN_IOIS16),
+			mxc_get_gpio_datain(MX27_PIN_PC_RW_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_POE));
+
+	printk("OUTPUT values 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_TOUT),
+			mxc_get_gpio_datain(MX27_PIN_TIN),
+			mxc_get_gpio_datain(MX27_PIN_SSI4_FS),
+		mxc_get_gpio_datain(MX27_PIN_SSI4_RXDAT) );
+	gpio_request_mux(MX27_PIN_SSI4_FS,GPIO_MUX_GPIO);
+	gpio_request_mux(MX27_PIN_SSI4_RXDAT,GPIO_MUX_GPIO);
+	mxc_set_gpio_direction( MX27_PIN_SSI4_FS, 0 );
+	mxc_set_gpio_direction( MX27_PIN_SSI4_RXDAT, 0 );
+	printk("OUTPUT values 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_TOUT),
+			mxc_get_gpio_datain(MX27_PIN_TIN),
+			mxc_get_gpio_datain(MX27_PIN_SSI4_FS),
+		mxc_get_gpio_datain(MX27_PIN_SSI4_RXDAT) );
+
+	printk("OUTPUT values 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_SSI3_FS),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_RXDAT),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_TXDAT),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_CLK) );
+	gpio_request_mux( MX27_PIN_SSI3_FS, GPIO_MUX_OUTPUT1);
+	gpio_request_mux( MX27_PIN_SSI3_RXDAT, GPIO_MUX_OUTPUT1);
+	gpio_request_mux( MX27_PIN_SSI3_TXDAT, GPIO_MUX_OUTPUT1);
+	gpio_request_mux( MX27_PIN_SSI3_CLK, GPIO_MUX_OUTPUT1);
+	mxc_set_gpio_direction( MX27_PIN_SSI3_FS, 1);
+	mxc_set_gpio_direction( MX27_PIN_SSI3_RXDAT, 1);
+	mxc_set_gpio_direction( MX27_PIN_SSI3_TXDAT, 1);
+	mxc_set_gpio_direction( MX27_PIN_SSI3_CLK, 1);
+	mxc_set_gpio_dataout( MX27_PIN_SSI3_FS, 1);
+	mxc_set_gpio_dataout( MX27_PIN_SSI3_RXDAT, 1);
+	mxc_set_gpio_dataout( MX27_PIN_SSI3_TXDAT, 1);
+	mxc_set_gpio_dataout( MX27_PIN_SSI3_CLK, 1);
+	printk("OUTPUT values 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_SSI3_FS),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_RXDAT),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_TXDAT),
+			mxc_get_gpio_datain(MX27_PIN_SSI3_CLK) );
+
+	if ( 
+		gpio_request_mux(MX27_PIN_PC_CD1_B, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_CD2_B, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_WAIT_B, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_READY, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_PWRON, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_VS1, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_VS2, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_BVD1, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_BVD2, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_RST, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_IOIS16, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_RW_B, GPIO_MUX_PRIMARY) ||
+		gpio_request_mux(MX27_PIN_PC_POE, GPIO_MUX_PRIMARY)
+	)
+		return -EINVAL;
+	printk("Setting all pcmcia pins \n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x"
+			"\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x"
+			"\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n\t0x%08x\n",
+			mxc_get_gpio_datain(MX27_PIN_PC_CD1_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_CD2_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_WAIT_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_READY),
+			mxc_get_gpio_datain(MX27_PIN_PC_PWRON),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS1),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS1),
+			mxc_get_gpio_datain(MX27_PIN_PC_VS2),
+			mxc_get_gpio_datain(MX27_PIN_PC_BVD1),
+			mxc_get_gpio_datain(MX27_PIN_PC_BVD2),
+			mxc_get_gpio_datain(MX27_PIN_PC_RST),
+			mxc_get_gpio_datain(MX27_PIN_IOIS16),
+			mxc_get_gpio_datain(MX27_PIN_PC_RW_B),
+			mxc_get_gpio_datain(MX27_PIN_PC_POE));
+
+	return 0;
+}
+
+/*!
+ * Setup GPIO for pcmcia to be inactive
+ */
+void gpio_pcmcia_inactive(void)
+{
+	gpio_free_mux(MX27_PIN_IOIS16);
+	gpio_free_mux(MX27_PIN_PC_BVD1);
+	gpio_free_mux(MX27_PIN_PC_BVD2);
+	gpio_free_mux(MX27_PIN_PC_CD1_B);
+	gpio_free_mux(MX27_PIN_PC_CD2_B);
+	gpio_free_mux(MX27_PIN_PC_POE);
+	gpio_free_mux(MX27_PIN_PC_PWRON);
+	gpio_free_mux(MX27_PIN_PC_READY);
+	gpio_free_mux(MX27_PIN_PC_RST);
+	gpio_free_mux(MX27_PIN_PC_RW_B);
+	gpio_free_mux(MX27_PIN_PC_VS1);
+	gpio_free_mux(MX27_PIN_PC_VS2);
+	gpio_free_mux(MX27_PIN_PC_WAIT_B);
+}
+
 
 /* --------------------------------------------------------------------
  * Miscellaneous
@@ -1233,5 +1347,7 @@ EXPORT_SYMBOL(gpio_sdhc_inactive);
 EXPORT_SYMBOL(sdhc_get_card_det_status);
 EXPORT_SYMBOL(sdhc_init_card_det);
 EXPORT_SYMBOL(board_power_lcd);
+EXPORT_SYMBOL(gpio_pcmcia_active);
+EXPORT_SYMBOL(gpio_pcmcia_inactive);
 EXPORT_SYMBOL(gpio_owire_active);
 EXPORT_SYMBOL(gpio_owire_inactive);

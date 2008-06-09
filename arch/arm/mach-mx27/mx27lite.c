@@ -308,7 +308,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
  * initialize __mach_desc_MX27LITE data structure.
  */
 /* *INDENT-OFF* */
-MACHINE_START(IMX27LITE, "LogicPD i.MX27LITE")
+MACHINE_START(MX27LITE, "LogicPD i.MX27LITE")
 	/* maintainer: TimeSys, Inc. */
 	.phys_io        = AIPI_BASE_ADDR,
 	.io_pg_offst    = ((AIPI_BASE_ADDR_VIRT) >> 18) & 0xfffc,

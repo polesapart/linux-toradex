@@ -283,6 +283,14 @@ config PCMCIA_MX31ADS
 
 	  This driver is also available as a module called mx31ads_pcmcia.
 	  
+config PCMCIA_MX27LITE
+	tristate "MX27LITE PCMCIA support"
+	depends on ARM && ARCH_MX27 && PCMCIA
+	help
+	  Say Y here to include support for the Freescale i.MX27 PCMCIA controller.
+
+	  This driver is also available as a module called mx27lite_pcmcia.
+	  
 config PCCARD_NONSTATIC
 	tristate
 

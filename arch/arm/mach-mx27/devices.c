@@ -527,6 +527,23 @@ static inline void mxc_init_i2c(void)
 }
 #endif
 
+#if defined(CONFIG_PCMCIA_MX27LITE) || defined(CONFIG_PCMCIA_MX27LITE_MODULE)
+
+static struct platform_device mx27lite_device = {
+	.name = "Mx27lite_pcmcia_soc",
+	.id = 0,
+	.dev.release = mxc_nop_release,
+};
+static inline void mxc_init_pcmcia(void)
+{
+	platform_device_register(&mx27lite_device);
+}
+#else
+static inline void mxc_init_pcmcia(void)
+{
+}
+#endif
+
 #ifdef	CONFIG_MXC_VPU
 /*! Platform Data for MXC VPU */
 static struct platform_device mxcvpu_device = {
@@ -676,6 +693,7 @@ static int __init mxc_init_devices(void)
 	mxc_init_rtc();
 	mxc_init_scc();
 	mxc_init_owire();
+	mxc_init_pcmcia();
 	mxc_init_vpu();
 	mxc_init_pata();
 
