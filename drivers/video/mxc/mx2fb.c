@@ -783,7 +783,7 @@ static int _map_video_memory(struct fb_info *info)
 					       info->fix.smem_len,
 					       (dma_addr_t *) & info->fix.
 					       smem_start,
-					       GFP_DMA | GFP_KERNEL);
+					       GFP_KERNEL);
 
 	if (info->screen_base == 0) {
 		dev_err(info->device, "Unable to allocate fb memory\n");
