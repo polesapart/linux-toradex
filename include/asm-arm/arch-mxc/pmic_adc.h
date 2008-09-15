@@ -100,15 +100,6 @@
  */
 #define TOUCH_SCREEN_READ_UNINSTALL     _IOWR('D',5, int)
 
-/*! @{ */
-/*!
- * @name Touch Screen minimum and maximum values
- */
-#define TS_X_MIN                80	/*! < Minimum X */
-#define TS_Y_MIN                80	/*! < Minimum Y */
-
-#define TS_X_MAX                1000	/*! < Maximum X */
-#define TS_Y_MAX                1000	/*! < Maximum Y */
 /*! @} */
 /*!
  * This enumeration defines input channels for PMIC ADC

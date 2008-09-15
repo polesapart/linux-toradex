@@ -231,169 +231,112 @@ static int pmic_adc_filter(t_touch_screen * ts_curr)
 {
 	unsigned int ydiff1, ydiff2, ydiff3, xdiff1, xdiff2, xdiff3;
 	unsigned int sample_sumx, sample_sumy;
-	static unsigned int prev_x[FILTLEN], prev_y[FILTLEN];
-	int index = 0;
+	static unsigned int prev_x, prev_y;
 	unsigned int y_curr, x_curr;
 	static int filt_count = 0;
-	/* Added a variable filt_type to decide filtering at run-time */
-	unsigned int filt_type = 0;
 
+	/* Reset the filter when contact is removed */
 	if (ts_curr->contact_resistance == 0) {
 		ts_curr->x_position = 0;
 		ts_curr->y_position = 0;
 		filt_count = 0;
+		prev_x = 0;
+		prev_y = 0;
 		return 0;
 	}
 
-	ydiff1 = abs(ts_curr->y_position1 - ts_curr->y_position2);
-	ydiff2 = abs(ts_curr->y_position2 - ts_curr->y_position3);
-	ydiff3 = abs(ts_curr->y_position1 - ts_curr->y_position3);
-	if ((ydiff1 > DELTA_Y_MAX) ||
-	    (ydiff2 > DELTA_Y_MAX) || (ydiff3 > DELTA_Y_MAX)) {
-		pr_debug("pmic_adc_filter: Ret pos 1\n");
-		return -1;
-	}
-
+	/* Compute the differences between the samples */
 	xdiff1 = abs(ts_curr->x_position1 - ts_curr->x_position2);
 	xdiff2 = abs(ts_curr->x_position2 - ts_curr->x_position3);
 	xdiff3 = abs(ts_curr->x_position1 - ts_curr->x_position3);
 
-	if ((xdiff1 > DELTA_X_MAX) ||
-	    (xdiff2 > DELTA_X_MAX) || (xdiff3 > DELTA_X_MAX)) {
-		pr_debug("mc13783_adc_filter: Ret pos 2\n");
-		return -1;
-	}
-	/* Compute two closer values among the three available Y readouts */
+	ydiff1 = abs(ts_curr->y_position1 - ts_curr->y_position2);
+	ydiff2 = abs(ts_curr->y_position2 - ts_curr->y_position3);
+	ydiff3 = abs(ts_curr->y_position1 - ts_curr->y_position3);
 
+	/*
+	 * Compute two closer values among the three available Y
+	 * readouts and use the average as the sample
+	 */
 	if (ydiff1 < ydiff2) {
 		if (ydiff1 < ydiff3) {
-			// Sample 0 & 1 closest together
+			// Sample 1 & 2 closest together
 			sample_sumy = ts_curr->y_position1 +
 			    ts_curr->y_position2;
 		} else {
-			// Sample 0 & 2 closest together
+			// Sample 1 & 3 closest together
 			sample_sumy = ts_curr->y_position1 +
 			    ts_curr->y_position3;
 		}
 	} else {
 		if (ydiff2 < ydiff3) {
-			// Sample 1 & 2 closest together
+			// Sample 2 & 3 closest together
 			sample_sumy = ts_curr->y_position2 +
 			    ts_curr->y_position3;
 		} else {
-			// Sample 0 & 2 closest together
+			// Sample 1 & 3 closest together
 			sample_sumy = ts_curr->y_position1 +
 			    ts_curr->y_position3;
 		}
 	}
+	sample_sumy /= 2;
 
 	/*
 	 * Compute two closer values among the three available X
-	 * readouts
+	 * readouts and use the average as the sample
 	 */
 	if (xdiff1 < xdiff2) {
 		if (xdiff1 < xdiff3) {
-			// Sample 0 & 1 closest together
+			// Sample 1 & 2 closest together
 			sample_sumx = ts_curr->x_position1 +
 			    ts_curr->x_position2;
 		} else {
-			// Sample 0 & 2 closest together
+			// Sample 1 & 3 closest together
 			sample_sumx = ts_curr->x_position1 +
 			    ts_curr->x_position3;
 		}
 	} else {
 		if (xdiff2 < xdiff3) {
-			// Sample 1 & 2 closest together
+			// Sample 2 & 3 closest together
 			sample_sumx = ts_curr->x_position2 +
 			    ts_curr->x_position3;
 		} else {
-			// Sample 0 & 2 closest together
+			// Sample 1 & 3 closest together
 			sample_sumx = ts_curr->x_position1 +
 			    ts_curr->x_position3;
 		}
 	}
+	sample_sumx /= 2;
+
+	/*
+	 * Current output is a simple low pass filter
+	 * based on previous and current value.
+	 */
+	/* Y Filter */
+	y_curr = ((sample_sumy * 90) + (prev_y * 10))/100;
+	ts_curr->y_position = y_curr;
+
+	/* X Filter */
+	x_curr = ((sample_sumx * 90) + (prev_x * 10))/100;
+	ts_curr->x_position = x_curr;
+
+	/*
+	 * Store current sample for next evaluation
+	 */
+	prev_y = y_curr;
+	prev_x = x_curr;
+
 	/*
 	 * Wait FILTER_MIN_DELAY number of samples to restart
-	 * filtering
+	 * filtering.  This is used to seed the filter until it
+	 * has enough samples to be stable.
 	 */
 	if (filt_count < FILTER_MIN_DELAY) {
-		/*
-		 * Current output is the average of the two closer
-		 * values and no filtering is used
-		 */
-		y_curr = (sample_sumy / 2);
-		x_curr = (sample_sumx / 2);
-		ts_curr->y_position = y_curr;
-		ts_curr->x_position = x_curr;
 		filt_count++;
+		return -1;
 	} else {
-		if (abs(sample_sumx - (prev_x[0] + prev_x[1])) >
-		    (DELTA_X_MAX * 16)) {
-			pr_debug("pmic_adc_filter: : Ret pos 3\n");
-			return -1;
-		}
-		if (abs(sample_sumy - (prev_y[0] + prev_y[1])) >
-		    (DELTA_Y_MAX * 16)) {
-			return -1;
-		}
-		sample_sumy /= 2;
-		sample_sumx /= 2;
-		/* Use hard filtering if the sample difference < 10 */
-		if ((abs(sample_sumy - prev_y[0]) > 10) ||
-		    (abs(sample_sumx - prev_x[0]) > 10)) {
-			filt_type = 1;
-		}
-
-		/*
-		 * Current outputs are the average of three previous
-		 * values and the present readout
-		 */
-		y_curr = sample_sumy;
-		for (index = 0; index < FILTLEN; index++) {
-			if (filt_type == 0) {
-				y_curr = y_curr + (prev_y[index]);
-			} else {
-				y_curr = y_curr + (prev_y[index] / 3);
-			}
-		}
-		if (filt_type == 0) {
-			y_curr = y_curr >> 2;
-		} else {
-			y_curr = y_curr >> 1;
-		}
-		ts_curr->y_position = y_curr;
-
-		x_curr = sample_sumx;
-		for (index = 0; index < FILTLEN; index++) {
-			if (filt_type == 0) {
-				x_curr = x_curr + (prev_x[index]);
-			} else {
-				x_curr = x_curr + (prev_x[index] / 3);
-			}
-		}
-		if (filt_type == 0) {
-			x_curr = x_curr >> 2;
-		} else {
-			x_curr = x_curr >> 1;
-		}
-		ts_curr->x_position = x_curr;
-
+		return 0;
 	}
-
-	/* Update previous X and Y values */
-	for (index = (FILTLEN - 1); index > 0; index--) {
-		prev_x[index] = prev_x[index - 1];
-		prev_y[index] = prev_y[index - 1];
-	}
-
-	/*
-	 * Current output will be the most recent past for the
-	 * next sample
-	 */
-	prev_y[0] = y_curr;
-	prev_x[0] = x_curr;
-
-	return 0;
 }
 
 /*!
@@ -687,7 +630,6 @@ PMIC_STATUS mc13783_adc_convert(t_adc_param * adc_param)
 		adc_param->ts_value.y_position3 = adc_param->value[5];
 		adc_param->ts_value.y_position = adc_param->value[5];
 		adc_param->ts_value.contact_resistance = adc_param->value[6];
-
 	}
 
 	/*if (adc_param->read_ts) {
@@ -936,8 +878,8 @@ PMIC_STATUS pmic_adc_get_touch_mode(t_touch_mode * touch_mode)
 PMIC_STATUS pmic_adc_get_touch_sample(t_touch_screen * touch_sample, int wait)
 {
 	mc13783_adc_read_ts(touch_sample, wait);
-	pmic_adc_filter(touch_sample);
-	return PMIC_SUCCESS;
+
+	return pmic_adc_filter(touch_sample);
 }
 
 /*!

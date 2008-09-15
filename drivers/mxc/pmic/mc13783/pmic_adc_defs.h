@@ -30,24 +30,14 @@
 
 #define MAX_CHANNEL             7
 
-/*
- * Maximun allowed variation in the three X/Y co-ordinates acquired from
- * touch-screen
- */
-#define DELTA_Y_MAX             50
-#define DELTA_X_MAX             50
-
 /* Upon clearing the filter, this is the delay in restarting the filter */
-#define FILTER_MIN_DELAY        4
+#define FILTER_MIN_DELAY        2
 
-/* Length of X and Y Touch screen filters */
-#define FILTLEN                 3
+#define TS_X_MAX                1024 
+#define TS_Y_MAX                1024
 
-#define TS_X_MAX                1000
-#define TS_Y_MAX                1000
-
-#define TS_X_MIN                80
-#define TS_Y_MIN                80
+#define TS_X_MIN                2
+#define TS_Y_MIN                2
 
 #define MC13783_ADC0_TS_M_LSH	14
 #define MC13783_ADC0_TS_M_WID	3

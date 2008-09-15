@@ -49,14 +49,16 @@ static int ts_thread(void *arg)
 	while (input_ts_installed) {
 		try_to_freeze();
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
-		pmic_adc_get_touch_sample(&ts_sample, !wait);
-
-		input_report_abs(mxc_inputdev, ABS_X, ts_sample.x_position);
-		input_report_abs(mxc_inputdev, ABS_Y, ts_sample.y_position);
-		input_report_abs(mxc_inputdev, ABS_PRESSURE,
-				 ts_sample.contact_resistance);
-		input_sync(mxc_inputdev);
-
+		if (pmic_adc_get_touch_sample(&ts_sample, !wait)  ==
+				PMIC_SUCCESS) {
+			input_report_abs(mxc_inputdev, ABS_X,
+					ts_sample.x_position);
+			input_report_abs(mxc_inputdev, ABS_Y, 
+					ts_sample.y_position);
+			input_report_abs(mxc_inputdev, ABS_PRESSURE,
+					ts_sample.contact_resistance);
+			input_sync(mxc_inputdev);
+		}
 		wait = ts_sample.contact_resistance;
 		msleep(20);
 	}
@@ -76,7 +78,17 @@ static int __init mxc_ts_init(void)
 	mxc_inputdev->name = MXC_TS_NAME;
 	mxc_inputdev->evbit[0] = BIT(EV_KEY) | BIT(EV_ABS);
 	mxc_inputdev->keybit[BIT_WORD(BTN_TOUCH)] |= BIT(BTN_TOUCH);
-	mxc_inputdev->absbit[0] = BIT(ABS_X) | BIT(ABS_Y) | BIT(ABS_PRESSURE);
+	input_set_abs_params(mxc_inputdev, ABS_X,
+			0,
+			(1<<12)-1,
+			0, 0);
+	input_set_abs_params(mxc_inputdev, ABS_Y,
+			0,
+			(1<<12)-1,
+			0, 0);
+	input_set_abs_params(mxc_inputdev, ABS_PRESSURE,
+			0, 1, 0, 0);
+
 	input_register_device(mxc_inputdev);
 
 	input_ts_installed = 1;
