@@ -43,11 +43,11 @@
 /* Length of X and Y Touch screen filters */
 #define FILTLEN                 3
 
-#define TS_X_MAX                1000
-#define TS_Y_MAX                1000
+#define TS_X_MAX                1024
+#define TS_Y_MAX                1024
 
-#define TS_X_MIN                80
-#define TS_Y_MIN                80
+#define TS_X_MIN                2
+#define TS_Y_MIN                2
 
 #define MC13783_ADC0_TS_M_LSH	14
 #define MC13783_ADC0_TS_M_WID	3
