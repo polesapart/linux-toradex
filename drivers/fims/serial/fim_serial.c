@@ -1299,6 +1299,9 @@ static int fim_serial_unregister_port(struct fim_serial_t *port)
 			gpio_free(port->gpios[cnt].nr);
 	}
 
+	/* Free the clock */
+        clk_put(port->sys_clk);
+
 	port->reg = 0;
 	return 0;
 }
@@ -1419,8 +1422,9 @@ static int fim_serial_register_port(struct device *dev,
 	uart->mapbase = 0x1234;
 	dev_set_drvdata(uart->dev, port);
 	if ((retval = uart_add_one_port(&fim_serials->driver, uart))) {
+		dev_set_drvdata(uart->dev, NULL);
 		printk_err("Couldn't register the UART port %i\n", minor);
-		goto err_reset_drvdata;
+		goto err_put_clk;
 	}
 
 	return 0;
@@ -1428,9 +1432,17 @@ static int fim_serial_register_port(struct device *dev,
  err_reset_drvdata:
 	dev_set_drvdata(uart->dev, NULL);
 
+ err_put_clk:
+	clk_put(port->sys_clk);
+	
  err_free_gpios:
-	for (cnt=0; gpios[cnt].nr != FIM_LAST_GPIO; cnt++)
-		gpio_free(gpios[cnt].nr);
+	for (cnt=0; gpios[cnt].nr < FIM_SERIAL_MAX_GPIOS; cnt++) {
+		if (gpios[cnt].nr == FIM_LAST_GPIO)
+			break;
+
+		if (gpios[cnt].nr != FIM_GPIO_DONT_USE)
+			gpio_free(gpios[cnt].nr);
+	}
 	
  err_unreg_fim:
 	fim_unregister_driver(&port->fim);
