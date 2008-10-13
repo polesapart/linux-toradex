@@ -1577,6 +1577,7 @@ static int fim_probe(struct device *dev)
 	pic->get_ctrl_reg = pic_get_ctrl_reg;
 	pic->set_ctrl_reg = pic_set_ctrl_reg;
 	pic->send_interrupt = pic_send_interrupt;
+	pic->ack_interrupt = isr_from_pic;
 	return 0;
 	
  exit_unmap:

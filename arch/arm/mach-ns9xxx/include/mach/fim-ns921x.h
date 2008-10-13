@@ -152,6 +152,7 @@ struct pic_t {
 	int (* get_ctrl_reg)(struct pic_t *, int , unsigned int *);
 	void (* set_ctrl_reg)(struct pic_t *, int , unsigned int );
 	int (* send_interrupt)(struct pic_t *, u32 );
+	void (* ack_interrupt)(struct pic_t * , int );
 };
 
 
