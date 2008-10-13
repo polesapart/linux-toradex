@@ -166,7 +166,7 @@ struct fim_serial_t {
 	unsigned int baud;
 	unsigned int last_totalbits;
 	struct fim_gpio_t gpios[FIM_SERIAL_MAX_GPIOS];
-	struct clk *cpu_clk;
+	struct clk *sys_clk;
 	spinlock_t tx_lock;
 	struct tasklet_struct tasklet;
 	int reg;
@@ -435,15 +435,15 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 		if (port->last_totalbits != port->totalbits) {
 			printk_debug("Setting only the gap timer (%iBps | %i | %i)\n",
 				     baud, port->totalbits, port->last_totalbits);
-			clock = (2 * clk_get_rate(port->cpu_clk)) / baud;
+			clock = clk_get_rate(port->sys_clk) / baud;
 			goto set_char_gap;
 		}
 		return 0;
 	}
 	
-	clock = clk_get_rate(port->cpu_clk);
-	printk_debug("Obtained CPU clock is %luHz\n", clock);
-	clock = (clock * 2) / baud;
+	clock = clk_get_rate(port->sys_clk);
+	printk_debug("Obtained SYS clock is %luHz\n", clock);
+	clock = clock / baud;
 	div = (clock / 256) + 1;
 
 	/* Must round up to next power of 2 (see NET+OS driver) */
@@ -1392,9 +1392,9 @@ static int fim_serial_register_port(struct device *dev,
 		}
 	}
 
-	/* Get a reference to the CPU clock for setting the baudrate */
-	if (IS_ERR(port->cpu_clk = clk_get(port->fim.dev, "cpuclock"))) {
-		printk_err("Couldn't get the CPU clock.\n");
+	/* Get a reference to the SYS clock for setting the baudrate */
+	if (IS_ERR(port->sys_clk = clk_get(port->fim.dev, "systemclock"))) {
+		printk_err("Couldn't get the SYS clock.\n");
 		goto err_free_gpios;
 	}
 
