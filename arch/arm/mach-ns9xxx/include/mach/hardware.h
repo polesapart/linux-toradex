@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-ns9xxx/include/mach/hardware.h
  *
- * Copyright (C) 2006 by Digi International Inc.
+ * Copyright (C) 2006-2008 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@
 #define __REGSHIFT(mask)	((mask) & (-(mask)))
 
 #define __REGBIT(bit)		((u32)1 << (bit))
+#define __REGBIT_SHIFT(bit, shift)	((u32)1 << ((bit) + (shift)))
 #define __REGBITS(hbit, lbit)	((((u32)1 << ((hbit) - (lbit) + 1)) - 1) << (lbit))
+#define __REGBITS_SHIFT(hbit, lbit, shift)	__REGBITS((hbit) + (shift), (lbit) + (shift))
 #define __REGVAL(mask, value)	(((value) * __REGSHIFT(mask)) & (mask))
 
 #ifndef __ASSEMBLY__
@@ -66,13 +68,13 @@
 	 __REGGET(var, reg ## _ ## field) / __REGSHIFT(reg ## _ ## field)
 
 #  define REGGETIM_IDX(var, reg, field, idx)				\
-	 __REGGET(var, reg ## _ ## field((idx))) /			\
+	 __REGGET(var, reg ## _ ## field((idx))) / 			\
 	 __REGSHIFT(reg ## _ ## field((idx)))
 
 #else
 
 #  define __REG(x)	io_p2v(x)
-#  define __REG2(x, y)	io_p2v((x) + 4 * (y))
+#  define __REG2(x, y)	io_p2v((x) + (y))
 
 #endif
 

@@ -962,6 +962,17 @@ config ENC28J60_WRITEVERIFY
 	  Enable the verify after the buffer write useful for debugging purpose.
 	  If unsure, say N.
 
+config NS9XXX_ETH
+	tristate "Digi NS9xxx ethernet support"
+	depends on ARM && ARCH_NS9XXX
+	depends on PHYLIB
+	depends on CRC32
+	help
+	  If you have a Digi NS9xxx based system and wish to use its ethernet
+	  port.
+	  If you choose to build this driver as a module, it will be called
+	  ns9xxx-eth.
+
 config SMC911X
 	tristate "SMSC LAN911[5678] support"
 	select CRC32

@@ -49,6 +49,11 @@
 		|| machine_is_ccw9c()			\
 		)
 
+#define module_is_cme9210()	(0			\
+		|| machine_is_cme9210()			\
+		|| machine_is_cme9210js()		\
+		)
+
 #define module_is_inc20otter()	(0			\
 		|| machine_is_inc20otter()		\
 		)

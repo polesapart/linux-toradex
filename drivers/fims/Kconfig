@@ -1,0 +1,104 @@
+#
+# FIM devices configuration
+#
+
+menuconfig FIM_CORE
+	tristate "FIM drivers support"
+	depends on PROCESSOR_NS921X
+        select FW_LOADER
+        select HOTPLUG 
+	default n
+	help
+	  This option adds the support for the Flexible Interfaces Modules (FIM).
+	  Currently only the NS921X processors are supporting the FIM-devices. 
+          The number of available FIMs is two.
+
+	  For installing the specific FIM-firmware, the FIM core driver depends on
+	  Hotplug and the firmware-subsystem too. 
+
+          If a FIM-driver is selected as loadable module, then is required
+          to have installed the user-space application 'mdev' (Busybox).
+
+
+if FIM_CORE
+
+config FIM_SDIO
+	tristate "SDIO driver"
+	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210
+	default n
+	help
+	  Enables the FIM-SDIO serial driver. If the driver is selected as a loadable
+	  module, the number of the FIM to be used by the driver can be passed
+	  as a module-parameter (use modinfo for obtaining more infos).
+	  
+          For testing the SDIO functionality is required to select an additional 
+          SDIO-driver (GPS/UART) from the MMC-core.	
+
+config FIM_SDIO_NUMBER
+	int "FIM(s) to register by the SDIO driver"
+	range 0 2 if PROCESSOR_NS921X
+	depends on FIM_SDIO = y
+	default 0 if !FIM_SERIAL_NUMBER || FIM_SERIAL_NUMBER = 1
+	default 1 if FIM_SERIAL_NUMBER = 0
+	help
+	  Selects the number of FIM(s) to be handled by the built-in driver.
+          The number zero stays for the first FIM and the number one for the second.	  
+          Selecting the number two means that the driver should use all the 
+          available FIMs. In that case please check that no additional FIM-driver
+          is selected as built-in too.
+	  
+config FIM_SERIAL
+	tristate "Serial driver"
+	default n
+        select SERIAL_CORE
+	help
+	  Enables the FIM-serial driver. If the driver is selected as a loadable
+	  module, the number of the FIM to be used by the driver can be passed
+	  as a module-parameter (use modinfo for obtaining more infos).
+
+config SERIAL_FIM_CONSOLE
+	bool "Console on NS921x FIM serial port"
+	depends on FIM_SERIAL=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for FIM-serial ports of Digi NS921x based systems
+
+config FIM_SERIAL_NUMBER
+	int "FIM(s) to register by the serial driver"
+	depends on FIM_SERIAL = y && FIM_SDIO != y
+	default 0
+	range 0 2
+	help
+	  Selects the number of FIM(s) to be handled by the built-in driver.
+          The number zero stays for the first FIM and the number one for the second.	  
+          Selecting the number two means that the driver should use all the 
+          available FIMs. In that case please check that no additional FIM-driver
+          is selected as built-in too.
+          
+	  
+config FIM_SERIAL_NUMBER0
+	int "FIM(s) to register by the serial driver"
+	depends on FIM_SERIAL = y && FIM_SDIO_NUMBER = 1
+	default 0
+	range 0 0
+	help
+	  Selects the number of FIM(s) to be handled by the built-in driver.
+          The number zero stays for the first FIM and the number one for the second.	  
+          Selecting the number two means that the driver should use all the 
+          available FIMs. In that case please check that no additional FIM-driver
+          is selected as built-in too.
+
+config FIM_SERIAL_NUMBER1
+	int "FIM(s) to register by the serial driver"
+	depends on FIM_SERIAL = y && FIM_SDIO_NUMBER = 0
+	default 1
+	range 1 1
+	help
+	  Selects the number of FIM(s) to be handled by the built-in driver.
+          The number zero stays for the first FIM and the number one for the second.	  
+          Selecting the number two means that the driver should use all the 
+          available FIMs. In that case please check that no additional FIM-driver
+          is selected as built-in too.
+	  
+endif # FIM_CORE
+

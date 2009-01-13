@@ -1372,4 +1372,46 @@ config SPORT_BAUD_RATE
 	default 19200 if (SERIAL_SPORT_BAUD_RATE_19200)
 	default 9600 if (SERIAL_SPORT_BAUD_RATE_9600)
 
+config SERIAL_NS921X
+	tristate "Digi NS921x serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS921X
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS921x based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS921X_CONSOLE
+	bool "Console on Digi NS921x serial"
+	depends on SERIAL_NS921X=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS921x based systems
+
+config SERIAL_NS9360
+	tristate "Digi NS9360 serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS9360
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS9360 based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS9360_CONSOLE
+	bool "Console on Digi NS9360 serial"
+	depends on SERIAL_NS9360=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS9360 based systems
+
+config SERIAL_NS9360_COMPAT
+	bool "Keep backward compatility"
+	depends on SERIAL_NS9360
+	default y
+	help
+	  The serial driver for ns9360 used ttyS device node in the past
+	  which leads to problems, if there are also 8215 compatible serial
+	  ports in the system. In newer versions this changed to ttyNS.
+	  Keep this config enabled to still get the old device names.
+	  If you are sure your bootloader can handle this feel free
+	  to dectivate this.
+
 endmenu

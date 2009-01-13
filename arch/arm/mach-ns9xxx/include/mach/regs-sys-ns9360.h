@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-ns9xxx/include/mach/regs-sys-ns9360.h
  *
- * Copyright (C) 2006,2007 by Digi International Inc.
+ * Copyright (C) 2006-2008 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,6 +29,12 @@
 
 /* Timer Interrupt Status register */
 #define SYS_TIS		__REG(0xa0900170)
+
+#define SYS_CLOCK	__REG(0xa090017c)
+#define SYS_CLOCK_LPCSEXT	__REGBIT(9)
+
+#define SYS_RESET	__REG(0xa0900180)
+#define SYS_RESET_LCDC		__REGBIT(5)
 
 /* PLL Configuration register */
 #define SYS_PLL		__REG(0xa0900188)
@@ -144,5 +150,8 @@
 #define SYS_EIC_LVEDG		__REGBIT(0)
 #define SYS_EIC_LVEDG_LEVEL		__REGVAL(SYS_EIC_LVEDG, 0)
 #define SYS_EIC_LVEDG_EDGE		__REGVAL(SYS_EIC_LVEDG, 1)
+
+/* RTC Clock Control register */
+#define SYS_RTCCC		__REG(0xa0900224)
 
 #endif /* ifndef __ASM_ARCH_REGSSYSNS9360_H */

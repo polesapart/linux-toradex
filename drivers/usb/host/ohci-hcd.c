@@ -1080,6 +1080,11 @@ MODULE_LICENSE ("GPL");
 #define TMIO_OHCI_DRIVER	ohci_hcd_tmio_driver
 #endif
 
+#ifdef CONFIG_PROCESSOR_NS9360
+#include "ohci-ns9360.c"
+#define PLATFORM_DRIVER		ohci_hcd_ns9360_driver
+#endif
+
 #if	!defined(PCI_DRIVER) &&		\
 	!defined(PLATFORM_DRIVER) &&	\
 	!defined(OF_PLATFORM_DRIVER) &&	\

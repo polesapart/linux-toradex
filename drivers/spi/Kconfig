@@ -204,6 +204,24 @@ config SPI_XILINX
 	  See the "OPB Serial Peripheral Interface (SPI) (v1.00e)"
 	  Product Specification document (DS464) for hardware details.
 
+config SPI_NS921X
+	tristate "Digi ns921x SPI controller"
+	depends on PROCESSOR_NS921X
+	help
+	  Driver for SPI controller in Digi ns921x CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns921x.
+
+config SPI_NS9360
+	tristate "Digi ns9360 SPI controller"
+	depends on PROCESSOR_NS9360
+	help
+	  Driver for SPI controller in Digi ns9360 CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns9360.
+
 #
 # Add new SPI master controllers in alphabetical order above this line
 #

@@ -2033,6 +2033,16 @@ config FB_SH7760
          and 8, 15 or 16 bpp color; 90 degrees clockwise display rotation for
          panels <= 320 pixel horizontal resolution.
 
+config FB_NS9360
+	tristate "NS9360 LCD framebuffer support"
+	depends on FB && PROCESSOR_NS9360
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  This enables support for the display controller inside the
+	  Digi ns9360 CPUs.
+
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"
 	depends on FB

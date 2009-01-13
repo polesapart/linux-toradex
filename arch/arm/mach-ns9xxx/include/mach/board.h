@@ -35,6 +35,10 @@
 		|| machine_is_cc9p9360js()		\
 		)
 
+#define board_is_jscme9210()	(0			\
+		|| machine_is_cme9210js()		\
+		)
+
 #define board_is_uncbas()	(0			\
 		|| machine_is_cc7ucamry()		\
 		)

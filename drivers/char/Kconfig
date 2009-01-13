@@ -1073,5 +1073,15 @@ config DEVPORT
 
 source "drivers/s390/char/Kconfig"
 
+config ADC_NS9215
+	tristate "Digi ns9215 On-Chip ADC"
+	depends on PROCESSOR_NS9215
+	help
+	  Driver for the internal ADC (Analog Digital Converter) module
+	  found on Digi ns9215 CPUs.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adc-ns9215.
+
 endmenu
 

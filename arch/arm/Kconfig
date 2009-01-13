@@ -3,7 +3,7 @@
 # see Documentation/kbuild/kconfig-language.txt.
 #
 
-mainmenu "Linux Kernel Configuration"
+#mainmenu "Linux Kernel Configuration"
 
 config ARM
 	bool
@@ -876,7 +876,7 @@ config LEDS
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
 		   ARCH_AT91 || ARCH_DAVINCI || \
-		   ARCH_KS8695 || MACH_RD88F5182
+		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_NS9XXX
 	help
 	  If you say Y here, the LEDs on your machine will be used
 	  to provide useful information about your current system status.
@@ -1037,7 +1037,7 @@ endmenu
 
 menu "CPU Power Management"
 
-if (ARCH_SA1100 || ARCH_INTEGRATOR || ARCH_OMAP || ARCH_IMX || ARCH_PXA)
+if (ARCH_SA1100 || ARCH_INTEGRATOR || ARCH_OMAP || ARCH_IMX || ARCH_PXA || ARCH_NS9XXX)
 
 source "drivers/cpufreq/Kconfig"
 
@@ -1275,6 +1275,8 @@ source "drivers/auxdisplay/Kconfig"
 source "drivers/regulator/Kconfig"
 
 source "drivers/uio/Kconfig"
+
+source "drivers/fims/Kconfig"
 
 endmenu
 
