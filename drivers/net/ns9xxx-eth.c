@@ -235,7 +235,7 @@ struct ns9xxx_eth_priv {
 	/* phy management */
 	int lastlink;
 	int lastduplex;
-	struct mii_bus mdiobus;
+	struct mii_bus *mdiobus;
 	struct phy_device *phy;
 
 	/* rx stuff */
@@ -1016,26 +1016,30 @@ static int ns9xxx_eth_mdiobus_init(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
-	priv->mdiobus.name = DRIVER_NAME "-mii";
-	snprintf(priv->mdiobus.id, MII_BUS_ID_SIZE, "0");
-	priv->mdiobus.priv = dev;
-	priv->mdiobus.read = ns9xxx_eth_mdiobus_read;
-	priv->mdiobus.write = ns9xxx_eth_mdiobus_write;
-	priv->mdiobus.reset = ns9xxx_eth_mdiobus_reset;
-	priv->mdiobus.phy_mask = pdata->phy_mask;
-	priv->mdiobus.parent = &pdev->dev;
-	priv->mdiobus.irq = kmalloc(sizeof(*priv->mdiobus.irq) * PHY_MAX_ADDR,
+	priv->mdiobus = mdiobus_alloc();
+	if (priv->mdiobus == NULL)
+		goto err_out;
+
+	priv->mdiobus->name = DRIVER_NAME "-mii";
+	snprintf(priv->mdiobus->id, MII_BUS_ID_SIZE, "0");
+	priv->mdiobus->priv = dev;
+	priv->mdiobus->read = ns9xxx_eth_mdiobus_read;
+	priv->mdiobus->write = ns9xxx_eth_mdiobus_write;
+	priv->mdiobus->reset = ns9xxx_eth_mdiobus_reset;
+	priv->mdiobus->phy_mask = pdata->phy_mask;
+	priv->mdiobus->parent = &pdev->dev;
+	priv->mdiobus->irq = kmalloc(sizeof(*priv->mdiobus->irq) * PHY_MAX_ADDR,
 			GFP_KERNEL);
 
-	if (!priv->mdiobus.irq) {
+	if (!priv->mdiobus->irq) {
 		dev_dbg(&pdev->dev, "%s: err_alloc_irq\n", __func__);
 		goto err_alloc_irq;
 	}
 
 	for (i = 0; i < PHY_MAX_ADDR; ++i)
-		priv->mdiobus.irq[i] = PHY_POLL;
+		priv->mdiobus->irq[i] = PHY_POLL;
 
-	ret = mdiobus_register(&priv->mdiobus);
+	ret = mdiobus_register(priv->mdiobus);
 	if (ret) {
 		dev_dbg(&pdev->dev, "%s: err_mdiobus_register -> %d\n",
 				__func__, ret);
@@ -1043,7 +1047,7 @@ static int ns9xxx_eth_mdiobus_init(struct platform_device *pdev)
 	}
 
 	for (i = 0; i < PHY_MAX_ADDR; ++i)
-		if (priv->mdiobus.phy_map[i])
+		if (priv->mdiobus->phy_map[i])
 			break;
 
 	if (i >= PHY_MAX_ADDR) {
@@ -1055,7 +1059,7 @@ static int ns9xxx_eth_mdiobus_init(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: using phy at address %d\n", __func__, i);
 
 	snprintf(phyid, sizeof(phyid), PHY_ID_FMT,
-			priv->mdiobus.id, i);
+			priv->mdiobus->id, i);
 
 	priv->phy = phy_connect(dev, phyid, &ns9xxx_eth_adjust_link,
 			0, PHY_INTERFACE_MODE_MII);
@@ -1066,12 +1070,12 @@ static int ns9xxx_eth_mdiobus_init(struct platform_device *pdev)
 				__func__, ret);
 err_find_phy:
 
-		mdiobus_unregister(&priv->mdiobus);
+		mdiobus_unregister(priv->mdiobus);
 err_mdiobus_register:
 
-		kfree(priv->mdiobus.irq);
+		kfree(priv->mdiobus->irq);
 err_alloc_irq:
-
+err_out:
 		return ret;
 	}
 
@@ -1094,8 +1098,8 @@ static int ns9xxx_eth_mdiobus_disable(struct net_device *dev)
 	dev_dbg(&dev->dev, "%s\n", __func__);
 
 	phy_disconnect(priv->phy);
-	mdiobus_unregister(&priv->mdiobus);
-	kfree(priv->mdiobus.irq);
+	mdiobus_unregister(priv->mdiobus);
+	kfree(priv->mdiobus->irq);
 	return 0;
 }
 
