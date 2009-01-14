@@ -30,7 +30,6 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/delay.h>
-#include <asm/semaphore.h>
 #include <asm/irq.h>
 #include <asm/signal.h>
 #include <linux/kfifo.h>

@@ -227,7 +227,7 @@ inline static struct tty_struct *get_tty_from_port(struct fim_serial_t *port)
 	struct uart_info *info;
 
 	info = port->uart.info;
-	return (info) ? info->tty : NULL;
+	return (info) ? info->port.tty : NULL;
 }
 
 
