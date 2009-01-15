@@ -285,7 +285,7 @@ void __init s3c24xx_init_clocks(int xtal)
 
 static int nr_uarts __initdata = 0;
 
-static struct s3c2410_uartcfg uart_cfgs[3];
+static struct s3c2410_uartcfg uart_cfgs[4];
 
 /* s3c24xx_init_uartdevs
  *

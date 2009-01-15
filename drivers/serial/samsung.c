@@ -63,7 +63,11 @@
 #ifdef CONFIG_CPU_S3C2400
 #define NR_PORTS (2)
 #else
+#ifdef CONFIG_MACH_CC9M2443JS
+#define NR_PORTS (4)
+#else
 #define NR_PORTS (3)
+#endif
 #endif
 
 /* port irq numbers */
@@ -827,7 +831,7 @@ static struct uart_ops s3c24xx_serial_ops = {
 static struct uart_driver s3c24xx_uart_drv = {
 	.owner		= THIS_MODULE,
 	.dev_name	= "s3c2410_serial",
-	.nr		= 3,
+	.nr		= NR_PORTS,
 	.cons		= S3C24XX_SERIAL_CONSOLE,
 	.driver_name	= S3C24XX_SERIAL_NAME,
 	.major		= S3C24XX_SERIAL_MAJOR,
@@ -872,7 +876,20 @@ static struct s3c24xx_uart_port s3c24xx_serial_ports[NR_PORTS] = {
 			.flags		= UPF_BOOT_AUTOCONF,
 			.line		= 2,
 		}
-	}
+	},
+	[3] = {
+                .port = {
+                        .lock           = __SPIN_LOCK_UNLOCKED(s3c24xx_serial_ports[3].port.lock),
+                        .iotype         = UPIO_MEM,
+                        .irq            = IRQ_S3C2443_RX3,
+                        .uartclk        = 0,
+                        .fifosize       = 16,
+                        .ops            = &s3c24xx_serial_ops,
+                        .flags          = UPF_BOOT_AUTOCONF,
+                        .line           = 3,
+                }
+        }
+
 #endif
 };
 
