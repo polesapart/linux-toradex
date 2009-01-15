@@ -27,4 +27,11 @@ config MACH_SMDK2443
 	help
 	  Say Y here if you are using an SMDK2443
 
+config MACH_CC9M2443JS
+        bool "ConnectCore 9M 2443 on a JSCC9M2443 Devboard"
+        select CPU_S3C2443
+        help
+          Say Y here if you are using the ConnectCore 9M 2443 module
+          on a JSCC9M2443 Development Board
+	  
 endmenu

@@ -46,6 +46,10 @@
 #define S3C2410_PA_LCD	   (0x4D000000)
 #define S3C24XX_SZ_LCD	   SZ_1M
 
+/* TFT-LCD controller */
+#define S3C2410_PA_TFTLCD  (0x4C800000)
+#define S3C24XX_SZ_TFTLCD  SZ_1M
+
 /* NAND flash controller */
 #define S3C2410_PA_NAND	   (0x4E000000)
 #define S3C24XX_SZ_NAND	   SZ_1M
@@ -103,6 +107,10 @@
 #define S3C2410_PA_SPI	   (0x59000000)
 #define S3C24XX_SZ_SPI	   SZ_1M
 
+/* High Speed SPI */
+#define S3C2443_PA_HSSPI   (0x52000000)
+#define S3C2443_SZ_HSSPI   SZ_1M
+
 /* SDI */
 #define S3C2410_PA_SDI	   (0x5A000000)
 #define S3C24XX_SZ_SDI	   SZ_1M
@@ -127,6 +135,15 @@
 #define S3C24XX_VA_ISA_WORD  S3C2410_ADDR(0x02000000)
 #define S3C24XX_VA_ISA_BYTE  S3C2410_ADDR(0x03000000)
 
+/* LAN Mapping */
+#define CC9M2443_VA_LAN     S3C2410_ADDR(0x04000000)
+#define CC9M2443_PA_LAN     (S3C2410_CS5)
+#define CC9M2443_SZ_LAN     SZ_1M
+
+/* USB device Mapping */
+#define S3C2443_PA_USBDEV   (0x49800000)
+#define S3C2443_SZ_USBDEV   SZ_1M
+
 /* physical addresses of all the chip-select areas */
 
 #define S3C2410_CS0 (0x00000000)
@@ -148,6 +165,7 @@
 #define S3C24XX_PA_DMA      S3C2410_PA_DMA
 #define S3C24XX_PA_CLKPWR   S3C2410_PA_CLKPWR
 #define S3C24XX_PA_LCD      S3C2410_PA_LCD
+#define S3C24XX_PA_TFTLCD   S3C2410_PA_TFTLCD
 #define S3C24XX_PA_UART     S3C2410_PA_UART
 #define S3C24XX_PA_TIMER    S3C2410_PA_TIMER
 #define S3C24XX_PA_USBDEV   S3C2410_PA_USBDEV

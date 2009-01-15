@@ -18,3 +18,6 @@ obj-$(CONFIG_S3C2443_DMA)	+= dma.o
 # Machine support
 
 obj-$(CONFIG_MACH_SMDK2443)	+= mach-smdk2443.o
+obj-$(CONFIG_MACH_CC9M2443JS)   += mach-cc9m2443js.o
+
+obj-$(CONFIG_MACH_CC9M2443JS)   += gpio.o

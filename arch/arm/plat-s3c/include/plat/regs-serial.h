@@ -216,6 +216,19 @@ struct s3c2410_uartcfg {
 
 	struct s3c24xx_uart_clksrc *clocks;
 	unsigned int		    clocks_size;
+
+        /* 
+         * Values for configuring the GPIOs of the different ports
+         * Luis Galdos
+         */
+        unsigned int       rx_gpio;
+        unsigned int       rx_cfg;
+        unsigned int       tx_gpio;
+        unsigned int       tx_cfg;
+        unsigned int       cts_gpio;
+        unsigned int       cts_cfg;
+        unsigned int       rts_gpio;
+        unsigned int       rts_cfg;
 };
 
 /* s3c24xx_uart_devs
