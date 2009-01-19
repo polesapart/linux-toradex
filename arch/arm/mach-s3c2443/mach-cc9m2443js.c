@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/dma-mapping.h>
+#include <linux/smc911x.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -76,6 +77,14 @@
 
 
 
+/*
+ * IMPORTANT: We are using the Ethernet-driver of the Blackfin-project because:
+ * - The driver from the Vanilla-kernel is not working out of the box
+ * - After some modifications (for accessing to the FIFO correctly) the driver
+ *   has some performance-problems (lost some packets)
+ * - The driver doesn't use the new NAPI for reading from the controller
+ * (Luis Galdos)
+ */
 static struct resource smsc911x_device_resources[] = {
         [0] = {
                 .name = "smsc911x-memory",
@@ -90,15 +99,21 @@ static struct resource smsc911x_device_resources[] = {
         },
 };
 
+static struct smc911x_platdata cc9m2443_smsc9118 = {
+        .flags          = SMC911X_USE_16BIT,
+        .irq_flags      = IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+        .irq_polarity   = 0,
+};
 
 static struct platform_device smsc911x_device = {
         .name             = "smsc911x",
         .id               = -1,
         .num_resources    = ARRAY_SIZE(smsc911x_device_resources),
         .resource         = smsc911x_device_resources,
-
+        .dev            = {
+                .platform_data = &cc9m2443_smsc9118,
+        }
 };
-
 
 /* @XXX: The macro will be used for external board-devices under cc9m2443-custom.h */
 #if !defined(CC9M2443_I2C_BASE_BOARD_DEVICES)
