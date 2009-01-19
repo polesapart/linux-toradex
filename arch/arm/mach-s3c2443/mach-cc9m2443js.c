@@ -74,6 +74,7 @@
 #include <plat/common-smdk.h>
 #include <asm/plat-s3c24xx/mci.h>
 #include <asm/plat-s3c/nand.h>
+#include <asm/plat-s3c/iic.h>
 
 
 
@@ -298,7 +299,6 @@ static struct s3c2410fb_display cc9m2443fd_display = {
 	.wincon0	= S3C24XX_LCD_WINCON_16BPP_565,
 	
 	.frame_rate	= 60,
-
 };
 
 
@@ -616,7 +616,16 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
 	.sets           = NULL,
 };
 
-
+/*
+ * Platform data for the I2C-bus driver
+ * @XXX: Verify the correct bus clocks for this device
+ */
+static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
+	.flags          = 0,
+	.max_freq       = 130 * 1000,
+	.max_freq       = 130 * 1000,
+	.bus_num	= CONFIG_I2C_S3C2410_ADAPTER_NR,
+};
 
 /*
  * @FIXME: That's really bad, we need a better way for compiling the GPIO-support
@@ -657,6 +666,8 @@ static void __init cc9m2443_machine_init(void)
 
 	s3c_device_nand.dev.platform_data = &cc9m2443_nand_info;
 
+	s3c_device_i2c.dev.platform_data = &cc9m2443_i2c_info;
+	
 	/* Enable the pullup for the write protect GPIO of the SD-port */
 	s3c2410_gpio_pullup(S3C2410_GPG9, 0x0);
 
