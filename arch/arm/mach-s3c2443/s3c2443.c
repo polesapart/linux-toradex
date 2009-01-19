@@ -36,6 +36,9 @@
 #include <plat/devs.h>
 #include <plat/cpu.h>
 
+#include <asm/plat-s3c/regs-watchdog.h>
+#include <linux/delay.h>
+
 static struct map_desc s3c2443_iodesc[] __initdata = {
 	IODESC_ENT(WATCHDOG),
 	IODESC_ENT(CLKPWR),
@@ -52,7 +55,8 @@ static struct sys_device s3c2443_sysdev = {
 
 static void s3c2443_hard_reset(void)
 {
-	__raw_writel(S3C2443_SWRST_RESET, S3C2443_SWRST);
+	__raw_writel(0x21, S3C2410_WTCON);
+	mdelay(100);
 }
 
 int __init s3c2443_init(void)
