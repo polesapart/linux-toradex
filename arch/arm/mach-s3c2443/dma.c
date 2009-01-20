@@ -63,6 +63,12 @@ static struct s3c24xx_dma_map __initdata s3c2443_dma_mappings[] = {
 		.hw_addr.to	= S3C2410_PA_SPI + S3C2410_SPTDAT,
 		.hw_addr.from	= S3C2410_PA_SPI + S3C2410_SPRDAT,
 	},
+	[DMACH_SPI0_RX] = {
+		.name           = "spi0-rx",
+		.channels       = MAP(S3C2443_DMAREQSEL_SPI0RX),
+		.hw_addr.to     = S3C2410_PA_SPI + S3C2410_SPTDAT,
+		.hw_addr.from   = S3C2410_PA_SPI + S3C2410_SPRDAT,
+	},
 	[DMACH_SPI1] = {
 		.name		= "spi1",
 		.channels	= MAP(S3C2443_DMAREQSEL_SPI1TX),
