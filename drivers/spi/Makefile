@@ -31,6 +31,7 @@ obj-$(CONFIG_SPI_XILINX)		+= xilinx_spi.o
 obj-$(CONFIG_SPI_SH_SCI)		+= spi_sh_sci.o
 obj-$(CONFIG_SPI_NS921X)		+= spi_ns921x.o
 obj-$(CONFIG_SPI_NS9360)		+= spi_ns9360.o
+obj-$(CONFIG_SPI_S3C2443)               += spi_s3c2443.o
 # 	... add above this line ...
 
 # SPI protocol drivers (device/link on bus)
