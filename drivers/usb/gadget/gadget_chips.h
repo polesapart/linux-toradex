@@ -158,6 +158,12 @@
 #define gadget_is_fsl_qe(g)	0
 #endif
 
+/* Samsung S3C2443 UDC */
+#ifdef CONFIG_USB_GADGET_S3C24XX
+#define gadget_is_s3c24xx(g)    !strcmp("s3c24xx_udc", (g)->name)
+#else
+#define gadget_is_s3c24xx(g)    0
+#endif
 
 // CONFIG_USB_GADGET_SX2
 // CONFIG_USB_GADGET_AU1X00
@@ -225,6 +231,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x21;
 	else if (gadget_is_fsl_qe(gadget))
 		return 0x22;
+        else if (gadget_is_s3c24xx(gadget))
+                return 0x23;
 	return -ENOENT;
 }
 

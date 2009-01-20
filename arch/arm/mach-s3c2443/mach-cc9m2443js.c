@@ -544,7 +544,7 @@ static struct s3c2410_udc_mach_info cc9m2443_udc_pdata = {
 };
 
 static struct platform_device cc9m2443_device_udc = {
-        .name             = "s3c24xx_udc",
+        .name             = "s3c2443_udc",
         .id               = -1,
         .num_resources    = ARRAY_SIZE(cc9m2443_udc_resources),
         .resource         = cc9m2443_udc_resources,

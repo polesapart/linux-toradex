@@ -291,6 +291,21 @@ config USB_S3C2410_DEBUG
 	boolean "S3C2410 udc debug messages"
 	depends on USB_GADGET_S3C2410
 
+config USB_GADGET_S3C2443
+        boolean "S3C2443 USB Device Controller"
+        depends on CPU_S3C2443
+        select USB_GADGET_SELECTED
+        help
+          Samsung's S3C2443 with an integrated full speed USB 2.0 device
+          controller.
+
+config USB_S3C2443
+        tristate
+        depends on USB_GADGET_S3C2443
+        default USB_GADGET
+        select USB_GADGET_SELECTED
+        select USB_GADGET_DUALSPEED
+	
 #
 # Controllers available in both integrated and discrete versions
 #
