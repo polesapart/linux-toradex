@@ -1940,6 +1940,16 @@ config FB_S3C2410_DEBUG
 	help
 	  Turn on debugging messages. Note that you can set/unset at run time
 	  through sysfs
+	  
+config FB_S3C2410_TFT
+        tristate "S3C2410 TFT LCD framebuffer support"
+        depends on FB && ARCH_S3C2410
+        select FB_CFB_FILLRECT
+        select FB_CFB_COPYAREA
+        select FB_CFB_IMAGEBLIT	
+        default y
+        ---help---
+          Add the support for TFT-LCD displays on the Samsung S3C24XX platforms
 
 config FB_SM501
 	tristate "Silicon Motion SM501 framebuffer support"
