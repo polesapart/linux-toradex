@@ -46,8 +46,12 @@
 #if !defined(MODULE)
 #include "fim_serial.h"
 extern const unsigned char fim_serial_firmware[];
+#define FIM_SERIAL_FIRMWARE_FILE		(NULL)
+#define FIM_SERIAL_FIRMWARE_CODE		fim_serial_firmware
 #else
 const unsigned char *fim_serial_firmware = NULL;
+#define FIM_SERIAL_FIRMWARE_FILE		"fim_serial.bin"
+#define FIM_SERIAL_FIRMWARE_CODE		(NULL)
 #endif
 
 
@@ -58,7 +62,6 @@ const unsigned char *fim_serial_firmware = NULL;
 #define DRIVER_DESC				"FIM serial driver"
 #define FIM_DRIVER_NAME				"fim-serial"
 #define FIM_PLATFORM_DRIVER_NAME		"platform:fim-serial"
-#define FIM_DRIVER_FIRMWARE_NAME		"fim_serial.bin"
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
@@ -1332,11 +1335,8 @@ static int fim_serial_register_port(struct device *dev,
 	fim->dma_cfg = &dma_cfg;
 	
 	/* Check if have a firmware code for using to */
-	if (!fim_serial_firmware)
-		fim->fw_name = FIM_DRIVER_FIRMWARE_NAME;
-	else
-		fim->fw_code = fim_serial_firmware;
-
+	fim->fw_name = FIM_SERIAL_FIRMWARE_FILE;
+	fim->fw_code = FIM_SERIAL_FIRMWARE_CODE;
 	retval = fim_register_driver(fim);
 	if (retval) {
 		printk_err("Couldn't register the FIM driver.\n");
