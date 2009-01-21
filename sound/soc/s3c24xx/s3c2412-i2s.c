@@ -83,6 +83,8 @@ struct s3c2412_i2s_info {
 	u32		 suspend_iismod;
 	u32		 suspend_iiscon;
 	u32		 suspend_iispsr;
+
+	u32              cpu_is_s3c2443;
 };
 
 static struct s3c2412_i2s_info s3c2412_i2s;
@@ -646,6 +648,12 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 	return 0;
 }
 
+static int s3c2443_i2s_probe(struct platform_device *pdev, struct snd_soc_dai *dai)
+{	
+	s3c2412_i2s.cpu_is_s3c2443 = 1;
+	return s3c2412_i2s_probe(pdev, dai);
+}
+
 #ifdef CONFIG_PM
 static int s3c2412_i2s_suspend(struct platform_device *dev,
 			      struct snd_soc_dai *dai)
@@ -738,6 +746,44 @@ struct snd_soc_dai s3c2412_i2s_dai = {
 	},
 };
 EXPORT_SYMBOL_GPL(s3c2412_i2s_dai);
+
+/* This is the DAI for the S3C2443 */
+#define S3C2443_I2S_RATES \
+	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
+	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
+	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_64000 | SNDRV_PCM_RATE_88200 | \
+	SNDRV_PCM_RATE_96000)
+
+struct snd_soc_dai s3c2443_i2s_dai = {
+	.name	= "s3c2443-i2s",
+	.id	= 0,
+	.type	= SND_SOC_DAI_I2S,
+	.probe	= s3c2443_i2s_probe,
+	.suspend = s3c2412_i2s_suspend,
+	.resume = s3c2412_i2s_resume,
+	.playback = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2443_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2443_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.ops = {
+		.trigger	= s3c2412_i2s_trigger,
+		.hw_params	= s3c2412_i2s_hw_params,
+	},
+	.dai_ops = {
+		.set_fmt	= s3c2412_i2s_set_fmt,
+		.set_clkdiv	= s3c2412_i2s_set_clkdiv,
+		.set_sysclk	= s3c2412_i2s_set_sysclk,
+	},
+};
+EXPORT_SYMBOL_GPL(s3c2443_i2s_dai);
 
 /* Module information */
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");
