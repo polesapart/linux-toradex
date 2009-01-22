@@ -47,28 +47,31 @@
 #include <mach/fim-ns921x.h>
 
 
-/* If the driver is being to be loaded as a built-in driver, then include the header */
+/*
+ * If the driver is going to be loaded as a built-in driver, then include the header
+ * file with the firmware, otherwise set the name of the binary file that should
+ * be read with the help of the firmware-subsystem
+ */
 #if !defined(MODULE)
 #include "fim_sdio.h"
 extern const unsigned char fim_sdio_firmware[];
+#define FIM_SDIO_FIRMWARE_FILE			(NULL)
+#define FIM_SDIO_FIRMWARE_CODE			fim_sdio_firmware
 #else
 const unsigned char *fim_sdio_firmware = NULL;
+#define FIM_SDIO_FIRMWARE_FILE			"fim_sdio.bin"
+#define FIM_SDIO_FIRMWARE_CODE			(NULL)
 #endif
-
 
 /* Driver informations */
 #define DRIVER_VERSION				"0.2"
 #define DRIVER_AUTHOR				"Luis Galdos"
 #define DRIVER_DESC				"FIM SDIO driver"
 #define FIM_SDIO_DRIVER_NAME			"fim-sdio"
-#define FIM_SDIO_FIRMWARE_NAME			"fim_sdio.bin"
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
-
-
-
 
 /* Registers with status information */
 #define FIM_SD_GPIOS_REG			0x02
@@ -91,23 +94,19 @@ MODULE_VERSION(DRIVER_VERSION);
 #define SDIO_FIFO_TX_BLKRD			0x10
 #define SDIO_FIFO_TX_DISCRC			0x20
 
-
 /* User specified macros */
 #define FIM_SD_TIMEOUT_MS			2000
 #define FIM_SD_TX_CMD_LEN			5
 #define FIM_SD_MAX_RESP_LENGTH			17
-
 
 /* Status bits from the PIC-firmware */
 #define FIM_SD_RX_RSP				0x01
 #define FIM_SD_RX_BLKRD				0x02
 #define FIM_SD_RX_TIMEOUT			0x04
 
-
 /* FIM SD control registers */
 #define FIM_SD_REG_CLOCK_DIVISOR		0
 #define FIM_SD_REG_INTERRUPT			1
-
 
 /* Internal flags for the request function */
 #define FIM_SD_REQUEST_NEW			0x00
@@ -115,12 +114,10 @@ MODULE_VERSION(DRIVER_VERSION);
 #define FIM_SD_REQUEST_STOP			0x02
 #define FIM_SD_SET_BUS_WIDTH			0x04
 
-
 /* Macros for the DMA-configuraton */
 #define FIM_SD_DMA_BUFFER_SIZE			PAGE_SIZE
 #define FIM_SD_DMA_RX_BUFFERS			21
 #define FIM_SD_DMA_TX_BUFFERS			10
-
 
 #if 0
 # define FIM_SD_MULTI_BLOCK
@@ -128,7 +125,6 @@ MODULE_VERSION(DRIVER_VERSION);
 #else
 # define FIM_SD_MAX_BLOCKS			1
 #endif
-
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] fim-sdio: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "fim-sdio: " fmt, ## args)
@@ -143,12 +139,10 @@ MODULE_VERSION(DRIVER_VERSION);
 #  define printk_debug(fmt, args...)
 #endif
 
-
 /* If enabled will generate an CRC error in the function that checks it */
 #if 0
 #define FIM_SD_FORCE_CRC
 #endif
-
 
 /*
  * GPIO configuration
@@ -156,7 +150,6 @@ MODULE_VERSION(DRIVER_VERSION);
  * the driver will read its status (the firmware doesn't support it)
  */
 #define FIM_SDIO_MAX_GPIOS			8
-
 
 /* Values for the block read state machine */
 enum fim_blkrd_state {
@@ -179,8 +172,6 @@ enum fim_cmd_state {
 	CMD_STATE_TIMEOUTED		= 4, /* Timeout response from the PIC */
 	CMD_STATE_CRC_ERR		= 5, /* Compared CRC (PIC and card) differs */
 };
-
-
 
 /*
  * Internal port structure for the FIM-SDIO host controller
@@ -1038,11 +1029,8 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->fim.dma_cfg = &dma_cfg;
 
 	/* Check if have a firmware code for using to */
-	if (!fim_sdio_firmware)
-		port->fim.fw_name = FIM_SDIO_FIRMWARE_NAME;
-	else
-		port->fim.fw_code = fim_sdio_firmware;
-
+	port->fim.fw_name = FIM_SDIO_FIRMWARE_FILE;
+	port->fim.fw_code = FIM_SDIO_FIRMWARE_CODE;
 	retval = fim_register_driver(&port->fim);
 	if (retval) {
 		printk_err("Couldn't register the FIM driver.\n");
