@@ -524,6 +524,8 @@ static int __init ns921x_aes_probe(struct platform_device *pdev)
 	}
 
 	init_waitqueue_head(&dev_data.waitq);
+	dev_info(&pdev->dev, "NS921x AES encryption/decryption module at 0x%p (irq: %d)\n",
+			dev_data.membase, dev_data.irq);
 
 	return 0;
 

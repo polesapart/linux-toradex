@@ -111,6 +111,12 @@ static void __init mach_cc9p9215js_init_machine(void)
 	/* Analog Digital Converter */
 	ns9xxx_add_device_ns9215_adc();
 
+	/* AES HW Encryption module */
+#if defined(CONFIG_CRYPTO_DEV_NS921X_AES) || \
+	defined(CONFIG_CRYPTO_DEV_NS921X_AES_MODULE)
+	ns9xxx_add_device_ns921x_aes();
+#endif
+
 	/* Real Time Clock */
 	ns9xxx_add_device_ns9215_rtc();
 

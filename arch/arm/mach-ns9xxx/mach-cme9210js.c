@@ -68,6 +68,12 @@ static void __init mach_cme9210js_init_machine(void)
 
 	/* Init the FIM devices */
 	ns9xxx_add_device_ns921x_fims();
+
+	/* AES HW Encryption module */
+#if defined(CONFIG_CRYPTO_DEV_NS921X_AES) || \
+	defined(CONFIG_CRYPTO_DEV_NS921X_AES_MODULE)
+	ns9xxx_add_device_ns921x_aes();
+#endif
 }
 
 MACHINE_START(CME9210JS, "Digi Connect ME 9210 on Devboard")

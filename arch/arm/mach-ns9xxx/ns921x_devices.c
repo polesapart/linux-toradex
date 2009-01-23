@@ -408,6 +408,7 @@ void __init ns9xxx_add_device_ns921x_uartd(int gpio_start,
 		int gpio_nr, int func) {}
 #endif
 
+/* Flash */
 #if defined(CONFIG_MTD_PHYSMAP) || defined(CONFIG_MTD_PHYSMAP)
 static struct resource flash_resources[] = {
 	{
@@ -512,6 +513,59 @@ void __init ns9xxx_add_device_ns921x_spi(struct spi_ns9xxx_data *data)
 #else
 void __init ns9xxx_add_device_ns921x_spi(struct spi_ns9xxx_data *data) {}
 #endif
+
+/* AES HW Encryption module */
+#if defined(CONFIG_CRYPTO_DEV_NS921X_AES) || \
+	defined(CONFIG_CRYPTO_DEV_NS921X_AES_MODULE)
+static struct ns921x_sysclk aes_clk = {
+	.clk = {
+		.name		= "ns921x-aes",
+		.id		= -1,
+		.owner		= THIS_MODULE,
+		.endisable	= ns921x_endisable_sysclock,
+	},
+	.mask	= SYS_CLOCK_AES,
+};
+
+static struct resource aes_resources[] = {
+	{
+		.start	= 0xa0800000,
+		.end	= 0xa080000f,
+		.flags	= IORESOURCE_MEM,
+	}, {
+		.start	= IRQ_NS921X_EXTDMA,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static u64 aes_dmamask = DMA_BIT_MASK(32);
+
+static struct platform_device ns9xxx_device_ns921x_aes = {
+	.name		= "ns921x-aes",
+	.id		= 1,
+	.resource	= aes_resources,
+	.num_resources	= ARRAY_SIZE(aes_resources),
+	.dev = {
+		.dma_mask = &aes_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	},
+};
+
+void __init ns9xxx_add_device_ns921x_aes(void)
+{
+	aes_clk.clk.parent = clk_get(NULL, "dmaclock");
+	if (IS_ERR(aes_clk.clk.parent))
+		return;
+
+	if (clk_register(&aes_clk.clk))
+		return;
+
+	platform_device_register(&ns9xxx_device_ns921x_aes);
+}
+#else
+void __init ns9xxx_add_device_ns921x_aes(void);
+#endif
+
 
 #if defined(CONFIG_PM)
 static irqreturn_t ns921x_ack_extirq(int irq, void *dev_id)

@@ -34,6 +34,7 @@
 #define SYS_CLOCK_CSSEL		__REGBIT(25)
 #define SYS_CLOCK_RTC		__REGBIT(12)
 #define SYS_CLOCK_I2C		__REGBIT(11)
+#define SYS_CLOCK_AES		__REGBIT(9)
 #define SYS_CLOCK_ADC		__REGBIT(8)
 #define SYS_CLOCK_SPI		__REGBIT(5)
 #define SYS_CLOCK_UARTx(i)	__REGBIT(1 + (i))

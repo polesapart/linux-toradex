@@ -34,3 +34,4 @@ void __init ns9xxx_add_device_ns921x_flash(
 void __init ns9xxx_add_device_ns921x_spi(struct spi_ns9xxx_data *data);
 int __init ns921x_extgpio_pm_wakeup_init(unsigned int gpio);
 void __init ns9xxx_add_device_ns921x_fims(void);
+void __init ns9xxx_add_device_ns921x_aes(void);
