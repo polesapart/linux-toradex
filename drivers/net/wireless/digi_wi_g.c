@@ -974,7 +974,7 @@ static int dw_plcp_get_bitrate_cck(int rate_code)
 		case 0x37: ret = IEEE80211_CCK_RATE_5MB;  break;
 		case 0x6E: ret = IEEE80211_CCK_RATE_11MB; break;
 		default:
-			ERROR("Unknown rate_code %i cck, using 1MB\n", rate_code);
+//			ERROR("Unknown rate_code %i cck, using 1MB\n", rate_code);
 			ret = IEEE80211_CCK_RATE_1MB;  break;
 	}
 
