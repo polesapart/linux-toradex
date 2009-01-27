@@ -10,6 +10,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/netdevice.h>
 #include <linux/spi/spi.h>
 
 #include <asm/mach/arch.h>
@@ -50,6 +51,11 @@ static void __init mach_cme9210js_init_machine(void)
 #endif
 
 	/* Ethernet */
+	/* Adjust the netdev_max_backlog to a lower value. A big queue
+	 * of incoming packets in the kernel can exhaust the kernel memory
+	 * and trigger the OOM killer. This value can be tuned later in
+	 * user space throught proc fs and with sysctl */
+	netdev_max_backlog = 300;
 	ns9xxx_add_device_cme9210_eth();
 
 	/* Watchdog timer */
