@@ -236,6 +236,19 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		brq.stop.flags = MMC_RSP_SPI_R1B | MMC_RSP_R1B | MMC_CMD_AC;
 		brq.data.blocks = req->nr_sectors;
 
+		/*
+		 * @BUG: The block-layer is able to modify the minimum number of
+		 * transfer blocks for one request (see [1]). At this moment, it sets
+		 * this number to eigth, which is a problem for controllers that only
+		 * supports single-transfers.
+		 * 
+		 * [1] block/blk-settings.c:blk_queue_max_sectors()
+		 *
+		 * (Luis Galdos)
+		 */
+		if (brq.data.blocks > card->host->max_blk_count)
+			brq.data.blocks = card->host->max_blk_count;
+		
 		if (brq.data.blocks > 1) {
 			/* SPI multiblock writes terminate using a special
 			 * token, not a STOP_TRANSMISSION request.
@@ -266,6 +279,27 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 
 		mmc_queue_bounce_pre(mq);
 
+                /*
+                 * Adjust the sg list so it is the same size as the
+                 * request.
+		 * @BUG: See above description (Luis Galdos)
+                 */
+                if (brq.data.blocks != req->nr_sectors) {
+			int data_size, i;
+			struct scatterlist *sg;
+			
+                        data_size = brq.data.blocks * brq.data.blksz;
+                        for_each_sg(brq.data.sg, sg, brq.data.sg_len, i) {
+                                data_size -= sg->length;
+                                if (data_size <= 0) {
+                                        sg->length += data_size;
+                                        i++;
+                                        break;
+                                }
+                        }
+                        brq.data.sg_len = i;
+                }
+		
 		mmc_wait_for_req(card->host, &brq.mrq);
 
 		mmc_queue_bounce_post(mq);
