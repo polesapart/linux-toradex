@@ -254,6 +254,12 @@ static struct map_desc ns921x_io_desc[] __initdata = {
 		.length = 0x27c,
 		.type = MT_DEVICE,
 	},
+	{ /* External DMA Module */
+		.virtual = io_p2v(0xa0800000),
+		.pfn = __phys_to_pfn(0xa0800000),
+		.length = 0x20,
+		.type = MT_DEVICE,
+	},
 	{ /* System Control Module */
 		.virtual = io_p2v(0xa0900000),
 		.pfn = __phys_to_pfn(0xa0900000),
