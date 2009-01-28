@@ -2053,6 +2053,19 @@ config FB_NS9360
 	  This enables support for the display controller inside the
 	  Digi ns9360 CPUs.
 
+config FB_HX8347
+	tristate "HX8347 LCD framebuffer support"
+	depends on FB
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
+
+	help
+	  This enables support for the HX8347 display controller.
+	  Only the register interface mode is supported.
+
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"
 	depends on FB
