@@ -35,7 +35,7 @@
 #include <asm/io.h>
 #include <asm/irq.h>		/* NO_IRQ */
 #include <mach/regs-mem.h>
-#include <mach/regs-sys-ns9360.h>
+#include <mach/regs-sys-common.h>
 
 /* for supported_rates */
 #include <linux/../../net/ieee80211/softmac/ieee80211softmac_priv.h>
