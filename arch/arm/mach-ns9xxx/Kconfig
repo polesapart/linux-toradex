@@ -323,6 +323,10 @@ config CC9P9215JS_SPI
 	default y
 	depends on SPI_NS921X
 
+config CC9P9215JS_EDT_DISPLAY_QVGA
+	bool "Support for the EDT QVGA TFT Display"
+	default n
+
 endif
 
 config MACH_CC9P9360DEV

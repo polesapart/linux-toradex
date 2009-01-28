@@ -125,6 +125,9 @@ static void __init mach_cc9p9215js_init_machine(void)
 
 	/* Init the FIM devices */
 	ns9xxx_add_device_ns921x_fims();
+
+	/* Video */
+	ns9xxx_add_device_cc9p9215_edt_diplay();
 }
 
 MACHINE_START(CC9P9215JS, "ConnectCore 9P 9215 on a JSCC9P9215 Devboard")

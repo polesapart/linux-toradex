@@ -13,11 +13,21 @@
 #include <linux/gpio.h>
 #include <linux/mtd/physmap.h>
 #include <linux/platform_device.h>
-#include <mach/fim-ns921x.h>
+#include <linux/interrupt.h>
+#include <linux/delay.h>
 
-#include "clock.h"
+#include <mach/fim-ns921x.h>
+#include <mach/hardware.h>
+#include <mach/regs-sys-common.h>
+#include <mach/regs-sys-ns921x.h>
+#include <mach/regs-mem.h>
+
+#include <video/hx8347fb.h>
+#include <linux/fb.h>
+
 #include "ns921x_devices.h"
 #include "cc9p9215_devices.h"
+#include "clock.h"
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
@@ -198,5 +208,296 @@ struct platform_device ns921x_fim_sdio1 = {
 	.dev.platform_data = &fim_sdio_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio1);
-
 #endif /* CONFIG_FIM_SDIO */
+
+#if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
+#ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
+#include <mach/dma-ns921x.h>
+struct ext_dma_desc_t dmadesc[3];
+#endif
+
+void __init cc9p9215_edt_qvga_lcd_setup_cs(void)
+{
+	/* LCD required the extended wait register to be set */
+	writel(3, MEM_SMEW);
+	/* 16 bit bus width and enable exteneded wait */
+	writel(MEM_SMC_PB_1 | MEM_SMC_EW_ON | MEM_SMC_MW_16, MEM_SMC(0));
+	/* Static Memory Write Enable Delay x */
+	writel(4, MEM_SMWED(0));
+	/* Static Memory Output Enable Delay x */
+	writel(0, MEM_SMOED(0));
+	/* Static Memory Read Delay x */
+	writel(0, MEM_SMRD(0));
+	/* Static Memory Page Mode Read Delay 0 */
+	writel(0, MEM_SMPMRD(0));
+	/* Static Memory Write Delay */
+	writel(0, MEM_SMWD(0));
+	/* Static Memory Turn Round Delay x */
+	writel(0, MEM_SWT(0));
+	/* Enable the CS0 access */
+	writel(readl(SYS_SMCSSMM(0)) | SYS_SMCSSMM_CSEx_EN, SYS_SMCSSMM(0));
+}
+
+
+int __init cc9p9215_edt_qvga_lcd_register_gpios(struct hx8347fb_pdata *pdata)
+{
+	if (gpio_request(pdata->rst_gpio, "lcd-rst"))
+		goto err;
+
+	gpio_direction_output(pdata->rst_gpio, 0);
+
+	if (gpio_request(pdata->enable_gpio, "lcd-enable"))
+		goto err1;
+
+	gpio_direction_output(pdata->enable_gpio, 0);
+
+	return 0;
+err1:
+	gpio_free(pdata->rst_gpio);
+err:
+	return -EBUSY;
+}
+
+/* Configuration for the EDT QVGA display, most of the settings have
+ * been taken from a Himax application note */
+unsigned char edt_qvga_lcd_init[][3] = {
+	/* Index, value, delay to write next register in ms*/
+	{0x46, 0x94, 0},
+	{0x47, 0x41, 0},
+	{0x48, 0x00, 0},
+	{0x49, 0x33, 0},
+	{0x4a, 0x23, 0},
+	{0x4b, 0x45, 0},
+	{0x4c, 0x44, 0},
+	{0x4d, 0x77, 0},
+	{0x4e, 0x12, 0},
+	{0x4f, 0xcc, 0},
+	{0x50, 0x46, 0},
+	{0x51, 0x82, 0},
+	{0x02, 0x00, 0},	/* Column address start 2 */
+	{0x03, 0x00, 0},	/* Column address start 1 */
+	{0x04, 0x01, 0},	/* Column address end 2 */
+	{0x05, 0x3f, 0},	/* Column address end 1 */
+	{0x06, 0x00, 0},	/* Row address start 2 */
+	{0x07, 0x00, 0},	/* Row address start 1 */
+	{0x08, 0x00, 0},	/* Row address end 2 */
+	{0x09, 0xef, 0},	/* Row address end 1 */
+	{0x01, 0x06, 0},
+	{0x16, 0x68, 0},
+	{0x23, 0x95, 0},
+	{0x24, 0x95, 0},
+	{0x25, 0xff, 0},
+	{0x27, 0x02, 0},
+	{0x28, 0x02, 0},
+	{0x29, 0x02, 0},
+	{0x2a, 0x02, 0},
+	{0x2c, 0x02, 0},
+	{0x2d, 0x02, 0},
+	{0x3a, 0x01, 0},
+	{0x3b, 0x01, 0},
+	{0x3c, 0xf0, 0},
+	{0x3d, 0x00, 20},
+	{0x35, 0x38, 0},
+	{0x36, 0x78, 0},
+	{0x3e, 0x38, 0},
+	{0x40, 0x0f, 0},
+	{0x41, 0xf0, 0},
+	{0x19, 0x49, 0},
+	{0x93, 0x0f, 10},
+	{0x20, 0x40, 0},
+	{0x1d, 0x07, 0},
+	{0x1e, 0x00, 0},
+	{0x1f, 0x04, 0}, 
+	{0x44, 0x40, 0},
+	{0x45, 0x12, 10},
+	{0x1c, 0x04, 20},
+	{0x43, 0x80, 5},
+	{0x1b, 0x08, 40},
+	{0x1b, 0x10, 40},
+	{0x90, 0x7f, 0},
+	{0x26, 0x04, 40},
+	{0x26, 0x24, 0},
+	{0x26, 0x2c, 40},
+	{0x26, 0x3c, 0},
+	{0x57, 0x02, 0},
+	{0x55, 0x00, 0},
+	{0x57, 0x00, 0}
+};
+
+ 
+static void cc9p9215_lcd_reset(struct hx8347fb_par *par)
+{
+	gpio_set_value(par->pdata->rst_gpio, 0);
+	mdelay(100);
+	gpio_set_value(par->pdata->rst_gpio, 1);
+}
+
+static void cc9p9215_lcd_enable(struct hx8347fb_par *par, int state)
+{
+	gpio_set_value(par->pdata->enable_gpio, state);
+}
+
+static void cc9p9215_lcd_write_cmd(struct hx8347fb_par *par, unsigned char cmd)
+{
+	writeb(cmd, par->mmio_cmd);
+}  
+
+#ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
+static irqreturn_t fb_extdma(int irq, void *dev_id)
+{
+	u32 status;
+
+	status = readl(NS921X_DMA_STIE(1));
+
+	if (status & (NS921X_DMA_STIE_NCIP | NS921X_DMA_STIE_NRIP)) {
+		writel(status, NS921X_DMA_STIE(1));
+	}
+
+	return IRQ_HANDLED;
+}
+#endif
+
+static void cc9p9215_lcd_write_data(struct hx8347fb_par *par, u16 *buf, int len)
+{
+#ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
+#if 0
+	/* CE=0, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */   
+	writel(NS921X_DMA_CR_CG | NS921X_DMA_CR_SW_16b | \
+	       NS921X_DMA_CR_DW_16b | NS921X_DMA_CR_SB_16B | \
+	       NS921X_DMA_CR_DB_1B | NS921X_DMA_CR_DINC_N, NS921X_DMA_CR(1));
+        /* CE=1, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */    
+	writel(NS921X_DMA_CR_CE | readl(NS921X_DMA_CR(1)), NS921X_DMA_CR(1));*/*/*/
+#endif
+#else
+	int i, wcycles;
+	u16 *data = buf;
+
+	wcycles = len >> 1;
+
+	for (i = 0; i < wcycles; i++)
+		writew(*data++, par->mmio_data);
+#endif
+}
+
+static int cc9p9215_lcd_init(struct hx8347fb_par *par)
+{
+	int i, ret = 0;
+	u8 reg;
+
+	if (cc9p9215_edt_qvga_lcd_register_gpios(par->pdata))
+		return -EINVAL;
+
+	cc9p9215_lcd_reset(par);
+	cc9p9215_lcd_enable(par, 0);
+	mdelay(100);
+	cc9p9215_edt_qvga_lcd_setup_cs();
+
+	writeb(HIMAX_ID_CODE, par->mmio_cmd);
+	if ((reg = readb(par->mmio_data)) != 0x47) {
+		pr_debug("%s: HX8347 controller not detected REG[0x67] = 0x%02x\n", __func__, reg);
+		ret = -EIO;
+		goto err_detect;
+	}
+
+#ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
+	writel(SYS_CLOCK_EXTDMA | readl(SYS_RESET), SYS_RESET);
+	writel(SYS_CLOCK_EXTDMA | readl(SYS_CLOCK), SYS_CLOCK);
+
+	dmadesc[0].src = (u32)par->info->screen_base;
+	dmadesc[0].dest = (u32)par->info->fix.smem_start;
+	dmadesc[0].length = (u16)(par->info->fix.smem_len / 3);
+	dmadesc[0].control = EXT_DMA_DESC_CTRL_FULL;
+
+	dmadesc[1].src = (u32)(par->info->screen_base + par->info->fix.smem_len / 3);
+	dmadesc[1].dest = (u32)par->info->fix.smem_start;
+	dmadesc[1].length = (u16)(par->info->fix.smem_len / 3);
+	dmadesc[1].control = EXT_DMA_DESC_CTRL_FULL;
+
+	dmadesc[2].src = (u32)(dmadesc[1].src + par->info->fix.smem_len / 3);
+	dmadesc[2].dest = (u32)par->info->fix.smem_start;
+	dmadesc[2].length = (u16)(par->info->fix.smem_len / 3);
+	dmadesc[2].control = EXT_DMA_DESC_CTRL_WRAP | \
+			     EXT_DMA_DESC_CTRL_LAST | \
+			     EXT_DMA_DESC_CTRL_FULL;
+
+	/* Setup the DMA Controllers */
+	writel(&dmadesc[0], NS921X_DMA_BDP(1));
+	writel(NS921X_DMA_STIE_NCIE | NS921X_DMA_STIE_ECIE | \
+	       NS921X_DMA_STIE_NRIE | NS921X_DMA_STIE_CAIE, NS921X_DMA_STIE(1));
+
+	ret = request_irq(IRQ_NS921X_EXTDMA, fb_extdma, 0, "fb_extdma", NULL);
+	if (ret) {
+		pr_debug("%s: err_request_irq_extwakeirq %d -> %d\n", __func__, IRQ_NS921X_EXTDMA, ret);
+		return ret;
+	}
+#endif
+
+	for (i=0; i < (sizeof(edt_qvga_lcd_init)/3); i++) {
+		// Write index and then data
+		cc9p9215_lcd_write_cmd(par, edt_qvga_lcd_init[i][0]);
+		cc9p9215_lcd_write_data(par, (u16 *)&edt_qvga_lcd_init[i][1], 2);
+		mdelay(edt_qvga_lcd_init[i][2]);
+	}
+
+	return 0;
+
+err_detect:
+	gpio_free(par->pdata->rst_gpio);
+	gpio_free(par->pdata->enable_gpio);
+
+	return ret;
+}
+
+static void cc9p9215_lcd_cleanup(struct hx8347fb_par *par)
+{
+	/* TODO unregister gpios, release irq if allocated... */
+}
+static struct resource cc9p9215js_lcd_res[] = {
+	{
+		.start	= 0x40000000,
+		.end	= 0x40000001,
+		.flags	= IORESOURCE_MEM,
+	}, {
+		.start	= 0x40000002,
+		.end	= 0x40000003,
+		.flags	= IORESOURCE_MEM,
+	}, {
+		.start	= IRQ_NS921X_EXTDMA,
+		.flags	= IORESOURCE_IRQ,
+	}
+};
+
+static struct hx8347fb_pdata c9p9215js_lcd_pdata = {
+	.owner			= THIS_MODULE,
+	.reset			= cc9p9215_lcd_reset,
+	.enable			= cc9p9215_lcd_enable,
+	.init			= cc9p9215_lcd_init,
+	.cleanup		= cc9p9215_lcd_cleanup,
+	.write_cmd		= cc9p9215_lcd_write_cmd,
+	.write_data		= cc9p9215_lcd_write_data,
+	.rst_gpio		= 86,
+	.enable_gpio		= 87,
+	.usedma			= 0,
+	.xres 			= 320,
+	.yres			= 240,
+	.bits_per_pixel		= 16,
+};
+
+static struct platform_device edt_qvga_lcd = {
+	.name		= "hx8347",
+	.id		= 0,
+	.dev            = {
+		.platform_data = &c9p9215js_lcd_pdata,
+	},
+	.resource	= cc9p9215js_lcd_res,
+	.num_resources	= ARRAY_SIZE(cc9p9215js_lcd_res),
+};
+	
+void __init ns9xxx_add_device_cc9p9215_edt_diplay(void)
+{
+	platform_device_register(&edt_qvga_lcd);
+}
+#else
+void __init ns9xxx_add_device_cc9p9215_edt_diplay(void) {}
+#endif
+

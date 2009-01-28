@@ -17,6 +17,8 @@ void __init ns9xxx_add_device_cc9p9215_uartc(int gpio_start);
 void __init ns9xxx_add_device_cc9p9215_uartd(int gpio_start);
 void __init ns9xxx_add_device_cc9p9215_flash(void);
 void __init ns9xxx_add_device_cc9p9215_spi(void);
+void __init ns9xxx_add_device_cc9p9215_edt_diplay(void);
+
 
 #define ns9xxx_add_device_cc9p9215_uarta_rxtx() \
 	ns9xxx_add_device_cc9p9215_uarta(2)
