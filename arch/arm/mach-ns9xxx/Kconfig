@@ -326,6 +326,12 @@ config CC9P9215JS_SPI
 config CC9P9215JS_EDT_DISPLAY_QVGA
 	bool "Support for the EDT QVGA TFT Display"
 	default n
+	select FB_HX8347
+
+config CC9P9215JS_TOUCH
+	bool "Touchscreen"
+	default y
+	depends on TOUCHSCREEN_ADS7846 && CC9P9215JS_EDT_DISPLAY_QVGA && CC9P9215JS_SPI
 
 endif
 

@@ -12,6 +12,8 @@
 #include <linux/i2c.h>
 #include <linux/i2c/pca953x.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/ads7846.h>
+#include <linux/gpio.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
@@ -38,6 +40,46 @@ static struct i2c_board_info i2c_devices[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_CC9P9215JS_TOUCH
+static int touch_pendown_state(void)
+{
+	return gpio_get_value(101) ? 0 : 1;
+}
+
+static struct ads7846_platform_data cc9p9215js_touch_data = {
+	.model =		7843,
+	.get_pendown_state =	touch_pendown_state,
+	.x_min =		100,
+	.y_min =		100,
+	.x_max =		4000,
+	.y_max =		4000,
+	.rotate =		180,
+	.buflen =		20,
+	.skip_samples =		0,
+};
+
+void __init cc9p9215js_add_device_touch(void)
+{
+	if (gpio_request(101, "ads7846"))
+		return;
+	gpio_configure_ns921x(101, 0, 0, 2, 0);
+}
+
+#define CC9P9215JS_TOUCH					\
+	{							\
+		.modalias	= "ads7846",			\
+		.max_speed_hz	= 300000,			\
+		.irq		= IRQ_NS9XXX_EXT3,		\
+		.bus_num        = 1,				\
+		.chip_select    = 0,				\
+		.platform_data	= &cc9p9215js_touch_data,	\
+	},
+
+#else
+#define	CC9P9215JS_TOUCH
+void __init cc9p9215js_add_device_touch(void) {}
+#endif
+
 /* SPI devices */
 static struct spi_board_info spi_devices[] __initdata = {
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
@@ -48,6 +90,7 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.chip_select	= 0,
 	},
 #endif
+	CC9P9215JS_TOUCH
 };
 
 static void __init mach_cc9p9215js_init_machine(void)
@@ -128,6 +171,9 @@ static void __init mach_cc9p9215js_init_machine(void)
 
 	/* Video */
 	ns9xxx_add_device_cc9p9215_edt_diplay();
+
+	/* Touchscreen */
+	cc9p9215js_add_device_touch();
 }
 
 MACHINE_START(CC9P9215JS, "ConnectCore 9P 9215 on a JSCC9P9215 Devboard")
