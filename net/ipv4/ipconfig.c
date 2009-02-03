@@ -86,8 +86,13 @@
 #endif
 
 /* Define the friendly delay before and after opening net devices */
-#define CONF_PRE_OPEN		500	/* Before opening: 1/2 second */
-#define CONF_POST_OPEN		1	/* After opening: 1 second */
+#ifdef CONFIG_IP_PNP_DELAY
+# define CONF_PRE_OPEN		500	/* Before opening: 1/2 second */
+# define CONF_POST_OPEN		1	/* After opening: 1 second */
+#else
+# define CONF_PRE_OPEN		0
+# define CONF_POST_OPEN		0
+#endif /* CONFIG_IP_PNP_DELAY */
 
 /* Define the timeout for waiting for a DHCP/BOOTP/RARP reply */
 #define CONF_OPEN_RETRIES 	2	/* (Re)open devices twice */
