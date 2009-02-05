@@ -962,6 +962,10 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 
 	port->mapbase	= res->start;
 	port->membase	= S3C24XX_VA_UART + (res->start - S3C24XX_PA_UART);
+
+	/* Use the number of the HW port as line number (Luis Galdos) */
+	port->line      = cfg->hwport;
+	
 	ret = platform_get_irq(platdev, 0);
 	if (ret < 0)
 		port->irq = 0;
