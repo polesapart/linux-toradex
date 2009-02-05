@@ -137,8 +137,7 @@ static void s3c2443_irq_demux_dma(unsigned int irq, struct irq_desc *desc)
 }
 
 #define INTMSK_DMA	(1UL << (IRQ_S3C2443_DMA - IRQ_EINT0))
-#define SUBMSK_DMA	INTMSK(IRQ_S3C2443_DMA0, IRQ_S3C2443_DMA5)
-
+#define SUBMSK_DMA	(0x3F << (IRQ_S3C2443_DMA0 - S3C2410_IRQSUB(0)))
 
 static void s3c2443_irq_dma_mask(unsigned int irqno)
 {
@@ -166,12 +165,11 @@ static struct irq_chip s3c2443_irq_dma = {
 
 static void s3c2443_irq_demux_uart3(unsigned int irq, struct irq_desc *desc)
 {
-	s3c2443_irq_demux(IRQ_S3C2443_UART3, 3);
+	s3c2443_irq_demux(IRQ_S3C2443_RX3, 3);
 }
 
 #define INTMSK_UART3	(1UL << (IRQ_S3C2443_UART3 - IRQ_EINT0))
-#define SUBMSK_UART3	(0xf << (IRQ_S3C2443_RX3 - S3C2410_IRQSUB(0)))
-
+#define SUBMSK_UART3	(0x7 << (IRQ_S3C2443_RX3 - S3C2410_IRQSUB(0)))
 
 static void s3c2443_irq_uart3_mask(unsigned int irqno)
 {
