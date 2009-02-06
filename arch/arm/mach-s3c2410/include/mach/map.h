@@ -54,6 +54,11 @@
 #define S3C2410_PA_NAND	   (0x4E000000)
 #define S3C24XX_SZ_NAND	   SZ_1M
 
+/* EBI registers for 2443 */
+#define S3C2443_PA_EBI     (0x4E800000)
+#define S3C2443_VA_EBI     S3C_VA_EBI
+#define S3C2443_SZ_EBI	   SZ_1M
+
 /* UARTs */
 #define S3C24XX_VA_UART	   S3C_VA_UART
 #define S3C2410_PA_UART	   (0x50000000)
@@ -120,13 +125,16 @@
 #define S3C2440_SZ_CAMIF   SZ_1M
 
 /* AC97 */
-
 #define S3C2440_PA_AC97	   (0x5B000000)
 #define S3C2440_SZ_AC97	   SZ_1M
 
 /* S3C2443 High-speed SD/MMC */
 #define S3C2443_PA_HSMMC   (0x4A800000)
 #define S3C2443_SZ_HSMMC   (256)
+
+/* CF/ATA */
+#define S3C2443_PA_CFATA   (0x4B800000)
+#define S3C2443_SZ_CFATA   SZ_1M
 
 /* ISA style IO, for each machine to sort out mappings for, if it
  * implements it. We reserve two 16M regions for ISA.
