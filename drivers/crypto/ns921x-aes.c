@@ -118,7 +118,8 @@ static irqreturn_t ns921x_aes_int(int irq, void *dev_id)
 		if ( status & (NS921X_DMA_STIE_ECIP |
 			NS921X_DMA_STIE_NRIP | NS921X_DMA_STIE_CAIP |
 			NS921X_DMA_STIE_PCIP) )
-			printk("DMA error. Status = 0x%08x\n", status);
+			dev_dbg(&dev_data.pdev->dev,
+				"DMA error. Status = 0x%08x\n", status);
 	}
 	/* ack interrupt */
 	iowrite32(status, dev_data.membase + DMA_STATUS);
@@ -200,7 +201,8 @@ int ns921x_aes_dma(unsigned timeout)
 	if (!wait_event_timeout(dev_data.waitq,
 				(dev_data.irq_pending == 0), timeout)) {
 		dev_err(&dev_data.pdev->dev, "interrupt timed out! Retrying\n" );
-		printk("DMA_STATUS = 0x%x\n", ioread32(dev_data.membase + DMA_STATUS) );
+		dev_dbg(&dev_data.pdev->dev, "DMA_STATUS = 0x%x\n",
+				ioread32(dev_data.membase + DMA_STATUS) );
 		return -EAGAIN;
 	}
 
