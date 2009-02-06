@@ -49,7 +49,7 @@
 
 #include <mach/idle.h>
 #include <mach/fb.h>
-#include <mach/spi.h>
+#include <asm/plat-s3c24xx/spi.h>
 #include <mach/gpio.h>
 #include <linux/spi/spi.h>
 
@@ -61,7 +61,6 @@
 #include <plat/hsmmc.h>
 #include <plat/ts.h>
 #include <plat/udc.h>
-#include <plat/spi.h>
 #include <mach/irqs.h>
 #include <mach/regs-irq.h>
 #include <plat/irq.h>
@@ -479,8 +478,9 @@ struct platform_device cc9m2443_device_ts = {
 
 /* This is the High Speed SPI-master of the S3C2443 */
 static struct s3c2443_spi_info cc9m2443_hsspi_info = {
-        .bus_num = 0,
+        .bus_num        = 0,
 	.num_chipselect = 1,
+        .input_clk      = S3C2443_HSSPI_INCLK_PCLK,
 	.miso = {
 		.nr = S3C2410_GPE11,
 		.cfg = S3C2410_GPE11_SPIMISO0,

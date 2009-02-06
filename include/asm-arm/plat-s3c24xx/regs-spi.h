@@ -111,9 +111,10 @@
 #define S3C2443_SPI0_CLKSEL_PCLK                (0<<9)
 #define S3C2443_SPI0_CLKSEL_HCLK                (1<<9)
 #define S3C2443_SPI0_CLKSEL_ECLK                (2<<9)
-#define S3C2443_SPI0_CLKSEL_MPLL                (3<<9)
+#define S3C2443_SPI0_CLKSEL_EPLL                (3<<9)
 #define S3C2443_SPI0_ENCLK_DISABLE              (0<<8)
 #define S3C2443_SPI0_ENCLK_ENABLE               (1<<8)
+#define S3C2443_SPI0_CLK_PRE_MASK               (0xff)
 
 #define S3C2443_SPI0_MODE_CH_TSZ_BYTE           (0<<18)
 #define S3C2443_SPI0_MODE_CH_TSZ_WORD           (1<<18)

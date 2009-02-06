@@ -41,7 +41,6 @@
 #include <mach/dma.h>
 #include <asm/plat-s3c24xx/spi.h>
 #include <mach/dma.h>
-#include <mach/spi.h>
 #include <mach/regs-s3c2443-clock.h>
 
 
@@ -57,14 +56,11 @@
 /* DMA transfer unit (byte). */
 #define S3C24XX_DMA_XFER_BYTE			1
 #define S3C24XX_DMA_XFER_HWORD			2
-#define S3C24XX_DMA_XFER_WORD			4  
-
+#define S3C24XX_DMA_XFER_WORD			4
 
 /* Used for setting the CS on the different SPI-operations */
 #define SPI_CS_ACTIVE				1
 #define SPI_CS_INACTIVE				0
-
-
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] spi-s3c2443: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "spi-s3c2443: " fmt, ## args)
@@ -203,24 +199,29 @@ static void s3c2443_spi_sw_reset(struct s3c2443_spi *spi)
 
 static int s3c2443_spi_hw_init(struct s3c2443_spi *hw)
 {
-	unsigned long misccr, pclk;
+	unsigned long misccr, clkcfg;
 	struct s3c2443_spi_info *info;
 	int cnt;
 	struct s3c24xx_spi_gpio *cs;
-	
-	/* Enable the PCLK into the SPI-HS engine */
-	pclk = __raw_readl(S3C2443_PCLKCON);
-	__raw_writel(pclk | (1 << 6), S3C2443_PCLKCON);
 
-	/* Enable the HSSPI-port */
+	info = hw->pdata;
+	
+        writel(readl(S3C2443_SCLKCON) | S3C2443_SCLKCON_HSSPICLK, S3C2443_SCLKCON);
+        writel(readl(S3C2443_PCLKCON) | S3C2443_PCLKCON_HSSPI, S3C2443_PCLKCON);
+	
+	if (info->input_clk == S3C2443_HSSPI_INCLK_PCLK)
+		clkcfg = S3C2443_SPI0_CLKSEL_PCLK;
+	else
+		clkcfg = S3C2443_SPI0_CLKSEL_EPLL;
+	writel(clkcfg, hw->regs + S3C2443_SPI0_CLK_CFG);
+
 	misccr = __raw_readl(S3C24XX_MISCCR);
 	__raw_writel(misccr | (1 << 31), S3C24XX_MISCCR);
-	
+		
         /* HSSPI software reset */
 	s3c2443_spi_sw_reset(hw);
 	
-	/* Configure the chip selects depending on the passed platform data */
-	info = hw->pdata;	
+	/* Configure the chip selects depending on the passed platform data */	
         s3c2410_gpio_cfgpin(info->miso.nr, info->miso.cfg);
 	s3c2410_gpio_cfgpin(info->mosi.nr, info->mosi.cfg);
 	s3c2410_gpio_cfgpin(info->clk.nr, info->clk.cfg);
@@ -237,7 +238,6 @@ static int s3c2443_spi_hw_init(struct s3c2443_spi *hw)
 	        
 	return 0;
 }
-
 
 /*
  * Configure the controller for the passed SPI-device. Additionally it will
@@ -285,15 +285,16 @@ static int s3c2443_spi_setupxfer(struct spi_device *spi,
 	div = clk_get_rate(hw->clk) / hz;
 	div /= 2;
 	div = (div) ? (div - 1) : (0);
-	if (div > 255) {
+	if (div > S3C2443_SPI0_CLK_PRE_MASK) {
 		printk_err("Invalid clock divider %d (%i Hz)\n", div, hz);
 		return -EINVAL;
 	}
-	
-	printk_debug("Setting pre-scaler to %d (%d Hz)\n", div, hz);
-	clkreg = readl(hw->regs + S3C2443_SPI0_CLK_CFG) & ~0xFF;
-	writel(clkreg | div, hw->regs + S3C2443_SPI0_CLK_CFG);
 
+	/* Only modify the prescaler */
+	printk_debug("Setting pre-scaler to %d (%d Hz)\n", div, hz);
+	clkreg = readl(hw->regs + S3C2443_SPI0_CLK_CFG) & ~(S3C2443_SPI0_CLK_PRE_MASK);
+	writel(clkreg | div, hw->regs + S3C2443_SPI0_CLK_CFG);
+	
 	/*
 	 * For some reasons the clock configuration isn't working correctly by
 	 * the FIRST execution. For this reason let's make a sanity check and
@@ -301,12 +302,12 @@ static int s3c2443_spi_setupxfer(struct spi_device *spi,
 	 * to solve the problem.
 	 * Luis Galdos
 	 */
-	clkreg = readl(hw->regs + S3C2443_SPI0_CLK_CFG) & 0xFF;
-	if (clkreg != div) {
+	clkreg = readl(hw->regs + S3C2443_SPI0_CLK_CFG);
+	if ((clkreg & S3C2443_SPI0_CLK_PRE_MASK) != div) {
 		printk_debug("Need to reconfigure the clock\n");
 		s3c2443_spi_hw_init(hw);
 		s3c2443_spi_sw_reset(hw);
-		writel(clkreg | div, hw->regs + S3C2443_SPI0_CLK_CFG);		
+		writel(clkreg | div, hw->regs + S3C2443_SPI0_CLK_CFG);
 	}
 
 	/* Set the correct mode for the passed SPI-transfer */
@@ -365,8 +366,6 @@ static int s3c2443_spi_setup(struct spi_device *spi)
 	return ret;
 }
 
-
-
 /*
  * Tasklet function for checking the message queue. If there is another transfer
  * pending, then this function will start the transfer, otherwise it calls the
@@ -390,7 +389,6 @@ static void s3c2443_spi_next_tasklet(unsigned long data)
 	if (!xfer || !msg)
 		return;
 
-
 	/*
 	 * If we used the own internal DMA-buffer for the DMA-transfer then copy
 	 * the data to the higher SPI-message. If not, then cause we have
@@ -401,7 +399,6 @@ static void s3c2443_spi_next_tasklet(unsigned long data)
 			     hw->dma_xfer_len, xfer->rx_buf);
 		memcpy(xfer->rx_buf, hw->rx_buf, hw->dma_xfer_len);
 	}
-
 
 	/*
 	 * We have a problem at this place, then we don't know if
@@ -438,7 +435,6 @@ static void s3c2443_spi_next_tasklet(unsigned long data)
 
 		/* Disable the IRQs and FIFOs, then we are done */
 		writel(0x00, hw->regs + S3C2443_SPI0_CH_CFG);
-		/* writel(0x00, hw->regs + S3C2443_SPI0_INT_EN); */
 
 		msg->actual_length += hw->dma_xfer_len;
 
@@ -454,8 +450,8 @@ static void s3c2443_spi_next_tasklet(unsigned long data)
 
 			stat = readl(hw->regs + S3C2443_SPI0_STATUS);
 
-			printk_debug("Msg complete %i | stat 0x08%x | count 0x%08x)\n",
-				     err, (unsigned int)stat, (u32)cnt);
+			printk_debug("Msg complete %i | stat 0x08%x)\n",
+				     err, (unsigned int)stat);
 			
 			list_del(&msg->queue);
 			msg->complete(msg->context);
@@ -485,7 +481,6 @@ static void s3c2443_spi_next_tasklet(unsigned long data)
 		}
 		
 	} else {
-
 		/*
 		 * Start the next write operation if there is remaining data of the
 		 * last SPI-transfer
@@ -642,7 +637,6 @@ static int s3c2443_spi_dma_init(dmach_t dma_ch, enum s3c2443_xfer_t mode,
         return 0;
 }
 
-
 /*
  * This function is used to handle the next transfer of a SPI-message.
  * If the configuration of the transfer failed, then this function will
@@ -694,11 +688,9 @@ static void s3c2443_spi_next_xfer(struct spi_master *master,
 
         /* 2. Enable the output clock (but don't modify the clock prescaler) */
 	clkcfg = readl(hw->regs + S3C2443_SPI0_CLK_CFG);
-        clkcfg |= S3C2443_SPI0_ENCLK_ENABLE;
-	printk_debug("Enabling the CLK (0x%08x)\n", (unsigned int)clkcfg);
-        writel(clkcfg , hw->regs + S3C2443_SPI0_CLK_CFG);
-
-
+	clkcfg |= S3C2443_SPI0_ENCLK_ENABLE;
+	writel(clkcfg, hw->regs + S3C2443_SPI0_CLK_CFG);
+	
 	/*
 	 * Configure the transfer mode depending on the number of bytes to send
 	 * @XXX: For some unknown reasons we can't enable the burst mode. Please be
@@ -710,7 +702,6 @@ static void s3c2443_spi_next_xfer(struct spi_master *master,
 	if (!(len & 0x3))
 		modecfg = S3C2443_SPI0_MODE_CH_TSZ_WORD;
 
-
 	/*
 	 * Enable the DMA-modes depending on the transfer type
 	 */
@@ -720,7 +711,6 @@ static void s3c2443_spi_next_xfer(struct spi_master *master,
 		modecfg	|= S3C2443_SPI0_MODE_RXDMA_ON;
 	
         writel(modecfg, hw->regs + S3C2443_SPI0_MODE_CFG);
-
 
         /*
 	 * 4. Set SPI INT_EN register
@@ -826,14 +816,13 @@ static void s3c2443_spi_next_xfer(struct spi_master *master,
                 chcfg |= S3C2443_SPI0_CH_RXCH_ON;
 
         writel(chcfg, hw->regs + S3C2443_SPI0_CH_CFG);
-	
+
 	return;
 	
 	/* By errors only schedule the tasklet */
  exit_err:
 	tasklet_schedule(&hw->xmit_tasklet);
 }
-
 
 /* Get the head of the message queue and start the xmit */
 static void s3c2443_spi_next_message(struct spi_master *master)
@@ -851,8 +840,6 @@ static void s3c2443_spi_next_message(struct spi_master *master)
 	/* s3c2443_spi_chipsel(msg->spi, SPI_CS_ACTIVE); */
 	s3c2443_spi_next_xfer(master, msg);
 }
-
-
 
 /*
  * This function will be called from the external SPI-layer for sending data
@@ -889,7 +876,6 @@ static int s3c2443_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 	
 	return 0;
 }
-
 
 /*
  * Normally the IRQs are not used for transferring data to the FIFOs, we use only
@@ -935,8 +921,6 @@ static irqreturn_t s3c2443_spi_irq(int irq, void *_hw)
 	spin_unlock(&hw->xmit_lock);
 	return IRQ_HANDLED;
 }
-
-
 
 static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 {
@@ -1015,7 +999,16 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 		goto err_unmap_iomem;
 	}
 
-	hw->clk = clk_get(&pdev->dev, "pclk");
+	/* Use the passed input clock */
+	if (pdata->input_clk == S3C2443_HSSPI_INCLK_PCLK)
+		hw->clk = clk_get(&pdev->dev, "pclk");
+	else if (pdata->input_clk == S3C2443_HSSPI_INCLK_EPLL)
+		hw->clk = clk_get(&pdev->dev, "epll");
+	else {
+		printk_err("Invalid input clock passed (%i)\n", pdata->input_clk);
+		goto err_free_irq;
+	}
+	
 	if (IS_ERR(hw->clk)) {
 		printk_err("No clock for device\n");
 		err = PTR_ERR(hw->clk);
@@ -1025,6 +1018,8 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 	/* @FIXME: For the moment, permanently enable the clock */
 	clk_enable(hw->clk);
 
+	printk_info("Input clock frequency: %lu Hz\n", clk_get_rate(hw->clk));
+	
 	/* Init the internal data */
 	spin_lock_init(&hw->xmit_lock);
 	INIT_LIST_HEAD(&hw->xmit_queue);
@@ -1069,8 +1064,7 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 	}
 	hw->dma_ch_rx = SPI_RX_CHANNEL;
 	printk_debug("Got the RX DMA-channel %i (%i)\n", hw->dma_ch_rx, SPI_RX_CHANNEL);
-	
-	
+		
 	/* Set the callback function for the DMA-channel */
 	s3c2410_dma_set_buffdone_fn(SPI_TX_CHANNEL, NULL);
 	s3c2410_dma_set_opfn(SPI_TX_CHANNEL, NULL);
@@ -1087,7 +1081,6 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 		printk_err("Failed to register the SPI master\n");
 		goto err_free_chrx;
 	}
-
 
 	/* Init the hardware (reset, enable clock, etc.) */
 	s3c2443_spi_hw_init(hw);
@@ -1127,8 +1120,6 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	return err;
 }
-
-
 
 static int __devexit s3c2443_spi_remove(struct platform_device *pdev)
 {
@@ -1188,11 +1179,7 @@ static int s3c2443_spi_resume(struct platform_device *pdev)
 #define s3c2443_spi_resume  NULL
 #endif
 
-
-
 MODULE_ALIAS("platform:s3c2443-spi");
-
-
 
 static struct platform_driver s3c2443_spi_driver = {
 	.probe		= s3c2443_spi_probe,
