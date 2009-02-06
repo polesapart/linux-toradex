@@ -74,6 +74,7 @@ __FBSDID("$FreeBSD: src/sys/opencrypto/crypto.c,v 1.16 2005/01/07 02:29:16 imp E
 #include <linux/sched.h>
 #include <linux/spinlock.h>
 #include <linux/version.h>
+#include <linux/kthread.h>
 #include <cryptodev.h>
 
 /*
@@ -255,10 +256,10 @@ module_param(crypto_devallowsoft, int, 0644);
 MODULE_PARM_DESC(crypto_devallowsoft,
 	   "Enable/disable use of software crypto support");
 
-static pid_t	cryptoproc = (pid_t) -1;
+static struct 	task_struct *cryptothread = NULL;
 static struct	completion cryptoproc_exited;
 static DECLARE_WAIT_QUEUE_HEAD(cryptoproc_wait);
-static pid_t	cryptoretproc = (pid_t) -1;
+static struct	task_struct *cryptoretthread = NULL;
 static struct	completion cryptoretproc_exited;
 static DECLARE_WAIT_QUEUE_HEAD(cryptoretproc_wait);
 
@@ -1401,7 +1402,7 @@ crypto_proc(void *arg)
 			wait_event_interruptible(cryptoproc_wait,
 					!(list_empty(&crp_q) || crypto_all_qblocked) ||
 					!(list_empty(&crp_kq) || crypto_all_kqblocked) ||
-					cryptoproc == (pid_t) -1);
+					cryptothread == NULL);
 			crp_sleep = 0;
 			if (signal_pending (current)) {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,0)
@@ -1414,7 +1415,7 @@ crypto_proc(void *arg)
 			}
 			CRYPTO_Q_LOCK();
 			dprintk("%s - awake\n", __FUNCTION__);
-			if (cryptoproc == (pid_t) -1)
+			if (cryptothread == NULL)
 				break;
 			cryptostats.cs_intrs++;
 		}
@@ -1470,7 +1471,7 @@ crypto_ret_proc(void *arg)
 			dprintk("%s - sleeping\n", __FUNCTION__);
 			CRYPTO_RETQ_UNLOCK();
 			wait_event_interruptible(cryptoretproc_wait,
-					cryptoretproc == (pid_t) -1 ||
+					cryptoretthread == NULL ||
 					!list_empty(&crp_ret_q) ||
 					!list_empty(&crp_ret_kq));
 			if (signal_pending (current)) {
@@ -1484,7 +1485,7 @@ crypto_ret_proc(void *arg)
 			}
 			CRYPTO_RETQ_LOCK();
 			dprintk("%s - awake\n", __FUNCTION__);
-			if (cryptoretproc == (pid_t) -1) {
+			if (cryptoretthread == NULL) {
 				dprintk("%s - EXITING!\n", __FUNCTION__);
 				break;
 			}
@@ -1598,6 +1599,7 @@ static int
 crypto_init(void)
 {
 	int error;
+	struct task_struct *t;
 
 	dprintk("%s(0x%x)\n", __FUNCTION__, (int) crypto_init);
 
@@ -1643,23 +1645,29 @@ crypto_init(void)
 	init_completion(&cryptoproc_exited);
 	init_completion(&cryptoretproc_exited);
 
-	cryptoproc = 0; /* to avoid race condition where proc runs first */
-	cryptoproc = kernel_thread(crypto_proc, NULL, CLONE_FS|CLONE_FILES);
-	if (cryptoproc < 0) {
-		error = cryptoproc;
+//	cryptothread = -1; /* to avoid race condition where proc runs first */
+	t = kthread_create(crypto_proc, NULL,
+			"cryptothread");
+	if (IS_ERR(t)) {
+		error = PTR_ERR(t);
 		printk("crypto: crypto_init cannot start crypto thread; error %d",
 			error);
 		goto bad;
 	}
+	cryptothread = t;
+	wake_up_process(t);
 
-	cryptoretproc = 0; /* to avoid race condition where proc runs first */
-	cryptoretproc = kernel_thread(crypto_ret_proc, NULL, CLONE_FS|CLONE_FILES);
-	if (cryptoretproc < 0) {
-		error = cryptoretproc;
+//	cryptoretthread = -1; /* to avoid race condition where proc runs first */
+	t =  kthread_create(crypto_ret_proc, NULL,
+			"cryptoretthread");
+	if (IS_ERR(t)) {
+		error = PTR_ERR(t);
 		printk("crypto: crypto_init cannot start cryptoret thread; error %d",
-				error);
+			error);
 		goto bad;
 	}
+	cryptoretthread = t;
+	wake_up_process(t);
 
 	return 0;
 bad:
@@ -1671,7 +1679,6 @@ bad:
 static void
 crypto_exit(void)
 {
-	pid_t p;
 	unsigned long d_flags;
 
 	dprintk("%s()\n", __FUNCTION__);
@@ -1681,18 +1688,18 @@ crypto_exit(void)
 	 */
 
 	CRYPTO_DRIVER_LOCK();
-	p = cryptoproc;
-	cryptoproc = (pid_t) -1;
-	kill_proc(p, SIGTERM, 1);
+	if (NULL != cryptothread)
+		send_sig(SIGTERM, cryptothread, 1);
+	cryptothread = NULL;
 	wake_up_interruptible(&cryptoproc_wait);
 	CRYPTO_DRIVER_UNLOCK();
 
 	wait_for_completion(&cryptoproc_exited);
 
 	CRYPTO_DRIVER_LOCK();
-	p = cryptoretproc;
-	cryptoretproc = (pid_t) -1;
-	kill_proc(p, SIGTERM, 1);
+	if (NULL != cryptoretthread)
+			send_sig(SIGTERM, cryptoretthread, 1);
+		cryptoretthread = NULL;
 	wake_up_interruptible(&cryptoretproc_wait);
 	CRYPTO_DRIVER_UNLOCK();
 
@@ -1700,7 +1707,7 @@ crypto_exit(void)
 
 	/* XXX flush queues??? */
 
-	/* 
+	/*
 	 * Reclaim dynamically allocated resources.
 	 */
 	if (crypto_drivers != NULL)
