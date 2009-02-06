@@ -553,6 +553,25 @@ static struct platform_device cc9m2443_device_udc = {
 	}
 };
 	
+static struct resource s3c2443_ide_resource[] = {
+	[0] = {
+		.start = S3C2443_PA_CFATA,
+		.end   = S3C2443_PA_CFATA + S3C2443_SZ_CFATA,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_S3C2443_CFCON,
+		.end   = IRQ_S3C2443_CFCON,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+struct platform_device s3c443_device_ide = {
+	.name		  = "s3c2443-ide",
+	.id		  = 0,
+	.num_resources	  = ARRAY_SIZE(s3c2443_ide_resource),
+	.resource	  = s3c2443_ide_resource,
+};
 
 
 
@@ -570,6 +589,7 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&cc9m2443_device_ts,
 	&cc9m2443_device_hsspi,
 	&cc9m2443_device_udc,
+	&s3c443_device_ide
 };
 
 static void __init cc9m2443_map_io(void)
