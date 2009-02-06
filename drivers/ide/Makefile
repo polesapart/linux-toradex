@@ -3,6 +3,7 @@
 #
 
 EXTRA_CFLAGS				+= -Idrivers/ide
+EXTRA_CFLAGS				+= -DDEBUG
 
 ide-core-y += ide.o ide-ioctls.o ide-io.o ide-iops.o ide-lib.o ide-probe.o \
 	      ide-taskfile.o ide-park.o ide-pio-blacklist.o
@@ -107,6 +108,7 @@ obj-$(CONFIG_BLK_DEV_PLATFORM)		+= ide_platform.o
 
 obj-$(CONFIG_BLK_DEV_IDE_ICSIDE)	+= icside.o
 obj-$(CONFIG_BLK_DEV_IDE_RAPIDE)	+= rapide.o
+obj-$(CONFIG_BLK_DEV_IDE_S3C2443)	+= s3c2443-ide.o
 obj-$(CONFIG_BLK_DEV_PALMCHIP_BK3710)	+= palm_bk3710.o
 
 obj-$(CONFIG_BLK_DEV_IDE_AU1XXX)	+= au1xxx-ide.o
