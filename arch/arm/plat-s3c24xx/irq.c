@@ -746,7 +746,6 @@ void __init s3c24xx_init_irq(void)
 	}
 
 	/* setup the cascade irq handlers */
-
 	set_irq_chained_handler(IRQ_EINT4t7, s3c_irq_demux_extint4t7);
 	set_irq_chained_handler(IRQ_EINT8t23, s3c_irq_demux_extint8);
 
@@ -802,6 +801,11 @@ void __init s3c24xx_init_irq(void)
 		set_irq_handler(irqno, handle_edge_irq);
 		set_irq_flags(irqno, IRQF_VALID);
 	}
+
+	/* Register CF/ATA interrupt */
+	set_irq_chip(IRQ_S3C2443_CFCON, &s3c_irq_level_chip);
+	set_irq_handler(IRQ_S3C2443_CFCON, handle_level_irq);
+	set_irq_flags(IRQ_S3C2443_CFCON, IRQF_VALID);
 
 	irqdbf("s3c2410: registered interrupt handlers\n");
 }
