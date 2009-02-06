@@ -31,6 +31,8 @@
 
 
 /* Functions for the S3C2443 (Luis Galdos) */
+extern unsigned int s3c2443_gpio_read_porta(unsigned int pin);
+extern void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function);
 extern int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio);
 extern void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value);
 extern int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio);
