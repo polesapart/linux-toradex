@@ -19,6 +19,8 @@ menuconfig CRYPTO
 
 if CRYPTO
 
+source "crypto/ocf/Kconfig"
+
 comment "Crypto core or helper"
 
 config CRYPTO_FIPS
