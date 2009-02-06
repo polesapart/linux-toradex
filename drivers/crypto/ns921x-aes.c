@@ -1,7 +1,7 @@
 /*
  * drivers/crypto/ns921x-aes.c
  *
- * Copyright (C) 2008 by Digi International Inc.
+ * Copyright (C) 2009 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,8 +17,8 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
+#include <mach/dma-ns921x.h>
 
-#define DMA_BASEADDR	0xa0800000
 #define DMA_BDPOINTER	0x0
 
 #define DMA_CONTROL	0x4
@@ -26,8 +26,8 @@
 #define DMA_CONTROL_DW32	(1 << 26)
 #define DMA_CONTROL_RST		(1 << 16)
 
-#define DMA_STATUS	0x8
-
+#define DMA_STATUS		0x8
+#define DMA_MAX_BUFFERS		256
 #define DRIVER_NAME "ns921x-aes"
 
 union ns9xxx_dma_desc {
@@ -52,17 +52,7 @@ union ns9xxx_dma_desc {
 #define ENCKEYSIZE_256	(2 << 4)
 #define ENCKEYSIZE(i)	((i == 16) ? ECCKEYSIZE_128 : \
 		(i == 24) ? ENCKEYSIZE_192 : ENCKEYSIZE_256)
-
-#define DMADESC_WRAP	(1 << 15)
-#define DMADESC_INTR	(1 << 14)
-#define DMATXDESC_LAST	(1 << 13)
-#define DMARXDESC_EN	(1 << 13)
-#define DMADESC_FULL	(1 << 12)
 		u16 control;
-#define DMADESC_WRAP	(1 << 15)
-#define DMADESC_INTR	(1 << 14)
-#define DMATXDESC_LAST	(1 << 13)
-#define DMADESC_FULL	(1 << 12)
 #define ENCOP_NONAES	0
 #define ENCOP_KEY	1
 #define ENCOP_IV	2
@@ -122,8 +112,15 @@ static irqreturn_t ns921x_aes_int(int irq, void *dev_id)
 {
 	u32 status;
 
-	/* ack interrupt */
 	status = ioread32(dev_data.membase + DMA_STATUS);
+	if (!(status & NS921X_DMA_STIE_NCIP) ) {
+		/* check dma errors */
+		if ( status & (NS921X_DMA_STIE_ECIP |
+			NS921X_DMA_STIE_NRIP | NS921X_DMA_STIE_CAIP |
+			NS921X_DMA_STIE_PCIP) )
+			printk("DMA error. Status = 0x%08x\n", status);
+	}
+	/* ack interrupt */
 	iowrite32(status, dev_data.membase + DMA_STATUS);
 
 	/* disable dma channel*/
@@ -141,7 +138,8 @@ static int ns921x_aes_cra_init(struct crypto_tfm *tfm)
 	if (dev_data.irq_pending)
 		return -EBUSY;
 
-	memset(dev_data.v_dma_descr, 0, 256 * sizeof(*dev_data.v_dma_descr));
+	memset(dev_data.v_dma_descr, 0,
+		DMA_MAX_BUFFERS * sizeof(*dev_data.v_dma_descr));
 
 	return 0;
 }
@@ -174,7 +172,8 @@ static int ns921x_aes_setkey(struct crypto_ablkcipher *tfm, const u8 *key,
 	 * de-/encryption routine as it depends on the mode */
 	dev_data.v_dma_descr[0].source = (u32)dev_data.p_key;
 	dev_data.v_dma_descr[0].source_len = dev_data.keylen;
-	dev_data.v_dma_descr[0].flags = ENCOP_KEY | DMADESC_FULL ;
+	dev_data.v_dma_descr[0].flags =
+		ENCOP_KEY | EXT_DMA_DESC_CTRL_FULL;
 
 	return 0;
 
@@ -183,28 +182,32 @@ err_keylen:
 	return ret;
 }
 
-
 int ns921x_aes_dma(unsigned timeout)
 {
 	u32 ctrl;
 
 	/* fire up dma */
-	iowrite32(1 << 22, dev_data.membase + DMA_STATUS);
-	ctrl = DMA_CONTROL_DW32 | DMA_CONTROL_SW32 | 1 << 31 | 1 << 29;
+	iowrite32(NS921X_DMA_STIE_NCIE | NS921X_DMA_STIE_ECIE |
+		NS921X_DMA_STIE_NRIE | NS921X_DMA_STIE_NRIE |
+		NS921X_DMA_STIE_CAIE |NS921X_DMA_STIE_PCIE,
+		dev_data.membase + DMA_STATUS);
+	ctrl = DMA_CONTROL_SW32 | NS921X_DMA_CR_SW_32b |
+		NS921X_DMA_CR_CE | NS921X_DMA_CR_CG;
 	iowrite32(ctrl, dev_data.membase + DMA_CONTROL);
 
 	/* wait for isr */
 	dev_data.irq_pending = 1;
 	if (!wait_event_timeout(dev_data.waitq,
 				(dev_data.irq_pending == 0), timeout)) {
-		dev_err(&dev_data.pdev->dev, "interrupt timed out!\n");
-		return -EINVAL;
+		dev_err(&dev_data.pdev->dev, "interrupt timed out! Retrying\n" );
+		printk("DMA_STATUS = 0x%x\n", ioread32(dev_data.membase + DMA_STATUS) );
+		return -EAGAIN;
 	}
 
 	return 0;
 }
 
-int ns921x_aes_crypt(struct ablkcipher_request *req, int direction, int iv)
+int ns921x_aes_crypt(struct ablkcipher_request *req, int iv)
 {
 	int ret = 0, i, n;
 	int v_buffers, p_buffers;
@@ -227,7 +230,7 @@ int ns921x_aes_crypt(struct ablkcipher_request *req, int direction, int iv)
 
 
 	/* map pages */
-	p_buffers = dma_map_sg(&dev_data.pdev->dev, req->dst,
+map:	p_buffers = dma_map_sg(&dev_data.pdev->dev, req->dst,
 			v_buffers, DMA_BIDIRECTIONAL);
 
 	/* create dma descriptors for every used page */
@@ -240,20 +243,23 @@ int ns921x_aes_crypt(struct ablkcipher_request *req, int direction, int iv)
 		dev_data.v_dma_descr[1 + iv + i].dest =
 			(u32)sg_dma_address(req->src + i);
 		dev_data.v_dma_descr[1 + iv + i].flags =
-			ENCOP_DATA | DMADESC_FULL;
+			ENCOP_DATA | EXT_DMA_DESC_CTRL_FULL;
 	}
 
 	/* add additional dma flags to last descriptor */
 	dev_data.v_dma_descr[iv + p_buffers].flags |=
-		DMADESC_WRAP | DMATXDESC_LAST;
+		EXT_DMA_DESC_CTRL_WRAP | EXT_DMA_DESC_CTRL_LAST;
 
 	/* let hardware do its work */
-	ret = ns921x_aes_dma(HZ * req->src->length / 10);
+	ret = ns921x_aes_dma(HZ * req->src->length / 100);
 
 	/* release dma mappings */
 	dma_sync_sg_for_cpu(&dev_data.pdev->dev, req->src,
 			v_buffers, DMA_BIDIRECTIONAL);
 	dma_unmap_sg(&dev_data.pdev->dev, req->src, i, DMA_BIDIRECTIONAL);
+	/* If DMA transmission did not complete, try again */
+	if (-EAGAIN == ret )
+		goto map;
 
 err_mismatch:
 	/* overwrite key buffer to avoid security breakage! */
@@ -281,14 +287,16 @@ static int ns921x_aes_keyexpander(void)
 	if (!v_expkey)
 		return -ENOMEM;
 
-	dev_data.v_dma_descr[0].control =
+buff:	dev_data.v_dma_descr[0].control =
 		ENCMODE_KEYEXP | ENCKEYSIZE(dev_data.keylen);
+
 	dev_data.v_dma_descr[1].source_len = KEYEXP_SIZE(dev_data.keylen);
 	dev_data.v_dma_descr[1].dest = p_expkey;
 	dev_data.v_dma_descr[1].flags =
-		ENCOP_DATA | DMADESC_WRAP | DMADESC_FULL | DMATXDESC_LAST;
+		ENCOP_DATA | EXT_DMA_DESC_CTRL_WRAP |
+		EXT_DMA_DESC_CTRL_FULL | EXT_DMA_DESC_CTRL_LAST;
 
-	ret = ns921x_aes_dma(HZ);
+	ret = ns921x_aes_dma(HZ/10);
 	if (!ret) {
 		switch (dev_data.keylen) {
 		case 16:
@@ -304,15 +312,16 @@ static int ns921x_aes_keyexpander(void)
 			break;
 		}
 
-		ret = ns921x_aes_dma(HZ);
-
 		/* reset used dma_descriptors */
 		memset(dev_data.v_dma_descr, 0,
 				2 * sizeof(*dev_data.v_dma_descr));
 		dev_data.v_dma_descr[0].source = (u32)dev_data.p_key;
 		dev_data.v_dma_descr[0].source_len = dev_data.keylen;
-		dev_data.v_dma_descr[0].flags = ENCOP_KEY | DMADESC_FULL ;
+		dev_data.v_dma_descr[0].flags =
+			ENCOP_KEY | EXT_DMA_DESC_CTRL_FULL ;
 	}
+	else if (-EAGAIN == ret)
+		goto buff; /* retry dma */
 
 	/* destroy expanded key */
 	memset(v_expkey, 0, KEYEXP_SIZE(dev_data.keylen));
@@ -326,7 +335,7 @@ static int ns921x_aes_ecb_encrypt(struct ablkcipher_request *req)
 {
 	dev_data.v_dma_descr[0].control =
 		ENCMODE_ECB | ENCKEYSIZE(dev_data.keylen) | ENCACTION_ENC;
-	return ns921x_aes_crypt(req, 'e', 0);
+	return ns921x_aes_crypt(req, 0);
 }
 
 static int ns921x_aes_ecb_decrypt(struct ablkcipher_request *req)
@@ -337,7 +346,7 @@ static int ns921x_aes_ecb_decrypt(struct ablkcipher_request *req)
 	if (!ret) {
 		dev_data.v_dma_descr[0].control = ENCMODE_ECB |
 			ENCKEYSIZE(dev_data.keylen) | ENCACTION_DEC;
-		ret = ns921x_aes_crypt(req, 'd', 0);
+		ret = ns921x_aes_crypt(req, 0);
 	}
 
 	return ret;
@@ -362,9 +371,10 @@ static int ns921x_aes_cbc_encrypt(struct ablkcipher_request *req)
 
 	dev_data.v_dma_descr[1].source = (u32)p_iv;
 	dev_data.v_dma_descr[1].source_len = ivsize;
-	dev_data.v_dma_descr[1].flags = DMADESC_FULL | ENCOP_IV;
+	dev_data.v_dma_descr[1].flags =
+		EXT_DMA_DESC_CTRL_FULL | ENCOP_IV;
 
-	ret = ns921x_aes_crypt(req, 'e', 1);
+	ret = ns921x_aes_crypt(req, 1);
 
 	dma_free_coherent(&dev_data.pdev->dev, ivsize, v_iv, p_iv);
 
@@ -384,7 +394,7 @@ static int ns921x_aes_cbc_decrypt(struct ablkcipher_request *req)
 			ENCKEYSIZE(dev_data.keylen) | ENCACTION_DEC;
 
 		ivsize = 16;
-	/* XXX: crypto_ablkcipher_ivsize(crypto_ablkcipher_reqtfm(req)); */
+		/* XXX: crypto_ablkcipher_ivsize(crypto_ablkcipher_reqtfm(req)); */
 		v_iv = dma_alloc_coherent(&dev_data.pdev->dev, ivsize,
 				&p_iv, GFP_KERNEL);
 
@@ -393,9 +403,10 @@ static int ns921x_aes_cbc_decrypt(struct ablkcipher_request *req)
 
 		dev_data.v_dma_descr[1].source = (u32)p_iv;
 		dev_data.v_dma_descr[1].source_len = ivsize;
-		dev_data.v_dma_descr[1].flags = DMADESC_FULL | ENCOP_IV;
+		dev_data.v_dma_descr[1].flags =
+			 EXT_DMA_DESC_CTRL_FULL | ENCOP_IV;
 
-		ret = ns921x_aes_crypt(req, 'e', 1);
+		ret = ns921x_aes_crypt(req, 1);
 
 		dma_free_coherent(&dev_data.pdev->dev, ivsize, v_iv, p_iv);
 	}
@@ -432,15 +443,18 @@ static struct crypto_alg ns921x_aes_algs[] = {
 		.cra_type = &crypto_ablkcipher_type,
 		.cra_module = THIS_MODULE,
 		.cra_init = ns921x_aes_cra_init,
+		.cra_list = LIST_HEAD_INIT(ns921x_aes_algs[0].cra_list),
 	}, {
 		.cra_name = "cbc(aes)",
 		.cra_driver_name = DRIVER_NAME,
+		.cra_priority = 0,
 		.cra_flags = CRYPTO_ALG_TYPE_ABLKCIPHER | CRYPTO_ALG_ASYNC,
 		.cra_blocksize = 16,
 		.cra_alignmask = 15,
 		.cra_type = &crypto_ablkcipher_type,
 		.cra_module = THIS_MODULE,
 		.cra_init = ns921x_aes_cra_init,
+		.cra_list = LIST_HEAD_INIT(ns921x_aes_algs[1].cra_list),
 	},
 };
 
@@ -504,7 +518,7 @@ static int __init ns921x_aes_probe(struct platform_device *pdev)
 	/* register memory for maximal number of dma descriptors */
 	pdev->dev.coherent_dma_mask = (u32)-1;
 	dev_data.v_dma_descr = dma_alloc_coherent(&pdev->dev,
-			sizeof(*dev_data.v_dma_descr) * 256,
+			sizeof(*dev_data.v_dma_descr) * DMA_MAX_BUFFERS,
 			&dev_data.p_dma_descr, GFP_KERNEL);
 	if (!dev_data.v_dma_descr) {
 		ret = -ENOMEM;
@@ -532,7 +546,8 @@ static int __init ns921x_aes_probe(struct platform_device *pdev)
 err_register:
 	while (--i >= 0)
 		crypto_unregister_alg(&ns921x_aes_algs[i]);
-	dma_free_coherent(&pdev->dev, sizeof(*dev_data.v_dma_descr) * 256,
+	dma_free_coherent(&pdev->dev,
+			sizeof(*dev_data.v_dma_descr) * DMA_MAX_BUFFERS,
 			dev_data.v_dma_descr, dev_data.p_dma_descr);
 err_dma_descr:
 	clk_disable(dev_data.clk);
@@ -559,7 +574,8 @@ static int __exit ns921x_aes_remove(struct platform_device *pdev)
 	for (i = 0; i < ARRAY_SIZE(ns921x_aes_algs); i++)
 		crypto_unregister_alg(&ns921x_aes_algs[i]);
 
-	dma_free_coherent(&pdev->dev, sizeof(*dev_data.v_dma_descr) * 256,
+	dma_free_coherent(&pdev->dev,
+			sizeof(*dev_data.v_dma_descr) * DMA_MAX_BUFFERS,
 			dev_data.v_dma_descr, dev_data.p_dma_descr);
 
 	clk_disable(dev_data.clk);
@@ -598,6 +614,6 @@ module_exit(ns921x_aes_exit);
 
 MODULE_DESCRIPTION("Digi ns921x AES algorithm support");
 MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("Matthias Ludwig");
+MODULE_AUTHOR("Digi International Inc.");
 
 MODULE_ALIAS("aes");
