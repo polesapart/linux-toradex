@@ -322,7 +322,7 @@ static int s3c2443_ide_hw_config(struct _s3c2443_ide_hwif *hw)
 	mdelay(200);
 
 err_unmap:
-	iounmap(S3C2443_PA_EBI + 0x8);
+	iounmap(ebicon);
 	return ret;
 }
 
@@ -421,10 +421,11 @@ error:
 	return ret;
 }
 
-static int __devexit s3c2443_ide_remove(struct platform_device *dev)
+static int __devexit s3c2443_ide_remove(struct platform_device *pdev)
 {
 	struct ide_host *host = dev_get_drvdata(&pdev->dev);
 	struct _s3c2443_ide_hwif *shwif = &s3c2443_ide_hwif;
+	struct resource *res;
 
 	ide_host_remove(host);
 
@@ -432,8 +433,6 @@ static int __devexit s3c2443_ide_remove(struct platform_device *dev)
 	clk_put(shwif->clk);
 
 	iounmap(shwif->membase);
-
-	release_mem_region(res->start, res->end - res->start + 1);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res != NULL) 
