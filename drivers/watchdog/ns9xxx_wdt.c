@@ -3,7 +3,7 @@
  *
  * based on at91rm9200_wdt.c by Andrew Victor
  *
- * Copyright (C) 2008 Digi International Inc.
+ * Copyright (C) 2009 Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -240,6 +240,8 @@ static int __devinit ns9xxx_wdt_probe(struct platform_device *pdev)
 		goto err_register;
 	}
 
+	dev_info(&pdev->dev, "NS9xxx watchdog timer at 0x%p\n",
+			pdata.ioaddr);
 	return 0;
 
 err_register:
@@ -319,7 +321,7 @@ static void __exit ns9xxx_wdt_exit(void)
 module_init(ns9xxx_wdt_init);
 module_exit(ns9xxx_wdt_exit);
 
-MODULE_AUTHOR("Matthias Ludwig");
+MODULE_AUTHOR("Digi International Inc.");
 MODULE_DESCRIPTION("Digi NS9xxx Watchdog Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
