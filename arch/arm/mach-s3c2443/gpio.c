@@ -51,6 +51,7 @@ static struct s3c_gpio_t s3c2443_gpios_table[] = {
         { 226, S3C2410_GPF0 },
         { 227, S3C2410_GPF1 },
         { 228, S3C2410_GPF2 },
+        { 232, S3C2410_GPF6 },
 
         /* Port G */
 	{ 242, S3C2410_GPG0 },
