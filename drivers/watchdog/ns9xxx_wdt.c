@@ -124,6 +124,7 @@ static int ns9xxx_wdt_ioctl(struct inode *inode, struct file *file,
 	void __user *argp = (void __user *)arg;
 	int __user *p = argp;
 	int new_value;
+	int ret;
 
 	switch (cmd) {
 	case WDIOC_KEEPALIVE:
@@ -135,8 +136,9 @@ static int ns9xxx_wdt_ioctl(struct inode *inode, struct file *file,
 	case WDIOC_SETTIMEOUT:
 		if (get_user(new_value, p))
 			return -EFAULT;
-		if (ns9xxx_wdt_settimeout(new_value))
-			return -EFAULT;
+		ret = ns9xxx_wdt_settimeout(new_value);
+		if (ret)
+			return ret;
 		ns9xxx_wdt_start();
 		return put_user(timeout, p);
 	case WDIOC_GETTIMEOUT:
