@@ -33,5 +33,12 @@ config MACH_CC9M2443JS
         help
           Say Y here if you are using the ConnectCore 9M 2443 module
           on a JSCC9M2443 Development Board
+
+config MACH_CC9M2443JS_GPIOLIB
+        bool "Enables the machine's GPIO-Lib"
+        depends on MACH_CC9M2443JS
+        help
+          Say Y to enable the GPIO-Lib support for the ConnectCore 9M 2443 module
+          on a JSCC9M2443 Development Board
 	  
 endmenu

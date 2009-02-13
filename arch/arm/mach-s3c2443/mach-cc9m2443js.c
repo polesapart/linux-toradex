@@ -651,7 +651,7 @@ static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
  * @FIXME: That's really bad, we need a better way for compiling the GPIO-support
  * into the kernel
  */
-#if defined(CONFIG_HAVE_GPIO_LIB)
+#if defined(CONFIG_MACH_CC9M2443JS_GPIOLIB)
 #include <asm/gpio.h>
 static struct gpio_chip cc9m2443_gpios = {
 	.label            = "cc9m2443-gpios",
@@ -698,9 +698,9 @@ static void __init cc9m2443_machine_init(void)
 	platform_add_devices(cc9m2443_devices, ARRAY_SIZE(cc9m2443_devices));
 
 	/* Add the GPIOs of this board */
-#if defined(CONFIG_HAVE_GPIO_LIB)
+#if defined(CONFIG_MACH_CC9M2443JS_GPIOLIB)
 	gpiochip_add(&cc9m2443_gpios);
-#endif /* CONFIG_HAVE_GPIO_LIB */
+#endif /* CONFIG_MACH_CC9M2443JS_GPIOLIB */
 	
 	/* The first argument is the bus or adapter number to attach the devices */
 	i2c_register_board_info(CONFIG_I2C_S3C2410_ADAPTER_NR,
