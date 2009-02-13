@@ -33,6 +33,15 @@ static struct spi_board_info spi_devices[] __initdata = {
 #endif
 };
 
+/* I2C devices */
+/* Array to add I2C devices 
+static struct i2c_board_info i2c_devices[] __initdata = {
+	{
+		I2C_BOARD_INFO("device_name", address),
+	},
+};
+*/
+
 static void __init mach_cme9210js_init_machine(void)
 {
 	/* register several system clocks */
@@ -71,6 +80,14 @@ static void __init mach_cme9210js_init_machine(void)
 
 	/* SPI devices */
 	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
+
+	/* I2C controller */
+	ns9xxx_add_device_cme9210_i2c();
+
+	/* I2C devices */
+	/*
+	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
+	*/
 
 	/* Init the FIM devices */
 	ns9xxx_add_device_ns921x_fims();

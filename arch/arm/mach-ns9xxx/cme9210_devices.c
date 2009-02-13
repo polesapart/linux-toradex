@@ -28,6 +28,28 @@ void __init ns9xxx_add_device_cme9210_eth(void)
 void __init ns9xxx_add_device_cme9210_eth(void) {}
 #endif
 
+#if defined(CONFIG_I2C_NS9XXX) || defined(CONFIG_I2C_NS9XXX_MODULE)
+static void cme9210_i2c_gpio_reconfigure(void)
+{
+	gpio_configure_ns921x(9, 0, 0, 1, 0);
+	gpio_configure_ns921x(12, 0, 0, 1, 0);
+}
+
+static struct plat_ns9xxx_i2c ns9xxx_device_cme9210_i2c_data = {
+	.gpio_scl = 9,
+	.gpio_sda = 12,
+	.speed = 100000,
+	.gpio_configuration_func = cme9210_i2c_gpio_reconfigure,
+};
+
+void __init ns9xxx_add_device_cme9210_i2c(void)
+{
+	ns9xxx_add_device_ns921x_i2c(&ns9xxx_device_cme9210_i2c_data);
+}
+#else
+void __init ns9xxx_add_device_cme9210_i2c(void) {}
+#endif
+
 #if defined(CONFIG_SERIAL_NS921X) || defined(CONFIG_SERIAL_NS921X_MODULE)
 void __init ns9xxx_add_device_cme9210_uarta(int gpio_nr)
 {
