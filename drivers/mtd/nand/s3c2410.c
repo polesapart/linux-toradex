@@ -59,7 +59,8 @@
 #include <asm/plat-s3c/regs-nand.h>
 #include <asm/plat-s3c/nand.h>
 
-
+/* Name of the kernel boot parameter with the partitions table */
+#define PARTITON_PARAMETER_NAME "onboard_boot"
 
 #if defined(CONFIG_MTD_NAND_S3C2410_DEBUG) && !defined(DEBUG)
 #define DEBUG
@@ -802,7 +803,7 @@ static int s3c24xx_nand_probe(struct platform_device *pdev,
 #if defined(CONFIG_MTD_CMDLINE_PARTS)
 	struct mtd_partition *mtd_parts;
 	int nr_parts;
-	char *name_back;
+	const char *name_back;
 	struct s3c2410_nand_set nand_sets[1];
 	const char *part_probes[] = { "cmdlinepart", NULL };
 #endif
@@ -889,25 +890,24 @@ static int s3c24xx_nand_probe(struct platform_device *pdev,
 
 	for (setno = 0; setno < nr_sets; setno++, nmtd++) {
 		pr_debug("initialising set %d (%p, info %p)\n", setno, nmtd, info);
-
 		s3c2410_nand_init_chip(info, nmtd, sets);
-
 		nmtd->scan_res = nand_scan_ident(&nmtd->mtd,
 						 (sets) ? sets->nr_chips : 1);
-
 
 		/*
 		 * This is the code required for accessing to the partitions table
 		 * passed by the bootloader
-		 * Luis Galdos
+		 * (Luis Galdos)
 		 */
 #if defined(CONFIG_MTD_CMDLINE_PARTS)
 		/*
-		 * @XXX: Need to reset the name of the partition then the names of the
-		 * partition passed by the U-Boot differs from the assigned name
+		 * Need to reset the name of the MTD-device then the name of the
+		 * partition passed by the U-Boot differs from the assigned name.
+		 * U-Boot : onboard_boot
+		 * Device : NAND 128MiB 3,3V 8-bit
 		 */
 		name_back = nmtd->mtd.name;
-		nmtd->mtd.name= NULL;
+		nmtd->mtd.name= PARTITON_PARAMETER_NAME;
 		nr_parts = parse_mtd_partitions(&nmtd->mtd, part_probes, &mtd_parts, 0);
 		nmtd->mtd.name = name_back;
 		nand_sets[0].name = "NAND-Parts";
