@@ -33,13 +33,13 @@
 #define TX_DMA_MODE 0
 
 #if 0
-#define DEBUG_S3C24XX_UDC
+#define DEBUG_S3C2443_UDC
 #endif
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] s3c2443-udc: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "s3c2443-udc: " fmt, ## args)
 
-#ifdef DEBUG_S3C24XX_UDC
+#ifdef DEBUG_S3C2443_UDC
 #define printk_debug(fmt,args...)		printk(KERN_DEBUG "s3c2443-udc: %s() " fmt, __func__ , ## args)
 #else
 #define printk_debug(fmt,args...)		do { } while(0)
@@ -50,7 +50,7 @@
  * internal queue of the IN-endpoints
  */
 #if 0
-#define DEBUG_S3C24XX_UDC_QUEUE
+#define DEBUG_S3C2443_UDC_QUEUE
 #endif
 
 /* Some driver infos */
@@ -265,8 +265,16 @@ static void s3c24xx_udc_disable(struct s3c24xx_udc *udc)
 	writel(regval | S3C2443_URSTCON_PHY, S3C2443_URSTCON);
 
 	/* PHY power disable */
+#if defined(DISABLED_UDC_CODE)
 	regval = readl(S3C2443_PWRCFG);
-	writel(regval & ~S3C2443_PWRCFG_USBPHY_ON, S3C2443_PWRCFG);
+	writel(regval | S3C2443_PWRCFG_USBPHY_ON, S3C2443_PWRCFG);
+#endif
+	regval = 0;
+	writel(regval, S3C2443_PHYPWR);
+
+	regval = readl(S3C2443_PWRCFG);
+	regval &= ~S3C2443_PWRCFG_USBPHY_ON;
+	writel(regval, S3C2443_PWRCFG);
 }
 
 /*
@@ -314,7 +322,7 @@ static void s3c24xx_udc_epin_tasklet_func(unsigned long data)
 		goto exit_unlock;
 	}
 
-#if defined(DEBUG_S3C24XX_UDC_QUEUE)
+#if defined(DEBUG_S3C2443_UDC_QUEUE)
 	{
 		u8 ch1, ch2;
 		int len;
@@ -370,6 +378,8 @@ static void s3c24xx_udc_reinit(struct s3c24xx_udc *udc)
  */
 static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 {
+	int regval;
+
 	printk_debug("UDC enable called\n");
 
 	/* if reset by sleep wakeup, control the retention I/O cell */
@@ -377,51 +387,69 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 /* 		__raw_writel(__raw_readl(S3C_RSTCON)|(1<<16), S3C_RSTCON); */
 
 	/* USB Port is Normal mode */
-	__raw_writel(__raw_readl(S3C24XX_MISCCR) & ~(1<<12), S3C24XX_MISCCR);
+	regval = __raw_readl(S3C24XX_MISCCR);
+	regval &= ~S3C2410_MISCCR_USBSUSPND0;
+	__raw_writel(regval, S3C24XX_MISCCR);
 
 	/* PHY power enable */
-	__raw_writel(__raw_readl(S3C2443_PWRCFG)|(1<<4), S3C2443_PWRCFG);
+	regval = __raw_readl(S3C2443_PWRCFG);
+	regval |= S3C2443_PWRCFG_USBPHY_ON;
+	__raw_writel(regval, S3C2443_PWRCFG);
 
-	/* USB device 2.0 must reset like bellow,
+	/*
+	 * USB device 2.0 must reset like bellow,
 	 * 1st phy reset and after at least 10us, func_reset & host reset
 	 * phy reset can reset bellow registers.
 	 */
 	/* PHY 2.0 S/W reset */
-	__raw_writel((0<<2)|(0<<1)|(1<<0), S3C2443_URSTCON);
-	udelay(40); /* phy reset must be asserted for at 10us */
+	regval = S3C2443_URSTCON_PHY;
+	__raw_writel(regval, S3C2443_URSTCON);
+	udelay(20); /* phy reset must be asserted for at 10us */
 	
-	/*Function 2.0, Host 1.1 S/W reset*/
-	__raw_writel((1<<2)|(1<<1)|(0<<0), S3C2443_URSTCON);
-	__raw_writel((0<<2)|(0<<1)|(0<<0), S3C2443_URSTCON);
+	/* Function 2.0, Host 1.1 S/W reset */
+	regval = S3C2443_URSTCON_FUNC;
+	__raw_writel(regval, S3C2443_URSTCON);
+	udelay(1);
+	__raw_writel(0x00, S3C2443_URSTCON);
 
 	/* 48Mhz,Oscillator,External X-tal,device */
-	__raw_writel((0<<3)|(1<<2)|(1<<1)|(0<<0), S3C2443_PHYCTRL);
+#if defined(DISABLED_UDC_CODE)
+	regval = __raw_readl(S3C2443_PHYCTRL);
+	regval |= (S3C2443_PHYCTRL_EXTCLK_OSCI | S3C2443_PHYCTRL_INTPLL_USB);
+	regval = 0;
+	__raw_writel(regval, S3C2443_PHYCTRL);
+#endif
 	
 	/* 48Mhz clock on ,PHY2.0 analog block power on
 	 * XO block power on,XO block power in suspend mode,
 	 * PHY 2.0 Pll power on ,suspend signal for save mode disable
 	 */
-	__raw_writel((1<<31)|(0<<4)|(0<<3)|(0<<2)|(0<<1)|(0<<0), S3C2443_PHYPWR);
+	regval = S3C2443_PHYPWR_COMMON_ON;
+	__raw_writel(regval, S3C2443_PHYPWR);
 
 	/* D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable, USB2.0 PHY test enable
 	 */
-	__raw_writel((0<<31)|(1<<2)|(0<<1)|(1<<0), S3C2443_UCLKCON);
-
-	__raw_writel(IRQ_USBD, S3C2410_INTPND);
-	__raw_writel(IRQ_USBD, S3C2410_SUBSRCPND);
+	regval = __raw_readl(S3C2443_UCLKCON);
+	regval |= S3C2443_UCLKCON_FUNC_ENABLE | S3C2443_UCLKCON_TFUNC_ENABLE;
+	__raw_writel(regval, S3C2443_UCLKCON);
 
 	reconfig_usbd(udc);
 
 	udc->gadget.speed = USB_SPEED_UNKNOWN;
 	
-	__raw_writel(__raw_readl(S3C2410_INTMSK)&~(IRQ_USBD), S3C2410_INTMSK);
-
 	/*
 	 * So, now enable the pull up, USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable,USB2.0 PHY test enable
 	 */
-	__raw_writel((1<<31)|(1<<2)|(0<<1)|(1<<0), S3C2443_UCLKCON);
+	regval = __raw_readl(S3C2443_UCLKCON);
+#if defined(DISABLED_UDC_CODE)
+	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE |
+		S3C2443_UCLKCON_TFUNC_ENABLE;
+#else
+	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE;
+#endif
+	__raw_writel(regval, S3C2443_UCLKCON);
 
 	return 0;
 }
@@ -472,8 +500,30 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	}
 
 	enable_irq(IRQ_USBD);
-	printk_info("Registered gadget driver '%s'\n", driver->driver.name);
-	s3c24xx_udc_enable(udc);
+
+	/*
+	 * If a host was already detected, then only call the UDC enable function,
+	 * otherwise check over the configured GPIO if a host is connected.
+	 */
+	if (udc->vbus)
+		s3c24xx_udc_enable(udc);
+	else {
+		struct s3c2410_udc_mach_info *info;
+		unsigned long state, iocfg;
+
+		info = udc->mach_info;
+
+		iocfg = s3c2410_gpio_getcfg(info->vbus_pin);
+		s3c2410_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
+		state = s3c2410_gpio_getpin(info->vbus_pin);
+		s3c2410_gpio_cfgpin(info->vbus_pin, iocfg);
+
+		if (info->vbus_pin_inverted)
+			state = !state;
+
+		if (state)
+			s3c24xx_udc_enable(udc);
+	}
 	
 	return 0;
 
@@ -1010,8 +1060,13 @@ static irqreturn_t s3c24xx_udc_vbus_irq(int irq, void *_udc)
 
 
 /*
- * Interrupt handler of the USB-function
+ * Interrupt handler of the USB-function. The interrupts to detect are coming
+ * from the SMDK, but it doesn't consider the speed detection, which can lead
+ * to some failures.
+ *
+ * (Luis Galdos)
  */
+#define S3C2443_UDC_INT_CHECK			(0xff8f | S3C24XX_UDC_INT_HSP)
 static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 {
 	struct s3c24xx_udc *udc = _udc;
@@ -1028,7 +1083,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 	intr_all = readl(udc->base + S3C24XX_UDC_EIR_REG);
 	
 	/* We have only 3 usable eps now */
-	sys_stat_chk = sys_stat & S3C24XX_UDC_INT_CHECK;
+	sys_stat_chk = sys_stat & S3C2443_UDC_INT_CHECK;
 
 	/* Only check for the correct endpoints (Luis Galdos) */
 	for (cnt = 0, intr_in = 0; cnt < S3C_MAX_ENDPOINTS; cnt++) {
@@ -1067,6 +1122,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 			printk_debug("Vbus ON interrupt\n");
 			writel(S3C24XX_UDC_INT_VBUSON, udc->base + S3C24XX_UDC_SSR_REG);
 			udc->vbus = 1;
+			/* s3c24xx_udc_enable(udc); */
 		}
 
 		if (sys_stat & S3C24XX_UDC_INT_ERR) {
@@ -1076,6 +1132,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		}
 
 		if (sys_stat & S3C24XX_UDC_INT_SDE) {
+
 			writel(S3C24XX_UDC_INT_SDE,
 			       udc->base + S3C24XX_UDC_SSR_REG);
 
@@ -1086,6 +1143,12 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 				printk_debug("FULL SPEED detection\n");
 				s3c24xx_set_max_pktsize(udc, USB_SPEED_FULL);
 			}
+		}
+
+		if (sys_stat & S3C24XX_UDC_INT_HSP) {
+
+			writel(S3C24XX_UDC_INT_HSP, udc->base + S3C24XX_UDC_SSR_REG);
+			printk_debug("High Speed interrupt\n");
 		}
 		
 		if (sys_stat & S3C24XX_UDC_INT_SUSPEND) {
@@ -1364,7 +1427,7 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	 */
 	if (ep_is_in(ep) && ep_index(ep) != 0) {
 		spin_lock(&ep->lock);
-#if defined(DEBUG_S3C24XX_UDC_QUEUE)
+#if defined(DEBUG_S3C2443_UDC_QUEUE)
 		{
 			u8 ch1, ch2;
 			int len;
@@ -1765,22 +1828,58 @@ static int s3c24xx_udc_ep0_write(struct s3c24xx_udc *udc)
 	return 1;
 }
 
+/* Return zero if NO additional request is available */
+static inline int s3c2443_ep0_fix_set_setup(struct s3c24xx_udc *udc,
+					    struct usb_ctrlrequest *ctrl)
+{
+	int timeout_us, cnt;
+	ulong ep0sr;
+	int retval;
+	struct s3c_ep *ep;
+
+	ep = &udc->ep[0];
+	timeout_us = 10000;
+	do {
+		udelay(1);
+		ep0sr = readl(udc->base + S3C24XX_UDC_EP0SR_REG);
+		timeout_us--;
+	} while (timeout_us && !(ep0sr & S3C24XX_UDC_EP0SR_RSR));
+
+	/* If a timeout happens then returns zero */
+	retval = 0;
+	if (timeout_us) {
+		cnt = s3c24xx_udc_ep0_setup_read(ep, (u16 *)ctrl,
+						 sizeof(struct usb_ctrlrequest));
+		if (cnt > 0)
+			retval = 1;
+	}
+
+	return retval;
+}
+
 /*
- * WAIT_FOR_SETUP (OUT_PKT_RDY)
+ * Wait for a setup packet and read if from the FIFO before passint it to the
+ * gadget driver
  */
+#define S3C2443_PACKET_IS_SET_REQ(ctrl) \
+(ctrl.bRequest == USB_REQ_SET_CONFIGURATION || \
+ ctrl.bRequest == USB_REQ_SET_INTERFACE || \
+	    ctrl.bRequest == USB_REQ_SET_DESCRIPTOR || \
+	    ctrl.bRequest == USB_REQ_SET_FEATURE || \
+ ctrl.bRequest == USB_REQ_SET_ADDRESS)
 static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc, u32 csr)
 {
-	struct s3c_ep *ep = &udc->ep[0];
-	struct usb_ctrlrequest ctrl;
+	struct s3c_ep *ep;
 	int retval, bytes, is_in;
-	int second_request;
-	struct usb_ctrlrequest ctrlreq2;
+	int second_request, third_request;
+	struct usb_ctrlrequest ctrl1, ctrl2, ctrl3;
 
 	/* Nuke all previous transfers of this control EP */
+	ep = &udc->ep[0];
 	nuke(ep, -EPROTO);
 
 	/* Read control req from fifo (8 bytes) */
-	bytes = s3c24xx_udc_ep0_setup_read(ep, (u16 *)&ctrl,
+	bytes = s3c24xx_udc_ep0_setup_read(ep, (u16 *)&ctrl1,
 					   sizeof(struct usb_ctrlrequest));
 
 	/*
@@ -1799,38 +1898,24 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc, u32 csr)
 	 * (Luis Galdos)
 	 */
 	second_request = 0;
-	if (ctrl.bRequest == USB_REQ_SET_CONFIGURATION ||
-	    ctrl.bRequest == USB_REQ_SET_INTERFACE ||
-	    ctrl.bRequest == USB_REQ_SET_DESCRIPTOR ||
-	    ctrl.bRequest == USB_REQ_SET_FEATURE ||
-	    ctrl.bRequest == USB_REQ_SET_ADDRESS) {
-		int timeout_us, cnt;
-		ulong ep0sr;
-		
-		/* @FUCK: An additional killer-code at this place (yes, fixme!) */
-		timeout_us = 10000;
-		do {
-			udelay(1);
-			ep0sr = readl(udc->base + S3C24XX_UDC_EP0SR_REG);
-			timeout_us--;
-		} while (timeout_us && !(ep0sr & S3C24XX_UDC_EP0SR_RSR));
+	third_request = 0;
+	if (S3C2443_PACKET_IS_SET_REQ(ctrl1)) {
 
-		/* If the timer doesn't expire then read the new arrived SETUP-frame */
-		if (timeout_us) {
-			cnt = s3c24xx_udc_ep0_setup_read(ep, (u16 *)&ctrlreq2,
-							 sizeof(struct usb_ctrlrequest));
-			if (cnt > 0) {
-				second_request = 1;
-				printk_debug("Second SETUP: bRequestType 0x%02x | bRequest 0x%02x | wValue 0x%04x\n",
-					     ctrlreq2.bRequestType, ctrlreq2.bRequest, ctrlreq2.wValue);
-			}
-		} else
-			printk_debug("Timeout by second SETUP (bRequest 0x%02x)\n",
-				     ctrl.bRequest);
+		/* Check for a second setup frame */
+		second_request = s3c2443_ep0_fix_set_setup(udc, &ctrl2);
+		if (second_request && S3C2443_PACKET_IS_SET_REQ(ctrl2))
+			third_request = s3c2443_ep0_fix_set_setup(udc, &ctrl3);
+
+		/* Check for a third setup frame */
+		if (third_request) {
+			printk(KERN_DEBUG "3. SETUP: bRequestType 0x%02x | "
+			       "bRequest 0x%02x | wValue 0x%04x\n",
+			       ctrl3.bRequestType, ctrl3.bRequest, ctrl3.wValue);
+		}
 	}
 
 	/* Set direction of EP0 */
-	if (likely(ctrl.bRequestType & USB_DIR_IN)) {
+	if (likely(ctrl1.bRequestType & USB_DIR_IN)) {
 		printk_debug("EP0: Preparing new IN frame (%i bytes)\n", bytes);
 		ep->bEndpointAddress |= USB_DIR_IN;
 		is_in = 1;
@@ -1842,36 +1927,43 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc, u32 csr)
 
 	/* Handle some SETUP packets ourselves */
 	retval = 0;
-	switch (ctrl.bRequest) {
+	switch (ctrl1.bRequest) {
 	case USB_REQ_SET_ADDRESS:
-		if (ctrl.bRequestType != (USB_TYPE_STANDARD | USB_RECIP_DEVICE))
+		if (ctrl1.bRequestType != (USB_TYPE_STANDARD | USB_RECIP_DEVICE))
 			break;
 		
-		printk_debug("Set address request (%d)\n", ctrl.wValue);
-		s3c24xx_udc_set_address(udc, ctrl.wValue);
+		printk_debug("Set address request (%d)\n", ctrl1.wValue);
+		s3c24xx_udc_set_address(udc, ctrl1.wValue);
 		goto exit_ep0_setup;
 
 	default:
-		printk_debug("bRequestType 0x%02x | bRequest 0x%02x | wValue 0x%04x | wIndex 0x%04x | wLength %u\n",
-		       ctrl.bRequestType, ctrl.bRequest, ctrl.wValue, ctrl.wIndex,
-		       ctrl.wLength);
+		printk_debug("bRequestType 0x%02x | bRequest 0x%02x | "
+			     "wValue 0x%04x | wIndex 0x%04x | wLength %u\n",
+		       ctrl1.bRequestType, ctrl1.bRequest, ctrl1.wValue, ctrl1.wIndex,
+		       ctrl1.wLength);
 		break;
 	}
 
 	/* Check if need to call the Gadget-setup handler */
 	if (likely(udc->driver)) {
 		spin_unlock(&udc->lock);
-		retval = udc->driver->setup(&udc->gadget, &ctrl);
+		retval = udc->driver->setup(&udc->gadget, &ctrl1);
 		spin_lock(&udc->lock);
 	}
 
 exit_ep0_setup:
 	if (udc->driver && second_request && !retval) {
 		spin_unlock(&udc->lock);
-		retval = udc->driver->setup(&udc->gadget, &ctrlreq2);
+		retval = udc->driver->setup(&udc->gadget, &ctrl2);
 		spin_lock(&udc->lock);
 	}
 
+	if (udc->driver && third_request && !retval) {
+		spin_unlock(&udc->lock);
+		retval = udc->driver->setup(&udc->gadget, &ctrl3);
+		spin_lock(&udc->lock);
+	}
+	
 	/* By error free setups return at this place */
 	if (!retval)
 		return;
@@ -2335,5 +2427,6 @@ module_init(udc_init);
 module_exit(udc_exit);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
-MODULE_AUTHOR("Luis Galdos");
+MODULE_AUTHOR("Luis Galdos, luis.galdos[at]digi.com");
+MODULE_AUTHOR("Samsung Electronics");
 MODULE_LICENSE("GPL");
