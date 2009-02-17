@@ -412,20 +412,23 @@ static inline void ns9xxx_eth_rx_process_ring(struct net_device* dev, unsigned i
 
 	for (i = ring * NR_RXDESC_PER_RING; i < endring; i++, desc++) {
 		if (desc->flags & DMADESC_FULL) {
-			/* give kernel the frame */
-			struct sk_buff *skb = priv->rxskb[i];
-
-			dma_unmap_single(&dev->dev, desc->source,
-					 desc->len, DMA_FROM_DEVICE);
-			skb_put(skb, desc->len);
-			skb->protocol = eth_type_trans(skb, dev);
-
-			priv->stats.rx_packets++;
-			priv->stats.rx_bytes += desc->len;
-			dev->last_rx = jiffies;
-			netif_rx(skb);
-			/* allocate a new buffer */
-			ns9xxx_eth_create_skbuff(dev, i);
+			struct sk_buff *skb;
+			skb = dev_alloc_skb(MAX_ETH_FRAME_LEN);
+			if (likely(skb)) {
+				skb_reserve(skb, 2);	/* 16 byte IP header align */
+				memcpy(skb_put(skb, desc->len), (unsigned char *)priv->rxskb[i]->data,
+				desc->len);
+				skb->protocol = eth_type_trans(skb, dev);
+				priv->stats.rx_packets++;
+				priv->stats.rx_bytes += priv->rxskb[i]->len;
+				dev->last_rx = jiffies;
+				netif_rx(skb);
+			} else {
+				printk(KERN_ERR "%s: out of memory, dropping packet\n", __func__);
+				dev->stats.rx_dropped++;
+			}
+			desc->len = MAX_ETH_FRAME_LEN;
+			desc->flags = DMADESC_INTR | DMARXDESC_EN | (i == (NR_RXDESC_PER_RING - 1) ? DMADESC_WRAP : 0);
 		}
 	}
 }
