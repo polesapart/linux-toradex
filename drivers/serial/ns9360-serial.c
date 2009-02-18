@@ -323,6 +323,7 @@ static int ns9360_uart_startup(struct uart_port *port)
 	struct uart_ns9360_port *unp = up2unp(port);
 	int ret;
 	u32 ctrl;
+	unsigned long flags;
 
 	ret = clk_enable(unp->clk);
 	if (ret) {
@@ -347,16 +348,14 @@ static int ns9360_uart_startup(struct uart_port *port)
 	}
 
 	/* enable receive interrupts */
-	spin_lock(&unp->port.lock);
+	spin_lock_irqsave (&unp->port.lock, flags);
 	ctrl = uartread32(&unp->port, UART_CTRLA);
 	ctrl |= UART_CTRLA_CE | UART_CTRLA_RIE_RDY | UART_CTRLA_RIE_CLOSED;
 	uartwrite32(&unp->port, ctrl, UART_CTRLA);
-	spin_unlock(&unp->port.lock);
 
 	/* enable modem status interrupts */
-	spin_lock_irq(&unp->port.lock);
 	ns9360_uart_enable_ms(&unp->port);
-	spin_unlock_irq(&unp->port.lock);
+	spin_unlock_irqrestore (&unp->port.lock, flags);
 
 	/* enable character gap timer */
 	uartwrite32(&unp->port, UART_CTRLB_RCGT, UART_CTRLB);
@@ -447,6 +446,7 @@ static void ns9360_uart_set_termios(struct uart_port *port,
 			__func__, gap_timer, baud, clk_get_rate(unp->clk));
 
 	uartwrite32(port, gap_timer, UART_RXCHARTIMER);
+	spin_unlock_irqrestore(&port->lock, flags);
 }
 
 static unsigned int ns9360_uart_tx_empty(struct uart_port *port)
