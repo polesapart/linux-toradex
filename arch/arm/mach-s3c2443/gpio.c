@@ -140,7 +140,7 @@ static unsigned int s3c2443_gpio2port(unsigned int pin)
 {
         int cnt;
 
-        for (cnt=0; cnt < sizeof(s3c2443_gpios_table); cnt++) {
+        for (cnt = 0; cnt < ARRAY_SIZE(s3c2443_gpios_table); cnt++) {
                 if (s3c2443_gpios_table[cnt].pin == pin)
                         return s3c2443_gpios_table[cnt].port;
         }
