@@ -14,7 +14,6 @@ struct led_pwm {
 	int period;
 };
 
-#if 1
 static void
 led_pwm_brightness_set(struct led_classdev *c,
 		       enum led_brightness b)
@@ -36,31 +35,6 @@ led_pwm_brightness_get(struct led_classdev *c)
 	led = container_of(c, struct led_pwm, led);
 	return led->period;
 }
-#endif
-
-#if 0
-static void
-led_pwm_brightness_set(struct led_classdev *c,
-		       enum led_brightness b)
-{
-	struct led_pwm *led;
-	int percent;
-
-	percent = (b * 100) / (LED_FULL - LED_OFF);
-	led = container_of(c, struct led_pwm, led);
-	led->percent = percent;
-	pwm_set_duty_percent(led->pwm, percent);
-}
-
-
-static enum led_brightness
-led_pwm_brightness_get(struct led_classdev *c)
-{
-	struct led_pwm *led;
-	led = container_of(c, struct led_pwm, led);
-	return led->percent;
-}
-#endif
 
 static int
 led_pwm_blink_set(struct led_classdev *c,

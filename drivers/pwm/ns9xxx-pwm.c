@@ -19,7 +19,7 @@
  */
 
 # define LAST_COUNT	0xFFFFFFFF	/* 32 bit counter */
-# define DEBUG
+// # define DEBUG
 
 #include <linux/module.h>
 #include <linux/init.h>
