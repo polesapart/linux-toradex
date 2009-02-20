@@ -151,6 +151,9 @@ static void __init mach_cc9p9215js_init_machine(void)
 	/* I2C devices */
 	i2c_register_board_info(0, i2c_devices, ARRAY_SIZE(i2c_devices));
 
+	/* Leds */
+	ns9xxx_add_device_ns9215_leds();
+
 	/* Analog Digital Converter */
 	ns9xxx_add_device_ns9215_adc();
 

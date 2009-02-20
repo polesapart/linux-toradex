@@ -9,5 +9,6 @@
  * the Free Software Foundation.
  */
 
+void __init ns9xxx_add_device_ns9215_leds(void);
 void __init ns9xxx_add_device_ns9215_adc(void);
 void __init ns9xxx_add_device_ns9215_rtc(void);

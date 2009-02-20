@@ -18,6 +18,28 @@
 
 /* Timer Master Control */
 #define SYS_TMC		__REG(0xa0900024)
+#define SYS_TMC_T9RSE		__REGBIT(21)
+#define SYS_TMC_T9LSE		__REGBIT(20)
+#define SYS_TMC_T9HSE		__REGBIT(19)
+#define SYS_TMC_T8RSE		__REGBIT(18)
+#define SYS_TMC_T8LSE		__REGBIT(17)
+#define SYS_TMC_T8HSE		__REGBIT(16)
+#define SYS_TMC_T7RSE		__REGBIT(15)
+#define SYS_TMC_T7LSE		__REGBIT(14)
+#define SYS_TMC_T7HSE		__REGBIT(13)
+#define SYS_TMC_T6RSE		__REGBIT(12)
+#define SYS_TMC_T6LSE		__REGBIT(11)
+#define SYS_TMC_T6HSE		__REGBIT(10)
+#define SYS_TMC_T9E		__REGBIT(9)
+#define SYS_TMC_T8E		__REGBIT(8)
+#define SYS_TMC_T7E		__REGBIT(7)
+#define SYS_TMC_T6E		__REGBIT(6)
+#define SYS_TMC_T5E		__REGBIT(5)
+#define SYS_TMC_T4E		__REGBIT(4)
+#define SYS_TMC_T3E		__REGBIT(3)
+#define SYS_TMC_T2E		__REGBIT(2)
+#define SYS_TMC_T1E		__REGBIT(1)
+#define SYS_TMC_T0E		__REGBIT(0)
 
 /* Timer x Reload Count and Compare register */
 #define SYS_TRCC(x)	__REG2(0xa0900028, (x))
@@ -56,17 +78,29 @@
 
 /* Timer x Control register */
 #define SYS_TC(x)	__REG2(0xa0900190, (x))
+#define SYS_TCx_RELMODE		__REGBIT(18)
+#define SYS_TCx_RELMODE_FULL		__REGVAL(SYS_TCx_RELMODE, 0)
+#define SYS_TCx_RELMODE_HALF		__REGVAL(SYS_TCx_RELMODE, 1)
+#define SYS_TCx_MODE2		__REGBITS(17, 16)
+#define SYS_TCx_MODE2_00		__REGVAL(SYS_TCx_MODE2, 0)
+#define SYS_TCx_MODE2_01		__REGVAL(SYS_TCx_MODE2, 1)
+#define SYS_TCx_MODE2_10		__REGVAL(SYS_TCx_MODE2, 2)
+#define SYS_TCx_MODE2_11		__REGVAL(SYS_TCx_MODE2, 3)
 #define SYS_TCx_TE		__REGBIT(15)
 #define SYS_TCx_TE_DIS			__REGVAL(SYS_TCx_TE, 0)
 #define SYS_TCx_TE_EN			__REGVAL(SYS_TCx_TE, 1)
+#define SYS_TCx_CAPCOMP		__REGBITS(14,12)
+#define SYS_TCx_CAPCOMP_000		__REGVAL(SYS_TCx_CAPCOMP, 0)
 #define SYS_TCx_DEBUG	       __REGBIT(11)
 #define SYS_TCx_DEBUG_CONT		__REGVAL(SYS_TCx_DEBUG, 0)
 #define SYS_TCx_DEBUG_STOP		__REGVAL(SYS_TCx_DEBUG, 1)
 #define SYS_TCx_INTCLR		__REGBIT(10)
 #define SYS_TCx_TCS		__REGBITS(9, 6)
 #define SYS_TCx_TCS_2AHB		__REGVAL(SYS_TCx_TCS, 0)
+#define SYS_TCx_TCS_AHB			__REGVAL(SYS_TCx_TCS, 1)
 #define SYS_TCx_MODE		__REGBITS(5, 4)
 #define SYS_TCx_MODE_INTERNAL		__REGVAL(SYS_TCx_MODE, 0)
+#define SYS_TCx_MODE_CONCA		__REGVAL(SYS_TCx_MODE, 3)
 #define SYS_TCx_INTSEL		__REGBIT(3)
 #define SYS_TCx_INTSEL_DIS		__REGVAL(SYS_TCx_INTSEL, 0)
 #define SYS_TCx_INTSEL_EN		__REGVAL(SYS_TCx_INTSEL, 1)
@@ -80,6 +114,15 @@
 #define SYS_TCx_RELENBL_DIS		__REGVAL(SYS_TCx_RELENBL, 0)
 #define SYS_TCx_RELENBL_EN		__REGVAL(SYS_TCx_RELENBL, 1)
 
+/* Timer Registers */
+#define SYS_THR(x)	__REG2(0xa0900078, (x))		/* Timer 6-9 High Registers */
+#define SYS_TLR(x)	__REG2(0xa0900088, (x))		/* Timer 6-9 Low Registers */
+#define SYS_THLSR(x)	__REG2(0xa0900098, (x))		/* Timer 6-9 High Low Step Register */
+#define SYS_TRELSR(x)	__REG2(0xa09000a8, (x))		/* Timer 6-9 Reload Step Register */
+#define SYS_TRELCCR(x)	__REG2(0xa0900028, (x))		/* Timer 0-9 Reload Count and Compare Register */
+#define SYS_TRCR(x)	__REG2(0xa0900050, (x))		/* Timer 0-9 Read and Capture Register */
+
+/* */
 #define SYS_RTCMC	__REG(0xa0900224)
 #define SYS_RTCMC_SS		__REGBIT(4)
 #define SYS_RTCMC_RIS		__REGBIT(3)
@@ -89,6 +132,7 @@
 #define SYS_RTCMC_MODE_NORMAL		__REGVAL(SYS_RTCMC_MODE, 1)
 #define SYS_RTCMC_RIC		__REGBIT(0)
 
+/* */
 #define SYS_POWER	__REG(0xa0900228)
 #define SYS_POWER_SLFRFSH	__REGBIT(21)
 #define SYS_POWER_INTCLR	__REGBIT(20)

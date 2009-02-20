@@ -15,11 +15,91 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 
+#include <mach/ns9xxx-pwm.h>
+#include <linux/leds.h>
+#include <linux/io.h>
+#include <linux/pwm.h>
+#include <linux/pwm-led.h>
+
 #include <mach/hardware.h>
 #include <mach/regs-sys-ns921x.h>
 
 #include "clock.h"
 #include "processor-ns921x.h"
+
+#if defined(CONFIG_ARCH_NS9XXX)
+static struct led_info ns9xxx_leds_pdata_info = {
+        	.name			= "leds-pwm",
+        	.default_trigger	= "ledtrig-dim",
+        	.flags			= 0,
+};
+
+static struct pwm_channel_config ns9xxx_leds_pdata_config = {
+	.duty_ns	= 20000,
+	.period_ns	= 60000,
+	
+};
+
+static struct pwm_led_platform_data ns9xxx_leds_pdata = {
+	.bus_id		= "ns9xxx_pwmc.0",
+	.led_info	= &ns9xxx_leds_pdata_info,
+	.config		= &ns9xxx_leds_pdata_config,
+};
+
+static struct platform_device ns9xxx_device_ns9215_leds = {
+	.name		= "leds-pwm",
+	.id		= 0,
+	.dev		= {
+		.platform_data = &ns9xxx_leds_pdata,
+	}
+};
+
+static struct ns9xxx_pwm_channel ns9215_pwm_channels[] = {
+	[0] = {
+		.timer		= 6,
+		.gpio		= 5,
+	},
+	[1] = {
+		.timer		= 7,
+		.gpio		= 7,
+	},
+	[2] = {
+		.timer		= 8,
+		.gpio		= 8,
+	},
+	[3] = {
+		.timer		= 9,
+		.gpio		= 13,
+	}
+};
+
+
+/* This structure will be initialized in the init function (see below) */
+static struct ns9xxx_pwm_pdata ns9215_pwm_pdata;
+
+
+static struct platform_device ns9xxx_device_ns9215_pwm = {
+	.name		= "ns9xxx_pwmc",
+	.id		= 0,
+	.dev		= {
+		.platform_data = &ns9215_pwm_pdata,
+	}
+};
+
+void __init ns9xxx_add_device_ns9215_leds(void)
+{
+ 	platform_device_register(&ns9xxx_device_ns9215_leds);
+
+#if 1 /* Enabled PWM by the user configuration */
+	ns9215_pwm_pdata.channels = ns9215_pwm_channels;
+	ns9215_pwm_pdata.number_channels = ARRAY_SIZE(ns9215_pwm_channels);
+	platform_device_register(&ns9xxx_device_ns9215_pwm);
+#endif
+
+}
+#else
+void __init ns9xxx_add_device_ns9215_leds(void) {}
+#endif
 
 #if defined(CONFIG_ADC_NS9215) || defined(CONFIG_ADC_NS9215_MODULE)
 static struct ns921x_sysclk adc_clk = {
