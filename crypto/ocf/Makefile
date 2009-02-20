@@ -42,7 +42,7 @@ $(_obj)-$(CONFIG_OCF_HIFN)    += hifn$(_slash)
 $(_obj)-$(CONFIG_OCF_IXP4XX)  += ixp4xx$(_slash)
 $(_obj)-$(CONFIG_OCF_TALITOS) += talitos$(_slash)
 $(_obj)-$(CONFIG_OCF_PASEMI)  += pasemi$(_slash)
-$(_obj)-$(CONFIG_OCF_EP80579) += ep80579$(_slash)
+# $(_obj)-$(CONFIG_OCF_EP80579) += ep80579$(_slash)
 $(_obj)-$(CONFIG_OCF_OCFNULL) += ocfnull$(_slash)
 
 ocf-objs := $(OCF_OBJS)
