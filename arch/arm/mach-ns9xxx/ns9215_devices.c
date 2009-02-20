@@ -35,13 +35,14 @@ static struct led_info ns9xxx_leds_pdata_info = {
 };
 
 static struct pwm_channel_config ns9xxx_leds_pdata_config = {
-	.duty_ns	= 20000,
-	.period_ns	= 60000,
+	.duty_ns	= 0,
+	.period_ns	= 0,
 	
 };
 
 static struct pwm_led_platform_data ns9xxx_leds_pdata = {
 	.bus_id		= "ns9xxx_pwmc.0",
+	.chan		= 0,
 	.led_info	= &ns9xxx_leds_pdata_info,
 	.config		= &ns9xxx_leds_pdata_config,
 };

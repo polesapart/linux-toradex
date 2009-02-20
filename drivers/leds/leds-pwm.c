@@ -11,10 +11,34 @@
 struct led_pwm {
 	struct led_classdev	led;
 	struct pwm_channel	*pwm;
-	int percent;
+	int period;
 };
 
+#if 1
+static void
+led_pwm_brightness_set(struct led_classdev *c,
+		       enum led_brightness b)
+{
+	struct led_pwm *led;
+	int period;
 
+	period = 10000000000UL;
+	led = container_of(c, struct led_pwm, led);
+	led->period = period;
+	pwm_set_period_ns(led->pwm, period);
+}
+
+
+static enum led_brightness
+led_pwm_brightness_get(struct led_classdev *c)
+{
+	struct led_pwm *led;
+	led = container_of(c, struct led_pwm, led);
+	return led->period;
+}
+#endif
+
+#if 0
 static void
 led_pwm_brightness_set(struct led_classdev *c,
 		       enum led_brightness b)
@@ -36,7 +60,7 @@ led_pwm_brightness_get(struct led_classdev *c)
 	led = container_of(c, struct led_pwm, led);
 	return led->percent;
 }
-
+#endif
 
 static int
 led_pwm_blink_set(struct led_classdev *c,
@@ -56,8 +80,8 @@ led_pwm_blink_set(struct led_classdev *c,
 	cfg.config_mask = PWM_CONFIG_DUTY_NS
 		| PWM_CONFIG_PERIOD_NS;
 
-	cfg.duty_ns = *on_ms * 1000000UL;
-	cfg.period_ns = (*on_ms + *off_ms) * 1000000UL;
+	cfg.duty_ns = *on_ms * 1000000000UL;
+	cfg.period_ns = (*on_ms + *off_ms) * 1000000000UL;
 
 	return pwm_config(led->pwm, &cfg);
 }
@@ -71,8 +95,6 @@ led_pwm_probe(struct platform_device *pdev)
 	struct device *d = &pdev->dev;
 	int ret;
 
-	printk(KERN_INFO "INFO: Going to probe a new LED %i\n", pdev->id);
-
 	if (!pdata || !pdata->led_info) {
 		return -EINVAL;
 	}
@@ -84,13 +106,10 @@ led_pwm_probe(struct platform_device *pdev)
 	if (!led)
 		return -ENOMEM;
 
-	printk(KERN_INFO "INFO: Requesting the PWM: bus id %s | chan %i | name %s\n", 
-				pdata->bus_id, pdata->chan, pdata->led_info->name);
 	led->pwm = pwm_request(pdata->bus_id, pdata->chan, 
 				pdata->led_info->name);
 
 	if (!led->pwm) {
-		printk(KERN_ERR "ERROR: PWM request failed, %lu\n", PTR_ERR(led->pwm));
 		ret = -EINVAL;
 		goto err_pwm_request;
 	}
@@ -104,7 +123,6 @@ led_pwm_probe(struct platform_device *pdev)
 	led->led.blink_set = led_pwm_blink_set;
 	led->led.brightness = LED_OFF;
  
-	printk("[ INFO ] Calling pwm_config with duty %lu | period %lu\n", pdata->config->duty_ns, pdata->config->period_ns);
 	ret = pwm_config(led->pwm, pdata->config);
 	if (ret)
 		goto err_pwm_config;
