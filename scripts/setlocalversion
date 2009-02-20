@@ -19,6 +19,11 @@ if head=`git rev-parse --verify --short HEAD 2>/dev/null`; then
 		fi
 	fi
 
+	# Do we have a DEL-tag?
+	if git name-rev --tags HEAD | grep -i "del-" > /dev/null; then
+		printf '%s' -$(git name-rev --tags --name-only HEAD)
+	fi
+
 	# Are there uncommitted changes?
 	git update-index --refresh --unmerged > /dev/null
 	if git diff-index --name-only HEAD | grep -v "^scripts/package" \
