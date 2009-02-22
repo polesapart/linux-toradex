@@ -75,7 +75,7 @@
 #include <asm/plat-s3c/nand.h>
 #include <asm/plat-s3c/iic.h>
 
-
+#include "displays/displays.h"
 
 /*
  * IMPORTANT: We are using the Ethernet-driver of the Blackfin-project because:
@@ -257,54 +257,10 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 };
 
 
-
-
-/* The below structure belongs to the Sharp LQ064 */
-static struct s3c2410fb_display cc9m2443fd_display = {
-
-	/* @FIXME: Need to define another way for setting the colors per pixel */
-	.lcdcon5	= S3C2410_LCDCON5_INVPWREN | S3C2410_LCDCON5_PWREN,
-
-	.vidcon1	= S3C24XX_LCD_VIDCON1_IHSYNC |
-	S3C24XX_LCD_VIDCON1_IVSYNC,
-	
-	.type		= S3C2410_LCDCON1_TFT,
-	.width		= 640,
-	.height		= 480,
-
-	.xres           = 640,  /* horizontal pixels */
-	.yres           = 480,  /* vertical pixels */
-	.bpp            = 16,
-	
-	.left_margin    = 5,   /* horizontal front porch */
-	.upper_margin   = 3,   /* vertical front porch */
-	.right_margin   = 5,   /* horizontal back porch */
-	.lower_margin   = 30,  /* vertical back porch */
-
-	.hsync_len      = 25,
-	.vsync_len      = 4,
-
-	/*
-	 * Set the configuration registers
-	 * IMPORTANT: In difference to WinCE we use the LCD clock instead of the HCLK
-	 */
-	.vidcon0	= S3C24XX_LCD_VIDCON0_VIDOUT_RGB_IF |
-	S3C24XX_LCD_VIDCON0_RGB_PAR |
-	S3C24XX_LCD_VIDCON0_VCLK_OFF |
-	S3C24XX_LCD_VIDCON0_CLKDIR_DIVIDED,
-
-	/* Select the colors per pixel (565, 1555, etc.) */
-/* 	.wincon0	= S3C24XX_LCD_WINCON_16BPP_1555, */
-	.wincon0	= S3C24XX_LCD_WINCON_16BPP_565,
-	
-	.frame_rate	= 60,
-};
-
-
 /* This is required for the LCD-display */
-static struct s3c2410fb_mach_info cc9m2443fb_mach = {
-	.displays	= &cc9m2443fd_display,
-	.num_displays	= 1,
+static struct s3c2443fb_mach_info cc9m2443fb_mach = {
+ 	.displays	= display_list,
+ 	.num_displays	= ARRAY_SIZE(display_list),
 
 	/* Set the GPIO-configuration */
         .gpccon		= 0xaaa002a8,
@@ -323,28 +279,24 @@ static struct s3c2410fb_mach_info cc9m2443fb_mach = {
 
 
 /* This is for the LCD platform device */
-static struct resource s3c_lcd_resource[] = {
+static struct resource s3c2443_tft_resource[] = {
         [0] = {
                 .start = S3C24XX_PA_TFTLCD,
                 .end   = S3C24XX_PA_TFTLCD + S3C24XX_SZ_LCD - 1,
                 .flags = IORESOURCE_MEM,
         },
-        [1] = {
-                .start = IRQ_S3C2443_LCD3,
-                .end   = IRQ_S3C2443_LCD3,
-                .flags = IORESOURCE_IRQ,
-        }
+	/* No irq for s3c2443 tft driver */
 };
 
-static u64 s3c_device_lcd_dmamask = 0xffffffffUL;
+static u64 s3c2443_lcd_dmamask = 0xffffffffUL;
 
 struct platform_device s3c_device_tft_lcd = {
-        .name             = "s3c2410fb-tft",
+        .name             = "s3c2443fb-tft",
         .id               = -1,
-        .num_resources    = ARRAY_SIZE(s3c_lcd_resource),
-        .resource         = s3c_lcd_resource,
+        .num_resources    = ARRAY_SIZE(s3c2443_tft_resource),
+        .resource         = s3c2443_tft_resource,
         .dev              = {
-                .dma_mask               = &s3c_device_lcd_dmamask,
+                .dma_mask               = &s3c2443_lcd_dmamask,
                 .coherent_dma_mask      = 0xffffffffUL,
 		.platform_data		= &cc9m2443fb_mach,
         }
@@ -724,7 +676,6 @@ MACHINE_START(CC9M2443, "ConnectCore 9M 2443 on a JSCC9M2443 Devboard")
         .phys_io	= S3C2410_PA_UART,
 	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
-
 	.init_irq	= s3c24xx_init_irq,
 	.map_io		= cc9m2443_map_io,
 	.init_machine	= cc9m2443_machine_init,
