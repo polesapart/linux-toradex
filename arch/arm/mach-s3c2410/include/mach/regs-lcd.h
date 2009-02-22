@@ -165,6 +165,7 @@
 #define S3C24XX_LCD_VIDCON0_ENVID               (0x1 << 1)
 #define S3C24XX_LCD_VIDCON0_CLKSEL_HCLK         (0<<2)
 #define S3C24XX_LCD_VIDCON0_CLKSEL_LCD          (1<<2)
+#define S3C24XX_LCD_VIDCON0_CLKSEL_MASK		(3<<2)	
 #define S3C24XX_LCD_VIDCON0_CLKDIR_DIVIDED      (0x1 << 4)
 #define S3C24XX_LCD_VIDCON0_CLKDIR_DIRECT       (0x0 << 4)
 #define S3C24XX_LCD_VIDCON0_VCLK_ON             (0x0 << 5)
