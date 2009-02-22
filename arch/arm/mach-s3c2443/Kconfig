@@ -41,4 +41,6 @@ config MACH_CC9M2443JS_GPIOLIB
           Say Y to enable the GPIO-Lib support for the ConnectCore 9M 2443 module
           on a JSCC9M2443 Development Board
 	  
+source "arch/arm/mach-s3c2443/displays/Kconfig"
+
 endmenu
