@@ -340,7 +340,7 @@ int pwm_config(struct pwm_channel *p,
 	}
 
 err:
-	printk(KERN_INFO"%s: config_mask %d period_ticks %lu duty_ticks %lu"
+	pr_debug("%s: config_mask %d period_ticks %lu duty_ticks %lu"
 		 " polarity %d duty_ns %lu period_ns %lu duty_percent %d\n",
 		 __func__, c->config_mask, c->period_ticks, c->duty_ticks,
 		 c->polarity, c->duty_ns, c->period_ns, c->duty_percent);
