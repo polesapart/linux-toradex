@@ -50,18 +50,10 @@ config FIM_SDIO_NUMBER
 config FIM_SERIAL
 	tristate "Serial driver"
 	default n
-        select SERIAL_CORE
 	help
 	  Enables the FIM-serial driver. If the driver is selected as a loadable
 	  module, the number of the FIM to be used by the driver can be passed
 	  as a module-parameter (use modinfo for obtaining more infos).
-
-config SERIAL_FIM_CONSOLE
-	bool "Console on NS921x FIM serial port"
-	depends on FIM_SERIAL=y
-	select SERIAL_CORE_CONSOLE
-	help
-	  Console support for FIM-serial ports of Digi NS921x based systems
 
 config FIM_SERIAL_NUMBER
 	int "FIM(s) to register by the serial driver"
@@ -100,5 +92,38 @@ config FIM_SERIAL_NUMBER1
           available FIMs. In that case please check that no additional FIM-driver
           is selected as built-in too.
 	  
+
+config FIM_CAN
+	tristate "CAN-bus driver"
+	depends on CAN && CAN_DEV
+	default n
+	help
+	  Enables the FIM-CAN bus driver.
+          IMPORTANT: If the driver is compiled as built-in, then a reconfiguration
+          of the bit rate will not be possible (This is a limitation that should be
+          fixed in a future driver version).
+
+config FIM_CAN_NUMBER
+	int "FIM(s) to register by the CAN-bus driver"
+	depends on FIM_CAN = y && FIM_SDIO != y && FIM_SERIAL != y
+	default 1
+	range 0 2
+	help
+	  Selects the number of FIM(s) to be handled by the built-in driver.
+          The number zero stays for the first FIM and the number one for the second.
+          Selecting the number two means that the driver should use all the 
+          available FIMs. In that case please check that no additional FIM-driver
+          is selected as built-in too.
+
+config FIM_CAN_BITRATE
+	int "Initial bit rate for the CAN-bus driver"
+	depends on FIM_CAN = y
+	default 500000
+	range 1000 1000000
+	help
+	  Selects the initial bit rate to use for the CAN-bus driver. Please note
+          that the bit rate cant be modified after the driver was loaded.
+
+
 endif # FIM_CORE
 
