@@ -89,7 +89,7 @@ static void stop_activity(struct s3c24xx_udc *dev, struct usb_gadget_driver *dri
 static int s3c24xx_udc_enable(struct s3c24xx_udc *udc);
 static void s3c24xx_udc_set_address(struct s3c24xx_udc *dev, unsigned char address);
 static void reconfig_usbd(struct s3c24xx_udc *udc);
-
+static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc);
 static int s3c24xx_udc_write_fifo(struct s3c_ep *ep, struct s3c_request *req);
 
 
@@ -100,6 +100,16 @@ static inline struct s3c24xx_udc *gadget_to_udc(struct usb_gadget *gadget)
 
 
 static spinlock_t regs_lock = SPIN_LOCK_UNLOCKED;
+
+
+static inline void s3c2443_print_err_packet_setup(int errcode,
+						  struct usb_ctrlrequest *pctrl)
+{
+	printk(KERN_DEBUG "[ ERROR ] s3c2443-udc: Err %i | bRequestType 0x%02x | "
+	       "bRequest 0x%02x | wValue 0x%04x | wIndex 0x%04x | wLength %u\n",
+	       errcode, pctrl->bRequestType, pctrl->bRequest,
+	       pctrl->wValue, pctrl->wIndex, pctrl->wLength);
+}
 
 /* Read access to one of the indexed registers */
 static inline ulong usb_read(struct s3c24xx_udc *udc, ulong port, u8 ind)
@@ -200,7 +210,13 @@ static inline int s3c24xx_udc_write_packet(struct s3c_ep *ep, struct s3c_request
 	/* Get the number of remaining bytes */
 	remaining = req->req.length - req->req.actual;
 	if (!remaining) {
-		printk(KERN_DEBUG "EP%i: Zero bytes remaining. Skipping.", epnr);
+		printk(KERN_DEBUG "EP%i: Packet already sent (%i)\n",
+		       epnr, req->req.actual);
+
+		/* @TEST: Send a frame with zero length */
+		usb_write(udc, 1 << 0, S3C24XX_UDC_ECR_REG, epnr);
+		usb_write(udc, 0, S3C24XX_UDC_BWCR_REG, epnr);
+		
 		length = remaining;
 		goto exit_write_packet;
 	}
@@ -370,7 +386,6 @@ static void s3c24xx_udc_reinit(struct s3c24xx_udc *udc)
 
 #define BYTES2MAXP(x)	(x / 8)
 #define MAXP2BYTES(x)	(x * 8)
-
 
 /*
  * Until it's enabled, this UDC should be completely invisible
@@ -588,8 +603,8 @@ static int s3c24xx_udc_write_fifo(struct s3c_ep *ep, struct s3c_request *req)
 	/* Last packet is usually short (or a zlp) */
 	is_last = (count == 0) ? (1) : (0);
 	
-	printk_debug("Wrote %s %d bytes%s%s req %p %d/%d\n", ep->ep.name, count,
-		     is_last ? "/L" : "", is_short ? "/S" : "",
+	printk_debug("Wrote %s %d bytes req %p | Act %d | Len %d\n",
+		     ep->ep.name, count,
 		     req, req->req.actual, req->req.length);
 	
 	/* Requests complete when all IN data is in the FIFO */
@@ -785,6 +800,85 @@ static void s3c24xx_udc_in_epn(struct s3c24xx_udc *udc, u32 epnr)
 }
 
 /*
+ * This function is used for reading OUT-frames from the EP0. We can't use the same
+ * function for the SETUP-requests, then here we must pass the data to the
+ * higher Gadget-driver.
+ */
+static void s3c2443_udc_ep0_read(struct s3c24xx_udc *udc)
+{
+	ulong ep0sr;
+	int bytes, count, bufferspace;
+	struct s3c_ep *ep;
+	struct s3c_request *req;
+	u16 *buf;
+	
+	ep = &udc->ep[0];
+
+	spin_lock(&ep->lock);
+
+	/*
+	 * @FIXME: Remove this delay. At this moment we need it for having a
+	 * working RNDIS-support when connected to a WinXP host machine.
+	 * (Luis Galdos)
+	 */
+	if (udc->ep0state == DATA_STATE_RECV)
+		udelay(100);
+	
+	/* If there is nothing to read only return at this point */
+	ep0sr = readl(udc->base + S3C24XX_UDC_EP0SR_REG);
+        if (!(ep0sr & S3C24XX_UDC_EP0SR_RSR))
+		goto exit_unlock;
+
+	/* Check if we are waiting for a setup frame */
+	if (udc->ep0state == WAIT_FOR_SETUP) {
+		s3c24xx_ep0_setup(udc);
+		goto exit_unlock;
+	}
+
+	printk_debug("Current state of EP0 is %i\n", udc->ep0state);
+		
+	/* Now get the number of bytes to read from the FIFO */
+        count = usb_read(udc, S3C24XX_UDC_BRCR_REG, ep_index(ep));
+        if (ep0sr & S3C24XX_UDC_EP0SR_LWO)
+                bytes = count * 2 - 1;
+        else
+                bytes = count * 2;
+
+	/* Check if we have a request for this data */
+	req = list_entry(ep->queue.next, struct s3c_request, queue);
+
+	if (!req) {
+		printk_err("Going to flush a EP0 frame\n");
+		goto exit_ack;
+	}
+
+        buf = req->req.buf + req->req.actual;
+        prefetchw(buf);
+	bufferspace = req->req.length - req->req.actual;
+	req->req.actual += min(bytes, bufferspace);
+
+	printk_debug("EP0 READ: %i bytes | space %i | req.len %i | reg.act %i\n",
+		     bytes, bufferspace, req->req.length, req->req.actual);
+	while (likely(count-- != 0)) {
+                u16 byte = (u16)readl(udc->base + ep->fifo);
+		*buf++ = byte;
+	}
+
+	/* If we are done with this request then call the corresponding function */
+	if (req->req.length == req->req.actual) {
+		udc->ep0state = WAIT_FOR_SETUP;
+		done(ep, req, 0);
+	}
+	
+ exit_ack:
+	writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG);
+
+ exit_unlock:
+	spin_unlock(&ep->lock);
+}
+
+
+/*
  * The below function is called when data was received with an OUT-transaction
  */
 static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
@@ -943,7 +1037,6 @@ static void reconfig_usbd(struct s3c24xx_udc *udc)
 	writel(0, udc->base + S3C24XX_UDC_IR_REG);
 }
 
-
 static void s3c24xx_set_max_pktsize(struct s3c24xx_udc *udc, enum usb_device_speed speed)
 {
 	if (speed == USB_SPEED_HIGH) {
@@ -978,7 +1071,6 @@ static void s3c24xx_set_max_pktsize(struct s3c24xx_udc *udc, enum usb_device_spe
 	usb_write(udc, ep_fifo_size2, (u32) S3C24XX_UDC_MAXP_REG, 7);
 	usb_write(udc, ep_fifo_size2, (u32) S3C24XX_UDC_MAXP_REG, 8);
 }
-
 
 static int s3c24xx_udc_set_pullup(struct s3c24xx_udc *udc, int is_on)
 {
@@ -1018,7 +1110,6 @@ static int s3c24xx_udc_set_pullup(struct s3c24xx_udc *udc, int is_on)
         return 0;
 }
 
-
 static int s3c24xx_udc_vbus_session(struct usb_gadget *gadget, int is_active)
 {
         struct s3c24xx_udc *udc = gadget_to_udc(gadget);
@@ -1057,7 +1148,6 @@ static irqreturn_t s3c24xx_udc_vbus_irq(int irq, void *_udc)
 	
 	return IRQ_HANDLED;
 }
-
 
 /*
  * Interrupt handler of the USB-function. The interrupts to detect are coming
@@ -1212,13 +1302,14 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		}
 	}
 
-	/*
-	 * We don't havea handling for the EP0-OUT cause the RSR is set by the
-	 * TST too.
-	 */
+	/* Check for OUT-frames by the endpoints */
 	if (intr_out) {
 		unsigned long cnt, epm;
 
+		/* And the EP0 can receive OUT-transfers too! */
+		if (intr_out & 0x1)
+			s3c2443_udc_ep0_read(udc);
+ 		
 		for (cnt = 1; cnt < S3C_MAX_ENDPOINTS; cnt++) {
 			epm = (1 << cnt);
 			if (intr_out & epm) {
@@ -1233,7 +1324,6 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 	spin_unlock_irqrestore(&udc->lock, flags);
 	return IRQ_HANDLED;
 }
-
 
 /*
  * Enable one EP, but only if it's different than the EP zero
@@ -1368,7 +1458,6 @@ static struct usb_request *s3c24xx_udc_alloc_request(struct usb_ep *ep, gfp_t gf
 	return &req->req;
 }
 
-
 static void s3c24xx_udc_free_request(struct usb_ep *ep, struct usb_request *_req)
 {
 	struct s3c_request *req;
@@ -1417,6 +1506,13 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 
 	_req->status = -EINPROGRESS;
 	_req->actual = 0;
+
+	/* Is this possible? */
+	if (!_req->length) {
+		done(ep, req, 0);
+		retval = 0;
+		goto exit_queue_unlock;
+	}
 	
 	/*
 	 * By the IN-endpoints only add the new request to the
@@ -1522,11 +1618,45 @@ static int s3c24xx_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 }
 
 /*
- * Halt specific EP (Return 0 if success)
+ * Halt specific EP. If the value is equal one, then halt the EP, by zero
+ * enable the EP once again
  */
-static int s3c24xx_udc_set_halt(struct usb_ep *_ep, int value)
+static int s3c24xx_udc_set_halt(struct usb_ep *_ep, int halt)
 {
-	return 0;
+	struct s3c_ep *ep;
+	unsigned long flags;
+	int retval, epnr;
+	struct s3c24xx_udc *udc;
+ 
+	ep = container_of(_ep, struct s3c_ep, ep);
+	udc = ep->dev;
+	epnr = ep_index(ep);
+	
+	printk_debug("%s the EP%i\n", halt ? "Halting" : "Enabling", epnr);
+
+	if (!ep->desc) {
+                printk_err("Attempted to halt uninitialized ep %s\n", ep->ep.name);
+                return -ENODEV;
+        }
+
+	spin_lock_irqsave(&udc->lock, flags); 
+
+        /*
+	 * Don't halt the EP if it's an IN and not empty
+	 */
+	retval = 0;
+        if (ep_is_in(ep) && !list_empty(&ep->queue)) {
+                retval = -EAGAIN;
+        } else {
+                if (halt)
+			usb_set(udc, S3C24XX_UDC_ECR_ESS, S3C24XX_UDC_ECR_REG, epnr);
+                else
+			usb_clear(udc, S3C24XX_UDC_ECR_ESS, S3C24XX_UDC_ECR_REG, epnr);
+	}
+	
+	spin_unlock_irqrestore(&udc->lock, flags);
+	
+	return retval;
 }
 
 /*
@@ -1592,7 +1722,6 @@ static void s3c24xx_udc_fifo_flush(struct usb_ep *_ep)
 	usb_write(udc, S3C24XX_UDC_ECR_FLUSH, S3C24XX_UDC_ECR_REG, epnr);
 }
 
-
 /* Return:  0 = still running, 1 = completed, negative = errno */
 static int s3c24xx_udc_write_fifo_ep0(struct s3c_ep *ep, struct s3c_request *req)
 {
@@ -1622,7 +1751,7 @@ static int s3c24xx_udc_write_fifo_ep0(struct s3c_ep *ep, struct s3c_request *req
 static inline int s3c24xx_udc_ep0_setup_read(struct s3c_ep *ep, u16 *cp, int max)
 {
         int bytes;
-        int count;
+        int count, pending;
         struct s3c24xx_udc *udc;
         ulong ep0sr;
 
@@ -1641,10 +1770,12 @@ static inline int s3c24xx_udc_ep0_setup_read(struct s3c_ep *ep, u16 *cp, int max
         else
                 bytes = count * 2;
 
+	pending = 0;
         if (bytes > max) {
-                printk_err("Not enough space for the SETUP-frame!\n");
+                printk_err("SETUP-frame (%i) too big (max. %i)\n", bytes, max);
                 count = max / 2;
                 bytes = max;
+		pending = 1;
         }
 
         while (count--)
@@ -1655,68 +1786,11 @@ static inline int s3c24xx_udc_ep0_setup_read(struct s3c_ep *ep, u16 *cp, int max
          * not work (but why not?)
          * (Luis Galdos)
          */
-	writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG);
+	if (!pending)
+		writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG);
 
 	return bytes;
 }
-
-/* static int s3c24xx_udc_read_fifo_ep0(struct s3c_ep *ep, struct s3c_request *req) */
-/* { */
-/* 	u32 csr; */
-/* 	u16 *buf; */
-/* 	unsigned bufferspace, count, is_short, bytes; */
-/* 	u32 fifo = ep->fifo; */
-/* 	struct s3c24xx_udc *udc; */
-
-/* 	udc = ep->dev; */
-
-/* 	csr = readl(udc->base + S3C24XX_UDC_EP0SR_REG); */
-/* 	if (!(csr & S3C24XX_UDC_EP0_RX_SUCCESS)) */
-/* 		return 0; */
-
-/* 	buf = req->req.buf + req->req.actual; */
-/* 	prefetchw(buf); */
-/* 	bufferspace = req->req.length - req->req.actual; */
-
-/* 	/\* read all bytes from this packet *\/ */
-/* 	if (likely(csr & S3C24XX_UDC_EP0_RX_SUCCESS)) { */
-/* 		count = usb_read(udc, S3C24XX_UDC_BYTE_READ_CNT_REG, ep_index(ep)); */
-/* 		if (csr & S3C24XX_UDC_EP0_LWO) */
-/* 			bytes = count * 2 - 1; */
-/* 		else */
-/* 			bytes = count * 2; */
-			
-/* 		req->req.actual += min(bytes, bufferspace); */
-/* 	} else	{ */
-/* 		count = 0; */
-/* 		bytes = 0; */
-/* 	} */
-
-/* 	is_short = (bytes < ep->ep.maxpacket); */
-/* 	while (likely(count-- != 0)) { */
-/* 		u16 byte = (u16)readl(udc->base + fifo); */
-
-/* 		if (unlikely(bufferspace == 0)) { */
-/* 			/\* this happens when the driver's buffer */
-/* 			 * is smaller than what the host sent. */
-/* 			 * discard the extra data. */
-/* 			 *\/ */
-/* 			if (req->req.status != -EOVERFLOW) */
-/* 				printk_err("Overflow %s, %d\n", ep->ep.name, count); */
-/* 			req->req.status = -EOVERFLOW; */
-/* 		} else { */
-/* 			*buf++ = byte; */
-/* 			bufferspace = bufferspace - 2; */
-/* 		} */
-/* 	} */
-	
-/* 	/\* By completions returns one *\/ */
-/* 	if (is_short || req->req.actual == req->req.length) */
-/* 		return 1; */
-
-/* 	return 0; */
-/* } */
-
 
 /*
  * udc_set_address - set the USB address for this device
@@ -1730,52 +1804,7 @@ static void s3c24xx_udc_set_address(struct s3c24xx_udc *udc, unsigned char addre
 	udc->usb_address = address;
 }
 
-
-/*
- * DATA_STATE_RECV (OUT_PKT_RDY)
- */
-/* static int first_time = 1; */
-
-/* static void s3c24xx_udc_ep0_read(struct s3c24xx_udc *udc) */
-/* { */
-/* 	struct s3c_request *req; */
-/* 	struct s3c_ep *ep = &udc->ep[0]; */
-/* 	int ret; */
-
-/* 	if (!list_empty(&ep->queue)) */
-/* 		req = list_entry(ep->queue.next, struct s3c_request, queue); */
-/* 	else { */
-/* 		BUG();	//logic ensures		-jassi */
-/* 		return; */
-/* 	} */
-	
-/* 	if(req->req.length == 0) { */
-/* 		writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG); */
-/* 		udc->ep0state = WAIT_FOR_SETUP; */
-/* 		first_time = 1; */
-/* 		done(ep, req, 0); */
-/* 		return; */
-/* 	} */
-
-/* 	if(!req->req.actual && first_time) { */
-/* 		writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG); */
-/* 		first_time = 0; */
-/* 		return; */
-/* 	} */
-
-/* 	ret = s3c24xx_udc_read_fifo_ep0(ep, req); */
-/* 	if (ret) { */
-/* 		udc->ep0state = WAIT_FOR_SETUP; */
-/* 		first_time = 1; */
-/* 		done(ep, req, 0); */
-/* 		return; */
-/* 	} */
-/* } */
-
-
-/*
- * DATA_STATE_XMIT
- */
+/* Write data into the FIFO of the EP0 */
 static int s3c24xx_udc_ep0_write(struct s3c24xx_udc *udc)
 {
 	struct s3c_request *req;
@@ -1838,7 +1867,7 @@ static inline int s3c2443_ep0_fix_set_setup(struct s3c24xx_udc *udc,
 	struct s3c_ep *ep;
 
 	ep = &udc->ep[0];
-	timeout_us = 10000;
+	timeout_us = 1000;
 	do {
 		udelay(1);
 		ep0sr = readl(udc->base + S3C24XX_UDC_EP0SR_REG);
@@ -1861,26 +1890,28 @@ static inline int s3c2443_ep0_fix_set_setup(struct s3c24xx_udc *udc,
  * Wait for a setup packet and read if from the FIFO before passint it to the
  * gadget driver
  */
-#define S3C2443_PACKET_IS_SET_REQ(ctrl) \
-(ctrl.bRequest == USB_REQ_SET_CONFIGURATION || \
- ctrl.bRequest == USB_REQ_SET_INTERFACE || \
-	    ctrl.bRequest == USB_REQ_SET_DESCRIPTOR || \
-	    ctrl.bRequest == USB_REQ_SET_FEATURE || \
- ctrl.bRequest == USB_REQ_SET_ADDRESS)
-static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc, u32 csr)
+#define S3C2443_SETUP_IS_SET_REQ(ctrl) \
+			(ctrl->bRequest == USB_REQ_SET_CONFIGURATION || \
+			ctrl->bRequest == USB_REQ_SET_INTERFACE || \
+			ctrl->bRequest == USB_REQ_SET_DESCRIPTOR || \
+			ctrl->bRequest == USB_REQ_SET_FEATURE || \
+			ctrl->bRequest == USB_REQ_SET_ADDRESS)
+
+#define S3C2443_MAX_NUMBER_SETUPS			(10)
+static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 {
 	struct s3c_ep *ep;
-	int retval, bytes, is_in;
-	int second_request, third_request;
-	struct usb_ctrlrequest ctrl1, ctrl2, ctrl3;
+	int retval, bytes, cnt;
+	struct usb_ctrlrequest *pctrl;
+	struct usb_ctrlrequest ctrls[S3C2443_MAX_NUMBER_SETUPS];
+	int recv_ctrls[S3C2443_MAX_NUMBER_SETUPS];
 
+	memset(recv_ctrls, 0x0, sizeof(recv_ctrls));
+	memset(ctrls, 0x0, sizeof(ctrls));
+	
 	/* Nuke all previous transfers of this control EP */
 	ep = &udc->ep[0];
 	nuke(ep, -EPROTO);
-
-	/* Read control req from fifo (8 bytes) */
-	bytes = s3c24xx_udc_ep0_setup_read(ep, (u16 *)&ctrl1,
-					   sizeof(struct usb_ctrlrequest));
 
 	/*
 	 * @FIXME: This is a really bad code, but at this moment there is no better
@@ -1897,79 +1928,87 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc, u32 csr)
 	 * otherwise the below code can't be removed.
 	 * (Luis Galdos)
 	 */
-	second_request = 0;
-	third_request = 0;
-	if (S3C2443_PACKET_IS_SET_REQ(ctrl1)) {
 
-		/* Check for a second setup frame */
-		second_request = s3c2443_ep0_fix_set_setup(udc, &ctrl2);
-		if (second_request && S3C2443_PACKET_IS_SET_REQ(ctrl2))
-			third_request = s3c2443_ep0_fix_set_setup(udc, &ctrl3);
+	/* Read the first SETUP frame as a normal frame */
+	pctrl = &ctrls[0];
+        recv_ctrls[0] = s3c24xx_udc_ep0_setup_read(ep, (u16 *)pctrl, sizeof(* pctrl));
+	if (recv_ctrls[0] <= 0) {
+		printk_info("Nothing to process? Aborting.\n");
+		return;
+	}
 
-		/* Check for a third setup frame */
-		if (third_request) {
-			printk(KERN_DEBUG "3. SETUP: bRequestType 0x%02x | "
-			       "bRequest 0x%02x | wValue 0x%04x\n",
-			       ctrl3.bRequestType, ctrl3.bRequest, ctrl3.wValue);
+	/* Here we need to read the other packets */
+	for (cnt = 1; S3C2443_SETUP_IS_SET_REQ(pctrl) && cnt < S3C2443_MAX_NUMBER_SETUPS;
+		     cnt++) {
+		pctrl = &ctrls[cnt];
+		bytes = s3c2443_ep0_fix_set_setup(udc, pctrl);
+
+		if (bytes <= 0)
+			break;
+
+		recv_ctrls[cnt] = bytes;
+	}
+
+	if (cnt == S3C2443_MAX_NUMBER_SETUPS)
+		printk_err("@FIXME: Handling by SETUP overflows\n");
+
+	/* Now start with the processing of the SETUP-frames */
+	retval = 0;
+	for (cnt = 0; recv_ctrls[cnt] > 0 && cnt < S3C2443_MAX_NUMBER_SETUPS; cnt++) {
+
+		pctrl = &ctrls[cnt];
+		bytes = recv_ctrls[cnt];
+
+		/* Set the correct direction for this SETUP-frame */
+		if (likely(pctrl->bRequestType & USB_DIR_IN)) {
+			printk_debug("EP0: Preparing new IN frame (%i bytes)\n", bytes);
+			ep->bEndpointAddress |= USB_DIR_IN;
+		} else {
+			printk_debug("EP0: Preparing new OUT frame (%i bytes)\n", bytes);
+			ep->bEndpointAddress &= ~USB_DIR_IN;
+		}
+		
+		/* Handle some SETUP packets ourselves */
+		retval = 0;
+		switch (pctrl->bRequest) {
+		case USB_REQ_SET_ADDRESS:
+			if (pctrl->bRequestType != (USB_TYPE_STANDARD |
+						    USB_RECIP_DEVICE))
+				break;
+
+			/*
+			 * If the setup frame was for us, then continue with the
+			 * next available packet
+			 */
+			printk_debug("Set address request (%d)\n", pctrl->wValue);
+			s3c24xx_udc_set_address(udc, pctrl->wValue);
+			continue;
+
+		default:
+			printk_debug("bRequestType 0x%02x | bRequest 0x%02x | "
+				     "wValue 0x%04x | wIndex 0x%04x | wLength %u\n",
+				     pctrl->bRequestType, pctrl->bRequest,
+				     pctrl->wValue, pctrl->wIndex, pctrl->wLength);
+			break;
+		}
+
+		/* Check if need to call the Gadget-setup handler */
+		if (likely(udc->driver)) {
+			spin_unlock(&udc->lock);
+			retval = udc->driver->setup(&udc->gadget, pctrl);
+			spin_lock(&udc->lock);
+
+			/* Error values are littler than zero */
+			if (retval < 0)
+				s3c2443_print_err_packet_setup(retval, pctrl);
 		}
 	}
-
-	/* Set direction of EP0 */
-	if (likely(ctrl1.bRequestType & USB_DIR_IN)) {
-		printk_debug("EP0: Preparing new IN frame (%i bytes)\n", bytes);
-		ep->bEndpointAddress |= USB_DIR_IN;
-		is_in = 1;
-	} else {
-		printk_debug("EP0: Preparing new OUT frame (%i bytes)\n", bytes);
-		ep->bEndpointAddress &= ~USB_DIR_IN;
-		is_in = 0;
-	}
-
-	/* Handle some SETUP packets ourselves */
-	retval = 0;
-	switch (ctrl1.bRequest) {
-	case USB_REQ_SET_ADDRESS:
-		if (ctrl1.bRequestType != (USB_TYPE_STANDARD | USB_RECIP_DEVICE))
-			break;
-		
-		printk_debug("Set address request (%d)\n", ctrl1.wValue);
-		s3c24xx_udc_set_address(udc, ctrl1.wValue);
-		goto exit_ep0_setup;
-
-	default:
-		printk_debug("bRequestType 0x%02x | bRequest 0x%02x | "
-			     "wValue 0x%04x | wIndex 0x%04x | wLength %u\n",
-		       ctrl1.bRequestType, ctrl1.bRequest, ctrl1.wValue, ctrl1.wIndex,
-		       ctrl1.wLength);
-		break;
-	}
-
-	/* Check if need to call the Gadget-setup handler */
-	if (likely(udc->driver)) {
-		spin_unlock(&udc->lock);
-		retval = udc->driver->setup(&udc->gadget, &ctrl1);
-		spin_lock(&udc->lock);
-	}
-
-exit_ep0_setup:
-	if (udc->driver && second_request && !retval) {
-		spin_unlock(&udc->lock);
-		retval = udc->driver->setup(&udc->gadget, &ctrl2);
-		spin_lock(&udc->lock);
-	}
-
-	if (udc->driver && third_request && !retval) {
-		spin_unlock(&udc->lock);
-		retval = udc->driver->setup(&udc->gadget, &ctrl3);
-		spin_lock(&udc->lock);
-	}
 	
-	/* By error free setups return at this place */
+	/* By error-free setups return at this place */
 	if (!retval)
 		return;
 
 	/* @XXX: Test if the STALL is really send to the host */
-	printk_err("Gadget setup FAILED (%d). Stalling.\n", retval);
 	udc->ep0state = WAIT_FOR_SETUP;
 	writel(S3C24XX_UDC_EP0CR_ESS, udc->base + S3C24XX_UDC_EP0CR_REG);
 }
@@ -2007,7 +2046,7 @@ static void s3c24xx_handle_ep0(struct s3c24xx_udc *udc)
 			printk_debug("EP0: TX success | %p: left %i\n", req, left);
 			if (left)
 				s3c24xx_udc_ep0_write(udc);
-		}				
+		}
 
 		/* Always clear the status bit */
 		writel(S3C24XX_UDC_EP0_TX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG);
@@ -2018,7 +2057,9 @@ static void s3c24xx_handle_ep0(struct s3c24xx_udc *udc)
 	if (csr & S3C24XX_UDC_EP0_RX_SUCCESS) {
 		if (udc->ep0state == WAIT_FOR_SETUP) {
 			printk_debug("EP0: RX success | Wait for setup\n");
-			s3c24xx_ep0_setup(udc, csr);
+			s3c24xx_ep0_setup(udc);
+		} else if (udc->ep0state == DATA_STATE_RECV) {
+			s3c2443_udc_ep0_read(udc);
 		} else {
 			udc->ep0state = WAIT_FOR_SETUP;
 			printk_err("EP0: RX success | Strange state\n");
@@ -2043,19 +2084,20 @@ static void s3c24xx_handle_ep0(struct s3c24xx_udc *udc)
 }
 
 /*
- * @FIXME: The below function is coming from the SMDK, but it can't be correct! The
- * EP0 is neither IN- nor OUT-EP, it is a control EP!
+ * This function is called for the gadget-drivers which uses the EP0 for transferring
+ * data to/from the host. This is the case of the RNDIS driver.
  * (Luis Galdos)
  */
 static void s3c24xx_udc_ep0_kick(struct s3c24xx_udc *udc, struct s3c_ep *ep)
 {
-	/* if (ep_is_in(ep)) { */
+	if (ep_is_in(ep)) {
 		udc->ep0state = DATA_STATE_XMIT;
 		s3c24xx_udc_ep0_write(udc);
-	/* } else { */
-/* 		udc->ep0state = DATA_STATE_RECV; */
-/* 		s3c24xx_udc_ep0_read(udc); */
-/* 	} */
+	} else {
+		/* Always set the state of the endpoint first */
+		udc->ep0state = DATA_STATE_RECV;
+		s3c2443_udc_ep0_read(udc);
+	}
 }
 
 static int s3c_udc_get_frame(struct usb_gadget *_gadget)

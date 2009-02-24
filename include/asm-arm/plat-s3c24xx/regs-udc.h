@@ -272,6 +272,9 @@
 #define S3C24XX_UDC_ECR_DUEN        (1 << 7)
 #define S3C24XX_UDC_ECR_FLUSH       (1 << 6)
 #define S3C24XX_UDC_ECR_TTE         (1 << 5)
+#define S3C24XX_UDC_ECR_CDP         (1 << 2)
+#define S3C24XX_UDC_ECR_ESS         (1 << 1)
+#define S3C24XX_UDC_ECR_TZLS        (1 << 0)
 
 /* Index EP status register bits */
 #define S3C24XX_UDC_ESR_RPS         (1 << 0) /* Rx packet success */
