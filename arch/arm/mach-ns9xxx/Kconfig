@@ -503,11 +503,22 @@ config CME9210JS_SERIAL_PORTA_FULL
 endchoice
 
 config CME9210JS_SERIAL_PORTC
-        bool "Serial port C (only with JTAG-header)"
+        bool "Serial port C (only modules with JTAG-header)"
         depends on SERIAL_NS921X
         help
           Enable serial port C on Connect ME9210 module. You can only
           use this port if your module has the JTAG-header!
+
+choice
+	prompt "port configuration"
+	depends on CME9210JS_SERIAL_PORTC
+	default CME9210JS_SERIAL_PORTC_RXTX
+
+config CME9210JS_SERIAL_PORTC_RXTX
+	bool "RX/TX only"
+
+endchoice
+
 
 config CME9210JS_SPI
 	bool "SPI port"

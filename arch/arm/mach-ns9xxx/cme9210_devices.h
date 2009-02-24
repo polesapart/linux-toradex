@@ -20,5 +20,7 @@ void __init ns9xxx_add_device_cme9210_i2c(void);
 	ns9xxx_add_device_cme9210_uarta(2)
 #define ns9xxx_add_device_cme9210_uarta_ctsrtsrxtx() \
 	ns9xxx_add_device_cme9210_uarta(4)
+#define ns9xxx_add_device_cme9210_uarta_full() \
+	ns9xxx_add_device_cme9210_uarta(8)
 #define ns9xxx_add_device_cme9210_uartc_rxtx() \
 	ns9xxx_add_device_cme9210_uartc(2)

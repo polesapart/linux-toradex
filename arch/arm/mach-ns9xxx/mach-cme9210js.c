@@ -55,7 +55,7 @@ static void __init mach_cme9210js_init_machine(void)
 #elif defined(CONFIG_CME9210JS_SERIAL_PORTA_FULL)
 	ns9xxx_add_device_cme9210_uarta_full();
 #endif
-#if defined(CONFIG_CME9210JS_SERIAL_PORTC)
+#if defined(CONFIG_CME9210JS_SERIAL_PORTC_RXTX)
 	ns9xxx_add_device_cme9210_uartc_rxtx();
 #endif
 
