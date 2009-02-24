@@ -82,6 +82,7 @@ void __init cc9p9215js_add_device_touch(void) {}
 
 /* SPI devices */
 static struct spi_board_info spi_devices[] __initdata = {
+	CC9P9215JS_TOUCH
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
 	{
 		.modalias	= "spidev",
@@ -90,7 +91,6 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.chip_select	= 0,
 	},
 #endif
-	CC9P9215JS_TOUCH
 };
 
 static void __init mach_cc9p9215js_init_machine(void)
