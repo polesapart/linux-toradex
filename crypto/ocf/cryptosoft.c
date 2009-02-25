@@ -1067,7 +1067,7 @@ cryptosoft_exit(void)
 	swcr_id = -1;
 }
 
-module_init(cryptosoft_init);
+late_initcall(cryptosoft_init);
 module_exit(cryptosoft_exit);
 
 MODULE_LICENSE("Dual BSD/GPL");
