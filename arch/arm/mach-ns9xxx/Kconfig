@@ -44,6 +44,10 @@ config MODULE_CC9P9215
 	bool
 	select PROCESSOR_NS9215
 
+config MODULE_CCWI9P9215
+	bool
+	select PROCESSOR_NS9215
+
 config MODULE_CC9P9360
 	bool
 	select PROCESSOR_NS9360
@@ -345,6 +349,128 @@ config CC9P9215JS_TOUCH
 	depends on TOUCHSCREEN_ADS7846 && CC9P9215JS_EDT_DISPLAY_QVGA && CC9P9215JS_SPI
 
 endif
+
+
+config MACH_CCWI9P9215
+	bool "ConnectCore 9P 9215"
+	select MODULE_CCWI9P9215
+	help
+	  Say Y here if you are using the ConnectCore Wi-9P 9215 module on an
+	  currently unsupported board.
+
+config MACH_CCWI9P9215JS
+	bool "ConnectCore Wi-9P 9215 on a JSCCWI9P9215 Devboard"
+	select MODULE_CCWI9P9215
+	select BOARD_JSCCWI9P9215
+	help
+	  Say Y here if you are using the ConnectCore 9P 9215 module
+	  on a JSCCWI9P9215 Development Board.
+
+if MACH_CCWI9P9215JS
+
+config CC9P9215JS_SERIAL_PORTA
+	bool "Serial port A"
+	default y
+	depends on SERIAL_NS921X && !CC9P9215JS_SPI
+
+choice
+	prompt "port configuration"
+	depends on CC9P9215JS_SERIAL_PORTA
+	default CC9P9215JS_SERIAL_PORTA_FULL
+
+config CC9P9215JS_SERIAL_PORTA_RXTX
+	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTA_CTSRTSRXTX
+	bool "CTS/RTS/RX/TX"
+
+config CC9P9215JS_SERIAL_PORTA_FULL
+	bool "Full port"
+
+endchoice
+
+config CC9P9215JS_SERIAL_PORTB
+	bool "Serial port B"
+	default y
+	depends on SERIAL_NS921X
+
+choice
+	prompt "port configuration"
+	depends on CC9P9215JS_SERIAL_PORTB
+	default CC9P9215JS_SERIAL_PORTB_FULL
+
+config CC9P9215JS_SERIAL_PORTB_RXTX
+	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX
+	bool "CTS/RTS/RX/TX"
+
+config CC9P9215JS_SERIAL_PORTB_FULL
+	bool "Full port"
+
+endchoice
+
+config CC9P9215JS_SERIAL_PORTC
+	bool "Serial port C"
+	default y
+	depends on SERIAL_NS921X
+
+choice
+	prompt "port configuration"
+	depends on CC9P9215JS_SERIAL_PORTC
+	default CC9P9215JS_SERIAL_PORTC_FULL
+
+config CC9P9215JS_SERIAL_PORTC_RXTX
+	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX
+	bool "CTS/RTS/RX/TX"
+
+config CC9P9215JS_SERIAL_PORTC_FULL
+	bool "Full port"
+
+endchoice
+
+config CC9P9215JS_SERIAL_PORTD
+	bool "Serial port D"
+	default y
+	depends on SERIAL_NS921X
+
+choice
+	prompt "port configuration"
+	depends on CC9P9215JS_SERIAL_PORTD
+	default CC9P9215JS_SERIAL_PORTD_FULL
+
+config CC9P9215JS_SERIAL_PORTD_RXTX
+	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX
+	bool "CTS/RTS/RX/TX"
+
+config CC9P9215JS_SERIAL_PORTD_FULL
+	bool "Full port"
+
+endchoice
+
+config CC9P9215JS_SPI
+	bool "SPI port"
+	default y
+	depends on SPI_NS921X
+
+config CC9P9215JS_EDT_DISPLAY_QVGA
+	bool "Support for the EDT QVGA TFT Display"
+	default n
+	select FB_HX8347
+
+config CC9P9215JS_TOUCH
+	bool "Touchscreen"
+	default y
+	depends on TOUCHSCREEN_ADS7846 && CC9P9215JS_EDT_DISPLAY_QVGA && CC9P9215JS_SPI
+
+endif
+
+
+
 
 config MACH_CC9P9360DEV
 	bool "ConnectCore 9P 9360 on an A9M9750 Devboard"
