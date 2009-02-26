@@ -496,9 +496,9 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 		/* 
 		 * If there are multiple displays, use the one specified
 		 * through the command line parameter vith following 
-		 * format video=display:<display_name)
+		 * format video=displayfb:<display_name>
 		 */
-		if (fb_get_options("display", &option)) {
+		if (fb_get_options("displayfb", &option)) {
 			dev_err(&pdev->dev, "no display information available in commnad line\n");
 			return -ENODEV;
 		}
