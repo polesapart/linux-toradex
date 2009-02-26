@@ -85,6 +85,7 @@ struct s3c2412_i2s_info {
 	u32		 suspend_iispsr;
 
 	u32              cpu_is_s3c2443;
+	int		counts;
 };
 
 static struct s3c2412_i2s_info s3c2412_i2s;
@@ -542,6 +543,13 @@ static int s3c2412_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 	case S3C2412_DIV_BCLK:
 		reg = readl(i2s->regs + S3C2412_IISMOD);
 		reg &= ~S3C2412_IISMOD_BCLK_MASK;
+
+                /*
+		 * The bitfield for the S3C2443 has another offset
+		 * (Luis Galdos)
+		 */
+                div = (i2s->cpu_is_s3c2443) ? (div << 1) : (div);
+		
 		writel(reg | div, i2s->regs + S3C2412_IISMOD);
 
 		DBG("%s: MOD=%08x\n", __func__, readl(i2s->regs + S3C2412_IISMOD));
@@ -581,8 +589,9 @@ static int s3c2412_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 
 	case S3C2412_DIV_PRESCALER:
 		if (div >= 0) {
-			writel((div << 8) | S3C2412_IISPSR_PSREN,
-			       i2s->regs + S3C2412_IISPSR);
+			/* The S3C2443 has different bit fields (Luis Galdos) */
+			div = (i2s->cpu_is_s3c2443) ? (div - 1) : (div << 8);
+			writel(div | S3C2412_IISPSR_PSREN, i2s->regs + S3C2412_IISPSR);
 		} else {
 			writel(0x0, i2s->regs + S3C2412_IISPSR);
 		}
@@ -606,8 +615,15 @@ EXPORT_SYMBOL_GPL(s3c2412_get_iisclk);
 static int s3c2412_i2s_probe(struct platform_device *pdev,
 			     struct snd_soc_dai *dai)
 {
+	unsigned long regval;
+	
 	DBG("Entered %s\n", __func__);
 
+	/* Check if we have already probed the interface */
+	s3c2412_i2s.counts++;
+	if (s3c2412_i2s.dev)
+		return 0;
+	
 	s3c2412_i2s.dev = &pdev->dev;
 
 	s3c2412_i2s.regs = ioremap(S3C2410_PA_IIS, 0x100);
@@ -642,6 +658,19 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 	s3c2410_gpio_cfgpin(S3C2410_GPE3, S3C2410_GPE3_I2SSDI);
 	s3c2410_gpio_cfgpin(S3C2410_GPE4, S3C2410_GPE4_I2SSDO);
 
+	/*
+	 * Set the mode to transmit and receive, otherwise the below commands
+	 * for stopping the RX and TX will fail
+	 */
+	regval = readl(s3c2412_i2s.regs + S3C2412_IISMOD);
+	regval &= ~S3C2412_IISMOD_MODE_MASK;
+	regval |= (S3C2412_IISMOD_MODE_TXRX);
+	writel(regval, s3c2412_i2s.regs + S3C2412_IISMOD);
+
+	regval = readl(s3c2412_i2s.regs + S3C2412_IISCON);
+	if (regval & (1))
+		printk("THE DMA CHANNEL IS ACTIVE\n");
+	
 	s3c2412_snd_txctrl(0);
 	s3c2412_snd_rxctrl(0);
 
@@ -649,9 +678,27 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 }
 
 static int s3c2443_i2s_probe(struct platform_device *pdev, struct snd_soc_dai *dai)
-{	
+{
 	s3c2412_i2s.cpu_is_s3c2443 = 1;
 	return s3c2412_i2s_probe(pdev, dai);
+}
+
+static void s3c2443_i2s_remove(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	printk("Removing the I2C device: id %i\n", pdev->id);
+	
+	if (!s3c2412_i2s.regs || !s3c2412_i2s.counts)
+		return;
+
+        clk_disable(s3c2412_i2s.iis_cclk);
+	clk_disable(s3c2412_i2s.iis_pclk);
+	
+        clk_put(s3c2412_i2s.iis_cclk);
+	clk_put(s3c2412_i2s.iis_pclk);
+ 
+        iounmap(s3c2412_i2s.regs);
+	s3c2412_i2s.regs = NULL;
+	s3c2412_i2s.counts--;
 }
 
 #ifdef CONFIG_PM
@@ -759,6 +806,7 @@ struct snd_soc_dai s3c2443_i2s_dai = {
 	.id	= 0,
 	.type	= SND_SOC_DAI_I2S,
 	.probe	= s3c2443_i2s_probe,
+	.remove = s3c2443_i2s_remove,
 	.suspend = s3c2412_i2s_suspend,
 	.resume = s3c2412_i2s_resume,
 	.playback = {

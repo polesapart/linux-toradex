@@ -127,15 +127,12 @@ static struct platform_device smsc911x_device = {
 #endif */
 #endif
 
-
 static struct i2c_board_info cc9m2443_i2c_devices[] = {
 	{
                 I2C_BOARD_INFO("ds1337", 0x68),
 	},
 	CC9M2443_I2C_BASE_BOARD_DEVICES
 };
-
-
 
 static struct map_desc cc9m2443_iodesc[] __initdata = {
 	/* ISA IO Space map (memory space selected by A24) */
@@ -256,7 +253,6 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 #endif /* CONFIG_SERIAL_S3C2410_ENABLE_PORTD */
 };
 
-
 /* This is required for the LCD-display */
 static struct s3c2443fb_mach_info cc9m2443fb_mach = {
  	.displays	= display_list,
@@ -276,7 +272,6 @@ static struct s3c2443fb_mach_info cc9m2443fb_mach = {
         .gpdup_mask	= 0xfff0fff0,
 
 };
-
 
 /* This is for the LCD platform device */
 static struct resource s3c2443_tft_resource[] = {
@@ -301,8 +296,6 @@ struct platform_device s3c_device_tft_lcd = {
 		.platform_data		= &cc9m2443fb_mach,
         }
 };
-
-
 
 /*
  * SDIO device for the CC9M2443JS
@@ -337,7 +330,6 @@ struct platform_device cc9m2443_device_sdi = {
 		.platform_data = &cc9m2443_sdi_pdata,
 	}
 };
-
 
 /* High-speed MMC/SD */
 static struct resource cc9m2443_hsmmc_resource[] = {
@@ -384,10 +376,6 @@ struct platform_device cc9m2443_device_hsmmc = {
 	}
 };
 
-
-
-
-
 /* Touch device */
 static struct resource cc9m2443_ts_resource[] = {
 	[0] = {
@@ -425,8 +413,6 @@ struct platform_device cc9m2443_device_ts = {
 			.platform_data = &cc9m2443_ts_info,
 	}
 };
-
-
 
 /* This is the High Speed SPI-master of the S3C2443 */
 static struct s3c2443_spi_info cc9m2443_hsspi_info = {
@@ -472,8 +458,6 @@ static struct platform_device cc9m2443_device_hsspi = {
 		.coherent_dma_mask = DMA_BIT_MASK(32),
         }
 };
-
-
 
 /* This is the USB-device of the S3C2443 */
 static struct resource cc9m2443_udc_resources[] = {
@@ -525,9 +509,6 @@ struct platform_device s3c443_device_ide = {
 	.resource	  = s3c2443_ide_resource,
 };
 
-
-
-
 /* Platform devices for the CC9M2443 */
 static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c_device_usb,
@@ -575,7 +556,6 @@ static void __init cc9m2443_map_io(void)
 	s3c24xx_init_uarts(cc9m2443_uartcfgs, ARRAY_SIZE(cc9m2443_uartcfgs));
 }
 
-
 /*
  * These are the NAND-timing parameters
  * @TODO: Set the correct timing parameters for the NAND-device
@@ -592,6 +572,9 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
  * Platform data for the I2C-bus driver
  * @XXX: Verify the correct bus clocks for this device
  */
+#if !defined(CONFIG_I2C_S3C2410_ADAPTER_NR)
+#define CONFIG_I2C_S3C2410_ADAPTER_NR	-1
+#endif
 static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
 	.flags          = 0,
 	.max_freq       = 130 * 1000,
@@ -608,15 +591,13 @@ static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
 static struct gpio_chip cc9m2443_gpios = {
 	.label            = "cc9m2443-gpios",
 	.direction_input  = s3c2443_gpio_dir_input,
-	.direction_output = s3c2443_gpio_dir_output,
+.direction_output = s3c2443_gpio_dir_output,
 	.get              = s3c2443_gpio_get,
 	.set              = s3c2443_gpio_set,
 	.base             = 0,
 	.ngpio            = 256,
 };
 #endif /* CONFIG_HAVE_GPIO_LIB */
-
-
 
 /* SPI devices */
 static struct spi_board_info spi_devices[] __initdata = {
@@ -629,8 +610,6 @@ static struct spi_board_info spi_devices[] __initdata = {
         },
 #endif
 };
-
-
 
 static void __init cc9m2443_machine_init(void)
 {
@@ -661,16 +640,12 @@ static void __init cc9m2443_machine_init(void)
 
         /* SPI devices */
         spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
-
-
 	
 #if 0
 	/* @XXX: Add the support for the power managment */
 	s3c2410_pm_init();
 #endif
 }
-
-
 
 MACHINE_START(CC9M2443, "ConnectCore 9M 2443 on a JSCC9M2443 Devboard")
         .phys_io	= S3C2410_PA_UART,

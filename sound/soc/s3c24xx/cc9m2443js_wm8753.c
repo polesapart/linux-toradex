@@ -395,7 +395,10 @@ static struct snd_soc_ops cc9m2443js_voice_ops = {
 	.hw_free = cc9m2443js_voice_hw_free,
 };
 
-/* Structure for the interface with the DAIs of the codec and CPU */
+/*
+ * Structure for the interface with the DAIs of the codec and CPU
+ * The two below elements will be probed by the same I2S-driver
+ */
 static struct snd_soc_dai_link cc9m2443js_dai[] = {
 	{
 		/*
@@ -430,7 +433,7 @@ static struct snd_soc_machine cc9m2443js_snd = {
 
 static struct wm8753_setup_data cc9m2443js_wm8753_setup = {
 	.i2c_address	= 0x1a,
-	.i2c_bus	= CONFIG_I2C_S3C2410_ADAPTER_NR,
+	.i2c_bus	= CONFIG_CC9M2443JS_WM8753_I2C_ADAPTER,
 };
 
 static struct snd_soc_device cc9m2443js_snd_devdata = {
@@ -439,7 +442,6 @@ static struct snd_soc_device cc9m2443js_snd_devdata = {
 	.codec_dev = &soc_codec_dev_wm8753,
 	.codec_data = &cc9m2443js_wm8753_setup,
 };
-
 
 static struct platform_device *cc9m2443js_snd_device;
 
@@ -454,7 +456,6 @@ static int __init cc9m2443js_wm8753_init(void)
 	platform_set_drvdata(cc9m2443js_snd_device, &cc9m2443js_snd_devdata);
 	cc9m2443js_snd_devdata.dev = &cc9m2443js_snd_device->dev;
 	ret = platform_device_add(cc9m2443js_snd_device);
-
 	if (ret)
 		platform_device_put(cc9m2443js_snd_device);
 
@@ -471,6 +472,6 @@ module_exit(cc9m2443js_wm8753_exit);
 
 /* Module information */
 MODULE_AUTHOR("Graeme Gregory, graeme@openmoko.org, www.openmoko.org");
-MODULE_AUTHOR("Luis Galdos, luis.galdos@digi.com");
+MODULE_AUTHOR("Luis Galdos, luis.galdos[at]digi.com");
 MODULE_DESCRIPTION("ALSA SoC WM8753 Digi CC9M2443JS");
 MODULE_LICENSE("GPL");
