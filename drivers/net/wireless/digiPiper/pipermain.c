@@ -34,16 +34,14 @@ enum antenna_select
 static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
 {
 	int err = 0;
-const char *antennaText[] = {
-    "ANTENNA_BOTH",
-	"ANTENNA_1",
-	"ANTENNA_2"
-};
+    const char *antennaText[] = {
+        "ANTENNA_BOTH",
+    	"ANTENNA_1",
+    	"ANTENNA_2"
+    };
 	struct piper_priv *digi = hw->priv;
 
 	digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
-	digi_dbg("forcing sel to be ANTENNA_1\n");
-	sel = ANTENNA_1;
 	
 	/* set antenna diversity */
 	if (sel == ANTENNA_BOTH)
@@ -150,7 +148,7 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
                                 | IEEE80211_TX_STAT_AMPDU_NO_BACK);
 	digi->txPacket = skb;
 	#if 1
-	    tasklet_schedule(&digi->txRetryTasklet);
+	    tasklet_hi_schedule(&digi->txRetryTasklet);
 	#else
 	    piperTxRetryTaskletEntry ((unsigned long) digi);
 	#endif
@@ -168,7 +166,6 @@ static int hw_start(struct ieee80211_hw *hw)
 
 	/* initialize */
 	err = digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT);
-	udelay(10); /* TODO:  remove this debug code */
 	if (err)
 		goto done;
 
@@ -251,15 +248,6 @@ static int hw_add_intf(struct ieee80211_hw *hw,
 	}
 
 #if 0
-	/* set the MAC address */
-	err = digi->write(digi, MAC_STA_ID0, (uint8_t *) hw->wiphy->perm_addr,
-			sizeof(hw->wiphy->perm_addr));
-	if (err)
-	{
-	    digi_dbg("hw_add_intf 1st digi->write failed\n");
-		goto done;
-    }
-    
 	err = digi->write_reg(digi, MAC_CTL, MAC_CTL_AES_DISABLE | digi->read_reg(digi, MAC_CTL));
 	if (err)
 	{
@@ -597,18 +585,10 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 	if (!hw)
 		return -ENOMEM;
 
-	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS;
-	/* TODO:  Pick correct flags:
-		IEEE80211_HW_RX_INCLUDES_FCS			= 1<<1,
-	IEEE80211_HW_HOST_BROADCAST_PS_BUFFERING	= 1<<2,
-	IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE		= 1<<3,
-	IEEE80211_HW_2GHZ_SHORT_PREAMBLE_INCAPABLE	= 1<<4,
-	IEEE80211_HW_SIGNAL_UNSPEC			= 1<<5,
-	IEEE80211_HW_SIGNAL_DB				= 1<<6,
-	IEEE80211_HW_SIGNAL_DBM				= 1<<7,
-	IEEE80211_HW_NOISE_DBM				= 1<<8,
-	IEEE80211_HW_SPECTRUM_MGMT			= 1<<9,
-    */
+	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS
+	             | IEEE80211_HW_SIGNAL_DBM
+	             | IEEE80211_HW_NOISE_DBM
+	             /* | IEEE80211_HW_SPECTRUM_MGMT TODO:  Turn this on when we are ready*/;
 	hw->queues = 1;
 	hw->extra_tx_headroom = 4 +
 			sizeof(struct ofdm_hdr);
@@ -634,22 +614,34 @@ int piper_register_hw(struct piper_priv *priv, struct device *dev,
 {
 	struct ieee80211_hw *hw = priv->hw;
 	int i, err;
-
+	unsigned char macAddress[2*sizeof(unsigned int)];
+    unsigned int word;
+    
 	digi_dbg("piper_register_hw called\n");
 	priv->rf = rf;
 	for (i = 0; i < rf->n_bands; i++) {
 		enum ieee80211_band b = rf->bands[i].band;
 		hw->wiphy->bands[b] = &rf->bands[i];
 	}
+	hw->channel_change_time = rf->channelChangeTime;
+	hw->vif_data_size = 0;
+	hw->sta_data_size = 0;
+
 
 	SET_IEEE80211_DEV(hw, dev);
+	
+    word = cpu_to_be32(priv->read_reg(priv, MAC_STA_ID0));
+    memcpy(macAddress, &word, sizeof(word));
+    word = cpu_to_be32(priv->read_reg(priv, MAC_STA_ID1));
+    memcpy(&macAddress[4], &word, sizeof(word));
+    SET_IEEE80211_PERM_ADDR(hw, macAddress);
+    
 	err = ieee80211_register_hw(hw);
 	if (err)
 		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register ieee80211 hw\n");
 	else
 		printk(KERN_INFO PIPER_DRIVER_NAME ": registered as %s\n",
 				wiphy_name(hw->wiphy));
-
 	return err;
 }
 EXPORT_SYMBOL_GPL(piper_register_hw);
