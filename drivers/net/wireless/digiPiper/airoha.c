@@ -24,6 +24,13 @@
 
 #define TRANSCEIVER     RF_AIROHA_7230
 
+/*
+ * Number of us to change channels.  I counted the number of udelays once
+ * and it was about 1030, plus the 1 us delays for each register write.
+ * So probably about 1200 in reality, I'm saying 1500 to be safe.
+ */
+#define CHANNEL_CHANGE_TIME     (1500)
+
 #define readReg(reg)                priv->read_reg(priv, reg)
 #define writeReg(reg, value)        priv->write_reg(priv, reg, value)
 
@@ -184,11 +191,7 @@ static int WriteRF(struct ieee80211_hw *hw, unsigned char reg, unsigned int val)
 	int err;
 
 	err  = writeReg(BB_SPI_DATA, val << 4 | reg);
-#if 1
-    mdelay(1);
-#else
-	udelay(10);
-#endif
+	udelay(3);      /* Mike Schaffner says to allow 2 us or more between all writes*/
 	return err;
 }
 
@@ -210,8 +213,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
 #endif
     /* Disable the rx processing path */
 	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN & readReg(BB_GENERAL_CTL));
-	mdelay(5); /*TODO: timed loopwhich looks at RX FIFO EMPTY*/
-	                
+    	                
     digi_dbg("in SetChannel (), Channel=%d, rf_band= %d\n", channel, rf_band);
 
 #if (TRANSCEIVER == RF_AIROHA_2236)
@@ -377,7 +379,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         }
     
         /*Re-enable the rx processing path */
-	    msleep(50); /* TODO:  How long do we need to wait for the electronics to settle?*/
+	    udelay(150); /* Airoha says electronics will be ready in 150 us */
     	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN | readReg(BB_GENERAL_CTL));
 
     	dumpRegisters(priv, CTRL_STATUS_REGS);             
@@ -669,6 +671,8 @@ static int al7230_rf_stop(struct ieee80211_hw *hw)
 	return 0;
 }
 
+    
+
 static struct ieee80211_supported_band al7230_bands[] = {
 	{
         	.band = IEEE80211_BAND_2GHZ,
@@ -686,6 +690,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.stop = al7230_rf_stop,
 	.set_chan = al7230_rf_set_chan,
 	.set_pwr = al7230_set_txpwr,
+	.channelChangeTime = CHANNEL_CHANGE_TIME,
 
 	.bands = al7230_bands,
 	.n_bands = ARRAY_SIZE(al7230_bands),
