@@ -42,6 +42,7 @@ struct digi_rf_ops {
 	int (*stop)(struct ieee80211_hw *);
 	int (*set_chan)(struct ieee80211_hw *, int chan);
 	int (*set_pwr)(struct ieee80211_hw *, uint8_t val);
+	int channelChangeTime;
 
 	struct ieee80211_supported_band *bands;
 	uint8_t n_bands;
