@@ -30,7 +30,7 @@
 #define MAC_REG_SIZE    (0x100)             /* range of MAC registers*/
 #define MAC_CTRL_BASE   (volatile unsigned int *) (MAC_REG_BASE + (0x40))
 
-#define WANT_DEBUG_THREAD   (1)
+#define WANT_DEBUG_THREAD   (0)
 
 static struct piper_priv *localCopyDigi = NULL;
 
@@ -479,7 +479,16 @@ static int piper_write_aes_key(struct piper_priv *digi, struct sk_buff *skb)
 	 * To deal with that we set the TX_HOLD bit, which will force
 	 * the hardware to wait for us to finish writing to the FIFO */
 	/* TODO:  Does this make sense?  Is this a bug caused by copying code
-	          from piper_write? */
+	          from piper_write? 
+       Answer from Mike:
+       If you are using the old mode (mode 0) where the keys are written 
+       with each frame, then you do not want to clear the TX Hold bit 
+       until the key and all the plaintext data has been written to the 
+       AES FIFO (unless you can guarantee the writes are not interrupted). 
+
+        With the new mode 1 there is no need to set the TX Hold bit when 
+        updating the keys.
+	*/
 	err = digi->write_reg(digi, BB_GENERAL_CTL, 
 	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
 	if (err)
@@ -600,7 +609,7 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 	     */
 	    if (piper->txPacket != NULL)
 	    {
-	        tasklet_schedule(&piper->txRetryTasklet);
+	        tasklet_hi_schedule(&piper->txRetryTasklet);
         }
 		clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
@@ -613,7 +622,7 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 	     */
 	    if (piper->txPacket != NULL)
 	    {
-	        tasklet_schedule(&piper->txRetryTasklet);
+	        tasklet_hi_schedule(&piper->txRetryTasklet);
         }
 		clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
@@ -931,29 +940,17 @@ static int initHw(struct piper_priv *digi)
  */
 /****/ digi->write_reg(digi, MAC_DTIM_PERIOD, 0x0);
     
-    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_ANT_DIV | digi->read_reg(digi, BB_GENERAL_CTL));
-    digi->write_reg(digi, BB_RSSI, 0x96000000 | digi->read_reg(digi, BB_RSSI));
-#if 1
-    digi->write_reg(digi, BB_GENERAL_CTL, 0x96000000 | digi->read_reg(digi, BB_GENERAL_CTL));
-#else
-/* TODO:  Deal with this when antenna div changed */
-//on connectcorewi9p9215_a platform
-        if (HW_GEN_CONTROL & GEN_ANTDIV)
-            HW_RSSI_AES |= 0x96000000;  
-        else
-        {
-            HW_RSSI_AES |= 0x1E000000; 
-            HW_GEN_CONTROL &= 0xfffffffb;
-        }
-#endif
-
+    /*
+     * Note that antenna diversity will be set by hw_start, which is the
+     * caller of this function.
+     */
+     
     // reset RX and TX FIFOs
     digi->write_reg(digi, BB_GENERAL_CTL, digi->read_reg(digi, BB_GENERAL_CTL) 
                 | BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST);
     digi->write_reg(digi, BB_GENERAL_CTL, digi->read_reg(digi, BB_GENERAL_CTL) 
                 & ~(BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST));
 
-/* TODO:  Is this a bug? */
     digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C);  
         
     /* Initialize RF transceiver */
@@ -965,8 +962,7 @@ static int initHw(struct piper_priv *digi)
     {
         digi->rf->init(digi->hw, IEEE80211_BAND_2GHZ);
     }
-    digi_dbg("forcing value of BB_OUTPUT_CONTROL to be 0x04000301\n");
-/****/ digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000301);
+    digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000001 | digi->read_reg(digi, BB_OUTPUT_CONTROL));
 /****/ digi->write_reg(digi, MAC_CFP_ATIM, 0x0);
     digi->write_reg(digi, BB_GENERAL_STAT, 
         digi->read_reg(digi, BB_GENERAL_STAT) &
@@ -976,7 +972,7 @@ static int initHw(struct piper_priv *digi)
     initPwrCal();
 #endif
 
-        
+    
     
 #ifdef MAC_PS_ENABLED
     PIO_OUTPUT(WLN_PS_CNTRL_PIN);
