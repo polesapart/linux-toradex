@@ -119,28 +119,41 @@ static int set_tx_power(struct ieee80211_hw *hw, int power)
 	return err;
 }
 
-static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb,
-		struct ieee80211_tx_control *ctl)
+static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct piper_priv *digi = hw->priv;
+	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
 #if 0
 	int aes_fifo = ctl->flags & IEEE80211_TXCTL_DO_NOT_ENCRYPT ? 0 : 1;
 #else
 	int aes_fifo = 0;
 #endif
-
     ieee80211_stop_queues(hw);      /* only transmit one packet at a time */
 	/* set the plcp/frame header (adding space for AES MIC tail) */
-	phy_set_plcp(skb, ctl->tx_rate, aes_fifo ? 8 : 0);
-
-    digi->txStatus.control = *ctl;
-	digi->txStatus.ampdu_ack_len = 0;
-	digi->txStatus.ampdu_ack_map = 0;
-	digi->txStatus.ack_signal = 0;
-	digi->txStatus.retry_count = 0;
+	phy_set_plcp(skb, ieee80211_get_tx_rate(hw, txInfo), aes_fifo ? 8 : 0);
+    digi->txMaxRetries = txInfo->control.retry_limit;
+    if (txInfo->control.hw_key != NULL)
+    {
+        digi->txKeyInfo = *txInfo->control.hw_key;
+    }
+	memcpy(&txInfo->status.retries[1], &txInfo->control.retries[0], sizeof(txInfo->control.retries));
+	txInfo->status.retries[0].rate_idx = txInfo->tx_rate_idx;
+	txInfo->status.retries[0].limit = 1;
+	txInfo->status.ampdu_ack_map = 0;
+	txInfo->status.ack_signal = 0;
+	txInfo->status.retry_count = 0;
+	txInfo->status.excessive_retries = false;
+	txInfo->status.ampdu_ack_len = 0;
+    txInfo->flags &= ~(IEEE80211_TX_STAT_TX_FILTERED
+                                | IEEE80211_TX_STAT_ACK
+                                | IEEE80211_TX_STAT_AMPDU
+                                | IEEE80211_TX_STAT_AMPDU_NO_BACK);
 	digi->txPacket = skb;
-	digi->txRetries = ctl->retry_limit;
-	tasklet_schedule(&digi->txRetryTasklet);
+	#if 1
+	    tasklet_schedule(&digi->txRetryTasklet);
+	#else
+	    piperTxRetryTaskletEntry ((unsigned long) digi);
+	#endif
 	
 	return 0;
 }
@@ -151,7 +164,7 @@ static int hw_start(struct ieee80211_hw *hw)
 	struct piper_priv *digi = hw->priv;
 
 	digi_dbg("hw_start called\n");
-	digi->if_type = IEEE80211_IF_TYPE_INVALID;
+	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
 
 	/* initialize */
 	err = digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT);
@@ -219,17 +232,17 @@ static int hw_add_intf(struct ieee80211_hw *hw,
 	digi_dbg("hw_add_intf called\n");
 	digi_dbg("if_type: %x\n", conf->type);
 
-	/* INVALID means no mode selected */
-	if (digi->if_type != IEEE80211_IF_TYPE_INVALID)
+	/* __NL80211_IFTYPE_AFTER_LAST means no mode selected */
+	if (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)
 	{
-	    digi_dbg("hw_add_intf (digi->if_type != IEEE80211_IF_TYPE_INVALID)\n");
+	    digi_dbg("hw_add_intf (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)\n");
 		return -EOPNOTSUPP;
     }
     
 	switch (conf->type) 
 	{
-    	case IEEE80211_IF_TYPE_IBSS:
-    	case IEEE80211_IF_TYPE_STA:
+    	case NL80211_IFTYPE_ADHOC:
+    	case NL80211_IFTYPE_STATION:
     		digi->if_type = conf->type;
     		break;
     	default:
@@ -267,7 +280,7 @@ static void hw_rm_intf(struct ieee80211_hw *hw,
 
 	digi_dbg("hw_rm_intf called\n");
 
-	digi->if_type = IEEE80211_IF_TYPE_INVALID;
+	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
 
 }
 
@@ -428,6 +441,7 @@ static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
     }
 }
 
+#if 0
 /*
  * When in IBSS mode, if we update the beacon we should tell the hardware
  * about it (which is generating beacons for us)
@@ -469,6 +483,7 @@ static int hw_beacon_update(struct ieee80211_hw *hw, struct sk_buff *skb,
 #endif
 	return 0;
 }
+#endif
 
 static int expand_aes_key(struct ieee80211_key_conf *key, struct sk_buff *skb)
 {
@@ -582,8 +597,18 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 	if (!hw)
 		return -ENOMEM;
 
-	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS |
-			IEEE80211_HW_HOST_GEN_BEACON_TEMPLATE;
+	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS;
+	/* TODO:  Pick correct flags:
+		IEEE80211_HW_RX_INCLUDES_FCS			= 1<<1,
+	IEEE80211_HW_HOST_BROADCAST_PS_BUFFERING	= 1<<2,
+	IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE		= 1<<3,
+	IEEE80211_HW_2GHZ_SHORT_PREAMBLE_INCAPABLE	= 1<<4,
+	IEEE80211_HW_SIGNAL_UNSPEC			= 1<<5,
+	IEEE80211_HW_SIGNAL_DB				= 1<<6,
+	IEEE80211_HW_SIGNAL_DBM				= 1<<7,
+	IEEE80211_HW_NOISE_DBM				= 1<<8,
+	IEEE80211_HW_SPECTRUM_MGMT			= 1<<9,
+    */
 	hw->queues = 1;
 	hw->extra_tx_headroom = 4 +
 			sizeof(struct ofdm_hdr);

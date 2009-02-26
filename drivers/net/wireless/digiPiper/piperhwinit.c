@@ -39,8 +39,7 @@
 
 #include <asm/gpio.h>
 #include <asm/io.h>
-#include <asm/arch/regs-mem.h>
-#include <asm/arch/regs-sys-ns9360.h>
+#include <mach/regs-mem.h>
 
 #ifndef FALSE
     #define FALSE   (0)

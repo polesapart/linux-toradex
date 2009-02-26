@@ -30,7 +30,7 @@
 #define MAC_REG_SIZE    (0x100)             /* range of MAC registers*/
 #define MAC_CTRL_BASE   (volatile unsigned int *) (MAC_REG_BASE + (0x40))
 
-#define WANT_DEBUG_THREAD   (0)
+#define WANT_DEBUG_THREAD   (1)
 
 static struct piper_priv *localCopyDigi = NULL;
 
@@ -347,7 +347,7 @@ static void setIrqMaskBit(struct piper_priv *piper, unsigned bits)
 
 
 static int piper_write_fifo(struct piper_priv *digi, struct sk_buff *skb,
-            struct ieee80211_tx_control *ctl)
+            unsigned int flags)
 {
 	int err;
 
@@ -358,7 +358,7 @@ static int piper_write_fifo(struct piper_priv *digi, struct sk_buff *skb,
 	digi->write_reg(digi, BB_GENERAL_CTL, 
 	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
 
-    if (ctl->flags & IEEE80211_TXCTL_NO_ACK)
+    if (flags & IEEE80211_TX_CTL_NO_ACK)
     {
         setIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TX_ABORT);
     }
@@ -378,7 +378,7 @@ done:
 }
 
 static int piper_write_aes(struct piper_priv *digi, struct sk_buff *skb,
-		int keyidx, struct ieee80211_tx_control *ctl)
+		int keyidx, unsigned int flags)
 {
 	int err;
 
@@ -388,7 +388,7 @@ static int piper_write_aes(struct piper_priv *digi, struct sk_buff *skb,
 	 * the hardware to wait for us to finish writing to the FIFO */
 	digi->write_reg(digi, BB_GENERAL_CTL, 
 	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
-    if (ctl->flags & IEEE80211_TXCTL_NO_ACK)
+    if (flags & IEEE80211_TX_CTL_NO_ACK)
     {
         setIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TX_ABORT);
     }
@@ -413,21 +413,13 @@ done:
 
 
 
+EXPORT_SYMBOL_GPL(piperTxRetryTaskletEntry);
 
-static void txRetryTaskletEntry (unsigned long context)
+void piperTxRetryTaskletEntry (unsigned long context)
 {
     struct piper_priv *digi = (struct piper_priv *) context;
     int err;
-    static struct sk_buff *debugFrame = NULL;
-    
-    if (debugFrame == NULL)
-    {
-        debugFrame = __dev_alloc_skb(RX_FIFO_SIZE, GFP_ATOMIC);
-        if (debugFrame)
-        {
-            memcpy(skb_put(debugFrame, digi->txPacket->len), digi->txPacket->data, digi->txPacket->len);
-        }
-    }
+
     /*
      * Clear flags here to cover ACK case.  We do not clear the flags in the ACK 
      * routine since it is possible to receive an ACK after we have started the
@@ -437,43 +429,45 @@ static void txRetryTaskletEntry (unsigned long context)
 	clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	if (digi->txPacket != NULL)
 	{
-        if (digi->txRetries != 0)
+        struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
+    /* TODO:  Need to adjust rate on retries using info in txInfo->control.retries */
+        if (txInfo->status.retry_count != digi->txMaxRetries)
         {
 #if 0
     	    int aes_fifo = digi->txStatus.control.flags & IEEE80211_TXCTL_DO_NOT_ENCRYPT ? 0 : 1;
 #else
     	    int aes_fifo = 0;
 #endif
-            if (digi->txRetries != digi->txStatus.control.retry_limit)
+            if (txInfo->status.retry_count != 0)
             {
                 #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
                 frameControlFieldType_t *fc = (frameControlFieldType_t *) &digi->txPacket->data[FRAME_CONTROL_FIELD_OFFSET];
-                digi->txStatus.retry_count++;
+                txInfo->status.retry_count++;
                 fc->retry = 1;              /* set retry bit */
             }
     
-            digi->txRetries--; 
+            txInfo->status.retry_count++; 
 /*
  * TODO:  Implement tx_conf function to receive contention window size.
  */
     /****/ digi->write_reg(digi, MAC_BACKOFF, 0x118);
         	if (aes_fifo)
-        		err = digi->write_aes(digi, digi->txPacket, digi->txStatus.control.key_idx, &digi->txStatus.control);
+        		err = digi->write_aes(digi, digi->txPacket, digi->txKeyInfo.hw_key_idx, txInfo->flags);
         	else
-        		err = digi->write_fifo(digi, digi->txPacket, &digi->txStatus.control);
+        		err = digi->write_fifo(digi, digi->txPacket, txInfo->flags);
        /* TODO: What to do if err != 0 */
         }
         else
         {
-            digi->txStatus.excessive_retries = true;
-            digi->txStatus.flags = 0;
-            digi_dbg("All %d retries used up, ieee80211_tx_status_irqsafe\n", digi->txStatus.control.retry_limit);
+            txInfo->status.excessive_retries = true;
+            digi_dbg("All %d retries used up, ieee80211_tx_status_irqsafe\n", digi->txMaxRetries);
             ieee80211_tx_status_irqsafe(digi->hw,
-            				           digi->txPacket,
-            				           &digi->txStatus);
+            				           digi->txPacket);
             digi->txPacket = NULL;
+            ieee80211_wake_queues(digi->hw);
         }
     }
+    /* TODO: Remove this debug code */ else digi_dbg("digi->txPacket == NULL\n");
 }
 
 static int piper_write_aes_key(struct piper_priv *digi, struct sk_buff *skb)
@@ -585,28 +579,22 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 
     if (status & BB_IRQ_MASK_TX_FIFO_EMPTY) 
     {
-        digi_dbg("Got tx FIFO empty\n");
         /*
          * Transmit complete interrupt.  This IRQ is only unmasked if we are
          * not expecting the packet to be ACKed.
          */
 	    if (piper->txPacket != NULL)
 	    {
-            piper->txStatus.excessive_retries = false;
-            piper->txStatus.flags = 0;
-            digi_dbg("Calling ieee80211_tx_status_irqsafe\n");
             ieee80211_tx_status_irqsafe(piper->hw,
-            				           piper->txPacket,
-            				           &piper->txStatus);
+            				           piper->txPacket);
             piper->txPacket = NULL;
-            ieee80211_start_queues(piper->hw);
+            ieee80211_wake_queues(piper->hw);
         }
 		clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
     }
 
 	if (status & BB_IRQ_MASK_TIMEOUT)
 	{
-        digi_dbg("Got tx timeout\n");
 	    /*
 	     * AP did not ACK our TX packet.
 	     */
@@ -731,27 +719,23 @@ static void receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
  */
 static void handleAck(struct piper_priv *piper, int signalStrength)
 {
-    struct ieee80211_tx_status status;
-    
-    memset(&status, 0, sizeof(status));
-    
-    if ((piper->txPacket) && ((piper->txStatus.control.flags & IEEE80211_TXCTL_NO_ACK) == 0))
+    if (piper->txPacket) 
     {
-	    clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
-     	piper->txStatus.flags = IEEE80211_TX_STATUS_ACK;
-    	piper->txStatus.retry_count = 0;
-    	piper->txStatus.excessive_retries = false;
-    	piper->txStatus.ampdu_ack_len = 0;
-    	piper->txStatus.ampdu_ack_map = 0;
-    	piper->txStatus.ack_signal = signalStrength;
-    	
-        ieee80211_tx_status_irqsafe(piper->hw, piper->txPacket, &piper->txStatus);
-        piper->txPacket = NULL;
-        /* TODO:  Is it possible to get an ACK when we are not expecting one and so
-                  screw up our system?  Should txPacket and friends be protected with
-                  a spinlock?
-         */
-        ieee80211_start_queues(piper->hw);
+        struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper->txPacket);
+        if ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)
+        {
+    	    clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
+         	txInfo->flags = IEEE80211_TX_STAT_ACK;
+        	txInfo->status.ack_signal = signalStrength;
+        	
+            ieee80211_tx_status_irqsafe(piper->hw, piper->txPacket);
+            piper->txPacket = NULL;
+            /* TODO:  Is it possible to get an ACK when we are not expecting one and so
+                      screw up our system?  Should txPacket and friends be protected with
+                      a spinlock?
+             */
+            ieee80211_wake_queues(piper->hw);
+        }
     }
 }
 
@@ -807,12 +791,7 @@ static void rxTaskletEntry (unsigned long context)
     		receivePacket(piper, skb, length, &frameControlField);
     		if (frameControlField.type == TYPE_ACK)
     		{
-    		    digi_dbg("Received an ACK\n");
     		    handleAck(piper, status.signal);
-    		}
-    		if ((skb->data[4] & 1) == 0)
-    		{
-    		    digi_dbg("Received unicast packet\n");
     		}
     		ieee80211_rx(piper->hw, skb, &status);
          }
@@ -836,17 +815,11 @@ static int debugThreadEntry(void *data)
 {
 	struct piper_priv *piper = data;
 
-    ssleep(20);
-    
-    while (debugFrame == NULL)
-    {
-        ssleep(1);
-    }
-    
     while (1)
     {
-        
-
+        ssleep(60);
+        dumpRegisters(piper, ALL_REGS);
+    }
     return 0;
 }
 #endif
@@ -863,7 +836,7 @@ static int init_rx_tx(struct piper_priv *piper)
     tasklet_disable(&piper->rxTasklet);
     
     piper->txPacket = NULL;
-    tasklet_init(&piper->txRetryTasklet, txRetryTaskletEntry, (unsigned long) piper);
+    tasklet_init(&piper->txRetryTasklet, piperTxRetryTaskletEntry, (unsigned long) piper);
     tasklet_disable(&piper->txRetryTasklet);
 
 #if WANT_DEBUG_THREAD

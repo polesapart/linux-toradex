@@ -57,14 +57,15 @@ struct piper_priv {
     struct task_struct *rx_thread;
     struct tasklet_struct rxTasklet;
     struct tasklet_struct txRetryTasklet;
+    struct ieee80211_key_conf txKeyInfo;
+    
     unsigned int rxOverruns;
     unsigned int irq;
         
     void* __iomem vbase;
 	struct sk_buff *read_skb;
 	struct sk_buff *txPacket;
-	unsigned int txRetries;
-    struct ieee80211_tx_status txStatus;
+	unsigned int txMaxRetries;
     spinlock_t irqMaskLock;
     spinlock_t rxReadyCountLock;
     
@@ -74,8 +75,8 @@ struct piper_priv {
 	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val);
 	unsigned int (*read_reg)(struct piper_priv *, uint8_t reg);
 	int (*write)(struct piper_priv *, uint8_t addr, uint8_t *buf, int len);
-	int (*write_fifo)(struct piper_priv *, struct sk_buff *skb, struct ieee80211_tx_control *ctl);
-	int (*write_aes)(struct piper_priv *, struct sk_buff *skb, int keyidx, struct ieee80211_tx_control *ctl);
+	int (*write_fifo)(struct piper_priv *, struct sk_buff *skb, unsigned int flags);
+	int (*write_aes)(struct piper_priv *, struct sk_buff *skb, int keyidx, unsigned int flags);
 	int (*write_aes_key)(struct piper_priv *, struct sk_buff *skb);
 	int (*initHw)(struct piper_priv *);
 	void (*setIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
@@ -86,7 +87,7 @@ struct piper_priv {
 
 	int channel;
 	uint8_t tx_power;
-	enum ieee80211_if_types if_type;
+	enum nl80211_iftype if_type;
 
 	struct digi_rf_ops *rf;
 };
@@ -98,6 +99,6 @@ extern int piper_register_hw(struct piper_priv *priv, struct device *dev,
 extern void piper_unregister_hw(struct piper_priv *priv);
 extern void piper_free_hw(struct piper_priv *priv);
 
-
+extern void piperTxRetryTaskletEntry (unsigned long context);
 
 #endif
