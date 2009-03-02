@@ -61,6 +61,7 @@
 #include <plat/hsmmc.h>
 #include <plat/ts.h>
 #include <plat/udc.h>
+#include <plat/pcmcia.h>
 #include <mach/irqs.h>
 #include <mach/regs-irq.h>
 #include <plat/irq.h>
@@ -509,6 +510,33 @@ struct platform_device s3c443_device_ide = {
 	.resource	  = s3c2443_ide_resource,
 };
 
+static struct resource s3c2443_pcmcia_resource[] = {
+	[0] = {
+		.start = S3C2443_PA_CFATA,
+		.end   = S3C2443_PA_CFATA + S3C2443_SZ_CFATA,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_S3C2443_CFCON,
+		.end   = IRQ_S3C2443_CFCON,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+static struct s3c2443_pcmcia_pdata cc9m2443js_pcmcia_pdata = {
+        .gpio_detect	= S3C2410_GPG10,
+};
+
+struct platform_device s3c443_device_pcmcia = {
+	.name		  = "s3c2443-pcmcia",
+	.id		  = 0,
+	.num_resources	  = ARRAY_SIZE(s3c2443_pcmcia_resource),
+	.resource	  = s3c2443_pcmcia_resource,
+	.dev            = {
+		.platform_data = &cc9m2443js_pcmcia_pdata,
+        }
+};
+
 /* Platform devices for the CC9M2443 */
 static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c_device_usb,
@@ -523,6 +551,7 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&cc9m2443_device_hsspi,
 	&cc9m2443_device_udc,
 	&s3c443_device_ide
+	&s3c443_device_pcmcia
 };
 
 static void __init cc9m2443_map_io(void)
