@@ -88,7 +88,7 @@ static irqreturn_t s3c2443_pcmcia_irq(int irq, void *data)
 	writel(irqreg, psock->pcmcia_base + S3C2443_PCCARD_INT);
 
 	/* Mask before checking the interrupt source */
-	irqreg = irqreq & ~(irqreg >> 8) & 0x07;
+	irqreg = irqreg & ~(irqreg >> 8) & 0x07;
 
 	if (irqreg) {
 		ret = IRQ_HANDLED;

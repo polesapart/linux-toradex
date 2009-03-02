@@ -550,8 +550,8 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&cc9m2443_device_ts,
 	&cc9m2443_device_hsspi,
 	&cc9m2443_device_udc,
-	&s3c443_device_ide
-	&s3c443_device_pcmcia
+	&s3c443_device_ide,
+	&s3c443_device_pcmcia,
 };
 
 static void __init cc9m2443_map_io(void)
