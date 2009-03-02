@@ -20,8 +20,12 @@
 
 #include <linux/types.h>
 #include <linux/init.h>
+#include <linux/platform_device.h>
 #include <linux/kernel.h>
 #include <linux/memory.h>
+#include <linux/gpio.h>
+#include <linux/smc911x.h>
+#include <linux/interrupt.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -32,10 +36,63 @@
 #include <asm/page.h>
 #include <asm/setup.h>
 #include <mach/board-mx31lite.h>
+#include <mach/imx-uart.h>
+#include <mach/iomux-mx3.h>
+
+#include "devices.h"
 
 /*
  * This file contains the board-specific initialization routines.
  */
+
+#if defined(CONFIG_SERIAL_IMX) || defined(CONFIG_SERIAL_IMX_MODULE)
+static struct imxuart_platform_data uart_pdata = {
+        .flags = IMXUART_HAVE_RTSCTS,
+};
+
+static inline void mxc_init_imx_uart(void)
+{
+        mxc_iomux_mode(MX31_PIN_CTS1__CTS1);
+        mxc_iomux_mode(MX31_PIN_RTS1__RTS1);
+        mxc_iomux_mode(MX31_PIN_TXD1__TXD1);
+        mxc_iomux_mode(MX31_PIN_RXD1__RXD1);
+
+        mxc_register_device(&mxc_uart_device0, &uart_pdata);
+}
+#else /* !SERIAL_IMX */
+static inline void mxc_init_imx_uart(void)
+{
+}
+#endif /* !SERIAL_IMX */
+
+static struct resource smc911x_resources[] = {
+       [0] = {
+               .start          = CS4_BASE_ADDR,
+               .end            = (CS4_BASE_ADDR + 0xfffff),
+               .flags          = IORESOURCE_MEM,
+       },
+       [1] = {
+               .start          = IOMUX_TO_IRQ(MX31_PIN_SFS6),
+               .end            = IOMUX_TO_IRQ(MX31_PIN_SFS6),
+               .flags          = IORESOURCE_IRQ,
+       },
+};
+
+static struct smc911x_platdata smc911x_info = {
+       .flags          = SMC911X_USE_32BIT,
+       .irq_flags      = IRQF_SHARED | IRQF_TRIGGER_LOW,
+};
+
+static struct platform_device mx31lite_eth = {
+       .name           = "smc911x",
+       .id             = -1,
+       .num_resources  = ARRAY_SIZE(smc911x_resources),
+       .resource       = smc911x_resources,
+       .dev            = {
+               .platform_data = &smc911x_info,
+       },
+};
+
 
 /*
  * This structure defines the MX31 memory map.
@@ -73,11 +130,23 @@ void __init mx31lite_map_io(void)
 	iotable_init(mx31lite_io_desc, ARRAY_SIZE(mx31lite_io_desc));
 }
 
+static struct platform_device *devices[] __initdata = {
+       &mx31lite_eth,
+};
+
 /*
  * Board specific initialization.
  */
 static void __init mxc_board_init(void)
 {
+       /* init eth */
+       mxc_iomux_mode(IOMUX_MODE(MX31_PIN_SFS6, IOMUX_CONFIG_GPIO));
+       if (!gpio_request(MX31_PIN_GPIO3_1, "mx31lite-eth"))
+               gpio_direction_input(MX31_PIN_SFS6);
+
+       platform_add_devices(devices, ARRAY_SIZE(devices));
+
+       mxc_init_imx_uart();
 }
 
 static void __init mx31lite_timer_init(void)
