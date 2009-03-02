@@ -406,6 +406,7 @@ static int __devinit s3c2443_ide_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, host);
 
 	printk(KERN_INFO "S3C2443 IDE driver\n");
+	return 0;
 
 error_add:
 	/* XXX unconfig hardware here ? */
