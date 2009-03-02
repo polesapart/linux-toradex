@@ -319,6 +319,8 @@ struct pic_t *fim_request_pic(int picnr);
 void fim_free_pic(struct pic_t *pic);
 void fim_print_fifo_status(struct fim_driver *driver);
 int fim_number_pics(void);
+int fim_download_firmware(struct fim_driver *driver);
+int fim_is_running(struct fim_driver *driver);
 
 #endif /* ifndef _NS921X_FIM_CORE_H */
 
