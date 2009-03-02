@@ -3,7 +3,6 @@
 #
 
 EXTRA_CFLAGS				+= -Idrivers/ide
-EXTRA_CFLAGS				+= -DDEBUG
 
 ide-core-y += ide.o ide-ioctls.o ide-io.o ide-iops.o ide-lib.o ide-probe.o \
 	      ide-taskfile.o ide-park.o ide-pio-blacklist.o
