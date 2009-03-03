@@ -18,18 +18,27 @@
  *
  */
 
+
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/sched.h>
+#include <linux/types.h>
+#include <linux/fcntl.h>
+#include <linux/interrupt.h>
+#include <linux/ptrace.h>
+#include <linux/string.h>
+#include <linux/errno.h>
 #include <linux/netdevice.h>
 #include <linux/if_arp.h>
 #include <linux/if_ether.h>
-#include <linux/clk.h>
+#include <linux/skbuff.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
 
 /* Header files for the CAN-stack */
 #include <linux/can.h>
 #include <linux/can/dev.h>
-// #include <linux/can/ioctl.h>
 #include <linux/can/error.h>
 
 /* For registering the FIM-driver */
@@ -86,7 +95,7 @@ MODULE_VERSION(DRIVER_VERSION);
 #define printk_err(fmt, args...)		printk(KERN_ERR "[ ERROR ] fim-can: " fmt, ## args)
 #define printk_info(fmt, args...)		printk(KERN_INFO "fim-can: " fmt, ## args)
 
-#if 1
+#if 0
 #define FIM_CAN_DEBUG
 #endif
 
@@ -167,26 +176,26 @@ struct fim_can_filter_t {
 
 static struct can_bittiming_const fim_bittiming_const = {
 	.tseg1_min = 1,
-	.tseg1_max = 16,
+	.tseg1_max = 200,
 	.tseg2_min = 1,
-	.tseg2_max = 8,
+	.tseg2_max = 200,
 	.sjw_max = 40,
 	.brp_min = 1,
 	.brp_max = 2048,
 	.brp_inc = 1,	
 };
 
-static struct can_bittiming fim_bittiming = {
-	.bitrate = 500000,
-	.sample_point = 17,
-	.tq = 1,
-	.prop_seg = 8,
-	.phase_seg1 = 1,
-	.phase_seg2 = 8,
-	.sjw = 4,
-	.clock = 500000,
-	.brp= 64,
-};
+// static struct can_bittiming fim_bittiming = {
+// 	.bitrate = 500000,
+// 	.sample_point = 17,
+// 	.tq = 1,
+// 	.prop_seg = 8,
+// 	.phase_seg1 = 1,
+// 	.phase_seg2 = 8,
+// 	.sjw = 40,
+// 	.clock = 299827200,
+// 	.brp= 2048,
+// };
 
 /*
  * This structure provides the interface for configuring the timing parameters of
@@ -194,7 +203,7 @@ static struct can_bittiming fim_bittiming = {
  */
 struct fim_can_timing_t {
 	u8 code;
-	u32 sjw;
+	u16 sjw;
 	u16 cspl;
 	u16 cp2pl;
 	u16 csi;
@@ -246,6 +255,9 @@ struct fim_can_t {
 	struct clk *cpu_clk;
 	int opened;
 	spinlock_t lock;
+
+	/* @XXX: Is this really neccesary? (Luis) */
+	struct can_bittiming_const bittiming; 
 };
 
 struct fim_cans_t {
@@ -406,16 +418,22 @@ static int fim_can_set_filter(struct fim_can_t *port, int nr, canid_t id, canid_
 
 /* XXX */
 static void fim_can_fill_timing(struct fim_can_t *port, struct fim_can_timing_t *tim,
-				u32 sjw, u16 sample_point, u16 sync_period)
+				u16 sjw, u16 sample_point, u16 sync_period)
 {
 	unsigned int ten_per;
 
+	/* 
+	 * Reference values from the old FIM-driver:
+         * fim-can: New timing: 500000 bps | sjw 7 | sample 17 | sync 8
+         * fim-can: Ten percent by 500000 Bps is aprox. 60 
+	 */
 	printk_info("New timing: %u bps | sjw %u | sample %u | sync %u | clock %u\n",
 		    port->can.bittiming.bitrate, sjw, sample_point, sync_period, port->can.bittiming.clock);
 
 	/* Calculate how many clocks are in the ten percent of the bit rate */
 	ten_per =
-	    (port->can.bittiming.clock +
+// 	    (port->can.bittiming.clock +
+	(clk_get_rate(port->cpu_clk) +
 	     (5 * port->can.bittiming.bitrate)) / (10 * port->can.bittiming.bitrate);
 	printk_debug("Ten percent by %i Bps is aprox. %i\n", port->can.bittiming.bitrate,
 		     ten_per);
@@ -460,7 +478,7 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 	cfg.code = FIM_CAN_CMD_CONFIG;
 
 	/* @FIXME: We can't use the timing values passed from the CAN-stack, but why? */
-	printk_debug("clock: %u\n",port->can.bittiming.clock);
+	printk_info("clock: %u\n",port->can.bittiming.clock);
 	fim_can_fill_timing(port, &cfg,
 /* 			    DEFAULT_SJW_TIME, */
 /* 			    DEFAULT_SAMPLE_POINT, */
@@ -543,23 +561,8 @@ static int fim_can_set_timing(struct fim_can_t *port,
 //static int fim_can_set_bittime(struct net_device *dev, struct can_bittime *bt)
 static int fim_can_set_bittime(struct net_device *dev)
 {
-	int retval = 0;
 
-//      switch (bt->type) {
-//      case CAN_BITTIME_STD:
-//              retval = 0;
-//              break;
-// 
-//      case CAN_BITTIME_BTR:
-//              printk_err("@TODO: BTR configuration isn't supported\n");
-//              /* Fall through */
-// 
-//      default:
-//              retval = -EOPNOTSUPP;
-//              break;
-//      }
-
-	return retval;
+	return 0;
 }
 
 /*
@@ -673,6 +676,7 @@ static int fim_can_stop_fim(struct fim_can_t *port)
 	fim = &port->fim;
 	if (fim_is_running(fim)) {
 		retval = fim_send_stop(fim);
+		printk_debug("Disabling interrupt\n");
 		fim_disable_irq(fim);
 	}
 
@@ -708,7 +712,8 @@ static int fim_can_start_fim(struct fim_can_t *port)
 	retval = fim_send_start(fim);
 	if (retval)
 		return -EAGAIN;
-
+	
+	printk_debug("Enable interrupt\n");
 	fim_enable_irq(fim);
 
 	/*
@@ -717,6 +722,7 @@ static int fim_can_start_fim(struct fim_can_t *port)
 	 */
 	retval = fim_can_set_init_config(port);
 	if (retval) {
+		printk_debug("Disabling interrupt\n");
 		fim_disable_irq(fim);
 		return retval;
 	}
@@ -808,6 +814,7 @@ static int fim_can_stop(struct net_device *dev)
 		udelay(1000);
 
 		/* Check if need to stop the FIM */
+		printk_debug("Disabling interrupt\n");
 		fim_disable_irq(fim);
 		fim_send_stop(fim);
 	}
@@ -951,6 +958,7 @@ static int fim_can_check_error(struct net_device *dev)
 
 	/* Stop the FIM if it's running */
 	if (fim_is_running(fim)) {
+		printk_debug("Disabling interrupt\n");
 		fim_disable_irq(fim);
 		fim_send_stop(fim);
 	}
@@ -1129,6 +1137,7 @@ static void fim_can_isr(struct fim_driver *driver, int irq, unsigned char code,
 	dev = port->dev;
 
 	if (code && code != FIM_CAN_INT_RESET) {
+		printk_debug("Disabling interrupt\n");
 		fim_disable_irq(driver);
 		fim_send_stop(driver);
 	}
@@ -1290,11 +1299,12 @@ static void unregister_fim_can(struct fim_can_t *port)
 	/* Activate the interrupt (@BUG in the IRQ-subsystem?) */
 	fim = &port->fim;
 
-	fim_enable_irq(fim);
+	printk_debug("Disabling interrupt\n");
+	fim_disable_irq(fim);
 
 	/* Stop the FIM first */
 	if (!fim_is_running(fim))
-		fim_send_start(fim);
+		fim_send_stop(fim);
 
 	printk_info("Going to unregister the FIM %i (running %i)\n",
 		    fim->picnr, fim_is_running(fim));
@@ -1395,6 +1405,9 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	port->can.do_set_bittiming = fim_can_set_bittime;
 	port->can.do_get_state = fim_can_get_state;
 	port->can.do_set_mode = fim_can_set_mode;
+
+/* XXX */
+	port->cpu_clk = clk_get(&dev->dev, "systemclock");
  	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
  	printk_debug("port->cpu_clk: %lu\n",clk_get_rate(port->cpu_clk));
  	printk_debug("port->cpu_clk: %u\n",port->can.bittiming.clock);
@@ -1406,13 +1419,31 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	 */
 	//port->can.bittiming_const->brp_max = 2048;
 	//port->can.bittiming_const->sjw_max = 40;
-	port->can.bittiming_const = &fim_bittiming_const;
-	if (!port->can.bittiming_const)
-		printk_err("bittiming_const is not initialized.\n");
+ 	port->can.bittiming_const = &fim_bittiming_const;
+ 	if (!port->can.bittiming_const) {
+ 		printk_info("bittiming_const is not initialized.\n");
+// 		//goto err_unreg_fim;
+// 		port->can.bittiming_const = &port->bittiming_const;
+ 	}
 	
-	port->can.bittiming = fim_bittiming;
-// 	if (!port->can.bittiming)
-// 		printk_err("bittiming is not initialized.\n");
+// 	/* @XXX: OK, start the bit timing values at this place */
+// 	port->can.bittiming_const->sjw_max  = 40;
+// 	port->can.bittiming_const->brp_max = 2048;
+// 	port->can.bittiming_const->tseg1_max = 200;
+// 	port->can.bittiming_const->tseg2_max = 200;
+
+	/* @XXX: Is this really OK? (Luis) */
+	port->can.bittiming.bitrate = fim_can_bitrate;
+	port->can.bittiming.sjw = 7;
+	port->can.bittiming.prop_seg = 8;
+	port->can.bittiming.phase_seg1 = 8;
+	port->can.bittiming.phase_seg2 = 8;
+
+	//port->can.bittiming = fim_bittiming;
+ 	//if (!port->can.bittiming) {
+ 	//	printk_err("bittiming is not initialized.\n");
+	//	goto err_unreg_fim;
+	//}
 
 	/* Now register the new net device */
 	retval = register_netdev(dev);
