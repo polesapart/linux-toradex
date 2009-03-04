@@ -1299,9 +1299,59 @@ static int s3c_hsmmc_remove(struct platform_device *dev)
 	return 0;
 }
 
+/* This is for the power management support */
+#ifdef CONFIG_PM
+static int s3c_hsmmc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct mmc_host *mmc;
+	struct s3c_hsmmc_host *host;
+	int cnt, retval;
+
+	mmc = platform_get_drvdata(pdev);
+	host = mmc_priv(mmc);
+
+	/* Check for all the three available clocks to disable */
+	for (cnt = 0; cnt < 3; cnt++) {
+		if (!PTR_ERR(host->clk[cnt]))
+			clk_disable(host->clk[cnt]);
+	}
+
+	retval = mmc_suspend_host(mmc, state);
+
+	return retval;
+}
+
+static int s3c_hsmmc_resume(struct platform_device *pdev)
+{
+	struct mmc_host *mmc;
+	struct s3c_hsmmc_host *host;
+	int cnt, retval;
+
+	mmc = platform_get_drvdata(pdev);
+	host = mmc_priv(mmc);
+	
+	/* Reenable the clocks first */
+	for (cnt = 0; cnt < 3; cnt++) {
+		if (!PTR_ERR(host->clk[cnt]))
+			clk_enable(host->clk[cnt]);
+	}
+
+	s3c_hsmmc_ios_init(host);
+	
+	retval = mmc_resume_host(mmc);	
+	
+	return retval;
+}
+#else
+#define s3c_hsmmc_suspend				NULL
+#define s3c_hsmmc_resume				NULL
+#endif
+
 static struct platform_driver s3c_hsmmc_driver = {
-        .probe          = s3c_hsmmc_probe,
-        .remove         = s3c_hsmmc_remove,
+	.probe          = s3c_hsmmc_probe,
+	.remove         = s3c_hsmmc_remove,
+	.suspend	= s3c_hsmmc_suspend,
+	.resume		= s3c_hsmmc_resume,
 	.driver		= {
 		.name	= "s3c-hsmmc",
 		.owner	= THIS_MODULE,
