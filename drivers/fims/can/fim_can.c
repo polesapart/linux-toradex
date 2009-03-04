@@ -369,54 +369,15 @@ static int fim_can_shutdown(struct fim_can_t *port)
 	buf.length = sizeof(struct fim_can_shutdown_t);
 	buf.data = (unsigned char *)&cmd;
 
-	/* @FIXME: The shutdown command is generating the error "Unknow command" */
-#if 0
-	return fim_send_buffer(&port->fim, &buf);
-#endif
 	return 0;
 }
 
-/*
- * Send a filter to the CAN-controller
- * @XXX: The socket-layer doesn't provide the access to the filters from the user-space,
- * for this reason the below function can be used ONLY with the implementation of a
- * new driver-IOCTL (@TODO)
- */
-#if 0
-static int fim_can_set_filter(struct fim_can_t *port, int nr, canid_t id, canid_t mask)
-{
-	struct fim_buffer_t buf;
-	struct fim_can_filter_t filter;
-
-	if (FIM_CAN_ERR_FILTER(nr)) {
-		printk_err("Invalid filter number %i\n", nr);
-		return -EINVAL;
-	}
-
-	/* Fill the filter with the corresponding data */
-	filter.code = FIM_CAN_CMD_FILTER(nr);
-	fim_can_parse_filter(&filter, id, mask);
-
-	/* Now setup the FIM-buffer and kick it! */
-	buf.private = FIM_PRIVATE_BUFFER;
-	buf.length = sizeof(struct fim_can_filter_t);
-	buf.data = (unsigned char *)&filter;
-
-	return fim_send_buffer(&port->fim, &buf);
-}
-#endif
-
-/* XXX */
+/* Configures all timing values */
 static void fim_can_fill_timing(struct fim_can_t *port, struct fim_can_timing_t *tim,
 				u16 sjw, u16 sample_point, u16 sync_period)
 {
 	unsigned int ten_per;
 
-	/* 
-	 * Reference values from the old FIM-driver:
-         * fim-can: New timing: 500000 bps | sjw 7 | sample 17 | sync 8
-         * fim-can: Ten percent by 500000 Bps is aprox. 60 
-	 */
 	printk_info("New timing: %u bps | sjw %u | sample %u | sync %u | clock %u\n",
 		    port->can.bittiming.bitrate, sjw, sample_point, sync_period, port->can.bittiming.clock);
 
@@ -468,9 +429,6 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 
 	printk_debug("clock: %u\n",port->can.bittiming.clock);
 	fim_can_fill_timing(port, &cfg,
-/* 			    DEFAULT_SJW_TIME, */
-/* 			    DEFAULT_SAMPLE_POINT, */
-/* 			    DEFAULT_SYNC_PERIOD, */
 			    port->can.bittiming.sjw,
 			    1 + port->can.bittiming.prop_seg + port->can.bittiming.phase_seg1,
 			    port->can.bittiming.phase_seg2);
@@ -496,62 +454,6 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 
 	return retval;
 }
-
-/*
- * Function for setting the timing-parameters of the CAN-controller
- * @XXX: The currently firmware isn't supporting the modification of the timing-
- * parameters on the fly.
- */
-#if 0
-static int fim_can_set_timing(struct fim_can_t *port,
-			      u16 sjw, u16 sample_point, u16 sync_period, u32 bitrate)
-{
-	struct fim_can_timing_t cfg;
-	unsigned int ten_per;
-	struct fim_buffer_t buf;
-
-	printk_debug("New timings: %u bps | sjw %u | sample %u | sync %u\n",
-		     bitrate, sjw, sample_point, sync_period);
-
-	/* Calculate how many clocks are in the ten percent of the bit rate */
-	ten_per = (port->can.can_sys_clock + (5 * bitrate)) / (10 * bitrate);
-	printk_debug("Ten percent by %i Bps is aprox. %i\n", bitrate, ten_per);
-
-	cfg.code = FIM_CAN_CMD_CONFIG;
-	cfg.sjw = (sjw * ten_per + 5) / 10;
-	cfg.cspl = (sample_point * ten_per + 5) / 10;
-	cfg.cp2pl = (((100 - sample_point) * ten_per) + 5) / 10;
-	cfg.csp = ((sync_period * ten_per) + 5) / 10;
-	cfg.csi = PIC_RECEIVE_INTERRUPT_LATENCY;
-	cfg.cp2i = PIC_TRANSMIT_INTERRUPT_LATENCY;
-	fim_can_dump_timing(&cfg, sjw, sample_point, sync_period, bitrate);
-
-	/* And send the buffer */
-	buf.private = FIM_PRIVATE_BUFFER;
-	buf.length = sizeof(struct fim_can_timing_t);
-	buf.data = (unsigned char *)&cfg;
-
-	return fim_send_buffer(&port->fim, &buf);
-}
-#endif
-
-/*
- * The real configuration of the timing parameters will be done inside the
- * open function. So, only return ZERO if we got the correct configuration mode.
- * The bitrate and time setting will be available under:
- *  BITRATE : port->can.bitrate
- *  BITTIME : port->can.bittime
- */
-/* @XXX: bt->type is not supported anymore, and CAN_BITTIME_STD & CAN_BITTIME_BTR 
- * looks like those are not used, should check and work on this function.
- * For now, i'll workarround it
- */
-//static int fim_can_set_bittime(struct net_device *dev, struct can_bittime *bt)
-// static int fim_can_set_bittime(struct net_device *dev)
-// {
-// 
-// 	return 0;
-// }
 
 /*
  * Implement the interface for chaning the state of the CAN-controller. The user
@@ -1011,8 +913,6 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	id = cf->can_id;
 	dlc = cf->can_dlc;
 
-//      printk_debug("Xmit called | Bus 0x%02x | Fatal 0x%02x\n", bus, fatal);
-
 	/*
 	 * Check for the bus state before sending the data
 	 * @FIXME: The controller fails if its state is the error passive
@@ -1410,12 +1310,6 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
  		goto err_unreg_fim;
  	}
 	
-// 	/* @XXX: OK, start the bit timing values at this place */
-// 	port->can.bittiming_const->sjw_max  = 40;
-// 	port->can.bittiming_const->brp_max = 2048;
-// 	port->can.bittiming_const->tseg1_max = 200;
-// 	port->can.bittiming_const->tseg2_max = 200;
-
 	port->can.bittiming.bitrate = fim_can_bitrate;
 	port->can.bittiming.sjw = 7;
 	port->can.bittiming.prop_seg = 8;
@@ -1433,7 +1327,6 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	port->dev = dev;
 	port->gpios = gpios;
 	port->reg = 1;
-//	port->can.bittiming.bitrate = fim_can_bitrate;
 	return port;
 
 err_unreg_fim:
