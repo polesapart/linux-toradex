@@ -36,18 +36,17 @@ static int is_ofdm_rate(int rate)
 	return (rate % 3) == 0;
 }
 
-void phy_set_plcp(struct sk_buff *skb, struct ieee80211_rate *rate, int aes_len)
+void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *rate, int aes_len)
 {
 	int ofdm = is_ofdm_rate(rate->bitrate);
-	int plcp_len = skb->len + FCS_LEN + aes_len;
+	int plcp_len = length + FCS_LEN + aes_len;
 	struct tx_frame_hdr *hdr;
     
-    debugPrintf("on entry skb->len = %d.\n", skb->len);
 	if (ofdm) {
 		/* OFDM header */
 		struct ofdm_hdr *ofdm;
 
-		ofdm = (struct ofdm_hdr *) skb_push(skb, sizeof(*ofdm));
+		ofdm = (struct ofdm_hdr *) &frame[sizeof(struct tx_frame_hdr)];
 		memset(ofdm, 0, sizeof(*ofdm));
 		ofdm->rate = rate->hw_value;
 		ofdm->length = cpu_to_le16(plcp_len);
@@ -58,8 +57,7 @@ void phy_set_plcp(struct sk_buff *skb, struct ieee80211_rate *rate, int aes_len)
 		struct psk_cck_hdr *pskcck;
 		int us_len;
 
-		pskcck = (struct psk_cck_hdr *) skb_push(skb, sizeof(*pskcck));
-        debugPrintf("after fust skb_push skb->len = %d.\n", skb->len);
+		pskcck = (struct psk_cck_hdr *) &frame[sizeof(struct tx_frame_hdr)];
 		pskcck->signal = rate->bitrate;
 		pskcck->service = PLCP_SERVICE_LOCKED;
 
@@ -97,18 +95,12 @@ void phy_set_plcp(struct sk_buff *skb, struct ieee80211_rate *rate, int aes_len)
 debugPrintf("rate->bitrate=%x (@%dM), pckcck->length=%d\n", rate->bitrate, rate->bitrate/10, pskcck->length);
 	}
 		
-	hdr = (struct tx_frame_hdr *) skb_push(skb, sizeof(*hdr));
-    debugPrintf("after second skb->len = %d, aes_len = %d.\n", skb->len, aes_len);
+	hdr = (struct tx_frame_hdr *) frame;
 	hdr->pad = 0;
-/*	hdr->length = cpu_to_le16(NUMBER_OF_WORD32((skb->len + aes_len)));  */
-    {
-        debugPrintf("skb->len = %d, aes_len = %d, NUMBER_OF_WORD32((skb->len + aes_len)) = %d\n", skb->len, aes_len, NUMBER_OF_WORD32((skb->len + aes_len)));
-        debugPrintf("cpu_to_be16(NUMBER_OF_WORD32((skb->len + aes_len))) = %d.\n", cpu_to_be16(NUMBER_OF_WORD32((skb->len + aes_len))));
-    }
-	hdr->length = NUMBER_OF_WORD32((skb->len + aes_len));
+	hdr->length = NUMBER_OF_WORD32((length + aes_len + TX_HEADER_LENGTH));
 	hdr->modulation_type = ofdm ? MOD_TYPE_OFDM : MOD_TYPE_PSKCCK;
     debugPrintf("tx_frame_hdr .length = %d, modulation_type = %d\n", hdr->length, hdr->modulation_type);
-	debugPrintf("TX: %d byte %s packet @ %dmbit\n", skb->len,
+	debugPrintf("TX: %d byte %s packet @ %dmbit\n", length,
 			ofdm ? "OFDM" : "PSK/CCK", rate->bitrate/10);
 }
 EXPORT_SYMBOL_GPL(phy_set_plcp);

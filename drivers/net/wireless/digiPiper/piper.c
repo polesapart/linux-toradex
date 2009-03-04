@@ -32,9 +32,12 @@
 
 #define WANT_DEBUG_THREAD   (0)
 
+
+#define WANT_TOGGLE         (0)
+
 static struct piper_priv *localCopyDigi = NULL;
 
-#define DUMP_WORDS_MAX      (40)
+#define DUMP_WORDS_MAX      (700)
 static unsigned int dumpWordsWord[DUMP_WORDS_MAX];
 static unsigned int dumpWordsCount = 0;
 static void dumpWordsAdd(unsigned int word)
@@ -51,7 +54,7 @@ static void dumpWordsDump(void)
     
     dumpWordsCount = 0;
     
-    while (wordsToGo > 4)
+    while (wordsToGo >= 4)
     {
         digi_dbg("%8.8X %8.8X - %8.8X %8.8X\n", p[0], p[1], p[2], p[3]);
         p += 4;
@@ -69,7 +72,14 @@ static void dumpWordsDump(void)
     {
         digi_dbg("%8.8X \n", p[0]);
     }
+    digi_dbg("--------------\n");
 }
+
+static void dumpWordsReset(void)
+{
+    dumpWordsCount = 0;
+}
+
 
 void dumpSkb(struct sk_buff *skb)
 {
@@ -200,7 +210,7 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
 		int len)
 {
     int wordIndex;
-    int wordLength = (len + 3) / sizeof(unsigned int);
+    int wordLength = len / sizeof(unsigned int);
                         
     if (((unsigned) (buf) & 0x3) == 0)
     {
@@ -209,6 +219,7 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
             unsigned int *word = (unsigned int *) buf;
             
             iowrite32(cpu_to_be32(*word), digi->vbase + addr);
+            len -= 4;
         }
         else
         {
@@ -217,6 +228,7 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
                 unsigned int *word = (unsigned int *) buf;
                 
                 iowrite32(cpu_to_be32(word[wordIndex]), digi->vbase + addr);
+                len -= 4;
             }
         }
     }
@@ -229,8 +241,34 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
             memcpy(&word, &buf[wordIndex*sizeof(unsigned int)], sizeof(unsigned int));
             
             iowrite32(cpu_to_be32(word), digi->vbase + addr);
+            len -= 4;
         }
     }
+  
+    if (len)
+    {
+        unsigned int word;
+        
+        memcpy(&word, &buf[wordLength*sizeof(unsigned int)], sizeof(unsigned int));
+        word = cpu_to_be32(word);
+        switch (len)
+        {
+            case 1:
+                word &= 0xff000000;
+                break;
+            case 2:
+                word &= 0xffff0000;
+                break;
+            case 3:
+                word &= 0xffffff00;
+                break;
+            default:
+                digi_dbg("len = %d at end of piper_write\n", len);
+                break;
+        }
+        iowrite32(word, digi->vbase + addr);
+    }
+
     return 0;
 }
 
@@ -301,8 +339,8 @@ done:
 }
 
 
-static int __piper_write_fifo(struct piper_priv *digi, struct sk_buff *skb,
-		int hw_aes)
+static int __piper_write_fifo(struct piper_priv *digi, unsigned char *buffer,
+		unsigned int length, int hw_aes)
 {
     uint8_t addr;
     
@@ -315,7 +353,7 @@ static int __piper_write_fifo(struct piper_priv *digi, struct sk_buff *skb,
         addr = BB_DATA_FIFO;
     }
 
-    return piper_write(digi, addr, skb->data, skb->len);
+    return piper_write(digi, addr, buffer, length);
 }
 
 
@@ -346,74 +384,240 @@ static void setIrqMaskBit(struct piper_priv *piper, unsigned bits)
 
 
 
-static int piper_write_fifo(struct piper_priv *digi, struct sk_buff *skb,
-            unsigned int flags)
+static int piper_write_fifo(struct piper_priv *digi, unsigned char *buffer,
+            unsigned int length, unsigned int flags)
 {
 	int err;
 
-	/* Hardware workaround; sometimes it starts pulling from the
-	 * TX FIFO before we've finished sending it the entire packet.
-	 * To deal with that we set the TX_HOLD bit, which will force
-	 * the hardware to wait for us to finish writing to the FIFO */
-	digi->write_reg(digi, BB_GENERAL_CTL, 
-	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
-
-    if (flags & IEEE80211_TX_CTL_NO_ACK)
-    {
-        setIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TX_ABORT);
-    }
-    else
-    {
-        setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
-    }
-	err = __piper_write_fifo(digi, skb, 0);
+	err = __piper_write_fifo(digi, buffer, length, 0);
 	if (err)
 		goto done;
 
-	/* write_reg will start the transmit */
-	err = digi->write_reg(digi, BB_GENERAL_CTL, 
-	                ~BB_GENERAL_CTL_TX_HOLD & digi->read_reg(digi, BB_GENERAL_CTL));
 done:
 	return err;
 }
 
-static int piper_write_aes(struct piper_priv *digi, struct sk_buff *skb,
-		int keyidx, unsigned int flags)
+static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
+		unsigned int length, int keyidx, unsigned int flags)
 {
+#if 0
 	int err;
 
-	/* Hardware workaround; sometimes it starts pulling from the
-	 * TX FIFO before we've finished sending it the entire packet.
-	 * To deal with that we set the TX_HOLD bit, which will force
-	 * the hardware to wait for us to finish writing to the FIFO */
-	digi->write_reg(digi, BB_GENERAL_CTL, 
-	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
-    if (flags & IEEE80211_TX_CTL_NO_ACK)
-    {
-        setIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TX_ABORT);
-    }
-    else
-    {
-        setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
-    }
 	err = prepare_aes_data(digi, skb, keyidx);
 	if (err)
 		goto done;
-	err = __piper_write_fifo(digi, skb, 1);
+	err = __piper_write_fifo(digi, buffer, length, 1);
 	if (err)
 		goto done;
 
-	/* write_reg will start the transmit*/
-	err = digi->write_reg(digi, BB_GENERAL_CTL, 
-	                ~BB_GENERAL_CTL_TX_HOLD & digi->read_reg(digi, BB_GENERAL_CTL));
 
 done:
 	return err;
+#else
+    return 0;
+#endif
 }
 
+/*
+ * Determine what bit rate the next retry should be sent at.
+ *
+ * The mac80211 library passes us an array of tx bit rates.  Each entry 
+ * has a rate index and a limit (max number of retries at that rate).  
+ * We use the rate index to build the H/W transmit header.  The limit 
+ * is decremented each time we retry.  When it reaches zero, we try the 
+ * next rate in the array.
+ */
+static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
+{
+    #define FIRST_RETRY_INDEX       (1)
+    struct ieee80211_rate *result = NULL;
+    
+    if (   (txInfo->status.retries[FIRST_RETRY_INDEX].limit == 0) 
+        || (txInfo->status.retries[FIRST_RETRY_INDEX].limit == -1)
+        || (txInfo->status.retries[FIRST_RETRY_INDEX].rate_idx == -1))
+    {
+        /*
+         * At the time this driver was written, the mac80211 library was passing
+         * the retry array uninitialized.  So this piece of code will default to
+         * retrying at the initially set rate for the first half of the retry
+         * period, and then retrying at a low speed for the 2nd half.
+         */
+        if (digi->txRetryIndex < ((digi->txMaxRetries + 1) >> 1))
+        {
+            txInfo->tx_rate_idx = txInfo->status.retries[0].rate_idx;
+        }
+        else
+        {
+            txInfo->tx_rate_idx = 0;
+        }
+    }
+    else
+    {
+        /*
+         * We will come here if it looks like mac80211 actually gave us some
+         * different rates to use for retries.
+         *
+         * Note:  The ieee80211_get_tx_rate and ieee80211_get_alt_retry_rate 
+         *        functions are essentually worthless because they attempt to
+         *        access fields in the control part of the tx info structure
+         *        that have may already have been overwritten by information
+         *        written in the status portion.  This is a UNION!
+         */
+        if (txInfo->status.retries[digi->txRetryIndex].limit == 0)
+        {
+            /*
+             * If we get here, then it's time to try a new rate.
+             */
+            if (   (IEEE80211_TX_MAX_ALTRATE != digi->txRetryIndex)
+                && (txInfo->status.retries[digi->txRetryIndex+1].rate_idx != -1)
+                && (txInfo->status.retries[digi->txRetryIndex+1].limit > 0))
+            {
+                digi_dbg("Trying next rate, rate_idx = %d, limit = %d\n", 
+                            txInfo->status.retries[digi->txRetryIndex+1].rate_idx,
+                            txInfo->status.retries[digi->txRetryIndex+1].limit);
+                /*
+                 * Looks like we still have more entries in the array.  Update
+                 * our array index and load the rate index with the new rate.
+                 */
+                digi->txRetryIndex++;
+                txInfo->tx_rate_idx = txInfo->status.retries[digi->txRetryIndex].rate_idx;
+                digi_dbg("Try new rate index %d\n", txInfo->tx_rate_idx);
+            }
+            else
+            {
+                /*
+                 * Oops.  Out of rate entries.  Default to 1 Mbps.
+                 */
+                txInfo->tx_rate_idx = 0;
+            }
+        }
+    }
+    if (txInfo->tx_rate_idx == -1)
+    {
+        /*
+         * A rate index of -1 indicates an unitialized entry.  Default it
+         * to 1 Mbps.
+         */
+        txInfo->tx_rate_idx = 0;
+    }
+    if (txInfo->status.retry_count == digi->txMaxRetries)
+    {
+        /*
+         * Send the last retry out at 1 Mbps reguardless.
+         */
+        txInfo->tx_rate_idx = 0;
+    }
+    
+    result = ieee80211_get_tx_rate(digi->hw, txInfo);
+    
+    return result;
+}
 
+static int myrand(void) {
+/* RAND_MAX assumed to be 32767 */
+    static unsigned long next = 1;
+    next = next * 1103515245 + 12345;
+    return((unsigned)(next/65536) % 32768);
+}
 
-EXPORT_SYMBOL_GPL(piperTxRetryTaskletEntry);
+/*
+ * This function returns a value for the contention window in microseconds.  We
+ * start with the contention window at CW_MIN and double it everytime we have to
+ * retry.  
+ */
+static u16 getCw(int isFirstTime)
+{
+    static u16 cw = CW_MIN;
+    
+    if (isFirstTime)
+    {
+        cw = CW_MIN;
+    }
+    else
+    {
+        cw <<= 1;
+        if (cw > CW_MAX)
+        {
+            cw = CW_MAX;
+        }
+    }
+    return (cw + (10*(myrand() & (cw - 1)))) & 0xffff;
+}
+
+/*
+ * This function will prepend an RTS or CTS to self frame ahead of the current
+ * TX frame.  This is done if the wantRts or wantCts flag is set.
+ */
+void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, int aes_fifo)
+{
+    unsigned int header[2];
+    
+    if (digi->wantRts)
+    {
+        digi_dbg("Want RTS\n");
+        /*
+         * If we come here, then we need to send an RTS frame ahead of the
+         * current data frame.
+         */
+        if (digi->rtsCtsRate)
+        {
+            phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_rts), 
+                            digi->rtsCtsRate, aes_fifo ? 8 : 0);
+        	if (aes_fifo)
+            {
+        		digi->write_aes(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        		digi->write_aes(digi, (unsigned char *) &digi->rtsFrame, 
+        		                        sizeof(digi->rtsFrame),
+        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        	}
+        	else
+        	{
+        		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+        		                        txInfo->flags);
+        		digi->write_fifo(digi, (unsigned char *) &digi->rtsFrame, 
+        		                        sizeof(digi->rtsFrame), txInfo->flags);
+        	}
+        }
+        else 
+        {
+            digi_dbg("No rate for RTS frame.\n");
+        }
+    }
+    else if (digi->wantCts)
+    {
+        digi_dbg("Want CTS\n");
+        /*
+         * If we come here, then we need to send a CTS to self frame ahead of the 
+         * current data frame.
+         */
+        if (digi->rtsCtsRate)
+        {
+            phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_cts), 
+                            digi->rtsCtsRate, aes_fifo ? 8 : 0);
+        	if (aes_fifo)
+            {
+        		digi->write_aes(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        		digi->write_aes(digi, (unsigned char *) &digi->ctsFrame, 
+        		                        sizeof(digi->ctsFrame),
+        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        	}
+        	else
+        	{
+        		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+        		                        txInfo->flags);
+        		digi->write_fifo(digi, (unsigned char *) &digi->ctsFrame, 
+        		                        sizeof(digi->ctsFrame), txInfo->flags);
+        	}
+        }
+        else 
+        {
+            digi_dbg("No rate for CTS frame.\n");
+        }
+    }
+}        
+    
 
 void piperTxRetryTaskletEntry (unsigned long context)
 {
@@ -430,7 +634,7 @@ void piperTxRetryTaskletEntry (unsigned long context)
 	if (digi->txPacket != NULL)
 	{
         struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
-    /* TODO:  Need to adjust rate on retries using info in txInfo->control.retries */
+
         if (txInfo->status.retry_count != digi->txMaxRetries)
         {
 #if 0
@@ -442,20 +646,53 @@ void piperTxRetryTaskletEntry (unsigned long context)
             {
                 #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
                 frameControlFieldType_t *fc = (frameControlFieldType_t *) &digi->txPacket->data[FRAME_CONTROL_FIELD_OFFSET];
-                txInfo->status.retry_count++;
                 fc->retry = 1;              /* set retry bit */
             }
     
+            digi->write_reg(digi, MAC_BACKOFF, getCw(txInfo->status.retry_count == 0));
             txInfo->status.retry_count++; 
-/*
- * TODO:  Implement tx_conf function to receive contention window size.
- */
-    /****/ digi->write_reg(digi, MAC_BACKOFF, 0x118);
+	        /*
+	         * Build the H/W transmit header.
+	         */
+	        phy_set_plcp(digi->txPacket->data, 
+	                     digi->txPacket->len - TX_HEADER_LENGTH, 
+	                     getTxRate(digi, txInfo), aes_fifo ? 8 : 0);
+            /*
+             * One less retry to go at this rate.
+             */
+	        txInfo->status.retries[digi->txRetryIndex].limit--;
+	        
+        	/* 
+        	 * Pause the transmitter so that we don't start transmitting before we
+        	 * are ready.
+        	 */
+        	digi->write_reg(digi, BB_GENERAL_CTL, 
+        	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
+            /* Clear any pending TX interrupts */
+            digi->write_reg(digi, BB_IRQ_STAT, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
+	        handleRtsCts(digi, txInfo, aes_fifo);
         	if (aes_fifo)
-        		err = digi->write_aes(digi, digi->txPacket, digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        		err = digi->write_aes(digi, digi->txPacket->data, digi->txPacket->len, 
+        		                digi->txKeyInfo.hw_key_idx, txInfo->flags);
         	else
-        		err = digi->write_fifo(digi, digi->txPacket, txInfo->flags);
+        		err = digi->write_fifo(digi, digi->txPacket->data, digi->txPacket->len, 
+        		                    txInfo->flags);
        /* TODO: What to do if err != 0 */
+        	/* write_reg will start the transmit*/
+        	err = digi->write_reg(digi, BB_GENERAL_CTL, 
+        	                ~BB_GENERAL_CTL_TX_HOLD & digi->read_reg(digi, BB_GENERAL_CTL));
+	        /*
+	         * Set interrupt flags.  Use the timeout interrupt if we expect
+	         * an ACK.  Use the FIFO empty interrupt if we do not expect an ACK.
+	         */
+            if (txInfo->flags & IEEE80211_TX_CTL_NO_ACK)
+            {
+                setIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TX_ABORT);
+            }
+            else
+            {
+                setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
+            }
         }
         else
         {
@@ -494,7 +731,7 @@ static int piper_write_aes_key(struct piper_priv *digi, struct sk_buff *skb)
 	if (err)
 		goto done;
 
-	err = __piper_write_fifo(digi, skb, 1);
+	err = __piper_write_fifo(digi, skb->data, skb->len, 1);
 	if (err)
 		goto done;
 
@@ -802,7 +1039,20 @@ static void rxTaskletEntry (unsigned long context)
     		{
     		    handleAck(piper, status.signal);
     		}
-    		ieee80211_rx(piper->hw, skb, &status);
+    		if (   (frameControlField.type == TYPE_ACK)
+    		    || (frameControlField.type == TYPE_RTS)
+    		    || (frameControlField.type == TYPE_CTS))
+    		{
+    		    /*
+    		     * Don't pass up RTS, CTS, or ACK frames.  They just confuse
+    		     * the stack.
+    		     */
+    		    dev_kfree_skb(skb);
+    		}
+    		else
+    		{
+    		    ieee80211_rx(piper->hw, skb, &status);
+    		}
          }
         else
         {
@@ -1048,7 +1298,6 @@ static int __init piper_probe(struct platform_device* pdev)
     status = piper_read_reg(digi, BB_GENERAL_STAT);
     
     printk(KERN_INFO "version = 0x%8.8X, status = 0x%8.8X\n", version, status);
-
 
 	/* provide callbacks to generic mac code */
 	digi->write_reg = piper_write_reg;

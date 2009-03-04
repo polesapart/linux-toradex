@@ -42,6 +42,7 @@ struct digi_rf_ops {
 	int (*stop)(struct ieee80211_hw *);
 	int (*set_chan)(struct ieee80211_hw *, int chan);
 	int (*set_pwr)(struct ieee80211_hw *, uint8_t val);
+	void (*getOfdmBrs)(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
 	int channelChangeTime;
 
 	struct ieee80211_supported_band *bands;
@@ -59,14 +60,20 @@ struct piper_priv {
     struct tasklet_struct rxTasklet;
     struct tasklet_struct txRetryTasklet;
     struct ieee80211_key_conf txKeyInfo;
-    
+    struct ieee80211_cts ctsFrame;
+    struct ieee80211_rts rtsFrame;
+    bool wantRts;                   /* set if we should send RTS on current TX frame*/
+    bool wantCts;                   /* set if we should send CTS to self on current TX frame*/
+    struct ieee80211_rate *rtsCtsRate;
     unsigned int rxOverruns;
     unsigned int irq;
+    bool isRadioOn;
         
     void* __iomem vbase;
 	struct sk_buff *read_skb;
 	struct sk_buff *txPacket;
 	unsigned int txMaxRetries;
+	unsigned int txRetryIndex;
     spinlock_t irqMaskLock;
     spinlock_t rxReadyCountLock;
     
@@ -76,8 +83,8 @@ struct piper_priv {
 	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val);
 	unsigned int (*read_reg)(struct piper_priv *, uint8_t reg);
 	int (*write)(struct piper_priv *, uint8_t addr, uint8_t *buf, int len);
-	int (*write_fifo)(struct piper_priv *, struct sk_buff *skb, unsigned int flags);
-	int (*write_aes)(struct piper_priv *, struct sk_buff *skb, int keyidx, unsigned int flags);
+	int (*write_fifo)(struct piper_priv *, unsigned char *buffer, unsigned int length, unsigned int flags);
+	int (*write_aes)(struct piper_priv *, unsigned char *buffer, unsigned int length, int keyidx, unsigned int flags);
 	int (*write_aes_key)(struct piper_priv *, struct sk_buff *skb);
 	int (*initHw)(struct piper_priv *);
 	void (*setIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
@@ -85,6 +92,7 @@ struct piper_priv {
 
 	uint16_t irq_mask;
 	uint8_t bssid[ETH_ALEN];
+	uint8_t ourMacAddress[ETH_ALEN];
 
 	int channel;
 	uint8_t tx_power;

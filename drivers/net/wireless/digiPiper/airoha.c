@@ -1,10 +1,9 @@
 /*
- * Ubec AH7230 radio support, described here:
- * 		http://www.ubec.com.tw/product/uw2543.html
+ * Ubec AH7230 radio support.
  *
  * Copyright © 2008  Digi International, Inc
  *
- * Author: Andres Salomon <dilinger@debian.org>
+ * Author: Contact support@digi.com for information about this software.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -278,24 +277,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         if (rf_band == IEEE80211_BAND_2GHZ)
         {
             //HW_GEN_CONTROL &= ~GEN_PA_ON;
-        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_B_EN | readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | BB_GENERAL_STAT_B_EN | readReg(BB_GENERAL_STAT));
         	                
-#if 0
-            if (macParams.band == WLN_BAND_B)
-            {
-                // turn off OFDM
-            	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN & readReg(BB_GENERAL_STAT));
-            	                
-            }
-            else
-            {
-                // turn on OFDM
-            	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | readReg(BB_GENERAL_STAT));
-            	                
-            }
-#else
-            writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN & readReg(BB_GENERAL_STAT));
-#endif            
             /* set the 802.11b/g frequency band specific tracking constant */
         	writeReg(BB_TRACK_CONTROL, 0xff00ffff & readReg(BB_TRACK_CONTROL));
         	                
@@ -306,14 +289,12 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         {
             //HW_GEN_CONTROL |= GEN_PA_ON; 
     
+            // turn off PSK/CCK  
+        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_B_EN & readReg(BB_GENERAL_STAT));
+
             // turn on OFDM
         	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | readReg(BB_GENERAL_STAT));
-        	                
-            
-            // turn off PSK/CCK
-        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_B_EN & readReg(BB_GENERAL_STAT));
-        	                
-            
+        	                            
             /* Set the 802.11a frequency sub-band specific tracking constant */	      
             /* All 8 supported 802.11a channels are in this 802.11a frequency sub-band */
         	writeReg(BB_TRACK_CONTROL, 0xff00ffff & readReg(BB_TRACK_CONTROL));
@@ -405,7 +386,7 @@ static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t value)
 #elif (TRANSCEIVER == RF_AIROHA_7230)
     const unsigned char powerTable_7230[] = 
     {
-        0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x20,
+        0x14, 0x14, 0x14, 0x18, 0x18, 0x1c, 0x1c, 0x20,
         0x20, 0x24, 0x24, 0x29, 0x29, 0x2c, 0x2c, 0x30
     };
     WriteRF(hw, 11, 0x08040 | powerTable_7230[value & 0xf]);
@@ -671,6 +652,22 @@ static int al7230_rf_stop(struct ieee80211_hw *hw)
 	return 0;
 }
 
+
+static void getOfdmBrs(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
+{
+    /*
+     * brsBitMask is a bit mask into the al7230_bg_rates array.  Bit 0 refers
+     * to the first entry in the array, bit 1 the second, and so on.  The first
+     * 4 bits/array entries refer to the PSK bit rates we support, the next 8
+     * bits/array entries refer to the OFDM rates we support.  So the PSK BRS
+     * mask is bits 0-3, the OFDM bit mask is bits 4-11.
+     */
+     
+     *psk = brsBitMask & 0xf;
+     *ofdm = (brsBitMask & 0xff0) >> 4;
+}
+
+
     
 
 static struct ieee80211_supported_band al7230_bands[] = {
@@ -691,6 +688,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.set_chan = al7230_rf_set_chan,
 	.set_pwr = al7230_set_txpwr,
 	.channelChangeTime = CHANNEL_CHANGE_TIME,
+	.getOfdmBrs = getOfdmBrs,
 
 	.bands = al7230_bands,
 	.n_bands = ARRAY_SIZE(al7230_bands),
