@@ -90,20 +90,16 @@ led_pwm_probe(struct platform_device *pdev)
 {
 	struct pwm_led_platform_data *pdata = pdev->dev.platform_data;
 	struct led_pwm *led;
-	struct device *d = &pdev->dev;
 	int ret;
 
 	if (!pdata || !pdata->led_info) {
 		return -EINVAL;
 	}
 
-	if (!try_module_get(d->driver->owner))
-		return -ENODEV;
-
 	led = kzalloc(sizeof(*led), GFP_KERNEL);
 	if (!led)
 		return -ENOMEM;
-
+	
 	led->pwm = pwm_request(pdata->bus_id, pdata->chan, 
 				pdata->led_info->name);
 
@@ -124,6 +120,7 @@ led_pwm_probe(struct platform_device *pdev)
 	ret = pwm_config(led->pwm, pdata->config);
 	if (ret)
 		goto err_pwm_config;
+	
 	pwm_start(led->pwm);
 
 	ret = led_classdev_register(&pdev->dev, &led->led);
@@ -146,7 +143,6 @@ static int
 led_pwm_remove(struct platform_device *pdev)
 {
 	struct led_pwm *led = platform_get_drvdata(pdev);
-	struct device *d = &pdev->dev;
 
 	led_classdev_unregister(&led->led);
 
@@ -156,7 +152,7 @@ led_pwm_remove(struct platform_device *pdev)
  	}
 
 	kfree(led);
-	module_put(d->driver->owner);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }
@@ -176,7 +172,7 @@ static int __init led_pwm_modinit(void)
 {
 	return platform_driver_register(&led_pwm_driver);
 }
-module_init(led_pwm_modinit);
+late_initcall(led_pwm_modinit);
 
 
 static void __exit led_pwm_modexit(void)
