@@ -1,7 +1,8 @@
 /*
  * drivers/pwm/ns9xxx-pwm.c
  *
- * Copyright (C) 2009 Hector Oron
+ * Copyright (C) 2009 by Digi International Inc.
+ * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -372,6 +373,8 @@ static int ns9xxx_pwm_request(struct pwm_channel *p)
 	return 0;
 
 gpio_cfg:
+	gpio_configure_ns921x_unlocked(chi->gpio, 1, NS921X_GPIO_DONT_INVERT,
+				       NS921X_GPIO_FUNC_3, 0);
 	gpio_free(chi->gpio);
 gpio_err:
 	return ret;
@@ -388,9 +391,10 @@ static void ns9xxx_pwm_free(struct pwm_channel *p)
 	pr_debug("%s\n", __func__);
 
 	clk_disable(np->clk);
+	
+	gpio_configure_ns921x_unlocked(chi->gpio, 1, NS921X_GPIO_DONT_INVERT,
+				       NS921X_GPIO_FUNC_3, 0);
 	gpio_free(chi->gpio);
-
-	/* TODO, free also the timer if requested? */
 }
 
 static int __init ns9xxx_pwmc_probe(struct platform_device *pdev)
@@ -503,6 +507,10 @@ static int __devexit ns9xxx_pwmc_remove(struct platform_device *pdev)
 		writel(0x00, SYS_TRELCCR(chi->timer));
 		writel(0x00, SYS_THR(chi->timer - 6));	/* high equals to reload */
 		writel(0x00, SYS_TLR(chi->timer - 6));
+
+		/* Sets GPIO as inputs */
+		gpio_configure_ns921x_unlocked(chi->gpio, 1, NS921X_GPIO_DONT_INVERT,
+					       NS921X_GPIO_FUNC_3, 0);
 
 		/* Frees GPIO */
 		gpio_free(chi->gpio);

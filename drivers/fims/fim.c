@@ -333,6 +333,15 @@ static int pic_is_running(struct pic_t *pic)
 		return 0;
 }
 
+int fim_is_running(struct fim_driver *driver)
+{
+	struct pic_t *pic;
+	
+	if (!(pic = get_pic_from_driver(driver)))
+		return -ENODEV;
+
+	return pic_is_running(pic);
+}
 
 
 static void fim_pic_release(struct device *dev)
@@ -929,6 +938,78 @@ int fim_disable_irq(struct fim_driver *driver)
 	return 0;
 }
 
+/*
+ * Function for downloading the FIM-firmware
+ * IMPORTANT: This function will automatically stop the FIM if it's running,
+ * additionally it will (try) to restore the current state of the DMA-channels
+ */
+int fim_download_firmware(struct fim_driver *driver)
+{
+	struct pic_t *pic;
+	int retval;
+	const struct firmware *fw;
+	const unsigned char *fwbuf;
+	unsigned int txctrl, rxctrl;
+	
+	if (!(pic = get_pic_from_driver(driver)))
+		return -EINVAL;
+
+	/* Stop the FIM first */
+	if (pic_is_running(pic)) {
+		retval = pic_stop_and_reset(pic);
+		if (retval) {
+			printk_err("Couldn't stop the PIC %i\n", pic->index);
+			return retval;
+		}
+	}
+
+	/*
+	 * Now download the firmware using the firmware-subsystem or from
+	 * the passed array with the firmware code
+	 */
+	if (driver->fw_name) {
+		printk_debug("Requesting the firmware '%s'\n", driver->fw_name);
+		snprintf(pic->fw_name, FIM_MAX_FIRMWARE_NAME, "%s", driver->fw_name);
+		retval = request_firmware(&fw, driver->fw_name, pic->dev);
+		if (retval) {
+			printk_err("request_firmware() failed, %i\n", retval);
+			goto exit_download;
+		}
+		fwbuf = fw->data;
+	} else if (driver->fw_code) {
+		printk_debug("Using the built-in firmware code\n");
+		fwbuf = driver->fw_code;
+	} else {
+		printk_err("No code and no firmware name passed? Aborting\n");
+		retval = -EINVAL;
+		goto exit_download;
+	}
+
+	/*
+	 * Since the firmware download should be executed on the fly, disable
+	 * the DMA-channels first, otherwise the channels will run like a
+	 * spree killer
+	 */
+	spin_lock(&pic->tx_lock);
+	txctrl = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
+	rxctrl = readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+	writel(txctrl & ~IOHUB_TX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
+	writel(rxctrl & ~IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+	retval = pic_download_firmware(pic, fwbuf);
+	writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
+	writel(rxctrl, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+	spin_unlock(&pic->tx_lock);
+	
+	/* Release the obtained data from the firmware-subsystem */
+	if (driver->fw_name)
+		release_firmware(fw);
+
+	if (retval)
+		printk_err("Firmware install in the PIC %i failed.\n", pic->index);
+
+ exit_download:
+	return retval;
+}
 
 
 int fim_register_driver(struct fim_driver *driver)
@@ -1108,6 +1189,13 @@ void fim_free_pic(struct pic_t *pic)
 }
 	
 
+/*
+ * This function can be used for downloading a firmware to the PIC.
+ * Please note that this function will reset the complete IOHUB-module, included the
+ * DMA-configuration registers. That's important when the FIM-driver
+ * is using the index of the DMA-channel, then this will have the index zero after
+ * the download.
+ */
 static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer)
 {
 	int mode, ret;
@@ -1939,3 +2027,5 @@ EXPORT_SYMBOL(fim_get_ctrl_reg);
 EXPORT_SYMBOL(fim_get_stat_reg);
 EXPORT_SYMBOL(fim_request_pic);
 EXPORT_SYMBOL(fim_free_pic);
+EXPORT_SYMBOL(fim_download_firmware);
+EXPORT_SYMBOL(fim_is_running);

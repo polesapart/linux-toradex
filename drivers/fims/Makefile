@@ -5,4 +5,4 @@
 obj-$(CONFIG_FIM_CORE)		+= fim.o
 obj-$(CONFIG_FIM_SERIAL)	+= serial/
 obj-$(CONFIG_FIM_SDIO)		+= sdio/
-
+obj-$(CONFIG_FIM_CAN)		+= can/
