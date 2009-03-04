@@ -1,3 +1,27 @@
+/*
+ * drivers/leds/leds-pwm.c
+ *
+ * Copyright (C) 2009 by Digi International Inc.
+ * All rights reserved.
+ *
+ * Code rebased on original leds-pwm.c from Bill Gatliff
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/leds.h>
@@ -11,7 +35,7 @@
 struct led_pwm {
 	struct led_classdev	led;
 	struct pwm_channel	*pwm;
-	int period;
+	unsigned long period;
 };
 
 static void
@@ -19,9 +43,9 @@ led_pwm_brightness_set(struct led_classdev *c,
 		       enum led_brightness b)
 {
 	struct led_pwm *led;
-	int period;
+	unsigned long period;
 
-	period = 10000000000UL;
+	period = 1000000000UL;
 	led = container_of(c, struct led_pwm, led);
 	led->period = period;
 	pwm_set_period_ns(led->pwm, period);
@@ -126,10 +150,10 @@ led_pwm_remove(struct platform_device *pdev)
 
 	led_classdev_unregister(&led->led);
 
-	if (led->pwm) {
+ 	if (led->pwm) {
 		pwm_stop(led->pwm);
 		pwm_free(led->pwm);
-	}
+ 	}
 
 	kfree(led);
 	module_put(d->driver->owner);
@@ -162,7 +186,7 @@ static void __exit led_pwm_modexit(void)
 module_exit(led_pwm_modexit);
 
 
-MODULE_AUTHOR("Bill Gatliff <bgat <at> billgatliff.com>");
+MODULE_AUTHOR("Hector Oron <Hector.Oron <at> digi.com>");
 MODULE_DESCRIPTION("Driver for LEDs with PWM-controlled brightness");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:leds-pwm");

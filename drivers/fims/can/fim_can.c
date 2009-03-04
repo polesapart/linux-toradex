@@ -174,6 +174,10 @@ struct fim_can_filter_t {
 	u8 filter[FIM_CAN_FILTER_SIZE];
 };
 
+/*
+ * Initializing some needed variables. This is important step
+ * as CAN driver might not work upon this values
+ */
 static struct can_bittiming_const fim_bittiming_const = {
 	.tseg1_min = 1,
 	.tseg1_max = 200,
@@ -184,18 +188,6 @@ static struct can_bittiming_const fim_bittiming_const = {
 	.brp_max = 2048,
 	.brp_inc = 1,	
 };
-
-// static struct can_bittiming fim_bittiming = {
-// 	.bitrate = 500000,
-// 	.sample_point = 17,
-// 	.tq = 1,
-// 	.prop_seg = 8,
-// 	.phase_seg1 = 1,
-// 	.phase_seg2 = 8,
-// 	.sjw = 40,
-// 	.clock = 299827200,
-// 	.brp= 2048,
-// };
 
 /*
  * This structure provides the interface for configuring the timing parameters of
@@ -256,8 +248,6 @@ struct fim_can_t {
 	int opened;
 	spinlock_t lock;
 
-	/* @XXX: Is this really neccesary? (Luis) */
-	struct can_bittiming_const bittiming; 
 };
 
 struct fim_cans_t {
@@ -432,7 +422,6 @@ static void fim_can_fill_timing(struct fim_can_t *port, struct fim_can_timing_t 
 
 	/* Calculate how many clocks are in the ten percent of the bit rate */
 	ten_per =
-// 	    (port->can.bittiming.clock +
 	(clk_get_rate(port->cpu_clk) +
 	     (5 * port->can.bittiming.bitrate)) / (10 * port->can.bittiming.bitrate);
 	printk_debug("Ten percent by %i Bps is aprox. %i\n", port->can.bittiming.bitrate,
@@ -477,8 +466,7 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 	/* Init the timing parameters */
 	cfg.code = FIM_CAN_CMD_CONFIG;
 
-	/* @FIXME: We can't use the timing values passed from the CAN-stack, but why? */
-	printk_info("clock: %u\n",port->can.bittiming.clock);
+	printk_debug("clock: %u\n",port->can.bittiming.clock);
 	fim_can_fill_timing(port, &cfg,
 /* 			    DEFAULT_SJW_TIME, */
 /* 			    DEFAULT_SAMPLE_POINT, */
@@ -559,11 +547,11 @@ static int fim_can_set_timing(struct fim_can_t *port,
  * For now, i'll workarround it
  */
 //static int fim_can_set_bittime(struct net_device *dev, struct can_bittime *bt)
-static int fim_can_set_bittime(struct net_device *dev)
-{
-
-	return 0;
-}
+// static int fim_can_set_bittime(struct net_device *dev)
+// {
+// 
+// 	return 0;
+// }
 
 /*
  * Implement the interface for chaning the state of the CAN-controller. The user
@@ -620,7 +608,7 @@ static int fim_can_get_state(struct net_device *dev, enum can_state *state)
 
 	port = netdev_priv(dev);
 	fim = &port->fim;
-	printk_debug("Get state called (FIM %i)\n", fim->picnr);
+	printk_info("Get state called (FIM %i)\n", fim->picnr);
 
 	retval = fim_get_exp_reg(fim, FIM_CAN_BUSSTATE_REG, &bus);
 	if (retval) {
@@ -642,13 +630,13 @@ static int fim_can_get_state(struct net_device *dev, enum can_state *state)
 
 	/* Check the current status of the BUS */
 	if (port->can.state == CAN_STATE_STOPPED) {
-		printk_debug("Controller was stopped\n");
+		printk_info("Controller was stopped\n");
 		*state = CAN_STATE_STOPPED;
 	} else if (bus & FIM_CAN_BUSSTATE_OFF) {
-		printk_debug("Current Bus state seems to be OFF\n");
+		printk_info("Current Bus state seems to be OFF\n");
 		*state = CAN_STATE_BUS_OFF;
 	} else if (bus & FIM_CAN_BUSSTATE_ERRPAS) {
-		printk_debug("Bus seems to be in the passive error state\n");
+		printk_info("Bus seems to be in the passive error state\n");
 		*state = CAN_STATE_BUS_PASSIVE;
 	} else
 		*state = CAN_STATE_ACTIVE;
@@ -1306,7 +1294,7 @@ static void unregister_fim_can(struct fim_can_t *port)
 	if (!fim_is_running(fim))
 		fim_send_stop(fim);
 
-	printk_info("Going to unregister the FIM %i (running %i)\n",
+	printk_debug("Going to unregister the FIM %i (running %i)\n",
 		    fim->picnr, fim_is_running(fim));
 	fim_unregister_driver(fim);
 
@@ -1402,11 +1390,10 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	dev->hard_start_xmit = fim_can_xmit;
 
 	/* Special attributes for the CAN-stack */
-	port->can.do_set_bittiming = fim_can_set_bittime;
+//	port->can.do_set_bittiming = fim_can_set_bittime;
 	port->can.do_get_state = fim_can_get_state;
 	port->can.do_set_mode = fim_can_set_mode;
 
-/* XXX */
 	port->cpu_clk = clk_get(&dev->dev, "systemclock");
  	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
  	printk_debug("port->cpu_clk: %lu\n",clk_get_rate(port->cpu_clk));
@@ -1417,13 +1404,10 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	 *   DEFAULT_MAX_BRP 64
 	 *   DEFAULT_MAX_SJW 4
 	 */
-	//port->can.bittiming_const->brp_max = 2048;
-	//port->can.bittiming_const->sjw_max = 40;
  	port->can.bittiming_const = &fim_bittiming_const;
  	if (!port->can.bittiming_const) {
- 		printk_info("bittiming_const is not initialized.\n");
-// 		//goto err_unreg_fim;
-// 		port->can.bittiming_const = &port->bittiming_const;
+ 		printk_debug("bittiming_const is not initialized.\n");
+ 		goto err_unreg_fim;
  	}
 	
 // 	/* @XXX: OK, start the bit timing values at this place */
@@ -1432,18 +1416,11 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 // 	port->can.bittiming_const->tseg1_max = 200;
 // 	port->can.bittiming_const->tseg2_max = 200;
 
-	/* @XXX: Is this really OK? (Luis) */
 	port->can.bittiming.bitrate = fim_can_bitrate;
 	port->can.bittiming.sjw = 7;
 	port->can.bittiming.prop_seg = 8;
 	port->can.bittiming.phase_seg1 = 8;
 	port->can.bittiming.phase_seg2 = 8;
-
-	//port->can.bittiming = fim_bittiming;
- 	//if (!port->can.bittiming) {
- 	//	printk_err("bittiming is not initialized.\n");
-	//	goto err_unreg_fim;
-	//}
 
 	/* Now register the new net device */
 	retval = register_netdev(dev);
@@ -1480,7 +1457,7 @@ static __init int fim_can_init(void)
 	struct fim_gpio_t *gpios;
 	int picnr;
 
-	printk_info("Starting the FIM CAN bus driver.\n");
+	printk_debug("Starting the FIM CAN bus driver.\n");
 
 	/* Sanity check for the passed bit rate */
 	if (fim_can_bitrate <= 0 || fim_can_bitrate > FIM_CAN_MAX_BITRATE) {
