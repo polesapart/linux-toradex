@@ -203,6 +203,11 @@
 #define S3C2443_GPL14_OUTP	(0x1 << 28)
 #define S3C2443_GPL14_nSS1	(0x2 << 28)
 
+/* Port M */
+#define S3C2443_GPMCON          S3C2410_GPIOREG(0x100)
+#define S3C2443_GPMDAT          S3C2410_GPIOREG(0x104)
+#define S3C2443_GPMUDP          S3C2410_GPIOREG(0x108)
+#define S3C2443_GPMDN           S3C2410_GPIOREG(0x108)
 
 #endif	/* __ASM_ARCH_REGS_GPIOJ_H */
 

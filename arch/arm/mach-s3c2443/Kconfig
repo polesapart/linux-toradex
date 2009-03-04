@@ -30,6 +30,7 @@ config MACH_SMDK2443
 config MACH_CC9M2443JS
         bool "ConnectCore 9M 2443 on a JSCC9M2443 Devboard"
         select CPU_S3C2443
+	select MACH_CC9M2443JS_PM if PM
         help
           Say Y here if you are using the ConnectCore 9M 2443 module
           on a JSCC9M2443 Development Board
@@ -40,7 +41,25 @@ config MACH_CC9M2443JS_GPIOLIB
         help
           Say Y to enable the GPIO-Lib support for the ConnectCore 9M 2443 module
           on a JSCC9M2443 Development Board
-	  
+
+config MACH_CC9M2443JS_PM
+	bool
+	depends on MACH_CC9M2443JS && PM
+	help
+	  Internal config for the Power Management support on the CC9M2443JS
+
+config MACH_CC9M2443JS_PM_EXTIRQ
+	bool "External IRQ for wakeup event"
+	depends on MACH_CC9M2443JS_PM
+	help
+	  Enable the selection of an external IRQ for generating a wakeup event
+
+config MACH_CC9M2443JS_PM_EXTIRQ_NR
+	int "External IRQ for wakeup event"
+	depends on MACH_CC9M2443JS_PM_EXTIRQ
+	help
+	  Number of the external IRQ to use as wakeup event
+	  	  
 source "arch/arm/mach-s3c2443/displays/Kconfig"
 
 endmenu

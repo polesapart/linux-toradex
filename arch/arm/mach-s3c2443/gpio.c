@@ -157,6 +157,29 @@ int s3c2443_gpio_getirq(unsigned int gpio)
 	return s3c2410_gpio_getirq(port);
 }
 
+/* Configure the GPIO that corresponds to an external interrupt line */
+int s3c2443_gpio_config_irq(unsigned int irqnr)
+{
+	unsigned long base;
+	int retval;
+	
+	if (irqnr >= 0 && irqnr <= 7)
+		base = S3C2410_GPF0;
+	else if (irqnr >= 8 && irqnr <= 23)
+		base = S3C2410_GPG0;
+	else {
+		retval = -EINVAL;
+		goto exit_err;
+	}
+
+	/* AFAIK, the configuration value is always the same for the EXINT (0x02) */
+	s3c2410_gpio_cfgpin(base + irqnr, S3C2410_GPF0_EINT0);
+	retval = 0;
+	
+ exit_err:
+	return retval;
+}
+
 int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 {
 	unsigned int port;
@@ -247,3 +270,4 @@ EXPORT_SYMBOL(s3c2443_gpio_getirq);
 EXPORT_SYMBOL(s3c2443_gpio_extpull);
 EXPORT_SYMBOL(s3c2443_gpio_cfgpin);
 EXPORT_SYMBOL(s3c2443_gpio_read_porta);
+EXPORT_SYMBOL(s3c2443_gpio_config_irq);

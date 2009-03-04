@@ -708,6 +708,8 @@ static void s3cmci_dma_done_callback(struct s3c2410_dma_chan *dma_ch,
 	host->complete_what = COMPLETION_FINALIZE;
 
 out:
+	/* @FIXME: Check the performance modification through this delay */
+	udelay(10);
 	tasklet_schedule(&host->pio_tasklet);
 	spin_unlock_irqrestore(&host->complete_lock, iflags);
 	return;
@@ -1460,8 +1462,12 @@ static int __devinit s3cmci_probe(struct platform_device *pdev, int is2440)
 	platform_set_drvdata(pdev, mmc);
 	dev_info(&pdev->dev, "initialisation done.\n");
 
-	enable_irq(host->irq);
+        /* Enable the wakeup for this device (Luis Galdos) */
+	device_init_wakeup(&pdev->dev, 1); 
+        device_set_wakeup_enable(&pdev->dev, 0);
 	
+	enable_irq(host->irq);
+
 	return 0;
 
  free_dmabuf:
@@ -1546,18 +1552,80 @@ static int __devinit s3cmci_2440_probe(struct platform_device *dev)
 
 #ifdef CONFIG_PM
 
-static int s3cmci_suspend(struct platform_device *dev, pm_message_t state)
+static int s3cmci_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	struct mmc_host *mmc = platform_get_drvdata(dev);
+	int retval;
+	struct mmc_host *mmc;
+	struct s3cmci_host *host;
 
-	return  mmc_suspend_host(mmc, state);
+	mmc = platform_get_drvdata(pdev);
+	host = mmc_priv(mmc);
+
+ 	retval = mmc_suspend_host(mmc, state);
+	if (retval)
+		goto exit_suspend;
+	
+	/* Check if the wakeup is enabled. IN that case configure it as ext wakeup */
+	if (device_may_wakeup(&pdev->dev)) {
+		struct s3c24xx_mci_pdata *pdata;
+		unsigned long detect;
+
+		pdata = host->pdata;
+		
+		retval = enable_irq_wake(host->irq_cd);
+		if (retval) {
+			dev_err(&pdev->dev, "Couldn't enable wake IRQ %i\n",
+				host->irq_cd);
+			goto exit_suspend;
+		}
+
+		/*
+		 * Reconfigure the card for generating the wakeup when a new
+		 * card is plugged into the slot
+		 */
+		detect = (pdata->detect_invert) ? (IRQF_TRIGGER_RISING) :
+			(IRQF_TRIGGER_FALLING);
+		set_irq_type(host->irq_cd, detect);
+	}
+
+	clk_disable(host->clk);
+	
+exit_suspend:
+	return retval;
 }
 
-static int s3cmci_resume(struct platform_device *dev)
+static int s3cmci_resume(struct platform_device *pdev)
 {
-	struct mmc_host *mmc = platform_get_drvdata(dev);
+	struct s3cmci_host *host;
+	struct mmc_host *mmc;
+	int retval;
 
-	return mmc_resume_host(mmc);
+	mmc = platform_get_drvdata(pdev);
+	host = mmc_priv(mmc);
+
+	if (device_may_wakeup(&pdev->dev)) {
+		retval = disable_irq_wake(host->irq_cd);
+		if (retval) {
+			dev_err(&pdev->dev, "Couldn't disable wake IRQ %i\n",
+				host->irq_cd);
+			goto exit_resume;
+		}
+
+		set_irq_type(host->irq_cd, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
+	}
+
+	/* First reset the controller */
+	writel(S3C2440_SDICON_SDRESET, host->base + S3C2410_SDICON);
+
+	clk_enable(host->clk);
+	
+	/* @FIXME: Why do we need to free que DMA-channel? */
+	s3c2410_dma_free(host->dma, &s3cmci_dma_client);
+	s3c2410_dma_request(host->dma, &s3cmci_dma_client, NULL);
+	retval = mmc_resume_host(mmc);
+	
+exit_resume:
+	return retval;
 }
 
 #else /* CONFIG_PM */

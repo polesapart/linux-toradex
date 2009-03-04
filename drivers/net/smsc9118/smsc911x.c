@@ -1209,8 +1209,6 @@ smsc911x_set_mac_address(struct smsc911x_data *pdata, u8 dev_addr[6])
 	u32 mac_low32 = (dev_addr[3] << 24) | (dev_addr[2] << 16) |
 	    (dev_addr[1] << 8) | dev_addr[0];
 
-	/* Luis Galdos */
-	return;
 	smsc911x_mac_write(pdata, ADDRH, mac_high16);
 	smsc911x_mac_write(pdata, ADDRL, mac_low32);
 }
@@ -1223,8 +1221,6 @@ static int smsc911x_open(struct net_device *dev)
 	unsigned int intcfg = 0;
 	struct sockaddr addr;
   
-	printk_info("Opening the interface\n");
-	
 	/* Reset the LAN911x */
 	smsc911x_reg_write(HW_CFG_SRST_, pdata, HW_CFG);
 	timeout = 10;
@@ -1918,19 +1914,6 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 	return retval;
 }
 
-static int smsc911x_validate_addr(struct net_device *dev)
-{
-	printk_info("@FIXME: Do we need this function?\n");
-
-	printk_debug("Validate MAC: %x:%x:%x:%x:%x:%x\n",
-		     dev->dev_addr[0], dev->dev_addr[1], dev->dev_addr[2],
-		     dev->dev_addr[3], dev->dev_addr[4], dev->dev_addr[5]);
-	
-	return 0;
-}
-
-
-
 /* Initializing private device structures */
 static int smsc911x_init(struct net_device *dev)
 {
@@ -2152,7 +2135,6 @@ static int smsc911x_init(struct net_device *dev)
 	dev->hard_start_xmit = smsc911x_hard_start_xmit;
 	dev->get_stats = smsc911x_get_stats;
 	dev->set_multicast_list = smsc911x_set_multicast_list;
-	dev->validate_addr = smsc911x_validate_addr;
 	dev->flags |= IFF_MULTICAST;
 	dev->do_ioctl = smsc911x_do_ioctl;
 	dev->set_mac_address = smsc911x_set_mac;
@@ -2338,6 +2320,10 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 		    dev->name, dev->dev_addr[0], dev->dev_addr[1], dev->dev_addr[2],
 		    dev->dev_addr[3], dev->dev_addr[4], dev->dev_addr[5]);
 
+        /* Enable the wakeup over this device (Luis Galdos) */
+        device_init_wakeup(&pdev->dev, 1); 
+        device_set_wakeup_enable(&pdev->dev, 0);
+	
 	return 0;
 
 out_unset_drvdata_4:
@@ -2353,9 +2339,109 @@ out_0:
 	return retval;
 }
 
+/* Enter in the suspend mode */
+static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state)
+{
+       struct net_device *ndev;
+       struct smsc911x_data *pdata;
+
+       ndev = platform_get_drvdata(pdev);
+       pdata = netdev_priv(ndev);
+
+       if (!ndev)
+               return -ENODEV;
+       
+       /* @FIXME: Implement the other supported power modes of the smsc911x */
+        if (state.event != PM_EVENT_SUSPEND)
+                return -ENOTSUPP;
+       
+       if (netif_running(ndev)) {
+               unsigned long regval;
+
+               /* The below code is coming from the WinCE guys */
+               netif_device_detach(ndev);
+
+               /* Disable the interrupts of the controller */
+               regval = smsc911x_reg_read(pdata, INT_CFG);
+               regval &= ~INT_CFG_IRQ_EN_;
+               smsc911x_reg_write(regval, pdata, INT_CFG);
+
+               /* Set the phy to the power down mode */
+               regval = smsc911x_phy_read(pdata, MII_BMCR);
+               regval |= BMCR_PDOWN;
+               smsc911x_phy_write(pdata, MII_BMCR, regval);
+
+               /*
+                * Enter into the power mode D2 (the controller doesn't
+                * support the mode D3)
+                */
+               regval = smsc911x_reg_read(pdata, PMT_CTRL);
+               regval &= ~PMT_CTRL_PM_MODE_;
+               regval |= PMT_CTRL_PM_MODE_D2_;
+               smsc911x_reg_write(regval, pdata, PMT_CTRL);
+       }
+       
+       return 0;
+}
+
+static int smsc911x_drv_resume(struct platform_device *pdev)
+{
+        struct net_device *ndev = platform_get_drvdata(pdev);
+
+        if (ndev) {
+                struct smsc911x_data *pdata = netdev_priv(ndev);
+
+                if (netif_running(ndev)) {
+                       unsigned long timeout;
+                       unsigned long regval;
+                       
+                       /* Assert the byte test register for waking up */
+                       smsc911x_reg_write(0x0, pdata, BYTE_TEST);
+
+                       timeout = 100000;
+                       do {
+                               timeout--;
+                               regval = smsc911x_reg_read(pdata, PMT_CTRL);
+                               udelay(1);
+                       } while (timeout && !(regval & PMT_CTRL_READY_));
+
+                       if (!timeout) {
+                               printk_err("Wakeup timeout by the controller\n");
+                               return -EBUSY;
+                       }
+
+                       regval = smsc911x_reg_read(pdata, PMT_CTRL);
+                       regval &= ~PMT_CTRL_PM_MODE_;
+                       smsc911x_reg_write(regval, pdata, PMT_CTRL);
+
+                       /* Paranoic sanity checks */
+                       regval = smsc911x_reg_read(pdata, PMT_CTRL);
+                       if (regval & PMT_CTRL_PM_MODE_)
+                               printk_err("PM mode isn't disabled (0x%04lx)\n", regval);
+
+                       if (!(regval & PMT_CTRL_READY_))
+                               printk_err("Device is still NOT ready.\n");
+                       
+                       regval = smsc911x_phy_read(pdata, MII_BMCR);
+                       regval &= ~BMCR_PDOWN;
+                       smsc911x_phy_write(pdata, MII_BMCR, regval);
+
+                       /* Reenable the interrupts now */
+                       regval = smsc911x_reg_read(pdata, INT_CFG);
+                       regval |= INT_CFG_IRQ_EN_;
+                       smsc911x_reg_write(regval, pdata, INT_CFG);
+                       
+		       netif_device_attach(ndev);
+                }
+        }
+       return 0;
+}
+
 static struct platform_driver smsc911x_driver = {
 	.probe = smsc911x_drv_probe,
 	.remove = smsc911x_drv_remove,
+	.suspend = smsc911x_drv_suspend,
+	.resume = smsc911x_drv_resume,
 	.driver = {
 		.name = SMSC_CHIPNAME,
 	},

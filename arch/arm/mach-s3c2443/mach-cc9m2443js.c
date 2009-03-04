@@ -77,6 +77,7 @@
 #include <asm/plat-s3c/iic.h>
 
 #include "displays/displays.h"
+#include "cc9m2443js-pm.h"
 
 /*
  * IMPORTANT: We are using the Ethernet-driver of the Blackfin-project because:
@@ -669,10 +670,10 @@ static void __init cc9m2443_machine_init(void)
 
         /* SPI devices */
         spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
-	
-#if 0
-	/* @XXX: Add the support for the power managment */
-	s3c2410_pm_init();
+
+	/* Call the function for enabling the PM support */
+#if defined(CONFIG_PM)
+	cc9m2443js_pm_init();
 #endif
 }
 

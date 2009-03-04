@@ -59,6 +59,10 @@
 #define S3C2443_VA_EBI     S3C_VA_EBI
 #define S3C2443_SZ_EBI	   SZ_1M
 
+/* SSMC Memory controller */
+#define S3C2443_PA_SSMC    (0x4F000000)
+#define S3C2443_SZ_SSMC    SZ_1M
+
 /* UARTs */
 #define S3C24XX_VA_UART	   S3C_VA_UART
 #define S3C2410_PA_UART	   (0x50000000)
