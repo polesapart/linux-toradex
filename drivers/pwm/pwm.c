@@ -28,6 +28,10 @@
 #include <linux/workqueue.h>
 #include <linux/pwm.h>
 
+#define OVERFLOW	4294967295UL
+#if 1
+#define DEBUG
+#endif
 
 static int __pwm_create_sysfs(struct pwm_device *pwm);
 
@@ -230,6 +234,7 @@ unsigned long pwm_ns_to_ticks(struct pwm_channel *p,
 	ticks = nsecs;
 	ticks *= p->tick_hz;
 	do_div(ticks, 1000000000);
+	
 	return ticks;
 }
 EXPORT_SYMBOL(pwm_ns_to_ticks);
@@ -547,17 +552,29 @@ static ssize_t pwm_period_ns_show(struct device *dev,
 
 
 static ssize_t pwm_period_ns_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf,
-				   size_t len)
+				   struct device_attribute *attr, const char *buf, size_t len)
 {
-	unsigned long period_ns;
+	unsigned long long period_ns;
+//      char *tail;
 	struct pwm_channel *p = dev_get_drvdata(dev);
 
-	if (1 == sscanf(buf, "%lu", &period_ns))
+	if (1 == sscanf(buf, "%llu", &period_ns)) {
+//      period_ns = simple_strtoull(buf, &tail, 0);
+
+		/* Overflow and underflow sanity checks */
+		if (period_ns < 0)
+			period_ns = 0;
+		if (period_ns > OVERFLOW)
+			period_ns = OVERFLOW;
+
+		pr_debug("\nperiod_ns: %llu - %llX - %s\n", period_ns, period_ns, buf);
+
 		pwm_set_period_ns(p, period_ns);
+	}
+
 	return len;
 }
+
 static DEVICE_ATTR(period_ns, 0644, pwm_period_ns_show, pwm_period_ns_store);
 
 
