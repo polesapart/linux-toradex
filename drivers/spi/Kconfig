@@ -101,11 +101,17 @@ config SPI_BUTTERFLY
 	  This same cable can be used to flash new firmware.
 
 config SPI_IMX
-	tristate "Freescale iMX SPI controller"
-	depends on ARCH_IMX && EXPERIMENTAL
-	help
-	  This enables using the Freescale iMX SPI controller in master
-	  mode.
+       tristate "Freescale iMX SPI controllers"
+       depends on (ARCH_IMX || ARCH_MXC) && EXPERIMENTAL
+       help
+         This enables using the Freescale iMX SPI controllers in master
+         mode.
+
+config SPI_IMX_DMA
+       bool "use DMA for iMX SPI controllers"
+       depends on SPI_IMX && ARCH_IMX
+       help
+         This enables DMA usage for the Freescale iMX SPI controllers.
 
 config SPI_LM70_LLP
 	tristate "Parallel port adapter for LM70 eval board (DEVELOPMENT)"
