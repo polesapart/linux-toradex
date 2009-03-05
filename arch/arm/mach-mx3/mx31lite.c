@@ -47,17 +47,17 @@
 
 #if defined(CONFIG_SERIAL_IMX) || defined(CONFIG_SERIAL_IMX_MODULE)
 static struct imxuart_platform_data uart_pdata = {
-        .flags = IMXUART_HAVE_RTSCTS,
+       .flags = IMXUART_HAVE_RTSCTS,
 };
 
 static inline void mxc_init_imx_uart(void)
 {
-        mxc_iomux_mode(MX31_PIN_CTS1__CTS1);
-        mxc_iomux_mode(MX31_PIN_RTS1__RTS1);
-        mxc_iomux_mode(MX31_PIN_TXD1__TXD1);
-        mxc_iomux_mode(MX31_PIN_RXD1__RXD1);
+       mxc_iomux_mode(MX31_PIN_CTS1__CTS1);
+       mxc_iomux_mode(MX31_PIN_RTS1__RTS1);
+       mxc_iomux_mode(MX31_PIN_TXD1__TXD1);
+       mxc_iomux_mode(MX31_PIN_RXD1__RXD1);
 
-        mxc_register_device(&mxc_uart_device0, &uart_pdata);
+       mxc_register_device(&mxc_uart_device0, &uart_pdata);
 }
 #else /* !SERIAL_IMX */
 static inline void mxc_init_imx_uart(void)
@@ -65,16 +65,48 @@ static inline void mxc_init_imx_uart(void)
 }
 #endif /* !SERIAL_IMX */
 
+
+#if defined(CONFIG_SPI_IMX) || defined(CONFIG_SPI_IMX_MODULE)
+static inline void mxc_init_imx_spi(void)
+{
+       /* CSPI1 - AT93C66A EEPROM attached to CS2 */
+       mxc_iomux_mode(MX31_PIN_CSPI1_MOSI__MOSI);
+       mxc_iomux_mode(MX31_PIN_CSPI1_MISO__MISO);
+       mxc_iomux_mode(MX31_PIN_CSPI1_SCLK__SCLK);
+       mxc_iomux_mode(MX31_PIN_CSPI1_SPI_RDY__SPI_RDY);
+       mxc_iomux_mode(MX31_PIN_CSPI1_SS0__SS0);
+       mxc_iomux_mode(MX31_PIN_CSPI1_SS1__SS1);
+       mxc_iomux_mode(MX31_PIN_CSPI1_SS2__SS2);
+       /* CSPI2 - PMIC attached to CS0 */
+       mxc_iomux_mode(MX31_PIN_CSPI2_MOSI__MOSI);
+       mxc_iomux_mode(MX31_PIN_CSPI2_MISO__MISO);
+       mxc_iomux_mode(MX31_PIN_CSPI2_SCLK__SCLK);
+       mxc_iomux_mode(MX31_PIN_CSPI2_SPI_RDY__SPI_RDY);
+       mxc_iomux_mode(MX31_PIN_CSPI2_SS0__SS0);
+       mxc_iomux_mode(MX31_PIN_CSPI2_SS1__SS1);
+       mxc_iomux_mode(MX31_PIN_CSPI2_SS2__SS2);
+
+       /* register the spi masters */
+       platform_device_register(&mxc_spi_device0);
+       platform_device_register(&mxc_spi_device1);
+
+}
+#else /* !SPI_IMX */
+static inline void mxc_init_imx_spi(void)
+{
+}
+#endif /* !SPI_IMX */
+
 static struct resource smc911x_resources[] = {
        [0] = {
-               .start          = CS4_BASE_ADDR,
-               .end            = (CS4_BASE_ADDR + 0xfffff),
-               .flags          = IORESOURCE_MEM,
+	      .start          = CS4_BASE_ADDR,
+	      .end            = (CS4_BASE_ADDR + 0xfffff),
+	      .flags          = IORESOURCE_MEM,
        },
        [1] = {
-               .start          = IOMUX_TO_IRQ(MX31_PIN_SFS6),
-               .end            = IOMUX_TO_IRQ(MX31_PIN_SFS6),
-               .flags          = IORESOURCE_IRQ,
+	      .start          = IOMUX_TO_IRQ(MX31_PIN_SFS6),
+	      .end            = IOMUX_TO_IRQ(MX31_PIN_SFS6),
+	      .flags          = IORESOURCE_IRQ,
        },
 };
 
@@ -89,7 +121,7 @@ static struct platform_device mx31lite_eth = {
        .num_resources  = ARRAY_SIZE(smc911x_resources),
        .resource       = smc911x_resources,
        .dev            = {
-               .platform_data = &smc911x_info,
+       .platform_data = &smc911x_info,
        },
 };
 
@@ -142,11 +174,12 @@ static void __init mxc_board_init(void)
        /* init eth */
        mxc_iomux_mode(IOMUX_MODE(MX31_PIN_SFS6, IOMUX_CONFIG_GPIO));
        if (!gpio_request(MX31_PIN_GPIO3_1, "mx31lite-eth"))
-               gpio_direction_input(MX31_PIN_SFS6);
+	 gpio_direction_input(MX31_PIN_SFS6);
 
        platform_add_devices(devices, ARRAY_SIZE(devices));
 
        mxc_init_imx_uart();
+       mxc_init_imx_spi();
 }
 
 static void __init mx31lite_timer_init(void)

@@ -23,6 +23,7 @@
 #include <linux/gpio.h>
 #include <mach/hardware.h>
 #include <mach/imx-uart.h>
+#include <mach/spi_imx.h>
 
 static struct resource uart0[] = {
 	{
@@ -118,6 +119,94 @@ struct platform_device mxc_uart_device4 = {
 	.resource = uart4,
 	.num_resources = ARRAY_SIZE(uart4),
 };
+
+static struct resource spi0[] = {
+	[0] = {
+	       .start = CSPI1_BASE_ADDR,
+	       .end = CSPI1_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_CSPI1,
+	       .end = MXC_INT_CSPI1,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+static struct spi_imx_master spi0_data = {
+	.num_chipselect = 4,
+	.init = NULL,
+	.exit = NULL,
+};
+
+struct platform_device mxc_spi_device0 = {
+	.name = "spi_imx",
+	.id = 0,
+	.dev = {
+		.platform_data = &spi0_data,
+		},
+	.num_resources = ARRAY_SIZE(spi0),
+	.resource = spi0,
+};
+
+static struct resource spi1[] = {
+	[0] = {
+	       .start = CSPI2_BASE_ADDR,
+	       .end = CSPI2_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_CSPI2,
+	       .end = MXC_INT_CSPI2,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+static struct spi_imx_master spi1_data = {
+	.num_chipselect = 4,
+	.init = NULL,
+	.exit = NULL,
+};
+
+struct platform_device mxc_spi_device1 = {
+	.name = "spi_imx",
+	.id = 1,
+	.dev = {
+		.platform_data = &spi1_data,
+		},
+	.num_resources = ARRAY_SIZE(spi1),
+	.resource = spi1,
+};
+
+static struct resource spi2[] = {
+	[0] = {
+	       .start = CSPI3_BASE_ADDR,
+	       .end = CSPI3_BASE_ADDR + SZ_4K - 1,
+	       .flags = IORESOURCE_MEM,
+	       },
+	[1] = {
+	       .start = MXC_INT_CSPI3,
+	       .end = MXC_INT_CSPI3,
+	       .flags = IORESOURCE_IRQ,
+	       },
+};
+
+static struct spi_imx_master spi2_data = {
+	.num_chipselect = 4,
+	.init = NULL,
+	.exit = NULL,
+};
+
+struct platform_device mxc_spi_device2 = {
+	.name = "spi_imx",
+	.id = 2,
+	.dev = {
+		.platform_data = &spi2_data,
+		},
+	.num_resources = ARRAY_SIZE(spi2),
+	.resource = spi2,
+};
+
 
 /* GPIO port description */
 static struct mxc_gpio_port imx_gpio_ports[] = {
