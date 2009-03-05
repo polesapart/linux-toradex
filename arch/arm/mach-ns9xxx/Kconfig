@@ -468,6 +468,16 @@ config CC9P9360JS_TOUCH
 	default y
 	depends on TOUCHSCREEN_ADS7846 && CC9P9360JS_FB && CC9P9360JS_SPI_PORTB
 
+config EXTERNAL_RTC_ALARM
+	bool "External RTC Alarm interrupt"
+	default n
+	depends on !CC9P9360JS_SERIAL_PORTA_FULL
+	help
+		This enables the interrupt coming from the external 
+		I2C DS1337 Real Time Clock.
+comment "--- External RTC Alarm interrupt (disable Serial port A Full)"
+	depends on CC9P9360JS_SERIAL_PORTA_FULL
+
 endif
 
 config MACH_CME9210
