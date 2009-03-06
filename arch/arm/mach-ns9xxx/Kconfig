@@ -473,8 +473,8 @@ config EXTERNAL_RTC_ALARM
 	default n
 	depends on !CC9P9360JS_SERIAL_PORTA_FULL
 	help
-		This enables the interrupt coming from the external 
-		I2C DS1337 Real Time Clock.
+	  This enables the interrupt coming from the external 
+	  I2C DS1337 Real Time Clock.
 comment "--- External RTC Alarm interrupt (disable Serial port A Full)"
 	depends on CC9P9360JS_SERIAL_PORTA_FULL
 
