@@ -276,18 +276,10 @@ static void s3c24xx_udc_disable(struct s3c24xx_udc *udc)
 		S3C24XX_UDC_SSR_VBUSOFF;
 	writel(regval, udc->base + S3C24XX_UDC_SSR_REG);
 	
-	/* Reset the USB-function */
-	regval = readl(S3C2443_URSTCON);
-	writel(regval | S3C2443_URSTCON_PHY, S3C2443_URSTCON);
-
+	/* Reset the USB-function and the PHY */
+	writel(S3C2443_URSTCON_PHY | S3C2443_URSTCON_FUNC, S3C2443_URSTCON);
+	
 	/* PHY power disable */
-#if defined(DISABLED_UDC_CODE)
-	regval = readl(S3C2443_PWRCFG);
-	writel(regval | S3C2443_PWRCFG_USBPHY_ON, S3C2443_PWRCFG);
-#endif
-	regval = 0;
-	writel(regval, S3C2443_PHYPWR);
-
 	regval = readl(S3C2443_PWRCFG);
 	regval &= ~S3C2443_PWRCFG_USBPHY_ON;
 	writel(regval, S3C2443_PWRCFG);
@@ -393,18 +385,19 @@ static void s3c24xx_udc_reinit(struct s3c24xx_udc *udc)
  */
 static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 {
-	int regval;
+	unsigned long regval;
 
 	printk_debug("UDC enable called\n");
 
+	/* First disable the HOST functionality! */
+	regval = __raw_readl(S3C2443_UCLKCON);
+	regval &= ~S3C2443_UCLKCON_HOST_ENABLE;
+	regval |= S3C2443_UCLKCON_THOST_DISABLE;
+	__raw_writel(regval, S3C2443_UCLKCON);
+	
 	/* if reset by sleep wakeup, control the retention I/O cell */
-/* 	if (__raw_readl(S3C_RSTSTAT) & 0x8) */
-/* 		__raw_writel(__raw_readl(S3C_RSTCON)|(1<<16), S3C_RSTCON); */
-
-	/* USB Port is Normal mode */
-	regval = __raw_readl(S3C24XX_MISCCR);
-	regval &= ~S3C2410_MISCCR_USBSUSPND0;
-	__raw_writel(regval, S3C24XX_MISCCR);
+	if (__raw_readl(S3C2443_RSTSTAT) & 0x8)
+		__raw_writel(__raw_readl(S3C2443_RSTCON)|(1<<16), S3C2443_RSTCON);
 
 	/* PHY power enable */
 	regval = __raw_readl(S3C2443_PWRCFG);
@@ -419,34 +412,24 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	/* PHY 2.0 S/W reset */
 	regval = S3C2443_URSTCON_PHY;
 	__raw_writel(regval, S3C2443_URSTCON);
-	udelay(20); /* phy reset must be asserted for at 10us */
+	udelay(20);
+	__raw_writel(0x00, S3C2443_URSTCON);
 	
-	/* Function 2.0, Host 1.1 S/W reset */
+	/* Function reset, but DONT TOUCH THE HOST! */
 	regval = S3C2443_URSTCON_FUNC;
 	__raw_writel(regval, S3C2443_URSTCON);
-	udelay(1);
 	__raw_writel(0x00, S3C2443_URSTCON);
-
-	/* 48Mhz,Oscillator,External X-tal,device */
-#if defined(DISABLED_UDC_CODE)
-	regval = __raw_readl(S3C2443_PHYCTRL);
-	regval |= (S3C2443_PHYCTRL_EXTCLK_OSCI | S3C2443_PHYCTRL_INTPLL_USB);
-	regval = 0;
-	__raw_writel(regval, S3C2443_PHYCTRL);
-#endif
 	
-	/* 48Mhz clock on ,PHY2.0 analog block power on
-	 * XO block power on,XO block power in suspend mode,
-	 * PHY 2.0 Pll power on ,suspend signal for save mode disable
-	 */
-	regval = S3C2443_PHYPWR_COMMON_ON;
-	__raw_writel(regval, S3C2443_PHYPWR);
-
-	/* D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
+	/* 48Mhz, Oscillator, External X-tal, device */
+	regval = S3C2443_PHYCTRL_EXTCLK_OSCI;
+	__raw_writel(regval, S3C2443_PHYCTRL);
+	
+	/*
+	 * D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable, USB2.0 PHY test enable
 	 */
 	regval = __raw_readl(S3C2443_UCLKCON);
-	regval |= S3C2443_UCLKCON_FUNC_ENABLE | S3C2443_UCLKCON_TFUNC_ENABLE;
+	regval |= S3C2443_UCLKCON_FUNC_ENABLE;
 	__raw_writel(regval, S3C2443_UCLKCON);
 
 	reconfig_usbd(udc);
@@ -454,16 +437,12 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	udc->gadget.speed = USB_SPEED_UNKNOWN;
 	
 	/*
-	 * So, now enable the pull up, USB2.0 Function clock Enable,
-	 * USB1.1 HOST disable,USB2.0 PHY test enable
+	 * So, now enable the pull up, USB2.0 Function clock Enable and
+	 * USB2.0 PHY test enable
 	 */
 	regval = __raw_readl(S3C2443_UCLKCON);
-#if defined(DISABLED_UDC_CODE)
 	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE |
-		S3C2443_UCLKCON_TFUNC_ENABLE;
-#else
-	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE;
-#endif
+		S3C2443_UCLKCON_TFUNC_ENABLE | S3C2443_UCLKCON_THOST_DISABLE;
 	__raw_writel(regval, S3C2443_UCLKCON);
 
 	return 0;
@@ -1212,7 +1191,6 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 			printk_debug("Vbus ON interrupt\n");
 			writel(S3C24XX_UDC_INT_VBUSON, udc->base + S3C24XX_UDC_SSR_REG);
 			udc->vbus = 1;
-			/* s3c24xx_udc_enable(udc); */
 		}
 
 		if (sys_stat & S3C24XX_UDC_INT_ERR) {
@@ -1240,9 +1218,34 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 			writel(S3C24XX_UDC_INT_HSP, udc->base + S3C24XX_UDC_SSR_REG);
 			printk_debug("High Speed interrupt\n");
 		}
-		
+
+		/*
+		 * @HW-BUG: If we get a suspend interrupt BUT are still connected to
+		 * the bus, then the host-port number 2 registers a status change
+		 * and tries to enable the port. This leads to a failure (see [1])
+		 * since we are using the USB-PHY as device, and NOT as host-port.
+		 *
+		 * [1] hub 1-0:1.0: Cannot enable port 2.  Maybe the USB cable is bad?
+		 *
+		 * The only option to avoid this error is disabling the USB-PHY so that
+		 * a RESUME condition is generated and the host will ONLY try to
+		 * enumerate an apparently connected USB-device
+		 */
 		if (sys_stat & S3C24XX_UDC_INT_SUSPEND) {
-			printk_debug("SUSPEND interrupt\n");
+			unsigned long regval;
+
+			regval = readl(udc->base + S3C24XX_UDC_TR_REG);
+			if ((regval & S3C24XX_UDC_TR_VBUS) &&
+				udc->gadget.speed != USB_SPEED_UNKNOWN) {
+				regval = readl(S3C2443_PWRCFG);
+				regval &= ~S3C2443_PWRCFG_USBPHY_ON;
+				writel(regval, S3C2443_PWRCFG);
+				printk_debug("SUSPEND and disabling PHY\n");
+			} else {
+				printk_debug("SUSPEND interrupt\n");
+			}
+
+			/* First ACK the interrupt after the bug fix! */
 			writel(S3C24XX_UDC_INT_SUSPEND,
 			       udc->base + S3C24XX_UDC_SSR_REG);
 			if (udc->gadget.speed != USB_SPEED_UNKNOWN
@@ -1252,6 +1255,10 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 			}
 		}
 
+		/*
+		 * By the resume interrupts the following error message is printed:
+		 * hub 1-0:1.0: unable to enumerate USB device on port 2
+		 */
 		if (sys_stat & S3C24XX_UDC_INT_RESUME) {
 			printk_debug("RESUME interrupt\n");
 			writel(S3C24XX_UDC_INT_RESUME,
