@@ -724,7 +724,7 @@ static void s3c24xx_pm_restore_gpio(int index, struct gpio_sleep *gps)
 		__raw_writel(gps->gpup, base + OFFS_UP);
 	}
 
-	DBG("GPIO[%d] CON %08lx => %08lx, DAT %08lx => %08lx\n",
+	DBG("GPIO[%02d] CON %08lx => %08lx, DAT %08lx => %08lx\n",
 	    index, old_gpcon, gps_gpcon, old_gpdat, gps_gpdat);
 }
 
@@ -870,6 +870,30 @@ static int s3c2410_pm_enter(suspend_state_t state)
 	return 0;
 }
 
+
+/* Set all the GPIOS as INPUT, but not the configured as wakeup */
+static void s3c2443_pm_input_gpios(struct gpio_sleep *gps, int count)
+{
+	int gpio;
+	
+	for (gpio = 0; gpio < count; gpio++, gps++) {
+		void __iomem *base = gps->base;
+		ulong new_con;
+		
+		/* The IOs of the port A are only outputs */
+		if (base == S3C2443_GPACDL || base == S3C2443_GPACDH)
+			continue;
+
+		/* Let the IRQ as they as */
+		if (base ==  S3C2410_GPFCON || base == S3C2410_GPGCON)
+			continue;
+		
+		/* @FIXME: This is really ugly. Need to have a list with the IOs */
+		new_con = 0x00;
+		__raw_writel(new_con, OFFS_CON + base);
+	}
+}
+
 /*
  * PM enter function for the S3C2443
  * (Luis Galdos)
@@ -920,8 +944,11 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	s3c2410_pm_do_save(uart_save, ARRAY_SIZE(uart_save));
 
 	/* set the irq configuration for wake */
+	s3c2410_pm_configure_extint();
+	/* Set the IO as input */
+	s3c2443_pm_input_gpios(s3c2443_main_gpios,
+			      ARRAY_SIZE(s3c2443_main_gpios));
 
-	/* s3c2410_pm_configure_extint(); */
 
 	/* Save the configuration of the interrupt mask */
 	intmsk = __raw_readl(S3C2410_INTMSK);
@@ -941,6 +968,11 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	regval = __raw_readl(S3C2410_INTPND);
 	printk("INTPND  : 0x%08lx\n", regval);
 	__raw_writel(regval, S3C2410_INTPND);
+
+	regval = __raw_readl(S3C24XX_EINTPEND);
+	printk("EINTPDN : 0x%08lx\n", regval);
+	regval = __raw_writel(regval, S3C24XX_EINTPEND);
+
 	
 	/* Call the CPU dependent prepare function */
 	pm_cpu_prep();
@@ -952,9 +984,8 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	 * we resume as it saves its own register state, so use the return
 	 * code to differentiate return from save and return from sleep */
 
-	/* SKIP_HERE(2); */
-	
 	if (s3c2410_cpu_save(regs_save) == 0) {
+		unsigned long epnd, pnd;
 		
 		flush_cache_all();
 
@@ -982,6 +1013,11 @@ static int s3c2443_pm_enter(suspend_state_t state)
 		
 		s3c2410_pm_debug_init();
 
+		/* @TEST: Check which source generates the interrupt */
+		pnd = __raw_readl(S3C2410_SRCPND);
+		epnd = __raw_readl(S3C24XX_EINTPEND);
+		printk("[ WAKEUP ] INTPND : 0x%08lx | EINTPND 0x%08lx\n", pnd, epnd);
+		
 		/* Restore the interrupts mask register */
 		__raw_writel(intmsk, S3C2410_INTMSK);
 		__raw_writel(eintmsk, S3C24XX_EINTMASK);
