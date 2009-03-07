@@ -57,6 +57,7 @@ config MACH_CC9M2443JS_PM_EXTIRQ
 config MACH_CC9M2443JS_PM_EXTIRQ_NR
 	int "External IRQ for wakeup event"
 	depends on MACH_CC9M2443JS_PM_EXTIRQ
+	default 0
 	help
 	  Number of the external IRQ to use as wakeup event
 	  	  
