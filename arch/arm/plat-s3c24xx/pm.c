@@ -953,24 +953,24 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	/* Save the configuration of the interrupt mask */
 	intmsk = __raw_readl(S3C2410_INTMSK);
 	tomask = s3c_irqwake_intmask;
-	printk("INTMSK  : 0x%08lx -> 0x%08lx\n", intmsk, tomask);
+	DBG("INTMSK  : 0x%08lx -> 0x%08lx\n", intmsk, tomask);
 	__raw_writel(tomask, S3C2410_INTMSK);
 
 	eintmsk = __raw_readl(S3C24XX_EINTMASK);
 	tomask = s3c_irqwake_eintmask;
-	printk("EINTMSK : 0x%08lx -> 0x%08lx\n", eintmsk, tomask);
+	DBG("EINTMSK : 0x%08lx -> 0x%08lx\n", eintmsk, tomask);
 	__raw_writel(tomask, S3C24XX_EINTMASK);
 	
 	regval = __raw_readl(S3C2410_SRCPND);
-	printk("SRCPND  : 0x%08lx\n", regval);
+	DBG("SRCPND  : 0x%08lx\n", regval);
 	__raw_writel(regval, S3C2410_SRCPND);
 
 	regval = __raw_readl(S3C2410_INTPND);
-	printk("INTPND  : 0x%08lx\n", regval);
+	DBG("INTPND  : 0x%08lx\n", regval);
 	__raw_writel(regval, S3C2410_INTPND);
 
 	regval = __raw_readl(S3C24XX_EINTPEND);
-	printk("EINTPDN : 0x%08lx\n", regval);
+	DBG("EINTPDN : 0x%08lx\n", regval);
 	regval = __raw_writel(regval, S3C24XX_EINTPEND);
 
 	
@@ -985,45 +985,47 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	 * code to differentiate return from save and return from sleep */
 
 	if (s3c2410_cpu_save(regs_save) == 0) {
-		unsigned long epnd, pnd;
 		
 		flush_cache_all();
 
+#if 0
+#define S3C2443_PM_SKIP_SLEEP
+#endif
+		
 		/* This is the suspend function of the core */
-/* #define S3C2443_SKIP_SLEEP */
-#if !defined(S3C2443_SKIP_SLEEP)
+#if !defined(S3C2443_PM_SKIP_SLEEP)
 		pm_cpu_sleep();
 #else
-		printk("[ SUSPEND ] Skipping the sleep mode\n");
-		mdelay(10);
+		printk(KERN_INFO "[ SUSPEND ] Skipping the sleep mode\n");
+		mdelay(100);
 #endif
-
-		/* Reinit the CPU */
-		cpu_init();
-		
-		/* These functions are normally called below */
-		s3c2410_pm_do_restore_core(s3c2443_core_regs,
-					   ARRAY_SIZE(s3c2443_core_regs));
-		s3c2410_pm_do_restore(misc_save, ARRAY_SIZE(misc_save));
-		s3c2410_pm_do_restore(uart_save, ARRAY_SIZE(uart_save));
-
-		/* Restore the configuration of the GPIOs */
-		s3c24xx_pm_restore_gpios(s3c2443_main_gpios,
-					 ARRAY_SIZE(s3c2443_main_gpios));
-		
-		s3c2410_pm_debug_init();
-
-		/* @TEST: Check which source generates the interrupt */
-		pnd = __raw_readl(S3C2410_SRCPND);
-		epnd = __raw_readl(S3C24XX_EINTPEND);
-		printk("[ WAKEUP ] INTPND : 0x%08lx | EINTPND 0x%08lx\n", pnd, epnd);
-		
-		/* Restore the interrupts mask register */
-		__raw_writel(intmsk, S3C2410_INTMSK);
-		__raw_writel(eintmsk, S3C24XX_EINTMASK);
-
 	} else
-		printk(KERN_ERR "Save of CPU registers failed\n");
+		printk(KERN_ERR "[ ERROR ] Save of CPU registers failed\n");
+
+	
+	/* Reinit the CPU */
+	cpu_init();
+		
+	/* These functions are normally called below */
+	s3c2410_pm_do_restore_core(s3c2443_core_regs,
+				   ARRAY_SIZE(s3c2443_core_regs));
+	s3c2410_pm_do_restore(misc_save, ARRAY_SIZE(misc_save));
+	s3c2410_pm_do_restore(uart_save, ARRAY_SIZE(uart_save));
+
+	/* Restore the configuration of the GPIOs */
+	s3c24xx_pm_restore_gpios(s3c2443_main_gpios,
+				 ARRAY_SIZE(s3c2443_main_gpios));
+		
+	s3c2410_pm_debug_init();
+
+	/* Inform which source generates the interrupt */
+	printk("[ WAKEUP ] INTPND : 0x%08x | EINTPND 0x%08x\n",
+	       __raw_readl(S3C2410_SRCPND),
+	       __raw_readl(S3C24XX_EINTPEND));
+		
+	/* Restore the interrupts mask register */
+	__raw_writel(intmsk, S3C2410_INTMSK);
+	__raw_writel(eintmsk, S3C24XX_EINTMASK);
 
 	return 0;
 }
