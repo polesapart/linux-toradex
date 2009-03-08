@@ -54,10 +54,10 @@ config MACH_CC9M2443JS_PM_EXTIRQ
 	help
 	  Enable the selection of an external IRQ for generating a wakeup event
 
-config MACH_CC9M2443JS_PM_EXTIRQ_NR
+config MACH_CC9M2443JS_PM_EXTIRQ_GPIO
 	int "External IRQ for wakeup event"
 	depends on MACH_CC9M2443JS_PM_EXTIRQ
-	default 0
+	default 226
 	help
 	  Number of the external IRQ to use as wakeup event
 	  	  

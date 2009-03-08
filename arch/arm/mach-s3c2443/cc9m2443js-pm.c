@@ -36,10 +36,12 @@
 #include "cc9m2443js-pm.h"
 
 
-#define CC9M2443_PM_ITEM(x)			{ .offset = (x) }
+#define CC9M2443_PM_ITEM_OFFSET(off)           { .offset = off }
+#define CC9M2443_PM_ITEM_BASE(bas)             { .base = bas }
 
 
 struct cc9m2443_pm_reg {
+	void __iomem *base;
 	unsigned long offset;
 	unsigned long val;
 };
@@ -57,45 +59,53 @@ unsigned long sleep_phys_sp(void *sp)
 
 /* These are the register for the external Ethernet controller (CS5) */
 static struct cc9m2443_pm_reg s3c2443_regs_ssmc[] = {
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBIDCYR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBWSTRDR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBWSTWRR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBWSTOENR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBWSTWENR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBCR5),
-	CC9M2443_PM_ITEM(S3C2443_SSMC_SMBWSTBRDR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBIDCYR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBWSTRDR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBWSTWRR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBWSTOENR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBWSTWENR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBCR5),
+	CC9M2443_PM_ITEM_OFFSET(S3C2443_SSMC_SMBWSTBRDR5),
 };
 
-static void cc9m2443_pm_restore_regs(void __iomem *ptr, struct cc9m2443_pm_reg *regs,
-				     int count)
+/* We MUST save the reset configuration register */
+static struct cc9m2443_pm_reg s3c2443_regs_syscon[] = {
+	CC9M2443_PM_ITEM_BASE(S3C2443_RSTCON),
+	CC9M2443_PM_ITEM_BASE(S3C2443_PWRCFG),
+	CC9M2443_PM_ITEM_BASE(S3C2443_OSCSET),
+};
+
+/* If the offset is NULL, then it will not use it */
+static void cc9m2443_pm_restore_regs(struct cc9m2443_pm_reg *regs, int count,
+				     void __iomem *offptr)
 {
 	int cnt;
 	void __iomem *reg_ptr;
 	
-	if (!ptr || !regs) {
+	if (!regs) {
 		printk(KERN_ERR "[ RESUME ] NULL pointer passed.\n");
 		return;
 	}
 
 	for (cnt = 0; cnt < count; cnt++, regs++) {
-		reg_ptr = ptr + regs->offset;
+		reg_ptr = (regs->base) ? (regs->base) : (offptr + regs->offset);
 		__raw_writel(regs->val, reg_ptr);
 	}
 }
 
-static void cc9m2443_pm_save_regs(void __iomem *ptr, struct cc9m2443_pm_reg *regs,
-				  int count)
+static void cc9m2443_pm_save_regs(struct cc9m2443_pm_reg *regs, int count,
+				  void __iomem *offptr)
 {
 	int cnt;
 	void __iomem *reg_ptr;
 	
-	if (!ptr || !regs) {
+	if (!regs) {
 		printk(KERN_ERR "[ SUSPEND ] NULL pointer passed!\n");
 		return;
 	}
 	
 	for (cnt = 0; cnt < count; cnt++, regs++) {
-		reg_ptr = ptr + regs->offset;
+		reg_ptr = (regs->base) ? (regs->base) : (offptr + regs->offset);
 		regs->val = __raw_readl(reg_ptr);
 	}
 }
@@ -110,19 +120,23 @@ static int cc9m2443_pm_save(void)
 	if (!ssmc_vptr)
 		printk(KERN_ERR "Couldn't save the regs of the SSMC\n");
 	else
-		cc9m2443_pm_save_regs(ssmc_vptr, s3c2443_regs_ssmc,
-				      ARRAY_SIZE(s3c2443_regs_ssmc));
+		cc9m2443_pm_save_regs(s3c2443_regs_ssmc, ARRAY_SIZE(s3c2443_regs_ssmc),
+				      ssmc_vptr);
 
-
+	cc9m2443_pm_save_regs(s3c2443_regs_syscon, ARRAY_SIZE(s3c2443_regs_syscon),
+			      NULL);
+	
 	return 0;
 }
 
 static int cc9m2443_pm_restore(void)
 {
 	if (ssmc_vptr)
-		cc9m2443_pm_restore_regs(ssmc_vptr, s3c2443_regs_ssmc,
-					 ARRAY_SIZE(s3c2443_regs_ssmc));
+		cc9m2443_pm_restore_regs(s3c2443_regs_ssmc,
+					 ARRAY_SIZE(s3c2443_regs_ssmc), ssmc_vptr);
 
+	cc9m2443_pm_restore_regs(s3c2443_regs_syscon,
+				 ARRAY_SIZE(s3c2443_regs_syscon), NULL);
 	
 	return 0;
 }
@@ -174,7 +188,7 @@ static int cc9m2443js_pm_resume(struct sys_device *sd)
         __raw_writel(0x0, S3C2412_INFORM0);
 	__raw_writel(0x0, S3C2412_INFORM1);
 	__raw_writel(0x0, S3C2412_INFORM2);
-
+	
 	cc9m2443_pm_restore();
 	
         return 0;
@@ -190,8 +204,8 @@ static struct sys_device cc9m2443js_pm_sysdev = {
         .cls            = &cc9m2443js_pm_sysclass,
 };
 
-/* This function is used by the PM-support by using an external IRQ line */
-#if defined(CONFIG_MACH_CC9M2443JS_PM_EXTIRQ_NR)
+/* This function is used by the PM-support when using an external IRQ line */
+#if defined(CONFIG_MACH_CC9M2443JS_PM_EXTIRQ_GPIO)
 static irqreturn_t cc9m2443js_wakeup_irq(int irq, void *data)
 {
 	return IRQ_HANDLED;
@@ -199,33 +213,26 @@ static irqreturn_t cc9m2443js_wakeup_irq(int irq, void *data)
 
 static void __init cc9m2443js_pm_config(void)
 {
-	unsigned long irqnr, extirq;
+	unsigned int irqnr;
 	int retval;
 
-	extirq = CONFIG_MACH_CC9M2443JS_PM_EXTIRQ_NR;
-	irqnr = IRQ_EINT0 + extirq;
+	irqnr = s3c2443_gpio_getirq(CONFIG_MACH_CC9M2443JS_PM_EXTIRQ_GPIO);
 
 	retval = request_irq(irqnr, cc9m2443js_wakeup_irq,
 			     IRQF_DISABLED | IRQF_TRIGGER_FALLING,
 			     "cc9m2443-wakeup", NULL);
 	if (retval) {
-		printk(KERN_ERR "[ ERROR ] Wakeup IRQ %lu request failed\n", irqnr);
+		printk(KERN_ERR "[ ERROR ] Wakeup IRQ %u request failed\n", irqnr);
 		return;
 	}
 
 	/* Now configure the GPIO as interrupt line */
-	if (s3c2443_gpio_config_irq(extirq)) {		
-		printk(KERN_ERR "[ ERROR ] Wakeup IRQ %lu configuration failed\n",
-		       extirq);
-		goto err_free_irq;
-	}
+	s3c2443_gpio_cfgpin(CONFIG_MACH_CC9M2443JS_PM_EXTIRQ_GPIO,
+			    S3C2410_GPF0_EINT0);
 
 	/* And enable the IRQ as wakeup-source */
 	enable_irq_wake(irqnr);
 	return;
-	
- err_free_irq:
-	free_irq(irqnr, NULL);
 }
 #else
 static inline void cc9m2443js_pm_config(void)
