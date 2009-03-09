@@ -12,8 +12,7 @@ if GENERIC_PWM
 
 config ATMEL_PWM
 	tristate "Atmel AT32/AT91 PWM support"
-	depends on ARCH_NS9XXX
-	# depends on AVR32 || ARCH_AT91
+	depends on AVR32 || ARCH_AT91
 	help
 	  This option enables device driver support for the PWMC
 	  peripheral channels found on certain Atmel processors.
@@ -23,8 +22,8 @@ config ATMEL_PWM
 	  unsure, say N.
 
 config NS9XXX_PWM
-	tristate "NetSilicon NS9XXX PWM support"
-	depends on ARCH_NS9XXX
+	tristate "Digi NS9XXX PWM support"
+	depends on ARCH_NS9XXX && !CC9P9215JS_SERIAL_PORTA && !SPI && !CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX && !CC9P9215JS_SERIAL_PORTC_FULL
 	help
 	  This option enables device driver support for the PWMC
 	  peripheral channels found on certain NetSilicon processors.

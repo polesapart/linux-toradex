@@ -17,6 +17,7 @@
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
+#include <mach/irqs.h>
 
 #include "irq.h"
 #include "processor-ns9360.h"
@@ -40,6 +41,9 @@ static struct i2c_board_info i2c_devices[] __initdata = {
 #if defined(CONFIG_RTC_DRV_DS1307) || defined(CONFIG_RTC_DRV_DS1307_MODULE)
 	{
 		I2C_BOARD_INFO("ds1337", 0x68),
+#if defined(CONFIG_EXTERNAL_RTC_ALARM)
+		.irq = IRQ_NS9XXX_EXT0,
+#endif
 	},
 #endif
 };
@@ -89,6 +93,16 @@ static struct spi_board_info spi_devices[] __initdata = {
 	CC9P9360JS_TOUCH
 	/* Add here other SPI devices, if any... */
 };
+
+#if defined(CONFIG_EXTERNAL_RTC_ALARM)
+void __init cc9p9360js_external_rtc_alarm(void)
+{
+	if (gpio_request(13, "ds1337"))
+		return;
+
+	gpio_configure_ns9360(13, 0, 0, 1);
+}
+#endif
 
 static void __init mach_cc9p9360js_init_machine(void)
 {
@@ -168,8 +182,13 @@ static void __init mach_cc9p9360js_init_machine(void)
 	/* SPI devices */
 	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
 
-	/* RTC */
+	/* RTC (internal) */
 	ns9xxx_add_device_ns9360_rtc();
+
+	/* RTC (external) */
+#if defined(CONFIG_EXTERNAL_RTC_ALARM)
+	cc9p9360js_external_rtc_alarm();
+#endif
 }
 
 MACHINE_START(CC9P9360JS, "ConnectCore 9P 9360 on a JSCC9P9360 Devboard")

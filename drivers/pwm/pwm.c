@@ -18,6 +18,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#if 0
+#define DEBUG
+#endif
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -28,7 +32,6 @@
 #include <linux/workqueue.h>
 #include <linux/pwm.h>
 
-
 static int __pwm_create_sysfs(struct pwm_device *pwm);
 
 static LIST_HEAD(pwm_device_list);
@@ -36,6 +39,27 @@ static DEFINE_MUTEX(device_list_mutex);
 static struct class pwm_class;
 static struct workqueue_struct *pwm_handler_workqueue;
 
+/* Function that checks for overflows */
+static int check_flow(const char *buf)
+{
+
+	int i;
+	const char *overflow = "4294967295";
+
+	i = strcmp(buf, overflow);
+	pr_debug("buffer is ");
+	if (i < 0)
+		pr_debug("minor than");
+	else if (i > 0) {
+		pr_debug("greater than");
+		pr_err("This value is greater that 32-bit value.\n");
+		return -EINVAL;
+	} else
+		pr_debug("equals to");
+	pr_debug(" %s\n", overflow);
+
+	return 0;
+}
 
 int pwm_register(struct pwm_device *pwm)
 {
@@ -77,14 +101,13 @@ err_create_sysfs:
 
 	return ret;
 }
-EXPORT_SYMBOL(pwm_register);
 
+EXPORT_SYMBOL(pwm_register);
 
 static int __match_device(struct device *dev, void *data)
 {
 	return dev_get_drvdata(dev) == data;
 }
-
 
 int pwm_unregister(struct pwm_device *pwm)
 {
@@ -102,8 +125,7 @@ int pwm_unregister(struct pwm_device *pwm)
 
 	for (wchan = 0; wchan < pwm->nchan; wchan++) {
 		dev = class_find_device(&pwm_class, NULL,
-					&pwm->channels[wchan],
-					__match_device);
+					&pwm->channels[wchan], __match_device);
 		if (dev) {
 			put_device(dev);
 			device_unregister(dev);
@@ -116,26 +138,21 @@ int pwm_unregister(struct pwm_device *pwm)
 
 	return 0;
 }
+
 EXPORT_SYMBOL(pwm_unregister);
 
-
-static struct pwm_device *
-__pwm_find_device(const char *bus_id)
+static struct pwm_device *__pwm_find_device(const char *bus_id)
 {
 	struct pwm_device *p;
 
-	list_for_each_entry(p, &pwm_device_list, list)
-	{
+	list_for_each_entry(p, &pwm_device_list, list) {
 		if (!strcmp(bus_id, p->bus_id))
 			return p;
 	}
 	return NULL;
 }
 
-
-static int
-__pwm_request_channel(struct pwm_channel *p,
-		      const char *requester)
+static int __pwm_request_channel(struct pwm_channel *p, const char *requester)
 {
 	int ret;
 
@@ -154,11 +171,7 @@ __pwm_request_channel(struct pwm_channel *p,
 	return 0;
 }
 
-
-struct pwm_channel *
-pwm_request(const char *bus_id,
-	    int chan,
-	    const char *requester)
+struct pwm_channel *pwm_request(const char *bus_id, int chan, const char *requester)
 {
 	struct pwm_device *p;
 	int ret;
@@ -178,8 +191,7 @@ pwm_request(const char *bus_id,
 
 	mutex_unlock(&device_list_mutex);
 
-	pr_debug("%s: %s:%d returns %p\n", __func__,
-		 bus_id, chan, &p->channels[chan]);
+	pr_debug("%s: %s:%d returns %p\n", __func__, bus_id, chan, &p->channels[chan]);
 
 	return &p->channels[chan];
 
@@ -190,13 +202,12 @@ err_no_device:
 
 	mutex_unlock(&device_list_mutex);
 
-	pr_debug("%s: %s:%d returns NULL\n",
-		 __func__, bus_id, chan);
+	pr_debug("%s: %s:%d returns NULL\n", __func__, bus_id, chan);
 
 	return NULL;
 }
-EXPORT_SYMBOL(pwm_request);
 
+EXPORT_SYMBOL(pwm_request);
 
 void pwm_free(struct pwm_channel *p)
 {
@@ -213,30 +224,28 @@ void pwm_free(struct pwm_channel *p)
 		p->pwm->free(p);
 	module_put(p->pwm->owner);
 
-	pr_debug("%s: %s:%d free\n",
-		 __func__, p->pwm->bus_id, p->chan);
+	pr_debug("%s: %s:%d free\n", __func__, p->pwm->bus_id, p->chan);
 
 done:
 	mutex_unlock(&device_list_mutex);
 }
+
 EXPORT_SYMBOL(pwm_free);
 
-
-unsigned long pwm_ns_to_ticks(struct pwm_channel *p,
-			      unsigned long nsecs)
+unsigned long pwm_ns_to_ticks(struct pwm_channel *p, unsigned long nsecs)
 {
 	unsigned long long ticks;
 
 	ticks = nsecs;
 	ticks *= p->tick_hz;
 	do_div(ticks, 1000000000);
+
 	return ticks;
 }
+
 EXPORT_SYMBOL(pwm_ns_to_ticks);
 
-
-unsigned long pwm_ticks_to_ns(struct pwm_channel *p,
-			      unsigned long ticks)
+unsigned long pwm_ticks_to_ns(struct pwm_channel *p, unsigned long ticks)
 {
 	unsigned long long ns;
 
@@ -248,12 +257,10 @@ unsigned long pwm_ticks_to_ns(struct pwm_channel *p,
 	do_div(ns, p->tick_hz);
 	return ns;
 }
+
 EXPORT_SYMBOL(pwm_ticks_to_ns);
 
-
-static void
-pwm_config_ns_to_ticks(struct pwm_channel *p,
-		       struct pwm_channel_config *c)
+static void pwm_config_ns_to_ticks(struct pwm_channel *p, struct pwm_channel_config *c)
 {
 	if (c->config_mask & PWM_CONFIG_PERIOD_NS) {
 		c->period_ticks = pwm_ns_to_ticks(p, c->period_ns);
@@ -268,10 +275,7 @@ pwm_config_ns_to_ticks(struct pwm_channel *p,
 	}
 }
 
-
-static void
-pwm_config_percent_to_ticks(struct pwm_channel *p,
-			    struct pwm_channel_config *c)
+static void pwm_config_percent_to_ticks(struct pwm_channel *p, struct pwm_channel_config *c)
 {
 	if (c->config_mask & PWM_CONFIG_DUTY_PERCENT) {
 		if (c->config_mask & PWM_CONFIG_PERIOD_TICKS)
@@ -286,9 +290,7 @@ pwm_config_percent_to_ticks(struct pwm_channel *p,
 	}
 }
 
-
-int pwm_config_nosleep(struct pwm_channel *p,
-		       struct pwm_channel_config *c)
+int pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_config *c)
 {
 	if (!p->pwm->config_nosleep)
 		return -EINVAL;
@@ -298,11 +300,10 @@ int pwm_config_nosleep(struct pwm_channel *p,
 
 	return p->pwm->config_nosleep(p, c);
 }
+
 EXPORT_SYMBOL(pwm_config_nosleep);
 
-
-int pwm_config(struct pwm_channel *p,
-	       struct pwm_channel_config *c)
+int pwm_config(struct pwm_channel *p, struct pwm_channel_config *c)
 {
 	int ret = 0;
 
@@ -315,8 +316,7 @@ int pwm_config(struct pwm_channel *p,
 	pwm_config_ns_to_ticks(p, c);
 	pwm_config_percent_to_ticks(p, c);
 
-	switch (c->config_mask & (PWM_CONFIG_PERIOD_TICKS
-				  | PWM_CONFIG_DUTY_TICKS)) {
+	switch (c->config_mask & (PWM_CONFIG_PERIOD_TICKS | PWM_CONFIG_DUTY_TICKS)) {
 	case PWM_CONFIG_PERIOD_TICKS:
 		if (p->duty_ticks > c->period_ticks) {
 			ret = -EINVAL;
@@ -349,11 +349,10 @@ err:
 		return ret;
 	return p->pwm->config(p, c);
 }
+
 EXPORT_SYMBOL(pwm_config);
 
-
-int pwm_set_period_ns(struct pwm_channel *p,
-		      unsigned long period_ns)
+int pwm_set_period_ns(struct pwm_channel *p, unsigned long period_ns)
 {
 	struct pwm_channel_config c = {
 		.config_mask = PWM_CONFIG_PERIOD_TICKS,
@@ -362,18 +361,17 @@ int pwm_set_period_ns(struct pwm_channel *p,
 
 	return pwm_config(p, &c);
 }
-EXPORT_SYMBOL(pwm_set_period_ns);
 
+EXPORT_SYMBOL(pwm_set_period_ns);
 
 unsigned long pwm_get_period_ns(struct pwm_channel *p)
 {
 	return pwm_ticks_to_ns(p, p->period_ticks);
 }
+
 EXPORT_SYMBOL(pwm_get_period_ns);
 
-
-int pwm_set_duty_ns(struct pwm_channel *p,
-		    unsigned long duty_ns)
+int pwm_set_duty_ns(struct pwm_channel *p, unsigned long duty_ns)
 {
 	struct pwm_channel_config c = {
 		.config_mask = PWM_CONFIG_DUTY_TICKS,
@@ -381,18 +379,17 @@ int pwm_set_duty_ns(struct pwm_channel *p,
 	};
 	return pwm_config(p, &c);
 }
-EXPORT_SYMBOL(pwm_set_duty_ns);
 
+EXPORT_SYMBOL(pwm_set_duty_ns);
 
 unsigned long pwm_get_duty_ns(struct pwm_channel *p)
 {
 	return pwm_ticks_to_ns(p, p->duty_ticks);
 }
+
 EXPORT_SYMBOL(pwm_get_duty_ns);
 
-
-int pwm_set_duty_percent(struct pwm_channel *p,
-			 int percent)
+int pwm_set_duty_percent(struct pwm_channel *p, int percent)
 {
 	struct pwm_channel_config c = {
 		.config_mask = PWM_CONFIG_DUTY_PERCENT,
@@ -400,11 +397,10 @@ int pwm_set_duty_percent(struct pwm_channel *p,
 	};
 	return pwm_config(p, &c);
 }
+
 EXPORT_SYMBOL(pwm_set_duty_percent);
 
-
-int pwm_set_polarity(struct pwm_channel *p,
-		     int active_high)
+int pwm_set_polarity(struct pwm_channel *p, int active_high)
 {
 	struct pwm_channel_config c = {
 		.config_mask = PWM_CONFIG_POLARITY,
@@ -412,8 +408,8 @@ int pwm_set_polarity(struct pwm_channel *p,
 	};
 	return pwm_config(p, &c);
 }
-EXPORT_SYMBOL(pwm_set_polarity);
 
+EXPORT_SYMBOL(pwm_set_polarity);
 
 int pwm_start(struct pwm_channel *p)
 {
@@ -422,8 +418,8 @@ int pwm_start(struct pwm_channel *p)
 	};
 	return pwm_config(p, &c);
 }
-EXPORT_SYMBOL(pwm_start);
 
+EXPORT_SYMBOL(pwm_start);
 
 int pwm_stop(struct pwm_channel *p)
 {
@@ -432,11 +428,10 @@ int pwm_stop(struct pwm_channel *p)
 	};
 	return pwm_config(p, &c);
 }
+
 EXPORT_SYMBOL(pwm_stop);
 
-
-int pwm_synchronize(struct pwm_channel *p,
-		    struct pwm_channel *to_p)
+int pwm_synchronize(struct pwm_channel *p, struct pwm_channel *to_p)
 {
 	if (p->pwm != to_p->pwm) {
 		/* TODO: support cross-device synchronization */
@@ -448,11 +443,10 @@ int pwm_synchronize(struct pwm_channel *p,
 
 	return p->pwm->synchronize(p, to_p);
 }
+
 EXPORT_SYMBOL(pwm_synchronize);
 
-
-int pwm_unsynchronize(struct pwm_channel *p,
-		      struct pwm_channel *from_p)
+int pwm_unsynchronize(struct pwm_channel *p, struct pwm_channel *from_p)
 {
 	if (from_p && (p->pwm != from_p->pwm)) {
 		/* TODO: support cross-device synchronization */
@@ -464,8 +458,8 @@ int pwm_unsynchronize(struct pwm_channel *p,
 
 	return p->pwm->unsynchronize(p, from_p);
 }
-EXPORT_SYMBOL(pwm_unsynchronize);
 
+EXPORT_SYMBOL(pwm_unsynchronize);
 
 static void pwm_handler(struct work_struct *w)
 {
@@ -475,7 +469,6 @@ static void pwm_handler(struct work_struct *w)
 		pwm_stop(p);
 }
 
-
 static void __pwm_callback(struct pwm_channel *p)
 {
 	queue_work(pwm_handler_workqueue, &p->handler_work);
@@ -483,10 +476,7 @@ static void __pwm_callback(struct pwm_channel *p)
 		 p->pwm->bus_id, p->chan, p->handler, p->handler_data);
 }
 
-
-int pwm_set_handler(struct pwm_channel *p,
-		    pwm_handler_t handler,
-		    void *data)
+int pwm_set_handler(struct pwm_channel *p, pwm_handler_t handler, void *data)
 {
 	if (p->pwm->set_callback) {
 		p->handler_data = data;
@@ -496,13 +486,11 @@ int pwm_set_handler(struct pwm_channel *p,
 	}
 	return -EINVAL;
 }
+
 EXPORT_SYMBOL(pwm_set_handler);
 
-
 static ssize_t pwm_run_store(struct device *dev,
-			     struct device_attribute *attr,
-			     const char *buf,
-			     size_t len)
+			     struct device_attribute *attr, const char *buf, size_t len)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	if (sysfs_streq(buf, "1"))
@@ -511,69 +499,70 @@ static ssize_t pwm_run_store(struct device *dev,
 		pwm_stop(p);
 	return len;
 }
+
 static DEVICE_ATTR(run, 0200, NULL, pwm_run_store);
 
-
-static ssize_t pwm_duty_ns_show(struct device *dev,
-				struct device_attribute *attr,
-				char *buf)
+static ssize_t pwm_duty_ns_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	return sprintf(buf, "%lu\n", pwm_get_duty_ns(p));
 }
 
 static ssize_t pwm_duty_ns_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf,
-				 size_t len)
+				 struct device_attribute *attr, const char *buf, size_t len)
 {
 	unsigned long duty_ns;
 	struct pwm_channel *p = dev_get_drvdata(dev);
+	int ret;
+
+	ret = check_flow(buf);
+	if (ret) {
+		pr_err("Overflow or underflow detected.\n");
+		return -EINVAL;
+	}
 
 	if (1 == sscanf(buf, "%lu", &duty_ns))
 		pwm_set_duty_ns(p, duty_ns);
 	return len;
 }
+
 static DEVICE_ATTR(duty_ns, 0644, pwm_duty_ns_show, pwm_duty_ns_store);
 
-
-static ssize_t pwm_period_ns_show(struct device *dev,
-				  struct device_attribute *attr,
-				  char *buf)
+static ssize_t pwm_period_ns_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	return sprintf(buf, "%lu\n", pwm_get_period_ns(p));
 }
 
-
 static ssize_t pwm_period_ns_store(struct device *dev,
-				   struct device_attribute *attr,
-				   const char *buf,
-				   size_t len)
+				   struct device_attribute *attr, const char *buf, size_t len)
 {
 	unsigned long period_ns;
 	struct pwm_channel *p = dev_get_drvdata(dev);
+	int ret;
+
+	ret = check_flow(buf);
+	if (ret) {
+		pr_err("Overflow or underflow detected.\n");
+		return -EINVAL;
+	}
 
 	if (1 == sscanf(buf, "%lu", &period_ns))
 		pwm_set_period_ns(p, period_ns);
+
 	return len;
 }
+
 static DEVICE_ATTR(period_ns, 0644, pwm_period_ns_show, pwm_period_ns_store);
 
-
-static ssize_t pwm_polarity_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
+static ssize_t pwm_polarity_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	return sprintf(buf, "%d\n", p->active_low ? 0 : 1);
 }
 
-
 static ssize_t pwm_polarity_store(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf,
-				  size_t len)
+				  struct device_attribute *attr, const char *buf, size_t len)
 {
 	int polarity;
 	struct pwm_channel *p = dev_get_drvdata(dev);
@@ -582,12 +571,10 @@ static ssize_t pwm_polarity_store(struct device *dev,
 		pwm_set_polarity(p, polarity);
 	return len;
 }
+
 static DEVICE_ATTR(polarity, 0644, pwm_polarity_show, pwm_polarity_store);
 
-
-static ssize_t pwm_request_show(struct device *dev,
-				struct device_attribute *attr,
-				char *buf)
+static ssize_t pwm_request_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	mutex_lock(&device_list_mutex);
@@ -597,21 +584,17 @@ static ssize_t pwm_request_show(struct device *dev,
 	return sprintf(buf, "%s\n", p->requester);
 }
 
-
 static ssize_t pwm_request_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf,
-				 size_t len)
+				 struct device_attribute *attr, const char *buf, size_t len)
 {
 	struct pwm_channel *p = dev_get_drvdata(dev);
 	pwm_free(p);
 	return len;
 }
+
 static DEVICE_ATTR(request, 0644, pwm_request_show, pwm_request_store);
 
-
-static const struct attribute *pwm_attrs[] =
-{
+static const struct attribute *pwm_attrs[] = {
 	&dev_attr_run.attr,
 	&dev_attr_polarity.attr,
 	&dev_attr_duty_ns.attr,
@@ -620,11 +603,9 @@ static const struct attribute *pwm_attrs[] =
 	NULL,
 };
 
-
 static const struct attribute_group pwm_device_attr_group = {
 	.attrs = (struct attribute **)pwm_attrs,
 };
-
 
 static int __pwm_create_sysfs(struct pwm_device *pwm)
 {
@@ -634,8 +615,7 @@ static int __pwm_create_sysfs(struct pwm_device *pwm)
 
 	for (wchan = 0; wchan < pwm->nchan; wchan++) {
 		dev = device_create(&pwm_class, pwm->dev, MKDEV(0, 0),
-				    pwm->channels + wchan,
-				    "%s:%d", pwm->bus_id, wchan);
+				    pwm->channels + wchan, "%s:%d", pwm->bus_id, wchan);
 		if (!dev)
 			goto err_dev_create;
 		ret = sysfs_create_group(&dev->kobj, &pwm_device_attr_group);
@@ -651,7 +631,6 @@ err_dev_create:
 	return -ENODEV;
 }
 
-
 static struct class_attribute pwm_class_attrs[] = {
 	__ATTR_NULL,
 };
@@ -662,7 +641,6 @@ static struct class pwm_class = {
 
 	.class_attrs = pwm_class_attrs,
 };
-
 
 static int __init pwm_init(void)
 {
@@ -678,7 +656,7 @@ static int __init pwm_init(void)
 
 	return 0;
 }
+
 postcore_initcall(pwm_init);
 
 MODULE_LICENSE("GPL");
-
