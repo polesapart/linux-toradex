@@ -14,6 +14,8 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
@@ -97,10 +99,12 @@ static struct spi_board_info spi_devices[] __initdata = {
 #if defined(CONFIG_EXTERNAL_RTC_ALARM)
 void __init cc9p9360js_external_rtc_alarm(void)
 {
+	/* Request and configure GPIO */
 	if (gpio_request(13, "ds1337"))
 		return;
-
 	gpio_configure_ns9360(13, 0, 0, 1);
+	/* Configure interrupt */
+	set_irq_type( IRQ_NS9XXX_EXT0, IRQF_TRIGGER_FALLING );
 }
 #endif
 
