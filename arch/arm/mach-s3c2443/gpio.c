@@ -149,13 +149,18 @@ static unsigned int s3c2443_gpio2port(unsigned int pin)
         return 0;
 }
 
+/* By errors return a negative value */
 int s3c2443_gpio_getirq(unsigned int gpio)
 {
 	unsigned int port;
-
+	int retval;
+	
+	retval = -EINVAL;
 	port = s3c2443_gpio2port(gpio);
+	if (port)
+		retval = s3c2410_gpio_getirq(port);
 
-	return s3c2410_gpio_getirq(port);
+	return retval;
 }
 
 int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
