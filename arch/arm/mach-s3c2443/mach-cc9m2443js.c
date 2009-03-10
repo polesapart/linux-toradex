@@ -129,9 +129,17 @@ static struct platform_device smsc911x_device = {
 #endif */
 #endif
 
+/*
+ * This is the external IRQ for the RTC. Since the GPIO for the RTC-IRQ is not
+ * available on the connect of the module, the GPIO can be used only with the RTC.
+ */
+#define CC9M2443_RTC_IRQ                        (IRQ_EINT7)
+#define CC9M2443_RTC_IRQ_GPIO                   (S3C2410_GPF7)
+#define CC9M2443_RTC_IRQ_CFG                    (S3C2410_GPF7_EINT7)
 static struct i2c_board_info cc9m2443_i2c_devices[] = {
 	{
                 I2C_BOARD_INFO("ds1337", 0x68),
+		.irq = CC9M2443_RTC_IRQ
 	},
 	CC9M2443_I2C_BASE_BOARD_DEVICES
 };
@@ -662,6 +670,15 @@ static void __init cc9m2443_machine_init(void)
 #if defined(CONFIG_MACH_CC9M2443JS_GPIOLIB)
 	gpiochip_add(&cc9m2443_gpios);
 #endif /* CONFIG_MACH_CC9M2443JS_GPIOLIB */
+
+	/*
+	 * Configure the IO for the external IRQ of the RTC
+	 * @XXX: This is probably not the best place for configuring the trigget-type,
+	 * but the RTC-driver doesn't touch this configuration (hope)
+	 * (Luis Galdos)
+	 */
+	s3c2443_gpio_cfgpin(CC9M2443_RTC_IRQ_GPIO, CC9M2443_RTC_IRQ_CFG);
+	set_irq_type(CC9M2443_RTC_IRQ, IRQF_TRIGGER_FALLING);
 	
 	/* The first argument is the bus or adapter number to attach the devices */
 	i2c_register_board_info(CONFIG_I2C_S3C2410_ADAPTER_NR,
