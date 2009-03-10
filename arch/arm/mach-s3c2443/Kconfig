@@ -48,19 +48,18 @@ config MACH_CC9M2443JS_PM
 	help
 	  Internal config for the Power Management support on the CC9M2443JS
 
-config MACH_CC9M2443JS_PM_EXTIRQ
-	bool "External IRQ for wakeup event"
+config MACH_CC9M2443JS_PM_EXTIRQ_226
+	bool "Enable GPIO 226 as wakeup source"
 	depends on MACH_CC9M2443JS_PM
 	help
-	  Enable the selection of an external IRQ for generating a wakeup event
+	  Enable the selected GPIO as external wakeup-IRQ
 
-config MACH_CC9M2443JS_PM_EXTIRQ_GPIO
-	int "External IRQ for wakeup event"
-	depends on MACH_CC9M2443JS_PM_EXTIRQ
-	default 226
+config MACH_CC9M2443JS_PM_EXTIRQ_232
+	bool "Enable GPIO 232 as wakeup source"
+	depends on MACH_CC9M2443JS_PM
 	help
-	  Number of the external IRQ to use as wakeup event
-	  	  
+	  Enable the selected GPIO as external wakeup-IRQ
+  	  
 source "arch/arm/mach-s3c2443/displays/Kconfig"
 
 endmenu
