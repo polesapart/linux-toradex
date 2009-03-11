@@ -754,7 +754,7 @@ read_rtc:
 	 * registering the RTC (otherwise it will fail)
 	 * (Luis Galdos)
 	 */
-	if (client->irq) {
+	if (want_irq) {
 		device_init_wakeup(&client->dev, 1);
 		device_set_wakeup_enable(&client->dev, 0);
 	}
