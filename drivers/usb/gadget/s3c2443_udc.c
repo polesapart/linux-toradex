@@ -37,7 +37,7 @@
 #endif
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] s3c2443-udc: " fmt, ## args)
-#define printk_info(fmt, args...)               printk(KERN_INFO "s3c2443-udc: " fmt, ## args)
+#define printk_info(fmt, args...)               printk(KERN_DEBUG "s3c2443-udc: " fmt, ## args)
 
 #ifdef DEBUG_S3C2443_UDC
 #define printk_debug(fmt,args...)		printk(KERN_DEBUG "s3c2443-udc: %s() " fmt, __func__ , ## args)
@@ -459,12 +459,22 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	if (!driver)
 		return -EINVAL;
 	
-	printk_debug("%s\n", driver->driver.name);
+	printk_debug("Starting to register '%s'\n", driver->driver.name);
 
-	if (!driver ||
-	    (driver->speed != USB_SPEED_FULL && driver->speed != USB_SPEED_HIGH) ||
-	    !driver->bind || !driver->unbind || !driver->disconnect || !driver->setup)
+	if (driver->speed != USB_SPEED_FULL && driver->speed != USB_SPEED_HIGH) {
+		printk_err("Only Full and High speed supported.\n");
 		return -EINVAL;
+	}
+
+	/*
+	 * The 'unbind' function is not required when the Gadget driver is compiled
+	 * as built-in (Luis Galdos)
+	 */
+	if (!driver->bind || !driver->disconnect || !driver->setup) {
+		printk_err("Missing function: Bind %p | Disconnect %p | Setup %p\n",
+			   driver->bind, driver->disconnect, driver->setup);
+		return -EINVAL;
+	}
 	
 	if (!udc) {
 		printk_err("No UDC-controller probed? Aborting.\n");
@@ -488,7 +498,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	retval = driver->bind(&udc->gadget);
 	if (retval) {
-		printk("%s: bind to driver %s --> error %d\n", udc->gadget.name,
+		printk_err("%s: bind to driver %s --> error %d\n", udc->gadget.name,
 		       driver->driver.name, retval);
 		goto err_del_device;
 	}
@@ -518,7 +528,8 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 		if (state)
 			s3c24xx_udc_enable(udc);
 	}
-	
+
+	printk_info("Gadget '%s' registered\n", driver->driver.name);
 	return 0;
 
  err_del_device:
@@ -542,7 +553,8 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 
 	if (!udc)
 		return -ENODEV;
-	if (!driver || driver != udc->driver)
+
+	if (!driver || driver != udc->driver || !driver->unbind)
 		return -EINVAL;
 
 	spin_lock_irqsave(&udc->lock, flags);
@@ -551,6 +563,7 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	driver->unbind(&udc->gadget);
+	
 	device_del(&udc->gadget.dev);
 
 	disable_irq(IRQ_USBD);
@@ -560,9 +573,6 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	/* Disable the pull-up for informing the host about the removed driver */
 	s3c24xx_udc_disable(udc);
 
-	/* Reset the delay of the IN-handling */
-	/* enable_epin_udelay = 0; */
-	
 	return 0;
 }
 
@@ -1777,6 +1787,9 @@ static inline int s3c24xx_udc_ep0_setup_read(struct s3c_ep *ep, u16 *cp, int max
         else
                 bytes = count * 2;
 
+	/*
+	 * If we not enough space, then only process maximal number of bytes
+	 */
 	pending = 0;
         if (bytes > max) {
                 printk_err("SETUP-frame (%i) too big (max. %i)\n", bytes, max);
@@ -1940,7 +1953,7 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 	pctrl = &ctrls[0];
         recv_ctrls[0] = s3c24xx_udc_ep0_setup_read(ep, (u16 *)pctrl, sizeof(* pctrl));
 	if (recv_ctrls[0] <= 0) {
-		printk_info("Nothing to process? Aborting.\n");
+		printk_err("Nothing to process? Aborting.\n");
 		return;
 	}
 
@@ -2331,8 +2344,6 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 	udc->gadget.a_hnp_support = 0;
 	udc->gadget.a_alt_hnp_support = 0;
 
-/* 	local_irq_disable(); */
-
 	/* Get the IRQ for the internal handling of the EPs */
 	retval = request_irq(IRQ_USBD, s3c24xx_udc_irq, 0, pdev->name, udc);
 	if (retval) {
@@ -2377,9 +2388,17 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 		
 		spin_lock_init(&ep->lock);
 	}
+
+	/*
+	 * Enable the wakeup support only if a interrupt IO for the bus detection
+	 * was passed with the platform data
+	 */
+	if (udc->irq_vbus) {
+		printk_debug("Enabling the wakeup IRQ %i\n", udc->irq_vbus);
+		device_init_wakeup(&pdev->dev, 1);
+		device_set_wakeup_enable(&pdev->dev, 0);
+	}
 	
-/* 	local_irq_enable(); */
-/* 	create_proc_files(); */
 	return 0;
 
  err_free_udc_irq:
@@ -2424,11 +2443,15 @@ static int s3c24xx_udc_remove(struct platform_device *pdev)
 	}
 	
 	s3c24xx_udc_disable(udc);
-/* 	remove_proc_files(); */
 	usb_gadget_unregister_driver(udc->driver);
 
 	free_irq(IRQ_USBD, udc);
 
+	if (udc->irq_vbus) {
+		printk_debug("Disabling the wakeup IRQ %i\n", udc->irq_vbus);
+		device_init_wakeup(&pdev->dev, 0);
+	}
+	
 	/*
 	 * If an IRQ for the vbus was passed, then disable it too
 	 * (Luis Galdos)
@@ -2448,9 +2471,79 @@ static int s3c24xx_udc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/*
+ * From another UDC-drivers seems to be, that is required to disconnect the
+ * USB-device if it's connected to a host.
+ */
+#ifdef CONFIG_PM
+static int s3c2443_udc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct s3c24xx_udc *udc;
+	int retval;
+
+	udc = platform_get_drvdata(pdev);
+
+	/* Need to disconnect first */
+	if (udc->vbus)
+		s3c24xx_udc_disable(udc);
+
+	/* Enable the wakeup if requested */
+	retval = 0;
+	if (device_may_wakeup(&pdev->dev)) {
+
+		/* Paranoic sanity check! */
+		if (!udc->irq_vbus) {
+			printk_err("No wakeup IRQ defined?\n");
+			retval = -EINVAL;
+			goto exit_suspend;
+		}
+		
+		retval = enable_irq_wake(udc->irq_vbus);
+		if (retval)
+			goto exit_suspend;
+	}
+
+exit_suspend:
+	return retval;
+}
+
+static int s3c2443_udc_resume(struct platform_device *pdev)
+{
+	struct s3c24xx_udc *udc;
+	int retval;
+
+	udc = platform_get_drvdata(pdev);
+
+	retval = 0;
+	if (device_may_wakeup(&pdev->dev)) {
+		
+		/* Paranoic sanity check */
+		if (!udc->irq_vbus) {
+			printk_err("No wakeup IRQ defined?\n");
+			retval = -EINVAL;
+			goto exit_resume;
+		}
+		
+		disable_irq_wake(udc->irq_vbus);
+	}
+
+	/* The enable function will activate the PHY and the other stuff */
+	if (udc->vbus)
+		retval = s3c24xx_udc_enable(udc);
+	
+exit_resume:
+	return retval;
+}
+#else
+#define s3c2443_udc_suspend				NULL
+#define s3c2443_udc_resume				NULL
+#endif
+
 static struct platform_driver s3c24xx_udc_driver = {
 	.probe		= s3c24xx_udc_probe,
 	.remove		= s3c24xx_udc_remove,
+	.suspend        = s3c2443_udc_suspend,
+	.resume         = s3c2443_udc_resume,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= DRIVER_NAME,
