@@ -1157,7 +1157,6 @@ static int __devexit s3c2443_spi_remove(struct platform_device *pdev)
 
 
 #ifdef CONFIG_PM
-
 static int s3c2443_spi_suspend(struct platform_device *pdev, pm_message_t msg)
 {
 	struct s3c2443_spi *hw = platform_get_drvdata(pdev);
@@ -1168,12 +1167,32 @@ static int s3c2443_spi_suspend(struct platform_device *pdev, pm_message_t msg)
 
 static int s3c2443_spi_resume(struct platform_device *pdev)
 {
-	struct s3c2443_spi *hw = platform_get_drvdata(pdev);
+	struct s3c2443_spi *hw;
+	int retval;
 
+	hw = platform_get_drvdata(pdev);
+
+        /* @FIXME: Why do we need to free the DMA-channels? */
+	s3c2410_dma_free(SPI_TX_CHANNEL, &hw->dmach);
+	s3c2410_dma_free(SPI_RX_CHANNEL, &hw->dmach_rx);
+
+	retval = s3c2410_dma_request(SPI_TX_CHANNEL, &hw->dmach, hw);
+	if (retval < 0)
+		goto exit_resume;
+	
+	retval = s3c2410_dma_request(SPI_RX_CHANNEL, &hw->dmach_rx, hw);
+	if (retval < 0)
+		goto exit_free_tx;
+	
 	clk_enable(hw->clk);
 	return 0;
-}
 
+exit_free_tx:
+	s3c2410_dma_free(SPI_TX_CHANNEL, &hw->dmach);
+	
+exit_resume:
+	return retval;
+}
 #else
 #define s3c2443_spi_suspend NULL
 #define s3c2443_spi_resume  NULL
