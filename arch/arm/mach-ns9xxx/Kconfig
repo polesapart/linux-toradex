@@ -44,7 +44,7 @@ config MODULE_CC9P9215
 	bool
 	select PROCESSOR_NS9215
 
-config MODULE_CCWI9P9215
+config MODULE_CCW9P9215
 	bool
 	select PROCESSOR_NS9215
 
@@ -70,7 +70,7 @@ config BOARD_A9M9750DEV
 config BOARD_JSCC9P9215
 	bool
 
-config BOARD_JSCCWI9P9215
+config BOARD_JSCCW9P9215
 	bool
 
 config BOARD_JSCC9P9360
@@ -99,13 +99,13 @@ config MACH_CC9C
 	help
 	  Say Y here if you are using the ConnectCore 9C.
 
-config MACH_CCWI9P9215JS
-	bool "ConnectCore Wi-9P 9215 on a JSCC9P9215 Devboard"
-	select MODULE_CCWI9P9215
-	select BOARD_JSCCWI9P9215
+config MACH_CCW9P9215JS
+	bool "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard"
+	select MODULE_CCW9P9215
+	select BOARD_JSCCW9P9215
 	help
 	  Say Y here if you are using the ConnectCore Wi-9P 9215 module
-	  on a JSCC9P9215 Development Board.
+	  on a JSCCW9P9215 Development Board.
 
 config MACH_CCW9C
 	bool "ConnectCore Wi-9C"
@@ -248,23 +248,23 @@ config MACH_CC9P9215JS
 	  on a JSCC9P9215 Development Board.
 
 
-config MACH_CCWI9P9215
-	bool "ConnectCore 9P 9215"
-	select MODULE_CCWI9P9215
+config MACH_CCW9P9215
+	bool "ConnectCore Wi-9P 9215"
+	select MODULE_CCW9P9215
 	help
 	  Say Y here if you are using the ConnectCore Wi-9P 9215 module on an
 	  currently unsupported board.
 
-config MACH_CCWI9P9215JS
-	bool "ConnectCore Wi-9P 9215 on a JSCCWI9P9215 Devboard"
-	select MODULE_CCWI9P9215
-	select BOARD_JSCCWI9P9215
+config MACH_CCW9P9215JS
+	bool "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard"
+	select MODULE_CCW9P9215
+	select BOARD_JSCCW9P9215
 	help
-	  Say Y here if you are using the ConnectCore 9P 9215 module
-	  on a JSCCWI9P9215 Development Board.
+	  Say Y here if you are using the ConnectCore Wi-9P 9215 module
+	  on a JSCCW9P9215 Development Board.
 
 
-if (MACH_CC9P9215JS || MACH_CCWI9P9215JS)
+if (MACH_CC9P9215JS || MACH_CCW9P9215JS)
 
 config CC9P9215JS_SERIAL_PORTA
 	bool "Serial port A"
