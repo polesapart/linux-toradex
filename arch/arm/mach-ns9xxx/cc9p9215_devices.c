@@ -38,7 +38,7 @@
 #define MAC_REG_SIZE        (0x100)
 #define PIPER_DRIVER_NAME   "ns9xxx-piper"
 
-int __init piper_register_gpios()
+int __init piper_register_gpios(void)
 {
 #if 0
     /* TODO:  What happens if driver repeats this request?
@@ -80,21 +80,18 @@ static struct platform_device piper_device = {
 	.name   = PIPER_DRIVER_NAME,/* must be equal to platform-driver.driver.name*/
     .num_resources = ARRAY_SIZE(piper_resources),
 	.resource = piper_resources,
-	.dev = {
-		.release = piper_release_device,
-	},
 };
 
-void __init ns9xxx_add_device_ccwi9p9215_wifi(void)
+void __init ns9xxx_add_device_ccw9p9215_wifi(void)
 {
-	if (piper_register_gpios(void))
+	if (piper_register_gpios())
 		return;
 
-	platform_device_register(&ns9xxx_device_ns921x_eth);
+	platform_device_register(&piper_device);
 }
 
 #else
-void __init ns9xxx_add_device_ccWi9p9215_wifi(void) {}
+void __init ns9xxx_add_device_ccw9p9215_wifi(void) {}
 #endif
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
