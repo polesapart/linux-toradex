@@ -96,7 +96,6 @@ MODULE_LICENSE("GPL");
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] smsc911x: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "smsc911x: " fmt, ## args)
 
-
 #if 0
 #define SMSC911X_DEBUG
 #endif
@@ -107,8 +106,16 @@ MODULE_LICENSE("GPL");
 #  define printk_debug(fmt, args...)
 #endif
 
+/* Enables the debug messages for the PM-operations (WOL, suspend, etc.) */
+#if 0
+#define SMSC911X_PM_DEBUG
+#endif
 
-
+#ifdef SMSC911X_PM_DEBUG
+#  define printk_pmdbg(fmt, args...)            printk(KERN_DEBUG "smsc911x: " fmt, ## args)
+#else
+#  define printk_pmdbg(fmt, args...)
+#endif
 
 struct smsc911x_data {
 	void __iomem *ioaddr;
@@ -155,6 +162,11 @@ struct smsc911x_data {
 	unsigned int hashhi;
 	unsigned int hashlo;
 	unsigned int last_rxstat;
+
+	/* Registers for the internal PM */
+	unsigned long mac_wucsr;
+	unsigned long pmt_ctrl;
+	unsigned long phy_intmsk;
 };
 
 
@@ -1836,19 +1848,71 @@ static int smsc911x_ethtool_set_eeprom(struct net_device *dev,
 	return ret;
 }
 
+static int smsc911x_ethtool_set_wol(struct net_device *dev,
+				    struct ethtool_wolinfo *wol)
+{
+	struct smsc911x_data *pdata;
+	
+	/* Check for unsupported options */
+        if (wol->wolopts & (WAKE_MAGICSECURE | WAKE_UCAST | WAKE_MCAST
+			    | WAKE_BCAST | WAKE_ARP))
+                return -EINVAL;
+
+	pdata = netdev_priv(dev);
+		
+	/* When disable the WOL options need to disable the PHY-interrupts too */
+	if (!wol->wolopts) {
+		printk_pmdbg("[ WOL  ] Disabling all sources\n");
+		pdata->pmt_ctrl &= ~(PMT_CTRL_WOL_EN_ | PMT_CTRL_ED_EN_);
+		pdata->phy_intmsk &= ~PHY_INTMSK_ENERGYON_;
+		pdata->mac_wucsr = 0;
+		goto exit_set_wol;
+	}
+
+	/*
+	 * For the magic packet we MUST configure the MAC too, but we can't do it
+	 * at this point, cause the controller stops working.
+	 */
+	if (wol->wolopts & WAKE_MAGIC) {
+		printk_pmdbg("WOL: Enabling magic frame\n");
+		pdata->mac_wucsr |= WUCSR_MPEN_;
+		pdata->pmt_ctrl |= PMT_CTRL_WOL_EN_;
+	}
+
+	/* For the PHY-wakeup we must use the energy detection */
+	if (wol->wolopts & WAKE_PHY) {
+		printk_pmdbg("[ WOL  ] Enabling PHY energy\n");
+		pdata->phy_intmsk |= PHY_INTMSK_ENERGYON_;
+		pdata->pmt_ctrl |= PMT_CTRL_ED_EN_;
+	}
+
+ exit_set_wol:
+	return 0;
+}
+
+/* Function for getting the infos about the WOL */
+static void smsc911x_ethtool_get_wol(struct net_device *net_dev,
+				     struct ethtool_wolinfo *wol)
+{
+	/* Only for magic and PHY power detection available up now */
+        wol->supported = WAKE_MAGIC | WAKE_PHY;
+}
+
 static struct ethtool_ops smsc911x_ethtool_ops = {
-	.get_settings = smsc911x_ethtool_getsettings,
-	.set_settings = smsc911x_ethtool_setsettings,
-	.get_link = ethtool_op_get_link,
-	.get_drvinfo = smsc911x_ethtool_getdrvinfo,
-	.nway_reset = smsc911x_ethtool_nwayreset,
-	.get_msglevel = smsc911x_ethtool_getmsglevel,
-	.set_msglevel = smsc911x_ethtool_setmsglevel,
-	.get_regs_len = smsc911x_ethtool_getregslen,
-	.get_regs = smsc911x_ethtool_getregs,
+	.get_settings	= smsc911x_ethtool_getsettings,
+	.set_settings	= smsc911x_ethtool_setsettings,
+	.get_link	= ethtool_op_get_link,
+	.get_drvinfo	= smsc911x_ethtool_getdrvinfo,
+	.nway_reset	= smsc911x_ethtool_nwayreset,
+	.get_msglevel	= smsc911x_ethtool_getmsglevel,
+	.set_msglevel	= smsc911x_ethtool_setmsglevel,
+	.get_regs_len	= smsc911x_ethtool_getregslen,
+	.get_regs	= smsc911x_ethtool_getregs,
 	.get_eeprom_len = smsc911x_ethtool_get_eeprom_len,
-	.get_eeprom = smsc911x_ethtool_get_eeprom,
-	.set_eeprom = smsc911x_ethtool_set_eeprom,
+	.get_eeprom	= smsc911x_ethtool_get_eeprom,
+	.set_eeprom	= smsc911x_ethtool_set_eeprom,
+	.get_wol        = smsc911x_ethtool_get_wol,
+	.set_wol        = smsc911x_ethtool_set_wol,
 };
 
 
@@ -2340,10 +2404,97 @@ out_0:
 }
 
 /* Enter in the suspend mode */
+#if defined(CONFIG_PM)
+
+/*
+ * For the mode D1 we MUST left the interrupts enabled
+ */
+static int smsc911x_drv_state_wakeup(struct smsc911x_data *pdata, int mode)
+{
+	int retval;
+	unsigned long regval;
+
+	retval = 0;
+
+	if (mode != 1 && mode != 2)
+		return -EINVAL;
+	
+	/* Clear already received WUs */
+	regval = smsc911x_mac_read(pdata, WUCSR);
+	regval &= ~(WUCSR_MPR_ | WUCSR_WUFR_);
+	regval |= pdata->mac_wucsr; /* Magic packet enable 'WUCSR_MPEN_' */
+	printk_pmdbg("[ SUSP ] WUCSR    0x%08lx\n", regval);
+	smsc911x_mac_write(pdata, WUCSR, regval);
+
+	/* For the D2 we must enable the PHY interrupt for the energy detection */
+	regval =  smsc911x_reg_read(pdata, INT_EN);
+	regval |= (INT_EN_PME_INT_EN_ | INT_EN_PHY_INT_EN_);
+	printk_pmdbg("[ SUSP ] INT_EN   0x%08lx\n", regval);
+	smsc911x_reg_write(regval, pdata, INT_EN);
+
+	if (mode /* @FIXME: Enabled only for D2 */) {
+		u16 phy_mode;
+		
+		phy_mode = smsc911x_phy_read(pdata, MII_INTMSK);
+                phy_mode |= PHY_INTMSK_ENERGYON_;
+                smsc911x_phy_write(pdata, MII_INTMSK, phy_mode);
+	}
+	
+        /* Clear the PM mode and clear the current wakeup status */
+	regval = smsc911x_reg_read(pdata, PMT_CTRL);
+	regval &= ~PMT_CTRL_PM_MODE_;
+	regval |= PMT_CTRL_WUPS_;
+	printk_pmdbg("[ SUSP ] PMT_CTRL 0x%08lx\n", regval);
+	smsc911x_reg_write(regval, pdata, PMT_CTRL);
+
+	/* Enable the PME at prior and the wake on LAN */
+	regval = smsc911x_reg_read(pdata, PMT_CTRL);
+	regval |= pdata->pmt_ctrl; /* Enable the ENERGY detect or WOL interrupt */
+	regval |= PMT_CTRL_PME_EN_;
+
+	if (mode == 1)
+		regval |= PMT_CTRL_PM_MODE_D1_;
+	else
+		regval |= PMT_CTRL_PM_MODE_D2_;
+
+	printk_pmdbg("[ SUSP ] PMT_CTRL 0x%08lx\n", regval);
+	smsc911x_reg_write(regval, pdata, PMT_CTRL);
+
+	return retval;
+}
+
+/* For the state D2 we must disable the host-interrupts */
+static int smsc911x_drv_state_d2(struct smsc911x_data *pdata)
+{
+	unsigned long regval;
+	
+	/* Disable the interrupts of the controller */
+	regval = smsc911x_reg_read(pdata, INT_CFG);
+	regval &= ~INT_CFG_IRQ_EN_;
+	smsc911x_reg_write(regval, pdata, INT_CFG);
+
+	/* Set the phy to the power down mode */
+	regval = smsc911x_phy_read(pdata, MII_BMCR);
+	regval |= BMCR_PDOWN;
+	smsc911x_phy_write(pdata, MII_BMCR, regval);
+
+	/*
+	 * Enter into the power mode D2 (the controller doesn't
+	 * support the mode D3)
+	 */
+	regval = smsc911x_reg_read(pdata, PMT_CTRL);
+	regval &= ~PMT_CTRL_PM_MODE_;
+	regval |= PMT_CTRL_PM_MODE_D2_;
+	smsc911x_reg_write(regval, pdata, PMT_CTRL);
+
+	return 0;
+}
+
 static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state)
 {
        struct net_device *ndev;
        struct smsc911x_data *pdata;
+       int retval;
 
        ndev = platform_get_drvdata(pdev);
        pdata = netdev_priv(ndev);
@@ -2356,44 +2507,74 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
                 return -ENOTSUPP;
        
        if (netif_running(ndev)) {
-               unsigned long regval;
 
                /* The below code is coming from the WinCE guys */
                netif_device_detach(ndev);
 
-               /* Disable the interrupts of the controller */
-               regval = smsc911x_reg_read(pdata, INT_CFG);
-               regval &= ~INT_CFG_IRQ_EN_;
-               smsc911x_reg_write(regval, pdata, INT_CFG);
+	       /*
+		* If configured as wakeup-source enter the mode D1 for packet
+		* detection using the standard IRQ-line
+		*/
+	       if (device_may_wakeup(&pdev->dev)) {
+		       
+		       /*
+			* Sanity check for verifying that a wakeup-source was
+			* configured from the user space. If the energy-detect
+			* wakeup was enabled, then use the D2 for entering into the
+			* power mode
+			*/
+		       if (!(pdata->pmt_ctrl & (PMT_CTRL_WOL_EN_ | PMT_CTRL_ED_EN_))) {
+			       printk_err("[ SUSP ] No WOL source defined.\n");
+			       retval = -EINVAL;
+			       goto err_attach;
+		       }
+		       
+		       /*
+			* By the WOL (magic packet, etc.) we can ONLY use the D1, but
+			* for the energy detect over the PHY we can change into D2
+			*/
+		       if (pdata->pmt_ctrl & PMT_CTRL_WOL_EN_) {
+			       printk_pmdbg("[ SUSP ] Preparing D1 with wakeup\n");
+			       smsc911x_drv_state_wakeup(pdata, 1);
+		       } else {
+			       /* @TEST: Use first only D1 for the wakups */
+			       printk_pmdbg("[ SUSP ] Preparing D2 with wakeup\n");
+			       smsc911x_drv_state_wakeup(pdata, 2);
+		       }
+		       
+		       enable_irq_wake(ndev->irq);
 
-               /* Set the phy to the power down mode */
-               regval = smsc911x_phy_read(pdata, MII_BMCR);
-               regval |= BMCR_PDOWN;
-               smsc911x_phy_write(pdata, MII_BMCR, regval);
-
-               /*
-                * Enter into the power mode D2 (the controller doesn't
-                * support the mode D3)
-                */
-               regval = smsc911x_reg_read(pdata, PMT_CTRL);
-               regval &= ~PMT_CTRL_PM_MODE_;
-               regval |= PMT_CTRL_PM_MODE_D2_;
-               smsc911x_reg_write(regval, pdata, PMT_CTRL);
+	       } else {
+		       /*
+			* Enter into the power mode D2 (the controller doesn't
+			* support the mode D3)
+			*/
+		       smsc911x_drv_state_d2(pdata);
+	       }
        }
        
        return 0;
+
+err_attach:
+       netif_device_attach(ndev);
+       return retval;
 }
 
 static int smsc911x_drv_resume(struct platform_device *pdev)
 {
-        struct net_device *ndev = platform_get_drvdata(pdev);
+	int retval;
+        struct net_device *ndev;
+	unsigned long pmt_ctrl;
 
+	pmt_ctrl = 0;
+	ndev = platform_get_drvdata(pdev);
+	retval = 0;
         if (ndev) {
                 struct smsc911x_data *pdata = netdev_priv(ndev);
 
                 if (netif_running(ndev)) {
                        unsigned long timeout;
-                       unsigned long regval;
+                       unsigned long regval, pmt_ctrl;
                        
                        /* Assert the byte test register for waking up */
                        smsc911x_reg_write(0x0, pdata, BYTE_TEST);
@@ -2407,20 +2588,60 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
 
                        if (!timeout) {
                                printk_err("Wakeup timeout by the controller\n");
-                               return -EBUSY;
+                               retval = -EBUSY;
+			       goto exit_resume;
                        }
 
+		       /*
+			* Check if we received a PM interrupt
+			* Please take note that we are supporting ONLY the Wake On LAN
+			* interrupts, and not the energy-on
+			* (Luis Galdos)
+			*/
+		       pmt_ctrl = smsc911x_reg_read(pdata, PMT_CTRL);
+		       regval = smsc911x_reg_read(pdata, INT_STS);
+		       printk_pmdbg("[ WAKE ] PMT_CTRL   0x%08lx\n", pmt_ctrl);
+		       printk_pmdbg("[ WAKE ] INT_STS    0x%08lx\n", regval);
+		       if (regval & (INT_STS_PME_INT_ | INT_STS_PHY_INT_)) {
+
+			       /* Disable the power management interrupts */
+			       regval = smsc911x_reg_read(pdata, PMT_CTRL);
+			       pmt_ctrl = regval & (PMT_CTRL_WOL_EN_ | PMT_CTRL_ED_EN_);
+			       regval &= ~(PMT_CTRL_WOL_EN_ | PMT_CTRL_PME_EN_ |
+					   PMT_CTRL_ED_EN_);
+			       smsc911x_reg_write(regval, pdata, PMT_CTRL);
+			       
+			       /* Disable the PM interrupts */
+			       regval =  smsc911x_reg_read(pdata, INT_EN);
+			       regval &= ~(INT_EN_PME_INT_EN_ | INT_EN_PHY_INT_EN_);
+			       smsc911x_reg_write(regval, pdata, INT_EN);
+			       
+			       /* Disable the wakeup-events on the MAC */
+			       regval = smsc911x_mac_read(pdata, WUCSR);
+			       regval &= ~(WUCSR_MPEN_);
+			       smsc911x_mac_write(pdata, WUCSR, regval);
+		       }
+
+		       /* @XXX: Clear only the interrupts that were generated */
+		       regval = (INT_STS_PME_INT_ | INT_STS_PHY_INT_);
+		       smsc911x_reg_write(regval, pdata, INT_STS);
+		       
+		       /* Set the controller into the state D0 */
                        regval = smsc911x_reg_read(pdata, PMT_CTRL);
                        regval &= ~PMT_CTRL_PM_MODE_;
+		       regval |= PMT_CTRL_PM_MODE_D0_;
                        smsc911x_reg_write(regval, pdata, PMT_CTRL);
-
+		       
                        /* Paranoic sanity checks */
                        regval = smsc911x_reg_read(pdata, PMT_CTRL);
                        if (regval & PMT_CTRL_PM_MODE_)
                                printk_err("PM mode isn't disabled (0x%04lx)\n", regval);
 
-                       if (!(regval & PMT_CTRL_READY_))
+                       if (!(regval & PMT_CTRL_READY_)) {
+			       retval = -EBUSY;
                                printk_err("Device is still NOT ready.\n");
+			       goto exit_resume;
+		       }
                        
                        regval = smsc911x_phy_read(pdata, MII_BMCR);
                        regval &= ~BMCR_PDOWN;
@@ -2430,12 +2651,21 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
                        regval = smsc911x_reg_read(pdata, INT_CFG);
                        regval |= INT_CFG_IRQ_EN_;
                        smsc911x_reg_write(regval, pdata, INT_CFG);
-                       
+
+		       /* Reset the wakeup control and status register */
+		       smsc911x_mac_write(pdata, WUCSR, 0x00);
+		       
 		       netif_device_attach(ndev);
                 }
         }
-       return 0;
+
+exit_resume:
+	return retval;
 }
+#else
+#define smsc911x_drv_suspend                  NULL
+#define smsc911x_drv_resume                   NULL
+#endif /* defined(CONFIG_PM) */
 
 static struct platform_driver smsc911x_driver = {
 	.probe = smsc911x_drv_probe,
