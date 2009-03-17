@@ -39,7 +39,7 @@ extern int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio);
 extern int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int value);
 extern int s3c2443_gpio_getirq(unsigned int gpio);
 extern int s3c2443_gpio_extpull(unsigned int pin, int pullup);
-
+extern void s3c2443_gpio_init(void);
 
 static inline int s3c_gpio_request(unsigned gpio, const char *label)
 {
