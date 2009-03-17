@@ -730,7 +730,7 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 		chip->ecc.mode	    = NAND_ECC_SOFT;
 	}
 
-	printk(KERN_ERR "@FIXME: %s(): Here seems to be something wrong!\n", __func__);
+	/* @FIXME: Here seems to be something wrong. (Luis Galdos) */
 #if 0
 	if (set->ecc_layout != NULL)
 		chip->ecc.layout = set->ecc_layout;
