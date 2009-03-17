@@ -241,6 +241,34 @@ exit_write_packet:
 }
 
 /*
+ * Check the current state of the VBUS pin. If no VBUS pin was passed through the
+ * platform data, then assume the bus is always ON.
+ * (Luis Galdos)
+ */
+static inline int s3c2443_udc_vbus_state(struct s3c24xx_udc *udc)
+{
+	int retval;
+	struct s3c2410_udc_mach_info *info;
+
+	info = udc->mach_info;
+	retval = 1;
+	if (info && info->vbus_pin) {
+		unsigned long iocfg;
+
+		/* @XXX: Do we really need to change to INPUT first? */
+		iocfg = s3c2410_gpio_getcfg(info->vbus_pin);
+		s3c2410_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
+                retval = s3c2410_gpio_getpin(info->vbus_pin);
+                s3c2410_gpio_cfgpin(info->vbus_pin, iocfg);
+
+                if (info->vbus_pin_inverted)
+                        retval = !retval;
+	}
+
+	return retval;
+}
+
+/*
  * Disable the controller by resetting the PHY for informing the USB-host
  * that the device was disconnected
  * (Luis Galdos)
@@ -2527,8 +2555,14 @@ static int s3c2443_udc_resume(struct platform_device *pdev)
 		disable_irq_wake(udc->irq_vbus);
 	}
 
-	/* The enable function will activate the PHY and the other stuff */
-	if (udc->vbus)
+	/*
+	 * Check the current state of the VBUS, then probably a host was connected
+	 * during the suspend-time and this will not generate an interrupt
+	 */
+	udc->vbus = s3c2443_udc_vbus_state(udc);
+	
+	/* Enable the UDC for starting the enumeration */
+	if (udc->vbus && udc->driver)
 		retval = s3c24xx_udc_enable(udc);
 	
 exit_resume:
