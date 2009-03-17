@@ -338,7 +338,14 @@ static void spi_ns921x_next_xfer(struct spi_master *master,
 	err = spi_ns921x_setupxfer(msg->spi, xfer);
 	if (err) {
 		pr_err("Setting up the next SPI-transfer\n");
+		list_del(&msg->queue);
+		msg->status = err;
+
+		spin_unlock(&info->lock);
 		msg->complete(msg->context);
+		spin_lock(&info->lock);
+
+		info->current_transfer = NULL;
 		return;
 	}
 

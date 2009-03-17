@@ -141,7 +141,7 @@ static struct fb_ops hx8347fb_ops = {
 };
 
 static struct fb_deferred_io hx8347fb_defio = {
-	.delay		= HZ,
+	.delay		= HZ/20,
 	.deferred_io	= hx8347_dpy_deferred_io,
 };
 
