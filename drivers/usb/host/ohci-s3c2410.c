@@ -473,6 +473,33 @@ static const struct hc_driver ohci_s3c2410_hc_driver = {
 	.start_port_reset =	ohci_start_port_reset,
 };
 
+#if defined(CONFIG_PM)
+static int ohci_hcd_s3c2410_drv_suspend(struct platform_device *pdev, pm_message_t mesg)
+{
+	/* Disable the clocks before entering the suspend mode */
+	clk_disable(clk);
+	clk_disable(usb_clk);
+
+	return 0;
+}
+
+static int ohci_hcd_s3c2410_drv_resume(struct platform_device *pdev)
+{
+	struct usb_hcd  *hcd;
+	
+	/* Restart the clocks */
+	clk_enable(clk);
+	clk_enable(usb_clk);
+
+	hcd = platform_get_drvdata(pdev);
+	ohci_finish_controller_resume(hcd);
+	return 0;
+}
+#else
+#define ohci_hcd_s3c2410_drv_suspend NULL
+#define ohci_hcd_s3c2410_drv_resume  NULL
+#endif /* defined(CONFIG_PM) */
+
 /* device driver */
 
 static int ohci_hcd_s3c2410_drv_probe(struct platform_device *pdev)
@@ -492,8 +519,8 @@ static struct platform_driver ohci_hcd_s3c2410_driver = {
 	.probe		= ohci_hcd_s3c2410_drv_probe,
 	.remove		= ohci_hcd_s3c2410_drv_remove,
 	.shutdown	= usb_hcd_platform_shutdown,
-	/*.suspend	= ohci_hcd_s3c2410_drv_suspend, */
-	/*.resume	= ohci_hcd_s3c2410_drv_resume, */
+	.suspend	= ohci_hcd_s3c2410_drv_suspend,
+	.resume	        = ohci_hcd_s3c2410_drv_resume,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "s3c2410-ohci",
