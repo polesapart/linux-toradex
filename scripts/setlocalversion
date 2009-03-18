@@ -21,7 +21,7 @@ if head=`git rev-parse --verify --short HEAD 2>/dev/null`; then
 
 	# Do we have a DEL-tag?
 	if git name-rev --tags HEAD | grep -i "del-" > /dev/null; then
-		printf '%s' -$(git name-rev --tags --name-only HEAD)
+		printf '%s' -$(git describe --tags --exact-match HEAD)
 	fi
 
 	# Are there uncommitted changes?
