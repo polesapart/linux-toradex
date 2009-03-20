@@ -16,6 +16,7 @@
  *
  *  Modified by Ryu,Euiyoul <steven.ryu@samsung.com>
  *  Modified by Seung-chull, Suh to support s3c6400
+ *  Modified by Luis Galdos, Added PM-support
  *
  */
 
@@ -864,16 +865,14 @@ static int set_bus_width (struct s3c_hsmmc_host *host, uint width)
 
 	switch (width) {
 	case MMC_BUS_WIDTH_1:
-/* 		DBG("bus width: 1 bit\n"); */
+		reg &= ~(S3C_HSMMC_CTRL_4BIT | S3C_HSMMC_CTRL_8BIT);
 		break;
 	case MMC_BUS_WIDTH_4:
-/* 		DBG("bus width: 4 bit\n"); */
 		reg |= S3C_HSMMC_CTRL_4BIT;
 		break;
-/* 	case MMC_BUS_WIDTH_8: */
-/* 		reg |= S3C_HSMMC_CTRL_8BIT; */
-/* 		DBG("bus width: 8 bit\n"); */
-/* 		break; */
+	case MMC_BUS_WIDTH_8:
+		reg |= S3C_HSMMC_CTRL_8BIT;
+		break;
 	default:
 		printk_err("Invalid bus width %u\n", width);
 		return -EINVAL;
@@ -995,15 +994,20 @@ static void s3c_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	case MMC_POWER_ON:
 	case MMC_POWER_UP:
 		s3c2410_gpio_cfgpin(S3C2443_GPL0, S3C2443_GPL0_SD0DAT0);
-		s3c2410_gpio_cfgpin(S3C2443_GPL1, S3C2443_GPL1_SD0DAT1);
-		s3c2410_gpio_cfgpin(S3C2443_GPL2, S3C2443_GPL2_SD0DAT2);
-		s3c2410_gpio_cfgpin(S3C2443_GPL3, S3C2443_GPL3_SD0DAT3);
-		s3c2410_gpio_cfgpin(S3C2443_GPL4, S3C2443_GPL4_SD0DAT4);
-		s3c2410_gpio_cfgpin(S3C2443_GPL5, S3C2443_GPL5_SD0DAT5);
-		s3c2410_gpio_cfgpin(S3C2443_GPL6, S3C2443_GPL6_SD0DAT6);
-		s3c2410_gpio_cfgpin(S3C2443_GPL7, S3C2443_GPL7_SD0DAT7);
 
-		
+		if (cfg->host_caps & (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA)) {
+			s3c2410_gpio_cfgpin(S3C2443_GPL1, S3C2443_GPL1_SD0DAT1);
+			s3c2410_gpio_cfgpin(S3C2443_GPL2, S3C2443_GPL2_SD0DAT2);
+			s3c2410_gpio_cfgpin(S3C2443_GPL3, S3C2443_GPL3_SD0DAT3);
+		}
+
+		if (cfg->host_caps & MMC_CAP_8_BIT_DATA) {
+			s3c2410_gpio_cfgpin(S3C2443_GPL4, S3C2443_GPL4_SD0DAT4);
+			s3c2410_gpio_cfgpin(S3C2443_GPL5, S3C2443_GPL5_SD0DAT5);
+			s3c2410_gpio_cfgpin(S3C2443_GPL6, S3C2443_GPL6_SD0DAT6);
+			s3c2410_gpio_cfgpin(S3C2443_GPL7, S3C2443_GPL7_SD0DAT7);
+		}
+
 		s3c2410_gpio_cfgpin(S3C2443_GPL8, S3C2443_GPL8_SD0CMD);
 		s3c2410_gpio_cfgpin(S3C2443_GPL9, S3C2443_GPL9_SD0CLK);
 
@@ -1022,7 +1026,6 @@ static void s3c_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		break;
 	}
 
-	
 	/*
 	 * Reset the chip on each power off.
 	 * Should clear out any weird states.

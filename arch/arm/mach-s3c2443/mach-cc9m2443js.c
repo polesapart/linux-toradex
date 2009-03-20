@@ -358,6 +358,7 @@ static struct resource cc9m2443_hsmmc_resource[] = {
 static u64 cc9m2443_device_hsmmc_dmamask = 0xffffffffUL;
 
 #define HOST_CAPS		(MMC_CAP_4_BIT_DATA | \
+				MMC_CAP_8_BIT_DATA | \
 				MMC_CAP_MMC_HIGHSPEED | \
 				MMC_CAP_SD_HIGHSPEED)
 
