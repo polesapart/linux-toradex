@@ -31,6 +31,47 @@ enum antenna_select
 	ANTENNA_2,
 };
 
+
+static int enableIbssSupport(struct piper_priv *digi, enum nl80211_iftype nodeType)
+{
+    int result = 0;
+    
+    if (   ((nodeType == NL80211_IFTYPE_ADHOC) || (nodeType == NL80211_IFTYPE_MESH_POINT))
+        && (digi->beacon.loaded)
+        && (digi->beacon.enabled)
+        && ((digi->read_reg(digi, MAC_CFP_ATIM) & MAC_BEACON_INTERVAL_MASK) != 0))
+    {
+        /*
+         * If we come here, then we are running in IBSS mode, beacons are enabled,
+         * and we have the information we need, so start sending beacons.
+         */
+        /* TODO: Handle non-zero ATIM period.  mac80211 currently has no way to
+                 tell us what the ATIM period is, but someday they might fix that.*/
+                                                    /* set a beacon backoff value */
+         u32 reg = digi->read_reg(digi, MAC_BEACON_FILT) & ~MAC_BEACON_BACKOFF_MASK;
+         digi->write_reg(digi, MAC_BEACON_FILT, reg | digi->getNextBeaconBackoff(), op_write);
+         digi->setIrqMaskBit(digi, BB_IRQ_MASK_TBTT); /* enable beacon interrupts*/
+                                                    /* and let her rip */
+         result = digi->write_reg(digi, MAC_CTL, MAC_CTL_BEACON_TX | MAC_CTL_IBSS, op_or);
+         digi_dbg("IBSS supported turned on!\n");
+    }
+    else
+    {
+        /*
+         * If we come here, then either we are not suppose to transmit beacons,
+         * or we do not yet have all the information we need to transmit 
+         * beacons.  Make sure the automatic beacon function is disabled.
+         */
+                                                    /* shut down beacons */
+         result = digi->write_reg(digi, MAC_CTL, ~(MAC_CTL_BEACON_TX | MAC_CTL_IBSS), op_and);
+         digi->setIrqMaskBit(digi, BB_IRQ_MASK_TBTT);     /* disable beacon interrupts*/
+         digi_dbg("IBSS supported turned OFF\n");
+    }
+    
+    return result;
+}
+
+
 static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
 {
 	int err = 0;
@@ -41,7 +82,7 @@ static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
     };
 	struct piper_priv *digi = hw->priv;
 #if 1
-    /* TODO: Remove this */ sel = ANTENNA_1;
+    /* TODO: Remove this */ sel = ANTENNA_2;
 #endif 
 
 	digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
@@ -50,35 +91,35 @@ static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
 	if (sel == ANTENNA_BOTH)
 	{
 		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				BB_GENERAL_CTL_ANT_DIV | digi->read_reg(digi, BB_GENERAL_CTL));
+				BB_GENERAL_CTL_ANT_DIV, op_or);
 		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				~BB_GENERAL_CTL_ANT_SEL & digi->read_reg(digi, BB_GENERAL_CTL));
+				~BB_GENERAL_CTL_ANT_SEL, op_and);
 	}
 	else {
 		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				~BB_GENERAL_CTL_ANT_DIV & digi->read_reg(digi, BB_GENERAL_CTL));
+				~BB_GENERAL_CTL_ANT_DIV, op_and);
 		if (err)
 			goto done;
 
 		/* selected the antenna if !diversity */
 		if (sel == ANTENNA_1)
 			err = digi->write_reg(digi, BB_GENERAL_CTL,
-					~BB_GENERAL_CTL_ANT_SEL & digi->read_reg(digi, BB_GENERAL_CTL));
+					~BB_GENERAL_CTL_ANT_SEL, op_and);
 		else
 			err = digi->write_reg(digi, BB_GENERAL_CTL,
-					BB_GENERAL_CTL_ANT_SEL | digi->read_reg(digi, BB_GENERAL_CTL));
+					BB_GENERAL_CTL_ANT_SEL, op_or);
 	}
 	if (err)
 		goto done;
 	
 	/* select which antenna to transmit on */
-	err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_ANT_MASK & digi->read_reg(digi, BB_RSSI));
+	err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
 	if (err)
 		goto done;
 	if (sel == ANTENNA_BOTH)
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_DIV_MAP | digi->read_reg(digi, BB_RSSI));
+		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
     else
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP | digi->read_reg(digi, BB_RSSI));
+		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
 done:
 
 	if (err)
@@ -93,9 +134,9 @@ static int set_status_led(struct ieee80211_hw *hw, int on)
 	int err;
 
 	if (on)
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_LED | digi->read_reg(digi, BB_RSSI));
+		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_LED, op_or);
 	else
-		err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_LED & digi->read_reg(digi, BB_RSSI));
+		err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_LED, op_and);
 	
 	return err;
 #else
@@ -153,7 +194,8 @@ static void assignSequenceNumber(struct sk_buff *skb, bool shouldIncrement)
 static void setupRtsCtsFrame(struct piper_priv *digi, struct sk_buff *skb,
                              struct ieee80211_tx_info *txInfo)
 {
-    digi->wantCts = !!(txInfo->flags & IEEE80211_TX_CTL_USE_CTS_PROTECT);
+    digi->wantCts = (!!(txInfo->flags & IEEE80211_TX_CTL_USE_CTS_PROTECT)
+                     | digi->bssWantCtsProtection);
     digi->wantRts = !!(txInfo->flags & IEEE80211_TX_CTL_USE_RTS_CTS);
     
 #if 0
@@ -217,20 +259,134 @@ static void setupRtsCtsFrame(struct piper_priv *digi, struct sk_buff *skb,
 }
 
 
+#define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
+/* Get 16 bits at byte pointer */
+#define	GET16(bp)		((bp)[0] | ((bp)[1] << 8))
+/* Get 32 bits at byte pointer */
+#define	GET32(bp)		((bp)[0] | ((bp)[1] << 8) | ((bp)[2] << 16) | ((bp)[3] << 24))
+/* Store 16 bits at byte pointer */
+#define	SET16(bp, data)		{ (bp)[0] = (data); \
+				(bp)[1] = (data) >> 8; }
+/* Store 32 bits at byte pointer */
+#define	SET32(bp, data)		{ (bp)[0] = (data); \
+				(bp)[1] = (data) >> 8;  \
+				(bp)[2] = (data) >> 16; \
+				(bp)[3] = (data) >> 24; }
 
+static inline void dw_inc_48(u48* n)
+{
+	(*n)++;
+	*n &= ((u64) 1 << 48) - 1;
+}
 
+#define EXT_IV_IS_PRESENT       (0x20)
+void piperGenerateAesExtIV(struct piper_priv *digi, unsigned int keyIndex, u8 *extiv)
+{
+	/* Increment packet number */
+	dw_inc_48(&digi->key[keyIndex].txPn);
+    memset(extiv, 0, PIPER_EXTIV_SIZE);
 
+	SET16(extiv, digi->key[keyIndex].txPn & 0xffff);
+	extiv[3] = (keyIndex << 6) | EXT_IV_IS_PRESENT;
+
+	SET32(&extiv[4], digi->key[keyIndex].txPn >> 16);
+}
+
+/*
+ * This function prepares a blob of data we will have to send to the AES 
+ * H/W encryption engine.  The data consists of the AES initialization 
+ * vector and 2 16 byte headers.
+ *
+ * Returns true if successful, or false if something goes wrong
+ */
+void dumpWordsAdd(unsigned int word);
+void dumpWordsDump(void);
+bool piperPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
+                             u8 *aesBlob, u8 *frame, u32 length, bool isTransmit)
+{
+//
+// 802.11 MAC frame formats
+//
+    bool result = false;
+    _80211HeaderType *header = (_80211HeaderType *) frame;
+    u8 *body = &frame[sizeof(*header)];
+	int dlen = length - _80211_HEADER_LENGTH;
+    
+    if (keyIndex >= PIPER_MAX_KEYS) 
+    {
+        digi_dbg("encryption key index %d is out of range.\n", keyIndex);
+        goto prepareAESBlobDone;
+    }
+    
+    if (digi->key[keyIndex].valid == false)
+    {
+        digi_dbg("encryption key %d is not valid.\n", keyIndex);
+        goto prepareAESBlobDone;
+    }
+    digi_dbg("Preparing AES blob for key %d.\n", keyIndex);
+    digi_dbg("header->squ.sq.frag = %d\n", header->squ.sq.frag);
+    
+	// Set up CCM initial block for MIC IV
+	memset(aesBlob, 0, AES_BLOB_LENGTH);
+	aesBlob[0] = 0x59;
+	aesBlob[1] = 0;
+	memcpy (&aesBlob[2], header->addr2, ETH_ALEN);
+	
+	if (isTransmit)
+	{
+	    
+
+	    piperGenerateAesExtIV(digi, keyIndex, digi->txExtIV);
+	    
+    	aesBlob[8]  = digi->txExtIV[7];
+    	aesBlob[9]  = digi->txExtIV[6];
+    	aesBlob[10] = digi->txExtIV[5];
+    	aesBlob[11] = digi->txExtIV[4];
+    	aesBlob[12] = digi->txExtIV[1];
+    	aesBlob[13] = digi->txExtIV[0];
+	}
+	else
+	{
+    	aesBlob[8]  = body[7];
+    	aesBlob[9]  = body[6];
+    	aesBlob[10] = body[5];
+    	aesBlob[11] = body[4];
+    	aesBlob[12] = body[1];
+    	aesBlob[13] = body[0];
+    }
+	aesBlob[14] = dlen >> 8;
+	aesBlob[15] = dlen;
+	
+	// Set up MIC header blocks
+	/* TODO:  Do I need this: squ.sq16 = NTOH16 (buf->macHdr.squ.sq16); */
+
+#define AES_HEADER_0_OFFSET (16)
+#define AES_HEADER_1_OFFSET (32)
+	aesBlob[AES_HEADER_0_OFFSET+0] = 0;
+	aesBlob[AES_HEADER_0_OFFSET+1] = 22;
+	aesBlob[AES_HEADER_0_OFFSET+2] = frame[0] & 0xcf;
+	aesBlob[AES_HEADER_0_OFFSET+3] = frame[1] & 0xd7;
+	/*
+	 * This memcpy writes data into the last 12 bytes of the first header
+	 * and the first 6 bytes of the 2nd header.  I did it as one memcpy
+	 * call for efficiency.
+	 */
+	memcpy(&aesBlob[AES_HEADER_0_OFFSET+4], header->addr1, 3*ETH_ALEN);
+	aesBlob[AES_HEADER_1_OFFSET+6] = header->squ.sq.frag;
+	aesBlob[AES_HEADER_1_OFFSET+7] = 0;
+	memset (&aesBlob[AES_HEADER_1_OFFSET+8], 0, 8);	/* clear vector location in data */
+	
+	result = true;
+	
+prepareAESBlobDone:
+    return result;
+}
 
 
 static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct piper_priv *digi = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
-#if 0
-	int aes_fifo = ctl->flags & IEEE80211_TXCTL_DO_NOT_ENCRYPT ? 0 : 1;
-#else
-	int aes_fifo = 0;
-#endif
 
     if (digi->isRadioOn == false)
     {
@@ -247,14 +403,23 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	    assignSequenceNumber(skb, !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
 	}
 	setupRtsCtsFrame(digi, skb, txInfo);
+    if (txInfo->control.hw_key != NULL)
+    {
+        digi->txAesKey = txInfo->control.hw_key->hw_key_idx;
+        digi_dbg("digi->txAesKey set to %d.\n", digi->txAesKey);
+        digi->useAesHwEncryption = piperPrepareAESDataBlob(digi, 
+                                        txInfo->control.hw_key->hw_key_idx, 
+                                        (u8 *) digi->txAesBlob, skb->data, skb->len,
+                                        true);
+    }
+    else
+    {
+        digi->useAesHwEncryption = false;
+    }
 	/* set the plcp/frame header (adding space for AES MIC tail) */
 	skb_push(skb, TX_HEADER_LENGTH);
 	digi->txRetryIndex = 0;
     digi->txMaxRetries = txInfo->control.retry_limit;
-    if (txInfo->control.hw_key != NULL)
-    {
-        digi->txKeyInfo = *txInfo->control.hw_key;
-    }
 	memcpy(&txInfo->status.retries[1], &txInfo->control.retries[0], sizeof(txInfo->control.retries));
 	txInfo->status.retries[0].rate_idx = txInfo->tx_rate_idx;
 	txInfo->status.retries[0].limit = 1;
@@ -282,7 +447,7 @@ static int hw_start(struct ieee80211_hw *hw)
 	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
 
 	/* initialize */
-	err = digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT);
+	err = digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT, op_write);
 	if (err)
 		goto done;
 
@@ -327,15 +492,15 @@ static void hw_stop(struct ieee80211_hw *hw)
 	digi->rf->stop(hw);
 
 	/* turn off MAX_GAIN, ADC clocks, and so on */
-	digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RESET & digi->read_reg(digi, BB_GENERAL_CTL));
+	digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RESET, op_and);
 
 	/* turn off MAC control/mac filt/aes key */
-	digi->write_reg(digi, MAC_CTL, 0);
+	digi->write_reg(digi, MAC_CTL, 0, op_write);
 
 	/* turn off interrupts */
     tasklet_disable(&digi->rxTasklet);
 	digi->irq_mask = 0;
-	digi->write_reg(digi, BB_IRQ_MASK, 0);
+	digi->write_reg(digi, BB_IRQ_MASK, 0, op_write);
 }
 
 static int hw_add_intf(struct ieee80211_hw *hw,
@@ -351,28 +516,21 @@ static int hw_add_intf(struct ieee80211_hw *hw,
 	if (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)
 	{
 	    digi_dbg("hw_add_intf (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)\n");
-		return -EOPNOTSUPP;
+		err = -EOPNOTSUPP;
+		goto done;
     }
     
 	switch (conf->type) 
 	{
     	case NL80211_IFTYPE_ADHOC:
     	case NL80211_IFTYPE_STATION:
+    	case NL80211_IFTYPE_MESH_POINT:
     		digi->if_type = conf->type;
     		break;
     	default:
 	        digi_dbg("hw_add_intf conf->type is unsupported\n");
     		return -EOPNOTSUPP;
 	}
-
-#if 0
-	err = digi->write_reg(digi, MAC_CTL, MAC_CTL_AES_DISABLE | digi->read_reg(digi, MAC_CTL));
-	if (err)
-	{
-	    digi_dbg("hw_add_intf 2nd digi->write failed\n");
-		goto done;
-    }
-#endif
 
 done:
 
@@ -401,14 +559,12 @@ static int hw_config(struct ieee80211_hw *hw, struct ieee80211_conf *conf)
 	digi->isRadioOn = (conf->radio_enabled != 0);
 	if (digi->isRadioOn)
 	{
-	    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN
-	                                         | digi->read_reg(digi, BB_GENERAL_CTL));
+	    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
 	}
 	else
 	{
 	    digi_dbg("Turning radio off\n");
-	    err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN
-	                                         & digi->read_reg(digi, BB_GENERAL_CTL));
+	    err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
 	    /*
 	     * Besides turning off the receiver, the transmit function will fail
 	     * if digi->isRadioOn = false.
@@ -417,7 +573,10 @@ static int hw_config(struct ieee80211_hw *hw, struct ieee80211_conf *conf)
 	}
 	word = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_BEACON_INTERVAL_MASK;
 	word |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
-	digi->write_reg(digi, MAC_DTIM_PERIOD, word);
+	word &= ~MAC_LISTEN_INTERVAL_MASK;
+	word |= conf->listen_interval;
+	digi->write_reg(digi, MAC_DTIM_PERIOD, word, op_write);
+	
 	err = set_tx_power(hw, conf->power_level);
 	if (err)
 	{
@@ -459,72 +618,62 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	__be32 tmp;
     unsigned int word, bssid[2];
 
-	digi_dbg("hw_config_intf called\n");
-	digi_dbg("bssid: %08x, conf->ssid_len = %d\n", *((uint32_t *) conf->bssid), conf->ssid_len);
-    bssid[0] = conf->bssid[ 3 ] | conf->bssid[ 2 ] << 8 | conf->bssid[ 1 ] << 16 | conf->bssid[ 0 ] << 24;
-    bssid[1] = conf->bssid[ 5 ] << 16 | conf->bssid[ 4 ] << 24;
-    if ((bssid[0] == 0) && (bssid[1] == 0))
-    {
-        /*
-         * If we come here, then the MAC layer is telling us to set a 0
-         * SSID.  In this case, we really want to set the SSID to the broadcast
-         * address so that we receive broadcasts.
-         */
-        bssid[0] = 0xffffffff;
-        bssid[1] = 0xffffffff;
-    }
-    digi->write_reg(digi, MAC_BSS_ID0, bssid[0]);
-    digi->write_reg(digi, MAC_BSS_ID1, bssid[1]);
-
-	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
-
-	if (conf->ssid_len) 
+	digi_dbg("conf->changed = %d\n", conf->changed);
+	if (conf->changed & IEEE80211_IFCC_BSSID)
 	{
-	    int i;
-	    
-		digi_dbg("setting ssid=%s\n", conf->ssid);
-        for (i = 0; i < conf->ssid_len; i += 4)
+    	digi_dbg("bssid: %08x, conf->ssid_len = %d\n", *((uint32_t *) conf->bssid), conf->ssid_len);
+        bssid[0] = conf->bssid[ 3 ] | conf->bssid[ 2 ] << 8 | conf->bssid[ 1 ] << 16 | conf->bssid[ 0 ] << 24;
+        bssid[1] = conf->bssid[ 5 ] << 16 | conf->bssid[ 4 ] << 24;
+        if ((bssid[0] == 0) && (bssid[1] == 0))
         {
-            memcpy(&word, &conf->ssid[i], sizeof(word));
-            word = cpu_to_be32(word);
-            digi->write_reg(digi, MAC_SSID+i, word);
+            /*
+             * If we come here, then the MAC layer is telling us to set a 0
+             * SSID.  In this case, we really want to set the SSID to the broadcast
+             * address so that we receive broadcasts.
+             */
+            bssid[0] = 0xffffffff;
+            bssid[1] = 0xffffffff;
         }
-		/* along with the SSID len, set the OFDM and CCK basic rates */
-		tmp = conf->ssid_len |
-/*** TODO: Put correct values here 
-				((RATE_MASK_BASIC & RATE_MASK_OFDM) << 20) |
-				((RATE_MASK_BASIC & RATE_MASK_PSK_CCK) << 16);
-****/
-				0xff0f0000;
-
-		err = digi->write_reg(digi, MAC_SSID_LEN, tmp);
-		if (err)
-			goto done;
-	}
-
-
-#if 0
-	/* handle STA now; IBSS stuff is dealt with later in hw_beacon_update */
-	if (vif->type !=  IEEE80211_IF_TYPE_IBSS) {
-		/* disable TBTT/ATIM interrupts */
-		digi->irq_mask &= ~(BB_IRQ_MASK_TBTT | BB_IRQ_MASK_ATIM);
-		err = digi->write_reg(digi, BB_IRQ_MASK, digi->irq_mask);
-		if (err)
-			goto done;
-
-		/* disable IBSS mode */
-		err = digi->write_reg(digi, MAC_CTL,
-				~(MAC_CTL_BEACON_TX|MAC_CTL_IBSS) & digi->read_reg(digi, MAC_CTL));
-		if (err)
-			goto done;
-
-		/* disable HW AES (until set_key is called) */
-		err = digi->write_reg(digi, MAC_CTL, MAC_CTL_AES_DISABLE | digi->read_reg(digi, MAC_CTL));
-		if (err)
-			goto done;
-	}
-#endif
-done:
+        digi->write_reg(digi, MAC_BSS_ID0, bssid[0], op_write);
+        digi->write_reg(digi, MAC_BSS_ID1, bssid[1], op_write);
+    
+    	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
+    }
+    if (conf->changed & IEEE80211_IFCC_SSID)
+    {
+    	if (conf->ssid_len) 
+    	{
+    	    int i;
+    	    
+    		digi_dbg("setting ssid=%s\n", conf->ssid);
+            for (i = 0; i < conf->ssid_len; i += 4)
+            {
+                memcpy(&word, &conf->ssid[i], sizeof(word));
+                word = cpu_to_be32(word);
+                digi->write_reg(digi, MAC_SSID+i, word, op_write);
+            }
+    	}
+		tmp = digi->read_reg(digi, MAC_SSID_LEN) & ~MAC_SSID_LEN_MASK;
+        tmp |= conf->ssid_len;
+		err = digi->write_reg(digi, MAC_SSID_LEN, tmp, op_write);
+    }
+    if (conf->changed & IEEE80211_IFCC_BEACON)
+    {
+        struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
+        struct ieee80211_rate rate;
+        
+        rate.bitrate = 10;              /* beacons always sent at 1 Megabit*/
+        skb_push(beacon, TX_HEADER_LENGTH);
+        phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate, 0);
+        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
+        digi->load_beacon(digi, beacon->data, beacon->len);
+        digi_dbg("Beacon has been loaded\n");
+        /* TODO: digi->beacon.enabled should be set by IEEE80211_IFCC_BEACON_ENABLED
+                 when we update to latest mac80211 */ digi->beacon.enabled = true;
+        err = enableIbssSupport(digi, vif->type);
+        dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
+    }
+    
 	return err;
 }
 
@@ -544,10 +693,17 @@ static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		struct ieee80211_bss_conf *conf, u32 changed)
 {
 	struct piper_priv *digi = hw->priv;
+	unsigned int reg;
 	
 	digi_dbg("hw_bss_changed called\n");
 	if (changed & BSS_CHANGED_ASSOC)
+	{
 		set_status_led(hw, conf->assoc ? 1 : 0);
+    }
+    if (changed & BSS_CHANGED_ERP_CTS_PROT)
+    {
+        digi->bssWantCtsProtection = conf->use_cts_prot;
+    }
     if (changed & BSS_CHANGED_ERP_PREAMBLE)
     {
 #define WANT_SHORT_PREAMBLE_SUPPORT     (0)
@@ -555,14 +711,14 @@ static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 #if WANT_SHORT_PREAMBLE_SUPPORT
         if (conf->use_short_preamble)
         {
-            digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE | digi->read_reg(digi, BB_GENERAL_CTL));
+            digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
         }
         else
         {
-            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE & digi->read_reg(digi, BB_GENERAL_CTL));
+            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
         }
 #else
-            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE & digi->read_reg(digi, BB_GENERAL_CTL));
+            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
 #endif
     }
     if (changed & BSS_CHANGED_BASIC_RATES)
@@ -575,62 +731,38 @@ static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
         
         word |= ofdm << MAC_OFDM_BRS_SHIFT;
         word |= psk << MAC_PSK_BRS_SHIFT;
-        digi->write_reg(digi, MAC_SSID_LEN, word);
+        digi->write_reg(digi, MAC_SSID_LEN, word, op_write);
         digi_dbg("BRS mask set to 0x%8.8X\n", word);
+        if (ofdm == 0)
+        {
+            /*
+             * Disable ofdm receiver if no ofdm rates supported.
+             */
+            digi->write_reg(digi, BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN, op_and);
+        }
+        else
+        {
+            /*
+             * Enable ofdm receiver if any ofdm rates supported.
+             */
+            digi->write_reg(digi, BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN, op_or);
+        }
+            
     }
-        
+    reg = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_DTIM_PERIOD_MASK;
+    reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
+    digi->write_reg(digi, MAC_DTIM_PERIOD, reg, op_write);
+    reg = digi->read_reg(digi, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
+    reg |= conf->beacon_int << 16;
+    digi->write_reg(digi, MAC_CFP_ATIM, reg, op_write);
 
 }
 
+
 #if 0
-/*
- * When in IBSS mode, if we update the beacon we should tell the hardware
- * about it (which is generating beacons for us)
- */
-static int hw_beacon_update(struct ieee80211_hw *hw, struct sk_buff *skb,
-		struct ieee80211_tx_control *ctl)
+static int expand_aes_key(struct ieee80211_key_conf *key, u32 *expandedKey)
 {
-	digi_dbg("hw_beacon_update called\n");
-#if 0
-	struct piper_priv *digi = hw->priv;
-	struct ieee80211_mgmt *mgmt;
-
-	mgmt = (struct ieee80211_mgmt *) skb->data;
-
-	/* set beacon and ATIM intervals */
-	digi->write_reg(digi, MAC_CFP_ATIM, /*atim*/0 |
-			mgmt->u.beacon.beacon_int << 16);
-
-	/* writing beacon frame to beacon buffer */
-	digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_BEACON_EN | digi->read_reg(digi, BB_GENERAL_CTL));
-
-	/* prepare the beacon frame, and send it off to the tx thread */
-	phy_set_plcp(skb, ctl->tx_rate, 0);
-	digi->write_fifo(digi, skb, 0);
-
-	digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_BEACON_EN & digi->read_reg(digi, BB_GENERAL_CTL));
-
-	/* enable TBTT and ATIM interrupts */
-	digi->irq_mask |= BB_IRQ_MASK_TBTT | BB_IRQ_MASK_ATIM;
-	digi->write_reg(digi, BB_IRQ_MASK, digi->irq_mask);
-
-	/* enable IBSS mode, turn off HW AES decryption. */
-	digi->write_reg(digi, MAC_CTL, MAC_CTL_IBSS | MAC_CTL_BEACON_TX
-			| MAC_CTL_AES_DISABLE | digi->read_reg(digi, MAC_CTL));
-	
-	/* last register write is synchronous, so skb should've been
-	 * processed by now */
-	kfree_skb(skb);
-#endif
-	return 0;
-}
-#endif
-
-static int expand_aes_key(struct ieee80211_key_conf *key, struct sk_buff *skb)
-{
-#if 0
 	struct crypto_aes_ctx aes;
-	uint32_t *ptr, *ctx_ptr;
 	int err, i;
 
 	if (key->keylen != AES_KEYSIZE_128)
@@ -640,78 +772,274 @@ static int expand_aes_key(struct ieee80211_key_conf *key, struct sk_buff *skb)
 	if (err)
 		return -EOPNOTSUPP;
 
-	/* expanded key gives us 176 bytes (10 rounds * 16  + 16) */
-	ptr = (uint32_t *) skb_put(skb, 176);
-	ctx_ptr = (uint32_t *) aes.key_enc;
-
-	/* copy the key int the skb */
-	for (i = 0; i < skb->len / sizeof(uint32_t); i++) {
-		*ptr = cpu_to_le32(*ctx_ptr);
-		ptr++;
-		ctx_ptr++;
-	}
-#endif
+    memcpy(expandedKey, aes.key_enc, EXPANDED_KEY_LENGTH);
+    for (i = 0; i < (EXPANDED_KEY_LENGTH / sizeof(u32)); i++)
+    {
+        expandedKey[i] = cpu_to_be32(expandedKey[i]);
+    }
 	return 0;
 }
+#endif
+/* CCMP encryption data */
+static const u32 te4[256] = {
+	0x63636363U, 0x7c7c7c7cU, 0x77777777U, 0x7b7b7b7bU,
+	0xf2f2f2f2U, 0x6b6b6b6bU, 0x6f6f6f6fU, 0xc5c5c5c5U,
+	0x30303030U, 0x01010101U, 0x67676767U, 0x2b2b2b2bU,
+	0xfefefefeU, 0xd7d7d7d7U, 0xababababU, 0x76767676U,
+	0xcacacacaU, 0x82828282U, 0xc9c9c9c9U, 0x7d7d7d7dU,
+	0xfafafafaU, 0x59595959U, 0x47474747U, 0xf0f0f0f0U,
+	0xadadadadU, 0xd4d4d4d4U, 0xa2a2a2a2U, 0xafafafafU,
+	0x9c9c9c9cU, 0xa4a4a4a4U, 0x72727272U, 0xc0c0c0c0U,
+	0xb7b7b7b7U, 0xfdfdfdfdU, 0x93939393U, 0x26262626U,
+	0x36363636U, 0x3f3f3f3fU, 0xf7f7f7f7U, 0xccccccccU,
+	0x34343434U, 0xa5a5a5a5U, 0xe5e5e5e5U, 0xf1f1f1f1U,
+	0x71717171U, 0xd8d8d8d8U, 0x31313131U, 0x15151515U,
+	0x04040404U, 0xc7c7c7c7U, 0x23232323U, 0xc3c3c3c3U,
+	0x18181818U, 0x96969696U, 0x05050505U, 0x9a9a9a9aU,
+	0x07070707U, 0x12121212U, 0x80808080U, 0xe2e2e2e2U,
+	0xebebebebU, 0x27272727U, 0xb2b2b2b2U, 0x75757575U,
+	0x09090909U, 0x83838383U, 0x2c2c2c2cU, 0x1a1a1a1aU,
+	0x1b1b1b1bU, 0x6e6e6e6eU, 0x5a5a5a5aU, 0xa0a0a0a0U,
+	0x52525252U, 0x3b3b3b3bU, 0xd6d6d6d6U, 0xb3b3b3b3U,
+	0x29292929U, 0xe3e3e3e3U, 0x2f2f2f2fU, 0x84848484U,
+	0x53535353U, 0xd1d1d1d1U, 0x00000000U, 0xededededU,
+	0x20202020U, 0xfcfcfcfcU, 0xb1b1b1b1U, 0x5b5b5b5bU,
+	0x6a6a6a6aU, 0xcbcbcbcbU, 0xbebebebeU, 0x39393939U,
+	0x4a4a4a4aU, 0x4c4c4c4cU, 0x58585858U, 0xcfcfcfcfU,
+	0xd0d0d0d0U, 0xefefefefU, 0xaaaaaaaaU, 0xfbfbfbfbU,
+	0x43434343U, 0x4d4d4d4dU, 0x33333333U, 0x85858585U,
+	0x45454545U, 0xf9f9f9f9U, 0x02020202U, 0x7f7f7f7fU,
+	0x50505050U, 0x3c3c3c3cU, 0x9f9f9f9fU, 0xa8a8a8a8U,
+	0x51515151U, 0xa3a3a3a3U, 0x40404040U, 0x8f8f8f8fU,
+	0x92929292U, 0x9d9d9d9dU, 0x38383838U, 0xf5f5f5f5U,
+	0xbcbcbcbcU, 0xb6b6b6b6U, 0xdadadadaU, 0x21212121U,
+	0x10101010U, 0xffffffffU, 0xf3f3f3f3U, 0xd2d2d2d2U,
+	0xcdcdcdcdU, 0x0c0c0c0cU, 0x13131313U, 0xececececU,
+	0x5f5f5f5fU, 0x97979797U, 0x44444444U, 0x17171717U,
+	0xc4c4c4c4U, 0xa7a7a7a7U, 0x7e7e7e7eU, 0x3d3d3d3dU,
+	0x64646464U, 0x5d5d5d5dU, 0x19191919U, 0x73737373U,
+	0x60606060U, 0x81818181U, 0x4f4f4f4fU, 0xdcdcdcdcU,
+	0x22222222U, 0x2a2a2a2aU, 0x90909090U, 0x88888888U,
+	0x46464646U, 0xeeeeeeeeU, 0xb8b8b8b8U, 0x14141414U,
+	0xdedededeU, 0x5e5e5e5eU, 0x0b0b0b0bU, 0xdbdbdbdbU,
+	0xe0e0e0e0U, 0x32323232U, 0x3a3a3a3aU, 0x0a0a0a0aU,
+	0x49494949U, 0x06060606U, 0x24242424U, 0x5c5c5c5cU,
+	0xc2c2c2c2U, 0xd3d3d3d3U, 0xacacacacU, 0x62626262U,
+	0x91919191U, 0x95959595U, 0xe4e4e4e4U, 0x79797979U,
+	0xe7e7e7e7U, 0xc8c8c8c8U, 0x37373737U, 0x6d6d6d6dU,
+	0x8d8d8d8dU, 0xd5d5d5d5U, 0x4e4e4e4eU, 0xa9a9a9a9U,
+	0x6c6c6c6cU, 0x56565656U, 0xf4f4f4f4U, 0xeaeaeaeaU,
+	0x65656565U, 0x7a7a7a7aU, 0xaeaeaeaeU, 0x08080808U,
+	0xbabababaU, 0x78787878U, 0x25252525U, 0x2e2e2e2eU,
+	0x1c1c1c1cU, 0xa6a6a6a6U, 0xb4b4b4b4U, 0xc6c6c6c6U,
+	0xe8e8e8e8U, 0xddddddddU, 0x74747474U, 0x1f1f1f1fU,
+	0x4b4b4b4bU, 0xbdbdbdbdU, 0x8b8b8b8bU, 0x8a8a8a8aU,
+	0x70707070U, 0x3e3e3e3eU, 0xb5b5b5b5U, 0x66666666U,
+	0x48484848U, 0x03030303U, 0xf6f6f6f6U, 0x0e0e0e0eU,
+	0x61616161U, 0x35353535U, 0x57575757U, 0xb9b9b9b9U,
+	0x86868686U, 0xc1c1c1c1U, 0x1d1d1d1dU, 0x9e9e9e9eU,
+	0xe1e1e1e1U, 0xf8f8f8f8U, 0x98989898U, 0x11111111U,
+	0x69696969U, 0xd9d9d9d9U, 0x8e8e8e8eU, 0x94949494U,
+	0x9b9b9b9bU, 0x1e1e1e1eU, 0x87878787U, 0xe9e9e9e9U,
+	0xcecececeU, 0x55555555U, 0x28282828U, 0xdfdfdfdfU,
+	0x8c8c8c8cU, 0xa1a1a1a1U, 0x89898989U, 0x0d0d0d0dU,
+	0xbfbfbfbfU, 0xe6e6e6e6U, 0x42424242U, 0x68686868U,
+	0x41414141U, 0x99999999U, 0x2d2d2d2dU, 0x0f0f0f0fU,
+	0xb0b0b0b0U, 0x54545454U, 0xbbbbbbbbU, 0x16161616U,
+};
+
+static const u32 rcon[] = {
+	/* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
+	0x01000000, 0x02000000,
+	0x04000000, 0x08000000,
+	0x10000000, 0x20000000,
+	0x40000000, 0x80000000,
+	0x1B000000, 0x36000000,
+};
+
+/***********************************************************************
+ * @Function: dw_aes_set_encrypt_key
+ * @Return:
+ * @Descr: Expands the cipher key into the encryption key schedule
+ ***********************************************************************/
+static int expand_aes_key(struct ieee80211_key_conf *key,
+		u32 *rk)
+{
+	int i = 0;
+	u32 temp;
+	unsigned char *user_key = key->key;
+	int bits = key->keylen * 8;
+
+	if (!user_key || !key)
+		return -1;
+	if (bits != 128 && bits != 192 && bits != 256)
+		return -2;
+
+    memset(rk, 0, EXPANDED_KEY_LENGTH);
+	rk[0] = GETU32(user_key    );
+	rk[1] = GETU32(user_key +  4);
+	rk[2] = GETU32(user_key +  8);
+	rk[3] = GETU32(user_key + 12);
+	if (bits == 128) {
+		while (1) {
+			temp  = rk[3];
+			rk[4] = rk[0] ^
+				(te4[(temp >> 16) & 0xff] & 0xff000000) ^
+				(te4[(temp >>  8) & 0xff] & 0x00ff0000) ^
+				(te4[(temp     ) & 0xff] & 0x0000ff00) ^
+				(te4[(temp >> 24)       ] & 0x000000ff) ^
+				rcon[i];
+			rk[5] = rk[1] ^ rk[4];
+			rk[6] = rk[2] ^ rk[5];
+			rk[7] = rk[3] ^ rk[6];
+			if (++i == 10) {
+				return 0;
+			}
+			rk += 4;
+		}
+	}
+	rk[4] = GETU32(user_key + 16);
+	rk[5] = GETU32(user_key + 20);
+	if (bits == 192) {
+		while (1) {
+			temp = rk[ 5];
+			rk[ 6] = rk[ 0] ^
+				(te4[(temp >> 16) & 0xff] & 0xff000000) ^
+				(te4[(temp >>  8) & 0xff] & 0x00ff0000) ^
+				(te4[(temp     ) & 0xff] & 0x0000ff00) ^
+				(te4[(temp >> 24)       ] & 0x000000ff) ^
+				rcon[i];
+			rk[ 7] = rk[ 1] ^ rk[ 6];
+			rk[ 8] = rk[ 2] ^ rk[ 7];
+			rk[ 9] = rk[ 3] ^ rk[ 8];
+			if (++i == 8) {
+				return 0;
+			}
+			rk[10] = rk[ 4] ^ rk[ 9];
+			rk[11] = rk[ 5] ^ rk[10];
+			rk += 6;
+		}
+	}
+	rk[6] = GETU32(user_key + 24);
+	rk[7] = GETU32(user_key + 28);
+	if (bits == 256) {
+		while (1) {
+			temp = rk[ 7];
+			rk[ 8] = rk[ 0] ^
+				(te4[(temp >> 16) & 0xff] & 0xff000000) ^
+				(te4[(temp >>  8) & 0xff] & 0x00ff0000) ^
+				(te4[(temp     ) & 0xff] & 0x0000ff00) ^
+				(te4[(temp >> 24)       ] & 0x000000ff) ^
+				rcon[i];
+			rk[ 9] = rk[ 1] ^ rk[ 8];
+			rk[10] = rk[ 2] ^ rk[ 9];
+			rk[11] = rk[ 3] ^ rk[10];
+			if (++i == 7) {
+				return 0;
+			}
+			temp = rk[11];
+			rk[12] = rk[ 4] ^
+				(te4[(temp >> 24)       ] & 0xff000000) ^
+				(te4[(temp >> 16) & 0xff] & 0x00ff0000) ^
+				(te4[(temp >>  8) & 0xff] & 0x0000ff00) ^
+				(te4[(temp     ) & 0xff] & 0x000000ff);
+			rk[13] = rk[ 5] ^ rk[12];
+			rk[14] = rk[ 6] ^ rk[13];
+			rk[15] = rk[ 7] ^ rk[14];
+
+			rk += 8;
+		}
+	}
+	return 0;
+}
+
 
 static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		const u8 *local_address, const u8 *address,
 		struct ieee80211_key_conf *key)
 {
 	int err = -EOPNOTSUPP;
-	digi_dbg("hw_set_key called\n");
-#if 0
 	struct piper_priv *digi = hw->priv;
-	struct sk_buff *skb;
 
-	switch (key->alg) {
-	case ALG_CCMP:
-		break;
-	default:
-		digi_dbg("ignoring ALG type %d\n", key->alg);
-		/* only hardware accel support for AES/CCMP, no WEP/TKIP */
-		return -EOPNOTSUPP;
+/** TODO: Remove this */ goto hw_set_key_done;
+	if (cmd == SET_KEY)
+	{
+	    unsigned char *k = key->key;
+	    
+	    digi_dbg("index = %d, %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n", key->keyidx, address[0], address[1], address[2], address[3], address[4], address[5]);
+	    digi_dbg("key = %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X  %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X \n", 
+	    k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], k[9], k[10], k[11], k[12], k[13], k[14], k[15]);
+	    
 	}
+	else
+	{
+	    digi_dbg("disable key index = %d\n", key->keyidx);
+	}
+
+    if ((key->alg != ALG_CCMP) || (key->keyidx >= PIPER_MAX_KEYS))
+    {
+        /*
+         * If we come here, then mac80211 was trying to set a key for some
+         * algorithm other than AES, or trying to set a key index greater
+         * than 3.  We only support AES, and only 4 keys.
+         */
+        err = -EOPNOTSUPP;
+        goto hw_set_key_done;
+    }
 
 	key->hw_key_idx = key->keyidx;
-	if (cmd == SET_KEY) {
-		skb = dev_alloc_skb(TX_FIFO_SIZE);
-		if (!skb)
-			return -ENOMEM;
-
-		err = expand_aes_key(key, skb);
-		if (err)
-			goto done;
-
-		/* turn off AES DISABLE and the key-specific disable */
-		err = digi->write_reg(digi, MAC_CTL, ~(MAC_CTL_AES_DISABLE |
-				(MAC_CTL_KEY0_DISABLE << key->keyidx)) & digi->read_reg(digi, MAC_CTL));
-		if (err)
-			goto done;
-
-		/* select mode 1 and load AES key */
-		err = digi->write_reg(digi, BB_AES_CTL, BB_AES_CTL_AES_MODE |
-				BB_AES_CTL_KEY_LOAD | key->keyidx);
-
-		/* write plaintext key, IV, and data to AES FIFO */
-		digi->write_aes_key(digi, skb);
-		key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
-
-		kfree_skb(skb);
-	} else {
+	if (cmd == SET_KEY) 
+	{
+		err = expand_aes_key(key, digi->key[key->keyidx].expandedKey);
+		if ((!digi->key[key->keyidx].valid) && (err == 0))
+		{
+		    digi->AESKeyCount++;
+		}
+		digi->key[key->keyidx].txPn = 0;
+		digi->key[key->keyidx].rxPn = 0;
+		digi->key[key->keyidx].valid = (err == 0);
+	} 
+	else 
+	{
 		/* disable key */
-		digi_dbg("disabling keyidx=%d\n", key->keyidx);
-		digi->write_reg(digi, MAC_CTL,
-		MAC_CTL_KEY0_DISABLE << key->keyidx | digi->read_reg(digi, MAC_CTL));
+		if (digi->key[key->keyidx].valid)
+		{
+		    digi->AESKeyCount--;
+		}
+		digi->key[key->keyidx].valid = false;
 		err = 0;
 	}
+	
+    if (digi->AESKeyCount > 0)
+    {
+        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_AES_DISABLE, op_and);
+    }
+    else
+    {
+        digi->write_reg(digi, MAC_CTL, MAC_CTL_AES_DISABLE, op_or);
+    }
 
-done:
+hw_set_key_done:
 	if (err)
 		printk(KERN_ERR PIPER_DRIVER_NAME ": unable to set AES key\n");
-#endif
-	return err;
+
+    return err;
 }
+
+
+/*
+ * Return nonzero if we sent the last beacon on an IBSS.
+ * Note the function result is not 100% reliable.
+ */
+int hw_tx_last_beacon(struct ieee80211_hw *hw)
+{
+    struct piper_priv *digi = hw->priv;
+
+    digi_dbg("returning %d.\n", digi->beacon.weSentLastOne ? 1 : 0);
+    
+    return digi->beacon.weSentLastOne ? 1 : 0;
+}
+
 
 const struct ieee80211_ops hw_ops = {
 	.tx = hw_tx,
@@ -723,10 +1051,8 @@ const struct ieee80211_ops hw_ops = {
 	.config_interface = hw_config_intf,
 	.configure_filter = hw_configure_filter,
 	.bss_info_changed = hw_bss_changed,
-#if 0
-	.beacon_update = hw_beacon_update,
+	.tx_last_beacon = hw_tx_last_beacon,
 	.set_key = hw_set_key,
-#endif
 };
 
 int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)

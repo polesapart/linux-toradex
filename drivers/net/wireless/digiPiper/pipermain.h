@@ -19,6 +19,8 @@
 	do { } while (0)
 #endif
 
+typedef u64 u48;
+
 
 #define PIPER_RESET_GPIO    (92)
 #define PIPER_IRQ_GPIO      (104)
@@ -49,7 +51,43 @@ struct digi_rf_ops {
 	uint8_t n_bands;
 };
 
+/*
+ * This structure holds the information we need to support
+ * H/W AES encryption.
+ */
+#define EXPANDED_KEY_LENGTH     (176)           /* length of expanded AES key */
+#define PIPER_MAX_KEYS      (4)
+#define AES_BLOB_LENGTH     (48)                /* length of AES IV and headers */
+struct piperKeyInfo
+{
+    bool valid;                 /* indicates if this record is valid */
+    u8 addr[ETH_ALEN];          /* MAC address associated with key */
+    u32 expandedKey[EXPANDED_KEY_LENGTH / sizeof(u32)];
+    u48 txPn;                   /* packet number for transmit*/
+    u48 rxPn;                   /* expected receive packet number */
+};
 
+/*
+ * Useful defines for AES.
+ */
+#define	PIPER_EXTIV_SIZE	8		// IV and extended IV size
+#define	MIC_SIZE			8		// Message integrity check size
+#define	DATA_SIZE			28		// Data frame header+FCS size
+#define	CCMP_SIZE			(PIPER_EXTIV_SIZE+MIC_SIZE)	// Total CCMP size
+
+typedef enum 
+{
+    op_write,
+    op_or,
+    op_and
+} piperRegisterWriteOperation_t;
+
+typedef struct
+{
+    bool loaded;
+    bool enabled;
+    bool weSentLastOne;
+} piperBeaconInfo_t;
 
 /**
  * piper_priv - 
@@ -65,35 +103,44 @@ struct piper_priv {
     bool wantRts;                   /* set if we should send RTS on current TX frame*/
     bool wantCts;                   /* set if we should send CTS to self on current TX frame*/
     struct ieee80211_rate *rtsCtsRate;
+    bool bssWantCtsProtection;      /* set if configured for CTS protection */
     unsigned int rxOverruns;
     unsigned int irq;
     bool isRadioOn;
-        
+    struct piperKeyInfo key[PIPER_MAX_KEYS];
+    unsigned int AESKeyCount;
+    piperBeaconInfo_t beacon;
+    
     void* __iomem vbase;
 	struct sk_buff *read_skb;
 	struct sk_buff *txPacket;
 	unsigned int txMaxRetries;
 	unsigned int txRetryIndex;
+	bool useAesHwEncryption;
+	unsigned int txAesKey;
+	u32 txAesBlob[AES_BLOB_LENGTH / sizeof(u32)];   /* used to store AES IV and headers*/
+	u8 txExtIV[PIPER_EXTIV_SIZE];
     spinlock_t irqMaskLock;
-    spinlock_t rxReadyCountLock;
+    spinlock_t rxRegisterAccessLock;
     
 	struct ieee80211_hw *hw;
 	const char *drv_name;
 
-	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val);
+	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val, piperRegisterWriteOperation_t op);
 	unsigned int (*read_reg)(struct piper_priv *, uint8_t reg);
 	int (*write)(struct piper_priv *, uint8_t addr, uint8_t *buf, int len);
 	int (*write_fifo)(struct piper_priv *, unsigned char *buffer, unsigned int length, unsigned int flags);
-	int (*write_aes)(struct piper_priv *, unsigned char *buffer, unsigned int length, int keyidx, unsigned int flags);
+	int (*write_aes)(struct piper_priv *, unsigned char *buffer, unsigned int length, unsigned int flags);
 	int (*write_aes_key)(struct piper_priv *, struct sk_buff *skb);
 	int (*initHw)(struct piper_priv *);
 	void (*setIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
 	void (*clearIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
+	u16 (*getNextBeaconBackoff)(void);
+	int (*load_beacon)(struct piper_priv *, unsigned char *, unsigned int);
 
 	uint16_t irq_mask;
 	uint8_t bssid[ETH_ALEN];
 	uint8_t ourMacAddress[ETH_ALEN];
-
 	int channel;
 	uint8_t tx_power;
 	enum nl80211_iftype if_type;
@@ -109,5 +156,8 @@ extern void piper_unregister_hw(struct piper_priv *priv);
 extern void piper_free_hw(struct piper_priv *priv);
 
 extern void piperTxRetryTaskletEntry (unsigned long context);
+extern bool piperPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
+                                    u8 *aesBlob, u8 *frame, u32 length, bool isTransmit);
+
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * minimal.c
+ * piper.c
  *
  * Copyright (C) 2008 by Digi International Inc.
  * All rights reserved.
@@ -30,6 +30,9 @@
 #define MAC_REG_SIZE    (0x100)             /* range of MAC registers*/
 #define MAC_CTRL_BASE   (volatile unsigned int *) (MAC_REG_BASE + (0x40))
 
+#define WANT_TO_RECEIVE_FRAMES_IN_ISR   (1)
+
+
 #define WANT_DEBUG_THREAD   (0)
 
 
@@ -40,14 +43,14 @@ static struct piper_priv *localCopyDigi = NULL;
 #define DUMP_WORDS_MAX      (700)
 static unsigned int dumpWordsWord[DUMP_WORDS_MAX];
 static unsigned int dumpWordsCount = 0;
-static void dumpWordsAdd(unsigned int word)
+void dumpWordsAdd(unsigned int word)
 {
     if (dumpWordsCount < DUMP_WORDS_MAX)
     {
         dumpWordsWord[dumpWordsCount++] = word;
     }
 }
-static void dumpWordsDump(void)
+void dumpWordsDump(void)
 {
     unsigned int *p = dumpWordsWord;
     unsigned int wordsToGo = dumpWordsCount;
@@ -202,51 +205,108 @@ void dumpRegisters(struct piper_priv *digi, unsigned int regs)
     }
 }       
 
+static void clearIrqMaskBit(struct piper_priv *piper, unsigned int bits) 
+{
+    piper->write_reg(piper, BB_IRQ_MASK, ~bits, op_and);
+}
+
+static void setIrqMaskBit(struct piper_priv *piper, unsigned int bits) 
+{
+    piper->write_reg(piper, BB_IRQ_MASK, bits, op_or);
+}
+
+
 
 /*
- * TODO: make a fast version of this which works for single register writes
+ * This routine writes data into a FIFO.  For best performance, there are
+ * 3 different implementations of this routine below.  The if statements
+ * select the implementation depending upon if the data is aligned and if
+ * we are writing multiple words of data.
  */
 static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
 		int len)
 {
+#define WAIT_FOR_AES        while (    (addr == BB_AES_FIFO)        \
+                                    && (ioread32(digi->vbase + BB_RSSI) & BB_RSSI_EAS_FIFO_FULL) != 0)
+                                    
     int wordIndex;
     int wordLength = len / sizeof(unsigned int);
-                        
+    unsigned long flags;
+    bool loadingBeacon = (addr == BEACON_FIFO);
+    
+    spin_lock_irqsave(&digi->rxRegisterAccessLock, flags);
+
+    if (loadingBeacon)
+    {
+        /*
+         * If we are loading a new beacon, then adjust the address to point
+         * to the data FIFO, and set the beacon enable bit which tells piper
+         * to put this data into the beacon buffer.
+         */
+        addr = BB_DATA_FIFO;
+        iowrite32(ioread32(digi->vbase + BB_GENERAL_CTL) | BB_GENERAL_CTL_BEACON_EN,
+                  digi->vbase + BB_GENERAL_CTL);
+    }
+    
     if (((unsigned) (buf) & 0x3) == 0)
     {
+        /*
+         * We come here if the data is 32-bit aligned.  We can dispense 
+         * with memcpys
+         */
         if (wordLength == 1)
         {
+            /*
+             * Only 1 word of data, so just one write.
+             */
             unsigned int *word = (unsigned int *) buf;
             
+            WAIT_FOR_AES;
             iowrite32(cpu_to_be32(*word), digi->vbase + addr);
+/* TODO: Remove this */ dumpWordsAdd(cpu_to_be32(*word));
             len -= 4;
         }
         else
         {
+            /*
+             * More than one word of data, so set up a for loop.
+             */
             for (wordIndex = 0; wordIndex < wordLength; wordIndex++)
             {
                 unsigned int *word = (unsigned int *) buf;
                 
+                WAIT_FOR_AES;
                 iowrite32(cpu_to_be32(word[wordIndex]), digi->vbase + addr);
+/* TODO: Remove this */ dumpWordsAdd(cpu_to_be32(word[wordIndex]));
                 len -= 4;
             }
         }
     }
     else
     {
+        /*
+         * Ugh!  Data is not 32-bit aligned.  We have to memcpy it!
+         */
         for (wordIndex = 0; wordIndex < wordLength; wordIndex++)
         {
             unsigned int word;
             
             memcpy(&word, &buf[wordIndex*sizeof(unsigned int)], sizeof(unsigned int));
             
+            WAIT_FOR_AES;
             iowrite32(cpu_to_be32(word), digi->vbase + addr);
+/* TODO: Remove this */ dumpWordsAdd(cpu_to_be32(word));
             len -= 4;
         }
     }
   
     if (len)
     {
+        /*
+         * Double Ugh!  There was left over data at the end.  We have to write
+         * the leftover data into the upper bytes of the last word, making 
+         * sure the unused bytes are set to zero.
+         */
         unsigned int word;
         
         memcpy(&word, &buf[wordLength*sizeof(unsigned int)], sizeof(unsigned int));
@@ -266,17 +326,67 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
                 digi_dbg("len = %d at end of piper_write\n", len);
                 break;
         }
+        WAIT_FOR_AES;
         iowrite32(word, digi->vbase + addr);
+/* TODO: Remove this */ dumpWordsAdd(word);
     }
 
+    if (loadingBeacon)
+    {
+        /*
+         * If we just loaded a beacon, then don't forget to turn off the 
+         * load beacon bit.
+         */
+        iowrite32(ioread32(digi->vbase + BB_GENERAL_CTL) & ~BB_GENERAL_CTL_BEACON_EN,
+                  digi->vbase + BB_GENERAL_CTL);
+        digi->beacon.loaded = true;
+    }
+
+    spin_unlock_irqrestore(&digi->rxRegisterAccessLock, flags);
+    
     return 0;
 }
 
 
-static int piper_write_reg(struct piper_priv *digi, uint8_t reg, uint32_t val)
+/*
+ * Write a value to a Piper register.  This function takes an operations
+ * parameter that allows you to specify a simple write, a logical-and operation, or
+ * a logical-or operation.  There are two reasons for this:
+ *
+ * 1.  We want to maintain some compatibility with the USB driven 
+ *     WiWave which actually uses these operations.
+ * 2.  If we do the logical operations seperately, for example read a register,
+ *     or the value with the result, and then write, we run the risk of
+ *     some other thread interrupting us between the read and the write.
+ *     By doing both in this function we can protect the operation with
+ *     a spinlock.
+ */
+static int piper_write_reg(struct piper_priv *digi, uint8_t reg, uint32_t val, 
+                            piperRegisterWriteOperation_t op)
 {    
-    /* TODO: Eliminate this */
-    iowrite32(val, digi->vbase + reg);
+    unsigned long flags;
+    
+    spin_lock_irqsave(&digi->rxRegisterAccessLock, flags);
+
+    switch (op)
+    {
+        case op_write:
+            iowrite32(val, digi->vbase + reg);
+            break;
+        case op_or:
+            iowrite32(val | ioread32(digi->vbase + reg), digi->vbase + reg);
+            break;
+        case op_and:
+            iowrite32(val & ioread32(digi->vbase + reg), digi->vbase + reg);
+            break;
+        default:
+            digi_dbg("Invalid operation %d passed to piper_write_reg\n", op);
+            WARN_ON(1);
+            break;
+    }
+
+    spin_unlock_irqrestore(&digi->rxRegisterAccessLock, flags);
+
 	return 0;
 }
 
@@ -294,7 +404,7 @@ static int prepare_aes_data(struct piper_priv *digi, struct sk_buff *skb,
 	int hdrlen, err;
 
 	/* select mode 1 and key */
-	err = digi->write_reg(digi, BB_AES_CTL, BB_AES_CTL_AES_MODE | keyidx);
+	err = digi->write_reg(digi, BB_AES_CTL, BB_AES_CTL_AES_MODE | keyidx, op_write);
 	if (err) {
 		digi_dbg("unable to set aes mode/key\n");
 		goto done;
@@ -340,11 +450,11 @@ done:
 
 
 static int __piper_write_fifo(struct piper_priv *digi, unsigned char *buffer,
-		unsigned int length, int hw_aes)
+		unsigned int length, int fifo)
 {
     uint8_t addr;
     
-    if (hw_aes)
+    if (fifo == BB_AES_FIFO)
     {
         addr = BB_AES_FIFO;
     }
@@ -357,30 +467,11 @@ static int __piper_write_fifo(struct piper_priv *digi, unsigned char *buffer,
 }
 
 
-static void clearIrqMaskBit(struct piper_priv *piper, unsigned bits)
+static int load_beacon(struct piper_priv *digi, unsigned char *buffer,
+                        unsigned int length)
 {
-    unsigned int newMask;
-    unsigned long flags;
-    
-    spin_lock_irqsave(&piper->irqMaskLock, flags);
-    newMask = piper->read_reg(piper, BB_IRQ_MASK) & (~bits);
-    piper->write_reg(piper, BB_IRQ_MASK, newMask);
-    spin_unlock_irqrestore(&piper->irqMaskLock, flags);
+    return piper_write(digi, BEACON_FIFO, buffer, length);
 }
-
-
-static void setIrqMaskBit(struct piper_priv *piper, unsigned bits)
-{
-    unsigned int newMask;
-    unsigned long flags;
-    
-    spin_lock_irqsave(&piper->irqMaskLock, flags);
-    newMask = piper->read_reg(piper, BB_IRQ_MASK) | bits;
-    piper->write_reg(piper, BB_IRQ_MASK, newMask);
-    spin_unlock_irqrestore(&piper->irqMaskLock, flags);
-}
-
-
 
 
 
@@ -389,7 +480,7 @@ static int piper_write_fifo(struct piper_priv *digi, unsigned char *buffer,
 {
 	int err;
 
-	err = __piper_write_fifo(digi, buffer, length, 0);
+	err = __piper_write_fifo(digi, buffer, length, BB_DATA_FIFO);
 	if (err)
 		goto done;
 
@@ -397,25 +488,75 @@ done:
 	return err;
 }
 
+/*
+ * This routine writes a frame using H/W AES encryption.  
+ */
 static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
-		unsigned int length, int keyidx, unsigned int flags)
+		unsigned int length, unsigned int flags)
 {
-#if 0
-	int err;
-
-	err = prepare_aes_data(digi, skb, keyidx);
-	if (err)
-		goto done;
-	err = __piper_write_fifo(digi, buffer, length, 1);
-	if (err)
-		goto done;
-
-
-done:
-	return err;
-#else
-    return 0;
-#endif
+    int result;
+    int timeout = 10000;
+    
+    /*
+     * Step 1: Wait for AES to become ready.
+     */
+    while (digi->read_reg(digi, BB_RSSI) & BB_RSSI_EAS_BUSY)
+    {
+        timeout--;
+        if (timeout == 0)
+        {
+            dumpRegisters(digi, MAIN_REGS | MAC_REGS);
+        }
+        udelay(1);
+    }
+    
+    /*
+     * Step 2: Write the unencrypted part of the frame into the normal
+     *         data FIFO.
+     */
+/* TODO: Remove this */ dumpWordsReset();
+    digi_dbg("writing %d bytes of the frame header.\n", _80211_HEADER_LENGTH + TX_HEADER_LENGTH);
+    __piper_write_fifo(digi, buffer, _80211_HEADER_LENGTH + TX_HEADER_LENGTH, 
+                        BB_DATA_FIFO);
+/* TODO: Remove this */ dumpWordsDump();    
+    digi_dbg("writing %d bytes of the EXT IV.\n", sizeof(digi->txExtIV));
+    __piper_write_fifo(digi, digi->txExtIV, sizeof(digi->txExtIV), BB_DATA_FIFO);
+/* TODO: Remove this */ dumpWordsDump();    
+    /*
+     * Step 3: Write to the AES control register.  Writing to it puts 
+     *         AES H/W engine into transmit mode.  We also make sure 
+     *         the AES mode is set correctly.
+     */
+    digi->write_reg(digi, BB_AES_CTL, 0, op_write);
+    
+    /*
+     * Step 4: Write the expanded AES key into the AES FIFO.
+     */
+    digi_dbg("writing %d bytes of the AES key.\n", EXPANDED_KEY_LENGTH);
+    __piper_write_fifo(digi, 
+                        (unsigned char *) digi->key[digi->txAesKey].expandedKey, 
+                        EXPANDED_KEY_LENGTH, BB_AES_FIFO);
+    
+/* TODO: Remove this */ dumpWordsDump();    
+    /*
+     * Step 5: Write the AES IV and headers into the AES FIFO.
+     */
+    digi_dbg("writing %d bytes of the AES blob.\n", AES_BLOB_LENGTH);
+    __piper_write_fifo(digi, (unsigned char *) digi->txAesBlob,
+                         AES_BLOB_LENGTH, BB_AES_FIFO);
+    
+/* TODO: Remove this */ dumpWordsDump();    
+    /*
+     * Step 6: Now, finally, write the part of the frame that needs to
+     *         be encrypted into the AES FIFO.
+     */
+    digi_dbg("writing %d bytes of the data frame.\n", length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH));
+    result = __piper_write_fifo(digi, &buffer[_80211_HEADER_LENGTH + TX_HEADER_LENGTH], 
+                        length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH),
+                        BB_AES_FIFO);
+/* TODO: Remove this */ dumpWordsDump();    
+    
+    return result;
 }
 
 /*
@@ -436,6 +577,12 @@ static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee8021
         || (txInfo->status.retries[FIRST_RETRY_INDEX].limit == -1)
         || (txInfo->status.retries[FIRST_RETRY_INDEX].rate_idx == -1))
     {
+        txInfo->tx_rate_idx = txInfo->status.retries[0].rate_idx - (txInfo->status.retry_count - 1);
+        if (txInfo->tx_rate_idx < 0)
+        {
+            txInfo->tx_rate_idx = 0;
+        }
+#if 0
         /*
          * At the time this driver was written, the mac80211 library was passing
          * the retry array uninitialized.  So this piece of code will default to
@@ -450,6 +597,7 @@ static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee8021
         {
             txInfo->tx_rate_idx = 0;
         }
+#endif
     }
     else
     {
@@ -521,34 +669,54 @@ static int myrand(void) {
 }
 
 /*
+ * Compute a beacon backoff time as described in section 11.1.2.2 of 802.11 spec.
+ */
+static u16 getNextBeaconBackoff(void)
+{
+#define MAX_BEACON_BACKOFF      (2 * ASLOT_TIME * DEFAULT_CW_MIN)
+
+    /*
+     * We shift the result of myrand() by 4 bits because the notes
+     * for the algorithm say that we shouldn't rely on the last few
+     * bits being random.  Other than that, we just take the random
+     * value and make sure it is less than MAX_BEACON_BACKOFF.
+     */
+    return (myrand() >> 4) % MAX_BEACON_BACKOFF;
+}
+
+
+
+/*
  * This function returns a value for the contention window in microseconds.  We
  * start with the contention window at CW_MIN and double it everytime we have to
  * retry.  
  */
-static u16 getCw(int isFirstTime)
+static u16 getCw(bool isFirstTime)
 {
-    static u16 cw = CW_MIN;
+    static u16 cw = DEFAULT_CW_MIN;
     
     if (isFirstTime)
     {
-        cw = CW_MIN;
+        cw = DEFAULT_CW_MIN;
     }
     else
     {
         cw <<= 1;
-        if (cw > CW_MAX)
+        if (cw > DEFAULT_CW_MAX)
         {
-            cw = CW_MAX;
+            cw = DEFAULT_CW_MAX;
         }
     }
     return (cw + (10*(myrand() & (cw - 1)))) & 0xffff;
 }
 
+
+
 /*
  * This function will prepend an RTS or CTS to self frame ahead of the current
  * TX frame.  This is done if the wantRts or wantCts flag is set.
  */
-void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, int aes_fifo)
+void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
 {
     unsigned int header[2];
     
@@ -562,22 +730,11 @@ void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, int
         if (digi->rtsCtsRate)
         {
             phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_rts), 
-                            digi->rtsCtsRate, aes_fifo ? 8 : 0);
-        	if (aes_fifo)
-            {
-        		digi->write_aes(digi, (unsigned char *) header, TX_HEADER_LENGTH,
-        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
-        		digi->write_aes(digi, (unsigned char *) &digi->rtsFrame, 
-        		                        sizeof(digi->rtsFrame),
-        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
-        	}
-        	else
-        	{
-        		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
-        		                        txInfo->flags);
-        		digi->write_fifo(digi, (unsigned char *) &digi->rtsFrame, 
-        		                        sizeof(digi->rtsFrame), txInfo->flags);
-        	}
+                            digi->rtsCtsRate, 0);
+    		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+    		                        txInfo->flags);
+    		digi->write_fifo(digi, (unsigned char *) &digi->rtsFrame, 
+    		                        sizeof(digi->rtsFrame), txInfo->flags);
         }
         else 
         {
@@ -594,22 +751,11 @@ void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, int
         if (digi->rtsCtsRate)
         {
             phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_cts), 
-                            digi->rtsCtsRate, aes_fifo ? 8 : 0);
-        	if (aes_fifo)
-            {
-        		digi->write_aes(digi, (unsigned char *) header, TX_HEADER_LENGTH,
-        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
-        		digi->write_aes(digi, (unsigned char *) &digi->ctsFrame, 
-        		                        sizeof(digi->ctsFrame),
-        		                        digi->txKeyInfo.hw_key_idx, txInfo->flags);
-        	}
-        	else
-        	{
-        		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
-        		                        txInfo->flags);
-        		digi->write_fifo(digi, (unsigned char *) &digi->ctsFrame, 
-        		                        sizeof(digi->ctsFrame), txInfo->flags);
-        	}
+                            digi->rtsCtsRate, 0);
+    		digi->write_fifo(digi, (unsigned char *) header, TX_HEADER_LENGTH,
+    		                        txInfo->flags);
+    		digi->write_fifo(digi, (unsigned char *) &digi->ctsFrame, 
+    		                        sizeof(digi->ctsFrame), txInfo->flags);
         }
         else 
         {
@@ -637,11 +783,6 @@ void piperTxRetryTaskletEntry (unsigned long context)
 
         if (txInfo->status.retry_count != digi->txMaxRetries)
         {
-#if 0
-    	    int aes_fifo = digi->txStatus.control.flags & IEEE80211_TXCTL_DO_NOT_ENCRYPT ? 0 : 1;
-#else
-    	    int aes_fifo = 0;
-#endif
             if (txInfo->status.retry_count != 0)
             {
                 #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
@@ -649,14 +790,14 @@ void piperTxRetryTaskletEntry (unsigned long context)
                 fc->retry = 1;              /* set retry bit */
             }
     
-            digi->write_reg(digi, MAC_BACKOFF, getCw(txInfo->status.retry_count == 0));
+            digi->write_reg(digi, MAC_BACKOFF, getCw(txInfo->status.retry_count == 0), op_write);
             txInfo->status.retry_count++; 
 	        /*
 	         * Build the H/W transmit header.
 	         */
 	        phy_set_plcp(digi->txPacket->data, 
 	                     digi->txPacket->len - TX_HEADER_LENGTH, 
-	                     getTxRate(digi, txInfo), aes_fifo ? 8 : 0);
+	                     getTxRate(digi, txInfo), digi->useAesHwEncryption ? 8 : 0);
             /*
              * One less retry to go at this rate.
              */
@@ -667,20 +808,24 @@ void piperTxRetryTaskletEntry (unsigned long context)
         	 * are ready.
         	 */
         	digi->write_reg(digi, BB_GENERAL_CTL, 
-        	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
+        	                BB_GENERAL_CTL_TX_HOLD, op_or);
             /* Clear any pending TX interrupts */
-            digi->write_reg(digi, BB_IRQ_STAT, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
-	        handleRtsCts(digi, txInfo, aes_fifo);
-        	if (aes_fifo)
+            digi->write_reg(digi, BB_IRQ_STAT, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT, op_write);
+	        handleRtsCts(digi, txInfo);
+        	if (digi->useAesHwEncryption)
+        	{
         		err = digi->write_aes(digi, digi->txPacket->data, digi->txPacket->len, 
-        		                digi->txKeyInfo.hw_key_idx, txInfo->flags);
+        		                txInfo->flags);
+            }
         	else
+        	{
         		err = digi->write_fifo(digi, digi->txPacket->data, digi->txPacket->len, 
         		                    txInfo->flags);
+        	}
        /* TODO: What to do if err != 0 */
         	/* write_reg will start the transmit*/
         	err = digi->write_reg(digi, BB_GENERAL_CTL, 
-        	                ~BB_GENERAL_CTL_TX_HOLD & digi->read_reg(digi, BB_GENERAL_CTL));
+        	                ~BB_GENERAL_CTL_TX_HOLD, op_and);
 	        /*
 	         * Set interrupt flags.  Use the timeout interrupt if we expect
 	         * an ACK.  Use the FIFO empty interrupt if we do not expect an ACK.
@@ -727,18 +872,18 @@ static int piper_write_aes_key(struct piper_priv *digi, struct sk_buff *skb)
         updating the keys.
 	*/
 	err = digi->write_reg(digi, BB_GENERAL_CTL, 
-	                BB_GENERAL_CTL_TX_HOLD | digi->read_reg(digi, BB_GENERAL_CTL));
+	                BB_GENERAL_CTL_TX_HOLD, op_or);
 	if (err)
 		goto done;
 
-	err = __piper_write_fifo(digi, skb->data, skb->len, 1);
+	err = __piper_write_fifo(digi, skb->data, skb->len, BB_AES_FIFO);
 	if (err)
 		goto done;
 
 	/* write_reg will kick the tx_thread to start processing packets if
 	 * it's not already active */
 	err = digi->write_reg(digi, BB_GENERAL_CTL, 
-	                ~BB_GENERAL_CTL_TX_HOLD & digi->read_reg(digi, BB_GENERAL_CTL));
+	                ~BB_GENERAL_CTL_TX_HOLD, op_and);
 	
 done:
 	return err;
@@ -752,6 +897,9 @@ static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
 {
 
     int wordIndex;
+    unsigned long flags;
+    
+    spin_lock_irqsave(&digi->rxRegisterAccessLock, flags);
     
 /*
  * We can only read 32-bit words, so round the length up to an even multiple of
@@ -783,6 +931,7 @@ static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
             memcpy(&buf[wordIndex * sizeof(unsigned)], &word, sizeof(word));
         }
     }
+    spin_unlock_irqrestore(&digi->rxRegisterAccessLock, flags);
     
     return 0;
 }
@@ -791,9 +940,16 @@ static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
 
 static unsigned int piper_read_reg(struct piper_priv *digi, uint8_t reg)
 {
-    return ioread32(digi->vbase + reg);
+    unsigned long flags;
+    unsigned int result;
+    
+    spin_lock_irqsave(&digi->rxRegisterAccessLock, flags);
 
-	return 0;
+    result = ioread32(digi->vbase + reg);
+
+    spin_unlock_irqrestore(&digi->rxRegisterAccessLock, flags);
+
+	return result;
 }
 
 
@@ -803,15 +959,15 @@ static unsigned int piper_read_reg(struct piper_priv *digi, uint8_t reg)
 /**
  * Interrupt handler for Piper IRQs.
  */
+/* TODO: Remove this */ static void rxTaskletEntry (unsigned long context);    
 static irqreturn_t piperIsr(int irq, void *dev_id)
 {
 	struct piper_priv *piper = dev_id;
 	unsigned int status;
-    
 	/* acknowledge interrupt */
 	status = piper->read_reg(piper, BB_IRQ_STAT);
     status &= piper->read_reg(piper, BB_IRQ_MASK);
-	piper->write_reg(piper, BB_IRQ_STAT, status);
+	piper->write_reg(piper, BB_IRQ_STAT, status, op_write);
     
 	if (status & BB_IRQ_MASK_RX_FIFO) 
 	{
@@ -820,7 +976,11 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 	     * the tasklet reenables them.
 	     */
 	    clearIrqMaskBit(piper, BB_IRQ_MASK_RX_FIFO); 
+#if WANT_TO_RECEIVE_FRAMES_IN_ISR
         tasklet_hi_schedule(&piper->rxTasklet);
+#else
+        rxTaskletEntry ((unsigned long) piper);
+#endif
 	} 
 
     if (status & BB_IRQ_MASK_TX_FIFO_EMPTY) 
@@ -864,15 +1024,50 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 		clearIrqMaskBit(piper, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
-	if (status & (BB_IRQ_MASK_TBTT | BB_IRQ_MASK_ATIM)) 
+    if (status & BB_IRQ_MASK_TBTT)
+    {
+        /*
+         * This interrupt occurs at the start of a beacon period.  The only thing
+         * we need to do is to write a new beacon backoff value.
+         */
+        u32 reg = piper->read_reg(piper, MAC_BEACON_FILT) & ~MAC_BEACON_BACKOFF_MASK;
+        piper->write_reg(piper, MAC_BEACON_FILT, reg | getNextBeaconBackoff(), op_write);
+        /*
+         * TODO:  Improve the way we keep track of whether or not we sent the last
+         *        beacon.  What we are doing now is to assume that we did until and
+         *        unless we receive a beacon.  What we should do is look for either
+         *        a beacon or a TX end interrupt.  However, since mac80211 doesn't
+         *        tell us what the ATIM window is, we have to assume it is zero, 
+         *        which means we could be transmitting a frame at the same
+         *        time we are sending the beacon, so there isn't really any easy
+         *        way for us to do this.  In fact, even if there was an ATIM 
+         *        window, we could have started a transmit just before we get this
+         *        interrupt, so I'm not sure how we are really suppose to keep
+         *        track of this.
+         */
+        piper->beacon.weSentLastOne = true;         /* assume we sent last beacon unless we receive one*/
+    }
+
+	if (status & BB_IRQ_MASK_ATIM)
 	{
-        digi_dbg("Got BB_IRQ_MASK_TBTT | BB_IRQ_MASK_ATIM\n");
-		clearIrqMaskBit(piper, (BB_IRQ_MASK_TBTT | BB_IRQ_MASK_ATIM));
+	    /*
+	     * This interrupt should not occur since we are not using it.  When in
+	     * IBSS mode, the beacon period starts at the TBTT interrupt and ends
+	     * at this interrupt.  We are not suppose to send packets between the
+	     * two interrupts.  However, mac80211 does not seem to provide a way
+	     * for us to find out how long the ATIM period is, so we have to assume
+	     * that there isn't one.
+	     *
+	     * If we were supporting this interrupt we would have to synchronize 
+	     * with the transmit routine so that transmit is paused during this 
+	     * time.
+	     */
+        digi_dbg("Got BB_IRQ_MASK_ATIM\n");
+		clearIrqMaskBit(piper, BB_IRQ_MASK_ATIM);
 	}
 
 	if (unlikely(status & BB_IRQ_MASK_RX_OVERRUN)) 
 	{
-        digi_dbg("Got rx overrun\n");
 		piper->rxOverruns++;
 	}
 
@@ -880,16 +1075,25 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 }
 
 
-static void receivePacket(struct piper_priv *piper, struct sk_buff *skb, int length, 
-                          frameControlFieldType_t *frameControlField)
+/*
+ * This routine is called to receive a frame.  The AES engine is used
+ * to decrypt the frame if it was encrypted with AES and we have the
+ * key.
+ *
+ * returns true if we received the frame, or false if it failed the MIC
+ */
+static bool receivePacket(struct piper_priv *piper, struct sk_buff *skb, int length, 
+                          frameControlFieldType_t *frameControlField, 
+                          struct ieee80211_rx_status *status)
 {
-    // Use hardware AES if encrypted with AES
     int headerLength = _80211_HEADER_LENGTH;
 #define WANT_RECEIVE_COUNT_SCROLL   (0)
 #if WANT_RECEIVE_COUNT_SCROLL
     static int packetCount = 0;
 #endif
     _80211HeaderType *header;
+    bool result = true;
+    
     if (headerLength > length)
     {
         headerLength = length;
@@ -899,50 +1103,96 @@ static void receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
     length -= headerLength;
     piper_read(piper, BB_DATA_FIFO, (uint8_t *) header, headerLength);
     memcpy(frameControlField, &header->fc, sizeof(frameControlField));
-    
+
+#if 0
     if (header->fc.protected)
     {
-#ifdef WANT_HW_AES
-        Can check for presence of key to determine if AES or not
-/* TODO: Implement support for H/W AES */
-        // Get AES key, init block, headers
-        if (CcmpGetData (header->addr1, buf, &data))
+        unsigned char *rsnHeader = skb_put(skb, _80211_HEADER_LENGTH);
+        unsigned int aesDataBlob[AES_BLOB_LENGTH / sizeof(unsigned int)];
+        unsigned int keyIndex;
+
+        /*
+         * Step 1: Read the rest of the unencrypted data.
+         */
+        piper_read(piper, BB_DATA_FIFO, rsnHeader, _80211_HEADER_LENGTH);
+        length -= _80211_HEADER_LENGTH;
+        
+        keyIndex = rsnHeader[3] >> 6;
+        
+        if (piperPrepareAESDataBlob(piper, keyIndex, aesDataBlob, 
+                                    (unsigned char *) header, length, false))
         {
-            while (HW_RSSI_AES & AES_BUSY)
-                ;
-            // Set receive mode
-            tmp = HW_AES_MODE;
-
-            // Write key, init vector, headers to AES FIFO
-            HWWriteAES (data.key->rd_key, 4*44);
-            HWWriteAES (data.init, 4*12);
-
-            // Get plaintext data from AES FIFO
-            HWReadAES (buf->body+EXTIV_SIZE, buf->length-DATA_SIZE-CCMP_SIZE);
-
-            while (HW_RSSI_AES & AES_BUSY)
-                ;
-
-            // Check if MIC is correct
-            if (!(HW_RSSI_AES & AES_MIC))
+            
+            /*
+             * Step 2: Wait for AES to become ready.
+             */
+            while (piper->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_BUSY)
             {
-                macStats.rxDropDecrypt++;
-                macStats.rxDropMICFail++;
-                return FALSE;
+            }
+    
+            /*
+             * Step 3: Set the AES mode, and then read from the AES control
+             *         register to put the AES engine into receive mode.
+             */
+            piper->write_reg(piper, BB_AES_CTL, ~BB_AES_CTL_AES_MODE, op_and);
+
+            piper->read_reg(piper, BB_AES_CTL);
+            
+            /*
+             * Step 4: Write the expanded AES key into the AES FIFO.
+             */
+            __piper_write_fifo(piper, 
+                                (unsigned char *) piper->key[keyIndex].expandedKey, 
+                                EXPANDED_KEY_LENGTH, BB_AES_FIFO);
+            
+            /*
+             * Step 5: Write the AES IV and headers into the AES FIFO.
+             */
+            __piper_write_fifo(piper, (unsigned char *) aesDataBlob,
+                                 AES_BLOB_LENGTH, BB_AES_FIFO);
+            
+            /*
+             * Step 6: Now, finally, read the unencrypted frame from the
+             *         AES FIFO.
+             */
+            length -= MIC_SIZE + DATA_SIZE;
+            result = __piper_read_fifo(piper, skb_put(skb, length), 
+                                length,
+                                BB_AES_FIFO);
+            /*
+             * Step 7: Wait for AES to become ready.
+             */
+            while (piperi->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_BUSY)
+            {
+            }
+    
+            result = ((piper->read_reg(piper, BB_RSSI) && BB_RSSI_EAS_MIC) != 0);
+            
+            skb_put(skb, 8);            /* pad an extra 8 bytes for the MIC which the H/W strips*/
+            if (result)
+            {
+                status->flag |= RX_FLAG_DECRYPTED;
+                /* TODO:  should I also set RX_FLAG_MMIC_STRIPPED */
             }
         }
-
-        // Not AES, get remaining data from receive FIFO
-        else
-#endif
+        else 
         {
-            piper_read (piper, BB_DATA_FIFO, skb_put(skb, length), length);
-        }
-    }
-
-    // Get remaining data from receive FIFO
+            /*
+             * If we branch here, then we are not able to decrypt the
+             * packet possibly because we don't have the key.  Read
+             * the rest of the packet and let mac80211 decrypt it.
+             */
+            __piper_read_fifo(piper, skb_put(skb, length), 
+                                length,
+                                BB_DATA_FIFO);
+         }
+     }
     else
+#endif
     {
+        /*
+         * Frame is not encrypted, so just read it.
+         */
         piper_read (piper, BB_DATA_FIFO, skb_put(skb, length), length);
     }
 
@@ -952,6 +1202,8 @@ static void receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
         digi_dbg("%d packets received so far.\n", packetCount);
     }
 #endif
+
+    return result;
 }
 
 
@@ -1034,24 +1286,41 @@ static void rxTaskletEntry (unsigned long context)
 
 		if (length != 0)
 		{
-    		receivePacket(piper, skb, length, &frameControlField);
-    		if (frameControlField.type == TYPE_ACK)
-    		{
-    		    handleAck(piper, status.signal);
-    		}
-    		if (   (frameControlField.type == TYPE_ACK)
-    		    || (frameControlField.type == TYPE_RTS)
-    		    || (frameControlField.type == TYPE_CTS))
-    		{
-    		    /*
-    		     * Don't pass up RTS, CTS, or ACK frames.  They just confuse
-    		     * the stack.
-    		     */
+    		if (receivePacket(piper, skb, length, &frameControlField, &status))
+    	    {
+        		if (frameControlField.type == TYPE_ACK)
+        		{
+        		    handleAck(piper, status.signal);
+        		}
+        		if (   (frameControlField.type == TYPE_ACK)
+        		    || (frameControlField.type == TYPE_RTS)
+        		    || (frameControlField.type == TYPE_CTS))
+        		{
+        		    /*
+        		     * Don't pass up RTS, CTS, or ACK frames.  They just confuse
+        		     * the stack.
+        		     */
+        		    dev_kfree_skb(skb);
+        		}
+        		else
+        		{
+        		    if (frameControlField.type == TYPE_BEACON)
+        		    {
+        		        piper->beacon.weSentLastOne = false;
+        		    }
+#if WANT_TO_RECEIVE_FRAMES_IN_ISR
+        		    ieee80211_rx(piper->hw, skb, &status);
+#else
+                    ieee80211_rx_irqsafe(piper->hw, skb, &status);  
+#endif
+        		}
+        	}
+        	else
+        	{
+        	    /*
+        	     * Frame failed MIC, so discard it.
+        	     */
     		    dev_kfree_skb(skb);
-    		}
-    		else
-    		{
-    		    ieee80211_rx(piper->hw, skb, &status);
     		}
          }
         else
@@ -1128,46 +1397,46 @@ static int initHw(struct piper_priv *digi)
         /* Initialize baseband general control register */
         if ((band == WLN_BAND_B) || (band == WLN_BAND_BG))
         {
-            digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ);
+            digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
             digi->write_reg(digi, BB_TRACK_CONTROL, 
-                            0xff00ffff & digi->read_reg(digi, BB_TRACK_CONTROL));
+                            0xff00ffff, op_and);
             digi->write_reg(digi, BB_TRACK_CONTROL, 
-                            TRACK_BG_BAND | digi->read_reg(digi, BB_TRACK_CONTROL));
+                            TRACK_BG_BAND, op_or);
             digi_dbg("initHw Initialized for band B / BG\n");
         }
         else
         {
-            digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_50GHZ);
+            digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_50GHZ, op_write);
             digi->write_reg(digi, BB_TRACK_CONTROL, 
-                            0xff00ffff & digi->read_reg(digi, BB_TRACK_CONTROL));
+                            0xff00ffff, op_and);
             digi->write_reg(digi, BB_TRACK_CONTROL, 
-                            TRACK_5150_5350_A_BAND | digi->read_reg(digi, BB_TRACK_CONTROL));
+                            TRACK_5150_5350_A_BAND, op_or);
             digi_dbg("initHw Initialized for band A\n");
         }
         
-        digi->write_reg(digi, BB_CONF_2, 0x08329AD4);
+        digi->write_reg(digi, BB_CONF_2, 0x08329AD4, op_write);
  
         /* Initialize the SPI word length */	
-        digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA);
+        digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA, op_write);
 #elif (TRANSCEIVER == RF_AIROHA_2236)
 
         /* Initialize baseband general control register */
-        digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ);
+        digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
       
-        digi->write_reg(digi, BB_CONF_2, 0x08329AD4);
+        digi->write_reg(digi, BB_CONF_2, 0x08329AD4, op_write);
         
         digi->write_reg(digi, BB_TRACK_CONTROL, 
-                        0xff00ffff & digi->read_reg(digi, BB_TRACK_CONTROL));
+                        0xff00ffff, op_and);
         digi->write_reg(digi, BB_TRACK_CONTROL, 
-                        TRACK_BG_BAND | digi->read_reg(digi, BB_TRACK_CONTROL));
+                        TRACK_BG_BAND, op_or);
       
         /* Initialize the SPI word length */	   
-        digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA2236);
+        digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA2236, op_write);
 #endif
     // Clear the Interrupt Mask Register before enabling external interrupts.
     // Also clear out any status bits in the Interrupt Status Register.
-    digi->write_reg(digi, BB_IRQ_MASK, 0);
-    digi->write_reg(digi, BB_IRQ_STAT, 0xff);
+    digi->write_reg(digi, BB_IRQ_MASK, 0, op_write);
+    digi->write_reg(digi, BB_IRQ_STAT, 0xff, op_write);
     
     /*
      * If this firmware supports additional MAC addresses.
@@ -1175,20 +1444,20 @@ static int initHw(struct piper_priv *digi)
     if (((digi->read_reg(digi, MAC_STATUS) >> 16) & 0xff) >= 8)
     {
         /* Disable additional addresses to start with */
-        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_MAC_FLTR & digi->read_reg(digi, MAC_CTL));
+        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_MAC_FLTR, op_and);
         /*
          * Clear registers that hold extra addresses.
          */
         
-        digi->write_reg(digi, MAC_STA2_ID0, 0);
-        digi->write_reg(digi, MAC_STA2_ID1, 0);
-        digi->write_reg(digi, MAC_STA3_ID0, 0);
-        digi->write_reg(digi, MAC_STA3_ID1, 0);
+        digi->write_reg(digi, MAC_STA2_ID0, 0, op_write);
+        digi->write_reg(digi, MAC_STA2_ID1, 0, op_write);
+        digi->write_reg(digi, MAC_STA3_ID0, 0, op_write);
+        digi->write_reg(digi, MAC_STA3_ID1, 0, op_write);
     }
 /*
  * TODO:  Set this register programatically.
  */
-/****/ digi->write_reg(digi, MAC_DTIM_PERIOD, 0x0);
+/****/ digi->write_reg(digi, MAC_DTIM_PERIOD, 0x0, op_write);
     
     /*
      * Note that antenna diversity will be set by hw_start, which is the
@@ -1196,12 +1465,12 @@ static int initHw(struct piper_priv *digi)
      */
      
     // reset RX and TX FIFOs
-    digi->write_reg(digi, BB_GENERAL_CTL, digi->read_reg(digi, BB_GENERAL_CTL) 
-                | BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST);
-    digi->write_reg(digi, BB_GENERAL_CTL, digi->read_reg(digi, BB_GENERAL_CTL) 
-                & ~(BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST));
+    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST 
+                                    | BB_GENERAL_CTL_TXFIFORST, op_or);
+    digi->write_reg(digi, BB_GENERAL_CTL, ~(BB_GENERAL_CTL_RXFIFORST 
+                                            | BB_GENERAL_CTL_TXFIFORST), op_and);
 
-    digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C);  
+    digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C, op_write);  
         
     /* Initialize RF transceiver */
     if (band == WLN_BAND_A)
@@ -1212,11 +1481,11 @@ static int initHw(struct piper_priv *digi)
     {
         digi->rf->init(digi->hw, IEEE80211_BAND_2GHZ);
     }
-    digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000001 | digi->read_reg(digi, BB_OUTPUT_CONTROL));
-/****/ digi->write_reg(digi, MAC_CFP_ATIM, 0x0);
-    digi->write_reg(digi, BB_GENERAL_STAT, 
-        digi->read_reg(digi, BB_GENERAL_STAT) &
-        ~(BB_GENERAL_STAT_DC_DIS | BB_GENERAL_STAT_SPRD_DIS));
+    digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000001, op_or);
+/****/ digi->write_reg(digi, MAC_CFP_ATIM, 0x0, op_write);
+    digi->write_reg(digi, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS 
+                                    | BB_GENERAL_STAT_SPRD_DIS), op_and);
+    digi->write_reg(digi, MAC_SSID_LEN, (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK), op_write);
 
 #ifdef AIROHA_PWR_CALIBRATION
     initPwrCal();
@@ -1229,6 +1498,21 @@ static int initHw(struct piper_priv *digi)
 #endif
 
     return result;
+}
+
+
+/*
+ * Make sure all keys are disabled when we start.
+ */
+static void initializeKeys(struct piper_priv *digi)
+{
+    unsigned int i;
+    
+    for (i = 0; i < PIPER_MAX_KEYS; i++)
+    {
+        digi->key[i].valid = false;
+    }
+    digi->AESKeyCount = 0;
 }
 
 
@@ -1249,6 +1533,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	}
 	digi->drv_name = PIPER_DRIVER_NAME;
 	spin_lock_init(&digi->irqMaskLock);
+	spin_lock_init(&digi->rxRegisterAccessLock);
 	
     /*
      * Reserve access to the Piper registers mapped to memory.
@@ -1299,6 +1584,7 @@ static int __init piper_probe(struct platform_device* pdev)
     
     printk(KERN_INFO "version = 0x%8.8X, status = 0x%8.8X\n", version, status);
 
+    initializeKeys(digi);
 	/* provide callbacks to generic mac code */
 	digi->write_reg = piper_write_reg;
 	digi->read_reg = piper_read_reg;
@@ -1309,9 +1595,14 @@ static int __init piper_probe(struct platform_device* pdev)
 	digi->initHw = initHw;
 	digi->setIrqMaskBit = setIrqMaskBit;
 	digi->clearIrqMaskBit = clearIrqMaskBit;
-
-    digi->irq = pdev->resource[1].start;
+	digi->load_beacon = load_beacon;
+    digi->getNextBeaconBackoff = getNextBeaconBackoff;
     
+    digi->irq = pdev->resource[1].start;
+    digi->bssWantCtsProtection = false;
+    digi->beacon.loaded = false;
+    digi->beacon.enabled = false;
+    digi->beacon.weSentLastOne = false;
 	err = request_irq(digi->irq, piperIsr, 0, PIPER_DRIVER_NAME,
 			digi);
 	if (err) 

@@ -78,10 +78,13 @@ enum baseband_control_regs {
 		BB_GENERAL_CTL_ADC_CLK_EN | BB_GENERAL_CTL_BOOT_STAT | \
 		BB_GENERAL_CTL_SPI_RST)
 #endif
-#define BB_RSSI_LED			(1<<8)
+#define BB_RSSI_LED			    (1<<8)
+#define BB_RSSI_EAS_FIFO_FULL   (1 << 17)
+#define BB_RSSI_EAS_BUSY        (1 << 18)
+#define BB_RSSI_EAS_MIC         (1 << 19)
 #define BB_RSSI_ANT_MASK		(0xff<<24)
-#define BB_RSSI_ANT_DIV_MAP	    (0x96000000)
-#define BB_RSSI_ANT_NO_DIV_MAP  (0x1E000000)
+#define BB_RSSI_ANT_NO_DIV_MAP	(0x96000000)
+#define BB_RSSI_ANT_DIV_MAP     (0x1E000000)
 
 #define BB_GENERAL_STAT_RESET		(1<<30)
 /*
@@ -142,9 +145,35 @@ enum mac_control_regs {
 	MAC_EEPROM_DATA = 0xf8,
 
 	MAC_SSID = 0x80,
+	
+	BEACON_FIFO = 0x85,     /* dummy value used to select data fifo for beacon load */
 };
 
+
+#define MAC_SSID_LEN_MASK           (0x000000ff)
 #define MAC_REVISION_MASK(v)		(((v) >> 16) & 0xffff)
+
+#define MAC_BEACON_INTERVAL_SHIFT   (16)
+#define MAC_BEACON_INTERVAL_MASK    (0xffff0000)
+
+#define MAC_ATIM_PERIOD_MASK        (0x0000ffff)
+
+#define MAC_LISTEN_INTERVAL_MASK    (0x0000ffff)
+
+#define MAC_DTIM_PERIOD_SHIFT       (24)
+#define MAC_DTIM_PERIOD_MASK        (0xff000000)
+
+#define MAC_DTIM_CFP_SHIFT          (16)
+#define MAC_DTIM_CFP_MASK           (0x00ff0000)
+
+#define MAC_OFDM_BRS_MASK           (0xff000000)
+#define MAC_OFDM_BRS_SHIFT          (24)
+#define MAC_PSK_BRS_MASK            (0x000f0000)
+#define MAC_PSK_BRS_SHIFT           (16)
+
+#define MAC_BEACON_BACKOFF_MASK     (0x0000ffff)
+
+#define MAC_BRS_MASK                (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK)
 
 #define MAC_CTL_TX_REQ          (1)
 #define MAC_CTL_BEACON_TX		(1<<2)
@@ -323,7 +352,7 @@ typedef PACKED_H struct {
 } PACKED_F _80211HeaderType;
 
 #define _80211_HEADER_LENGTH        (sizeof(_80211HeaderType))
-
+#define TX_HEADER_LENGTH        (sizeof(struct ofdm_hdr) + sizeof(struct tx_frame_hdr))
 /* FIFO sizes in bytes */
 #define TX_FIFO_SIZE            1792
 #define RX_FIFO_SIZE            2048
@@ -334,4 +363,9 @@ typedef PACKED_H struct {
 
 #define BEACON_INT		100	/* in TU */
 
+
+#define	DEFAULT_CW_MIN				32			// Min contention window size
+#define	DEFAULT_CW_MAX				1024		// Max contention window size
+
+#define ASLOT_TIME                  20
 #endif

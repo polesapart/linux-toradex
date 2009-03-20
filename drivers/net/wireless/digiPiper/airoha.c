@@ -31,7 +31,7 @@
 #define CHANNEL_CHANGE_TIME     (1500)
 
 #define readReg(reg)                priv->read_reg(priv, reg)
-#define writeReg(reg, value)        priv->write_reg(priv, reg, value)
+#define writeReg(reg, value, op)    priv->write_reg(priv, reg, value, op)
 
 static void InitializeRF(struct ieee80211_hw *hw, int band_selection);
 static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t val);
@@ -189,7 +189,7 @@ static int WriteRF(struct ieee80211_hw *hw, unsigned char reg, unsigned int val)
 	struct piper_priv *priv = hw->priv;
 	int err;
 
-	err  = writeReg(BB_SPI_DATA, val << 4 | reg);
+	err  = writeReg(BB_SPI_DATA, val << 4 | reg, op_write);
 	udelay(3);      /* Mike Schaffner says to allow 2 us or more between all writes*/
 	return err;
 }
@@ -211,31 +211,31 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
     enum ieee80211_band rf_band = IEEE80211_BAND_2GHZ;
 #endif
     /* Disable the rx processing path */
-	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN & readReg(BB_GENERAL_CTL));
+	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
     	                
     digi_dbg("in SetChannel (), Channel=%d, rf_band= %d\n", channel, rf_band);
 
 #if (TRANSCEIVER == RF_AIROHA_2236)
-    	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_B_EN | readReg(BB_GENERAL_STAT));
+    	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_B_EN, op_or);
     	                
 #if 0
         if (macParams.band == WLN_BAND_B)
         {
             // turn off OFDM
-        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN & readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN, op_and);
         }
         else
         {
             // turn on OFDM
-        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN, op_or);
         }
 #else
-        writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN & readReg(BB_GENERAL_STAT));
+        writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN, op_and);
 #endif            
         /* set the 802.11b/g frequency band specific tracking constant */
-    	writeReg(BB_TRACK_CONTROL, 0xff00ffff & readReg(BB_TRACK_CONTROL));
+    	writeReg(BB_TRACK_CONTROL, 0xff00ffff, op_and);
     	                
-    	writeReg(BB_TRACK_CONTROL, TRACK_BG_BAND | readReg(BB_TRACK_CONTROL));
+    	writeReg(BB_TRACK_CONTROL, TRACK_BG_BAND, op_or);
     	                
                                 
         /* perform chip and frequency-band specific RF initialization */
@@ -267,22 +267,22 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         udelay (50);
             
         /* configure the baseband processing engine */		    
-    	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN & readReg(BB_GENERAL_CTL));
+    	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
     
         /*Re-enable the rx processing path */
-    	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN | readReg(BB_GENERAL_CTL));
+    	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
         
 #elif (TRANSCEIVER == RF_AIROHA_7230)
         /* enable the frequency-band specific PA */
         if (rf_band == IEEE80211_BAND_2GHZ)
         {
             //HW_GEN_CONTROL &= ~GEN_PA_ON;
-        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | BB_GENERAL_STAT_B_EN | readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | BB_GENERAL_STAT_B_EN, op_or);
         	                
             /* set the 802.11b/g frequency band specific tracking constant */
-        	writeReg(BB_TRACK_CONTROL, 0xff00ffff & readReg(BB_TRACK_CONTROL));
+        	writeReg(BB_TRACK_CONTROL, 0xff00ffff, op_and);
         	                
-        	writeReg(BB_TRACK_CONTROL, TRACK_BG_BAND | readReg(BB_TRACK_CONTROL));
+        	writeReg(BB_TRACK_CONTROL, TRACK_BG_BAND, op_or);
         	                
         }
         else
@@ -290,16 +290,16 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
             //HW_GEN_CONTROL |= GEN_PA_ON; 
     
             // turn off PSK/CCK  
-        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_B_EN & readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_B_EN, op_and);
 
             // turn on OFDM
-        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | readReg(BB_GENERAL_STAT));
+        	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN, op_or);
         	                            
             /* Set the 802.11a frequency sub-band specific tracking constant */	      
             /* All 8 supported 802.11a channels are in this 802.11a frequency sub-band */
-        	writeReg(BB_TRACK_CONTROL, 0xff00ffff & readReg(BB_TRACK_CONTROL));
+        	writeReg(BB_TRACK_CONTROL, 0xff00ffff, op_and);
         	                
-        	writeReg(BB_TRACK_CONTROL, freqTableAiroha_7230[channel].tracking | readReg(BB_TRACK_CONTROL));
+        	writeReg(BB_TRACK_CONTROL, freqTableAiroha_7230[channel].tracking, op_or);
         	                
         } 
     
@@ -335,7 +335,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
     
             /* configure the baseband processing engine */
             //HW_GEN_CONTROL |= GEN_5GEN;  
-        	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_GEN_5GEN | readReg(BB_GENERAL_CTL));
+        	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_GEN_5GEN, op_or);
         	                
         }
         else
@@ -355,16 +355,14 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
             udelay (50);	
     
             /* configure the baseband processing engine */		    
-        	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN & readReg(BB_GENERAL_CTL));
+        	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
         	                
         }
     
         /*Re-enable the rx processing path */
 	    udelay(150); /* Airoha says electronics will be ready in 150 us */
-    	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN | readReg(BB_GENERAL_CTL));
+    	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
 
-    	dumpRegisters(priv, CTRL_STATUS_REGS);             
-        
 #endif
 
 
@@ -406,8 +404,8 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 
             digi_dbg("**** transceiver == RF_AIROHA_2236\n");
             /* Initial settings for 20 MHz reference frequency, 802.11b/g */	                   
-            writeReg(BB_OUTPUT_CONTROL, 0xfffffcff & readReg(BB_OUTPUT_CONTROL));
-            writeReg(BB_OUTPUT_CONTROL, 0x00000200 | readReg(BB_OUTPUT_CONTROL));
+            writeReg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
+            writeReg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
             udelay(150);
                
             /* CH_integer: Frequency register 0 */ 
@@ -463,7 +461,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
             //MacSetTxPower (macParams.tx_power);
 
             /* Calibration procedure */
-            writeReg(BB_OUTPUT_CONTROL, 0x00000300 | readReg(BB_OUTPUT_CONTROL));
+            writeReg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
             udelay(150);
     
             /* TXDCOC->active; RCK->disable */
@@ -484,8 +482,8 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
                 case IEEE80211_BAND_2GHZ:
                     
                     /* Initial settings for 20 MHz reference frequency, 802.11b/g */
-                    writeReg(BB_OUTPUT_CONTROL, 0xfffffcff & readReg(BB_OUTPUT_CONTROL));
-                    writeReg(BB_OUTPUT_CONTROL, 0x00000200 | readReg(BB_OUTPUT_CONTROL));
+                    writeReg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
+                    writeReg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
                     udelay(150);
 
                     /* Frequency register 0 */ 
@@ -541,7 +539,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
                     WriteRF(hw, 15, 0x1ABA8 );
 
                     /* Calibration procedure */
-                    writeReg(BB_OUTPUT_CONTROL, 0x00000300 | readReg(BB_OUTPUT_CONTROL));
+                    writeReg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
 
                     udelay(150);
 
@@ -564,8 +562,8 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
                 case IEEE80211_BAND_5GHZ:
                 
                     /* Initial settings for 20 MHz reference frequency, 802.11a */
-                    writeReg(BB_OUTPUT_CONTROL, 0xfffffcff & readReg(BB_OUTPUT_CONTROL));
-                    writeReg(BB_OUTPUT_CONTROL, 0x00000200 | readReg(BB_OUTPUT_CONTROL));
+                    writeReg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
+                    writeReg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
                     udelay(150);
 
 
@@ -621,7 +619,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
                     WriteRF(hw, 15, 0x12BAC );
 
                     /* Calibration procedure */
-                    writeReg(BB_OUTPUT_CONTROL, 0x00000300 | readReg(BB_OUTPUT_CONTROL));
+                    writeReg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
 
                     udelay(150);
 
