@@ -197,6 +197,10 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 	lcd_clk = clk_get_rate(fbi->clk);
         clkval = (lcd_clk / pixel_clk) - 1;
 
+	if (abs((lcd_clk / clkval) - pixel_clk) > 
+	    abs((lcd_clk / (clkval + 1)) - pixel_clk))
+		clkval++;
+
 	printk_debug("Calculated CLKVAL is 0x%x (pixel clk: %lu | lcd clk %lu)\n",
 		     clkval, pixel_clk, lcd_clk);
 	
@@ -205,12 +209,12 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 	wincon1 = readl(fbi->io + S3C24XX_LCD_WINCON1);
 	
 	/* Configure the clock */
-
-	vidcon0 &= ~S3C24XX_LCD_VIDCON0_CLKSEL_MASK;
+	vidcon0 &= ~(S3C24XX_LCD_VIDCON0_CLKSEL_MASK |
+		     S3C24XX_LCD_VIDCON0_CLKVAL_MASK);
 	if (!strcmp(display->clock_source, "display-if"))
 		vidcon0 |= S3C24XX_LCD_VIDCON0_CLKSEL_LCD;
-	vidcon0 |=	(display->vidcon0 | S3C24XX_LCD_VIDCON0_CLKVAL(clkval));
 
+	vidcon0 |=	(display->vidcon0 | S3C24XX_LCD_VIDCON0_CLKVAL(clkval));
 	vidcon1 |=	display->vidcon1;
 	
 	vidtcon0 =	S3C24XX_LCD_VIDTCON0_VSPW(display->vsync_len - 1) |
@@ -257,6 +261,7 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 		     (unsigned int)vidtcon1,
 		     (unsigned int)vidtcon2);
 }
+
 /* Write the display configuration to the hardware */
 static int s3c2443fb_set_par(struct fb_info *info)
 {
@@ -290,7 +295,7 @@ static void s3c2443fb_lcd_enable(struct s3c2443fb_info *fbi, int enable)
 	struct s3c2443fb_display *display = mach_info->display;
 	unsigned long flags;
 	unsigned long vidcon0;
-	
+
 	local_irq_save(flags);
 	vidcon0 = readl(fbi->io + S3C24XX_LCD_VIDCON0);
 	if (enable)
@@ -302,7 +307,7 @@ static void s3c2443fb_lcd_enable(struct s3c2443fb_info *fbi, int enable)
 
 	if (display->display_power_enable)
 		display->display_power_enable(enable);
-  
+
 	local_irq_restore(flags);
 }
 
@@ -452,6 +457,8 @@ static int s3c2443fb_init_registers(struct fb_info *info)
 
 	/* modify the gpio(s) with interrupts set (bjd) */
 	local_irq_save(flags);
+	/* Select display type and config the gpios */  
+	writel(readl(S3C24XX_MISCCR) | (1 << 28), S3C24XX_MISCCR);
 	modify_gpio(S3C2410_GPCUP,  mach_info->gpcup,  mach_info->gpcup_mask);
 	modify_gpio(S3C2410_GPCCON, mach_info->gpccon, mach_info->gpccon_mask);
 	modify_gpio(S3C2410_GPDUP,  mach_info->gpdup,  mach_info->gpdup_mask);
@@ -608,6 +615,8 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 		goto free_video_memory;
 	}
 
+	s3c2443fb_lcd_enable(info, 1);
+
 	printk(KERN_INFO DRV_NAME ": frame buffer fb%d: %s, display config %s\n",
 	       fbinfo->node, fbinfo->fix.id, mach_info->display->display_name);
 	return 0;
@@ -641,6 +650,7 @@ static int s3c2443_fb_remove(struct platform_device *pdev)
 	fbinfo = platform_get_drvdata(pdev);
 	info = fbinfo->par;
 
+	s3c2443fb_lcd_enable(info, 0);
 	unregister_framebuffer(fbinfo);
 	s3c2443fb_unmap_video_memory(fbinfo);
 

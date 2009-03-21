@@ -171,6 +171,7 @@
 #define S3C24XX_LCD_VIDCON0_VCLK_ON             (0x0 << 5)
 #define S3C24XX_LCD_VIDCON0_VCLK_OFF            (0x1 << 5)
 #define S3C24XX_LCD_VIDCON0_CLKVAL(x)           ((0x3F & (x)) << 6)
+#define S3C24XX_LCD_VIDCON0_CLKVAL_MASK         (0x3F << 6)
 #define S3C24XX_LCD_VIDCON0_RGB_PAR             (0x0 << 13)
 #define S3C24XX_LCD_VIDCON0_BGR_PAR             (0x1 << 13)
 #define S3C24XX_LCD_VIDCON0_VIDOUT_RGB_IF       (0x0 << 22)
