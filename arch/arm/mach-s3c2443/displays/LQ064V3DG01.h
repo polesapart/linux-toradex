@@ -1,10 +1,8 @@
 
 static void lcd_power_enable_lq64(int enable)
 {
-	if (enable)
-		s3c2443_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_LCDPWREN);
-	else
-		s3c2443_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_INP);
+	s3c2443_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_OUTP);
+	s3c2410_gpio_setpin(S3C2410_GPG4, enable ? 0 : 1);
 }
 
 #define LQ064V3DG01_DISPLAY		\
@@ -28,8 +26,8 @@ static void lcd_power_enable_lq64(int enable)
 	.lower_margin   = 31,		\
 	.hsync_len      = 95,		\
 	.vsync_len      = 3,		\
-	.vidcon1	= S3C24XX_LCD_VIDCON1_IHSYNC |	\
-			  S3C24XX_LCD_VIDCON1_IVSYNC,	\
+	.vidcon1	= S3C24XX_LCD_VIDCON1_IHSYNC |		\
+			  S3C24XX_LCD_VIDCON1_IVSYNC,		\
 	.vidcon0	= S3C24XX_LCD_VIDCON0_VIDOUT_RGB_IF |	\
 			  S3C24XX_LCD_VIDCON0_RGB_PAR |		\
 			  S3C24XX_LCD_VIDCON0_VCLK_OFF |	\
