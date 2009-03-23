@@ -63,7 +63,10 @@
 #  define printk_debug(fmt, args...)
 #endif
 
+/* Enables the support for the scatterlists */
+#define CONFIG_HSMMC_PSEUDO_SCATTERGATHER       (1)
 
+#define DBG(x, ...)
 
 #include "s3c-hsmmc.h"
 
@@ -1197,13 +1200,14 @@ static int s3c_hsmmc_probe (struct platform_device *pdev)
 	 * Maximum number of sectors in one transfer. Limited by DMA boundary
 	 * size (512KiB), which means (512 KiB/512=) 1024 entries.
 	 */
-	mmc->max_blk_count = 2048;
+	mmc->max_blk_count = 1024;
 
 	/*
 	 * Maximum segment size. Could be one segment with the maximum number
 	 * of sectors.
 	 */
 	mmc->max_seg_size = mmc->max_blk_count * 512;
+	mmc->max_req_size = mmc->max_blk_count * 512;
 
 	init_timer(&host->timer);
         host->timer.data = (unsigned long)host;
