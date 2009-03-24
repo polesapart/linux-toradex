@@ -239,7 +239,7 @@ void __init cc9p9215_edt_qvga_lcd_setup_cs(void)
 }
 
 
-int __init cc9p9215_edt_qvga_lcd_register_gpios(struct hx8347fb_pdata *pdata)
+int cc9p9215_edt_qvga_lcd_register_gpios(struct hx8347fb_pdata *pdata)
 {
 	if (gpio_request(pdata->rst_gpio, "lcd-rst"))
 		goto err;
