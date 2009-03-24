@@ -146,7 +146,6 @@ static int set_tx_power(struct ieee80211_hw *hw, int power)
 	struct piper_priv *digi = hw->priv;
 	int err;
 
-	digi_dbg("set_tx_power called\n");
 	if (power == digi->tx_power)
 		return 0;
 
@@ -154,7 +153,6 @@ static int set_tx_power(struct ieee80211_hw *hw, int power)
 	if (!err)
 		digi->tx_power = power;
     
-    digi_dbg("tx_power set to %d.\n", digi->tx_power);
 	return err;
 }
 
@@ -440,7 +438,6 @@ static int hw_start(struct ieee80211_hw *hw)
 	int err = 0;
 	struct piper_priv *digi = hw->priv;
 
-	digi_dbg("hw_start called\n");
 	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
 
 	/* initialize */
@@ -448,9 +445,7 @@ static int hw_start(struct ieee80211_hw *hw)
 	if (err)
 		goto done;
 
-    digi_dbg("calling digi->initHw\n");
     err = digi->initHw(digi);
-    digi_dbg("digi->initHw returned %d\n", err);
     digi->isRadioOn = true;
 	
 	err = set_antenna_div(hw, ANTENNA_BOTH);
@@ -497,8 +492,10 @@ static void hw_stop(struct ieee80211_hw *hw)
 
 	/* turn off interrupts */
     tasklet_disable(&digi->rxTasklet);
+    tasklet_disable(&digi->txRetryTasklet);
 	digi->irq_mask = 0;
-	digi->write_reg(digi, BB_IRQ_MASK, 0, op_write);
+	digi->clearIrqMaskBit(digi, 0xffffffff);
+	disable_irq(digi->irq);
 }
 
 static int hw_add_intf(struct ieee80211_hw *hw,
