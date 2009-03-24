@@ -213,7 +213,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
     /* Disable the rx processing path */
 	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
     	                
-    digi_dbg("in SetChannel (), Channel=%d, rf_band= %d\n", channel, rf_band);
 
 #if (TRANSCEIVER == RF_AIROHA_2236)
     	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_B_EN, op_or);
