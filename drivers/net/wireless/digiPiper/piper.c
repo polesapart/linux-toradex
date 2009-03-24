@@ -977,9 +977,9 @@ static irqreturn_t piperIsr(int irq, void *dev_id)
 	     */
 	    clearIrqMaskBit(piper, BB_IRQ_MASK_RX_FIFO); 
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
-        tasklet_hi_schedule(&piper->rxTasklet);
-#else
         rxTaskletEntry ((unsigned long) piper);
+#else
+        tasklet_hi_schedule(&piper->rxTasklet);
 #endif
 	} 
 
@@ -1309,9 +1309,9 @@ static void rxTaskletEntry (unsigned long context)
         		        piper->beacon.weSentLastOne = false;
         		    }
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
-        		    ieee80211_rx(piper->hw, skb, &status);
-#else
                     ieee80211_rx_irqsafe(piper->hw, skb, &status);  
+#else
+        		    ieee80211_rx(piper->hw, skb, &status);
 #endif
         		}
         	}
@@ -1486,6 +1486,13 @@ static int initHw(struct piper_priv *digi)
     digi->write_reg(digi, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS 
                                     | BB_GENERAL_STAT_SPRD_DIS), op_and);
     digi->write_reg(digi, MAC_SSID_LEN, (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK), op_write);
+    
+    /*
+     * Set BSSID to the broadcast address so that we receive all packets.  The stack
+     * will set a real BSSID when it's ready.
+     */
+    digi->write_reg(digi, MAC_BSS_ID0, 0xffffffff, op_write);
+    digi->write_reg(digi, MAC_BSS_ID1, 0xffffffff, op_write);
 
 #ifdef AIROHA_PWR_CALIBRATION
     initPwrCal();
