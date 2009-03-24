@@ -1735,13 +1735,13 @@ static int __init piper_init_module(void)
 
 	pr_info("piper_init_module called\n");
     printk(KERN_INFO "piper_init_module, version %s\n", DRV_VERS);
-
+#if 0
     err = platform_device_register(&piper_device);
     if (err) {
             printk(KERN_ALERT "Device Register Failed, error = %d\n", err);
             goto error;
     }
-
+#endif
     err = platform_driver_register(&piper_driver);
     if (err) {
             printk(KERN_ALERT "Driver Register Failed, error = %d\n", err);
