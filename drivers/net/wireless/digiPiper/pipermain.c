@@ -81,9 +81,6 @@ static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
     	"ANTENNA_2"
     };
 	struct piper_priv *digi = hw->priv;
-#if 1
-    /* TODO: Remove this */ sel = ANTENNA_2;
-#endif 
 
 	digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
 	
@@ -476,6 +473,7 @@ static int hw_start(struct ieee80211_hw *hw)
 
 	memset(digi->bssid, 0, ETH_ALEN);
 done:
+
 	return err;
 }
 
@@ -634,9 +632,9 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
             bssid[0] = 0xffffffff;
             bssid[1] = 0xffffffff;
         }
+
         digi->write_reg(digi, MAC_BSS_ID0, bssid[0], op_write);
         digi->write_reg(digi, MAC_BSS_ID1, bssid[1], op_write);
-    
     	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
     }
     if (conf->changed & IEEE80211_IFCC_SSID)
@@ -718,7 +716,7 @@ static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
             digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
         }
 #else
-            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
+            digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
 #endif
     }
     if (changed & BSS_CHANGED_BASIC_RATES)
