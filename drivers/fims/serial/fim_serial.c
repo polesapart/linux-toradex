@@ -1429,9 +1429,6 @@ static int fim_serial_register_port(struct device *dev,
 
 	return 0;
 
- err_reset_drvdata:
-	dev_set_drvdata(uart->dev, NULL);
-
  err_put_clk:
 	clk_put(port->sys_clk);
 	
