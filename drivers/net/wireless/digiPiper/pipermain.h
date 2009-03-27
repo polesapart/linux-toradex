@@ -119,7 +119,6 @@ struct piper_priv {
 	bool useAesHwEncryption;
 	unsigned int txAesKey;
 	u32 txAesBlob[AES_BLOB_LENGTH / sizeof(u32)];   /* used to store AES IV and headers*/
-	u8 txExtIV[PIPER_EXTIV_SIZE];
     spinlock_t irqMaskLock;
     spinlock_t rxRegisterAccessLock;
     

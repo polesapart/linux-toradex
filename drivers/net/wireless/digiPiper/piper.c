@@ -78,7 +78,7 @@ void dumpWordsDump(void)
     digi_dbg("--------------\n");
 }
 
-static void dumpWordsReset(void)
+void dumpWordsReset(void)
 {
     dumpWordsCount = 0;
 }
@@ -227,7 +227,7 @@ static int piper_write(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
 		int len)
 {
 #define WAIT_FOR_AES        while (    (addr == BB_AES_FIFO)        \
-                                    && (ioread32(digi->vbase + BB_RSSI) & BB_RSSI_EAS_FIFO_FULL) != 0)
+                                    && ((ioread32(digi->vbase + BB_RSSI) & BB_RSSI_EAS_FIFO_FULL) != 0)) {udelay(1);}
                                     
     int wordIndex;
     int wordLength = len / sizeof(unsigned int);
@@ -514,14 +514,9 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
      * Step 2: Write the unencrypted part of the frame into the normal
      *         data FIFO.
      */
-/* TODO: Remove this */ dumpWordsReset();
-    digi_dbg("writing %d bytes of the frame header.\n", _80211_HEADER_LENGTH + TX_HEADER_LENGTH);
-    __piper_write_fifo(digi, buffer, _80211_HEADER_LENGTH + TX_HEADER_LENGTH, 
+    __piper_write_fifo(digi, buffer, _80211_HEADER_LENGTH + TX_HEADER_LENGTH + PIPER_EXTIV_SIZE, 
                         BB_DATA_FIFO);
-/* TODO: Remove this */ dumpWordsDump();    
-    digi_dbg("writing %d bytes of the EXT IV.\n", sizeof(digi->txExtIV));
-    __piper_write_fifo(digi, digi->txExtIV, sizeof(digi->txExtIV), BB_DATA_FIFO);
-/* TODO: Remove this */ dumpWordsDump();    
+
     /*
      * Step 3: Write to the AES control register.  Writing to it puts 
      *         AES H/W engine into transmit mode.  We also make sure 
@@ -532,29 +527,23 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
     /*
      * Step 4: Write the expanded AES key into the AES FIFO.
      */
-    digi_dbg("writing %d bytes of the AES key.\n", EXPANDED_KEY_LENGTH);
     __piper_write_fifo(digi, 
                         (unsigned char *) digi->key[digi->txAesKey].expandedKey, 
                         EXPANDED_KEY_LENGTH, BB_AES_FIFO);
     
-/* TODO: Remove this */ dumpWordsDump();    
     /*
      * Step 5: Write the AES IV and headers into the AES FIFO.
      */
-    digi_dbg("writing %d bytes of the AES blob.\n", AES_BLOB_LENGTH);
     __piper_write_fifo(digi, (unsigned char *) digi->txAesBlob,
                          AES_BLOB_LENGTH, BB_AES_FIFO);
     
-/* TODO: Remove this */ dumpWordsDump();    
     /*
      * Step 6: Now, finally, write the part of the frame that needs to
      *         be encrypted into the AES FIFO.
      */
-    digi_dbg("writing %d bytes of the data frame.\n", length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH));
-    result = __piper_write_fifo(digi, &buffer[_80211_HEADER_LENGTH + TX_HEADER_LENGTH], 
-                        length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH),
+    result = __piper_write_fifo(digi, &buffer[_80211_HEADER_LENGTH + TX_HEADER_LENGTH + PIPER_EXTIV_SIZE], 
+                        length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH + PIPER_EXTIV_SIZE),
                         BB_AES_FIFO);
-/* TODO: Remove this */ dumpWordsDump();    
     
     return result;
 }
