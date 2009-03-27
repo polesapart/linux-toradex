@@ -680,7 +680,7 @@ static int fim_start_tx_dma(struct pic_t *pic)
 int fim_get_exp_reg(struct fim_driver *driver, int nr, unsigned int *value)
 {
 	struct pic_t *pic;
-	
+
 	if (!driver)
 		return -EINVAL;
 
@@ -688,6 +688,7 @@ int fim_get_exp_reg(struct fim_driver *driver, int nr, unsigned int *value)
 		return -EINVAL;
 
 	*value = readl(pic->reg_addr + NS92XX_FIM_EXP_REG(nr));
+	
 	return 0;
 }
 

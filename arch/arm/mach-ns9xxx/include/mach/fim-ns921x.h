@@ -296,6 +296,34 @@ struct fim_sdio_platform_data {
 		.cmd_gpio_func = func
 
 
+/*
+ * Structure for the FIM-devices with CAN-support
+ * If a GPIO should not be used, then it's required to disable it by using the
+ * above macro 'FIM_GPIO_DONT_USE'
+ *
+ * fim_nr  : Number of the FIM to use for the device
+ * gpio_nr : GPIO to use for the interface line
+ */
+struct fim_can_platform_data {
+
+	int fim_nr;
+	int fim_can_bitrate;
+
+	int rx_gpio_nr;
+	unsigned int rx_gpio_func;
+	int tx_gpio_nr;
+	unsigned int tx_gpio_func;
+};
+
+
+/* Macro for the configuration of the GPIOs for the FIM CAN driver */
+#define NS921X_FIM_CAN_GPIOS(rx, tx, func)	\
+		.rx_gpio_nr = rx, \
+		.rx_gpio_func = func, \
+		.tx_gpio_nr = tx, \
+		.tx_gpio_func = func
+	
+
 /* These are the functions of the FIM-API */
 int fim_register_driver(struct fim_driver *driver);
 int fim_unregister_driver(struct fim_driver *driver);

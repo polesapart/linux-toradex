@@ -49,37 +49,13 @@
 #if !defined(MODULE)
 #include "fim_can.h"
 extern const unsigned char fim_can_firmware[];
+#define FIM_CAN_FIRMWARE_FILE			(NULL)
+#define FIM_CAN_FIRMWARE_CODE			fim_can_firmware
 #else
 const unsigned char *fim_can_firmware = NULL;
+#define FIM_CAN_FIRMWARE_FILE			"fim_can.bin"
+#define FIM_CAN_FIRMWARE_CODE			(NULL)
 #endif
-
-/*
- * Module parameter for selecting the PIC(s) to use as serial port
- * The macro FIM_CAN_NUMBER is coming from the Makefile of the kbuild
- * 0   : Use the PIC zero for the port
- * 1   : Use the PIC number one for the serial port
- * N+1 : Enables the support for the N-PICs as serial ports
- */
-#if defined(FIM_CAN_NUMBER)
-static int fims_number = FIM_CAN_NUMBER;
-#else
-static int fims_number = 0;
-#endif
-module_param(fims_number, int, 0);
-MODULE_PARM_DESC(fims_number, "FIMs to handle by this driver (0...N)");
-
-/*
- * Module parameter for setting the initial bit rate (maximal value is 1000000).
- * If the driver is compiled as built-in the macro FIM_CAN_BITRATE will be passed
- * from the build system for setting the initial bit rate
- */
-#if defined(FIM_CAN_BITRATE)
-static int fim_can_bitrate = FIM_CAN_BITRATE;
-#else
-static int fim_can_bitrate = CAN_BITRATE_DEFAULT;
-#endif
-module_param(fim_can_bitrate, int, 0);
-MODULE_PARM_DESC(fim_can_bitrate, "Initial bit rate to configure (Default is 500Kbps)");
 
 /* Driver informations */
 #define DRIVER_VERSION				"1.2"
@@ -167,6 +143,11 @@ MODULE_VERSION(DRIVER_VERSION);
  */
 #define FIRST_DATA_BYTE_IN_MESSAGE		(3)
 
+/*
+ * GPIO configuration 
+ */
+#define FIM_CAN_MAX_GPIOS			(2)
+
 /* Structure for setting the ID-filters */
 #define FIM_CAN_FILTER_SIZE			(8)
 struct fim_can_filter_t {
@@ -243,7 +224,7 @@ struct fim_can_t {
 	struct semaphore sem;
 	struct net_device *dev;
 	int reg;
-	struct fim_gpio_t *gpios;
+ 	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
 	struct clk *cpu_clk;
 	int opened;
 	spinlock_t lock;
@@ -256,35 +237,6 @@ struct fim_cans_t {
 };
 
 static struct fim_cans_t *fim_cans;
-
-/* Configuration of the GPIOs */
-static struct fim_gpio_t fim0_gpios[] = {
-	[0] = {
-	       .nr = 96,
-	       .name = "fim0-can-rxd"},
-	[1] = {
-	       .nr = 97,
-	       .name = "fim0-can-txd"},
-	[2] = {
-	       .nr = FIM_LAST_GPIO}
-};
-
-static struct fim_gpio_t fim1_gpios[] = {
-	[0] = {
-	       .nr = 68,
-	       .name = "fim1-can-rxd"},
-	[1] = {
-	       .nr = 69,
-	       .name = "fim1-can-txd"},
-	[2] = {
-	       .nr = FIM_LAST_GPIO}
-};
-
-/* This is the table used by the driver for setting the GPIOs */
-static struct fim_gpio_t *fims_gpios[] = {
-	&fim0_gpios[0],
-	&fim1_gpios[0],
-};
 
 /* Function prototypes */
 static int fim_can_send_skb(struct fim_can_t *port, unsigned char *data, int len,
@@ -378,7 +330,7 @@ static void fim_can_fill_timing(struct fim_can_t *port, struct fim_can_timing_t 
 {
 	unsigned int ten_per;
 
-	printk_info("New timing: %u bps | sjw %u | sample %u | sync %u | clock %u\n",
+	printk_debug("New timing: %u bps | sjw %u | sample %u | sync %u | clock %u\n",
 		    port->can.bittiming.bitrate, sjw, sample_point, sync_period, port->can.bittiming.clock);
 
 	/* Calculate how many clocks are in the ten percent of the bit rate */
@@ -566,7 +518,7 @@ static int fim_can_stop_fim(struct fim_can_t *port)
 	fim = &port->fim;
 	if (fim_is_running(fim)) {
 		retval = fim_send_stop(fim);
-		printk_debug("Disabling interrupt\n");
+		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
 	}
 
@@ -612,7 +564,7 @@ static int fim_can_start_fim(struct fim_can_t *port)
 	 */
 	retval = fim_can_set_init_config(port);
 	if (retval) {
-		printk_debug("Disabling interrupt\n");
+		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
 		return retval;
 	}
@@ -704,7 +656,7 @@ static int fim_can_stop(struct net_device *dev)
 		udelay(1000);
 
 		/* Check if need to stop the FIM */
-		printk_debug("Disabling interrupt\n");
+		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
 		fim_send_stop(fim);
 	}
@@ -841,14 +793,14 @@ static int fim_can_check_error(struct net_device *dev)
 	fim_get_exp_reg(fim, FIM_CAN_BUSSTATE_REG, &bus);
 	fim_get_exp_reg(fim, FIM_CAN_FATALERR_REG, &fatal);
 
-	if (!bus && !fatal)
+	if ((!bus) && (!fatal))
 		return 0;
 
 	printk_debug("Calling the error handling function (Bus 0x%x)\n", bus);
 
 	/* Stop the FIM if it's running */
 	if (fim_is_running(fim)) {
-		printk_debug("Disabling interrupt\n");
+		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
 		fim_send_stop(fim);
 	}
@@ -1025,7 +977,7 @@ static void fim_can_isr(struct fim_driver *driver, int irq, unsigned char code,
 	dev = port->dev;
 
 	if (code && code != FIM_CAN_INT_RESET) {
-		printk_debug("Disabling interrupt\n");
+		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(driver);
 		fim_send_stop(driver);
 	}
@@ -1172,14 +1124,14 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq, struct fim_buffer
 	stats->rx_bytes += cf->can_dlc;
 }
 
-static void unregister_fim_can(struct fim_can_t *port)
+static int unregister_fim_can(struct fim_can_t *port)
 {
-	struct fim_gpio_t *gpios;
+	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
 	int cnt;
 	struct fim_driver *fim;
 
 	if (!port || !port->reg)
-		return;
+		return -ENODEV;
 
 	unregister_netdev(port->dev);
 	free_candev(port->dev);
@@ -1187,7 +1139,7 @@ static void unregister_fim_can(struct fim_can_t *port)
 	/* Activate the interrupt (@BUG in the IRQ-subsystem?) */
 	fim = &port->fim;
 
-	printk_debug("Disabling interrupt\n");
+	printk_debug("%s: Disabling interrupt\n", __func__);
 	fim_disable_irq(fim);
 
 	/* Stop the FIM first */
@@ -1199,18 +1151,20 @@ static void unregister_fim_can(struct fim_can_t *port)
 	fim_unregister_driver(fim);
 
 	/* And free the GPIOs */
-	gpios = port->gpios;
-	for (cnt = 0; gpios[cnt].nr != FIM_LAST_GPIO; cnt++)
+	memcpy(gpios, port->gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
+	for (cnt = 0; gpios[cnt].nr < FIM_CAN_MAX_GPIOS; cnt++)
 		gpio_free(gpios[cnt].nr);
 
 	port->reg = 0;
+
+	return 0;
 }
 
 /*
  * IMPORTANT: First register the FIM-driver, and at last the CAN-device, then
  * it will automatically start with the bit time configuration.
  */
-static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
+static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[], int fim_can_bitrate)
 {
 	int retval, cnt;
 	int func;
@@ -1222,7 +1176,7 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	dev = alloc_candev(sizeof(struct fim_can_t));
 	if (!dev) {
 		printk_err("Couldn't alloc a new CAN device\n");
-		return NULL;
+		return -ENOMEM;
 	}
 
 	/* Set our port structure as private data */
@@ -1235,20 +1189,26 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 		goto err_free_candev;
 	}
 
-	/* First configure the GPIOs (according to the spec of Brad H.) */
-	for (cnt = 0; gpios[cnt].nr != FIM_LAST_GPIO; cnt++) {
-		printk_debug("Going to request the GPIO %i\n", gpios[cnt].nr);
+	/* Request the corresponding GPIOs (@XXX: Check the returned values) */
+	for (cnt=0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
+		if (gpios[cnt].nr == FIM_LAST_GPIO)
+			break;
+		if (gpios[cnt].nr == FIM_GPIO_DONT_USE)
+			continue;
+		printk_debug("Requesting the GPIO %i (Function %i)\n",
+			     gpios[cnt].nr, gpios[cnt].func);
 		retval = gpio_request(gpios[cnt].nr, gpios[cnt].name);
 		if (!retval) {
-			func = 2;
+			func = gpios[cnt].func;
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,
 						       NS921X_GPIO_INPUT,
 						       NS921X_GPIO_DONT_INVERT,
-						       func, NS921X_GPIO_ENABLE_PULLUP);
+						       func,
+						       NS921X_GPIO_ENABLE_PULLUP);
 		} else {
+			/* Free the already requested GPIOs */
 			printk_err("Couldn't request the GPIO %i\n", gpios[cnt].nr);
-			while (cnt)
-				gpio_free(gpios[--cnt].nr);
+			while (cnt) gpio_free(gpios[--cnt].nr);
 			goto err_free_candev;
 		}
 	}
@@ -1269,11 +1229,8 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	port->fim.dma_cfg = &dma_cfg;
 
 	/* Check if have a firmware code for using to */
-	if (!fim_can_firmware)
-		port->fim.fw_name = FIM_DRIVER_FIRMWARE_NAME;
-	else
-		port->fim.fw_code = fim_can_firmware;
-
+	port->fim.fw_name = FIM_CAN_FIRMWARE_FILE;
+	port->fim.fw_code = FIM_CAN_FIRMWARE_CODE;
 	retval = fim_register_driver(&port->fim);
 	if (retval) {
 		printk_err("Couldn't register the FIM %i CAN driver.\n", picnr);
@@ -1290,14 +1247,13 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 	dev->hard_start_xmit = fim_can_xmit;
 
 	/* Special attributes for the CAN-stack */
-//	port->can.do_set_bittiming = fim_can_set_bittime;
 	port->can.do_get_state = fim_can_get_state;
 	port->can.do_set_mode = fim_can_set_mode;
 
 	port->cpu_clk = clk_get(&dev->dev, "systemclock");
  	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
  	printk_debug("port->cpu_clk: %lu\n",clk_get_rate(port->cpu_clk));
- 	printk_debug("port->cpu_clk: %u\n",port->can.bittiming.clock);
+ 	printk_debug("port->can.bittiming.clock: %u\n",port->can.bittiming.clock);
 
 	/*
 	 * @TODO: Set the correct maximal BRP for the controller.
@@ -1325,32 +1281,43 @@ static struct fim_can_t *register_fim_can(int picnr, struct fim_gpio_t *gpios)
 
 	spin_lock_init(&port->lock);
 	port->dev = dev;
-	port->gpios = gpios;
+	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
 	port->reg = 1;
-	return port;
+	dev_set_drvdata(devi, port);
+
+ 	return 0;
 
 err_unreg_fim:
 	fim_unregister_driver(&port->fim);
 
 err_free_gpios:
-	for (cnt = 0; gpios[cnt].nr != FIM_LAST_GPIO; cnt++)
+	for (cnt = 0; gpios[cnt].nr < FIM_CAN_MAX_GPIOS; cnt++)
 		gpio_free(gpios[cnt].nr);
 
 err_free_candev:
 	free_candev(dev);
 
-	return NULL;
+ 	return -EINVAL;
 }
 
-static __init int fim_can_init(void)
+static __init int
+fim_can_probe(struct platform_device *pdev)
 {
 	int nrpics;
-	int retval, cnt;
-	struct fim_can_t *port;
-	struct fim_gpio_t *gpios;
-	int picnr;
+	int retval;
+	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
+	struct fim_can_platform_data *pdata;
+	int fim_can_bitrate, fims_number;
 
 	printk_debug("Starting the FIM CAN bus driver.\n");
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata)
+		return -ENODEV;
+
+	/* Set values for FIM number and CAN bitrate from platform data */
+	fims_number = pdata->fim_nr;
+	fim_can_bitrate = pdata->fim_can_bitrate;
 
 	/* Sanity check for the passed bit rate */
 	if (fim_can_bitrate <= 0 || fim_can_bitrate > FIM_CAN_MAX_BITRATE) {
@@ -1374,7 +1341,10 @@ static __init int fim_can_init(void)
 	 * the serial driver will try to register all the available PICs, otherwise
 	 * the driver will handle only one PIC
 	 */
-	nrpics = (fims_number != nrpics) ? (1) : (nrpics);
+
+
+ 	nrpics = (fims_number != nrpics) ? (1) : (nrpics);
+
 	fim_cans = kzalloc(sizeof(struct fim_cans_t) +
 			   (nrpics * sizeof(struct fim_can_t *)), GFP_KERNEL);
 	if (!fim_cans)
@@ -1386,34 +1356,25 @@ static __init int fim_can_init(void)
 	/*
 	 * Start with the registration of the CAN-ports
 	 */
-	for (cnt = 0; cnt < fim_cans->fims; cnt++) {
-		picnr = (fim_cans->fims == 1) ? (fims_number) : (cnt);
-		gpios = fims_gpios[picnr];
-		printk_debug("Going to start the FIM %i\n", picnr);
-		fim_cans->ports[cnt] = register_fim_can(picnr, gpios);
-		if (!fim_cans->ports[cnt]) {
-			retval = -ENOMEM;
-			while (cnt) {
-				port = fim_cans->ports[--cnt];
-				unregister_fim_can(port);
-			}
-			goto exit_free_mem;
-		}
-	}
+	gpios[0].nr	= pdata->rx_gpio_nr;
+	gpios[0].func	= pdata->rx_gpio_func;
+	gpios[1].nr	= pdata->tx_gpio_nr;
+	gpios[1].func	= pdata->tx_gpio_func;
+
+	printk_debug("%s: Pins used rx: %d -- tx: %d \n", __func__, gpios[0].nr, gpios[1].nr );
+	
+	/* XXX SDIO code approach */
+	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, fim_can_bitrate);
 
 	printk_info(DRIVER_DESC " " DRIVER_VERSION "\n");
-	return 0;
-
-exit_free_mem:
-	if (fim_cans)
-		kfree(fim_cans);
 
 	return retval;
 }
 
-static __exit void fim_can_exit(void)
+static __devexit int
+fim_can_remove(struct platform_device *pdev)
 {
-	int cnt;
+	int cnt, retval;
 	struct fim_can_t *port;
 
 	for (cnt = 0; cnt < fim_cans->fims; cnt++) {
@@ -1425,6 +1386,37 @@ static __exit void fim_can_exit(void)
 		kfree(fim_cans);
 		fim_cans = NULL;
 	}
+	port = dev_get_drvdata(&pdev->dev);
+	retval = 0; /* @XXX */
+	return retval;
+}
+
+static struct platform_driver 
+fim_can_platform_driver = {
+	.probe	= fim_can_probe,
+	.remove	= __devexit_p(fim_can_remove),
+	.driver	= {
+		   .owner = THIS_MODULE,
+		   .name  = FIM_DRIVER_NAME,
+	},
+};
+
+/*
+ * This is the function that will be called when the module is loaded
+ * into the kernel space
+ */
+static __init int 
+fim_can_init(void)
+{
+	return platform_driver_register(&fim_can_platform_driver);
+}
+
+static __exit void 
+fim_can_exit(void)
+{
+	printk_info("Removing the FIM CAN driver\n");
+	platform_driver_unregister(&fim_can_platform_driver);		
+	kfree(fim_cans);
 }
 
 module_init(fim_can_init);

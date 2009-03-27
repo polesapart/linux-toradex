@@ -179,7 +179,6 @@ EXPORT_SYMBOL(ns921x_fim_serial1);
 #endif /* CONFIG_FIM_SERIAL */
 
 
-
 #if defined(CONFIG_FIM_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
@@ -207,8 +206,40 @@ struct platform_device ns921x_fim_sdio1 = {
 	.id                = 1,
 	.dev.platform_data = &fim_sdio_data1,
 };
+
+
 EXPORT_SYMBOL(ns921x_fim_sdio1);
 #endif /* CONFIG_FIM_SDIO */
+
+
+#if defined(CONFIG_FIM_CAN)
+static struct fim_can_platform_data fim_can_data0 = {
+	.fim_nr			= 0,
+	.fim_can_bitrate	= 500000,
+	NS921X_FIM_CAN_GPIOS(   96, 97, /* RX + TX */
+				NS921X_GPIO_FUNC_2),
+};
+struct platform_device ns921x_fim_can0 = {
+	.name              = "fim-can",
+	.id                = 0,
+	.dev.platform_data = &fim_can_data0,
+};
+EXPORT_SYMBOL(ns921x_fim_can0);
+
+static struct fim_can_platform_data fim_can_data1 = {
+	.fim_nr			= 1,
+	.fim_can_bitrate	= 500000,
+// For future use	NS921X_FIM_CAN_GPIOS(   98, 99, /* RX + TX */
+	NS921X_FIM_CAN_GPIOS(   68, 69, /* RX + TX */
+				NS921X_GPIO_FUNC_2),
+};
+struct platform_device ns921x_fim_can1 = {
+	.name              = "fim-can",
+	.id                = 1,
+	.dev.platform_data = &fim_can_data1,
+};
+EXPORT_SYMBOL(ns921x_fim_can1);
+#endif /* CONFIG_FIM_CAN */
 
 #if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
