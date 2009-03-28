@@ -76,6 +76,12 @@
 
 #define ETH_B2BIPG	0x0408
 
+#define ETH_EPSR	0x0418
+#define ETH_EPSR_SPEED_MASK	(1 << 8)
+#define ETH_EPSR_SPEED_100	(1 << 8)
+#define ETH_EPSR_SPEED_10	(0 << 8)
+
+
 #define ETH_MIIMCFG	0x0420
 #define ETH_MIIMCFG_RMIIM	(1 << 15)
 #define ETH_MIIMCFG_CLKS	(7 <<  2)
@@ -235,6 +241,7 @@ struct ns9xxx_eth_priv {
 	/* phy management */
 	int lastlink;
 	int lastduplex;
+	int lastspeed;
 	struct mii_bus *mdiobus;
 	struct phy_device *phy;
 
@@ -649,27 +656,41 @@ static void ns9xxx_eth_adjust_link(struct net_device *dev)
 
 	spin_lock_irqsave(&priv->lock, flags);
 
-	if (phydev->link != priv->lastlink ||
-			phydev->duplex != priv->lastduplex) {
-		dev_dbg(&dev->dev, "%s: link %d -> %d, duplex %d -> %d\n",
-				__func__, priv->lastlink, phydev->link,
-				priv->lastduplex, phydev->duplex);
+	if ((phydev->link != priv->lastlink) ||
+	    (priv->lastspeed != phydev->speed) ||
+	    (priv->lastduplex != phydev->duplex)){
 
 		if (phydev->link) {
 			u32 mac2 = ethread32(dev, ETH_MAC2);
+			u32 epsr = ethread32(dev, ETH_EPSR);
 
-			if (!(mac2 & ETH_MAC2_FULLD) != !phydev->duplex) {
-				ethwrite32(dev, mac2 ^ ETH_MAC2_FULLD,
-						ETH_MAC2);
-				ethwrite32(dev, phydev->duplex ? 0x15 : 0x12,
-						ETH_B2BIPG);
-			}
+			/* Adjsut speed */
+			epsr &= ~ETH_EPSR_SPEED_MASK;
+			epsr |= (phydev->speed == SPEED_100) ?
+				ETH_EPSR_SPEED_100 : 0;
+			ethwrite32(dev, epsr, ETH_EPSR);
+			priv->lastspeed = phydev->speed;
+
+			/* Adjsut duplex */
+			mac2 &= ~ETH_MAC2_FULLD;
+			mac2 |= phydev->duplex ? ETH_MAC2_FULLD : 0;
+			ethwrite32(dev, mac2, ETH_MAC2);
+			ethwrite32(dev, phydev->duplex ? 0x15 : 0x12,
+				   ETH_B2BIPG);
+			priv->lastduplex = phydev->duplex;
+
+			dev_info(&dev->dev, "link up (%d/%s)\n", phydev->speed,
+				 (phydev->duplex == DUPLEX_FULL) ?
+				 "full" : "half");
+		} else {
+			/* link down */
+			priv->lastspeed = 0;
+			priv->lastduplex = -1;
+			dev_info(&dev->dev, "link down\n");
 		}
-		dev_info(&dev->dev, "link %s\n", phydev->link ? "up" : "down");
-
 		priv->lastlink = phydev->link;
-		priv->lastduplex = phydev->duplex;
 	}
+
 	spin_unlock_irqrestore(&priv->lock, flags);
 }
 
