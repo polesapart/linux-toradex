@@ -453,11 +453,20 @@ static void ns921x_uart_tx_chars(struct uart_ns921x_port *unp,
 		unsigned int freebuffers)
 {
 	struct circ_buf *xmit = &unp->port.info->xmit;
+	unsigned long ifs;
 
 	BUG_ON(!freebuffers);
 
 	assert_spin_locked(&unp->port.lock);
 
+	/*
+	 * If the FIFO is not empty return at this point, then the
+	 * interrupt-handler will recall this function
+	 */
+	ifs = ns921x_uart_read_ifs(unp);
+	if (!(ifs & HUB_IFS_TXFE))
+		return;
+	
 	if (unp->port.x_char) {
 		uartwrite8(&unp->port, unp->port.x_char, HUB_DMTXDF);
 		unp->port.icount.tx++;
@@ -533,11 +542,6 @@ static void ns921x_uart_start_tx(struct uart_port *port)
 #endif
 			!(ns921x_uart_read_ifs(unp) & HUB_IFS_TXFF)) {
 		unsigned int freebuffers = 1;
-		u32 ifs = ns921x_uart_read_ifs(unp);
-
-		if (ifs & HUB_IFS_TXFE)
-			freebuffers = FIFOSIZE;
-
 		ns921x_uart_tx_chars(up2unp(port), freebuffers);
 	}
 }
