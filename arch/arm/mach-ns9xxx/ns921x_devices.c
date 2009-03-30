@@ -632,84 +632,83 @@ int __init ns921x_extgpio_pm_wakeup_init(unsigned int gpio)
 }
 #endif /* CONFIG_PM */
 
-#if defined(CONFIG_FIM_SDIO)
-void __init ns9xxx_add_device_ns921x_fim_sdio(void)
+#if defined(CONFIG_FIM_ONE_SDIO)
+void __init ns9xxx_add_device_ns921x_fim_sdio0(void)
 {
-	int fims;
 	extern struct platform_device ns921x_fim_sdio0;
-	extern struct platform_device ns921x_fim_sdio1;
-
-	fims = CONFIG_FIM_SDIO_NUMBER;
-	if (fims == 0)
-		platform_device_register(&ns921x_fim_sdio0);
-	else if (fims == 1)
-		platform_device_register(&ns921x_fim_sdio1);
-	else {
-		platform_device_register(&ns921x_fim_sdio0);
-		platform_device_register(&ns921x_fim_sdio1);
-	}
+	platform_device_register(&ns921x_fim_sdio0);
 }
 #else
-void __init ns9xxx_add_device_ns921x_fim_sdio(void) {}
+void __init ns9xxx_add_device_ns921x_fim_sdio0(void) {}
 #endif
 
-#if defined(CONFIG_FIM_SERIAL)
-void __init ns9xxx_add_device_ns921x_fim_serial(void)
+#if defined(CONFIG_FIM_TWO_SDIO)
+void __init ns9xxx_add_device_ns921x_fim_sdio1(void)
 {
-	int fims;
-	extern struct platform_device ns921x_fim_serial1;
-	extern struct platform_device ns921x_fim_serial0;
-
-#if defined(CONFIG_FIM_SERIAL_NUMBER0)
-	fims = 0;
-#elif defined(CONFIG_FIM_SERIAL_NUMBER1)
-	fims = 1;
-#else
-	fims = CONFIG_FIM_SERIAL_NUMBER;
-#endif
-
-	if (fims == 0)
-		platform_device_register(&ns921x_fim_serial0);
-	else if (fims == 1)
-		platform_device_register(&ns921x_fim_serial1);
-	else {
-		platform_device_register(&ns921x_fim_serial0);
-		platform_device_register(&ns921x_fim_serial1);
-	}
+	extern struct platform_device ns921x_fim_sdio1;
+	platform_device_register(&ns921x_fim_sdio1);
 }
 #else
-void __init ns9xxx_add_device_ns921x_fim_serial(void) {}
+void __init ns9xxx_add_device_ns921x_fim_sdio1(void) {}
+#endif
+
+
+#if defined(CONFIG_FIM_ONE_SERIAL)
+void __init ns9xxx_add_device_ns921x_fim_serial0(void)
+{
+	extern struct platform_device ns921x_fim_serial0;
+	platform_device_register(&ns921x_fim_serial0);
+}
+#else
+void __init ns9xxx_add_device_ns921x_fim_serial0(void) {}
 #endif /* CONFIG_FIM_SERIAL */
 
-
-#if defined(CONFIG_FIM_CAN)
-void __init ns9xxx_add_device_ns921x_fim_can(void)
+#if defined(CONFIG_FIM_TWO_SERIAL)
+void __init ns9xxx_add_device_ns921x_fim_serial1(void)
 {
-	int fims;
-	extern struct platform_device ns921x_fim_can0;
-	extern struct platform_device ns921x_fim_can1;
-
-	fims = CONFIG_FIM_CAN_NUMBER;
-	if (fims == 0)
-		platform_device_register(&ns921x_fim_can0);
-	else if (fims == 1)
-		platform_device_register(&ns921x_fim_can1);
-	else {
-		platform_device_register(&ns921x_fim_can0);
-		platform_device_register(&ns921x_fim_can1);
-	}
+	extern struct platform_device ns921x_fim_serial1;
+	platform_device_register(&ns921x_fim_serial1);
 }
 #else
-void __init ns9xxx_add_device_ns921x_fim_can(void) {}
+void __init ns9xxx_add_device_ns921x_fim_serial1(void) {}
+#endif /* CONFIG_FIM_SERIAL */
+
+#if defined(CONFIG_FIM_ONE_CAN)
+void __init ns9xxx_add_device_ns921x_fim_can0(void)
+{
+	extern struct platform_device ns921x_fim_can0;
+	platform_device_register(&ns921x_fim_can0);
+}
+#else
+void __init ns9xxx_add_device_ns921x_fim_can0(void) {}
+#endif
+
+#if defined(CONFIG_FIM_TWO_CAN)
+void __init ns9xxx_add_device_ns921x_fim_can1(void)
+{
+	extern struct platform_device ns921x_fim_can1;
+	platform_device_register(&ns921x_fim_can1);
+}
+#else
+void __init ns9xxx_add_device_ns921x_fim_can1(void) {}
 #endif
 
 #if defined(CONFIG_FIM_CORE)
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
-	ns9xxx_add_device_ns921x_fim_serial();
-	ns9xxx_add_device_ns921x_fim_sdio();
-	ns9xxx_add_device_ns921x_fim_can();
+#if defined(CONFIG_FIM_ONE)
+	ns9xxx_add_device_ns921x_fim_serial0();
+	ns9xxx_add_device_ns921x_fim_sdio0();
+	ns9xxx_add_device_ns921x_fim_can0();
+#endif
+
+#if defined(CONFIG_FIM_TWO)
+	ns9xxx_add_device_ns921x_fim_serial1();
+	ns9xxx_add_device_ns921x_fim_sdio1();
+	ns9xxx_add_device_ns921x_fim_can1();
+#endif
 }
 #else
 void __init ns9xxx_add_device_ns921x_fims(void) {}
 #endif /* CONFIG_FIM_CORE */
+

@@ -3,7 +3,7 @@
 #
 
 menuconfig FIM_CORE
-	tristate "FIM drivers support"
+	bool "FIM drivers support"
 	depends on PROCESSOR_NS921X
         select FW_LOADER
         select HOTPLUG 
@@ -22,108 +22,87 @@ menuconfig FIM_CORE
 
 if FIM_CORE
 
-config FIM_SDIO
-	tristate "SDIO driver"
+config FIM_ONE
+	bool "FIM 1"
+	help
+	  Enables FIM 1
+
+choice
+	prompt "Choose FIM 1 driver"
+	depends on FIM_ONE
+##	default FIM_ONE_SDIO
+	help
+	  Only one of the following drivers can run in the FIM. Please pick one.
+
+config FIM_ONE_SDIO
+	bool "SDIO driver"
 	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210
-	default n
 	help
 	  Enables the FIM-SDIO serial driver. If the driver is selected as a loadable
 	  module, the number of the FIM to be used by the driver can be passed
 	  as a module-parameter (use modinfo for obtaining more infos).
 	  
-          For testing the SDIO functionality is required to select an additional 
-          SDIO-driver (GPS/UART) from the MMC-core.	
+          For testing the SDIO functionality is required to choose an additional 
+          SDIO-driver (GPS/UART) from the MMC-core.
 
-config FIM_SDIO_NUMBER
-	int "FIM(s) to register by the SDIO driver"
-	range 0 2 if PROCESSOR_NS921X
-	depends on FIM_SDIO = y
-	default 0 if !FIM_SERIAL_NUMBER || FIM_SERIAL_NUMBER = 1
-	default 1 if FIM_SERIAL_NUMBER = 0
-	help
-	  Selects the number of FIM(s) to be handled by the built-in driver.
-          The number zero stays for the first FIM and the number one for the second.	  
-          Selecting the number two means that the driver should use all the 
-          available FIMs. In that case please check that no additional FIM-driver
-          is selected as built-in too.
-	  
-config FIM_SERIAL
-	tristate "Serial driver"
-	default n
+config FIM_ONE_SERIAL
+	bool "Serial driver"
 	help
 	  Enables the FIM-serial driver. If the driver is selected as a loadable
 	  module, the number of the FIM to be used by the driver can be passed
 	  as a module-parameter (use modinfo for obtaining more infos).
 
-config FIM_SERIAL_NUMBER
-	int "FIM(s) to register by the serial driver"
-	depends on FIM_SERIAL = y && FIM_SDIO != y
-	default 0
-	range 0 2
-	help
-	  Selects the number of FIM(s) to be handled by the built-in driver.
-          The number zero stays for the first FIM and the number one for the second.	  
-          Selecting the number two means that the driver should use all the 
-          available FIMs. In that case please check that no additional FIM-driver
-          is selected as built-in too.
-          
-	  
-config FIM_SERIAL_NUMBER0
-	int "FIM(s) to register by the serial driver"
-	depends on FIM_SERIAL = y && FIM_SDIO_NUMBER = 1
-	default 0
-	range 0 0
-	help
-	  Selects the number of FIM(s) to be handled by the built-in driver.
-          The number zero stays for the first FIM and the number one for the second.	  
-          Selecting the number two means that the driver should use all the 
-          available FIMs. In that case please check that no additional FIM-driver
-          is selected as built-in too.
-
-config FIM_SERIAL_NUMBER1
-	int "FIM(s) to register by the serial driver"
-	depends on FIM_SERIAL = y && FIM_SDIO_NUMBER = 0
-	default 1
-	range 1 1
-	help
-	  Selects the number of FIM(s) to be handled by the built-in driver.
-          The number zero stays for the first FIM and the number one for the second.	  
-          Selecting the number two means that the driver should use all the 
-          available FIMs. In that case please check that no additional FIM-driver
-          is selected as built-in too.
-	  
-
-config FIM_CAN
-	tristate "CAN-bus driver"
+config FIM_ONE_CAN
+	bool "CAN-bus driver"
 	depends on CAN && CAN_DEV
-	default n
 	help
 	  Enables the FIM-CAN bus driver.
           IMPORTANT: If the driver is compiled as built-in, then a reconfiguration
           of the bit rate will not be possible (This is a limitation that should be
           fixed in a future driver version).
 
-config FIM_CAN_NUMBER
-	int "FIM(s) to register by the CAN-bus driver"
-	depends on FIM_CAN = y && FIM_SDIO != y && FIM_SERIAL != y
-	default 1
-	range 0 2
-	help
-	  Selects the number of FIM(s) to be handled by the built-in driver.
-          The number zero stays for the first FIM and the number one for the second.
-          Selecting the number two means that the driver should use all the 
-          available FIMs. In that case please check that no additional FIM-driver
-          is selected as built-in too.
+endchoice # FIM_ONE
 
-config FIM_CAN_BITRATE
-	int "Initial bit rate for the CAN-bus driver"
-	depends on FIM_CAN = y
-	default 500000
-	range 1000 1000000
+config FIM_TWO
+	bool "FIM 2"
 	help
-	  Selects the initial bit rate to use for the CAN-bus driver. Please note
-          that the bit rate cant be modified after the driver was loaded.
+	  Enables FIM 2
 
+choice
+	prompt "Choose FIM 2 driver"
+	depends on FIM_TWO
+##	default FIM_TWO_SDIO
+	help
+	  Only one of the following drivers can run in the FIM. Please pick one.
+
+config FIM_TWO_SDIO
+	bool "SDIO driver"
+	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210
+	help
+	  Enables the FIM-SDIO serial driver. If the driver is selected as a loadable
+	  module, the number of the FIM to be used by the driver can be passed
+	  as a module-parameter (use modinfo for obtaining more infos).
+	  
+          For testing the SDIO functionality is required to choose an additional 
+          SDIO-driver (GPS/UART) from the MMC-core.
+
+config FIM_TWO_SERIAL
+	bool "Serial driver"
+	help
+	  Enables the FIM-serial driver. If the driver is selected as a loadable
+	  module, the number of the FIM to be used by the driver can be passed
+	  as a module-parameter (use modinfo for obtaining more infos).
+
+config FIM_TWO_CAN
+	bool "CAN-bus driver"
+	depends on CAN && CAN_DEV
+	help
+	  Enables the FIM-CAN bus driver.
+          IMPORTANT: If the driver is compiled as built-in, then a reconfiguration
+          of the bit rate will not be possible (This is a limitation that should be
+          fixed in a future driver version).
+
+endchoice # FIM_TWO
 
 endif # FIM_CORE
 

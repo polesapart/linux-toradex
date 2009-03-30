@@ -29,6 +29,12 @@
 #include "cc9p9215_devices.h"
 #include "clock.h"
 
+/* 
+ * Pick Digi's internal FIM board
+ * Use internal board, defined to 1
+ */
+#define INT_FIM_BOARD	0
+
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
 {
@@ -150,7 +156,7 @@ void __init ns9xxx_add_device_cc9p9215_spi(void) {}
 #endif
 
 
-#if defined(CONFIG_FIM_SERIAL)
+#if defined(CONFIG_FIM_ONE_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
 	NS921X_FIM_SERIAL_GPIOS(69, 68, /* RX + TX */
@@ -163,7 +169,9 @@ struct platform_device ns921x_fim_serial0 = {
 	.dev.platform_data = &fim_serial_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_serial0);
+#endif /* CONFIG_FIM_ONE_SERIAL */
 
+#if defined(CONFIG_FIM_TWO_SERIAL)
 static struct fim_serial_platform_data fim_serial_data1 = {
 	.fim_nr        = 1,
 	NS921X_FIM_SERIAL_GPIOS(73, 72, /* RX + TX */
@@ -176,16 +184,23 @@ struct platform_device ns921x_fim_serial1 = {
 	.dev.platform_data = &fim_serial_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_serial1);
-#endif /* CONFIG_FIM_SERIAL */
+#endif /* CONFIG_FIM_TWO_SERIAL */
 
 
-#if defined(CONFIG_FIM_SDIO)
+#if defined(CONFIG_FIM_ONE_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
+#if INT_FIM_BOARD
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
 			      NS921X_GPIO_FUNC_0),
+#else
+	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
+			      100, 101,         /* WP + CD */
+			      76, 77,         /* CLK + CMD */
+			      NS921X_GPIO_FUNC_0),
+#endif
 };
 struct platform_device ns921x_fim_sdio0 = {
 	.name              = "fim-sdio",
@@ -193,26 +208,34 @@ struct platform_device ns921x_fim_sdio0 = {
 	.dev.platform_data = &fim_sdio_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio0);
+#endif /* CONFIG_FIM_ONE_SDIO */
 
+
+#if defined(CONFIG_FIM_TWO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
+#if INT_FIM_BOARD
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
 			      NS921X_GPIO_FUNC_1),
+#else
+	NS921X_FIM_SDIO_GPIOS(72, 73, 74, 75, /* D0 to D3 */
+			      100, 101,         /* WP + CD */
+			      78, 79,         /* CLK + CMD */
+			      NS921X_GPIO_FUNC_1),
+#endif
 };
 struct platform_device ns921x_fim_sdio1 = {
 	.name              = "fim-sdio",
 	.id                = 1,
 	.dev.platform_data = &fim_sdio_data1,
 };
-
-
 EXPORT_SYMBOL(ns921x_fim_sdio1);
-#endif /* CONFIG_FIM_SDIO */
+#endif /* CONFIG_FIM_TWO_SDIO */
 
 
-#if defined(CONFIG_FIM_CAN)
+#if defined(CONFIG_FIM_ONE_CAN)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr			= 0,
 	.fim_can_bitrate	= 500000,
@@ -225,13 +248,19 @@ struct platform_device ns921x_fim_can0 = {
 	.dev.platform_data = &fim_can_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_can0);
+#endif /* CONFIG_FIM_ONE_CAN */
 
+#if defined(CONFIG_FIM_TWO_CAN)
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr			= 1,
 	.fim_can_bitrate	= 500000,
-// For future use	NS921X_FIM_CAN_GPIOS(   98, 99, /* RX + TX */
+#if INT_FIM_BOARD
 	NS921X_FIM_CAN_GPIOS(   68, 69, /* RX + TX */
 				NS921X_GPIO_FUNC_2),
+#else
+	NS921X_FIM_CAN_GPIOS(   98, 99, /* RX + TX */
+				NS921X_GPIO_FUNC_2),
+#endif
 };
 struct platform_device ns921x_fim_can1 = {
 	.name              = "fim-can",
@@ -239,7 +268,7 @@ struct platform_device ns921x_fim_can1 = {
 	.dev.platform_data = &fim_can_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_can1);
-#endif /* CONFIG_FIM_CAN */
+#endif /* CONFIG_FIM_TWO_CAN */
 
 #if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
