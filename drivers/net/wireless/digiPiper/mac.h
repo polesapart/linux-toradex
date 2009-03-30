@@ -79,6 +79,7 @@ enum baseband_control_regs {
 		BB_GENERAL_CTL_SPI_RST)
 #endif
 #define BB_RSSI_LED			    (1<<8)
+#define BB_RSSI_EAS_FIFO_EMPTY  (1 << 16)
 #define BB_RSSI_EAS_FIFO_FULL   (1 << 17)
 #define BB_RSSI_EAS_BUSY        (1 << 18)
 #define BB_RSSI_EAS_MIC         (1 << 19)

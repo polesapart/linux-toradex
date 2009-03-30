@@ -121,6 +121,7 @@ struct piper_priv {
 	u32 txAesBlob[AES_BLOB_LENGTH / sizeof(u32)];   /* used to store AES IV and headers*/
     spinlock_t irqMaskLock;
     spinlock_t rxRegisterAccessLock;
+    spinlock_t aesLock;
     
 	struct ieee80211_hw *hw;
 	const char *drv_name;

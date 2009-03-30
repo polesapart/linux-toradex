@@ -81,8 +81,14 @@ static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
     	"ANTENNA_2"
     };
 	struct piper_priv *digi = hw->priv;
-    /* TODO: remove this */ sel = ANTENNA_2;
-	digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
+	static enum antenna_select prevSel = ANTENNA_BOTH;
+	
+	if (prevSel != sel)
+	{
+	    digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
+	}
+	
+	prevSel = sel;
 	
 	/* set antenna diversity */
 	if (sel == ANTENNA_BOTH)
@@ -520,7 +526,6 @@ static int hw_config(struct ieee80211_hw *hw, struct ieee80211_conf *conf)
 	int err = 0;
     unsigned int word;
     
-	digi_dbg("hw_config called\n");
 	digi->isRadioOn = (conf->radio_enabled != 0);
 	if (digi->isRadioOn)
 	{
@@ -583,10 +588,9 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	__be32 tmp;
     unsigned int word, bssid[2];
 
-	digi_dbg("conf->changed = %d\n", conf->changed);
 	if (conf->changed & IEEE80211_IFCC_BSSID)
 	{
-    	digi_dbg("bssid: %08x, conf->ssid_len = %d\n", *((uint32_t *) conf->bssid), conf->ssid_len);
+    	digi_dbg("bssid: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n", conf->bssid[0], conf->bssid[1], conf->bssid[2], conf->bssid[3], conf->bssid[4], conf->bssid[5]);
         bssid[0] = conf->bssid[ 3 ] | conf->bssid[ 2 ] << 8 | conf->bssid[ 1 ] << 16 | conf->bssid[ 0 ] << 24;
         bssid[1] = conf->bssid[ 5 ] << 16 | conf->bssid[ 4 ] << 24;
         if ((bssid[0] == 0) && (bssid[1] == 0))
@@ -608,9 +612,19 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
     {
     	if (conf->ssid_len) 
     	{
+#define MAX_SSID_LENGTH     (32)
     	    int i;
+    	    char ourSsid[MAX_SSID_LENGTH + 1];
+    	    unsigned int ssidLength = conf->ssid_len;
     	    
-    		digi_dbg("setting ssid=%s\n", conf->ssid);
+            if (ssidLength > MAX_SSID_LENGTH)
+            {
+                ssidLength = MAX_SSID_LENGTH;
+            }
+    	    memcpy(ourSsid, conf->ssid, ssidLength);
+    	    ourSsid[MAX_SSID_LENGTH] = 0;
+    	    ourSsid[ssidLength] = 0;
+    		digi_dbg("setting ssid=%s\n", ourSsid);
             for (i = 0; i < conf->ssid_len; i += 4)
             {
                 memcpy(&word, &conf->ssid[i], sizeof(word));
@@ -749,20 +763,6 @@ static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 {
 	int err = -EOPNOTSUPP;
 	struct piper_priv *digi = hw->priv;
-
-	if (cmd == SET_KEY)
-	{
-	    unsigned char *k = key->key;
-	    
-	    digi_dbg("index = %d, %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n", key->keyidx, address[0], address[1], address[2], address[3], address[4], address[5]);
-	    digi_dbg("key = %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X  %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X %2.2X \n", 
-	    k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], k[9], k[10], k[11], k[12], k[13], k[14], k[15]);
-	    
-	}
-	else
-	{
-	    digi_dbg("disable key index = %d\n", key->keyidx);
-	}
 
     if ((key->alg != ALG_CCMP) || (key->keyidx >= PIPER_MAX_KEYS))
     {

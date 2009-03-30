@@ -84,6 +84,22 @@ void dumpWordsReset(void)
 }
 
 
+void dumpBuffer(u8 *buffer, unsigned int length)
+{
+    unsigned int i, word;
+    
+    dumpWordsReset();
+    
+    for (i = 0; i < length / sizeof(unsigned int); i++)
+    {
+        memcpy(&word, &buffer[i*sizeof(unsigned int)], sizeof(word));
+        dumpWordsAdd(cpu_to_be32(word));
+    }
+    
+    dumpWordsDump();
+}
+
+
 void dumpSkb(struct sk_buff *skb)
 {
     unsigned int bytesLeft = skb->len;
@@ -496,6 +512,7 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
 {
     int result;
     int timeout = 10000;
+    unsigned long spinLockFlags;
     
     /*
      * Step 1: Wait for AES to become ready.
@@ -522,6 +539,7 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
      *         AES H/W engine into transmit mode.  We also make sure 
      *         the AES mode is set correctly.
      */
+    spin_lock_irqsave(&digi->aesLock, spinLockFlags);
     digi->write_reg(digi, BB_AES_CTL, 0, op_write);
     
     /*
@@ -544,6 +562,8 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
     result = __piper_write_fifo(digi, &buffer[_80211_HEADER_LENGTH + TX_HEADER_LENGTH + PIPER_EXTIV_SIZE], 
                         length - (_80211_HEADER_LENGTH + TX_HEADER_LENGTH + PIPER_EXTIV_SIZE),
                         BB_AES_FIFO);
+
+    spin_unlock_irqrestore(&digi->aesLock, spinLockFlags);
     
     return result;
 }
@@ -711,7 +731,6 @@ void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
     
     if (digi->wantRts)
     {
-        digi_dbg("Want RTS\n");
         /*
          * If we come here, then we need to send an RTS frame ahead of the
          * current data frame.
@@ -732,7 +751,6 @@ void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
     }
     else if (digi->wantCts)
     {
-        digi_dbg("Want CTS\n");
         /*
          * If we come here, then we need to send a CTS to self frame ahead of the 
          * current data frame.
@@ -880,14 +898,26 @@ done:
 
 
 
+#define FIFO_SWAP       (true)
+#define NO_FIFO_SWAP    (false)
 
 static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
-		int len)
+		int len, bool wantToSwap)
 {
-
+#define WAIT_FOR_AES_NOT_EMPTY        while (    (addr == BB_AES_FIFO)        \
+                                    && ((ioread32(digi->vbase + BB_RSSI) & BB_RSSI_EAS_FIFO_EMPTY) != 0)) \
+                                    { \
+                                        udelay(1); \
+                                        if (--timeout == 0) \
+                                        { \
+                                            dumpRegisters(digi, MAIN_REGS); \
+                                            timeout = 10000;\
+                                        }\
+                                    }
     int wordIndex;
     unsigned long flags;
-    
+    int timeout = 10000;
+        
     spin_lock_irqsave(&digi->rxRegisterAccessLock, flags);
     
 /*
@@ -901,7 +931,15 @@ static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
     {
         unsigned *word = (unsigned *)buf;
         
-        *word = be32_to_cpu(ioread32(digi->vbase + addr));
+        WAIT_FOR_AES_NOT_EMPTY;
+        if (wantToSwap)
+        {
+            *word = be32_to_cpu(ioread32(digi->vbase + addr));
+        }
+        else
+        {
+            *word = ioread32(digi->vbase + addr);
+        }
     }
     else if ((((unsigned)buf) & 0x3) == 0)
     {
@@ -909,14 +947,32 @@ static int piper_read(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
         
         for (wordIndex = 0; wordIndex < (len / sizeof(unsigned)); wordIndex++)
         {
-            word[wordIndex] = be32_to_cpu(ioread32(digi->vbase + addr));
+            WAIT_FOR_AES_NOT_EMPTY;
+            if (wantToSwap)
+            {
+                word[wordIndex] = be32_to_cpu(ioread32(digi->vbase + addr));
+            }
+            else
+            {
+                word[wordIndex] = ioread32(digi->vbase + addr);
+            }
         }
     }
     else
     {
         for (wordIndex = 0; wordIndex < (len / sizeof(unsigned)); wordIndex++)
         {
-            unsigned word = be32_to_cpu(ioread32(digi->vbase + addr));
+            unsigned word;
+            
+            WAIT_FOR_AES_NOT_EMPTY;
+            if (wantToSwap)
+            {
+                word = be32_to_cpu(ioread32(digi->vbase + addr));
+            }
+            else
+            {
+                word = ioread32(digi->vbase + addr);
+            }
             memcpy(&buf[wordIndex * sizeof(unsigned)], &word, sizeof(word));
         }
     }
@@ -1082,6 +1138,7 @@ static bool receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
 #endif
     _80211HeaderType *header;
     bool result = true;
+    int originalLength = length;
     
     if (headerLength > length)
     {
@@ -1090,41 +1147,48 @@ static bool receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
     
     header = (_80211HeaderType *) skb_put(skb, headerLength);
     length -= headerLength;
-    piper_read(piper, BB_DATA_FIFO, (uint8_t *) header, headerLength);
+    piper_read(piper, BB_DATA_FIFO, (uint8_t *) header, headerLength, FIFO_SWAP);
     memcpy(frameControlField, &header->fc, sizeof(frameControlField));
 
-#if 0
     if (header->fc.protected)
     {
-        unsigned char *rsnHeader = skb_put(skb, _80211_HEADER_LENGTH);
+        unsigned char *rsnHeader;
         unsigned int aesDataBlob[AES_BLOB_LENGTH / sizeof(unsigned int)];
         unsigned int keyIndex;
-
+        rsnHeader = skb_put(skb, PIPER_EXTIV_SIZE);
         /*
          * Step 1: Read the rest of the unencrypted data.
          */
-        piper_read(piper, BB_DATA_FIFO, rsnHeader, _80211_HEADER_LENGTH);
-        length -= _80211_HEADER_LENGTH;
-        
+        piper_read(piper, BB_DATA_FIFO, rsnHeader, PIPER_EXTIV_SIZE, FIFO_SWAP);
+        length -= PIPER_EXTIV_SIZE;
         keyIndex = rsnHeader[3] >> 6;
         
-        if (piperPrepareAESDataBlob(piper, keyIndex, aesDataBlob, 
-                                    (unsigned char *) header, length, false))
+        if (piperPrepareAESDataBlob(piper, keyIndex, (u8 *) aesDataBlob, 
+                                    (unsigned char *) header, originalLength - 12, false))
         {
+            unsigned int timeout = 10000;
+            unsigned long flags;
             
+            spin_lock_irqsave(&piper->aesLock, flags);
+
             /*
              * Step 2: Wait for AES to become ready.
              */
             while (piper->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_BUSY)
             {
+                timeout--;
+                if (timeout == 0)
+                {
+                    digi_dbg("1st AES busy never became ready\n");
+                    dumpRegisters(piper, MAIN_REGS | MAC_REGS);
+                }
+                udelay(1);
             }
     
             /*
              * Step 3: Set the AES mode, and then read from the AES control
              *         register to put the AES engine into receive mode.
              */
-            piper->write_reg(piper, BB_AES_CTL, ~BB_AES_CTL_AES_MODE, op_and);
-
             piper->read_reg(piper, BB_AES_CTL);
             
             /*
@@ -1144,25 +1208,34 @@ static bool receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
              * Step 6: Now, finally, read the unencrypted frame from the
              *         AES FIFO.
              */
-            length -= MIC_SIZE + DATA_SIZE;
-            result = __piper_read_fifo(piper, skb_put(skb, length), 
+            /***/ length -= 12;
+            result = piper_read(piper, BB_AES_FIFO, skb_put(skb, length), 
                                 length,
-                                BB_AES_FIFO);
+                                FIFO_SWAP);
+            skb_put(skb, 8);   /* add fake MIC */
+
             /*
              * Step 7: Wait for AES to become ready.
              */
-            while (piperi->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_BUSY)
+            while (piper->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_BUSY)
             {
+                timeout--;
+                if (timeout == 0)
+                {
+                    digi_dbg("2nd AES busy never became ready\n");
+                    dumpRegisters(piper, MAIN_REGS | MAC_REGS);
+                }
+                udelay(1);
             }
-    
-            result = ((piper->read_reg(piper, BB_RSSI) && BB_RSSI_EAS_MIC) != 0);
+            result = ((piper->read_reg(piper, BB_RSSI) & BB_RSSI_EAS_MIC) != 0);
+            spin_unlock_irqrestore(&piper->aesLock, flags);
             
-            skb_put(skb, 8);            /* pad an extra 8 bytes for the MIC which the H/W strips*/
+            skb_put(skb, 8);          /*  pad an extra 8 bytes for the MIC which the H/W strips*/
             if (result)
             {
                 status->flag |= RX_FLAG_DECRYPTED;
-                /* TODO:  should I also set RX_FLAG_MMIC_STRIPPED */
             }
+            else digi_dbg("Error decryptiong packet.\n");
         }
         else 
         {
@@ -1171,18 +1244,17 @@ static bool receivePacket(struct piper_priv *piper, struct sk_buff *skb, int len
              * packet possibly because we don't have the key.  Read
              * the rest of the packet and let mac80211 decrypt it.
              */
-            __piper_read_fifo(piper, skb_put(skb, length), 
+            piper_read(piper, BB_DATA_FIFO, skb_put(skb, length), 
                                 length,
-                                BB_DATA_FIFO);
+                                FIFO_SWAP);
          }
      }
     else
-#endif
     {
         /*
          * Frame is not encrypted, so just read it.
          */
-        piper_read (piper, BB_DATA_FIFO, skb_put(skb, length), length);
+        piper_read (piper, BB_DATA_FIFO, skb_put(skb, length), length, FIFO_SWAP);
     }
 
 #if WANT_RECEIVE_COUNT_SCROLL
@@ -1270,7 +1342,7 @@ static void rxTaskletEntry (unsigned long context)
 		    digi_dbg("__dev_alloc_skb failed\n");
 		    break;
 		}
-        piper_read(piper, BB_DATA_FIFO, (uint8_t *) &header, sizeof(header));
+        piper_read(piper, BB_DATA_FIFO, (uint8_t *) &header, sizeof(header), FIFO_SWAP);
         phy_process_plcp(piper, &header, &status, &length);
 
 		if (length != 0)
@@ -1309,6 +1381,7 @@ static void rxTaskletEntry (unsigned long context)
         	    /*
         	     * Frame failed MIC, so discard it.
         	     */
+        	    digi_dbg("Dropping bad frame\n");
     		    dev_kfree_skb(skb);
     		}
          }
@@ -1530,6 +1603,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	digi->drv_name = PIPER_DRIVER_NAME;
 	spin_lock_init(&digi->irqMaskLock);
 	spin_lock_init(&digi->rxRegisterAccessLock);
+	spin_lock_init(&digi->aesLock);
 	
     /*
      * Reserve access to the Piper registers mapped to memory.
