@@ -1629,7 +1629,7 @@ static int fim_remove(struct device *dev)
 /* This function returns a non-zero value if the device correspond to our fim-bus */
 static int fim_bus_match(struct device *dev, struct device_driver *driver)
 {
-	printk(KERN_DEBUG "@TODO: Create a match mechanism for the FIMs.\n");
+	printk_debug("@TODO: Create a match mechanism for the FIMs.\n");
 	return 1;
 }
 

@@ -426,7 +426,7 @@ static int s3c2410_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 		offset = (nfestat0 >> 7) & 0x7ff;
 		wrong_value = dat[offset];
 		corr_value = wrong_value ^ (1 << ((nfestat0 >> 4) & 0x7));
-		printk(KERN_ERR "[NAND BitErr]: 1 bit error detected at page byte %u. Correcting from 0x%02x to 0x%02x\n",
+		printk(KERN_DEBUG "[NAND BitErr]: 1 bit error detected at page byte %u. Correcting from 0x%02x to 0x%02x\n",
 		       offset, wrong_value, corr_value);
 		dat[offset] = corr_value;
 		retval = 1;
