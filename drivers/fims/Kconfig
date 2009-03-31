@@ -11,13 +11,13 @@ menuconfig FIM_CORE
 	help
 	  This option adds the support for the Flexible Interfaces Modules (FIM).
 	  Currently only the NS921X processors are supporting the FIM-devices. 
-          The number of available FIMs is two.
+          The number of available FIMs is two for NS9215 and one for NS9210.
 
 	  For installing the specific FIM-firmware, the FIM core driver depends on
 	  Hotplug and the firmware-subsystem too. 
 
-          If a FIM-driver is selected as loadable module, then is required
-          to have installed the user-space application 'mdev' (Busybox).
+##           If a FIM-driver is selected as loadable module, then is required
+##           to have installed the user-space application 'mdev' (Busybox).
 
 
 if FIM_CORE
@@ -31,7 +31,6 @@ config FIM_ONE
 choice
 	prompt "Choose FIM 1 driver"
 	depends on FIM_ONE
-##	default FIM_ONE_SDIO
 	help
 	  Only one of the following drivers can run in the FIM. Please pick one.
 
@@ -39,9 +38,7 @@ config FIM_ONE_SDIO
 	bool "SDIO driver"
 	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210
 	help
-	  Enables the FIM-SDIO serial driver. If the driver is selected as a loadable
-	  module, the number of the FIM to be used by the driver can be passed
-	  as a module-parameter (use modinfo for obtaining more infos).
+	  Enables the FIM-SDIO serial driver. 
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
@@ -49,18 +46,13 @@ config FIM_ONE_SDIO
 config FIM_ONE_SERIAL
 	bool "Serial driver"
 	help
-	  Enables the FIM-serial driver. If the driver is selected as a loadable
-	  module, the number of the FIM to be used by the driver can be passed
-	  as a module-parameter (use modinfo for obtaining more infos).
+	  Enables the FIM-serial driver. 
 
 config FIM_ONE_CAN
 	bool "CAN-bus driver"
 	depends on CAN && CAN_DEV
 	help
 	  Enables the FIM-CAN bus driver.
-          IMPORTANT: If the driver is compiled as built-in, then a reconfiguration
-          of the bit rate will not be possible (This is a limitation that should be
-          fixed in a future driver version).
 
 endchoice # FIM_ONE
 
@@ -73,7 +65,6 @@ config FIM_TWO
 choice
 	prompt "Choose FIM 2 driver"
 	depends on FIM_TWO
-##	default FIM_TWO_SDIO
 	help
 	  Only one of the following drivers can run in the FIM. Please pick one.
 
@@ -81,9 +72,7 @@ config FIM_TWO_SDIO
 	bool "SDIO driver"
 	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210
 	help
-	  Enables the FIM-SDIO serial driver. If the driver is selected as a loadable
-	  module, the number of the FIM to be used by the driver can be passed
-	  as a module-parameter (use modinfo for obtaining more infos).
+	  Enables the FIM-SDIO serial driver. 
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
@@ -91,18 +80,13 @@ config FIM_TWO_SDIO
 config FIM_TWO_SERIAL
 	bool "Serial driver"
 	help
-	  Enables the FIM-serial driver. If the driver is selected as a loadable
-	  module, the number of the FIM to be used by the driver can be passed
-	  as a module-parameter (use modinfo for obtaining more infos).
+	  Enables the FIM-serial driver.
 
 config FIM_TWO_CAN
 	bool "CAN-bus driver"
 	depends on CAN && CAN_DEV
 	help
 	  Enables the FIM-CAN bus driver.
-          IMPORTANT: If the driver is compiled as built-in, then a reconfiguration
-          of the bit rate will not be possible (This is a limitation that should be
-          fixed in a future driver version).
 
 endchoice # FIM_TWO
 
