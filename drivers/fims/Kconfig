@@ -36,12 +36,15 @@ choice
 
 config FIM_ONE_SDIO
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210 && !FIM_TWO_SDIO
+	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210 
 	help
-	  Enables the FIM-SDIO serial driver. 
+	  Enables the FIM-SDIO driver.
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
+
+## comment "SDIO disabled. Can not have two SDIO enabled."
+## 	depends on FIM_TWO_SDIO 
 
 config FIM_ONE_SERIAL
 	bool "Serial driver"
@@ -71,11 +74,15 @@ choice
 config FIM_TWO_SDIO
 	bool "SDIO driver"
 	depends on MMC && MMC_BLOCK && !PROCESSOR_NS9210 && !FIM_ONE_SDIO
+
 	help
 	  Enables the FIM-SDIO serial driver. 
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
+
+comment "SDIO disabled. Can not have two SDIO enabled."
+	depends on FIM_ONE_SDIO
 
 config FIM_TWO_SERIAL
 	bool "Serial driver"
