@@ -465,12 +465,21 @@ static int s3c24xx_pcm_suspend(struct platform_device *pdev, struct snd_soc_dai 
 {
 	struct snd_pcm_runtime *runtime;
 	struct s3c24xx_runtime_data *prtd;
+	int retval;
 
+	retval = 0;
 	runtime = dai->runtime;
+        if (!runtime)
+		goto exit_suspend;
+
 	prtd = runtime->private_data;
+        if (!prtd)
+		goto exit_suspend;
+
 	prtd->resumed = 0;
-	
-	return 0;
+
+exit_suspend:
+	return retval;
 }
 
 /* We need to reenable the DMA-channel when coming out from the suspend */
@@ -480,11 +489,16 @@ static int s3c24xx_pcm_resume(struct platform_device *pdev, struct snd_soc_dai *
 	struct s3c24xx_runtime_data *prtd;
 	int retval;
 
+	retval = 0;
 	runtime = dai->runtime;
+        if (!runtime)
+		goto exit_resume;
+        
 	prtd = runtime->private_data;
+        if (!prtd)
+		goto exit_resume;
 
 	/* Check if a DMA-channel is available and was not already resumed */
-	retval = 0;
 	if (prtd->params != NULL && !prtd->resumed) {
 
 		/*
@@ -500,7 +514,8 @@ static int s3c24xx_pcm_resume(struct platform_device *pdev, struct snd_soc_dai *
 		else
 			prtd->resumed = 1;
 	}
-	
+
+exit_resume:
 	return retval;
 }
 #else
