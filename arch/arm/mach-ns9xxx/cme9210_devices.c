@@ -96,12 +96,15 @@ void __init ns9xxx_add_device_cme9210_spi(void)
 void __init ns9xxx_add_device_cme9210_spi(void) {}
 #endif
 
+/* 
+ * XXX Need testing and it might be incomplete add_device()? 
+ */
 
 #if defined(CONFIG_FIM_ONE_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
-	NS921X_FIM_SERIAL_GPIOS(0, 1, /* RX + TX */
-				FIM_GPIO_DONT_USE, FIM_GPIO_DONT_USE, /* RTS + CTS */
+	NS921X_FIM_SERIAL_GPIOS(2, 1, /* RX(2,23) + TX(1) */
+				0, 3, /* RTS(0) + CTS(3) */
 				NS921X_GPIO_FUNC_2),
 };
 struct platform_device ns921x_fim_serial0 = {
@@ -112,17 +115,34 @@ struct platform_device ns921x_fim_serial0 = {
 EXPORT_SYMBOL(ns921x_fim_serial0);
 #endif /* CONFIG_FIM_ONE_SERIAL */
 
-#if defined(CONFIG_FIM_TWO_SERIAL)
-static struct fim_serial_platform_data fim_serial_data1 = {
+/*
+ * AFAIK, there is only one FIM in the CME9210
+ */
+// #if defined(CONFIG_FIM_TWO_SERIAL)
+// static struct fim_serial_platform_data fim_serial_data1 = {
+// 	.fim_nr        = 1,
+// 	NS921X_FIM_SERIAL_GPIOS(27, 26, /* RX + TX */
+// 				FIM_GPIO_DONT_USE, FIM_GPIO_DONT_USE, /* RTS + CTS */
+// 				NS921X_GPIO_FUNC_2),
+// };
+// struct platform_device ns921x_fim_serial1 = {
+// 	.name              = "fim-serial",
+// 	.id                = 1,
+// 	.dev.platform_data = &fim_serial_data1,
+// };
+// EXPORT_SYMBOL(ns921x_fim_serial1);
+// #endif /* CONFIG_FIM_TWO_SERIAL */
+
+#if defined(CONFIG_FIM_ONE_CAN)
+static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr        = 1,
-	NS921X_FIM_SERIAL_GPIOS(27, 26, /* RX + TX */
-				FIM_GPIO_DONT_USE, FIM_GPIO_DONT_USE, /* RTS + CTS */
+	NS921X_FIM_CAN_GPIOS(23, 24, /* RX(2,23) + TX(6,24) */
 				NS921X_GPIO_FUNC_2),
 };
-struct platform_device ns921x_fim_serial1 = {
-	.name              = "fim-serial",
+struct platform_device ns921x_fim_can0 = {
+	.name              = "fim-can",
 	.id                = 1,
-	.dev.platform_data = &fim_serial_data1,
+	.dev.platform_data = &fim_can_data0,
 };
-EXPORT_SYMBOL(ns921x_fim_serial1);
-#endif /* CONFIG_FIM_TWO_SERIAL */
+EXPORT_SYMBOL(ns921x_fim_can0);
+#endif /* CONFIG_FIM_TWO_CAN */

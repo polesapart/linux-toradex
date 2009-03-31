@@ -24,6 +24,7 @@ if FIM_CORE
 
 config FIM_ONE
 	bool "FIM 1"
+	depends on MACH_CC9P9215 || MACH_CME9210
 	help
 	  Enables FIM 1
 
@@ -65,6 +66,7 @@ endchoice # FIM_ONE
 
 config FIM_TWO
 	bool "FIM 2"
+	depends on MACH_CC9P9215 && !MACH_CME9210
 	help
 	  Enables FIM 2
 

@@ -33,7 +33,7 @@
  * Pick Digi's internal FIM board
  * Use internal board, defined to 1
  */
-#define INT_FIM_BOARD	0
+#define INT_FIM_BOARD	1
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
