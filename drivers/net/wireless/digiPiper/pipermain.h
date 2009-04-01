@@ -25,6 +25,11 @@ typedef u64 u48;
 #define PIPER_RESET_GPIO    (92)
 #define PIPER_IRQ_GPIO      (104)
 
+/*
+ * Set this #define to receive frames in the ISR.  This may improve 
+ * performance under heavy load at the expense of interrupt latency.
+ */
+#define WANT_TO_RECEIVE_FRAMES_IN_ISR   (0)
 
 struct piper_write_pkt {
     struct sk_buff *skb;
@@ -72,6 +77,7 @@ struct piperKeyInfo
  */
 #define	PIPER_EXTIV_SIZE	8		// IV and extended IV size
 #define	MIC_SIZE			8		// Message integrity check size
+#define ICV_SIZE            4       
 #define	DATA_SIZE			28		// Data frame header+FCS size
 #define	CCMP_SIZE			(PIPER_EXTIV_SIZE+MIC_SIZE)	// Total CCMP size
 
@@ -120,7 +126,7 @@ struct piper_priv {
 	unsigned int txAesKey;
 	u32 txAesBlob[AES_BLOB_LENGTH / sizeof(u32)];   /* used to store AES IV and headers*/
     spinlock_t irqMaskLock;
-    spinlock_t rxRegisterAccessLock;
+    spinlock_t registerAccessLock;
     spinlock_t aesLock;
     
 	struct ieee80211_hw *hw;
@@ -129,14 +135,13 @@ struct piper_priv {
 	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val, piperRegisterWriteOperation_t op);
 	unsigned int (*read_reg)(struct piper_priv *, uint8_t reg);
 	int (*write)(struct piper_priv *, uint8_t addr, uint8_t *buf, int len);
-	int (*write_fifo)(struct piper_priv *, unsigned char *buffer, unsigned int length, unsigned int flags);
-	int (*write_aes)(struct piper_priv *, unsigned char *buffer, unsigned int length, unsigned int flags);
-	int (*write_aes_key)(struct piper_priv *, struct sk_buff *skb);
+	int (*read)(struct piper_priv *, uint8_t, uint8_t *, int);
 	int (*initHw)(struct piper_priv *);
 	void (*setIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
 	void (*clearIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
 	u16 (*getNextBeaconBackoff)(void);
 	int (*load_beacon)(struct piper_priv *, unsigned char *, unsigned int);
+	int (*myrand)(void);
 
 	uint16_t irq_mask;
 	uint8_t bssid[ETH_ALEN];
@@ -158,6 +163,12 @@ extern void piper_free_hw(struct piper_priv *priv);
 extern void piperTxRetryTaskletEntry (unsigned long context);
 extern bool piperPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
                                     u8 *aesBlob, u8 *frame, u32 length, bool isTransmit);
-
+extern void digiWifiSetRegisterAccessRoutines(struct piper_priv *digi);
+extern void dumpWordsAdd(unsigned int word);
+extern void dumpWordsDump(void);
+extern void dumpWordsReset(void);
+extern void digiWifiTxRetryTaskletEntry (unsigned long context);
+extern void digiWifiRxTaskletEntry (unsigned long context);
+extern irqreturn_t digiWifiIsr(int irq, void *dev_id);
 
 #endif

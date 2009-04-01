@@ -288,9 +288,6 @@ static inline void dw_inc_48(u48* n)
  *
  * Returns true if successful, or false if something goes wrong
  */
-void dumpWordsAdd(unsigned int word);
-void dumpWordsDump(void);
-void dumpWordsReset(void);
 bool piperPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
                              u8 *aesBlob, u8 *frame, u32 length, bool isTransmit)
 {
