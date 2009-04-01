@@ -22,14 +22,15 @@
 #define DUMP_WORDS_MAX      (700)
 static unsigned int dumpWordsWord[DUMP_WORDS_MAX];
 static unsigned int dumpWordsCount = 0;
-void dumpWordsAdd(unsigned int word)
+
+void digiWifiDumpWordsAdd(unsigned int word)
 {
     if (dumpWordsCount < DUMP_WORDS_MAX)
     {
         dumpWordsWord[dumpWordsCount++] = word;
     }
 }
-void dumpWordsDump(void)
+void digiWifiDumpWordsDump(void)
 {
     unsigned int *p = dumpWordsWord;
     unsigned int wordsToGo = dumpWordsCount;
@@ -57,29 +58,29 @@ void dumpWordsDump(void)
     digi_dbg("--------------\n");
 }
 
-void dumpWordsReset(void)
+void digiWifiDumpWordsReset(void)
 {
     dumpWordsCount = 0;
 }
 
 
-void dumpBuffer(u8 *buffer, unsigned int length)
+void digiWifiDumpBuffer(u8 *buffer, unsigned int length)
 {
     unsigned int i, word;
     
-    dumpWordsReset();
+    digiWifiDumpWordsReset();
     
     for (i = 0; i < length / sizeof(unsigned int); i++)
     {
         memcpy(&word, &buffer[i*sizeof(unsigned int)], sizeof(word));
-        dumpWordsAdd(cpu_to_be32(word));
+        digiWifiDumpWordsAdd(cpu_to_be32(word));
     }
     
-    dumpWordsDump();
+    digiWifiDumpWordsDump();
 }
 
 
-void dumpSkb(struct sk_buff *skb)
+void digiWifiDumpSkb(struct sk_buff *skb)
 {
     unsigned int bytesLeft = skb->len;
     unsigned char *p = skb->data;
@@ -122,10 +123,10 @@ void dumpSkb(struct sk_buff *skb)
     }
 }
 
-EXPORT_SYMBOL_GPL(dumpSkb);
+EXPORT_SYMBOL_GPL(digiWifiDumpSkb);
  
 
-void dumpRegisters(struct piper_priv *digi, unsigned int regs)
+void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
 {
     unsigned int i;
     
@@ -199,3 +200,4 @@ void dumpRegisters(struct piper_priv *digi, unsigned int regs)
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
 }       
+EXPORT_SYMBOL_GPL(digiWifiDumpRegisters);

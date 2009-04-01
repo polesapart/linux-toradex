@@ -92,7 +92,7 @@ static bool receivePacket(struct piper_priv *digi, struct sk_buff *skb, int leng
         length -= PIPER_EXTIV_SIZE;
         keyIndex = rsnHeader[3] >> 6;
         
-        if (piperPrepareAESDataBlob(digi, keyIndex, (u8 *) aesDataBlob, 
+        if (digiWifiPrepareAESDataBlob(digi, keyIndex, (u8 *) aesDataBlob, 
                                     (unsigned char *) header, originalLength - 12, false))
         {
             /*
@@ -114,7 +114,7 @@ static bool receivePacket(struct piper_priv *digi, struct sk_buff *skb, int leng
                 if (timeout == 0)
                 {
                     digi_dbg("1st AES busy never became ready\n");
-                    dumpRegisters(digi, MAIN_REGS | MAC_REGS);
+                    digiWifiDumpRegisters(digi, MAIN_REGS | MAC_REGS);
                 }
                 udelay(1);
             }
@@ -164,7 +164,7 @@ static bool receivePacket(struct piper_priv *digi, struct sk_buff *skb, int leng
                 if (timeout == 0)
                 {
                     digi_dbg("2nd AES busy never became ready\n");
-                    dumpRegisters(digi, MAIN_REGS | MAC_REGS);
+                    digiWifiDumpRegisters(digi, MAIN_REGS | MAC_REGS);
                 }
                 udelay(1);
             }

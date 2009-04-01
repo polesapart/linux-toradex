@@ -96,7 +96,7 @@ static int debugThreadEntry(void *data)
     while (1)
     {
         ssleep(60);
-        dumpRegisters(digi, ALL_REGS);
+        digiWifiDumpRegisters(digi, ALL_REGS);
     }
     return 0;
 }
@@ -143,6 +143,8 @@ static int initHw(struct piper_priv *digi)
     int band = WLN_BAND_BG;
     int result = 0;
     
+	digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT, op_write);
+
 #if (TRANSCEIVER == RF_AIROHA_7230)
         /* Initialize baseband general control register */
         if ((band == WLN_BAND_B) || (band == WLN_BAND_BG))
@@ -281,7 +283,7 @@ static int __init piper_probe(struct platform_device* pdev)
     unsigned int version, status;
     
 	pr_info("piper_probe called\n");
-	err = piper_alloc_hw(&digi, sizeof(*digi));
+	err = digiWifiAllocateHw(&digi, sizeof(*digi));
 	localCopyDigi = digi;
     printk(KERN_INFO "digi = 0x%p\n", digi);
 	if (err) 
@@ -380,8 +382,7 @@ static int __init piper_probe(struct platform_device* pdev)
     gpio_configure_ns921x(PIPER_IRQ_GPIO, NS921X_GPIO_INPUT, NS921X_GPIO_DONT_INVERT, 
 		                NS921X_GPIO_FUNC_2, NS921X_GPIO_ENABLE_PULLUP);
 		                
-    printk(KERN_INFO "calling piper_register_hw\n");
-	err = piper_register_hw(digi, &pdev->dev, &al7230_rf_ops);
+	err = digiWifiRegisterHw(digi, &pdev->dev, &al7230_rf_ops);
 	if (err) {
 		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv\n");
 		goto do_free_rx;
@@ -421,6 +422,7 @@ static int piper_remove(struct platform_device *dev)
     printk(KERN_INFO "digi = 0x%p\n", digi);
 
     /* extern void enable_irq(unsigned int irq); */
+    digiWifiUnregisterHw(digi);
 	disable_irq(dev->resource[1].start);
     clearIrqMaskBit(digi, 0xffffffff);
     free_irq(dev->resource[1].start, digi);
@@ -429,7 +431,7 @@ static int piper_remove(struct platform_device *dev)
     gpio_free(PIPER_RESET_GPIO);
     release_resource(dev->resource);
     printk(KERN_INFO "piper_remove release_resource() has returned\n");
-	piper_free_hw(digi); 
+	digiWifiFreeHw(digi); 
     
     printk(KERN_INFO "piper_remove returning\n");
     return 0;
@@ -438,7 +440,6 @@ static int piper_remove(struct platform_device *dev)
 
 static void piper_release_device(struct device* dev)
 {
-    printk(KERN_INFO "piper_release_device called\n");
 	/* nothing to do. But we need a !NULL function */
 }
 
@@ -490,7 +491,7 @@ static int __init piper_init_module(void)
 
 	pr_info("piper_init_module called\n");
     printk(KERN_INFO "piper_init_module, version %s\n", DRV_VERS);
-#if 0
+#if BUILD_AS_LOADABLE_MODULE
     err = platform_device_register(&piper_device);
     if (err) {
             printk(KERN_ALERT "Device Register Failed, error = %d\n", err);

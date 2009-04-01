@@ -255,7 +255,7 @@ static int readFifo(struct piper_priv *digi, uint8_t addr, uint8_t *buf,
                                         udelay(1); \
                                         if (--timeout == 0) \
                                         { \
-                                            dumpRegisters(digi, MAIN_REGS); \
+                                            digiWifiDumpRegisters(digi, MAIN_REGS); \
                                             timeout = 10000;\
                                         }\
                                     }

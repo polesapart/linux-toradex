@@ -51,7 +51,7 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
         timeout--;
         if (timeout == 0)
         {
-            dumpRegisters(digi, MAIN_REGS | MAC_REGS);
+            digiWifiDumpRegisters(digi, MAIN_REGS | MAC_REGS);
         }
         udelay(1);
     }

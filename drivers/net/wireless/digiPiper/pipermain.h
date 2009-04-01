@@ -154,21 +154,22 @@ struct piper_priv {
 };
 
 /* main */
-extern int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz);
-extern int piper_register_hw(struct piper_priv *priv, struct device *dev,
+extern int digiWifiAllocateHw(struct piper_priv **priv, size_t priv_sz);
+extern int digiWifiRegisterHw(struct piper_priv *priv, struct device *dev,
 		struct digi_rf_ops *rf);
-extern void piper_unregister_hw(struct piper_priv *priv);
-extern void piper_free_hw(struct piper_priv *priv);
+extern void digiWifiUnregisterHw(struct piper_priv *priv);
+extern void digiWifiFreeHw(struct piper_priv *priv);
 
-extern void piperTxRetryTaskletEntry (unsigned long context);
-extern bool piperPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
+extern void digiWifiTxRetryTaskletEntry (unsigned long context);
+extern bool digiWifiPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
                                     u8 *aesBlob, u8 *frame, u32 length, bool isTransmit);
 extern void digiWifiSetRegisterAccessRoutines(struct piper_priv *digi);
-extern void dumpWordsAdd(unsigned int word);
-extern void dumpWordsDump(void);
-extern void dumpWordsReset(void);
+extern void digiWifiDumpWordsAdd(unsigned int word);
+extern void digiWifiDumpWordsDump(void);
+extern void digiWifiDumpWordsReset(void);
 extern void digiWifiTxRetryTaskletEntry (unsigned long context);
 extern void digiWifiRxTaskletEntry (unsigned long context);
 extern irqreturn_t digiWifiIsr(int irq, void *dev_id);
+extern void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
 
 #endif
