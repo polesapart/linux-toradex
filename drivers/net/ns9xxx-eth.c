@@ -316,8 +316,8 @@ static int ns9xxx_eth_mdiobus_read(struct mii_bus *bus, int phyid, int regnum)
 	struct net_device *dev = bus->priv;
 	int ret;
 
-	BUG_ON(phyid & ~0x1f);
-	BUG_ON(regnum & ~0x1f);
+	if ((phyid & ~0x1f) || (regnum & ~0x1f))
+		return -EINVAL;
 
 	ret = ns9xxx_eth_miibus_pollbusy(bus);
 	if (ret)
@@ -346,8 +346,8 @@ static int ns9xxx_eth_mdiobus_write(struct mii_bus *bus,
 	struct net_device *dev = bus->priv;
 	int ret;
 
-	BUG_ON(phyid & ~0x1f);
-	BUG_ON(regnum & ~0x1f);
+	if ((phyid & ~0x1f) || (regnum & ~0x1f))
+		return -EINVAL;
 
 	ret = ns9xxx_eth_miibus_pollbusy(bus);
 	if (ret)
@@ -897,6 +897,9 @@ static int ns9xxx_eth_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	int ret;
 
 	if (!netif_running(dev))
+		return -EINVAL;
+
+	if (!priv->phy)
 		return -EINVAL;
 
 	spin_lock_irqsave(&priv->lock, flags);
