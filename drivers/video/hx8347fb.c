@@ -279,6 +279,9 @@ static int __devinit hx8347_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_init;
 
+	/* Enable backlight */
+	par->pdata->enable(par, 1);
+
 	platform_set_drvdata(pdev, info);
 	printk(KERN_INFO
 	       "fb%d: HX8347 frame buffer device, using %dK of video memory\n",
@@ -332,9 +335,43 @@ static int __devexit hx8347_remove(struct platform_device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+/* suspend and resume support for the lcd controller */
+static int hx8347_suspend(struct platform_device *dev, pm_message_t state)
+{
+	struct fb_info *info = platform_get_drvdata(dev);
+	struct hx8347fb_par *par = info->par;
+
+	/* TODO: configure the display in low power */
+
+	/* Disable the backlight */
+	par->pdata->enable(par, 0);
+
+	return 0;
+}
+
+static int hx8347_resume(struct platform_device *dev)
+{
+	struct fb_info *info = platform_get_drvdata(dev);
+	struct hx8347fb_par *par = info->par;
+
+	/* TODO: configure the display to resume and continue displaying */
+
+	/* Enable the backlight */
+	par->pdata->enable(par, 1);
+
+	return 0;
+}
+#else
+#define hx8347_suspend NULL
+#define hx8347_resume  NULL
+#endif
+
 static struct platform_driver hx8347_driver = {
-	.probe	= hx8347_probe,
-	.remove = hx8347_remove,
+	.probe	 = hx8347_probe,
+	.remove  = hx8347_remove,
+	.suspend = hx8347_suspend,
+	.resume  = hx8347_resume,
 	.driver	= {
 		.owner	= THIS_MODULE,
 		.name	= "hx8347",
