@@ -1099,6 +1099,7 @@ err_mdiobus_register:
 
 		kfree(priv->mdiobus->irq);
 err_alloc_irq:
+		mdiobus_free(priv->mdiobus);
 err_out:
 		return ret;
 	}
@@ -1124,6 +1125,8 @@ static int ns9xxx_eth_mdiobus_disable(struct net_device *dev)
 	phy_disconnect(priv->phy);
 	mdiobus_unregister(priv->mdiobus);
 	kfree(priv->mdiobus->irq);
+	mdiobus_free(priv->mdiobus);
+
 	return 0;
 }
 
