@@ -439,7 +439,12 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
  *
  * work out if we can queue another buffer into the DMA engine
 */
-
+/*
+ * The auto reload feature was giving some problems when sending different
+ * DMA-buffers.
+ * (Luis Galdos)
+ */
+#if 0
 static int
 s3c2410_dma_canload(struct s3c2410_dma_chan *chan)
 {
@@ -449,6 +454,7 @@ s3c2410_dma_canload(struct s3c2410_dma_chan *chan)
 
 	return 0;
 }
+#endif
 
 /* s3c2410_dma_enqueue
  *
