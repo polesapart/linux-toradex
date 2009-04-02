@@ -311,7 +311,8 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 		break;
 	case FIM_SD_INTARM_CARD_DAT1:
-		printk_err("SDIO-interrupt received, but not supported up now.\n");
+		printk_debug("SDIO-interrupt received.\n");
+		mmc_signal_sdio_irq(port->mmc);
 		break;
 	default:
 		printk_err("Unknown IRQ %i | FIM %i | %x\n",
