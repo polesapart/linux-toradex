@@ -151,7 +151,9 @@ static __be32 *
 encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
 	     struct kstat *stat)
 {
+#ifdef CONFIG_FILE_LOCKING
 	struct dentry	*dentry = fhp->fh_dentry;
+#endif
 	int type;
 	struct timespec time;
 	u32 f;

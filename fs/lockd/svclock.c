@@ -716,7 +716,9 @@ struct lock_manager_operations nlmsvc_lock_operations = {
 static void
 nlmsvc_grant_blocked(struct nlm_block *block)
 {
+#ifdef CONFIG_FILE_LOCKING
 	struct nlm_file		*file = block->b_file;
+#endif
 	struct nlm_lock		*lock = &block->b_call->a_args.lock;
 	int			error;
 
