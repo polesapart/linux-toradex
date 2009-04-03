@@ -146,7 +146,8 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 static inline unsigned int s3c2443_remap_gpio(struct gpio_chip *chip, unsigned gpio)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
-	return (gpio - chip->base + port->oldbase);
+
+	return (gpio + port->oldbase);
 }
 
 static int s3c2443_gpio_to_irq(struct gpio_chip *chip, unsigned gpio)
@@ -162,11 +163,8 @@ int s3c2443_gpio_getirq(unsigned gpio)
 static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
-	u32 offset;
 
-	/* Configure as input if its input capable */
-	offset = gpio - chip->base;
-	if ((1 << offset) & port->in_mask) {
+	if ((1 << gpio) & port->in_mask) {
 		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
 				    S3C2410_GPIO_INPUT);
 		return 0;
@@ -178,11 +176,8 @@ static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int value)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
-	u32 offset;
 
-	/* Configure as input if its input capable */
-	offset = gpio - chip->base;
-	if ((1 << offset) & port->out_mask) {
+	if ((1 << gpio) & port->out_mask) {
 		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
 				    S3C2410_GPIO_OUTPUT);
 		s3c2410_gpio_setpin(s3c2443_remap_gpio(chip, gpio), value);
@@ -210,12 +205,10 @@ static irqreturn_t s3c2443_wakeup_irq(int irq, void *data)
 static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int enable)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
-	u32 offset;
 	int irq, ret = 0;
 
 	/* Configure as wakeup interrupt if capable */
-	offset = gpio - chip->base;
-	if (!((1 << offset) & port->wakeup_mask)) {
+	if (!((1 << gpio) & port->wakeup_mask)) {
 		pr_err("[ ERROR ] GPIO %i not wakeup capable\n", gpio);
 		return -ENODEV;
 	}
