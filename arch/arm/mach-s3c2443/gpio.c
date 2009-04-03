@@ -37,7 +37,7 @@ struct s3c2443_gpio_chip {
 
 #define to_s3c2443_gpio_chip(c)	container_of(c, struct s3c2443_gpio_chip, chip)
 
-static unsigned int s3c2443_gpio_read_porta(unsigned int pin)
+unsigned int s3c2443_gpio_read_porta(unsigned int pin)
 {
 	unsigned long gpacdh, gpacdl;
 	unsigned long flags;
