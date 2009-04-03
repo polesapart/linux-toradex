@@ -228,15 +228,7 @@ struct fim_can_t {
 	struct clk *cpu_clk;
 	int opened;
 	spinlock_t lock;
-
 };
-
-struct fim_cans_t {
-	int fims;
-	struct fim_can_t **ports;
-};
-
-static struct fim_cans_t *fim_cans;
 
 /* Function prototypes */
 static int fim_can_send_skb(struct fim_can_t *port, unsigned char *data, int len,
@@ -656,7 +648,7 @@ static int fim_can_stop(struct net_device *dev)
 		udelay(1000);
 
 		/* Check if need to stop the FIM */
-		printk_debug("%s: Disabling interrupt\n",__func__);
+		printk_debug("%s: Disabling interrupt\n", __func__);
 		fim_disable_irq(fim);
 		fim_send_stop(fim);
 	}
@@ -1155,6 +1147,10 @@ static int unregister_fim_can(struct fim_can_t *port)
 	for (cnt = 0; gpios[cnt].nr < FIM_CAN_MAX_GPIOS; cnt++)
 		gpio_free(gpios[cnt].nr);
 
+	/* Free the obtained clock */
+	if (!IS_ERR(port->cpu_clk))
+		clk_put(port->cpu_clk);
+	
 	port->reg = 0;
 
 	return 0;
@@ -1164,7 +1160,8 @@ static int unregister_fim_can(struct fim_can_t *port)
  * IMPORTANT: First register the FIM-driver, and at last the CAN-device, then
  * it will automatically start with the bit time configuration.
  */
-static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[], int fim_can_bitrate)
+static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[],
+			    int fim_can_bitrate)
 {
 	int retval, cnt;
 	int func;
@@ -1183,9 +1180,9 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	port = netdev_priv(dev);
 	port->dev = dev;
 
-	/* Get a reference to the CPU clock for setting the baudrate */
+	/* Get a reference to the SYS clock for setting the baudrate */
 	if (IS_ERR(port->cpu_clk = clk_get(&dev->dev, "systemclock"))) {
-		printk_err("Couldn't get the CPU clock.\n");
+		printk_err("Couldn't get the SYS clock.\n");
 		goto err_free_candev;
 	}
 
@@ -1250,10 +1247,9 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	port->can.do_get_state = fim_can_get_state;
 	port->can.do_set_mode = fim_can_set_mode;
 
-	port->cpu_clk = clk_get(&dev->dev, "systemclock");
  	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
- 	printk_debug("port->cpu_clk: %lu\n",clk_get_rate(port->cpu_clk));
- 	printk_debug("port->can.bittiming.clock: %u\n",port->can.bittiming.clock);
+ 	printk_debug("port->cpu_clk: %lu\n", clk_get_rate(port->cpu_clk));
+ 	printk_debug("port->can.bittiming.clock: %u\n", port->can.bittiming.clock);
 
 	/*
 	 * @TODO: Set the correct maximal BRP for the controller.
@@ -1300,8 +1296,7 @@ err_free_candev:
  	return -EINVAL;
 }
 
-static __init int
-fim_can_probe(struct platform_device *pdev)
+static __init int fim_can_probe(struct platform_device *pdev)
 {
 	int nrpics;
 	int retval;
@@ -1330,28 +1325,11 @@ fim_can_probe(struct platform_device *pdev)
 	nrpics = fim_number_pics();
 
 	/* Sanity check for the passed number of PICs */
-	if (fims_number > nrpics || fims_number < 0) {
+	if (pdata->fim_nr > nrpics || pdata->fim_nr < 0) {
 		printk_err("Invalid number %i of FIMs (Min. 0 | Max. %i)\n",
-			   fims_number, nrpics);
+			   pdata->fim_nr, nrpics);
 		return -EINVAL;
 	}
-
-	/*
-	 * If the module parameter is equal the maximal number of PICs, then
-	 * the serial driver will try to register all the available PICs, otherwise
-	 * the driver will handle only one PIC
-	 */
-
-
- 	nrpics = (fims_number != nrpics) ? (1) : (nrpics);
-
-	fim_cans = kzalloc(sizeof(struct fim_cans_t) +
-			   (nrpics * sizeof(struct fim_can_t *)), GFP_KERNEL);
-	if (!fim_cans)
-		return -ENOMEM;
-
-	fim_cans->fims = nrpics;
-	fim_cans->ports = (void *)fim_cans + sizeof(struct fim_cans_t);
 
 	/*
 	 * Start with the registration of the CAN-ports
@@ -1360,8 +1338,8 @@ fim_can_probe(struct platform_device *pdev)
 	gpios[0].func	= pdata->rx_gpio_func;
 	gpios[1].nr	= pdata->tx_gpio_nr;
 	gpios[1].func	= pdata->tx_gpio_func;
-
-	printk_debug("%s: Pins used rx: %d -- tx: %d \n", __func__, gpios[0].nr, gpios[1].nr );
+	printk_debug("%s: Pins used rx: %d -- tx: %d \n", __func__,
+		     gpios[0].nr, gpios[1].nr );
 	
 	/* XXX SDIO code approach */
 	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, fim_can_bitrate);
@@ -1371,28 +1349,22 @@ fim_can_probe(struct platform_device *pdev)
 	return retval;
 }
 
-static __devexit int
-fim_can_remove(struct platform_device *pdev)
+static __devexit int fim_can_remove(struct platform_device *pdev)
 {
-	int cnt, retval;
 	struct fim_can_t *port;
 
-	for (cnt = 0; cnt < fim_cans->fims; cnt++) {
-		port = fim_cans->ports[cnt];
-		unregister_fim_can(port);
+	port = dev_get_drvdata(&pdev->dev);
+	if (!port) {
+		printk_err("remove: NULL pointer found!\n");
+		return -ENODEV;
 	}
 
-	if (fim_cans) {
-		kfree(fim_cans);
-		fim_cans = NULL;
-	}
-	port = dev_get_drvdata(&pdev->dev);
-	retval = 0; /* @XXX */
-	return retval;
+	unregister_fim_can(port);
+	
+	return 0;
 }
 
-static struct platform_driver 
-fim_can_platform_driver = {
+static struct platform_driver fim_can_platform_driver = {
 	.probe	= fim_can_probe,
 	.remove	= __devexit_p(fim_can_remove),
 	.driver	= {
@@ -1405,18 +1377,15 @@ fim_can_platform_driver = {
  * This is the function that will be called when the module is loaded
  * into the kernel space
  */
-static __init int 
-fim_can_init(void)
+static __init int fim_can_init(void)
 {
 	return platform_driver_register(&fim_can_platform_driver);
 }
 
-static __exit void 
-fim_can_exit(void)
+static __exit void fim_can_exit(void)
 {
 	printk_info("Removing the FIM CAN driver\n");
-	platform_driver_unregister(&fim_can_platform_driver);		
-	kfree(fim_cans);
+	platform_driver_unregister(&fim_can_platform_driver);
 }
 
 module_init(fim_can_init);
