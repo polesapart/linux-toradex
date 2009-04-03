@@ -18,104 +18,31 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
+#include <linux/gpio.h>
 #include <linux/platform_device.h>
 
 #include <mach/hardware.h>
 #include <asm/irq.h>
 #include <asm/io.h>
 
-#include <asm-generic/gpio.h>
-#include <mach/regs-gpio.h>
-#include <mach/regs-gpioj.h>
 #include <mach/gpio.h>
 
-/* Available capabilities for the GPIOs */
-enum gpio_caps {
-	GPIO_CAPS_WAKEUP = (1 << 0),
-	GPIO_CAPS_IRQ    = (1 << 1),	
+struct s3c2443_gpio_chip {
+	struct gpio_chip	chip;
+	u32			oldbase;
+	u32			in_mask;
+	u32			out_mask;
+	u32			wakeup_mask;
 };
 
-/* For the internal handling */
-struct s3c_gpio_t {
-        unsigned int pin;
-        unsigned int port;
-	enum gpio_caps caps; /* Capabilities: wakeup, IRQ, etc. */
-	unsigned long wakeup_trigger;
-	unsigned long wakeup_ready;
-	unsigned long wakeup_config;
-	wait_queue_head_t wait_q;
-	unsigned long triggered;
-};
+#define to_s3c2443_gpio_chip(c)	container_of(c, struct s3c2443_gpio_chip, chip)
 
-/* Create a standard GPIO */
-#define S3C2443_GPIO(pi, pt)		   \
-{ \
-	.pin = pi, \
-	.port = pt, \
-}
-
-/* Create a GPIO with IRQ capabilities */
-#define S3C2443_GPIO_WAKEUP(pi, pt, iconf)	\
-{ \
-	.pin = pi,				   \
-	.port = pt,			   \
-	.caps =  GPIO_CAPS_IRQ  | GPIO_CAPS_WAKEUP,	   \
-	.wakeup_trigger = IRQF_TRIGGER_FALLING, \
-	.wakeup_config = iconf,		   \
-}
-
-static struct s3c_gpio_t s3c2443_gpios_table[] = {
-
-	/* Port A */
-	S3C2443_GPIO(393, S3C2410_GPA0),
-	S3C2443_GPIO(373, S3C2410_GPA1),
-
-        /* Port F */
-	S3C2443_GPIO_WAKEUP(226, S3C2410_GPF0, S3C2410_GPF0_EINT0),
-        S3C2443_GPIO(227, S3C2410_GPF1),
-        S3C2443_GPIO(228, S3C2410_GPF2),
-	S3C2443_GPIO_WAKEUP(232, S3C2410_GPF6, S3C2410_GPF6_EINT6),
-	S3C2443_GPIO(233, S3C2410_GPF7),
-
-        /* Port G */
-	S3C2443_GPIO(242, S3C2410_GPG0),
-	S3C2443_GPIO(243, S3C2410_GPG1),
-	S3C2443_GPIO(244, S3C2410_GPG2),
-	S3C2443_GPIO(245, S3C2410_GPG3),
-	S3C2443_GPIO(246, S3C2410_GPG4),
-	S3C2443_GPIO(247, S3C2410_GPG5),
-        S3C2443_GPIO(248, S3C2410_GPG6),
-	S3C2443_GPIO(249, S3C2410_GPG7),
-
-	/* Port L */
-	S3C2443_GPIO(166, S3C2443_GPL10),
-	S3C2443_GPIO(165, S3C2443_GPL11),
-	S3C2443_GPIO(164, S3C2443_GPL12),
-	S3C2443_GPIO(163, S3C2443_GPL13),
-	S3C2443_GPIO(162, S3C2443_GPL14),
-};
-
-static struct s3c_gpio_t *__get_gpio(int pin)
-{
-	int cnt;
-	
-        for (cnt = 0; cnt < ARRAY_SIZE(s3c2443_gpios_table); cnt++) {
-                if (s3c2443_gpios_table[cnt].pin == pin)
-                        return &s3c2443_gpios_table[cnt];
-        }
-
-	return NULL;
-}
-
-unsigned int s3c2443_gpio_read_porta(unsigned int pin)
+static unsigned int s3c2443_gpio_read_porta(unsigned int pin)
 {
 	unsigned long gpacdh, gpacdl;
 	unsigned long flags;
 	unsigned long res, mask;
 	int i;
-
-	if (pin >= S3C2410_GPIO_BANKB)
-		return s3c2410_gpio_getcfg(pin);
 
 	/* Port A requieres special handling... */
 	local_irq_save(flags);
@@ -172,72 +99,6 @@ void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function)
 	local_irq_restore(flags);
 }
 
-static unsigned int s3c2443_gpio2port(unsigned int pin)
-{
-        int cnt;
-
-        for (cnt = 0; cnt < ARRAY_SIZE(s3c2443_gpios_table); cnt++) {
-                if (s3c2443_gpios_table[cnt].pin == pin)
-                        return s3c2443_gpios_table[cnt].port;
-        }
-
-        return 0;
-}
-
-/* By errors return a negative value */
-int s3c2443_gpio_getirq(unsigned int gpio)
-{
-	unsigned int port;
-	int retval;
-	
-	retval = -EINVAL;
-	port = s3c2443_gpio2port(gpio);
-	if (port)
-		retval = s3c2410_gpio_getirq(port);
-
-	return retval;
-}
-
-int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
-{
-	unsigned int port;
-
-	port = s3c2443_gpio2port(gpio);
-	s3c2410_gpio_cfgpin(port, S3C2410_GPIO_INPUT);
-	return 0;
-}
-
-int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int value)
-{
-	unsigned int port;
-
-	port = s3c2443_gpio2port(gpio);
-	s3c2410_gpio_cfgpin(port, S3C2410_GPIO_OUTPUT);
-	s3c2410_gpio_setpin(port, value);
-	return 0;
-}
-
-int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio)
-{
-	unsigned int port;
-	int retval;
-
-	retval = -EINVAL;
-	port = s3c2443_gpio2port(gpio);
-	if (port)
-		retval = s3c2410_gpio_getpin(port) ? 1 : 0;
-
-	return retval;
-}
-
-void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
-{
-	unsigned int port;
-
-	port = s3c2443_gpio2port(gpio);
-	s3c2410_gpio_setpin(port, value);
-}
-
 /* Enable the pull-down of an external interrupt GPIO */
 int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 {
@@ -265,7 +126,7 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 	regval = __raw_readl(base);
 	if (base == S3C24XX_EXTINT0) {
 		unsigned int t;		
-		t  =  (regval  &  0x0000000f)  <<  28;
+		t  =   (regval  &  0x0000000f)  <<  28;
 		t  |=  (regval  &  0x000000f0)  <<  20;
 		t  |=  (regval  &  0x00000f00)  <<  12;
 		t  |=  (regval  &  0x0000f000)  <<  4;
@@ -282,101 +143,154 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 	return 0;
 }
 
-static irqreturn_t s3c2443_wakeup_irq(int irq, void *_gpio)
+static inline unsigned int s3c2443_remap_gpio(struct gpio_chip *chip, unsigned gpio)
 {
-	struct s3c_gpio_t *gpio;
+	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	return (gpio - chip->base + port->oldbase);
+}
 
-	gpio = (struct s3c_gpio_t *)_gpio;
+static int s3c2443_gpio_to_irq(struct gpio_chip *chip, unsigned gpio)
+{
+	return s3c2410_gpio_getirq(s3c2443_remap_gpio(chip, gpio));
+}
 
-	if (!gpio)
-		goto exit_wakeup;
+int s3c2443_gpio_getirq(unsigned gpio)
+{
+	return s3c2410_gpio_getirq(gpio);
+}
 
-	/*
-	 * Wakeup the waiting processes
-	 * 
-	 */
-/* 	gpio->triggered = 1; */
-/*         wake_up_interruptible(&gpio->wait_q); */
-	
-exit_wakeup:
+static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
+{
+	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	u32 offset;
+
+	/* Configure as input if its input capable */
+	offset = gpio - chip->base;
+	if ((1 << offset) & port->in_mask) {
+		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
+				    S3C2410_GPIO_INPUT);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int value)
+{
+	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	u32 offset;
+
+	/* Configure as input if its input capable */
+	offset = gpio - chip->base;
+	if ((1 << offset) & port->out_mask) {
+		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
+				    S3C2410_GPIO_OUTPUT);
+		s3c2410_gpio_setpin(s3c2443_remap_gpio(chip, gpio), value);
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio)
+{
+	return s3c2410_gpio_getpin(s3c2443_remap_gpio(chip, gpio)) ? 1 : 0;
+}
+
+static void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
+{
+	s3c2410_gpio_setpin(s3c2443_remap_gpio(chip, gpio), value);
+}
+
+static irqreturn_t s3c2443_wakeup_irq(int irq, void *data)
+{
 	return IRQ_HANDLED;
 }
 
-int s3c2443_gpio_wakeup_configure(struct gpio_chip *chip, unsigned gpio, int enable)
+static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int enable)
 {
-	struct s3c_gpio_t *gp;
-	int irq, retval;
-		
-	gp = __get_gpio(chip->base + gpio);
-	if (!gp)
-		return -ENODEV;
-	
-	/* Check if the GPIO is wakeup capable */
-	if (!(gp->caps & GPIO_CAPS_WAKEUP)) {
-		pr_err("[ ERROR ] GPIO %i not wakeup capable\n", gp->pin);
+	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	u32 offset;
+	int irq, ret = 0;
+
+	/* Configure as wakeup interrupt if capable */
+	offset = gpio - chip->base;
+	if (!((1 << offset) & port->wakeup_mask)) {
+		pr_err("[ ERROR ] GPIO %i not wakeup capable\n", gpio);
 		return -ENODEV;
 	}
 
-	/* Sanity checks */
-	if ((gp->wakeup_ready && enable) || (!gp->wakeup_ready && !enable)) {
-		pr_err("[ ERROR ] GPIO %i already requested?\n", gp->pin);
-		return -EINVAL;
-	}
-
-	irq = s3c2443_gpio_getirq(gpio);
+	irq = s3c2443_gpio_to_irq(chip, gpio);
 	if (irq < 0) {
-		pr_err("[ ERROR ] Couldn't get an IRQ for pin %i\n", gp->pin);
+		pr_err("[ ERROR ] Couldn't get an IRQ for gpio %i\n", gpio);
 		return -ENODEV;
 	}
 
 	if (enable) {
-		retval = request_irq(irq, s3c2443_wakeup_irq,
-				     IRQF_DISABLED | gp->wakeup_trigger,
-				     "s3c2443-wio", gp);
-		if (retval) {
+		ret = request_irq(irq, s3c2443_wakeup_irq,
+				  IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+				  "s3c2443-wio", NULL);
+		if (ret) {
 			pr_err("[ ERROR ] Couldn't request IRQ %i\n", irq);
 			goto exit_wakeup;
 		}
-
 		enable_irq_wake(irq);
-		s3c2410_gpio_cfgpin(gp->port, gp->wakeup_config);
-		gp->wakeup_ready = 1;
 	} else {
 		disable_irq_wake(irq);
-		free_irq(irq, gp);
-		s3c2410_gpio_cfgpin(gp->port, S3C2410_GPIO_INPUT);
-		gp->wakeup_ready = 0;
+		free_irq(irq, NULL);
+		s3c2443_gpio_dir_input(chip, gpio);
 	}
 
-	retval = 0;
-	
 exit_wakeup:
-	return retval;
+	return ret;
 }
 
-static struct gpio_chip s3c2443_gpios = {
-	.label            = "s3c2443-gpios",
-	.direction_input  = s3c2443_gpio_dir_input,
-	.direction_output = s3c2443_gpio_dir_output,
-	.get              = s3c2443_gpio_get,
-	.set              = s3c2443_gpio_set,
-	.wakeup_configure = s3c2443_gpio_wakeup_configure,
-	.base             = 0,
-	.ngpio            = 256,
+#define S3C2443_GPIO_PORT(name,num,start,obase,				\
+			  inmsk,outmsk,wakemsk)				\
+	{								\
+		.chip = {						\
+			.label		  = "Port" #name,		\
+			.direction_input  = s3c2443_gpio_dir_input, 	\
+			.direction_output = s3c2443_gpio_dir_output,	\
+			.get		  = s3c2443_gpio_get,		\
+			.set		  = s3c2443_gpio_set,		\
+			.to_irq           = s3c2443_gpio_to_irq,	\
+			.wakeup_configure = s3c2443_gpio_wakeup_conf,	\
+			.base		  = start,			\
+			.ngpio		  = num,			\
+		},							\
+		.oldbase                  = obase,			\
+		.in_mask                  = inmsk,			\
+		.out_mask                 = outmsk,			\
+		.wakeup_mask              = wakemsk,			\
+	}
+
+
+static struct s3c2443_gpio_chip s3c2443_gpio_ports[] = {
+	S3C2443_GPIO_PORT(A, 16,   0, S3C2410_GPIO_BANKA, 0x00000000, 0x0000ffff, 0),
+	S3C2443_GPIO_PORT(B, 11,  16, S3C2410_GPIO_BANKB, 0x000003ff, 0x000003ff, 0),
+	S3C2443_GPIO_PORT(C, 16,  27, S3C2410_GPIO_BANKC, 0x0000ffff, 0x0000ffff, 0),
+	S3C2443_GPIO_PORT(D, 16,  43, S3C2410_GPIO_BANKD, 0x0000ffff, 0x0000ffff, 0),
+	S3C2443_GPIO_PORT(E, 16,  59, S3C2410_GPIO_BANKE, 0x0000ffff, 0x0000ffff, 0),
+	S3C2443_GPIO_PORT(F,  8,  75, S3C2410_GPIO_BANKF, 0x000000ff, 0x000000ff, 0xff),
+	S3C2443_GPIO_PORT(G, 16,  83, S3C2410_GPIO_BANKG, 0x0000ffff, 0x0000ffff, 0xff),
+	S3C2443_GPIO_PORT(H, 15,  99, S3C2410_GPIO_BANKH, 0x00007fff, 0x00007fff, 0),
+	S3C2443_GPIO_PORT(J, 16, 114, S3C2440_GPIO_BANKJ, 0x0000ffff, 0x0000ffff, 0),
+	S3C2443_GPIO_PORT(L, 15, 130, S3C2410_GPIO_BANKL, 0x00007fff, 0x00007fff, 0),
+	S3C2443_GPIO_PORT(M,  2, 145, S3C2410_GPIO_BANKM, 0x00000003, 0x00000000, 0),
 };
 
-void s3c2443_gpio_init(void)
+static int __init s3c2443_gpio_init(void)
 {
-	/* Now register the different chips */
-	if (gpiochip_add(&s3c2443_gpios))
-		pr_err("[ ERROR ] Registering the GPIOs for the CC9M2443JS\n");
+	int i;
+	  
+	for (i = 0; i < ARRAY_SIZE(s3c2443_gpio_ports); i++)
+		gpiochip_add(&s3c2443_gpio_ports[i].chip);
+
+	return 0;
 }
+pure_initcall(s3c2443_gpio_init);
 
-
-EXPORT_SYMBOL(s3c2443_gpio_init);
-EXPORT_SYMBOL(s3c2443_gpio_get);
-EXPORT_SYMBOL(s3c2443_gpio_set);
 EXPORT_SYMBOL(s3c2443_gpio_getirq);
 EXPORT_SYMBOL(s3c2443_gpio_extpull);
 EXPORT_SYMBOL(s3c2443_gpio_cfgpin);
-EXPORT_SYMBOL(s3c2443_gpio_read_porta);
