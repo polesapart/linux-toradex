@@ -427,7 +427,7 @@ static inline void ns9xxx_eth_rx_process_ring(struct net_device* dev, unsigned i
 				desc->len);
 				skb->protocol = eth_type_trans(skb, dev);
 				priv->stats.rx_packets++;
-				priv->stats.rx_bytes += priv->rxskb[i]->len;
+				priv->stats.rx_bytes += desc->len;
 				dev->last_rx = jiffies;
 				netif_rx(skb);
 			} else {

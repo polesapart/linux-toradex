@@ -650,11 +650,6 @@ static void __init cc9m2443_machine_init(void)
 	/* Though this call the probes of the different drivers will be called */
 	platform_add_devices(cc9m2443_devices, ARRAY_SIZE(cc9m2443_devices));
 
-	/* Add the GPIOs of this board */
-#if defined(CONFIG_MACH_CC9M2443JS_GPIOLIB)	
-	s3c2443_gpio_init();
-#endif
-
 	/*
 	 * Configure the IO for the external IRQ of the RTC
 	 * @XXX: This is probably not the best place for configuring the trigget-type,

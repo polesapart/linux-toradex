@@ -48,6 +48,13 @@ config S3C2410_DMA_DEBUG
 	  Enable debugging output for the DMA code. This option sends info
 	  to the kernel log, at priority KERN_DEBUG.
 
+config DEFAULT_GPIOLIB
+	bool "Default GPIOLIB support"
+	depends on ARCH_S3C2410
+	default n
+	help
+	  Provides the default GPIOLIB support instead of a machine specific one.
+
 config MACH_SMDK
 	bool
 	help
