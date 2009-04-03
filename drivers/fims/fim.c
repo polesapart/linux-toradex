@@ -77,6 +77,7 @@ MODULE_VERSION("0.1");
 
 #define printk_err(fmt, args...)	printk(KERN_ERR "[ ERROR ] fims: " fmt, ## args)
 #define printk_info(fmt, args...)	printk(KERN_INFO "fims: " fmt, ## args)
+#define printk_warn(fmt, args...)	printk(KERN_DEBUG "fims: " fmt, ## args)
 
 #ifdef FIM_CORE_DEBUG
 #  define printk_debug(fmt, args...)	printk(KERN_DEBUG "fims: %s() " fmt, __FUNCTION__ , ## args)
@@ -601,10 +602,11 @@ void fim_flush_tx(struct fim_driver *driver)
  */
 static int fim_start_tx_dma(struct pic_t *pic)
 {
-	unsigned int index, txctrl;
+	unsigned long txctrl;
 	struct iohub_dma_desc_t *desc = NULL;
 	struct iohub_dma_fifo_t *fifo;
 	int retval = 0;
+	unsigned int channel_index, fifo_index;
 	
 	if (fim_dma_is_empty(&pic->tx_fifo)) {
 		printk(KERN_DEBUG "Nothing to do, the TX-FIFO is empty.\n");
@@ -619,8 +621,7 @@ static int fim_start_tx_dma(struct pic_t *pic)
 
 	/* Lock the next DMA-transfer and get the internal data */
 	atomic_set(&pic->tx_tasked, 1);
-
-
+	
 	spin_lock(&pic->tx_lock);
 	fifo = &pic->tx_fifo;
 	fifo->dma_last = fifo->dma_next;
@@ -649,13 +650,24 @@ static int fim_start_tx_dma(struct pic_t *pic)
 	}
 		
 	/* Get the index of the first FIFO descriptor for the DMA-controller */
-	index = fim_dma_get_index(&pic->tx_fifo, fifo->dma_first);
-
-	/* @XXX: For writing the index the DMA-controller must be in IDLE */
+	fifo_index = fim_dma_get_index(&pic->tx_fifo, fifo->dma_first);
 	txctrl = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
-	writel(txctrl | IOHUB_TX_DMA_CTRL_INDEXEN | IOHUB_TX_DMA_CTRL_INDEX(index),
-	       pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
-	
+	txctrl |= IOHUB_TX_DMA_CTRL_INDEXEN | IOHUB_TX_DMA_CTRL_INDEX(fifo_index);
+	writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
+
+	/*
+	 * If the TX-FIFO and the DMA-Channel have different index then we have
+	 * an error, then normally they must have the same value.
+	 * @FIXME: Workaround for this problem, or remove the paranoic sanity check
+	 */
+	channel_index = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG) & 0x3FF; 
+	if (fifo_index && (fifo_index != channel_index)) {
+		printk_warn("FIFO index 0x%X mismatch DMA index 0x%X\n",
+		       fifo_index, channel_index);
+	} else {
+		printk_debug("DMA index %i for next DMA buffer\n", channel_index);
+	}
+
 	/*
 	 * Check if an abort interrupt was executed in the time we have
 	 * configured the DMA-descriptors. In that skip the channel restart
@@ -840,25 +852,34 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	unsigned int ifs;
 	struct iohub_dma_fifo_t *fifo;
 	unsigned int rxctrl, ictrl;
+	int error;
 
 	/* If we have an error, then always restart the DMA-channel */
 	ifs = readl(pic->iohub_addr + IOHUB_IFS_REG);
+	error = 0;
+	
 	if (ifs & IOHUB_IFS_RXNRIP) {
-		fifo = &pic->rx_fifo;
 		ictrl = readl(pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 		rxctrl = readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-		writel(fifo->phys_descs, pic->iohub_addr + IOHUB_RX_DMA_BUFPTR_REG);
-		writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-		writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 		printk_err("RXNRIP: ictrl 0x%08x | rxctrl 0x%08x\n", ictrl, rxctrl);
-		/* fim_flush_rx(pic->driver); */
+		error = 1;
 	}
 
 	if (!(ifs & IOHUB_IFS_RXNCIP)) {
-		printk_err("DMA-RX unexpected state (ifs: %x)\n", ifs);
-		return;
+		printk_err("RXNCIP: Unexpected state (ifs: %x)\n", ifs);
+		error = 1;
 	}
 
+	/* If we have a failure, then reset the DMA-controller and -FIFO */
+	if (error) {
+		fifo = &pic->rx_fifo;
+		writel(fifo->phys_descs, pic->iohub_addr + IOHUB_RX_DMA_BUFPTR_REG);
+		writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+		writel(ifs, pic->iohub_addr + IOHUB_IFS_REG);
+		writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+		return;
+	}
+	
 	/*
 	 * @IMPORTANT: The API of Net+OS is restarting the RX-channel after each
 	 * transfer, but we don't know exactly why. Since our API is working
@@ -1335,15 +1356,67 @@ static int pic_stop_and_reset(struct pic_t *pic)
 	return retval;
 }
 
-
+/*
+ * This function stops the FIM and check if the DMA-channel still has a buffer
+ * for the FIM.
+ */
 int fim_send_stop(struct fim_driver *driver)
 {
 	struct pic_t *pic;
-	
+	int retval, cnt, fifo_reset;
+	struct iohub_dma_fifo_t *fifo;
+	struct iohub_dma_desc_t *desc;
+
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return -EINVAL;
 
-	return pic_stop_and_reset(pic);
+	retval = pic_stop_and_reset(pic);
+	if (retval)
+		return retval;
+
+	/*
+	 * For avoiding errors by the restart of the FIM, check if a DMA buffer
+	 * is waiting for being transmitted. In that case, reset the buffer and
+	 * reset the index of the DMA-controller.
+	 */
+	fifo = &pic->tx_fifo;
+	fifo_reset = 0;
+	for (desc = fifo->first, cnt = 0; cnt < fifo->length; cnt++) {
+
+		/*
+		 * If we are stopping the FIM but have some DMA-buffers pending, then
+		 * we need to reset the DMA-channel before the next restart.
+		 */
+		if (!fifo_reset && (desc->control & IOHUB_DMA_DESC_CTRL_FULL))
+			fifo_reset = 1;
+
+		desc->control = 0;
+		desc = fim_dma_get_next(fifo, desc);
+	}
+
+	if (fifo_reset) {
+		unsigned long txctrl;
+
+		printk_warn("Stopping FIM %i with a full DMA buffer!\n",
+			    pic->index);
+		fim_dma_reset_fifo(fifo);			
+		txctrl = IOHUB_TX_DMA_CTRL_INDEXEN | IOHUB_TX_DMA_CTRL_INDEX(0);
+		writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
+	}
+
+	/* Reset the RX-channel too */
+	fifo = &pic->rx_fifo;
+	for (desc = fifo->first, cnt = 0; cnt < fifo->length; cnt++) {
+		desc->control = 0;
+		desc = fim_dma_get_next(fifo, desc);
+	}
+	fim_dma_reset_fifo(fifo);
+		
+	/* Free the internal resources */
+	atomic_set(&pic->tx_tasked, 0);
+	atomic_set(&pic->tx_aborted, 0);
+	
+	return retval;
 }
 
 
