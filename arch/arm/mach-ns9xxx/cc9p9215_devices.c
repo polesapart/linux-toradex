@@ -29,7 +29,7 @@
 #include "cc9p9215_devices.h"
 #include "clock.h"
 
-/* 
+/*
  * Pick Digi's internal FIM board
  * Use internal board, defined to 1
  */
@@ -367,7 +367,7 @@ unsigned char edt_qvga_lcd_init[][3] = {
 	{0x20, 0x40, 0},
 	{0x1d, 0x07, 0},
 	{0x1e, 0x00, 0},
-	{0x1f, 0x04, 0}, 
+	{0x1f, 0x04, 0},
 	{0x44, 0x40, 0},
 	{0x45, 0x12, 10},
 	{0x1c, 0x04, 20},
@@ -384,7 +384,7 @@ unsigned char edt_qvga_lcd_init[][3] = {
 	{0x57, 0x00, 0}
 };
 
- 
+
 static void cc9p9215_lcd_reset(struct hx8347fb_par *par)
 {
 	gpio_set_value(par->pdata->rst_gpio, 0);
@@ -397,10 +397,16 @@ static void cc9p9215_lcd_enable(struct hx8347fb_par *par, int state)
 	gpio_set_value(par->pdata->enable_gpio, state);
 }
 
-static void cc9p9215_lcd_write_cmd(struct hx8347fb_par *par, unsigned char cmd)
+static void cc9p9215_lcd_set_idx(struct hx8347fb_par *par, u8 idx)
 {
-	writeb(cmd, par->mmio_cmd);
-}  
+	writeb(idx, par->mmio_cmd);
+}
+
+static void cc9p9215_lcd_wr_reg(struct hx8347fb_par *par, u8 reg, u16 data)
+{
+	writeb(reg, par->mmio_cmd);
+	writew(data, par->mmio_data);
+}
 
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
 static irqreturn_t fb_extdma(int irq, void *dev_id)
@@ -417,15 +423,15 @@ static irqreturn_t fb_extdma(int irq, void *dev_id)
 }
 #endif
 
-static void cc9p9215_lcd_write_data(struct hx8347fb_par *par, u16 *buf, int len)
+static void cc9p9215_lcd_wr_data(struct hx8347fb_par *par, u16 *buf, int len)
 {
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA
 #if 0
-	/* CE=0, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */   
+	/* CE=0, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */
 	writel(NS921X_DMA_CR_CG | NS921X_DMA_CR_SW_16b | \
 	       NS921X_DMA_CR_DW_16b | NS921X_DMA_CR_SB_16B | \
 	       NS921X_DMA_CR_DB_1B | NS921X_DMA_CR_DINC_N, NS921X_DMA_CR(1));
-        /* CE=1, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */    
+        /* CE=1, CG=1, SW=16bit, DW=16bit, SB=16 bytes, DB=1 unit, SAI=0, DAI=1 */
 	writel(NS921X_DMA_CR_CE | readl(NS921X_DMA_CR(1)), NS921X_DMA_CR(1));*/*/*/
 #endif
 #else
@@ -447,10 +453,11 @@ static int cc9p9215_lcd_init(struct hx8347fb_par *par)
 	if (cc9p9215_edt_qvga_lcd_register_gpios(par->pdata))
 		return -EINVAL;
 
-	cc9p9215_lcd_reset(par);
 	cc9p9215_lcd_enable(par, 0);
-	mdelay(100);
+	cc9p9215_lcd_reset(par);
 	cc9p9215_edt_qvga_lcd_setup_cs();
+
+	mdelay(50);
 
 	writeb(HIMAX_ID_CODE, par->mmio_cmd);
 	if ((reg = readb(par->mmio_data)) != 0x47) {
@@ -493,9 +500,9 @@ static int cc9p9215_lcd_init(struct hx8347fb_par *par)
 #endif
 
 	for (i=0; i < (sizeof(edt_qvga_lcd_init)/3); i++) {
-		// Write index and then data
-		cc9p9215_lcd_write_cmd(par, edt_qvga_lcd_init[i][0]);
-		cc9p9215_lcd_write_data(par, (u16 *)&edt_qvga_lcd_init[i][1], 2);
+
+		cc9p9215_lcd_wr_reg(par, edt_qvga_lcd_init[i][0],
+				    edt_qvga_lcd_init[i][1]);
 		mdelay(edt_qvga_lcd_init[i][2]);
 	}
 
@@ -510,8 +517,12 @@ err_detect:
 
 static void cc9p9215_lcd_cleanup(struct hx8347fb_par *par)
 {
-	/* TODO unregister gpios, release irq if allocated... */
+	gpio_direction_input(par->pdata->rst_gpio);
+	gpio_direction_input(par->pdata->enable_gpio);
+	gpio_free(par->pdata->rst_gpio);
+	gpio_free(par->pdata->enable_gpio);
 }
+
 static struct resource cc9p9215js_lcd_res[] = {
 	{
 		.start	= 0x40000000,
@@ -530,11 +541,12 @@ static struct resource cc9p9215js_lcd_res[] = {
 static struct hx8347fb_pdata c9p9215js_lcd_pdata = {
 	.owner			= THIS_MODULE,
 	.reset			= cc9p9215_lcd_reset,
-	.enable			= cc9p9215_lcd_enable,
+	.bl_enable		= cc9p9215_lcd_enable,
 	.init			= cc9p9215_lcd_init,
 	.cleanup		= cc9p9215_lcd_cleanup,
-	.write_cmd		= cc9p9215_lcd_write_cmd,
-	.write_data		= cc9p9215_lcd_write_data,
+	.set_idx		= cc9p9215_lcd_set_idx,
+	.wr_reg			= cc9p9215_lcd_wr_reg,
+	.wr_data		= cc9p9215_lcd_wr_data,
 	.rst_gpio		= 86,
 	.enable_gpio		= 87,
 	.usedma			= 0,
@@ -552,7 +564,7 @@ static struct platform_device edt_qvga_lcd = {
 	.resource	= cc9p9215js_lcd_res,
 	.num_resources	= ARRAY_SIZE(cc9p9215js_lcd_res),
 };
-	
+
 void __init ns9xxx_add_device_cc9p9215_edt_diplay(void)
 {
 	platform_device_register(&edt_qvga_lcd);
