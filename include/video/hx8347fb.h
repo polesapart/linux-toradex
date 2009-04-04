@@ -83,11 +83,13 @@ struct hx8347fb_pdata {
 	unsigned int		bits_per_pixel;
 	u32			pseudo_pal[16];
 	void 			(*reset)(struct hx8347fb_par *);
-	void			(*enable)(struct hx8347fb_par *, int);
+	void			(*bl_enable)(struct hx8347fb_par *, int);
 	void			(*cleanup)(struct hx8347fb_par *);
 	int			(*init)(struct hx8347fb_par *);
-	void			(*write_cmd)(struct hx8347fb_par *, u8);
-	void			(*write_data)(struct hx8347fb_par *, u16 *, int);
+	void			(*set_idx)(struct hx8347fb_par *, u8);
+	void			(*wr_reg)(struct hx8347fb_par *, u8, u16);
+	u16			(*rd_reg)(struct hx8347fb_par *, u8);
+	void			(*wr_data)(struct hx8347fb_par *, u16 *, int);
 };
 
 #endif /* __HX8347FB_H_ */

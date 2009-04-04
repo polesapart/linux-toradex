@@ -33,12 +33,71 @@
 
 #define DRV_NAME	"hx8347"
 
+
+#ifdef CONFIG_PM
+
+/*
+ * Command sequences, as follows:
+ * register, data, delay (ms)
+ * Taken from a Himax application note
+ */
+u8 hxstandby_in[][3] = {
+	{0x26, 0x38, 40},	/* Display off */
+	{0x26, 0x28, 40},
+	{0x26, 0, 40},
+	{0x43, 0, 10},		/* Power off */
+	{0x1b, 0, 10},
+	{0x1b, 0x08, 10},
+	{0x1c, 0, 10},
+	{0x90, 0, 10},
+	{0x1b, 0x09, 10},	/* Into standby mode */
+	{0x19, 0x48, 0}		/* Stop oscillation */
+};
+
+u8 hxstandby_out[][3] = {
+	{0x19, 0x49, 10},	/* Start oscillation */
+	{0x1b, 0x08, 0},	/* Exit standby mode */
+	{0x20, 0x40, 0},	/* Power supply setting */
+	{0x1d, 0x07, 0},
+	{0x1e, 0, 0},
+	{0x1f, 0x03, 0},
+	{0x44, 0x20, 0},
+	{0x45, 0x0e, 10},
+	{0x1c, 0x04, 20},
+	{0x1b, 0x18, 40},
+	{0x1b, 0x10, 40},
+	{0x43, 0x80, 100},
+	{0x90, 0x7f, 40},	/* Display on setting */
+	{0x26, 0x04, 40},
+	{0x26, 0x24, 0},
+	{0x26, 0x2c, 40},
+	{0x26, 0x3c, 0},
+};
+
+static void hx8347_standby(struct hx8347fb_par *par, int standby)
+{
+	int i;
+
+	if (standby) {
+		for (i = 0; i < (sizeof(hxstandby_in) / 3); i++) {
+			par->pdata->wr_reg(par, hxstandby_in[i][0], (u16)hxstandby_in[i][1]);
+			mdelay(hxstandby_in[i][2]);
+		}
+	} else {
+		for (i = 0; i < (sizeof(hxstandby_out) / 3); i++) {
+			par->pdata->wr_reg(par, hxstandby_out[i][0], (u16)hxstandby_out[i][1]);
+			mdelay(hxstandby_out[i][2]);
+		}
+	}
+}
+#endif
+
 static void hx8347_dpy_update(struct hx8347fb_par *par)
 {
 	u16 *buf = (u16 __force *)par->info->screen_base;
 
-	par->pdata->write_cmd(par, SRAM_WR_CTRL);
-	par->pdata->write_data(par, buf, par->info->fix.smem_len);
+	par->pdata->set_idx(par, SRAM_WR_CTRL);
+	par->pdata->wr_data(par, buf, par->info->fix.smem_len);
 }
 
 /* this is called back from the deferred io workqueue */
@@ -274,13 +333,18 @@ static int __devinit hx8347_probe(struct platform_device *pdev)
 		goto err_fbreg;
 	}
 
-	/* Call the custom init function */
+	/* Verify that the minimal hooks have been setup */
+	if (!par->pdata->init || !par->pdata->wr_reg ||
+	    !par->pdata->set_idx || !par->pdata->wr_data)
+		goto err_init;
+
 	ret = par->pdata->init(par);
 	if (ret < 0)
 		goto err_init;
 
 	/* Enable backlight */
-	par->pdata->enable(par, 1);
+	if (par->pdata->bl_enable)
+		par->pdata->bl_enable(par, 1);
 
 	platform_set_drvdata(pdev, info);
 	printk(KERN_INFO
@@ -317,6 +381,8 @@ static int __devexit hx8347_remove(struct platform_device *dev)
 	struct hx8347fb_par *par = info->par;
 
 	if (info) {
+		if (par->pdata->bl_enable)
+			par->pdata->bl_enable(par, 0);
 		unregister_framebuffer(info);
 		fb_deferred_io_cleanup(info);
 		fb_dealloc_cmap(&info->cmap);
@@ -342,10 +408,13 @@ static int hx8347_suspend(struct platform_device *dev, pm_message_t state)
 	struct fb_info *info = platform_get_drvdata(dev);
 	struct hx8347fb_par *par = info->par;
 
-	/* TODO: configure the display in low power */
-
-	/* Disable the backlight */
-	par->pdata->enable(par, 0);
+	if (state.event == PM_EVENT_SUSPEND) {
+		/* Disable the backlight set standby mode */
+		if (par->pdata->bl_enable)
+			par->pdata->bl_enable(par, 0);
+		mdelay(1);
+		hx8347_standby(par, 1);
+	}
 
 	return 0;
 }
@@ -355,10 +424,11 @@ static int hx8347_resume(struct platform_device *dev)
 	struct fb_info *info = platform_get_drvdata(dev);
 	struct hx8347fb_par *par = info->par;
 
-	/* TODO: configure the display to resume and continue displaying */
-
-	/* Enable the backlight */
-	par->pdata->enable(par, 1);
+	/* Configure the display to resume and enable the backlight */
+	hx8347_standby(par, 0);
+	mdelay(10);
+	if (par->pdata->bl_enable)
+		par->pdata->bl_enable(par, 1);
 
 	return 0;
 }
@@ -367,11 +437,13 @@ static int hx8347_resume(struct platform_device *dev)
 #define hx8347_resume  NULL
 #endif
 
+
 static struct platform_driver hx8347_driver = {
 	.probe	 = hx8347_probe,
 	.remove  = hx8347_remove,
 	.suspend = hx8347_suspend,
 	.resume  = hx8347_resume,
+
 	.driver	= {
 		.owner	= THIS_MODULE,
 		.name	= "hx8347",
