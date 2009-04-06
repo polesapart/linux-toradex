@@ -220,82 +220,6 @@ static void assignSequenceNumber(struct sk_buff *skb, bool shouldIncrement)
 }
 
 
-/*
- * This routine looks at the flag bitfield in the transmit information
- * mac80211 provided with the packet to determine if we should send
- * an RTS or a CTS with the frame.  If we do need to, then get the
- * rate information all set up for it.
- */
-static void setupRtsCtsFrame(struct piper_priv *digi, struct sk_buff *skb,
-                             struct ieee80211_tx_info *txInfo)
-{
-    digi->wantCts = (!!(txInfo->flags & IEEE80211_TX_CTL_USE_CTS_PROTECT)
-                     | digi->bssWantCtsProtection);
-    digi->wantRts = !!(txInfo->flags & IEEE80211_TX_CTL_USE_RTS_CTS);
-    
-#if 0
-/*
- * Debug code.
- */
-    {
-        _80211HeaderType *header = (_80211HeaderType *) skb->data;
-        
-        if ((header->fc.type == TYPE_DATA) && (header->addr1[0] == 0))
-        {
-            digi_dbg("Forcing CTS to self.\n");
-            digi->wantCts = true;
-        }
-        if (header->fc.type == TYPE_DATA) 
-        {
-            digi_dbg("Forcing RTS.\n");
-            digi->wantRts = true;
-        }
-    }
-	{ /* TODO:  Remove this debug code. */
-	    const char *yesOrNo[2] = {"no", "yes"};
-	    digi_dbg("flags = 0x%8.8X, RTS/CTS = %s, CTS protect = %s\n", 
-	    txInfo->flags,
-	    yesOrNo[!!(txInfo->flags & IEEE80211_TX_CTL_USE_RTS_CTS)],
-	    yesOrNo[!!(txInfo->flags & IEEE80211_TX_CTL_USE_CTS_PROTECT)]);
-	}
-#endif
-
-    if ((digi->wantRts) || (digi->wantCts))
-    {
-        /*
-         * Need to get rate info now because the control part of the union
-         * will be overwritten by status information later.
-         */
-        digi->rtsCtsRate = ieee80211_get_rts_cts_rate(digi->hw, txInfo);
-        if (digi->rtsCtsRate == NULL)
-        {
-            digi_dbg("ieee80211_get_rts_cts_rate(digi->hw, txInfo) returned NULL!\n");
-        }
-
-        if (digi->wantRts)
-        {
-            ieee80211_rts_get(digi->hw, txInfo->control.vif, skb->data, skb->len,
-                              txInfo, &digi->rtsFrame);
-        } 
-        else if (digi->wantCts)
-        {
-            ieee80211_ctstoself_get(digi->hw, txInfo->control.vif, skb->data, skb->len,
-                                    txInfo, &digi->ctsFrame);
-            /*
-             * At the time this code was written, the mac80211 library had 
-             * a bug in the ieee80211_ctstoself_get which caused it to copy 
-             * the wrong MAC address into the cts frame.  So we copy the
-             * right one (ours) in now.
-             */
-            memcpy(digi->ctsFrame.ra, digi->hw->wiphy->perm_addr, ETH_ALEN);
-        }
-    }
-    else
-    {
-        digi->rtsCtsRate = NULL;
-    }
-}
-
 
 #define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
 /* Get 16 bits at byte pointer */
@@ -405,7 +329,7 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
          */
         return -EBUSY;
     }
-
+    
     /*
      * Our H/W can only transmit a single packet at a time.  mac80211
      * already maintains a queue of packets, so there is no reason
@@ -423,10 +347,6 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	    assignSequenceNumber(skb, !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
 	}
 
-    /*
-     * Set up the RTS or CTS frame if one is needed.
-     */
-	setupRtsCtsFrame(digi, skb, txInfo);
     if (txInfo->control.hw_key != NULL)
     {
         /*
@@ -453,15 +373,8 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	skb_push(skb, TX_HEADER_LENGTH);
 
 	digi->txRetryIndex = 0;
-    digi->txMaxRetries = txInfo->control.retry_limit;
-	memcpy(&txInfo->status.retries[1], &txInfo->control.retries[0], sizeof(txInfo->control.retries));
-	txInfo->status.retries[0].rate_idx = txInfo->tx_rate_idx;
-	txInfo->status.retries[0].limit = 1;
-	txInfo->status.ampdu_ack_map = 0;
-	txInfo->status.ack_signal = 0;
-	txInfo->status.retry_count = 0;
-	txInfo->status.excessive_retries = false;
-	txInfo->status.ampdu_ack_len = 0;
+	digi->txTotalRetries = 0;
+	memset(digi->txRetryCount, 0, sizeof(digi->txRetryCount));
     txInfo->flags &= ~(IEEE80211_TX_STAT_TX_FILTERED
                                 | IEEE80211_TX_STAT_ACK
                                 | IEEE80211_TX_STAT_AMPDU
@@ -615,12 +528,13 @@ static void hw_rm_intf(struct ieee80211_hw *hw,
 /*
  * mac80211 calls this function to pass us configuration information.
  */
-static int hw_config(struct ieee80211_hw *hw, struct ieee80211_conf *conf)
+static int hw_config(struct ieee80211_hw *hw, u32 changed)
 {
 	struct piper_priv *digi = hw->priv;
 	int chan;
 	int err = 0;
     unsigned int word;
+    struct ieee80211_conf *conf = &hw->conf;
     
     /*
      * Should we turn the radio off?
@@ -660,15 +574,6 @@ static int hw_config(struct ieee80211_hw *hw, struct ieee80211_conf *conf)
 	}
     
     /*
-     * Select the antenna.
-     */
-	err = set_antenna_div(hw, conf->antenna_sel_tx);
-	if (err)
-	{
-	    goto done;
-	}
-	
-    /*
      * Set the channel.
      */
 	chan = ieee80211_frequency_to_channel(conf->channel->center_freq);
@@ -695,8 +600,7 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 {
 	int err = -EOPNOTSUPP;
 	struct piper_priv *digi = hw->priv;
-	__be32 tmp;
-    unsigned int word, bssid[2];
+    unsigned int bssid[2];
 
 	if (conf->changed & IEEE80211_IFCC_BSSID)
 	{
@@ -720,37 +624,6 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
         digi->write_reg(digi, MAC_BSS_ID0, bssid[0], op_write);
         digi->write_reg(digi, MAC_BSS_ID1, bssid[1], op_write);
     	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
-    }
-    if (conf->changed & IEEE80211_IFCC_SSID)
-    {
-        /*
-         * The SSID has changed.
-         */
-    	if (conf->ssid_len) 
-    	{
-#define MAX_SSID_LENGTH     (32)
-    	    int i;
-    	    char ourSsid[MAX_SSID_LENGTH + 1];
-    	    unsigned int ssidLength = conf->ssid_len;
-    	    
-            if (ssidLength > MAX_SSID_LENGTH)
-            {
-                ssidLength = MAX_SSID_LENGTH;
-            }
-    	    memcpy(ourSsid, conf->ssid, ssidLength);
-    	    ourSsid[MAX_SSID_LENGTH] = 0;
-    	    ourSsid[ssidLength] = 0;
-    		digi_dbg("setting ssid=%s\n", ourSsid);
-            for (i = 0; i < conf->ssid_len; i += 4)
-            {
-                memcpy(&word, &conf->ssid[i], sizeof(word));
-                word = cpu_to_be32(word);
-                digi->write_reg(digi, MAC_SSID+i, word, op_write);
-            }
-    	}
-		tmp = digi->read_reg(digi, MAC_SSID_LEN) & ~MAC_SSID_LEN_MASK;
-        tmp |= conf->ssid_len;
-		err = digi->write_reg(digi, MAC_SSID_LEN, tmp, op_write);
     }
     if (conf->changed & IEEE80211_IFCC_BEACON)
     {
@@ -902,8 +775,8 @@ static int expand_aes_key(struct ieee80211_key_conf *key, u32 *expandedKey)
  * save the AES related keys.
  */
 static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
-		const u8 *local_address, const u8 *address,
-		struct ieee80211_key_conf *key)
+		                struct ieee80211_vif *vif, struct ieee80211_sta *sta,
+		                struct ieee80211_key_conf *key)
 {
 	int err = -EOPNOTSUPP;
 	struct piper_priv *digi = hw->priv;
@@ -1052,12 +925,11 @@ int digiWifiRegisterHw(struct piper_priv *priv, struct device *dev,
 	hw->channel_change_time = rf->channelChangeTime;
 	hw->vif_data_size = 0;
 	hw->sta_data_size = 0;
-	hw->max_altrates = IEEE80211_TX_MAX_ALTRATE;
-#define OUR_MAX_RETRIES     (10)        /* completely arbitrary.  We don't care how many times we retry */
-	hw->max_altrate_tries = OUR_MAX_RETRIES;
-
-
-
+	hw->max_rates = IEEE80211_TX_MAX_RATES;
+	hw->max_rate_tries = 5;             /* completely arbitrary */
+    hw->max_signal = rf->maxSignal;
+    hw->max_listen_interval = 10;       /* I don't think APs will work with values larger than 4 actually */
+    
 	SET_IEEE80211_DEV(hw, dev);
 	
     word = cpu_to_be32(priv->read_reg(priv, MAC_STA_ID0));

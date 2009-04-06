@@ -108,9 +108,83 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
  */
 static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
 {
-    #define FIRST_RETRY_INDEX       (1)
     struct ieee80211_rate *result = NULL;
-    
+#if 0
+struct ieee80211_tx_rate {
+	s8 idx;
+	u8 count;
+	u8 flags;
+} __attribute__((packed));
+struct ieee80211_tx_info {
+	/* common information */
+	u32 flags;
+	u8 band;
+
+	u8 antenna_sel_tx;
+
+	/* 2 byte hole */
+	u8 pad[2];
+
+	union {
+		struct {
+			union {
+				/* rate control */
+				struct {
+					struct ieee80211_tx_rate rates[
+						IEEE80211_TX_MAX_RATES];
+					s8 rts_cts_rate_idx;
+				};
+				/* only needed before rate control */
+				unsigned long jiffies;
+			};
+			/* NB: vif can be NULL for injected frames */
+			struct ieee80211_vif *vif;
+			struct ieee80211_key_conf *hw_key;
+			struct ieee80211_sta *sta;
+		} control;
+		struct {
+			struct ieee80211_tx_rate rates[IEEE80211_TX_MAX_RATES];
+			u8 ampdu_ack_len;
+			u64 ampdu_ack_map;
+			int ack_signal;
+			/* 8 bytes free */
+		} status;
+		struct {
+			struct ieee80211_tx_rate driver_rates[
+				IEEE80211_TX_MAX_RATES];
+			void *rate_driver_data[
+				IEEE80211_TX_INFO_RATE_DRIVER_DATA_SIZE / sizeof(void *)];
+		};
+		void *driver_data[
+			IEEE80211_TX_INFO_DRIVER_DATA_SIZE / sizeof(void *)];
+	};
+};
+
+#endif    
+    if (txInfo->control.rates[digi->txRetryIndex].count < digi->txRetryCount[digi->txRetryIndex])
+    {
+        if (digi->txRetryIndex == 0)
+        {
+            result = ieee80211_get_tx_rate(digi->hw, txInfo);
+        }
+        else
+        {
+            result = ieee80211_get_alt_retry_rate(digi->hw, txInfo, 
+                                digi->txRetryIndex);
+        }
+    }
+    else if (txInfo->control.rates[digi->txRetryIndex].idx != -1)
+    {
+        digi->txRetryIndex++;
+        result = ieee80211_get_alt_retry_rate(digi->hw, txInfo, 
+                            digi->txRetryIndex);
+    }
+    if (result != NULL)
+    {
+        digi->txRetryCount[digi->txRetryIndex]++;
+    }
+
+#if 0        
     if (   (txInfo->status.retries[FIRST_RETRY_INDEX].limit == 0) 
         || (txInfo->status.retries[FIRST_RETRY_INDEX].limit == -1)
         || (txInfo->status.retries[FIRST_RETRY_INDEX].rate_idx == -1))
@@ -191,7 +265,7 @@ static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee8021
         txInfo->status.retries[digi->txRetryIndex].limit--;
     }        
     result = ieee80211_get_tx_rate(digi->hw, txInfo);
-    
+#endif
     return result;
 }
 
@@ -243,53 +317,120 @@ static u16 getCw(struct piper_priv *digi, bool isFirstTime)
  * is smart enough to also about the data frame.  So we will not send
  * the data frame without the RTS/CTS frame.
  */
-void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, 
+static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txInfo, 
                     unsigned int frameType)
 {
-    unsigned int header[2];
 
     if (frameType == TYPE_DATA)
     {    
-        if (digi->wantRts)
+        unsigned int header[2];
+        struct ieee80211_rate *rate = NULL;
+        bool wantCts = (!!(txInfo->control.rates[digi->txRetryIndex].flags
+                             & IEEE80211_TX_RC_USE_CTS_PROTECT)
+                         | digi->bssWantCtsProtection);
+        bool wantRts = !!(txInfo->control.rates[digi->txRetryIndex].flags
+                            & IEEE80211_TX_RC_USE_RTS_CTS);
+    
+        if ((wantRts) || (wantCts))
         {
+            /*
+             * If we are sending an RTS or a CTS, then get the rate information.
+             */
+            rate = ieee80211_get_rts_cts_rate(digi->hw, txInfo);
+            if (rate == NULL)
+            {
+                digi_dbg("ieee80211_get_rts_cts_rate(digi->hw, txInfo) returned NULL!\n");
+            }
+        }
+        if ((wantRts) && (rate))
+        {
+            /*
+             * We're sending an RTS, so load it into the FIFO.
+             */
+            struct ieee80211_rts rtsFrame;
+            
+            ieee80211_rts_get(digi->hw, txInfo->control.vif, digi->txPacket->data, 
+                              digi->txPacket->len, txInfo, &rtsFrame);
             /*
              * If we come here, then we need to send an RTS frame ahead of the
              * current data frame.
              */
-            if (digi->rtsCtsRate)
-            {
-                phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_rts), 
-                                digi->rtsCtsRate, 0);
-        		digi->write(digi, BB_DATA_FIFO, (unsigned char *) header, TX_HEADER_LENGTH);
-        		digi->write(digi, BB_DATA_FIFO, (unsigned char *) &digi->rtsFrame, 
-        		                        sizeof(digi->rtsFrame));
-            }
-            else 
-            {
-                digi_dbg("No rate for RTS frame.\n");
-            }
+            phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_rts), 
+                            rate, 0);
+    		digi->write(digi, BB_DATA_FIFO, (unsigned char *) header, TX_HEADER_LENGTH);
+    		digi->write(digi, BB_DATA_FIFO, (unsigned char *) &rtsFrame, 
+    		                        sizeof(rtsFrame));
         }
-        else if (digi->wantCts)
+        else if ((wantCts) && (rate))
         {
+            /*
+             * We're sending a CTS, so load it into the FIFO.
+             */
+            struct ieee80211_cts ctsFrame;
+            
+            ieee80211_ctstoself_get(digi->hw, txInfo->control.vif, 
+                                    digi->txPacket->data, digi->txPacket->len,
+                                    txInfo, &ctsFrame);
+            /*
+             * At the time this code was written, the mac80211 library had 
+             * a bug in the ieee80211_ctstoself_get which caused it to copy 
+             * the wrong MAC address into the cts frame.  So we copy the
+             * right one (ours) in now.
+             */
+            memcpy(digi->ctsFrame.ra, digi->hw->wiphy->perm_addr, ETH_ALEN);
+
             /*
              * If we come here, then we need to send a CTS to self frame ahead of the 
              * current data frame.
              */
-            if (digi->rtsCtsRate)
-            {
-                phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_cts), 
-                                digi->rtsCtsRate, 0);
-        		digi->write(digi, BB_DATA_FIFO, (unsigned char *) header, TX_HEADER_LENGTH);
-        		digi->write(digi, BB_DATA_FIFO, (unsigned char *) &digi->ctsFrame, 
-        		                        sizeof(digi->ctsFrame));
-            }
-            else 
-            {
-                digi_dbg("No rate for CTS frame.\n");
-            }
+            phy_set_plcp((unsigned char *) header, sizeof(struct ieee80211_cts), 
+                            rate, 0);
+    		digi->write(digi, BB_DATA_FIFO, (unsigned char *) header, TX_HEADER_LENGTH);
+    		digi->write(digi, BB_DATA_FIFO, (unsigned char *) &ctsFrame, 
+    		                        sizeof(ctsFrame));
         }
     }
 }        
+
+
+/*
+ * This routine is called to report the result of a transmit operation to
+ * mac80211.  It is used for both successful transmissions and failures.
+ * It sends the result to the stack, zeros digi->txPacket, and then wakes 
+ * up the transmit queue.
+ */
+void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
+                    int signalStrength)
+{
+	if (digi->txPacket != NULL)
+	{
+        struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
+        unsigned int i;
+        
+        ieee80211_tx_info_clear_status(txInfo);
+        
+        for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
+        {
+            txInfo->status.rates[i].count = digi->txRetryCount[i];
+        }
+
+        txInfo->status.ampdu_ack_len = 0;
+		txInfo->status.ampdu_ack_map = 0;
+		txInfo->status.ack_signal = signalStrength;
+        
+        if (result == RECEIVED_ACK)
+        {
+            txInfo->flags |= IEEE80211_TX_STAT_ACK;
+        }
+
+        ieee80211_tx_status_irqsafe(digi->hw, digi->txPacket);
+        				           
+        digi->txPacket = NULL;
+        ieee80211_wake_queues(digi->hw);
+    }
+}
+EXPORT_SYMBOL_GPL(digiWifiTxDone);
+
     
 
 /*
@@ -316,19 +457,20 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
 	if (digi->txPacket != NULL)
 	{
         struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
-
-        if (txInfo->status.retry_count != digi->txMaxRetries)
+        struct ieee80211_rate *txRate = getTxRate(digi, txInfo);
+        
+        if (txRate != NULL)
         {
             #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
             frameControlFieldType_t *fc = (frameControlFieldType_t *) &digi->txPacket->data[FRAME_CONTROL_FIELD_OFFSET];
 
-            if (txInfo->status.retry_count != 0)
-            {
-                fc->retry = 1;              /* set retry bit */
+            if (digi->txRetryCount[0] != 0) /* is this the first try? */
+            {                          
+                fc->retry = 1;              /* set retry bit if not*/
             }
     
-            digi->write_reg(digi, MAC_BACKOFF, getCw(digi, txInfo->status.retry_count == 0), op_write);
-            txInfo->status.retry_count++; 
+            digi->write_reg(digi, MAC_BACKOFF, getCw(digi, (digi->txRetryCount[0] == 0)), op_write);
+
 	        /*
 	         * Build the H/W transmit header.  The transmit header is rebuilt on each
 	         * retry because it has the TX rate information which may change for 
@@ -336,7 +478,7 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
 	         */
 	        phy_set_plcp(digi->txPacket->data, 
 	                     digi->txPacket->len - TX_HEADER_LENGTH, 
-	                     getTxRate(digi, txInfo), digi->useAesHwEncryption ? 8 : 0);
+	                     txRate, digi->useAesHwEncryption ? 8 : 0);
 	        
         	/* 
         	 * Pause the transmitter so that we don't start transmitting before we
@@ -375,15 +517,12 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
             {
                 digi->setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
             }
+            digi->txTotalRetries++;
         }
         else
         {
-            txInfo->status.excessive_retries = true;
-            digi_dbg("All %d retries used up\n", digi->txMaxRetries);
-            ieee80211_tx_status_irqsafe(digi->hw, digi->txPacket);
-            				           
-            digi->txPacket = NULL;
-            ieee80211_wake_queues(digi->hw);
+            digiWifiTxDone(digi, OUT_OF_RETRIES, 0);
+            digi_dbg("All %d retries used up\n", digi->txTotalRetries);
         }
     }
     else digi_dbg("digi->txPacket == NULL\n");

@@ -491,7 +491,7 @@ static int __init piper_init_module(void)
 
 	pr_info("piper_init_module called\n");
     printk(KERN_INFO "piper_init_module, version %s\n", DRV_VERS);
-#if BUILD_AS_LOADABLE_MODULE
+#ifdef BUILD_AS_LOADABLE_MODULE
     err = platform_device_register(&piper_device);
     if (err) {
             printk(KERN_ALERT "Device Register Failed, error = %d\n", err);

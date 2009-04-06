@@ -74,10 +74,7 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
          */
 	    if (digi->txPacket != NULL)
 	    {
-            ieee80211_tx_status_irqsafe(digi->hw,
-            				           digi->txPacket);
-            digi->txPacket = NULL;
-            ieee80211_wake_queues(digi->hw);
+	        digiWifiTxDone(digi, TX_COMPLETE, 0);
         }
 		digi->clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
     }

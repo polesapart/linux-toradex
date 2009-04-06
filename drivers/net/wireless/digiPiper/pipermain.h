@@ -51,6 +51,7 @@ struct digi_rf_ops {
 	int (*set_pwr)(struct ieee80211_hw *, uint8_t val);
 	void (*getOfdmBrs)(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
 	int channelChangeTime;
+	s8 maxSignal;
 
 	struct ieee80211_supported_band *bands;
 	uint8_t n_bands;
@@ -95,6 +96,14 @@ typedef struct
     bool weSentLastOne;
 } piperBeaconInfo_t;
 
+
+enum digiWifiTxResult_t
+{
+    RECEIVED_ACK,
+    TX_COMPLETE,
+    OUT_OF_RETRIES
+} ;
+
 /**
  * piper_priv - 
  */
@@ -106,9 +115,6 @@ struct piper_priv {
     struct ieee80211_key_conf txKeyInfo;
     struct ieee80211_cts ctsFrame;
     struct ieee80211_rts rtsFrame;
-    bool wantRts;                   /* set if we should send RTS on current TX frame*/
-    bool wantCts;                   /* set if we should send CTS to self on current TX frame*/
-    struct ieee80211_rate *rtsCtsRate;
     bool bssWantCtsProtection;      /* set if configured for CTS protection */
     unsigned int rxOverruns;
     unsigned int irq;
@@ -120,7 +126,8 @@ struct piper_priv {
     void* __iomem vbase;
 	struct sk_buff *read_skb;
 	struct sk_buff *txPacket;
-	unsigned int txMaxRetries;
+	unsigned int txTotalRetries;
+	unsigned int txRetryCount[IEEE80211_TX_MAX_RATES];
 	unsigned int txRetryIndex;
 	bool useAesHwEncryption;
 	unsigned int txAesKey;
@@ -171,5 +178,8 @@ extern void digiWifiTxRetryTaskletEntry (unsigned long context);
 extern void digiWifiRxTaskletEntry (unsigned long context);
 extern irqreturn_t digiWifiIsr(int irq, void *dev_id);
 extern void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
+extern void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
+                            int signalStrength);
+
 
 #endif

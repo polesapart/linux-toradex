@@ -227,16 +227,7 @@ static void handleAck(struct piper_priv *digi, int signalStrength)
         if ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)
         {
     	    digi->clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
-         	txInfo->flags = IEEE80211_TX_STAT_ACK;
-        	txInfo->status.ack_signal = signalStrength;
-        	
-            ieee80211_tx_status_irqsafe(digi->hw, digi->txPacket);
-            digi->txPacket = NULL;
-            /* TODO:  Is it possible to get an ACK when we are not expecting one and so
-                      screw up our system?  Should txPacket and friends be protected with
-                      a spinlock?
-             */
-            ieee80211_wake_queues(digi->hw);
+	        digiWifiTxDone(digi, RECEIVED_ACK, signalStrength);
         }
     }
 }
