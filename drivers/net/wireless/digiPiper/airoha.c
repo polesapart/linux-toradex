@@ -30,6 +30,14 @@
  */
 #define CHANNEL_CHANGE_TIME     (1500)
 
+
+/*
+ * Maximum possible receive signal strength in dbm.  Most of the values will
+ * be negative.
+ */
+#define MAX_SIGNAL_IN_DBM       (5)
+
+
 #define readReg(reg)                priv->read_reg(priv, reg)
 #define writeReg(reg, value, op)    priv->write_reg(priv, reg, value, op)
 
@@ -685,6 +693,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.set_chan = al7230_rf_set_chan,
 	.set_pwr = al7230_set_txpwr,
 	.channelChangeTime = CHANNEL_CHANGE_TIME,
+	.maxSignal = MAX_SIGNAL_IN_DBM,
 	.getOfdmBrs = getOfdmBrs,
 
 	.bands = al7230_bands,
