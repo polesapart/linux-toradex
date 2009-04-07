@@ -136,11 +136,26 @@ static struct platform_device smsc911x_device = {
 #define CC9M2443_RTC_IRQ                        (IRQ_EINT7)
 #define CC9M2443_RTC_IRQ_GPIO                   (S3C2410_GPF7)
 #define CC9M2443_RTC_IRQ_CFG                    (S3C2410_GPF7_EINT7)
+
+/* I2C devices */
+#if defined(CONFIG_GPIO_PCA953X) || defined(CONFIG_GPIO_PCA953X_MODULE)
+#include <linux/i2c/pca953x.h>
+static struct pca953x_platform_data pca9554_data = {
+	.gpio_base	= 147,
+};
+#endif
+
 static struct i2c_board_info cc9m2443_i2c_devices[] = {
 	{
                 I2C_BOARD_INFO("ds1337", 0x68),
 		.irq = CC9M2443_RTC_IRQ
 	},
+#if defined(CONFIG_GPIO_PCA953X) || defined(CONFIG_GPIO_PCA953X_MODULE)
+	{
+		I2C_BOARD_INFO("pca9554", 0x20),
+		.platform_data = &pca9554_data,
+	},
+#endif
 	CC9M2443_I2C_BASE_BOARD_DEVICES
 };
 
