@@ -676,13 +676,14 @@ static int s3c2443_fb_suspend(struct platform_device *dev, pm_message_t state)
 	struct fb_info *fbinfo = platform_get_drvdata(dev);
 	struct s3c2443fb_info *info = fbinfo->par;
 
-	s3c2443fb_lcd_enable(info, 0);
-
-	/* sleep before disabling the clock, we need to ensure
-	 * the LCD DMA engine is not going to get back on the bus
-	 * before the clock goes off again (bjd) */
-	msleep(1);
-	clk_disable(info->clk);
+	if (state.event == PM_EVENT_SUSPEND) {
+		s3c2443fb_lcd_enable(info, 0);
+		/* sleep before disabling the clock, we need to ensure
+		* the LCD DMA engine is not going to get back on the bus
+		* before the clock goes off again (bjd) */
+		msleep(1);
+		clk_disable(info->clk);
+	}
 
 	return 0;
 }
@@ -691,15 +692,16 @@ static int s3c2443_fb_resume(struct platform_device *dev)
 {
 	struct fb_info	   *fbinfo = platform_get_drvdata(dev);
 	struct s3c2443fb_info *info = fbinfo->par;
-
+	
 	clk_enable(info->clk);
 	msleep(1);
-
 	s3c2443fb_init_registers(fbinfo);
+	s3c2443_check_var(&fbinfo->var, fbinfo);
+	s3c2443fb_activate_var(fbinfo);
+	s3c2443fb_lcd_enable(info, 1);
 	
 	return 0;
 }
-
 #else
 #define s3c2443_fb_suspend NULL
 #define s3c2443_fb_resume  NULL
