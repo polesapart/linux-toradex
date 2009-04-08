@@ -12,8 +12,6 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 
-#include <mach/display/fb.h>
-
 #include "ns9360_devices.h"
 #include "cc9p9360_devices.h"
 
