@@ -159,7 +159,7 @@ static void s3c2443_pm_prepare(void)
 {
 	__raw_writel(0xff80, S3C2443_RSTCON);
 	__raw_writel(0x8000, S3C2443_OSCSET);
-	__raw_writel(0x8201, S3C2443_PWRCFG);
+	__raw_writel(0x8008, S3C2443_PWRCFG);
 }
 
 static int cc9m2443js_pm_suspend(struct sys_device *sd, pm_message_t state)
