@@ -14,8 +14,6 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 
-#include <mach/display/fb.h>
-
 #include "ns9360_devices.h"
 #include "ccx9c_devices.h"
 
