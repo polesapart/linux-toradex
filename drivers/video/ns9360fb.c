@@ -14,7 +14,9 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/ns9360fb.h>
+
+#include <mach/regs-sys-ns9360.h>
+#include <mach/ns9360fb.h>
 
 #define LCD_TIMING(x)	((x) * 4)
 #define LCD_TIMING2_BCD		(1 << 26)
@@ -40,6 +42,23 @@ struct ns9360fb_info {
 
 	u32			pseudo_pal[16];
 };
+
+static void ns9360fb_select_video_clk_src(int source)
+{
+	u32 reset, clock;
+
+	reset = __raw_readl(SYS_RESET) & ~SYS_RESET_LCDC;
+	__raw_writel(reset, SYS_RESET);
+
+	clock = __raw_readl(SYS_CLOCK) | SYS_CLOCK_LPCSEXT;
+	if (source)
+		clock &= ~SYS_CLOCK_LPCSEXT;
+	__raw_writel(clock, SYS_CLOCK);
+
+	reset = __raw_readl(SYS_RESET) | SYS_RESET_LCDC;
+	__raw_writel(reset, SYS_RESET);
+}
+
 
 static int ns9360fb_set_par(struct fb_info *fb)
 {
@@ -74,8 +93,10 @@ static struct fb_ops ns9360fb_ops = {
 
 static int __init ns9360fb_probe(struct platform_device *pdev)
 {
-	int ret, i;
 	struct ns9360fb_info *info;
+	struct ns9360fb_display *display;
+	char *option = NULL;
+	int ret, i;
 
 	info = kzalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
@@ -89,6 +110,46 @@ static int __init ns9360fb_probe(struct platform_device *pdev)
 	if (!info->pdata) {
 		dev_dbg(&pdev->dev, "%s: err_pdata\n", __func__);
 		ret = -ENOENT;
+		goto err_pdata;
+	}
+
+	/* Get the display information */
+	if (!info->pdata->num_displays) {
+		dev_err(&pdev->dev, "no display information available\n");
+		ret = -EINVAL;
+		goto err_pdata;
+	}
+
+	if (info->pdata->num_displays > 1) {
+		/* 
+		 * If there are multiple displays, use the one specified
+		 * through the command line parameter vith following 
+		 * format video=displayfb:<display_name>
+		 */
+		if (fb_get_options("displayfb", &option)) {
+			dev_err(&pdev->dev, 
+				"no display information available in commnad line\n");
+			ret = -ENODEV;
+			goto err_pdata;
+		}
+		if (!option) {
+			ret = -ENODEV;
+			goto err_pdata;
+		}
+		dev_info(&pdev->dev, "display options: %s\n", option);
+
+		for (i = 0; i < info->pdata->num_displays; i++) {
+			if (!strcmp(option, info->pdata->displays[i].display_name))
+				info->pdata->display = &info->pdata->displays[i];
+		}
+	} else {
+		/* If there is only one, that is what we use */
+		info->pdata->display = info->pdata->displays;
+	}
+  
+	if ((display = info->pdata->display) == NULL) {
+		dev_err(&pdev->dev, "no display information available\n");
+		ret = -ENODEV;
 		goto err_pdata;
 	}
 
@@ -124,12 +185,12 @@ static int __init ns9360fb_probe(struct platform_device *pdev)
 	info->fb.pseudo_palette = &info->pseudo_pal;
 
 	info->fb.var.activate = FB_ACTIVATE_NOW;
-	info->fb.var.height = info->pdata->height;
-	info->fb.var.yres = info->pdata->height;
-	info->fb.var.yres_virtual = info->pdata->height;
-	info->fb.var.width = info->pdata->width;
-	info->fb.var.xres = info->pdata->width;
-	info->fb.var.xres_virtual = info->pdata->width;
+	info->fb.var.height = display->height;
+	info->fb.var.yres = display->height;
+	info->fb.var.yres_virtual = display->height;
+	info->fb.var.width = display->width;
+	info->fb.var.xres = display->width;
+	info->fb.var.xres_virtual = display->width;
 	info->fb.var.vmode = FB_VMODE_NONINTERLACED;
 	info->fb.var.bits_per_pixel = 16;
 
@@ -172,19 +233,22 @@ static int __init ns9360fb_probe(struct platform_device *pdev)
 		goto err_clk_enable;
 	}
 
-	if (!(info->pdata->timing[2] & LCD_TIMING2_BCD)) {
-		info->pdata->timing[2] |=
+	/* display->clock = 0 means use external source */
+	ns9360fb_select_video_clk_src(display->clock);
+
+	if (!(display->timing[2] & LCD_TIMING2_BCD)) {
+		display->timing[2] |=
 			LCD_TIMING2_PCD((clk_get_rate(info->clk) /
-					info->pdata->clock) - 1);
+					display->clock) - 1);
 	}
 
 	/* write configuration to video controller */
 	for (i = 0; i < 4; i++)
-		iowrite32(info->pdata->timing[i],
+		iowrite32(display->timing[i],
 				info->ioaddr + LCD_TIMING(i));
 
 	iowrite32(info->fb.fix.smem_start, info->ioaddr + LCD_UPBASE);
-	iowrite32(info->pdata->control, info->ioaddr + LCD_CONTROL);
+	iowrite32(display->control, info->ioaddr + LCD_CONTROL);
 
 	ret = register_framebuffer(&info->fb);
 	if (ret) {
@@ -192,8 +256,9 @@ static int __init ns9360fb_probe(struct platform_device *pdev)
 		goto err_reg_fb;
 	}
 
-	dev_info(&pdev->dev, "mapped framebuffer to 0x%p (0x%p)\n",
-			(void *)info->fb.fix.smem_start, info->fb.screen_base);
+	dev_info(&pdev->dev, "fb mapped to 0x%p (0x%p), display config %s\n",
+			(void *)info->fb.fix.smem_start, info->fb.screen_base,
+			display->display_name);
 
 	return 0;
 

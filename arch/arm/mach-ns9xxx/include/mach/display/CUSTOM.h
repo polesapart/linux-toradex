@@ -1,13 +1,18 @@
-#define NS9360_DISPLAY_WIDTH	/* FIXME */
-#define NS9360_DISPLAY_HEIGHT	/* FIXME *.
 
-#define NS9360_DISPLAY_TIMING0	/* FIXME */
 
-#define NS9360_DISPLAY_TIMING1	/* FIXME */
 
-#define NS9360_DISPLAY_TIMING2 /* FIXME */
-
-#define NS9360_DISPLAY_CONTROL /* FIXME */
-
-#define NS9360_DISPLAY_CLOCK	/* FIXME */
-#define NS9360_DISPLAY_EXTCLK	/* FIXME */
+/*
+#define CUSTOM_DISPLAY					\
+{							\
+	.display_name = "CUSTOM",			\
+	.width		= ,				\
+	.height		= ,				\
+	.control        = NS9360_DISPLAY_CONTROL,	\
+	.timing = {					\
+			NS9360_DISPLAY_TIMING0,		\
+			NS9360_DISPLAY_TIMING1,		\
+			NS9360_DISPLAY_TIMING2,		\
+	},						\
+	.clock		= NS9360_DISPLAY_CLOCK,		\
+}
+*/

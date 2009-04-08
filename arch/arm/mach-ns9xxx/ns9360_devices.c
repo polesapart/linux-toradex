@@ -13,17 +13,18 @@
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
 #include <linux/gpio.h>
-#include <linux/ns9360fb.h>
 #include <linux/ns9xxx-eth.h>
 #include <linux/platform_device.h>
 
 #include <mach/regs-lcd-ns9360.h>
 #include <mach/regs-sys-ns9360.h>
 #include <mach/gpio.h>
-#include <mach/display/fb.h>
+#include <mach/ns9360fb.h>
+#include <mach/display/displays.h>
 
 #include "clock.h"
 #include "ns9360_devices.h"
+
 
 /* USB host */
 #if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
@@ -514,22 +515,7 @@ err:
 
 static int fb_endisable(struct clk *clk, int enable)
 {
-	u32 reset, clock;
-
-	reset = __raw_readl(SYS_RESET) & ~SYS_RESET_LCDC;
-	__raw_writel(reset, SYS_RESET);
-
-	clock = __raw_readl(SYS_CLOCK);
-#if defined(NS9360_DISPLAY_EXTCLK)
-	clock |= SYS_CLOCK_LPCSEXT;
-#else
-	clock &= ~SYS_CLOCK_LPCSEXT;
-#endif
-	__raw_writel(clock, SYS_CLOCK);
-
-	reset = __raw_readl(SYS_RESET) | SYS_RESET_LCDC;
-	__raw_writel(reset, SYS_RESET);
-
+	/* Currently, nothing to do */ 
 	return 0;
 }
 
@@ -538,20 +524,11 @@ static struct clk fb_clk = {
 	.id		= -1,
 	.owner		= THIS_MODULE,
 	.endisable	= fb_endisable,
-};
 
+};
 static struct ns9360fb_pdata ns9xxx_device_ns9360_fb_data = {
-	.height		= NS9360_DISPLAY_HEIGHT,
-	.width		= NS9360_DISPLAY_WIDTH,
-	.timing	= {
-		NS9360_DISPLAY_TIMING0,
-		NS9360_DISPLAY_TIMING1,
-		NS9360_DISPLAY_TIMING2,
-	},
-	.control	= NS9360_DISPLAY_CONTROL,
-#if defined(NS9360_DISPLAY_CLOCK)
-	.clock		= NS9360_DISPLAY_CLOCK,
-#endif
+ 	.displays	= display_list,
+ 	.num_displays	= ARRAY_SIZE(display_list),
 };
 
 static struct resource fb_resources[] = {
