@@ -439,13 +439,22 @@ static int __devexit s3c2443_ide_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#define s3c2443_ide_suspend NULL
-#define s3c2443_ide_resume  NULL
+#ifdef CONFIG_PM
+static int s3c2443_ide_resume(struct platform_device *dev)
+{
+	struct _s3c2443_ide_hwif *shwif = &s3c2443_ide_hwif;
+
+	return s3c2443_ide_hw_config(shwif);
+}
+#else
+# define s3c2443_ide_suspend NULL
+# define s3c2443_ide_resume  NULL
+#endif
+
 
 static struct platform_driver s3c2443_ide_driver = {
 	.probe		= s3c2443_ide_probe,
 	.remove		= __devexit_p(s3c2443_ide_remove),
-	.suspend	= s3c2443_ide_suspend,
 	.resume		= s3c2443_ide_resume,
 	.driver = {
 		.name	= "s3c2443-ide",
