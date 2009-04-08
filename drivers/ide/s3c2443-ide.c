@@ -40,9 +40,6 @@ struct  _s3c2443_ide_hwif {
 	void __iomem		*membase;
 	struct platform_device	*dev;
 	struct clk		*clk;
-#ifdef CONFIG_PM
-	pm_state		pm;
-#endif
 };
 
 static struct _s3c2443_ide_hwif s3c2443_ide_hwif;
