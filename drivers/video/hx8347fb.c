@@ -188,10 +188,24 @@ static int hx8347_set_par(struct fb_info *fb)
 	return 0;
 }
 
+static int hx8347_setcolreg(unsigned regno, unsigned red, unsigned green,
+		unsigned blue, unsigned transp, struct fb_info *fb)
+{
+	struct hx8347fb_par *par = fb->par;
+
+	if (regno > fb->var.bits_per_pixel)
+		return -EINVAL;
+
+	par->pdata->pseudo_pal[regno] = (red & 0xf800) |
+			((green & 0xfc00) >> 5) | ((green & 0xf800) >> 11);
+
+	return 0;
+}
 
 static struct fb_ops hx8347fb_ops = {
 	.owner		= THIS_MODULE,
 	.fb_set_par 	= hx8347_set_par,
+	.fb_setcolreg   = hx8347_setcolreg,
 	.fb_read        = fb_sys_read,
 	.fb_write	= hx8347_write,
 	.fb_fillrect	= hx8347_fillrect,
@@ -354,7 +368,7 @@ static int __devinit hx8347_probe(struct platform_device *pdev)
 	return 0;
 
 err_init:
-	framebuffer_release(info);
+	unregister_framebuffer(info);
 err_fbreg:
 	if (!pdata->usedma)
 		vfree(videomemory);
