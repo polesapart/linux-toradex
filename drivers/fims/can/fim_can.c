@@ -1125,7 +1125,8 @@ static int unregister_fim_can(struct fim_can_t *port)
 	if (!port || !port->reg)
 		return -ENODEV;
 
-	unregister_netdev(port->dev);
+	//unregister_netdev(port->dev);
+	unregister_candev(port->dev);
 	free_candev(port->dev);
 
 	/* Activate the interrupt (@BUG in the IRQ-subsystem?) */
@@ -1269,7 +1270,8 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	port->can.bittiming.phase_seg2 = 8;
 
 	/* Now register the new net device */
-	retval = register_netdev(dev);
+	//retval = register_netdev(dev);
+	retval = register_candev(dev);
 	if (retval) {
 		printk_err("Registering the net device for the FIM %i\n", picnr);
 		goto err_unreg_fim;
