@@ -15,7 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/io.h>
-
+#include <linux/mmc/mmc.h>
 #include <asm/dma.h>
 
 /* Use the old headers system */
@@ -678,10 +678,21 @@ static void s3cmci_dma_done_callback(struct s3c2410_dma_chan *dma_ch,
 	spin_lock_irqsave(&host->complete_lock, iflags);
 
 	if (result != S3C2410_RES_OK) {
-		dbg(host, dbg_fail, "DMA FAILED: csta=0x%08x dsta=0x%08x "
-			"fsta=0x%08x dcnt:0x%08x result:0x%08x toGo:%u\n",
-			mci_csta, mci_dsta, mci_fsta,
-			mci_dcnt, result, host->dmatogo);
+		struct mmc_request *mrq = host->mrq;
+		
+		if (mrq) {
+			struct mmc_command *cmd;
+
+			cmd = mrq->cmd;
+			dbg(host, dbg_fail, "DMA FAILED: CMD%i csta=0x%08x dsta=0x%08x "
+			    "fsta=0x%08x dcnt:0x%08x result:%i toGo:%u\n",
+			    cmd->opcode, mci_csta, mci_dsta, mci_fsta,
+			    mci_dcnt, result, host->dmatogo);
+                } else 
+			dbg(host, dbg_fail, "DMA FAILED: csta=0x%08x dsta=0x%08x "
+			    "fsta=0x%08x dcnt:0x%08x result:0x%08x toGo:%u\n",
+			    mci_csta, mci_dsta, mci_fsta,
+			    mci_dcnt, result, host->dmatogo);
 
 		goto fail_request;
 	}
@@ -1074,6 +1085,10 @@ static void s3cmci_send_request(struct mmc_host *mmc)
 
 	host->ccnt++;
 	prepare_dbgmsg(host, cmd, host->cmd_is_stop);
+
+	/* @XXX: Sending the switch command with data leads to a DMA-failure, why? */
+	if (cmd->opcode == MMC_SWITCH && cmd->data)
+		udelay(200);
 
 	/* Clear command, data and fifo status registers
 	   Fifo clear only necessary on 2440, but doesn't hurt on 2410
@@ -1588,8 +1603,10 @@ static int s3cmci_suspend(struct platform_device *pdev, pm_message_t state)
 		set_irq_type(host->irq_cd, detect);
 	}
 
-	clk_disable(host->clk);
+	writel(S3C2440_SDICON_SDRESET | S3C2410_SDIDCON_STOP,
+	       host->base + S3C2410_SDICON);
 	
+	clk_disable(host->clk);
 exit_suspend:
 	return retval;
 }
@@ -1613,9 +1630,6 @@ static int s3cmci_resume(struct platform_device *pdev)
 
 		set_irq_type(host->irq_cd, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING);
 	}
-
-	/* First reset the controller */
-	writel(S3C2440_SDICON_SDRESET, host->base + S3C2410_SDICON);
 
 	clk_enable(host->clk);
 	
