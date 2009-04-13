@@ -531,7 +531,7 @@ static void hw_rm_intf(struct ieee80211_hw *hw,
 static int hw_config(struct ieee80211_hw *hw, u32 changed)
 {
 	struct piper_priv *digi = hw->priv;
-	int chan;
+	int channelIndex;
 	int err = 0;
     unsigned int word;
     struct ieee80211_conf *conf = &hw->conf;
@@ -574,17 +574,17 @@ static int hw_config(struct ieee80211_hw *hw, u32 changed)
 	}
     
     /*
-     * Set the channel.
+     * Set the channel. 
      */
-	chan = ieee80211_frequency_to_channel(conf->channel->center_freq);
-	if (chan != digi->channel) {
-		err = digi->rf->set_chan(hw, chan);
+	channelIndex = conf->channel->hw_value;
+	if (channelIndex != digi->channel) {
+		err = digi->rf->set_chan(hw, channelIndex);
 		if (err) {
 			printk(KERN_ERR PIPER_DRIVER_NAME
-					": unable to set channel (%d)\n", chan);
+					": unable to set channel (%d)\n", channelIndex);
 			goto done;
 		} else
-			digi->channel = chan;
+			digi->channel = channelIndex;
 	}
 
 done:

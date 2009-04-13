@@ -119,21 +119,28 @@ static const struct
     { 0x0FF61, 0x02AAA, 0x77F78, TRACK_5725_5825_A_BAND }, // A-165 (5825 MHz)  51
 };
 
+#define CHAN4G(idx, _freq) 		\
+	.band			= IEEE80211_BAND_2GHZ,		\
+	.center_freq		= (_freq),			\
+	.hw_value           = idx,             \
+	.max_antenna_gain	= 0,				\
+	.max_power		= 12				
+
 static struct ieee80211_channel al7230_bg_channels[] = {
-	{ .center_freq = 2412 },
-	{ .center_freq = 2417 },
-	{ .center_freq = 2422 },
-	{ .center_freq = 2427 },
-	{ .center_freq = 2432 },
-	{ .center_freq = 2437 },
-	{ .center_freq = 2442 },
-	{ .center_freq = 2447 },
-	{ .center_freq = 2452 },
-	{ .center_freq = 2457 },
-	{ .center_freq = 2462 },
-	{ .center_freq = 2467 },
-	{ .center_freq = 2472 },
-	{ .center_freq = 2484 },
+	{ CHAN4G(1, 2412) },
+	{ CHAN4G(2, 2417) },
+	{ CHAN4G(3, 2422) },
+	{ CHAN4G(4, 2427) },
+	{ CHAN4G(5, 2432) },
+	{ CHAN4G(6, 2437) },
+	{ CHAN4G(7, 2442) },
+	{ CHAN4G(8, 2447) },
+	{ CHAN4G(9, 2452) },
+	{ CHAN4G(10, 2457) },
+	{ CHAN4G(11, 2462) },
+	{ CHAN4G(12, 2467) },
+	{ CHAN4G(13, 2472) },
+	{ CHAN4G(14, 2484) },
 };
 
 static const struct ieee80211_rate al7230_bg_rates[] = {
@@ -189,7 +196,92 @@ static const struct ieee80211_rate al7230_bg_rates[] = {
 	},
 };
 
+#define CHAN5G(idx, frequency) 		\
+	.band			= IEEE80211_BAND_5GHZ,		\
+	.center_freq		= frequency,	\
+	.max_antenna_gain	= 0,				\
+	.max_power		= 8,				\
+	.hw_value       = idx              
 
+#define BAND_A_OFFSET            (17)
+
+static struct ieee80211_channel al7230_a_channels[] = {
+    { CHAN5G(17, 4920) },
+    { CHAN5G(18, 4940) },
+    { CHAN5G(19, 4960) },
+    { CHAN5G(20, 4980) },
+
+    { CHAN5G(21, 5040) },
+    { CHAN5G(22, 5060) },
+    { CHAN5G(23, 5080) },
+    { CHAN5G(24, 5170) },
+    { CHAN5G(25, 5180) },
+    { CHAN5G(26, 5190) },
+    { CHAN5G(27, 5200) },
+    { CHAN5G(28, 5210) },
+    { CHAN5G(29, 5220) },
+    { CHAN5G(30, 5230) },
+    { CHAN5G(31, 5240) },
+
+    { CHAN5G(32, 5260) },
+    { CHAN5G(33, 5280) },
+    { CHAN5G(34, 5300) },
+    { CHAN5G(35, 5320) },
+
+    { CHAN5G(36, 5500) },
+    { CHAN5G(37, 5520) },
+    { CHAN5G(38, 5540) },
+    { CHAN5G(39, 5560) },
+    { CHAN5G(40, 5580) },
+    { CHAN5G(41, 5600) },
+    { CHAN5G(42, 5620) },
+    { CHAN5G(43, 5640) },
+    { CHAN5G(44, 5660) },
+    { CHAN5G(45, 5680) },
+    { CHAN5G(46, 5700) },
+
+    { CHAN5G(47, 5745) },
+    { CHAN5G(48, 5765) },
+    { CHAN5G(49, 5785) },
+    { CHAN5G(50, 5805) },
+    { CHAN5G(51, 5825) }
+};           
+
+static const struct ieee80211_rate al7230_a_rates[] = {
+	/* ofdm rates */
+	{
+		.bitrate = 60,
+		.hw_value = 0xb,
+	},
+	{
+		.bitrate = 90,
+		.hw_value = 0xf,
+	},
+	{
+		.bitrate = 120,
+		.hw_value = 0xa,
+	},
+	{
+		.bitrate = 180,
+		.hw_value = 0xe,
+	},
+	{
+		.bitrate = 240,
+		.hw_value = 0x9,
+	},
+	{
+		.bitrate = 360,
+		.hw_value = 0xd,
+	},
+	{
+		.bitrate = 480,
+		.hw_value = 0x8,
+	},
+	{
+		.bitrate = 540,
+		.hw_value = 0xc,
+	},
+};
     
 
 static int WriteRF(struct ieee80211_hw *hw, unsigned char reg, unsigned int val)
@@ -203,29 +295,23 @@ static int WriteRF(struct ieee80211_hw *hw, unsigned char reg, unsigned int val)
 }
 
 
-
-static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
+    
+static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 {
 	struct piper_priv *priv = hw->priv;
     /* current frequency band */
-    //static int rf_band = IEEE80211_BAND_2GHZ; 
+    static int rf_band = IEEE80211_BAND_2GHZ; 
 
-#if 0
-    if (CHAN_5G (channel))
+    if (channelIndex >= BAND_A_OFFSET)
         rf_band = IEEE80211_BAND_5GHZ;
     else
         rf_band = IEEE80211_BAND_2GHZ;       	
-#else
-    enum ieee80211_band rf_band = IEEE80211_BAND_2GHZ;
-#endif
     /* Disable the rx processing path */
 	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
-    	                
 
 #if (TRANSCEIVER == RF_AIROHA_2236)
     	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_B_EN, op_or);
     	                
-#if 0
         if (macParams.band == WLN_BAND_B)
         {
             // turn off OFDM
@@ -236,9 +322,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
             // turn on OFDM
         	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN, op_or);
         }
-#else
-        writeReg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN, op_and);
-#endif            
         /* set the 802.11b/g frequency band specific tracking constant */
     	writeReg(BB_TRACK_CONTROL, 0xff00ffff, op_and);
     	                
@@ -250,8 +333,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         
         MacSetTxPower (priv->tx_power);
     
-        WriteRF(hw, 0, freqTableAiroha_2236[channel].integer); 
-        WriteRF(hw, 1, freqTableAiroha_2236[channel].fraction); 
+        WriteRF(hw, 0, freqTableAiroha_2236[channelIndex].integer); 
+        WriteRF(hw, 1, freqTableAiroha_2236[channelIndex].fraction); 
     
         /* critical delay for correct calibration */
         udelay (10);
@@ -283,6 +366,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         /* enable the frequency-band specific PA */
         if (rf_band == IEEE80211_BAND_2GHZ)
         {
+    digi_dbg("Setting channel to %d, 2GHZ\n", channelIndex);    	                
             //HW_GEN_CONTROL &= ~GEN_PA_ON;
         	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | BB_GENERAL_STAT_B_EN, op_or);
         	                
@@ -294,6 +378,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         }
         else
         {
+    digi_dbg("Setting channel to %d, 5GHZ\n", channelIndex);    	                
             //HW_GEN_CONTROL |= GEN_PA_ON; 
     
             // turn off PSK/CCK  
@@ -306,7 +391,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
             /* All 8 supported 802.11a channels are in this 802.11a frequency sub-band */
         	writeReg(BB_TRACK_CONTROL, 0xff00ffff, op_and);
         	                
-        	writeReg(BB_TRACK_CONTROL, freqTableAiroha_7230[channel].tracking, op_or);
+        	writeReg(BB_TRACK_CONTROL, freqTableAiroha_7230[channelIndex].tracking, op_or);
         	                
         } 
     
@@ -316,9 +401,13 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channel)
         MacSetTxPower (priv->tx_power);
     
         /* Set the channel frequency */
-        WriteRF(hw, 0, freqTableAiroha_7230[channel].integer); 
-        WriteRF(hw, 1, freqTableAiroha_7230[channel].fraction); 
-        WriteRF(hw, 4, freqTableAiroha_7230[channel].address4); 
+    digi_dbg("integer = %d, fraction = %d, address4 = %d\n",  	                
+            freqTableAiroha_7230[channelIndex].integer, 
+            freqTableAiroha_7230[channelIndex].fraction,
+            freqTableAiroha_7230[channelIndex].address4); 
+        WriteRF(hw, 0, freqTableAiroha_7230[channelIndex].integer); 
+        WriteRF(hw, 1, freqTableAiroha_7230[channelIndex].fraction); 
+        WriteRF(hw, 4, freqTableAiroha_7230[channelIndex].address4); 
     
         /* critical delay for correct calibration */
         udelay (10);
@@ -668,7 +757,7 @@ static void getOfdmBrs(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
      * mask is bits 0-3, the OFDM bit mask is bits 4-11.
      */
      
-     *psk = brsBitMask & 0xf;
+     *psk = brsBitMask & 0xf; /* TODO:  Should we set this to zero for band A channels? */
      *ofdm = (brsBitMask & 0xff0) >> 4;
 }
 
@@ -682,6 +771,13 @@ static struct ieee80211_supported_band al7230_bands[] = {
         	.n_bitrates = ARRAY_SIZE(al7230_bg_rates),
         	.channels = (struct ieee80211_channel *) al7230_bg_channels,
         	.bitrates = (struct ieee80211_rate *) al7230_bg_rates,
+	},
+	{
+        	.band = IEEE80211_BAND_5GHZ,
+        	.n_channels = ARRAY_SIZE(al7230_a_channels),
+        	.n_bitrates = ARRAY_SIZE(al7230_a_rates),
+        	.channels = (struct ieee80211_channel *) al7230_a_channels,
+        	.bitrates = (struct ieee80211_rate *) al7230_a_rates,
 	},
 };
 
