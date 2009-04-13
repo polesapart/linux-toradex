@@ -161,11 +161,23 @@ struct ieee80211_tx_info {
 };
 
 #endif    
+#if 0
     digi_dbg("0 = %d :: %d, 1 = %d :: %d, 2 = %d :: %d, 3 = %d :: %d\n",
                 txInfo->control.rates[0].count, txInfo->control.rates[0].idx,
                 txInfo->control.rates[1].count, txInfo->control.rates[1].idx,
                 txInfo->control.rates[2].count, txInfo->control.rates[2].idx,
                 txInfo->control.rates[3].count, txInfo->control.rates[3].idx);
+#endif
+/* TODO:  Remove this code when mac80211 implements retry counts */
+if (   (txInfo->control.rates[0].count == 1) 
+    && (txInfo->control.rates[1].count == 1)
+    && (txInfo->control.rates[1].idx == -1))
+{
+    txInfo->control.rates[0].count = 3;
+    txInfo->control.rates[1].count = 2;
+    txInfo->control.rates[1].idx = 0;
+    txInfo->control.rates[2].idx = -1;
+}
     if (txInfo->control.rates[digi->txRetryIndex].count > digi->txRetryCount[digi->txRetryIndex])
     {
         if (digi->txRetryIndex == 0)
@@ -226,16 +238,20 @@ struct ieee80211_tx_info {
                 && (txInfo->status.retries[digi->txRetryIndex+1].rate_idx != -1)
                 && (txInfo->status.retries[digi->txRetryIndex+1].limit > 0))
             {
+#if 0
                 digi_dbg("Trying next rate, rate_idx = %d, limit = %d\n", 
                             txInfo->status.retries[digi->txRetryIndex+1].rate_idx,
                             txInfo->status.retries[digi->txRetryIndex+1].limit);
+#endif
                 /*
                  * Looks like we still have more entries in the array.  Update
                  * our array index and load the rate index with the new rate.
                  */
                 digi->txRetryIndex++;
                 txInfo->tx_rate_idx = txInfo->status.retries[digi->txRetryIndex].rate_idx;
+#if 0
                 digi_dbg("Try new rate index %d\n", txInfo->tx_rate_idx);
+#endif
             }
             else
             {
