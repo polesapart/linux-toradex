@@ -457,7 +457,7 @@ s3c2443_pcmcia_drv_suspend(struct platform_device *pdev, pm_message_t mesg)
 	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
 
 	if (device_may_wakeup(&pdev->dev))
-		enable_irq_wake(pdev->pdata->irq_cd);
+		enable_irq_wake(psock->irq_cd);
 
 	return pcmcia_socket_dev_suspend(&pdev->dev, mesg);
 }
@@ -468,7 +468,7 @@ s3c2443_pcmcia_drv_resume(struct platform_device *pdev)
 	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
 
 	if (device_may_wakeup(&pdev->dev))
-		disable_irq_wake(pdev->pdata->irq_cd);
+		disable_irq_wake(psock->irq_cd);
 
 	return pcmcia_socket_dev_resume(&pdev->dev);
 }
