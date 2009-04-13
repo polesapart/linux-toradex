@@ -631,8 +631,8 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
 #endif
 static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
 	.flags          = 0,
-	.max_freq       = 130 * 1000,
-	.max_freq       = 130 * 1000,
+	.bus_freq	= 400 * 1000,
+	.max_freq       = 500 * 1000,
 	.bus_num	= CONFIG_I2C_S3C2410_ADAPTER_NR,
 };
 
