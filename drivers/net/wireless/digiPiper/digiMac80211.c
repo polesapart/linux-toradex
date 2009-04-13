@@ -922,6 +922,11 @@ int digiWifiRegisterHw(struct piper_priv *priv, struct device *dev,
 		enum ieee80211_band b = rf->bands[i].band;
 		hw->wiphy->bands[b] = &rf->bands[i];
 	}
+	hw->wiphy->interface_modes =   BIT(NL80211_IFTYPE_ADHOC)
+	                             | BIT(NL80211_IFTYPE_STATION)
+/* TODO: Enable this             | BIT(NL80211_IFTYPE_MESH_POINT) */
+	                             ;
+
 	hw->channel_change_time = rf->channelChangeTime;
 	hw->vif_data_size = 0;
 	hw->sta_data_size = 0;

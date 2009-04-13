@@ -161,7 +161,12 @@ struct ieee80211_tx_info {
 };
 
 #endif    
-    if (txInfo->control.rates[digi->txRetryIndex].count < digi->txRetryCount[digi->txRetryIndex])
+    digi_dbg("0 = %d :: %d, 1 = %d :: %d, 2 = %d :: %d, 3 = %d :: %d\n",
+                txInfo->control.rates[0].count, txInfo->control.rates[0].idx,
+                txInfo->control.rates[1].count, txInfo->control.rates[1].idx,
+                txInfo->control.rates[2].count, txInfo->control.rates[2].idx,
+                txInfo->control.rates[3].count, txInfo->control.rates[3].idx);
+    if (txInfo->control.rates[digi->txRetryIndex].count > digi->txRetryCount[digi->txRetryIndex])
     {
         if (digi->txRetryIndex == 0)
         {
@@ -170,20 +175,19 @@ struct ieee80211_tx_info {
         else
         {
             result = ieee80211_get_alt_retry_rate(digi->hw, txInfo, 
-                                digi->txRetryIndex);
+                                digi->txRetryIndex - 1);
         }
     }
-    else if (txInfo->control.rates[digi->txRetryIndex].idx != -1)
+    else if (txInfo->control.rates[digi->txRetryIndex + 1].idx != -1)
     {
-        digi->txRetryIndex++;
         result = ieee80211_get_alt_retry_rate(digi->hw, txInfo, 
                             digi->txRetryIndex);
+        digi->txRetryIndex++;
     }
     if (result != NULL)
     {
         digi->txRetryCount[digi->txRetryIndex]++;
     }
-
 #if 0        
     if (   (txInfo->status.retries[FIRST_RETRY_INDEX].limit == 0) 
         || (txInfo->status.retries[FIRST_RETRY_INDEX].limit == -1)
