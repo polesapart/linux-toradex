@@ -402,7 +402,7 @@ static int hw_start(struct ieee80211_hw *hw)
 	/*
 	 * Initialize the MAC H/W.
 	 */
-    err = digi->initHw(digi);
+    err = digi->initHw(digi, IEEE80211_BAND_2GHZ);
     digi->isRadioOn = true;
 	
     /*
@@ -774,9 +774,17 @@ static int expand_aes_key(struct ieee80211_key_conf *key, u32 *expandedKey)
  * retire an old one.  We support H/W AES encryption/decryption, so
  * save the AES related keys.
  */
+#if 1
+    /* They seem to keep switching the prototype of this function around */
+    
+static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
+		       const u8 *local_address, const u8 *address,
+		       struct ieee80211_key_conf *key)
+#else
 static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		                struct ieee80211_vif *vif, struct ieee80211_sta *sta,
 		                struct ieee80211_key_conf *key)
+#endif
 {
 	int err = -EOPNOTSUPP;
 	struct piper_priv *digi = hw->priv;

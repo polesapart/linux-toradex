@@ -203,7 +203,6 @@ static const struct ieee80211_rate al7230_bg_rates[] = {
 	.max_power		= 8,				\
 	.hw_value       = idx              
 
-#define BAND_A_OFFSET            (17)
 
 static struct ieee80211_channel al7230_a_channels[] = {
     { CHAN5G(17, 4920) },
@@ -284,6 +283,39 @@ static const struct ieee80211_rate al7230_a_rates[] = {
 };
     
 
+static enum ieee80211_band getBand(int channelIndex)
+{
+    enum ieee80211_band result;
+    
+    if (channelIndex >= BAND_A_OFFSET)
+    {
+        result = IEEE80211_BAND_5GHZ;
+    }
+    else
+    {
+        result = IEEE80211_BAND_2GHZ;
+    }
+    
+    return result;
+}
+
+static int getFrequency(int channelIndex)
+{
+    int result;
+    
+    if (getBand(channelIndex) == IEEE80211_BAND_5GHZ)
+    {
+        result = al7230_a_channels[channelIndex - BAND_A_OFFSET].center_freq;
+    }
+    else
+    {
+        result = al7230_bg_channels[channelIndex - 1].center_freq;
+    }
+
+    return result;
+}
+
+
 static int WriteRF(struct ieee80211_hw *hw, unsigned char reg, unsigned int val)
 {
 	struct piper_priv *priv = hw->priv;
@@ -301,6 +333,61 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 	struct piper_priv *priv = hw->priv;
     /* current frequency band */
     static int rf_band = IEEE80211_BAND_2GHZ; 
+    const char *channelLookup[] =
+    {
+        "invalid 0",
+        "B-1",
+        "B-2",
+        "B-3",
+        "B-4",
+        "B-5",
+        "B-6",
+        "B-7",
+        "B-8",
+        "B-9",
+        "B-10",
+        "B-11",
+        "B-12",
+        "B-13",
+        "B-14",
+        "invalid 15",
+        "invalid 16",
+        "L-184",
+        "L-188",
+        "L-192",
+        "L-196",
+        "A-8",
+        "A-12",
+        "A-16",
+        "A-34",
+        "A-36",
+        "A-38",
+        "A-40",
+        "A-42",
+        "A-44",
+        "A-46",
+        "A-48",
+        "A-52",
+        "A-56",
+        "A-60",
+        "A-64",
+        "A-100",
+        "A-104",
+        "A-108",
+        "A-112",
+        "A-116",
+        "A-120",
+        "A-124",
+        "A-128",
+        "A-132",
+        "A-136",
+        "A-140",
+        "A-149",
+        "A-153",
+        "A-157",
+        "A-161",
+        "A-165"
+    };
 
     if (channelIndex >= BAND_A_OFFSET)
         rf_band = IEEE80211_BAND_5GHZ;
@@ -366,7 +453,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
         /* enable the frequency-band specific PA */
         if (rf_band == IEEE80211_BAND_2GHZ)
         {
-    digi_dbg("Setting channel to %d, 2GHZ\n", channelIndex);    	                
             //HW_GEN_CONTROL &= ~GEN_PA_ON;
         	writeReg(BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN | BB_GENERAL_STAT_B_EN, op_or);
         	                
@@ -378,7 +464,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
         }
         else
         {
-    digi_dbg("Setting channel to %d, 5GHZ\n", channelIndex);    	                
             //HW_GEN_CONTROL |= GEN_PA_ON; 
     
             // turn off PSK/CCK  
@@ -401,10 +486,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
         MacSetTxPower (priv->tx_power);
     
         /* Set the channel frequency */
-    digi_dbg("integer = %d, fraction = %d, address4 = %d\n",  	                
-            freqTableAiroha_7230[channelIndex].integer, 
-            freqTableAiroha_7230[channelIndex].fraction,
-            freqTableAiroha_7230[channelIndex].address4); 
         WriteRF(hw, 0, freqTableAiroha_7230[channelIndex].integer); 
         WriteRF(hw, 1, freqTableAiroha_7230[channelIndex].fraction); 
         WriteRF(hw, 4, freqTableAiroha_7230[channelIndex].address4); 
@@ -430,8 +511,12 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
             udelay (50);	
     
             /* configure the baseband processing engine */
-            //HW_GEN_CONTROL |= GEN_5GEN;  
-        	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_GEN_5GEN, op_or);
+            /*
+             * This bit always as to be turned off when we are using
+             * the Airoha chip, even though it's named the 5G EN bit.
+             * It has to do with how they hooked up the Airoha.
+             */
+        	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
         	                
         }
         else
@@ -452,13 +537,16 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
     
             /* configure the baseband processing engine */		    
         	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
+        	/*
+        	 * No short preambles allowed for ODFM.
+        	 */
+        	writeReg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
         	                
         }
     
         /*Re-enable the rx processing path */
 	    udelay(150); /* Airoha says electronics will be ready in 150 us */
     	writeReg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
-
 #endif
 
 
@@ -791,6 +879,8 @@ struct digi_rf_ops al7230_rf_ops = {
 	.channelChangeTime = CHANNEL_CHANGE_TIME,
 	.maxSignal = MAX_SIGNAL_IN_DBM,
 	.getOfdmBrs = getOfdmBrs,
+	.getBand = getBand,
+	.getFrequency = getFrequency,
 
 	.bands = al7230_bands,
 	.n_bands = ARRAY_SIZE(al7230_bands),

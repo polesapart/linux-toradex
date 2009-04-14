@@ -4,8 +4,8 @@
 /* 
  * Defines for debugging function dumpRegisters
  */
-void dumpRegisters(struct piper_priv *digi, unsigned int regs);
-void dumpSkb(struct sk_buff *skb);
+void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
+void digiWifiDumpSkb(struct sk_buff *skb);
 #define MAIN_REGS           (1)
 #define MAC_REGS            (2)
 #define RF_REGS             (4)

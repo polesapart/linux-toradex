@@ -135,19 +135,15 @@ static void free_rx_tx(struct piper_priv *digi)
 
 
 
-static int initHw(struct piper_priv *digi)
+static int initHw(struct piper_priv *digi, enum ieee80211_band band)
 {
-#define WLN_BAND_B      (0)
-#define WLN_BAND_BG     (1)
-#define WLN_BAND_A      (2)
-    int band = WLN_BAND_BG;
     int result = 0;
     
 	digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT, op_write);
 
 #if (TRANSCEIVER == RF_AIROHA_7230)
         /* Initialize baseband general control register */
-        if ((band == WLN_BAND_B) || (band == WLN_BAND_BG))
+        if (band == IEEE80211_BAND_2GHZ)
         {
             digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
             digi->write_reg(digi, BB_TRACK_CONTROL, 
@@ -225,14 +221,7 @@ static int initHw(struct piper_priv *digi)
     digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C, op_write);  
         
     /* Initialize RF transceiver */
-    if (band == WLN_BAND_A)
-    {
-        digi->rf->init(digi->hw, IEEE80211_BAND_5GHZ);
-    }
-    else
-    {
-        digi->rf->init(digi->hw, IEEE80211_BAND_2GHZ);
-    }
+    digi->rf->init(digi->hw, band);
     digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000001, op_or);
 /****/ digi->write_reg(digi, MAC_CFP_ATIM, 0x0, op_write);
     digi->write_reg(digi, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS 

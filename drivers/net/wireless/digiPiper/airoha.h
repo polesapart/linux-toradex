@@ -14,6 +14,14 @@
 #define	GEN_INIT_AIROHA_50GHZ	(0x33760008)	// Initial state; 5.0GHZ_PA_ON= active high; bit 25
 
 
+/*
+ * Subtract this number from the channel index to index into the 802.11a
+ * channel array.
+ */
+#define BAND_A_OFFSET            (17)
+
+
+
 struct digi_rf_freq {
 	uint16_t integer;
 	uint16_t fract;

@@ -50,6 +50,8 @@ struct digi_rf_ops {
 	int (*set_chan)(struct ieee80211_hw *, int chan);
 	int (*set_pwr)(struct ieee80211_hw *, uint8_t val);
 	void (*getOfdmBrs)(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
+	enum ieee80211_band (*getBand)(int);
+	int (*getFrequency)(int);
 	int channelChangeTime;
 	s8 maxSignal;
 
@@ -143,7 +145,7 @@ struct piper_priv {
 	unsigned int (*read_reg)(struct piper_priv *, uint8_t reg);
 	int (*write)(struct piper_priv *, uint8_t addr, uint8_t *buf, int len);
 	int (*read)(struct piper_priv *, uint8_t, uint8_t *, int);
-	int (*initHw)(struct piper_priv *);
+	int (*initHw)(struct piper_priv *, enum ieee80211_band band);
 	void (*setIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
 	void (*clearIrqMaskBit)(struct piper_priv *, unsigned int maskBits);
 	u16 (*getNextBeaconBackoff)(void);

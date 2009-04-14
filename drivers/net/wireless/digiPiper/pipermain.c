@@ -489,7 +489,7 @@ static int hw_start(struct ieee80211_hw *hw)
 	/*
 	 * Initialize the MAC H/W.
 	 */
-    err = digi->initHw(digi);
+    err = digi->initHw(digi, IEEE80211_BAND_2GHZ);
     digi->isRadioOn = true;
 	
     /*
