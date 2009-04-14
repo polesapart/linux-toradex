@@ -1981,7 +1981,7 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 	pctrl = &ctrls[0];
         recv_ctrls[0] = s3c24xx_udc_ep0_setup_read(ep, (u16 *)pctrl, sizeof(* pctrl));
 	if (recv_ctrls[0] <= 0) {
-		printk_err("Nothing to process? Aborting.\n");
+		printk_debug("Nothing to process? Aborting.\n");
 		return;
 	}
 
