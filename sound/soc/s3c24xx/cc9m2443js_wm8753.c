@@ -53,7 +53,7 @@
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] cc9m2443-snd: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "cc9m2443-snd: " fmt, ## args)
 
-#if 1
+#if 0
 #define CC9M2443JS_SND_DEBUG
 #endif
 
