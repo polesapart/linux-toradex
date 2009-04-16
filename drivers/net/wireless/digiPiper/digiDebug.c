@@ -128,6 +128,7 @@ EXPORT_SYMBOL_GPL(digiWifiDumpSkb);
 
 void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
 {
+#ifdef DEBUG
     unsigned int i;
     
     if (regs & CTRL_STATUS_REGS)
@@ -199,5 +200,6 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
         word[3] = digi->read_reg(digi, BB_DATA_FIFO);
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
+#endif
 }       
 EXPORT_SYMBOL_GPL(digiWifiDumpRegisters);

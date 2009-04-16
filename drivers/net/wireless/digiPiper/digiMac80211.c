@@ -20,7 +20,7 @@
 #include <net/mac80211.h>
 #include <crypto/aes.h>
 
-#define DEBUG
+
 
 #include "pipermain.h"
 #include "mac.h"

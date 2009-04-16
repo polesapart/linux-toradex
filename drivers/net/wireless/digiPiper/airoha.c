@@ -333,6 +333,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 	struct piper_priv *priv = hw->priv;
     /* current frequency band */
     static int rf_band = IEEE80211_BAND_2GHZ; 
+#if 0
     const char *channelLookup[] =
     {
         "invalid 0",
@@ -388,7 +389,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
         "A-161",
         "A-165"
     };
-
+#endif
     if (channelIndex >= BAND_A_OFFSET)
         rf_band = IEEE80211_BAND_5GHZ;
     else
