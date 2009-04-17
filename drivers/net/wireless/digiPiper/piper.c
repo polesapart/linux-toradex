@@ -271,10 +271,8 @@ static int __init piper_probe(struct platform_device* pdev)
 	struct piper_priv *digi;
     unsigned int version, status;
     
-	pr_info("piper_probe called\n");
 	err = digiWifiAllocateHw(&digi, sizeof(*digi));
 	localCopyDigi = digi;
-    printk(KERN_INFO "digi = 0x%p\n", digi);
 	if (err) 
 	{
 		printk(KERN_ERR PIPER_DRIVER_NAME "failed to alloc priv\n");
