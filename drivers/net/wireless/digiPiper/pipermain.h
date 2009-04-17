@@ -124,6 +124,7 @@ struct piper_priv {
     struct piperKeyInfo key[PIPER_MAX_KEYS];
     unsigned int AESKeyCount;
     piperBeaconInfo_t beacon;
+    bool txRts;
     
     void* __iomem vbase;
 	struct sk_buff *read_skb;
@@ -158,7 +159,8 @@ struct piper_priv {
 	int channel;
 	uint8_t tx_power;
 	enum nl80211_iftype if_type;
-
+    struct ieee80211_tx_queue_stats txQueueStats;
+    struct ieee80211_low_level_stats lowLevelStats;
 	struct digi_rf_ops *rf;
 };
 
