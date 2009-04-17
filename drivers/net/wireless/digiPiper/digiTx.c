@@ -341,6 +341,8 @@ static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txIn
                     unsigned int frameType)
 {
 
+    digi->txRts = false;
+    
     if (frameType == TYPE_DATA)
     {    
         unsigned int header[2];
@@ -380,6 +382,11 @@ static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txIn
     		digi->write(digi, BB_DATA_FIFO, (unsigned char *) header, TX_HEADER_LENGTH);
     		digi->write(digi, BB_DATA_FIFO, (unsigned char *) &rtsFrame, 
     		                        sizeof(rtsFrame));
+    		if (digi->txTotalRetries != 0)
+    		{
+    		    digi->lowLevelStats.dot11RTSFailureCount++;
+    		}
+    		digi->txRts = true;
         }
         else if ((wantCts) && (rate))
         {
@@ -447,6 +454,11 @@ void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
         				           
         digi->txPacket = NULL;
         ieee80211_wake_queues(digi->hw);
+	    digi->txQueueStats.len--;
+	    if (digi->txRts)
+	    {
+	        digi->lowLevelStats.dot11RTSSuccessCount++;
+	    }
     }
 }
 EXPORT_SYMBOL_GPL(digiWifiTxDone);
@@ -536,6 +548,11 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
             else
             {
                 digi->setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
+            }
+            if (   (digi->txTotalRetries != 0) 
+                && ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0))
+            {
+                digi->lowLevelStats.dot11ACKFailureCount++;
             }
             digi->txTotalRetries++;
         }
