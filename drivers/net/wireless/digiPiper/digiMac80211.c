@@ -92,11 +92,13 @@ static int enableIbssSupport(struct piper_priv *digi, enum nl80211_iftype nodeTy
 static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
 {
 	int err = 0;
+#ifdef DEBUG
     const char *antennaText[] = {
         "ANTENNA_BOTH",
     	"ANTENNA_1",
     	"ANTENNA_2"
     };
+#endif
 	struct piper_priv *digi = hw->priv;
 	static enum antenna_select prevSel = ANTENNA_BOTH;
 	
@@ -380,6 +382,8 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
                                 | IEEE80211_TX_STAT_AMPDU
                                 | IEEE80211_TX_STAT_AMPDU_NO_BACK);
 	digi->txPacket = skb;
+	digi->txQueueStats.len++;
+	digi->txQueueStats.count++;
 
     /*
      * Wake up the transmit tasklet.
@@ -558,9 +562,11 @@ static int hw_config(struct ieee80211_hw *hw, u32 changed)
     /*
      * Adjust the beacon interval and listen interval.
      */
-	word = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_BEACON_INTERVAL_MASK;
+	word = digi->read_reg(digi, MAC_CFP_ATIM) & ~MAC_BEACON_INTERVAL_MASK;
 	word |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
-	word &= ~MAC_LISTEN_INTERVAL_MASK;
+	digi->write_reg(digi, MAC_CFP_ATIM, word, op_write);
+	
+	word = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_LISTEN_INTERVAL_MASK;
 	word |= conf->listen_interval;
 	digi->write_reg(digi, MAC_DTIM_PERIOD, word, op_write);
 	
@@ -624,6 +630,7 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
         digi->write_reg(digi, MAC_BSS_ID0, bssid[0], op_write);
         digi->write_reg(digi, MAC_BSS_ID1, bssid[1], op_write);
     	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
+    	err = 0;
     }
     if (conf->changed & IEEE80211_IFCC_BEACON)
     {
@@ -643,6 +650,7 @@ static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
                  when we update to latest mac80211 */ digi->beacon.enabled = true;
         err = enableIbssSupport(digi, vif->type);
         dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
+    	err = 0;
     }
     
 	return err;
@@ -850,9 +858,39 @@ static int hw_tx_last_beacon(struct ieee80211_hw *hw)
 {
     struct piper_priv *digi = hw->priv;
 
-    digi_dbg("returning %d.\n", digi->beacon.weSentLastOne ? 1 : 0);
-    
     return digi->beacon.weSentLastOne ? 1 : 0;
+}
+
+
+/*
+ * Return the low level transmit queue statistics.
+ */
+static int get_tx_stats(struct ieee80211_hw *hw,
+			    struct ieee80211_tx_queue_stats *stats)
+{
+    struct piper_priv *digi = hw->priv;
+
+    if (stats != NULL)
+    {
+        memcpy(stats, &digi->txQueueStats, sizeof(digi->txQueueStats));
+    }
+    return 0;
+}
+
+
+/*
+ * Return the low level statistics.
+ */
+static int get_stats(struct ieee80211_hw *hw,
+			 struct ieee80211_low_level_stats *stats)
+{
+    struct piper_priv *digi = hw->priv;
+
+    if (stats != NULL)
+    {
+        memcpy(stats, &digi->lowLevelStats, sizeof(digi->lowLevelStats));
+    }
+    return 0;
 }
 
 
@@ -868,6 +906,8 @@ const struct ieee80211_ops hw_ops = {
 	.bss_info_changed = hw_bss_changed,
 	.tx_last_beacon = hw_tx_last_beacon,
 	.set_key = hw_set_key,
+	.get_tx_stats = get_tx_stats,
+	.get_stats = get_stats,
 };
 
 /*
@@ -891,9 +931,14 @@ int digiWifiAllocateHw(struct piper_priv **priv, size_t priv_sz)
 #endif
 	             /* | IEEE80211_HW_SPECTRUM_MGMT TODO:  Turn this on when we are ready*/;
 	hw->queues = 1;
+	hw->ampdu_queues = 0;
 	hw->extra_tx_headroom = 4 +
 			sizeof(struct ofdm_hdr);
 	*priv = digi = hw->priv;
+	digi->txQueueStats.len = 0;
+	digi->txQueueStats.limit = 1;
+	digi->txQueueStats.count = 0;
+	memset(&digi->lowLevelStats, 0, sizeof(digi->lowLevelStats));
 	digi->hw = hw;
 
 	return 0;
