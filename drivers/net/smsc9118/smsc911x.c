@@ -813,31 +813,50 @@ static void smsc911x_phy_update_flowcontrol(struct smsc911x_data *pdata)
 	}
 }
 
+static void smsc911x_phy_update_duplex(struct net_device *dev)
+{
+	struct smsc911x_data *pdata = netdev_priv(dev);
+	unsigned long flags;
+	unsigned int mac_cr;
+
+	spin_lock_irqsave(&pdata->phy_lock, flags);
+
+	mac_cr = smsc911x_mac_read(pdata, MAC_CR);
+	if (pdata->mii.full_duplex) {
+		SMSC_TRACE("configuring for full duplex mode");
+		mac_cr |= MAC_CR_FDPX_;
+	} else {
+		SMSC_TRACE("configuring for half duplex mode");
+		mac_cr &= ~MAC_CR_FDPX_;
+	}
+	smsc911x_mac_write(pdata, MAC_CR, mac_cr);
+	smsc911x_phy_update_flowcontrol(pdata);
+
+	spin_unlock_irqrestore(&pdata->phy_lock, flags);
+}
+
+
 /* Update link mode if any thing has changed */
 static void smsc911x_phy_update_linkmode(struct net_device *dev, int init)
 {
 	struct smsc911x_data *pdata = netdev_priv(dev);
-	unsigned long flags;
 
-	if (mii_check_media(&pdata->mii, netif_msg_link(pdata), init)) {
-		/* duplex state has changed */
-		unsigned int mac_cr;
+	if (mii_check_media(&pdata->mii, netif_msg_link(pdata), init))
+		smsc911x_phy_update_duplex(dev);
+	/* mii_check_media() exists if the media is forced... */
+	if (pdata->mii.force_media) { 
+		int cur_link = mii_link_ok(&pdata->mii);
+		int prev_link = netif_carrier_ok(dev);
 
-		spin_lock_irqsave(&pdata->phy_lock, flags);
-		mac_cr = smsc911x_mac_read(pdata, MAC_CR);
-		if (pdata->mii.full_duplex) {
-			SMSC_TRACE("configuring for full duplex mode");
-			mac_cr |= MAC_CR_FDPX_;
-		} else {
-			SMSC_TRACE("configuring for half duplex mode");
-			mac_cr &= ~MAC_CR_FDPX_;
+		if (!prev_link && cur_link) {
+			printk(KERN_INFO "%s: link up\n", dev->name);
+			netif_carrier_on(dev);
+		} else if (prev_link && !cur_link) {
+			printk(KERN_INFO "%s: link down\n", dev->name);
+			netif_carrier_off(dev);
 		}
-		smsc911x_mac_write(pdata, MAC_CR, mac_cr);
-
-		smsc911x_phy_update_flowcontrol(pdata);
-
-		spin_unlock_irqrestore(&pdata->phy_lock, flags);
 	}
+
 #ifdef USE_LED1_WORK_AROUND
 	if (netif_carrier_ok(dev)) {
 		if ((pdata->gpio_orig_setting & GPIO_CFG_LED1_EN_) &&
@@ -1632,28 +1651,16 @@ void smsc911x_poll_controller(struct net_device *dev)
 static int smsc911x_do_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
 	struct smsc911x_data *pdata = netdev_priv(dev);
-	struct mii_ioctl_data *data = if_mii(ifr);
-	unsigned long flags;
+	unsigned int chg_in_duplex;
+	int ret;
 
-	SMSC_TRACE("ioctl cmd 0x%x", cmd);
-	switch (cmd) {
-	case SIOCGMIIPHY:
-		data->phy_id = pdata->mii.phy_id;
-		return 0;
-	case SIOCGMIIREG:
-		spin_lock_irqsave(&pdata->phy_lock, flags);
-		data->val_out = smsc911x_phy_read(pdata, data->reg_num);
-		spin_unlock_irqrestore(&pdata->phy_lock, flags);
-		return 0;
-	case SIOCSMIIREG:
-		spin_lock_irqsave(&pdata->phy_lock, flags);
-		smsc911x_phy_write(pdata, data->reg_num, data->val_in);
-		spin_unlock_irqrestore(&pdata->phy_lock, flags);
-		return 0;
-	}
+	if (!netif_running(dev))
+		return -EINVAL;
+	ret = generic_mii_ioctl(&pdata->mii, if_mii(ifr), cmd, &chg_in_duplex);
+	if ((ret == 0) && (chg_in_duplex != 0))
+		smsc911x_phy_update_duplex(dev);
 
-	SMSC_TRACE("unsupported ioctl cmd");
-	return -1;
+	return ret;
 }
 
 static int
