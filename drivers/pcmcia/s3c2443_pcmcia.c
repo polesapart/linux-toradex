@@ -36,7 +36,6 @@
 #define DRV_NAME	"s3c2443-pcmcia"
 #define	SZ_2K		(2 * SZ_1K)
 
-
 struct s3c2443_pcmcia_socket {
 	struct pcmcia_socket		socket;
 	struct platform_device		*pdev;
@@ -270,19 +269,6 @@ static int s3c2443_pcmcia_hw_config(struct s3c2443_pcmcia_socket *psock)
  	writel(S3C2443_PCC_INTMSK_CD | S3C2443_PCC_INTSRC_ALL,
  	       psock->pcmcia_base + S3C2443_PCCARD_INT);
 
-#if 0
-	/* PCCARD interrupt level triggered */
-    	reg = readl(psock->pcmcia_base + S3C2443_PCCARD_CFG);
-    	writel(reg | S3C2443_PCC_INT_SEL, 
-    	       psock->pcmcia_base + S3C2443_PCCARD_CFG);
-
-	/* Configure the banks */
- 	reg = readl(S3C2443_SMBCR2) & ~(3 << 4);
- 	writel(reg | (1 << 4) | (1 << 0), S3C2443_SMBCR2);
- 	reg = readl(S3C2443_SMBCR3) & ~(3 << 4);
- 	writel(reg | (1 << 4) | (1 << 0), S3C2443_SMBCR3);
-#endif
-
 	/* Configure timmings for IO, ATTR and COMM areas */
 	writel(0x061D04, psock->pcmcia_base + S3C2443_PCCARD_ATTR);
 	writel(0x031109, psock->pcmcia_base + S3C2443_PCCARD_IO);
@@ -359,8 +345,11 @@ static int __init s3c2443_pcmcia_probe(struct platform_device *pdev)
 		goto error_map2;
 	}
 
-	// TODO check returned 
-	s3c2443_pcmcia_hw_config(psock);
+	ret = s3c2443_pcmcia_hw_config(psock);
+	if (ret) {
+		pr_debug("%s: %s, failed to configure PCMCIA hardware\n", DRV_NAME, __func__);
+		goto error_hwcfg;
+	}
 
 	psock->irq_cd = s3c2410_gpio_getirq(pdata->gpio_detect);
 	if (psock->irq_cd < 0) {
@@ -387,9 +376,7 @@ static int __init s3c2443_pcmcia_probe(struct platform_device *pdev)
 		ret = -EBUSY;
 		goto error_req_irq;
 	}
-	
 
-	device_init_wakeup(&pdev->dev, 1);
 	psock->socket.owner = THIS_MODULE;
 	psock->socket.dev.parent = &pdev->dev;
 	psock->socket.ops = &s3c2443_pcmcia_ops;
@@ -415,6 +402,7 @@ error_reqister:
 error_req_irq:
 	free_irq(psock->irq_cd, psock);
 error_irq_cd:
+error_hwcfg:
 	iounmap(psock->pcmcia_base);
 error_map2:
 	iounmap((void __iomem *)psock->socket.io_offset);
@@ -449,26 +437,21 @@ static int __exit s3c2443_pcmcia_remove(struct platform_device *pdev)
 }
 
 #ifdef	CONFIG_PM
-/* TODO consider also enabling wake up conditions when there are
- * pcmcia interrupts */
 static int 
 s3c2443_pcmcia_drv_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
-
-	if (device_may_wakeup(&pdev->dev))
-		enable_irq_wake(psock->irq_cd);
-
 	return pcmcia_socket_dev_suspend(&pdev->dev, mesg);
 }
 
 static int
 s3c2443_pcmcia_drv_resume(struct platform_device *pdev)
 {
-	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
+ 	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
+ 	int ret;
 
-	if (device_may_wakeup(&pdev->dev))
-		disable_irq_wake(psock->irq_cd);
+ 	ret = s3c2443_pcmcia_hw_config(psock);
+ 	if (ret)
+ 		return ret;
 
 	return pcmcia_socket_dev_resume(&pdev->dev);
 }
@@ -476,7 +459,6 @@ s3c2443_pcmcia_drv_resume(struct platform_device *pdev)
 #define	s3c2443_pcmcia_drv_suspend	NULL
 #define	s3c2443_pcmcia_drv_resume	NULL
 #endif
-
 
 static struct platform_driver s3c2443_pcmcia_driver = {
 	.probe		= s3c2443_pcmcia_probe,
