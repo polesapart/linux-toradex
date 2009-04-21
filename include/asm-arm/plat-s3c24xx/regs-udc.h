@@ -216,6 +216,8 @@
 /* System status register Bits */
 #define S3C24XX_UDC_INT_CHECK       (0xff8f)
 #define S3C24XX_UDC_INT_ERR         (0xff80) // R/C
+#define S3C24XX_UDC_SSR_DCERR       (1 << 11) /* Data CRC error */
+#define S3C24XX_UDC_SSR_EOERR       (1 << 10) /* EB overrun error */
 #define S3C24XX_UDC_SSR_VBUSOFF     (1 << 9) /* Vbus OFF */
 #define S3C24XX_UDC_INT_VBUSON      (1 << 8) /* Vbus ON */ 
 #define S3C24XX_UDC_SSR_TBM         (1 << 7) /* Toggle bit mismatch */
