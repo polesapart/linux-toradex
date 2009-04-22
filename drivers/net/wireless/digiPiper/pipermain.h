@@ -10,6 +10,7 @@
 #define PIPER_DRIVER_NAME   "ns9xxx-piper"
 #define DRV_VERS "0.1"
 
+
 /* #define DEBUG */
 #ifdef DEBUG
 #define digi_dbg(fmt, arg...) \
@@ -152,6 +153,7 @@ struct piper_priv {
 	u16 (*getNextBeaconBackoff)(void);
 	int (*load_beacon)(struct piper_priv *, unsigned char *, unsigned int);
 	int (*myrand)(void);
+	void (*kickTransmitterTask)(void);
 
 	uint16_t irq_mask;
 	uint8_t bssid[ETH_ALEN];
@@ -162,6 +164,9 @@ struct piper_priv {
     struct ieee80211_tx_queue_stats txQueueStats;
     struct ieee80211_low_level_stats lowLevelStats;
 	struct digi_rf_ops *rf;
+	int txStartCount;
+	int txCompleteCount;
+	struct timer_list txTimer;
 };
 
 /* main */

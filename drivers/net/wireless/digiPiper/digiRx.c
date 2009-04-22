@@ -201,9 +201,19 @@ static bool receivePacket(struct piper_priv *digi, struct sk_buff *skb, int leng
     }
 
 #if WANT_RECEIVE_COUNT_SCROLL
-    if (((++packetCount) & 31) == 0)
+    if (((++packetCount) & 1023) == 0)
     {
-        digi_dbg("%d packets received so far.\n", packetCount);
+        digi_dbg("%d recd, txStart = %d, txComplete = %d.\n", packetCount, digi->txStartCount, digi->txCompleteCount);
+        if (digi->txPacket)
+        {
+            struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
+            
+            digi_dbg("TxPacket yes!, totalRetries = %d, flags = 0x%8.8X\n", digi->txTotalRetries, txInfo->flags);
+        }
+        else
+        {
+            digi_dbg("TxPacket == NULL, totalRetries = %d\n", digi->txTotalRetries);
+        }
     }
 #endif
 

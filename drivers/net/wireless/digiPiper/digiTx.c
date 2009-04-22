@@ -16,6 +16,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/kthread.h>
+#include <linux/jiffies.h>
+#include <linux/timer.h>
 
 #include "pipermain.h"
 #include "mac.h"
@@ -168,16 +170,26 @@ struct ieee80211_tx_info {
                 txInfo->control.rates[2].count, txInfo->control.rates[2].idx,
                 txInfo->control.rates[3].count, txInfo->control.rates[3].idx);
 #endif
+#if 1
 /* TODO:  Remove this code when mac80211 implements retry counts */
 if (   (txInfo->control.rates[0].count == 1) 
     && (txInfo->control.rates[1].count == 1)
     && (txInfo->control.rates[1].idx == -1))
 {
-    txInfo->control.rates[0].count = 3;
-    txInfo->control.rates[1].count = 2;
-    txInfo->control.rates[1].idx = 0;
-    txInfo->control.rates[2].idx = -1;
+    s8 idx = txInfo->control.rates[0].idx - 1;
+
+    txInfo->control.rates[0].count = 2;
+    txInfo->control.rates[1].count = 1;
+    txInfo->control.rates[1].idx = (idx > -1)? idx : 0;
+    idx--;
+    txInfo->control.rates[2].count = 1;
+    txInfo->control.rates[2].idx = (idx > -1)? idx : 0;
+    txInfo->control.rates[3].count = 1;
+    txInfo->control.rates[3].idx = 0;
+    txInfo->control.rates[4].count = 1;
+    txInfo->control.rates[4].idx = -1;
 }
+#endif
     if (txInfo->control.rates[digi->txRetryIndex].count > digi->txRetryCount[digi->txRetryIndex])
     {
         if (digi->txRetryIndex == 0)
@@ -434,6 +446,8 @@ void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
         struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(digi->txPacket);
         unsigned int i;
         
+        del_timer_sync(&digi->txTimer);
+        
         ieee80211_tx_info_clear_status(txInfo);
         
         for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
@@ -451,7 +465,8 @@ void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
         }
 
         ieee80211_tx_status_irqsafe(digi->hw, digi->txPacket);
-        				           
+        digi->txCompleteCount++;
+        
         digi->txPacket = NULL;
         ieee80211_wake_queues(digi->hw);
 	    digi->txQueueStats.len--;
@@ -459,7 +474,7 @@ void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
 	    {
 	        digi->lowLevelStats.dot11RTSSuccessCount++;
 	    }
-    }
+    } else digi_dbg("(digi->txPacket == NULL)\n");
 }
 EXPORT_SYMBOL_GPL(digiWifiTxDone);
 
@@ -478,6 +493,8 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
 {
     struct piper_priv *digi = (struct piper_priv *) context;
     int err;
+    
+    del_timer_sync(&digi->txTimer);
 
     /*
      * Clear flags here to cover ACK case.  We do not clear the flags in the ACK 
@@ -534,8 +551,8 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
         	/* 
         	 * Now start the transmitter.
         	 */
-        	err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD, 
-        	                      op_and);
+        	err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,  
+        	                      op_and); 
         	                
 	        /*
 	         * Set interrupt flags.  Use the timeout interrupt if we expect
@@ -547,8 +564,22 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
             }
             else
             {
+                /*
+                 * We set up a timer to fire in 1/4 second.  We should not need it, but somehow
+                 * we seem to miss a timeout interrupt occasionally.  Perhaps we encounter a receive
+                 * overrun which causes the H/W to discard the ACK packet without generating
+                 * a timeout.
+                 */
+                digi->txTimer.expires = jiffies + (HZ >> 2);
+                add_timer(&digi->txTimer);
+
+                /*
+                 * Also set the IRQ mask to listen for timeouts and TX aborts.  We will receive
+                 * an ACK (which is handled by the RX routine) if the TX is successful.
+                 */
                 digi->setIrqMaskBit(digi, BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
             }
+        	                
             if (   (digi->txTotalRetries != 0) 
                 && ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0))
             {
@@ -559,7 +590,7 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
         else
         {
             digiWifiTxDone(digi, OUT_OF_RETRIES, 0);
-            digi_dbg("All %d retries used up\n", digi->txTotalRetries);
+            /* digi_dbg("All %d retries used up\n", digi->txTotalRetries); */
         }
     }
     else digi_dbg("digi->txPacket == NULL\n");
@@ -567,4 +598,5 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
 
 EXPORT_SYMBOL_GPL(digiWifiTxRetryTaskletEntry);
  
+
 

@@ -322,6 +322,7 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 	struct piper_priv *digi = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
 
+/* TODO: remove this */ if (digi->txPacket != NULL) digi_dbg("Reentrant call to hw_tx\n");
     if (digi->isRadioOn == false)
     {
         /*
@@ -389,7 +390,7 @@ static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
      * Wake up the transmit tasklet.
      */
 	tasklet_hi_schedule(&digi->txRetryTasklet);
-	
+	digi->txStartCount++;
 	return 0;
 }
 

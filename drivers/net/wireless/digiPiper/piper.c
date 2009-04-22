@@ -16,6 +16,7 @@
 #include <linux/kthread.h>
 #include <linux/platform_device.h>
 #include <asm/gpio.h>
+#include <linux/timer.h>
 
 #include "pipermain.h"
 #include "mac.h"
@@ -263,6 +264,13 @@ static void initializeKeys(struct piper_priv *digi)
     digi->AESKeyCount = 0;
 }
 
+static void kickTransmitterTask(unsigned long arg)
+{
+    struct piper_priv *digi = (struct piper_priv *) arg;
+    
+    digi_dbg("Forced ACK\n");
+    digiWifiTxDone(digi, RECEIVED_ACK, 0);
+}
 
 
 static int __init piper_probe(struct platform_device* pdev)
@@ -279,9 +287,21 @@ static int __init piper_probe(struct platform_device* pdev)
 		return err;
 	}
 	digi->drv_name = PIPER_DRIVER_NAME;
+	digi->txStartCount = 0;
+	digi->txCompleteCount = 0;
 	spin_lock_init(&digi->irqMaskLock);
 	spin_lock_init(&digi->registerAccessLock);
 	spin_lock_init(&digi->aesLock);
+	
+	{
+	    /*
+	     * Create a temporary timer structure named temp so that we can use
+	     * the standard timer initialization macro DEFINE_TIMER to initialize
+	     * it and then copy the initialized values to digi->tx_timer.
+	     */
+	    DEFINE_TIMER(temp, kickTransmitterTask, 0, (unsigned long) digi);
+	    digi->txTimer = temp;
+	}
 	
     /*
      * Reserve access to the Piper registers mapped to memory.

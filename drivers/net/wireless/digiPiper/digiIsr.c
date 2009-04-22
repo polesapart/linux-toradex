@@ -55,7 +55,7 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
          * Call the receive routine directly we are built to
          * do so.
          */
-        digiWifiRxTaskletEntry ((unsigned long) piper);
+        digiWifiRxTaskletEntry ((unsigned long) digi);
 #else
         /*
          * Or schedule the RX tasklet to process the frame.
@@ -69,13 +69,13 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
         /*
          * Transmit complete interrupt.  This IRQ is only unmasked if we are
          * not expecting the packet to be ACKed.  This will be the case for
-         * broadcasts.  In this case, tell mac80211 the transmit occured and
+         * broadcasts.  In this case, tell mac80211 the transmit occurred and
          * restart the tx queue.
          */
 	    if (digi->txPacket != NULL)
 	    {
 	        digiWifiTxDone(digi, TX_COMPLETE, 0);
-        }
+        } else digi_dbg("(status & BB_IRQ_..._EMPTY) && (digi->txPacket != NULL)\n");
 		digi->clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
     }
 
@@ -87,7 +87,7 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
 	    if (digi->txPacket != NULL)
 	    {
 	        tasklet_hi_schedule(&digi->txRetryTasklet);
-        }
+        } else digi_dbg("(status & TIMEOUT) && (digi->txPacket == NULL)\n");
 		digi->clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
@@ -100,7 +100,7 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
 	    if (digi->txPacket != NULL)
 	    {
 	        tasklet_hi_schedule(&digi->txRetryTasklet);
-        }
+        } else digi_dbg("(status & TX_ABORT) && (digi->txPacket != NULL)\n");
 		digi->clearIrqMaskBit(digi, BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
@@ -148,6 +148,14 @@ irqreturn_t digiWifiIsr(int irq, void *dev_id)
 
 	if (unlikely(status & BB_IRQ_MASK_RX_OVERRUN)) 
 	{
+	    /* digi_dbg("Got a receive overrun\n"); */
+#if 0
+	    if (digi->read_reg(digi, BB_IRQ_MASK) & BB_IRQ_MASK_TIMEOUT)
+	    {
+            digi->txTimer.expires = jiffies + (HZ >> 2);
+            add_timer(&digi->txTimer);
+        }
+#endif
 		digi->rxOverruns++;
 	}
 
