@@ -32,6 +32,8 @@
 #include <linux/mmc/sd.h>
 #include <linux/mmc/sdio.h>
 #include <linux/delay.h>
+#include <linux/clk.h>
+#include <linux/err.h>
 
 #include <asm/scatterlist.h>
 #include <asm/uaccess.h>
@@ -200,6 +202,7 @@ struct fim_sdio_t {
 	int reg;
 
 	int wp_gpio;
+	struct clk *sys_clk;
 };
 
 /*
@@ -872,26 +875,29 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 /* Set the transfer clock using the pre-defined values */
 static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 {
-	unsigned int clkdiv;
+	unsigned long clkdiv;
+	unsigned long clk;
 
-	switch (clockrate) {
-	case 0:
-		printk(KERN_DEBUG "@TODO: Disable the clock for 0Hz\n");
+	if (clockrate) {
+		clk = clk_get_rate(port->sys_clk) / 4;
+		clkdiv  = clk /clockrate + 0x02;
+
+		/* @XXX: If the configuration failed disable the clock */
+		if (clkdiv < 0x4 || clkdiv > 0xff) {
+			printk_err("Unsupported clock %luHz (div out of range 0x%4lx)\n",
+				   clockrate, clkdiv);
+			clockrate = -EINVAL;
+		}
+		else
+			printk_debug("Calculated divisor is 0x%02lx for %lu\n",
+				     clkdiv, clockrate);
+	} else {
+		printk_debug("@TODO: Disable the clock (set to 0Hz)\n");
 		clkdiv = 0;
-		clockrate = -1;
-		break;
-	case 320000:
-		clkdiv = 0x70;
-		break;
-	case 25000000:
-		clkdiv = 0x04;
-		break;
-	default:
-		printk_err("Unknow clock rate, %ld\n", clockrate);
-		clockrate = -1;
-		break;
+		clockrate = -EINVAL;
 	}
 
+	/* Now write the value to the corresponding FIM-register */
 	if (clockrate >= 0) {
 		printk_debug("Setting the clock to %ld (%x)\n",
 			     clockrate, clkdiv);
@@ -999,6 +1005,11 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 			gpio_free(port->gpios[cnt].nr);
 	}
 
+	if (port->sys_clk && !IS_ERR(port->sys_clk)) {
+		clk_put(port->sys_clk);
+		port->sys_clk = NULL;
+	}
+	
 	port->reg = 0;
 	return 0;
 }
@@ -1091,6 +1102,12 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 		goto exit_free_gpios;
 	}
 
+        /* Get a reference to the SYS clock for setting the clock */
+        if (IS_ERR(port->sys_clk = clk_get(port->fim.dev, "systemclock"))) {
+                printk_err("Couldn't get the SYS clock.\n");
+                goto exit_free_host;
+        }
+	
 	/* These are the default values for this SD-host */
 	port->mmc->ops = &fim_sd_ops;
 
@@ -1111,7 +1128,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	retval = mmc_add_host(port->mmc);
 	if (retval) {
 		printk_err("Couldn't add the MMC host\n");
-		goto exit_free_host;
+		goto exit_put_clk;
 	}
 
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_SDIO_MAX_GPIOS);
@@ -1122,6 +1139,9 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	fim_enable_irq(&port->fim);
 	return 0;
 
+ exit_put_clk:
+	clk_put(port->sys_clk);
+	
  exit_free_host:
 	mmc_free_host(port->mmc);
 
