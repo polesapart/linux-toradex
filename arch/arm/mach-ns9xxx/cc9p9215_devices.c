@@ -32,8 +32,9 @@
 /*
  * Pick Digi's internal FIM board
  * Use internal board, defined to 1
+ * Use newer boards, defined to 0
  */
-#define INT_FIM_BOARD	1
+#define INT_FIM_BOARD	0	
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
@@ -235,7 +236,7 @@ EXPORT_SYMBOL(ns921x_fim_sdio1);
 #endif /* CONFIG_FIM_TWO_SDIO */
 
 
-#if defined(CONFIG_FIM_ONE_CAN)
+#if defined(CONFIG_FIM_ONE_CAN) || defined(CONFIG_PROCESSOR_NS9215)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr			= 0,
 	.fim_can_bitrate	= 500000,

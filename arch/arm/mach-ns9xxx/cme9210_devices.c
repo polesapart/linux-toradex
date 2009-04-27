@@ -133,16 +133,17 @@ EXPORT_SYMBOL(ns921x_fim_serial0);
 // EXPORT_SYMBOL(ns921x_fim_serial1);
 // #endif /* CONFIG_FIM_TWO_SERIAL */
 
-#if defined(CONFIG_FIM_ONE_CAN)
-static struct fim_can_platform_data fim_can_data0 = {
+#if defined(CONFIG_FIM_TWO_CAN)
+static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr        = 1,
-	NS921X_FIM_CAN_GPIOS(23, 24, /* RX(2,23) + TX(6,24) */
+	.fim_can_bitrate	= 500000,
+	NS921X_FIM_CAN_GPIOS( 23, 24, /* RX(2,23) + TX(6,24) */
 				NS921X_GPIO_FUNC_2),
 };
-struct platform_device ns921x_fim_can0 = {
+struct platform_device ns921x_fim_can1 = {
 	.name              = "fim-can",
 	.id                = 1,
-	.dev.platform_data = &fim_can_data0,
+	.dev.platform_data = &fim_can_data1,
 };
-EXPORT_SYMBOL(ns921x_fim_can0);
+EXPORT_SYMBOL(ns921x_fim_can1);
 #endif /* CONFIG_FIM_TWO_CAN */
