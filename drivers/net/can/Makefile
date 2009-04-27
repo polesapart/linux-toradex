@@ -32,7 +32,6 @@ obj-$(CONFIG_CAN_VCAN)		+= vcan.o
 obj-$(CONFIG_CAN_SLCAN)		+= slcan.o
 
 obj-$(CONFIG_CAN_DEV)		+= can-dev.o
-#obj-$(CONFIG_CAN_DEV)		+= dev.o sysfs.o
 can-dev-y			:= dev.o sysfs.o
 
 obj-$(CONFIG_CAN_SJA1000)	+= sja1000/

@@ -115,24 +115,6 @@ struct platform_device ns921x_fim_serial0 = {
 EXPORT_SYMBOL(ns921x_fim_serial0);
 #endif /* CONFIG_FIM_ONE_SERIAL */
 
-/*
- * AFAIK, there is only one FIM in the CME9210
- */
-// #if defined(CONFIG_FIM_TWO_SERIAL)
-// static struct fim_serial_platform_data fim_serial_data1 = {
-// 	.fim_nr        = 1,
-// 	NS921X_FIM_SERIAL_GPIOS(27, 26, /* RX + TX */
-// 				FIM_GPIO_DONT_USE, FIM_GPIO_DONT_USE, /* RTS + CTS */
-// 				NS921X_GPIO_FUNC_2),
-// };
-// struct platform_device ns921x_fim_serial1 = {
-// 	.name              = "fim-serial",
-// 	.id                = 1,
-// 	.dev.platform_data = &fim_serial_data1,
-// };
-// EXPORT_SYMBOL(ns921x_fim_serial1);
-// #endif /* CONFIG_FIM_TWO_SERIAL */
-
 #if defined(CONFIG_FIM_TWO_CAN)
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr        = 1,

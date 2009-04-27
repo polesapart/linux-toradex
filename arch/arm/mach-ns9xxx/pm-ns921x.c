@@ -20,7 +20,6 @@
 #include <mach/processor.h>
 #include <mach/regs-sys-ns921x.h>
 
-//#include "cc9p9215_devices.c"
 #include "processor-ns921x.h"
 
 
