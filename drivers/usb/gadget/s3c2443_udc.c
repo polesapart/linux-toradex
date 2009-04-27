@@ -1363,18 +1363,8 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		 * enumerate an apparently connected USB-device
 		 */
 		if (sys_stat & S3C24XX_UDC_INT_SUSPEND) {
-			unsigned long regval;
 
-			regval = readl(udc->base + S3C24XX_UDC_TR_REG);
-			if ((regval & S3C24XX_UDC_TR_VBUS) &&
-				udc->gadget.speed != USB_SPEED_UNKNOWN) {
-				regval = readl(S3C2443_PWRCFG);
-				regval &= ~S3C2443_PWRCFG_USBPHY_ON;
-				writel(regval, S3C2443_PWRCFG);
-				printk_debug("SUSPEND and disabling PHY\n");
-			} else {
-				printk_debug("SUSPEND interrupt\n");
-			}
+			printk_debug("SUSPEND interrupt\n");
 
 			/* First ACK the interrupt after the bug fix! */
 			writel(S3C24XX_UDC_INT_SUSPEND,
