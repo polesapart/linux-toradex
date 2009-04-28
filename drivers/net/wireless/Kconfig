@@ -717,6 +717,7 @@ source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"
 source "drivers/net/wireless/zd1211rw/Kconfig"
 source "drivers/net/wireless/rt2x00/Kconfig"
+source "drivers/net/wireless/digiPiper/Kconfig"
 
 config DIGI_WI_G
 	tristate "Digi Wireless Module 802.11ab/g"

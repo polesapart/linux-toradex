@@ -23,6 +23,7 @@
 
 #define processor_is_ns9215()	(0			\
 		|| module_is_cc9p9215()			\
+		|| module_is_ccw9p9215()		\
 		)
 
 #define processor_is_ns9360()	(0			\

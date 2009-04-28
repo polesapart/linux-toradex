@@ -35,6 +35,70 @@
  */
 #define INT_FIM_BOARD	1
 
+#if defined(CONFIG_DIGI_PIPER_WIFI)
+/* TODO: Use a common header file for these #defines */
+#define PIPER_RESET_GPIO    (92)
+#define PIPER_IRQ_GPIO      (104)
+#define MAC_REG_BASE        (0x70000000)
+#define MAC_REG_SIZE        (0x100)
+#define PIPER_DRIVER_NAME   "ns9xxx-piper"
+
+int __init piper_register_gpios(void)
+{
+#if 0
+    /* TODO:  What happens if driver repeats this request?
+              What happens if we set up the IRQ pin mode now?
+    */
+	gpio_request(PIPER_RESET_GPIO, PIPER_DRIVER_NAME);
+	gpio_request(PIPER_IRQ_GPIO, PIPER_DRIVER_NAME);
+
+	return 0;
+err:
+	for (; i >= 0; i--)
+		gpio_free(gpio[i]);
+
+	return -EBUSY;
+#else
+    return 0;
+#endif
+}
+
+
+
+static struct resource piper_resources[] = 
+{
+    {
+    	.name  = PIPER_DRIVER_NAME,
+    	.start = MAC_REG_BASE,
+    	.end   = MAC_REG_BASE + MAC_REG_SIZE,
+    	.flags = IORESOURCE_MEM,
+    }, 
+    {
+		.start	= IRQ_NS9XXX_EXT0,
+		.flags	= IORESOURCE_IRQ,
+    }
+};
+
+/* describes the device */
+static struct platform_device piper_device = {
+	.id     = -1,
+	.name   = PIPER_DRIVER_NAME,/* must be equal to platform-driver.driver.name*/
+    .num_resources = ARRAY_SIZE(piper_resources),
+	.resource = piper_resources,
+};
+
+void __init ns9xxx_add_device_ccw9p9215_wifi(void)
+{
+	if (piper_register_gpios())
+		return;
+
+	platform_device_register(&piper_device);
+}
+
+#else
+void __init ns9xxx_add_device_ccw9p9215_wifi(void) {}
+#endif
+
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
 {
