@@ -106,9 +106,15 @@ MODULE_VERSION(DRIVER_VERSION);
 #define FIM_SD_RX_BLKRD				0x02
 #define FIM_SD_RX_TIMEOUT			0x04
 
-/* FIM SD control registers */
-#define FIM_SD_REG_CLOCK_DIVISOR		0
-#define FIM_SD_REG_INTERRUPT			1
+/*
+ * Firmware specific control registers
+ * IMPORTANT: The control bit for the card detect is enabled wih the main control!
+ */
+#define FIM_SD_CLKDIV_REG			0
+#define FIM_SD_INTCFG_REG			1
+#define FIM_SD_INTCFG_MAIN			(1 << 0)
+#define FIM_SD_INTCFG_CARD			(1 << 1)
+#define FIM_SD_INTCFG_SDIO			(1 << 2)
 
 /* Internal flags for the request function */
 #define FIM_SD_REQUEST_NEW			0x00
@@ -307,14 +313,15 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 	switch (code) {
 	case FIM_SD_INTARM_CARD_DETECTED:
 		if (fim_sd_card_plugged(port)) {
-			printk_debug("SD-card detected\n");
+			fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, 0);
+			printk_debug("SD card detected\n");
 		} else {
-			printk_debug("SD-card removed\n");
+			printk_debug("SD card removed\n");
 		}
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 		break;
 	case FIM_SD_INTARM_CARD_DAT1:
-		printk_debug("SDIO-interrupt received.\n");
+		printk_debug("SDIO IRQ\n");
 		mmc_signal_sdio_irq(port->mmc);
 		break;
 	default:
@@ -323,8 +330,6 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		break;
 	}
 }
-
-
 
 /*
  * This is the TX-callback that the API call after a DMA-package was closed
@@ -343,8 +348,6 @@ static void fim_sd_tx_isr(struct fim_driver *driver, int irq,
 		fim_free_buffer(&port->fim, buf);
 	}
 }
-
-				 
 
 /* @XXX: Remove this ugly code! */
 inline static void fim_sd_parse_resp(struct mmc_command *cmd,
@@ -378,8 +381,6 @@ inline static void fim_sd_parse_resp(struct mmc_command *cmd,
 		*ptr++ = resp->stat;
 	}
 }
-
-
 
 /*
  * This function checks the CRC by block read transfer
@@ -415,7 +416,6 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 		return -EINVAL;
 	}
 
-
         /*
 	 * Code for forcing a CRC-error and the behavior of the MMC-layer
 	 * crc_error = 10 : Error reading the partition table
@@ -437,7 +437,6 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 	return memcmp(data, pic_crc, crc_len >> 1);
 }
 
-
 inline static void fim_sd_print_crc(int length, unsigned char *crc)
 {	
 	/* Only four and six as length supported */
@@ -446,7 +445,6 @@ inline static void fim_sd_print_crc(int length, unsigned char *crc)
 	else
 		printk_info("CRC: %lu\n", *((unsigned long *)crc));
 }
-
 
 /*
  * Called when a receive DMA-buffer was closed.
@@ -561,7 +559,6 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	spin_unlock(&port->mmc_lock);
 }
 
-
 /* Send a buffer over the FIM-API */
 static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 {
@@ -580,7 +577,6 @@ static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 	return retval;
 }
 
-
 /* Returns a command buffer allocated from the FIM-API */
 static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port)
 {
@@ -596,7 +592,6 @@ static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port)
 	return fim_alloc_buffer(fim, length, GFP_KERNEL);
 }
 
-
 /* Returns a buffer allocated from the FIM-API */
 static struct fim_buffer_t *fim_sd_alloc_buffer(struct fim_sdio_t *port, int length)
 {
@@ -609,7 +604,6 @@ static struct fim_buffer_t *fim_sd_alloc_buffer(struct fim_sdio_t *port, int len
 	return fim_alloc_buffer(fim, length, GFP_KERNEL);
 }
 
-
 static void fim_sd_free_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 {
 	struct fim_driver *fim;
@@ -620,7 +614,6 @@ static void fim_sd_free_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf
 	fim = &port->fim;
 	fim_free_buffer(fim, buf);
 }
-
 
 /*
  * Copy the data from the MMC-layer (scatter list) to the DMA-buffer for the FIM-API
@@ -657,7 +650,6 @@ inline static void fim_sd_sg_to_dma(struct fim_sdio_t *port, struct mmc_data *da
 		data->bytes_xfered += process;
 	}
 }
-
 
 /*
  * Function called when RD data has arrived
@@ -697,7 +689,6 @@ inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *d
 	
 	return sg_buf;
 }
-
 
 /* This function will send the command to the PIC using the TX-DMA buffers */
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
@@ -822,8 +813,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	return 0;
 }
 
-
-
 /*
  * This function will be called from the request function and from the ISR callback
  * when a command was executed
@@ -844,8 +833,6 @@ static void fim_sd_process_next(struct fim_sdio_t *port)
 		mmc_request_done(port->mmc, port->mmc_req);
 	}
 }
-
-
 
 /*
  * Called for processing three main request types:
@@ -869,8 +856,6 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	fim_sd_process_next(port);
 	spin_unlock(&port->mmc_lock);
 }
-
-
 
 /* Set the transfer clock using the pre-defined values */
 static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
@@ -901,10 +886,9 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 	if (clockrate >= 0) {
 		printk_debug("Setting the clock to %ld (%x)\n",
 			     clockrate, clkdiv);
-		fim_set_ctrl_reg(&port->fim, FIM_SD_REG_CLOCK_DIVISOR, clkdiv);
+		fim_set_ctrl_reg(&port->fim, FIM_SD_CLKDIV_REG, clkdiv);
 	}
 }
-
 
 /*
  * Called by the core system for setting the available modes and clock speed
@@ -913,29 +897,28 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct fim_sdio_t *port;
+	unsigned long ireg;
 	
 	if (!(port = get_port_from_mmc(mmc)))
 		return;
 
 	/*
 	 * The FIM-board doesn't have a power switch for the card, but probably the
-	 * next revision will include it, so that we can control the switch from here
+	 * next revision will include it, so that we can control the switch from here.
 	 */
+	ireg = 0;
 	switch (ios->power_mode) {
 	case MMC_POWER_OFF:
-		/* fim_set_ctrl_reg(&port->fim, FIM_SD_REG_INTERRUPT, 1); */
-		break;
 	case MMC_POWER_UP:
-		fim_set_ctrl_reg(&port->fim, FIM_SD_REG_INTERRUPT, 1);
-		break;
 	case MMC_POWER_ON:
-		fim_set_ctrl_reg(&port->fim, FIM_SD_REG_INTERRUPT, 1);
+		ireg |= FIM_SD_INTCFG_MAIN | FIM_SD_INTCFG_CARD;
 		break;
 	}
 
+	fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, ireg);
+	
 	fim_sd_set_clock(port, ios->clock);
 }
-
 
 /*
  * Return the read only status of the plugged card
@@ -957,16 +940,21 @@ static int fim_sd_get_ro(struct mmc_host *mmc)
 static void fim_sd_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct fim_sdio_t *port;
+	unsigned int ireg;
 	
-	printk_debug("Enabling the IRQ (%i)\n", enable);
-
-	if (!(port = get_port_from_mmc(mmc)))
+	printk_debug("%s the SDIO IRQ\n", enable ? "Enabling" : "Disabling");
+	if (!(port = get_port_from_mmc(mmc))) {
+		printk_err("NULL port pointer found!\n");
 		return;
-	
+	}
+
+	fim_get_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, &ireg);		
 	if (enable)
-		fim_set_ctrl_reg(&port->fim, FIM_SD_REG_INTERRUPT, 1);
+		ireg |= FIM_SD_INTCFG_SDIO;
 	else
-		fim_set_ctrl_reg(&port->fim, FIM_SD_REG_INTERRUPT, 0);
+		ireg &= ~FIM_SD_INTCFG_SDIO;
+		
+	fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, ireg);
 }
 
 
@@ -1134,6 +1122,9 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_SDIO_MAX_GPIOS);
 	port->reg = 1;
 	dev_set_drvdata(dev, port);
+
+	/* Fist disable the SDIO-IRQ */
+	fim_sd_enable_sdio_irq(port->mmc, 0);
 	
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
