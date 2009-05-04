@@ -44,23 +44,18 @@
 #include <mach/fim-ns921x.h>
 #include <mach/fim-firmware.h>
 
-
 #include "fim_reg.h"
 #include "dma.h"
-
-
 
 #define DRIVER_VERSION			"v0.2"
 #define DRIVER_AUTHOR			"Silvano Najera, Luis Galdos"
 #define DRIVER_DESC			"FIMs driver"
-
 
 /* Module information */
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
-
 
 #define DRIVER_NAME			"fim"
 #define FIM_DRIVER_NAME			"fims"
@@ -69,11 +64,9 @@ MODULE_VERSION("0.1");
 #define IRQ_NS921X_PIC			IRQ_NS921X_PIC0
 #define	FIM0_SHIFT			6
 
-
 #if 0
 #define FIM_CORE_DEBUG
 #endif
-
 
 #define printk_err(fmt, args...)	printk(KERN_ERR "[ ERROR ] fims: " fmt, ## args)
 #define printk_info(fmt, args...)	printk(KERN_INFO "fims: " fmt, ## args)
@@ -877,6 +870,7 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 		writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 		writel(ifs, pic->iohub_addr + IOHUB_IFS_REG);
 		writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+		fim_dma_reset_fifo(fifo);
 		return;
 	}
 	
@@ -1404,14 +1398,19 @@ int fim_send_stop(struct fim_driver *driver)
 		writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 	}
 
-	/* Reset the RX-channel too */
+	/*
+	 * Reset the RX-channel too.
+	 * IMPORTANT: Set the wrap control bit by the last DMA-buffer, otherwise
+	 * the FIFO will overflow!
+	 */
 	fifo = &pic->rx_fifo;
 	for (desc = fifo->first, cnt = 0; cnt < fifo->length; cnt++) {
-		desc->control = 0;
+		desc->control = IOHUB_DMA_DESC_CTRL_INT;
 		desc = fim_dma_get_next(fifo, desc);
 	}
+	fifo->last->control |= IOHUB_DMA_DESC_CTRL_WRAP;
 	fim_dma_reset_fifo(fifo);
-		
+
 	/* Free the internal resources */
 	atomic_set(&pic->tx_tasked, 0);
 	atomic_set(&pic->tx_aborted, 0);
