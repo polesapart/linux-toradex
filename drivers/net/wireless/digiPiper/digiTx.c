@@ -383,8 +383,8 @@ static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txIn
              */
             struct ieee80211_rts rtsFrame;
             
-            ieee80211_rts_get(digi->hw, txInfo->control.vif, digi->txPacket->data, 
-                              digi->txPacket->len, txInfo, &rtsFrame);
+            ieee80211_rts_get(digi->hw, txInfo->control.vif, digi->txPacket->data + TX_HEADER_LENGTH, 
+                              digi->txPacket->len - TX_HEADER_LENGTH, txInfo, &rtsFrame);
             /*
              * If we come here, then we need to send an RTS frame ahead of the
              * current data frame.
@@ -408,7 +408,8 @@ static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txIn
             struct ieee80211_cts ctsFrame;
             
             ieee80211_ctstoself_get(digi->hw, txInfo->control.vif, 
-                                    digi->txPacket->data, digi->txPacket->len,
+                                    digi->txPacket->data + TX_HEADER_LENGTH, 
+                                    digi->txPacket->len - TX_HEADER_LENGTH,
                                     txInfo, &ctsFrame);
             /*
              * At the time this code was written, the mac80211 library had 
