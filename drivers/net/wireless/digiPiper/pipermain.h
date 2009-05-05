@@ -5,6 +5,7 @@
 #include <linux/if_ether.h>
 #include <linux/spinlock.h>
 #include <net/mac80211.h>
+#include <linux/i2c.h>
 
 // TODO:  Move this define into a header file shared with ns921x_devices.c
 #define PIPER_DRIVER_NAME   "ns9xxx-piper"
@@ -167,6 +168,7 @@ struct piper_priv {
 	int txStartCount;
 	int txCompleteCount;
 	struct timer_list txTimer;
+	struct i2c_adapter adcAdapter;
 };
 
 /* main */
