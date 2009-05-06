@@ -12,7 +12,7 @@
 #define DRV_VERS "0.1"
 
 
-/* #define DEBUG */
+#define DEBUG
 #ifdef DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)
@@ -168,7 +168,10 @@ struct piper_priv {
 	int txStartCount;
 	int txCompleteCount;
 	struct timer_list txTimer;
-	struct i2c_adapter adcAdapter;
+	struct i2c_client *adcI2cClient;
+	u16 (*adcReadPeak)(struct piper_priv *digi);
+	void (*adcClearPeak)(struct piper_priv *digi);
+	u16 (*adcReadLastValue)(struct piper_priv *digi);
 };
 
 /* main */

@@ -23,6 +23,7 @@
 #include "piperhwinit.h"
 #include "phy.h"
 #include "airoha.h"
+#include "adc121c027.h"
 
 
 #define	DRIVER_VERSION	"0.1"
@@ -33,7 +34,7 @@
 
 
 
-#define WANT_DEBUG_THREAD   (0)
+#define WANT_DEBUG_THREAD   (1)
 
 
 
@@ -90,14 +91,24 @@ static int load_beacon(struct piper_priv *digi, unsigned char *buffer,
 
 #if WANT_DEBUG_THREAD
 
+
 static int debugThreadEntry(void *data)
 {
 	struct piper_priv *digi = data;
 
     while (1)
     {
-        ssleep(60);
-        digiWifiDumpRegisters(digi, ALL_REGS);
+        ssleep(10);
+        if (digiWifiInitAdc(digi) == 0)
+        {
+            break;
+        }
+    }
+    while (1)
+    {
+        ssleep(10);
+        digi_dbg("Peak = 0x%8.8X, last conversion = 0x%8.8X\n", digi->adcReadPeak(digi), digi->adcReadLastValue(digi));
+        digi->adcClearPeak(digi);
     }
     return 0;
 }
