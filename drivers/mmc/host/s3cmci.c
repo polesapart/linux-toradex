@@ -33,6 +33,7 @@
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] s3c2443-sdi: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "s3c2443-sdi: " fmt, ## args)
+#define printk_dbg(fmt, args...)                printk(KERN_DEBUG "s3c2443-sdi: " fmt, ## args)
 
 /* Enable/disable the debug messages */
 #if 0
@@ -204,7 +205,13 @@ static inline u32 disable_imask(struct s3cmci_host *host, u32 imask)
 
 static inline void clear_imask(struct s3cmci_host *host)
 {
-	writel(0, host->base + host->sdiimsk);
+	ulong imsk, to_write = 0;
+       
+	imsk = readl(host->base + host->sdiimsk);
+	if ((imsk & S3C2410_SDIIMSK_SDIOIRQ) && host->sdio_irq)
+		to_write = S3C2410_SDIIMSK_SDIOIRQ;
+	
+	writel(to_write, host->base + host->sdiimsk);
 }
 
 static inline int get_data_buffer(struct s3cmci_host *host,
@@ -437,8 +444,14 @@ static irqreturn_t s3cmci_irq(int irq, void *dev_id)
 	mci_cclear = 0;
 	mci_dclear = 0;
 
-	printk_debug("IRQ: cmd 0x%08x | data stat 0x%08x\n",
-		     mci_csta, mci_dsta);
+	printk_debug("IRQ: cmd 0x%08x | dsta 0x%08x | imsk 0x%08x\n",
+		     mci_csta, mci_dsta, mci_imsk);
+
+	if (mci_dsta & S3C2410_SDIDSTA_SDIOIRQDETECT) {
+		printk_debug("SDIO IRQ detected\n");
+		mmc_signal_sdio_irq(host->mmc);
+		writel(S3C2410_SDIDSTA_SDIOIRQDETECT, host->base + S3C2410_SDIDSTA);
+	}
 	
 	if ((host->complete_what == COMPLETION_NONE) ||
 	    (host->complete_what == COMPLETION_FINALIZE)) {
@@ -776,10 +789,12 @@ static void finalize_request(struct s3cmci_host *host)
 
 	/* Cleanup controller */
 	writel(0, host->base + S3C2410_SDICMDARG);
-	writel(S3C2410_SDIDCON_STOP, host->base + S3C2410_SDIDCON);
 	writel(0, host->base + S3C2410_SDICMDCON);
-	writel(0, host->base + host->sdiimsk);
-
+	writel(S3C2410_SDIDCON_STOP, host->base + S3C2410_SDIDCON);
+	if (!host->sdio_irq) {
+		writel(0, host->base + host->sdiimsk);
+	}
+	
 	if (cmd->data && cmd->error)
 		cmd->data->error = cmd->error;
 
@@ -1100,6 +1115,11 @@ static void s3cmci_send_request(struct mmc_host *mmc)
 	if (cmd->data) {
 		int res = s3cmci_setup_data(host, cmd->data);
 
+		printk_debug("CMD%u: %s transfer | %i blks | %u blksz\n",
+			     cmd->opcode,
+			     (cmd->data->flags & MMC_DATA_READ) ? "RX" : "TX",
+			     cmd->data->blocks, cmd->data->blksz);
+		
 		host->dcnt++;
 
 		if (res) {
@@ -1290,10 +1310,42 @@ static int s3cmci_get_ro(struct mmc_host *mmc)
 	return ret;
 }
 
+/* Here only mask or unmask the SDIO interrupt */
+static void s3cmci_enable_sdio_irq(struct mmc_host *mmc, int enable)
+{
+	struct s3cmci_host *host;
+	ulong con, imsk;
+	
+	if (!(host = mmc_priv(mmc))) {
+		printk_err("NULL host pointer found!\n");
+		return;
+	}
+	
+	printk_debug("%s SDIO IRQ\n", enable ? "Enabling" : "Disabling");
+	
+	con = readl(host->base + S3C2410_SDICON);
+	imsk = readl(host->base + host->sdiimsk);
+	
+	if (enable) {
+		host->sdio_irq = 1;
+		imsk |= S3C2410_SDIIMSK_SDIOIRQ;
+		con |= S3C2410_SDICON_SDIOIRQ;
+	} else {
+		host->sdio_irq = 0;
+		
+		imsk |= S3C2410_SDIIMSK_SDIOIRQ;
+		con &= ~S3C2410_SDICON_SDIOIRQ;
+	}
+	
+	writel(con, host->base + S3C2410_SDICON);
+	writel(imsk, host->base + host->sdiimsk);
+}
+
 static struct mmc_host_ops s3cmci_ops = {
-	.request	= s3cmci_request,
-	.set_ios	= s3cmci_set_ios,
-	.get_ro		= s3cmci_get_ro,
+	.request	 = s3cmci_request,
+	.set_ios	 = s3cmci_set_ios,
+	.get_ro		 = s3cmci_get_ro,
+	.enable_sdio_irq = s3cmci_enable_sdio_irq,
 };
 
 static struct s3c24xx_mci_pdata s3cmci_def_pdata = {
@@ -1440,7 +1492,7 @@ static int __devinit s3cmci_probe(struct platform_device *pdev, int is2440)
 
 	mmc->ops 	= &s3cmci_ops;
 	mmc->ocr_avail	= MMC_VDD_32_33 | MMC_VDD_33_34;
-	mmc->caps	= MMC_CAP_4_BIT_DATA;
+	mmc->caps	= MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ;
 	mmc->f_min 	= host->clk_rate / (host->clk_div * 256);
 	mmc->f_max 	= host->clk_rate / host->clk_div;
 
