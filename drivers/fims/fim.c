@@ -1034,8 +1034,9 @@ int fim_register_driver(struct fim_driver *driver)
 	int retval;
 	const struct firmware *fw;
 	const unsigned char *fwbuf;
-	
-	if (!driver)
+
+	/* Sanity checks */
+	if (!driver || !driver->driver.name)
 		return -EINVAL;
 
 	if (!(pic = get_pic_by_index(driver->picnr)))
@@ -1070,7 +1071,8 @@ int fim_register_driver(struct fim_driver *driver)
 		printk_debug("Using the built-in firmware code\n");
 		fwbuf = driver->fw_code;
 	} else {
-		printk_err("No code and no firmware name passed? Aborting\n");
+		printk_err("%s: Neither code nor firmware passed. Aborting request.\n",
+			   driver->driver.name);
 		goto exit_free_pic;
 	}
 
@@ -1081,14 +1083,16 @@ int fim_register_driver(struct fim_driver *driver)
 		release_firmware(fw);
 
 	if (retval) {
-		printk_err("Firmware install in the PIC %i failed.\n", pic->index);
+		printk_err("%s: Firmware install by the FIM%i failed.\n",
+			   driver->driver.name, pic->index);
 		goto exit_free_pic;
 	}
 
 	/* Start the PIC at zero */
 	retval = pic_start_at_zero(pic);
 	if (retval) {
-		printk_err("PIC %i couldn't be started at zero.\n", pic->index);
+		printk_err("%s: FIM%i couldn't be started at zero.\n",
+			   driver->driver.name, pic->index);
 		goto exit_free_pic;
 	}
 
@@ -1098,14 +1102,16 @@ int fim_register_driver(struct fim_driver *driver)
 	 */
 	retval = pic_dma_init(pic, driver->dma_cfg);
 	if (retval) {
-		printk_err("DMA channel init failed for the PIC %i\n", pic->index);
+		printk_err("%s: DMA channel init failed for the FIM%i\n",
+			   driver->driver.name, pic->index);
 		goto goto_stop_pic;
 	}
 
 	/* Request the IRQ for this FIM */
 	retval = request_irq(pic->irq, pic_irq, 0, driver->driver.name, pic);
 	if (retval) {
-		printk_err("Couldn't request the IRQ %i\n", pic->irq);
+		printk_err("%s: Couldn't request the IRQ %i\n",
+			   driver->driver.name, pic->irq);
 		goto goto_stop_pic;
 	}
 
@@ -1116,8 +1122,8 @@ int fim_register_driver(struct fim_driver *driver)
 	tasklet_init(&pic->rx_tasklet, pic_rx_tasklet_func, (unsigned long)pic);
 	disable_irq(pic->irq);
 	atomic_set(&pic->irq_enabled, 0);
-	printk_info("FIM driver (PIC %i) successful registered [IRQ %i]\n",
-		    pic->index, pic->irq);
+	printk_info("FIM%i registered for driver '%s' [IRQ %i]\n",
+		    pic->index, driver->driver.name, pic->irq);
 	
 	return 0;
 
