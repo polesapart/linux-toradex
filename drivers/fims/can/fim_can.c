@@ -18,7 +18,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -70,6 +69,7 @@ MODULE_VERSION(DRIVER_VERSION);
 
 #define printk_err(fmt, args...)		printk(KERN_ERR "[ ERROR ] fim-can: " fmt, ## args)
 #define printk_info(fmt, args...)		printk(KERN_INFO "fim-can: " fmt, ## args)
+#define printk_dbg(fmt, args...)		printk(KERN_DEBUG "fim-can: " fmt, ## args)
 
 #if 0
 #define FIM_CAN_DEBUG
@@ -78,7 +78,7 @@ MODULE_VERSION(DRIVER_VERSION);
 #ifdef FIM_CAN_DEBUG
 #  define printk_debug(fmt, args...)		printk(KERN_DEBUG "fim-can: " fmt, ## args)
 #else
-#  define printk_debug(fmt, args...)
+#  define printk_debug(fmt, args...)		do { } while (0)
 #endif
 
 #define FIM_PRIVATE_BUFFER			((void *)0xffffffff)
@@ -92,10 +92,11 @@ MODULE_VERSION(DRIVER_VERSION);
 #define FIM_CAN_NR_FILTERS			(8)
 
 /* Default timing values (see Net+OS driver: nacbus.c) */
-#define DEFAULT_SJW_TIME			(40)
-#define DEFAULT_SAMPLE_POINT			(88)
-#define DEFAULT_SYNC_PERIOD			(10)
-#define DEFAULT_BAUD_RATE			CAN_BITRATE_DEFAULT
+#define FIM_CAN_DEFAULT_SJW			(7)
+#define FIM_CAN_DEFAULT_PROPSEG			(8)
+#define FIM_CAN_DEFAULT_PHASE1			(8)
+#define FIM_CAN_DEFAULT_PHASE2			(8)
+#define FIM_CAN_DEFAULT_BITRATE			CAN_BITRATE_DEFAULT
 
 /* Maximal values from the Net+OS driver */
 #define FIM_CAN_MAX_BITRATE	                (1000000)
@@ -127,15 +128,11 @@ MODULE_VERSION(DRIVER_VERSION);
 #define FIM_CAN_INT_FILTER_ERR			(0x42)
 #define FIM_CAN_INT_CFG_ERR			(0x43)
 
-/* Macros from Net+OS */
-#define PIC_TRANSMIT_INTERRUPT_LATENCY          (22)
-#define PIC_RECEIVE_INTERRUPT_LATENCY           (24)
-
 /*
  * Macros for the configuration of the DMA-channel
  */
 #define FIM_CAN_DMA_BUFFER_SIZE			(256)
-#define FIM_CAN_DMA_BUFFERS			(16)
+#define FIM_CAN_DMA_BUFFERS			(60)
 
 /*
  * @XXX: Remove this ugly macro and use a structure for the PIC-message according
@@ -242,7 +239,7 @@ static int fim_can_stop_fim(struct fim_can_t *port);
 #if defined(FIM_CAN_DEBUG)
 #define fim_can_dump_frame(f, m)		fim_can_do_dump_frame(f, m)
 #else
-#define fim_can_dump_frame(f, m)
+#define fim_can_dump_frame(f, m)		do { } while (0)
 #endif
 inline static void fim_can_do_dump_frame(struct fim_can_txframe *frame, char *marke)
 {
@@ -265,17 +262,24 @@ inline static void fim_can_do_dump_frame(struct fim_can_txframe *frame, char *ma
 \tbitCount      : 0x%x\n\
 \tbitStuff      : 0x%x\n\
 \tlast 5        : 0x%x\n\
-\tstuffed count : 0x%x\n", marke, frame->crc, frame->bytepos, frame->bitcnt, frame->bitstuff, frame->last5, frame->stuffed);
+\tstuffed count : 0x%x\n",
+		     marke,
+		     frame->crc,
+		     frame->bytepos,
+		     frame->bitcnt,
+		     frame->bitstuff,
+		     frame->last5,
+		     frame->stuffed);
 }
 
 /* Debug function for dumping the CAN-timing parameters */
 #if defined(FIM_CAN_DEBUG)
 #define fim_can_dump_timing(cfg, s, p, y, b)	fim_can_do_dump_timing(cfg, s, p, y, b)
 #else
-#define fim_can_dump_timing(cfg, s, p, y, b)
+#define fim_can_dump_timing(cfg, s, p, y, b)	do { } while (0)
 #endif
 
-/* XXX */
+/* Print the timing values for the controller */
 inline static void fim_can_do_dump_timing(struct fim_can_timing_t *cfg,
 					  unsigned int sjw, unsigned int sample_point,
 					  unsigned int sync_period, unsigned int bitrate)
@@ -287,10 +291,21 @@ inline static void fim_can_do_dump_timing(struct fim_can_timing_t *cfg,
 \tCSI   : 0x%04x\n\
 \tCP2I  : 0x%04x\n\
 \tCSP   : 0x%04x\n\
-", sjw, sample_point, sync_period, bitrate, cfg->sjw, cfg->cspl, cfg->cp2pl, cfg->csi, cfg->cp2i, cfg->csp);
+",
+		     sjw,
+		     sample_point,
+		     sync_period,
+		     bitrate,
+		     cfg->sjw,
+		     cfg->cspl,
+		     cfg->cp2pl,
+		     cfg->csi,
+		     cfg->cp2i,
+		     cfg->csp);
 }
 
-inline static void fim_can_parse_filter(struct fim_can_filter_t *flt, canid_t id, canid_t mask)
+inline static void fim_can_parse_filter(struct fim_can_filter_t *flt, canid_t id,
+					canid_t mask)
 {
 	flt->filter[0] = (id >> 24);
 	flt->filter[1] = (mask >> 24);
@@ -300,6 +315,27 @@ inline static void fim_can_parse_filter(struct fim_can_filter_t *flt, canid_t id
 	flt->filter[5] = (mask >> 8);
 	flt->filter[6] = id;
 	flt->filter[7] = mask;
+}
+
+/* Calculate the latency times for the passed bitrate */
+static int fim_can_calculate_latency(u32 bitrate, u16 *rx, u16 *tx)
+{
+	int ret;
+
+	if (bitrate <= 0 || bitrate > FIM_CAN_MAX_BITRATE)
+		return -ERANGE;
+	
+	/*
+	 * In the future we will probably need different latency times for the
+	 * bitrates. Let us keep this function for this purpose.
+	 */
+#define FIM_CAN_RXIRQ_LATENCY		(1)
+#define FIM_CAN_TXIRQ_LATENCY		(100)
+	*rx = FIM_CAN_RXIRQ_LATENCY;
+	*tx = FIM_CAN_TXIRQ_LATENCY;
+	ret = 0;
+	
+	return ret;
 }
 
 static int fim_can_shutdown(struct fim_can_t *port)
@@ -321,25 +357,36 @@ static void fim_can_fill_timing(struct fim_can_t *port, struct fim_can_timing_t 
 				u16 sjw, u16 sample_point, u16 sync_period)
 {
 	unsigned int ten_per;
+	u16 larx, latx;
+	struct can_bittiming *bt;
 
+	bt = &port->can.bittiming;
 	printk_debug("New timing: %u bps | sjw %u | sample %u | sync %u | clock %u\n",
-		    port->can.bittiming.bitrate, sjw, sample_point, sync_period, port->can.bittiming.clock);
+		     bt->bitrate,
+		     sjw,
+		     sample_point,
+		     sync_period,
+		     bt->clock);
+
+	if (fim_can_calculate_latency(bt->bitrate, &larx, &latx)) {
+		printk_err("Failed latency calculation for rate %u\n", bt->bitrate);
+		return;
+	}
 
 	/* Calculate how many clocks are in the ten percent of the bit rate */
-	ten_per =
-	(clk_get_rate(port->cpu_clk) +
-	     (5 * port->can.bittiming.bitrate)) / (10 * port->can.bittiming.bitrate);
-	printk_debug("Ten percent by %i Bps is aprox. %i\n", port->can.bittiming.bitrate,
-		     ten_per);
+	ten_per = (clk_get_rate(port->cpu_clk) + (5 * bt->bitrate)) / (10 * bt->bitrate);
+	printk_debug("Ten percent by %i Bps is aprox. %i\n", bt->bitrate, ten_per);
 
 	tim->sjw = (sjw * ten_per + 5) / 10;
 	tim->cspl = (sample_point * ten_per + 5) / 10;
 	tim->cp2pl = (((100 - sample_point) * ten_per) + 5) / 10;
-	tim->csi = PIC_RECEIVE_INTERRUPT_LATENCY;
-	tim->cp2i = PIC_TRANSMIT_INTERRUPT_LATENCY;
+	tim->csi = larx;
+	tim->cp2i = latx;
 	tim->csp = ((sync_period * ten_per) + 5) / 10;
 
-	printk_debug("sjw: %d \tcspl: %d \tcp2pl: %d \tcsi: %d \tcp2i: %d \tcsp: %d\n",tim->sjw,tim->cspl,tim->cp2pl,tim->csi,tim->cp2i,tim->csp);
+	printk_debug("sjw: %d \tcspl: %d \tcp2pl: %d \tcsi: %d \tcp2i: %d \tcsp: %d\n",
+		     tim->sjw, tim->cspl, tim->cp2pl,
+		     tim->csi, tim->cp2i, tim->csp);
 }
 
 /* Configure the filter for accepting all the incoming messages */
@@ -367,20 +414,39 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 	int cnt, retval;
 	unsigned char *ptr;
 	unsigned char data[sizeof(struct fim_can_timing_t) + (FIM_CAN_NR_FILTERS * 8)];
+	struct can_bittiming *bt;
 
 	/* Init the timing parameters */
 	cfg.code = FIM_CAN_CMD_CONFIG;
+	bt = &port->can.bittiming;
 
-	printk_debug("clock: %u\n",port->can.bittiming.clock);
+	if (bt->bitrate == 0) {
+		printk("Sorry, bitrate required for\n");
+		return -EINVAL;
+	}
+
+	/* We must use the default bit rates for our FIM-firmware */
+	if (!bt->sjw)
+		bt->sjw = FIM_CAN_DEFAULT_SJW;
+	if (!bt->prop_seg)
+		bt->prop_seg = FIM_CAN_DEFAULT_PROPSEG;
+
+	if (!bt->phase_seg1)
+		bt->phase_seg1 = FIM_CAN_DEFAULT_PHASE1;
+	
+	if (!bt->phase_seg2)
+		bt->phase_seg2 = FIM_CAN_DEFAULT_PHASE2;
+			
 	fim_can_fill_timing(port, &cfg,
-			    port->can.bittiming.sjw,
-			    1 + port->can.bittiming.prop_seg + port->can.bittiming.phase_seg1,
-			    port->can.bittiming.phase_seg2);
+			    bt->sjw,
+			    bt->prop_seg + bt->phase_seg1 + 1,
+			    bt->phase_seg2);
 
-	fim_can_dump_timing(&cfg,
-			    DEFAULT_SJW_TIME,
-			    DEFAULT_SAMPLE_POINT, DEFAULT_SYNC_PERIOD,
-			    port->can.bittiming.bitrate);
+	fim_can_do_dump_timing(&cfg,
+			       bt->sjw,
+			       bt->prop_seg + bt->phase_seg1 + 1,
+			       bt->phase_seg2,
+			       bt->bitrate);
 
 	/* Not init the filter with the default values */
 	for (cnt = 0; cnt < FIM_CAN_NR_FILTERS; cnt++)
@@ -427,11 +493,11 @@ static int fim_can_set_mode(struct net_device *dev, enum can_mode mode)
 	 */
 	switch (mode) {
 	case CAN_MODE_START:
-		printk_info("Going to restart the CAN controller\n");
+		printk_dbg("FIM%i: Starting the controller\n", fim->picnr);
 		retval = fim_can_restart_fim(port);
 		break;
 	case CAN_MODE_STOP:
-		printk_info("Going to stop the controller\n");
+		printk_dbg("FIM%i: Stopping the controller\n", fim->picnr);
 		retval = fim_can_stop_fim(port);
 		break;
 	default:
@@ -454,7 +520,7 @@ static int fim_can_get_state(struct net_device *dev, enum can_state *state)
 
 	port = netdev_priv(dev);
 	fim = &port->fim;
-	printk_info("Get state called (FIM %i)\n", fim->picnr);
+	printk_debug("Get state called (FIM %i)\n", fim->picnr);
 
 	retval = fim_get_exp_reg(fim, FIM_CAN_BUSSTATE_REG, &bus);
 	if (retval) {
@@ -476,13 +542,13 @@ static int fim_can_get_state(struct net_device *dev, enum can_state *state)
 
 	/* Check the current status of the BUS */
 	if (port->can.state == CAN_STATE_STOPPED) {
-		printk_info("Controller was stopped\n");
+		printk_debug("Controller was stopped\n");
 		*state = CAN_STATE_STOPPED;
 	} else if (bus & FIM_CAN_BUSSTATE_OFF) {
-		printk_info("Current Bus state seems to be OFF\n");
+		printk_debug("Current Bus state seems to be OFF\n");
 		*state = CAN_STATE_BUS_OFF;
 	} else if (bus & FIM_CAN_BUSSTATE_ERRPAS) {
-		printk_info("Bus seems to be in the passive error state\n");
+		printk_debug("Bus seems to be in the passive error state\n");
 		*state = CAN_STATE_BUS_PASSIVE;
 	} else
 		*state = CAN_STATE_ACTIVE;
@@ -705,7 +771,8 @@ static void fim_can_write_stuffbit(struct fim_can_txframe *frame, unsigned bit)
 		frame->bitcnt = 0;
 	}
 
-	if (frame->bitstuff && ((frame->last5 == LOWEST_FIVE_BITS_MASK) || (frame->last5 == 0)))
+	if (frame->bitstuff && ((frame->last5 == LOWEST_FIVE_BITS_MASK) ||
+				(frame->last5 == 0)))
 		fim_can_write_stuffbit(frame, ~frame->last5);
 }
 
@@ -1001,10 +1068,10 @@ static void fim_can_isr(struct fim_driver *driver, int irq, unsigned char code,
 		if (netif_queue_stopped(dev))
 			netif_wake_queue(dev);
 	}
-
 }
 
-static void fim_can_tx_isr(struct fim_driver *driver, int irq, struct fim_buffer_t *pdata)
+static void fim_can_tx_isr(struct fim_driver *driver, int irq,
+			   struct fim_buffer_t *pdata)
 {
 	struct fim_can_t *port;
 	struct fim_buffer_t *buf;
@@ -1024,7 +1091,7 @@ static void fim_can_tx_isr(struct fim_driver *driver, int irq, struct fim_buffer
 	 * @FIXME: If we remove this delay, then we will not catch the errors
 	 * that can ocurrs during the frame transmission
 	 */
-	udelay(1200);
+	udelay(200);
 
 	/* Restart the TX-queue if it was stopped for some reason */
 	if (fim_can_check_error(dev))
@@ -1056,7 +1123,8 @@ static void fim_can_tx_isr(struct fim_driver *driver, int irq, struct fim_buffer
  * This function is called when the FIM has a new CAN-frame for us
  * According to the configured filters we will receive only the filtered messages
  */
-static void fim_can_rx_isr(struct fim_driver *driver, int irq, struct fim_buffer_t *pdata)
+static void fim_can_rx_isr(struct fim_driver *driver, int irq,
+			   struct fim_buffer_t *pdata)
 {
 	struct sk_buff *skb;
 	struct fim_can_t *port;
@@ -1162,7 +1230,7 @@ static int unregister_fim_can(struct fim_can_t *port)
  * it will automatically start with the bit time configuration.
  */
 static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[],
-			    int fim_can_bitrate)
+			    int bitrate)
 {
 	int retval, cnt;
 	int func;
@@ -1249,8 +1317,7 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	port->can.do_set_mode = fim_can_set_mode;
 
  	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
- 	printk_debug("port->cpu_clk: %lu\n", clk_get_rate(port->cpu_clk));
- 	printk_debug("port->can.bittiming.clock: %u\n", port->can.bittiming.clock);
+ 	printk_debug("CPU clock is %luHz\n", clk_get_rate(port->cpu_clk));
 
 	/*
 	 * @TODO: Set the correct maximal BRP for the controller.
@@ -1262,15 +1329,15 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
  		printk_debug("bittiming_const is not initialized.\n");
  		goto err_unreg_fim;
  	}
-	
-	port->can.bittiming.bitrate = fim_can_bitrate;
-	port->can.bittiming.sjw = 7;
-	port->can.bittiming.prop_seg = 8;
-	port->can.bittiming.phase_seg1 = 8;
-	port->can.bittiming.phase_seg2 = 8;
 
-	/* Now register the new net device */
-	//retval = register_netdev(dev);
+	/*
+	 * Only store the passed bitrate. The corresponding timing parameters
+	 * will be setup in the function that sends the configuration to the FIM.
+	 * (Luis Galdos)
+	 */
+	port->can.bittiming.bitrate    = bitrate;
+
+	/* Now register the new CAN-net device */
 	retval = register_candev(dev);
 	if (retval) {
 		printk_err("Registering the net device for the FIM %i\n", picnr);
@@ -1304,7 +1371,7 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	int retval;
 	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
 	struct fim_can_platform_data *pdata;
-	int fim_can_bitrate, fims_number;
+	int bitrate;
 
 	printk_debug("Starting the FIM CAN bus driver.\n");
 
@@ -1312,14 +1379,14 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	if (!pdata)
 		return -ENODEV;
 
-	/* Set values for FIM number and CAN bitrate from platform data */
-	fims_number = pdata->fim_nr;
-	fim_can_bitrate = pdata->fim_can_bitrate;
+	/* If no bitrate passed, then use the default bitrate */
+	bitrate = pdata->fim_can_bitrate ? pdata->fim_can_bitrate :
+		FIM_CAN_DEFAULT_BITRATE;
 
 	/* Sanity check for the passed bit rate */
-	if (fim_can_bitrate <= 0 || fim_can_bitrate > FIM_CAN_MAX_BITRATE) {
+	if (bitrate <= 0 || bitrate > FIM_CAN_MAX_BITRATE) {
 		printk_err("Invalid bit rate %i (max. rate is %i)\n",
-			   fim_can_bitrate, FIM_CAN_MAX_BITRATE);
+			   bitrate, FIM_CAN_MAX_BITRATE);
 		return -EINVAL;
 	}
 
@@ -1340,13 +1407,11 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	gpios[0].func	= pdata->rx_gpio_func;
 	gpios[1].nr	= pdata->tx_gpio_nr;
 	gpios[1].func	= pdata->tx_gpio_func;
-	printk_debug("%s: Pins used rx: %d -- tx: %d \n", __func__,
+	printk_debug("%s: GPIO RX: %d | GPIO TX: %d \n", __func__,
 		     gpios[0].nr, gpios[1].nr );
 	
 	/* XXX SDIO code approach */
-	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, fim_can_bitrate);
-
-	printk_info(DRIVER_DESC " " DRIVER_VERSION "\n");
+	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, bitrate);
 
 	return retval;
 }
@@ -1381,6 +1446,7 @@ static struct platform_driver fim_can_platform_driver = {
  */
 static __init int fim_can_init(void)
 {
+	printk_info(DRIVER_DESC " " DRIVER_VERSION "\n");
 	return platform_driver_register(&fim_can_platform_driver);
 }
 
