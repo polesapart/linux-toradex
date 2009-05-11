@@ -67,6 +67,9 @@ MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
 
+/* Module parameter for selection the FIMs */
+NS921X_FIM_NUMBERS_PARAM(fims_number);
+
 #define printk_err(fmt, args...)		printk(KERN_ERR "[ ERROR ] fim-can: " fmt, ## args)
 #define printk_info(fmt, args...)		printk(KERN_INFO "fim-can: " fmt, ## args)
 #define printk_dbg(fmt, args...)		printk(KERN_DEBUG "fim-can: " fmt, ## args)
@@ -1393,11 +1396,13 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	/* Get the number of available PICs from the FIM-core */
 	nrpics = fim_number_pics();
 
-	/* Sanity check for the passed number of PICs */
-	if (pdata->fim_nr > nrpics || pdata->fim_nr < 0) {
-		printk_err("Invalid number %i of FIMs (Min. 0 | Max. %i)\n",
-			   pdata->fim_nr, nrpics);
-		return -EINVAL;
+	if (fim_check_device_id(fims_number, pdata->fim_nr)) {
+#if defined(MODULE)
+		printk_dbg("Skipping FIM%i (not selected)\n", pdata->fim_nr);
+#else
+		printk_err("Invalid FIM number '%i' in platform data\n", pdata->fim_nr);
+#endif
+		return -ENODEV;
 	}
 
 	/*
@@ -1447,6 +1452,13 @@ static struct platform_driver fim_can_platform_driver = {
 static __init int fim_can_init(void)
 {
 	printk_info(DRIVER_DESC " " DRIVER_VERSION "\n");
+
+        /* Check for the passed number parameter */
+	if (fim_check_numbers_param(fims_number)) {
+		printk_err("Invalid number '%i' of FIMs to handle\n", fims_number);
+		return -EINVAL;
+	}
+
 	return platform_driver_register(&fim_can_platform_driver);
 }
 

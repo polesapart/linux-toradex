@@ -3,7 +3,7 @@
 #
 
 menuconfig FIM_CORE
-	bool "FIM drivers support"
+	tristate "FIM drivers support"
 	depends on PROCESSOR_NS921X
         select FW_LOADER
         select HOTPLUG 
@@ -24,7 +24,7 @@ if FIM_CORE
 
 config FIM_ONE
 	bool "FIM 1"
-	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215
+	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
 	help
 	  Enables FIM 1
 
@@ -34,24 +34,27 @@ choice
 	help
 	  Only one of the following drivers can run in the FIM. Please pick one.
 
-config FIM_ONE_SDIO
+config FIM_ONE_SDIO_SELECTED
 	bool "SDIO driver"
 	depends on MMC && MMC_BLOCK && (!MACH_CME9210 && !MACH_CME9210JS)
+	select FIM_ONE_SDIO
 	help
 	  Enables the FIM-SDIO driver.
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
 
-config FIM_ONE_SERIAL
+config FIM_ONE_SERIAL_SELECTED
 	bool "Serial driver"
 	depends on ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && !CME9210JS_SERIAL_PORTA ))
+	select FIM_ONE_SERIAL
 	help
 	  Enables the FIM-serial driver. 
 
-config FIM_ONE_CAN
+config FIM_ONE_CAN_SELECTED
 	bool "CAN-bus driver"
 	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
+	select FIM_ONE_CAN
 	help
 	  Enables the FIM-CAN bus driver.
 
@@ -59,7 +62,7 @@ endchoice # FIM_ONE
 
 config FIM_TWO
 	bool "FIM 2"
-	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215
+	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
 	help
 	  Enables FIM 2
 
@@ -69,28 +72,87 @@ choice
 	help
 	  Only one of the following drivers can run in the FIM. Please pick one.
 
-config FIM_TWO_SDIO
+config FIM_TWO_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK && (!MACH_CME9210 && !MACH_CME9210JS) && !FIM_ONE_SDIO
+	depends on MMC && MMC_BLOCK && (!MACH_CME9210 && !MACH_CME9210JS) && !FIM_ONE_SDIO_SELECTED
+	select FIM_TWO_SDIO
 	help
 	  Enables the FIM-SDIO serial driver. 
 	  
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
 
-config FIM_TWO_SERIAL
+config FIM_TWO_SERIAL_SELECTED
 	bool "Serial driver"
 	depends on !MACH_CME9210 && !MACH_CME9210JS
+	select FIM_TWO_SERIAL
 	help
 	  Enables the FIM-serial driver.
 
-config FIM_TWO_CAN
+config FIM_TWO_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && (!CME9210JS_SERIAL_PORTA_FULL && !FIM_ONE_SERIAL)))
+	depends on CAN && CAN_DEV && ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && (!CME9210JS_SERIAL_PORTA_FULL && !FIM_ONE_SERIAL_SELECTED)))
+	select FIM_TWO_CAN
 	help
 	  Enables the FIM-CAN bus driver.
 
 endchoice # FIM_TWO
 
+config FIM_MODULES
+	bool "Enable FIM driver as loadable modules"
+	help
+	  Nothing to comment here.
+
+if FIM_MODULES
+
+# -- These are the options for enabling the FIM-drivers as loadable modules
+config FIM_SDIO_MODULE
+       bool "SDIO as loadable module"
+       depends on MMC && MMC_BLOCK && !FIM_ONE_SDIO_SELECTED && !FIM_TWO_SDIO_SELECTED
+       select FIM_ONE_SDIO
+       select FIM_TWO_SDIO
+       help
+         Enables the FIM SDIO as loadable module. The number of FIMs to be
+	 handled by this driver can be passed with the module parameter 'fims'
+
+config FIM_SERIAL_MODULE
+       bool "Serial as loadable module"
+       depends on !FIM_ONE_SERIAL_SELECTED && !FIM_TWO_SERIAL_SELECTED
+       select FIM_ONE_SERIAL
+       select FIM_TWO_SERIAL
+       help
+         Enables the FIM SDIO as loadable module. The number of FIMs to be
+	 handled by this driver can be passed with the module parameter 'fims'
+
+config FIM_CAN_MODULE
+       bool "CAN as loadable module"
+       depends on CAN && CAN_DEV && !FIM_ONE_CAN_SELECTED && !FIM_TWO_CAN_SELECTED
+       select FIM_ONE_CAN
+       select FIM_TWO_CAN
+       help
+         Enables the FIM SDIO as loadable module. The number of FIMs to be
+	 handled by this driver can be passed with the module parameter 'fims'
+
+endif # FIM_MODULES
+
+# -- Variables for selection the platform devices
+config FIM_ONE_SDIO
+       bool
+
+config FIM_TWO_SDIO
+       bool
+
+config FIM_ONE_SERIAL
+       bool
+
+config FIM_TWO_SERIAL
+       bool
+
+config FIM_ONE_CAN
+       bool
+
+config FIM_TWO_CAN
+       bool
+       
 endif # FIM_CORE
 

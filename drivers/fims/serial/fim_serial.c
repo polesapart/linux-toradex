@@ -67,7 +67,8 @@ MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
 
-
+/* Module parameter for selection the FIMs */
+NS921X_FIM_NUMBERS_PARAM(fims_number);
 
 /* Firmware-dependent interrupts from the ARM to the FIM */
 #define FIM_SERIAL_INT_INSERT_CHAR		0x01
@@ -116,6 +117,7 @@ MODULE_VERSION(DRIVER_VERSION);
 
 #define printk_err(fmt, args...)                printk(KERN_DEBUG "[ ERROR ] fim-serial: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_DEBUG "fim-serial: " fmt, ## args)
+#define printk_dbg(fmt, args...)                printk(KERN_DEBUG "fim-serial: " fmt, ## args)
 
 #define print_parse_err(parse, port, raw, pos)	printk_debug(parse " | Byte %i | Raw %x | Data %i | Total %i | Mask %x\n", pos, raw, port->numbits, port->totalbits, port->bitsmask)
 
@@ -1464,12 +1466,16 @@ static int __devinit fim_serial_probe(struct platform_device *pdev)
 	pdata = pdev->dev.platform_data;
 	if (!pdata)
 		return -ENXIO;
-	
-	if (pdata->fim_nr < 0 || pdata->fim_nr >= fim_serials->fims) {
-		printk_err("Invalid device ID %i\n", pdev->id);
-		return -ENODEV;
-	}
 
+        if (fim_check_device_id(fims_number, pdata->fim_nr)) {
+#if defined(MODULE)
+		printk_dbg("Skipping FIM%i (not selected)\n", pdata->fim_nr);
+#else
+		printk_err("Invalid FIM number '%i' in platform data\n", pdata->fim_nr);
+#endif
+		return -ENODEV;
+        }
+	
 	port = fim_serials->ports + pdata->fim_nr;
 
 	/* @XXX: The below code is really ugly, remove it! */
@@ -1533,6 +1539,13 @@ int __init fim_serial_init(void)
 
 	/* Get the number of maximal available FIMs */
 	nrpics = fim_number_pics();
+
+	/* Check for the passed number parameter */
+	if (fim_check_numbers_param(fims_number)) {
+		printk_err("Invalid number '%i' of FIMs to handle\n", fims_number);
+		return -EINVAL;
+	}
+
 	fim_serials = kzalloc(sizeof(struct fim_serials_t) +
 			      (nrpics * sizeof(struct fim_serial_t)), GFP_KERNEL);
 	if (!fim_serials)

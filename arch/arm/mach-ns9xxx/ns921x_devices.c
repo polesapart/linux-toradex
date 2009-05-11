@@ -696,17 +696,15 @@ void __init ns9xxx_add_device_ns921x_fim_can1(void) {}
 #if defined(CONFIG_FIM_CORE)
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
-#if defined(CONFIG_FIM_ONE)
+	/* FIM 0 */
 	ns9xxx_add_device_ns921x_fim_serial0();
 	ns9xxx_add_device_ns921x_fim_sdio0();
 	ns9xxx_add_device_ns921x_fim_can0();
-#endif
 
-#if defined(CONFIG_FIM_TWO)
+        /* FIM 1 */
 	ns9xxx_add_device_ns921x_fim_serial1();
 	ns9xxx_add_device_ns921x_fim_sdio1();
 	ns9xxx_add_device_ns921x_fim_can1();
-#endif
 }
 #else
 void __init ns9xxx_add_device_ns921x_fims(void) {}

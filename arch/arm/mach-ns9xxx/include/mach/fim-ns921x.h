@@ -315,7 +315,6 @@ struct fim_can_platform_data {
 	unsigned int tx_gpio_func;
 };
 
-
 /* Macro for the configuration of the GPIOs for the FIM CAN driver */
 #define NS921X_FIM_CAN_GPIOS(rx, tx, func)	\
 		.rx_gpio_nr = rx, \
@@ -323,6 +322,41 @@ struct fim_can_platform_data {
 		.tx_gpio_nr = tx, \
 		.tx_gpio_func = func
 	
+/* Macros for building the FIM-drivers as loadable modules */
+#if defined(MODULE)
+# define NS921X_FIM_NUMBERS_PARAM(number)		\
+	static int number = -1;				\
+	module_param_named(fims, number, int, 0644);
+#else
+# define NS921X_FIM_NUMBERS_PARAM(number)		\
+	static int number = FIM_NR_PICS;
+#endif
+
+/* Call the function for checking the FIM module parameter */
+#if defined(MODULE)
+inline int fim_check_numbers_param(int number)	    \
+{						    \
+	if (number < 0 || number > FIM_NR_PICS)	    \
+		return -1;			    \
+	else					    \
+		return 0;			    \
+}
+inline int fim_check_device_id(int number, uint id) {    \
+	int ret;					  \
+	if (id < 0)				       \
+		ret = 1;			       \
+	else if (number == FIM_NR_PICS && id < number) \
+		ret = 0;			       \
+	else if (number < FIM_NR_PICS && id == number) \
+		ret = 0;			       \
+	else					       \
+		ret = 1;			       \
+	return ret;				       \
+}
+#else
+# define fim_check_numbers_param(number)        (0)
+# define fim_check_device_id(number, id)        (id < 0 || id >= number)
+#endif
 
 /* These are the functions of the FIM-API */
 int fim_register_driver(struct fim_driver *driver);
