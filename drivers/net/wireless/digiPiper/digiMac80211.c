@@ -472,7 +472,6 @@ static void hw_stop(struct ieee80211_hw *hw)
 	/* turn off interrupts */
     tasklet_disable(&digi->rxTasklet);
     tasklet_disable(&digi->txRetryTasklet);
-	digi->irq_mask = 0;
 	digi->clearIrqMaskBit(digi, 0xffffffff);
 	disable_irq(digi->irq);
 }

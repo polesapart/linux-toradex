@@ -12,7 +12,7 @@
 #define DRV_VERS "0.1"
 
 
-#define DEBUG
+/* #define DEBUG */
 #ifdef DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)
@@ -108,12 +108,12 @@ enum digiWifiTxResult_t
     OUT_OF_RETRIES
 } ;
 
+
+
 /**
  * piper_priv - 
  */
 struct piper_priv {
-    wait_queue_head_t rx_wait;
-    struct task_struct *rx_thread;
     struct tasklet_struct rxTasklet;
     struct tasklet_struct txRetryTasklet;
     struct ieee80211_key_conf txKeyInfo;
@@ -129,7 +129,6 @@ struct piper_priv {
     bool txRts;
     
     void* __iomem vbase;
-	struct sk_buff *read_skb;
 	struct sk_buff *txPacket;
 	unsigned int txTotalRetries;
 	unsigned int txRetryCount[IEEE80211_TX_MAX_RATES];
@@ -137,7 +136,6 @@ struct piper_priv {
 	bool useAesHwEncryption;
 	unsigned int txAesKey;
 	u32 txAesBlob[AES_BLOB_LENGTH / sizeof(u32)];   /* used to store AES IV and headers*/
-    spinlock_t irqMaskLock;
     spinlock_t registerAccessLock;
     spinlock_t aesLock;
     
@@ -156,9 +154,7 @@ struct piper_priv {
 	int (*myrand)(void);
 	void (*kickTransmitterTask)(void);
 
-	uint16_t irq_mask;
 	uint8_t bssid[ETH_ALEN];
-	uint8_t ourMacAddress[ETH_ALEN];
 	int channel;
 	uint8_t tx_power;
 	enum nl80211_iftype if_type;
@@ -172,6 +168,7 @@ struct piper_priv {
 	u16 (*adcReadPeak)(struct piper_priv *digi);
 	void (*adcClearPeak)(struct piper_priv *digi);
 	u16 (*adcReadLastValue)(struct piper_priv *digi);
+	void (*adcShutdown)(struct piper_priv *digi);
 };
 
 /* main */

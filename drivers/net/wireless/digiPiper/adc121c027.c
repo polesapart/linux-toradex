@@ -30,7 +30,7 @@ static struct i2c_client_address_data addr = {
 	.probe = dummy_i2c_addrlist,
 	.ignore = dummy_i2c_addrlist,
 };
-I2C_CLIENT_INSMOD_1(adc121C027);
+/*I2C_CLIENT_INSMOD_1(adc121C027);*/
 
 enum adc121C027_cmd
 {
@@ -44,67 +44,7 @@ enum adc121C027_cmd
         ADC_HIGHEST_VALUE       = 7,
 };
 
-/* following are the sysfs callback functions */
-static ssize_t adc121C027_show(struct device *dev, struct device_attribute *attr,
-                            char *buf)
-{
-        struct sensor_device_attribute *psa = to_sensor_dev_attr(attr);
-        struct i2c_client *client = to_i2c_client(dev);
 
-    printk(KERN_ALERT "****************adc121C027_show\n");
-        return sprintf(buf, "%d\n", i2c_smbus_read_word_data(client,
-                                                             psa->index));
-}
-
-static ssize_t adc121C027_store(struct device *dev, struct device_attribute *attr,
-                             const char *buf, size_t count)
-{
-        struct sensor_device_attribute *psa = to_sensor_dev_attr(attr);
-        struct i2c_client *client = to_i2c_client(dev);
-        unsigned long val = simple_strtoul(buf, NULL, 0);
-
-    printk(KERN_ALERT "****************adc121C027_store\n");
-
-        if (val > 0xff)
-                return -EINVAL;
-        i2c_smbus_write_word_data(client, psa->index, val);
-        return count;
-}
-
-/* Define the device attributes */
-
-#define ADC121C027_ENTRY_RO(name, cmd_idx) \
-        static SENSOR_DEVICE_ATTR(name, S_IRUGO, adc121C027_show, NULL, cmd_idx)
-
-#define ADC121C027_ENTRY_RW(name, cmd_idx) \
-        static SENSOR_DEVICE_ATTR(name, S_IRUGO | S_IWUSR, adc121C027_show, \
-                                  adc121C027_store, cmd_idx)
-
-
-ADC121C027_ENTRY_RO(result, ADC_RESULT);
-ADC121C027_ENTRY_RW(alertStatus, ADC_ALERT_STATUS);
-ADC121C027_ENTRY_RW(configuration, ADC_CONFIGURATION);
-ADC121C027_ENTRY_RW(lowLimit, ADC_LOW_LIMIT);
-ADC121C027_ENTRY_RW(highLimit, ADC_HIGH_LIMIT);
-ADC121C027_ENTRY_RW(hysteresis, ADC_HYSTERESIS);
-ADC121C027_ENTRY_RW(lowestValue, ADC_LOWEST_VALUE);
-ADC121C027_ENTRY_RW(highestValue, ADC_HIGHEST_VALUE);
-
-static struct attribute *adc121C027_attributes[] = {
-        &sensor_dev_attr_result.dev_attr.attr,
-        &sensor_dev_attr_alertStatus.dev_attr.attr,
-        &sensor_dev_attr_configuration.dev_attr.attr,
-        &sensor_dev_attr_lowLimit.dev_attr.attr,
-        &sensor_dev_attr_highLimit.dev_attr.attr,
-        &sensor_dev_attr_hysteresis.dev_attr.attr,
-        &sensor_dev_attr_lowestValue.dev_attr.attr,
-        &sensor_dev_attr_highestValue.dev_attr.attr,
-        NULL
-};
-
-static struct attribute_group adc121C027_defattr_group = {
-        .attrs = adc121C027_attributes,
-};
 
 static u16 adcReadPeak(struct piper_priv *digi)
 {
@@ -126,17 +66,22 @@ static u16 adcReadLastValue(struct piper_priv *digi)
 static int adc121C027_probe(struct i2c_client *client,
                          const struct i2c_device_id *id)
 {
-        /* Register sysfs hooks */
-    printk(KERN_ALERT "****************adc121C027_probe\n");
-    printk(KERN_ALERT "****************client->addr = 0x%X\n", client->addr);
+    int result = -EINVAL;
     
-    return 0;
+    if (client->addr == ADC_I2C_ADDR)
+    {
+        result = 0;
+    }
+    
+    return result;
 }
 
 static int adc121C027_remove(struct i2c_client *client)
 {
-    printk(KERN_ALERT "****************adc121C027_remove\n");
-        return 0;
+    /*
+     * Real shut down will be done by adcShutdown().
+     */
+    return 0;
 }
 
 static const struct i2c_device_id adc121C027_id[] = {
@@ -152,7 +97,7 @@ static struct i2c_driver adc121C027_driver = {
         .remove         = adc121C027_remove,
         .id_table       = adc121C027_id,
 
-        .address_data   = &addr_data,
+        .address_data   = &addr,
 };
 
 
@@ -166,6 +111,18 @@ static void adcInitializeHw(struct piper_priv *digi)
     i2c_smbus_write_word_data(digi->adcI2cClient, ADC_CONFIGURATION, ADC_CYCLE_TIME);
 }
 
+void adcShutdown(struct piper_priv *digi)
+{
+    if (digi->adcI2cClient)
+    {
+        i2c_unregister_device(digi->adcI2cClient);
+        digi->adcI2cClient = NULL;
+    }
+    
+    i2c_del_driver(&adc121C027_driver);
+}
+    
+    
 int digiWifiInitAdc(struct piper_priv *digi)
 {
     int result = -1;
@@ -210,6 +167,7 @@ done:
     digi->adcReadPeak = adcReadPeak;
     digi->adcClearPeak = adcClearPeak;
     digi->adcReadLastValue = adcReadLastValue;
+    digi->adcShutdown = adcShutdown;
     
     return result;
 }

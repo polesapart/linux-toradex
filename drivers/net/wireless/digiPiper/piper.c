@@ -24,6 +24,7 @@
 #include "phy.h"
 #include "airoha.h"
 #include "adc121c027.h"
+#include "airohaCalibration.h"
 
 
 #define	DRIVER_VERSION	"0.1"
@@ -34,8 +35,8 @@
 
 
 
-#define WANT_DEBUG_THREAD   (1)
-
+#define WANT_DEBUG_THREAD           (0)
+#define WANT_AIROHA_CALIBRATION     (0)
 
 
 
@@ -107,7 +108,7 @@ static int debugThreadEntry(void *data)
     while (1)
     {
         ssleep(10);
-        digi_dbg("Peak = 0x%8.8X, last conversion = 0x%8.8X\n", digi->adcReadPeak(digi), digi->adcReadLastValue(digi));
+        digi_dbg("Peak = 0x%4.4X, last conversion = 0x%4.4X\n", digi->adcReadPeak(digi), digi->adcReadLastValue(digi));
         digi->adcClearPeak(digi);
     }
     return 0;
@@ -300,7 +301,6 @@ static int __init piper_probe(struct platform_device* pdev)
 	digi->drv_name = PIPER_DRIVER_NAME;
 	digi->txStartCount = 0;
 	digi->txCompleteCount = 0;
-	spin_lock_init(&digi->irqMaskLock);
 	spin_lock_init(&digi->registerAccessLock);
 	spin_lock_init(&digi->aesLock);
 	
@@ -322,8 +322,6 @@ static int __init piper_probe(struct platform_device* pdev)
      * pdev->resource   set to piper_mem
      */
 #ifdef BUILD_AS_LOADABLE_MODULE
-    printk(KERN_INFO "start address = 0x%8.8X, end address = 0x%8.8X\n", 
-            pdev->resource[0].start, pdev->resource[0].end);
 	err = request_resource(&iomem_resource, &piper_mem);
 	if (err) 
 	{
@@ -371,7 +369,7 @@ static int __init piper_probe(struct platform_device* pdev)
     version =digi->read_reg(digi, BB_VERSION);
     status = digi->read_reg(digi, BB_GENERAL_STAT);
     
-    printk(KERN_INFO "version = 0x%8.8X, status = 0x%8.8X\n", version, status);
+    digi_dbg("Piper firmware version = 0x%8.8X, status = 0x%8.8X\n", version, status);
 
     digi->irq = pdev->resource[1].start;
     digi->bssWantCtsProtection = false;
@@ -405,6 +403,10 @@ static int __init piper_probe(struct platform_device* pdev)
 		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv\n");
 		goto do_free_rx;
 	}
+
+#if WANT_AIROHA_CALIBRATION
+    digiWifiInitCalibration(digi);
+#endif
 
 	goto piper_probe_exit;
 
@@ -507,8 +509,6 @@ static int __init piper_init_module(void)
 {
 	int err;
 
-	pr_info("piper_init_module called\n");
-    printk(KERN_INFO "piper_init_module, version %s\n", DRV_VERS);
 #ifdef BUILD_AS_LOADABLE_MODULE
     err = platform_device_register(&piper_device);
     if (err) {
@@ -530,12 +530,8 @@ error:
 
 static void __exit piper_exit_module(void)
 {
-    printk(KERN_ALERT "piper_exit_module called\n");
     platform_driver_unregister(&piper_driver);
-    printk(KERN_ALERT "piper_exit_module platform_driver_unregister returned\n");
     platform_device_unregister(&piper_device);
-    printk(KERN_ALERT "piper_exit_module platform_device_unregister returned\n");
-	pr_info("Piper driver unloaded\n");
 }
 
 
