@@ -1106,20 +1106,24 @@ int fim_register_driver(struct fim_driver *driver)
 			   driver->driver.name, pic->index);
 		goto goto_stop_pic;
 	}
+	
+	/*
+	 * Enable the tasklet before requesting the IRQ, then in some cases the
+	 * FIM sends an interrupt before its initialization through the FIM-driver.
+	 */
+	pic->driver = driver;
+	driver->dev = pic->dev;
+	tasklet_init(&pic->rx_tasklet, pic_rx_tasklet_func, (unsigned long)pic);
 
 	/* Request the IRQ for this FIM */
 	retval = request_irq(pic->irq, pic_irq, 0, driver->driver.name, pic);
 	if (retval) {
 		printk_err("%s: Couldn't request the IRQ %i\n",
 			   driver->driver.name, pic->irq);
-		goto goto_stop_pic;
+		goto exit_kill_tasklet;
 	}
 
-	
-	/* @FIXME: Here seems to be a problem, the IRQ isn't being maskared correctly */
-	pic->driver = driver;
-	driver->dev = pic->dev;
-	tasklet_init(&pic->rx_tasklet, pic_rx_tasklet_func, (unsigned long)pic);
+	/* Disable the IRQ and done */
 	disable_irq(pic->irq);
 	atomic_set(&pic->irq_enabled, 0);
 	printk_info("FIM%i registered for driver '%s' [IRQ %i]\n",
@@ -1127,6 +1131,9 @@ int fim_register_driver(struct fim_driver *driver)
 	
 	return 0;
 
+ exit_kill_tasklet:
+	tasklet_kill(&pic->rx_tasklet);
+	
  goto_stop_pic:
 	pic_stop_and_reset(pic);
 
