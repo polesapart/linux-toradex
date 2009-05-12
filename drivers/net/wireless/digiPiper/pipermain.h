@@ -12,7 +12,7 @@
 #define DRV_VERS "0.1"
 
 
-/* #define DEBUG */
+#define DEBUG
 #ifdef DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)
@@ -156,7 +156,7 @@ struct piper_priv {
 
 	uint8_t bssid[ETH_ALEN];
 	int channel;
-	uint8_t tx_power;
+	int tx_power;
 	enum nl80211_iftype if_type;
     struct ieee80211_tx_queue_stats txQueueStats;
     struct ieee80211_low_level_stats lowLevelStats;
@@ -169,6 +169,8 @@ struct piper_priv {
 	void (*adcClearPeak)(struct piper_priv *digi);
 	u16 (*adcReadLastValue)(struct piper_priv *digi);
 	void (*adcShutdown)(struct piper_priv *digi);
+    void (*txTransmitStarted)(struct piper_priv *digi);
+    void (*txTransmitStop)(struct piper_priv *digi);
 };
 
 /* main */

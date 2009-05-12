@@ -36,7 +36,7 @@
 
 
 #define WANT_DEBUG_THREAD           (0)
-#define WANT_AIROHA_CALIBRATION     (0)
+#define WANT_AIROHA_CALIBRATION     (1)
 
 
 
