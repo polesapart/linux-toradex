@@ -579,7 +579,10 @@ static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t value)
     return 0;
 }
 
-
+static void al7230_set_power_index(struct ieee80211_hw *hw, unsigned int value)
+{
+    WriteRF(hw, 11, 0x08040 | value);
+}
 
 static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 {
@@ -871,17 +874,25 @@ static struct ieee80211_supported_band al7230_bands[] = {
 };
 
 
+static const struct ieee80211_rate *getRate(unsigned int rateIndex)
+{
+    return &al7230_bg_rates[rateIndex];
+}
+
+
 struct digi_rf_ops al7230_rf_ops = {
 	.name = "Airoha 7230",
 	.init = InitializeRF,
 	.stop = al7230_rf_stop,
 	.set_chan = al7230_rf_set_chan,
 	.set_pwr = al7230_set_txpwr,
+	.set_pwr_index = al7230_set_power_index,
 	.channelChangeTime = CHANNEL_CHANGE_TIME,
 	.maxSignal = MAX_SIGNAL_IN_DBM,
 	.getOfdmBrs = getOfdmBrs,
 	.getBand = getBand,
 	.getFrequency = getFrequency,
+	.getRate = getRate,
 
 	.bands = al7230_bands,
 	.n_bands = ARRAY_SIZE(al7230_bands),

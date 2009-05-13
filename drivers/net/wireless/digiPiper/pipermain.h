@@ -51,9 +51,11 @@ struct digi_rf_ops {
 	int (*stop)(struct ieee80211_hw *);
 	int (*set_chan)(struct ieee80211_hw *, int chan);
 	int (*set_pwr)(struct ieee80211_hw *, uint8_t val);
+	void (*set_pwr_index)(struct ieee80211_hw *, unsigned int val);
 	void (*getOfdmBrs)(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
 	enum ieee80211_band (*getBand)(int);
 	int (*getFrequency)(int);
+	const struct ieee80211_rate * (*getRate)(unsigned int);
 	int channelChangeTime;
 	s8 maxSignal;
 
@@ -170,7 +172,8 @@ struct piper_priv {
 	u16 (*adcReadLastValue)(struct piper_priv *digi);
 	void (*adcShutdown)(struct piper_priv *digi);
     void (*txTransmitStarted)(struct piper_priv *digi);
-    void (*txTransmitStop)(struct piper_priv *digi);
+    void (*txTransmitFinished)(struct piper_priv *digi);
+    struct ieee80211_rate *calibrationTxRate;
 };
 
 /* main */

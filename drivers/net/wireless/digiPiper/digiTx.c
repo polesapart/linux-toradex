@@ -111,6 +111,13 @@ static int piper_write_aes(struct piper_priv *digi, unsigned char *buffer,
 static struct ieee80211_rate *getTxRate(struct piper_priv *digi, struct ieee80211_tx_info *txInfo)
 {
     struct ieee80211_rate *result = NULL;
+    
+    if (digi->calibrationTxRate)
+    {
+        result = digi->calibrationTxRate;
+        goto getTxRateDone;
+    }
+    
 #if 0
 struct ieee80211_tx_rate {
 	s8 idx;
@@ -298,6 +305,8 @@ if (   (txInfo->control.rates[0].count == 1)
     }        
     result = ieee80211_get_tx_rate(digi->hw, txInfo);
 #endif
+
+getTxRateDone:
     return result;
 }
 
@@ -370,7 +379,14 @@ static void handleRtsCts(struct piper_priv *digi, struct ieee80211_tx_info *txIn
             /*
              * If we are sending an RTS or a CTS, then get the rate information.
              */
-            rate = ieee80211_get_rts_cts_rate(digi->hw, txInfo);
+            if (digi->calibrationTxRate)
+            {
+                rate = digi->calibrationTxRate;
+            }
+            else
+            {
+                rate = ieee80211_get_rts_cts_rate(digi->hw, txInfo);
+            }
             if (rate == NULL)
             {
                 digi_dbg("ieee80211_get_rts_cts_rate(digi->hw, txInfo) returned NULL!\n");
@@ -449,6 +465,10 @@ void digiWifiTxDone(struct piper_priv *digi, enum digiWifiTxResult_t result,
         
         del_timer_sync(&digi->txTimer);
         
+    	if (digi->txTransmitFinished)
+    	{
+    	    digi->txTransmitFinished(digi);
+    	}
         ieee80211_tx_info_clear_status(txInfo);
         
         for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
@@ -554,7 +574,11 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
         	 */
         	err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,  
         	                      op_and); 
-        	                
+        	if (digi->txTransmitStarted)
+        	{
+        	    digi->txTransmitStarted(digi);
+        	}
+
 	        /*
 	         * Set interrupt flags.  Use the timeout interrupt if we expect
 	         * an ACK.  Use the FIFO empty interrupt if we do not expect an ACK.
