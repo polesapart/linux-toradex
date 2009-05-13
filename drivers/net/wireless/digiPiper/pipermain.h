@@ -6,9 +6,8 @@
 #include <linux/spinlock.h>
 #include <net/mac80211.h>
 #include <linux/i2c.h>
+#include <net/piper_pdata.h>
 
-// TODO:  Move this define into a header file shared with ns921x_devices.c
-#define PIPER_DRIVER_NAME   "ns9xxx-piper"
 #define DRV_VERS "0.1"
 
 
@@ -23,9 +22,6 @@
 
 typedef u64 u48;
 
-
-#define PIPER_RESET_GPIO    (92)
-#define PIPER_IRQ_GPIO      (104)
 
 /*
  * Set this #define to receive frames in the ISR.  This may improve 
@@ -142,6 +138,7 @@ struct piper_priv {
     spinlock_t aesLock;
     
 	struct ieee80211_hw *hw;
+	struct piper_pdata *pdata;
 	const char *drv_name;
 
 	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val, piperRegisterWriteOperation_t op);

@@ -14,6 +14,8 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 #include <linux/gpio.h>
+#include <linux/crc32.h>
+#include <net/piper_pdata.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
@@ -23,6 +25,7 @@
 #include "ns921x_devices.h"
 #include "ns9215_devices.h"
 #include "cc9p9215_devices.h"
+
 
 /* I2C devices */
 #if defined(CONFIG_GPIO_PCA953X) || defined(CONFIG_GPIO_PCA953X_MODULE)
@@ -93,6 +96,43 @@ static struct spi_board_info spi_devices[] __initdata = {
 	CC9P9215JS_TOUCH
 };
 
+
+#if defined(CONFIG_DIGI_PIPER_WIFI)
+static struct piper_pdata ccw9p9215_piper_pdata = {
+	.rst_gpio = 92,
+	.irq_gpio = 104,
+};
+
+static void __init ccw9p9215js_fixup(struct machine_desc *desc,
+				     struct tag *tags, char **cmdline,
+				     struct meminfo *mi)
+{
+	unsigned int *wcd_boot_addr = phys_to_virt(desc->boot_params) + 0xf00;
+	wcd_data_t *pwcal;
+	u32 crc;
+
+/* TODO what about the mac address, baby? */
+
+	pwcal = (wcd_data_t *)wcd_boot_addr;
+
+	if (!strncmp(pwcal->header.magic_string, WCD_MAGIC,
+	    sizeof(pwcal->header.magic_string))) {
+		/* check version */
+		if (((pwcal->header.ver_major >= '1') && (pwcal->header.ver_major <= '9')) &&
+		    ((pwcal->header.ver_minor >= '0') && (pwcal->header.ver_minor <= '9'))) {
+			crc = ~crc32_le(~0, (unsigned char const *)pwcal->cal_curves_bg,
+					pwcal->header.wcd_len);
+			if (crc == pwcal->header.wcd_crc) {
+				memcpy(&ccw9p9215_piper_pdata.wcd, wcd_boot_addr, sizeof(wcd_data_t));
+				return;
+			}
+		}
+	}
+
+	memset(&ccw9p9215_piper_pdata.wcd, 0, sizeof(wcd_data_t));
+}
+#endif
+
 static void __init mach_ccw9p9215js_init_machine(void)
 {
 	/* register several system clocks */
@@ -132,9 +172,7 @@ static void __init mach_ccw9p9215js_init_machine(void)
 	ns9xxx_add_device_cc9p9215_eth();
 
 	/* 802.11 */
-#ifdef CONFIG_DIGI_PIPER_WIFI
-	ns9xxx_add_device_ccw9p9215_wifi();
-#endif
+	ns9xxx_add_device_ccw9p9215_wifi(&ccw9p9215_piper_pdata);
 
 	/* SPI */
 #ifdef CONFIG_CC9P9215JS_SPI
@@ -186,6 +224,9 @@ static void __init mach_ccw9p9215js_init_machine(void)
 MACHINE_START(CCW9P9215JS, "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard")
 	.map_io = ns921x_map_io,
 	.init_irq = ns9xxx_init_irq,
+#if defined(CONFIG_DIGI_PIPER_WIFI)
+	.fixup = ccw9p9215js_fixup,
+#endif
 	.init_machine = mach_ccw9p9215js_init_machine,
 	.timer = &ns921x_timer,
 	.boot_params = 0x100,

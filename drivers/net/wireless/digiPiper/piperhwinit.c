@@ -281,6 +281,9 @@ static void setMacAddress(struct piper_priv *piper)
  */
 static void clearReset(void)
 {
+/* TODO use the platform information */      
+#define PIPER_RESET_GPIO	92
+
     /*
      * Set the GPIO pin high to take Piper out of reset.
      */
