@@ -14,6 +14,7 @@
 #include <linux/module.h>
 #include <linux/kthread.h>
 #include <linux/timer.h>
+#include <net/piper_pdata.h>
 
 #include "pipermain.h"
 #include "mac.h"
