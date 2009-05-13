@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <asm/gpio.h>
 #include <linux/timer.h>
+#include <net/piper_pdata.h>
 
 #include "pipermain.h"
 #include "mac.h"
@@ -27,10 +28,10 @@
 #include "airohaCalibration.h"
 
 
+
+
 #define	DRIVER_VERSION	"0.1"
 
-#define MAC_REG_BASE	(0x70000000)		/* Register base address*/
-#define MAC_REG_SIZE    (0x100)             /* range of MAC registers*/
 #define MAC_CTRL_BASE   (volatile unsigned int *) (MAC_REG_BASE + (0x40))
 
 
@@ -40,15 +41,12 @@
 
 
 
-static struct piper_priv *localCopyDigi = NULL;
-
-
-static void clearIrqMaskBit(struct piper_priv *digi, unsigned int bits) 
+static void clearIrqMaskBit(struct piper_priv *digi, unsigned int bits)
 {
     digi->write_reg(digi, BB_IRQ_MASK, ~bits, op_and);
 }
 
-static void setIrqMaskBit(struct piper_priv *digi, unsigned int bits) 
+static void setIrqMaskBit(struct piper_priv *digi, unsigned int bits)
 {
     digi->write_reg(digi, BB_IRQ_MASK, bits, op_or);
 }
@@ -56,7 +54,7 @@ static void setIrqMaskBit(struct piper_priv *digi, unsigned int bits)
 
 
 /*
- * Generate a random number.  
+ * Generate a random number.
  */
 static int myrand(void) {
 /* RAND_MAX assumed to be 32767 */
@@ -125,7 +123,7 @@ static int init_rx_tx(struct piper_priv *digi)
 
     tasklet_init(&digi->rxTasklet, digiWifiRxTaskletEntry, (unsigned long) digi);
     tasklet_disable(&digi->rxTasklet);
-    
+
     digi->txPacket = NULL;
     tasklet_init(&digi->txRetryTasklet, digiWifiTxRetryTaskletEntry, (unsigned long) digi);
     tasklet_disable(&digi->txRetryTasklet);
@@ -151,7 +149,7 @@ static void free_rx_tx(struct piper_priv *digi)
 static int initHw(struct piper_priv *digi, enum ieee80211_band band)
 {
     int result = 0;
-    
+
 	digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_INIT, op_write);
 
 #if (TRANSCEIVER == RF_AIROHA_7230)
@@ -159,46 +157,46 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
         if (band == IEEE80211_BAND_2GHZ)
         {
             digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
-            digi->write_reg(digi, BB_TRACK_CONTROL, 
+            digi->write_reg(digi, BB_TRACK_CONTROL,
                             0xff00ffff, op_and);
-            digi->write_reg(digi, BB_TRACK_CONTROL, 
+            digi->write_reg(digi, BB_TRACK_CONTROL,
                             TRACK_BG_BAND, op_or);
             digi_dbg("initHw Initialized for band B / BG\n");
         }
         else
         {
             digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_50GHZ, op_write);
-            digi->write_reg(digi, BB_TRACK_CONTROL, 
+            digi->write_reg(digi, BB_TRACK_CONTROL,
                             0xff00ffff, op_and);
-            digi->write_reg(digi, BB_TRACK_CONTROL, 
+            digi->write_reg(digi, BB_TRACK_CONTROL,
                             TRACK_5150_5350_A_BAND, op_or);
             digi_dbg("initHw Initialized for band A\n");
         }
-        
+
         digi->write_reg(digi, BB_CONF_2, 0x08329AD4, op_write);
- 
-        /* Initialize the SPI word length */	
+
+        /* Initialize the SPI word length */
         digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA, op_write);
 #elif (TRANSCEIVER == RF_AIROHA_2236)
 
         /* Initialize baseband general control register */
         digi->write_reg(digi, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
-      
+
         digi->write_reg(digi, BB_CONF_2, 0x08329AD4, op_write);
-        
-        digi->write_reg(digi, BB_TRACK_CONTROL, 
+
+        digi->write_reg(digi, BB_TRACK_CONTROL,
                         0xff00ffff, op_and);
-        digi->write_reg(digi, BB_TRACK_CONTROL, 
+        digi->write_reg(digi, BB_TRACK_CONTROL,
                         TRACK_BG_BAND, op_or);
-      
-        /* Initialize the SPI word length */	   
+
+        /* Initialize the SPI word length */
         digi->write_reg(digi, BB_SPI_CTRL, SPI_INIT_AIROHA2236, op_write);
 #endif
     // Clear the Interrupt Mask Register before enabling external interrupts.
     // Also clear out any status bits in the Interrupt Status Register.
     digi->write_reg(digi, BB_IRQ_MASK, 0, op_write);
     digi->write_reg(digi, BB_IRQ_STAT, 0xff, op_write);
-    
+
     /*
      * If this firmware supports additional MAC addresses.
      */
@@ -209,7 +207,7 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
         /*
          * Clear registers that hold extra addresses.
          */
-        
+
         digi->write_reg(digi, MAC_STA2_ID0, 0, op_write);
         digi->write_reg(digi, MAC_STA2_ID1, 0, op_write);
         digi->write_reg(digi, MAC_STA3_ID0, 0, op_write);
@@ -219,28 +217,28 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
  * TODO:  Set this register programatically.
  */
 /****/ digi->write_reg(digi, MAC_DTIM_PERIOD, 0x0, op_write);
-    
+
     /*
      * Note that antenna diversity will be set by hw_start, which is the
      * caller of this function.
      */
-     
+
     // reset RX and TX FIFOs
-    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST 
+    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST
                                     | BB_GENERAL_CTL_TXFIFORST, op_or);
-    digi->write_reg(digi, BB_GENERAL_CTL, ~(BB_GENERAL_CTL_RXFIFORST 
+    digi->write_reg(digi, BB_GENERAL_CTL, ~(BB_GENERAL_CTL_RXFIFORST
                                             | BB_GENERAL_CTL_TXFIFORST), op_and);
 
-    digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C, op_write);  
-        
+    digi->write_reg(digi, BB_TRACK_CONTROL, 0xC043002C, op_write);
+
     /* Initialize RF transceiver */
     digi->rf->init(digi->hw, band);
     digi->write_reg(digi, BB_OUTPUT_CONTROL, 0x04000001, op_or);
 /****/ digi->write_reg(digi, MAC_CFP_ATIM, 0x0, op_write);
-    digi->write_reg(digi, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS 
+    digi->write_reg(digi, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS
                                     | BB_GENERAL_STAT_SPRD_DIS), op_and);
     digi->write_reg(digi, MAC_SSID_LEN, (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK), op_write);
-    
+
     /*
      * Set BSSID to the broadcast address so that we receive all packets.  The stack
      * will set a real BSSID when it's ready.
@@ -252,8 +250,8 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
     initPwrCal();
 #endif
 
-    
-    
+
+
 #ifdef MAC_PS_ENABLED
     PIO_OUTPUT(WLN_PS_CNTRL_PIN);
 #endif
@@ -268,7 +266,7 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
 static void initializeKeys(struct piper_priv *digi)
 {
     unsigned int i;
-    
+
     for (i = 0; i < PIPER_MAX_KEYS; i++)
     {
         digi->key[i].valid = false;
@@ -279,31 +277,51 @@ static void initializeKeys(struct piper_priv *digi)
 static void kickTransmitterTask(unsigned long arg)
 {
     struct piper_priv *digi = (struct piper_priv *) arg;
-    
+
     digi_dbg("Forced ACK\n");
     digiWifiTxDone(digi, RECEIVED_ACK, 0);
 }
 
 
+#ifdef CONFIG_PM
+static int piper_suspend(struct platform_device *dev, pm_message_t state)
+{
+	return 0;
+}
+
+static int piper_resume(struct platform_device *dev)
+{
+	return 0;
+}
+#else
+#define piper_suspend	NULL
+#define piper_resume	NULL
+#endif
+
 static int __init piper_probe(struct platform_device* pdev)
 {
 	int err = 0;
 	struct piper_priv *digi;
-    unsigned int version, status;
-    
+	unsigned int version, status;
+	struct piper_pdata *pdata = pdev->dev.platform_data;
+
+	if (!pdata)
+		return -EINVAL;
+
 	err = digiWifiAllocateHw(&digi, sizeof(*digi));
-	localCopyDigi = digi;
-	if (err) 
+	if (err)
 	{
 		printk(KERN_ERR PIPER_DRIVER_NAME "failed to alloc priv\n");
 		return err;
 	}
+
+	dev_set_drvdata(&pdev->dev, digi);
 	digi->drv_name = PIPER_DRIVER_NAME;
 	digi->txStartCount = 0;
 	digi->txCompleteCount = 0;
 	spin_lock_init(&digi->registerAccessLock);
 	spin_lock_init(&digi->aesLock);
-	
+
 	{
 	    /*
 	     * Create a temporary timer structure named temp so that we can use
@@ -313,7 +331,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	    DEFINE_TIMER(temp, kickTransmitterTask, 0, (unsigned long) digi);
 	    digi->txTimer = temp;
 	}
-	
+
     /*
      * Reserve access to the Piper registers mapped to memory.
      *
@@ -323,37 +341,31 @@ static int __init piper_probe(struct platform_device* pdev)
      */
 #ifdef BUILD_AS_LOADABLE_MODULE
 	err = request_resource(&iomem_resource, &piper_mem);
-	if (err) 
+	if (err)
 	{
 		printk(KERN_INFO "request_resource returned %d", err);
 		printk(KERN_INFO "Memory already in used: 0x%08x...0x%08x",
 				pdev->resource[0].start, pdev->resource[0].end);
 		goto piper_probe_exit;
 	}
-#endif 
+#endif
 	digi->vbase = ioremap(pdev->resource[0].start,
 			pdev[0].resource->end - pdev->resource[0].start);
 	printk(KERN_INFO "digi->vbase = 0x%p\n", digi->vbase);
-	
-	if (NULL == digi->vbase) 
+
+	if (NULL == digi->vbase)
 	{
         ERROR("ioremap failed");
         err = -ENOMEM;
         goto error_remap;
     }
-    
-	if (gpio_request(PIPER_RESET_GPIO, PIPER_DRIVER_NAME) != 0) 
-	{
-		ERROR("PIPER_RESET_GPIO already in use");
-		goto resetGpioInuse;
-	}
-	
+
     /*
      * Besides loading the Piper firmware, this function also sets the
      * MAC address and loads it into digi->hw->wiphy->perm_addr.
      */
     piper_load_firmware(digi);
-    
+
     init_rx_tx(digi);
 
     initializeKeys(digi);
@@ -365,10 +377,10 @@ static int __init piper_probe(struct platform_device* pdev)
 	digi->load_beacon = load_beacon;
     digi->myrand = myrand;
     digi->getNextBeaconBackoff = getNextBeaconBackoff;
-    
+
     version =digi->read_reg(digi, BB_VERSION);
     status = digi->read_reg(digi, BB_GENERAL_STAT);
-    
+
     digi_dbg("Piper firmware version = 0x%8.8X, status = 0x%8.8X\n", version, status);
 
     digi->irq = pdev->resource[1].start;
@@ -376,9 +388,10 @@ static int __init piper_probe(struct platform_device* pdev)
     digi->beacon.loaded = false;
     digi->beacon.enabled = false;
     digi->beacon.weSentLastOne = false;
-	err = request_irq(digi->irq, digiWifiIsr, 0, PIPER_DRIVER_NAME,
+
+	err = request_irq(digi->irq, digiWifiIsr, IRQF_TRIGGER_HIGH, PIPER_DRIVER_NAME,
 			digi);
-	if (err) 
+	if (err)
 	{
 		printk(KERN_ERR PIPER_DRIVER_NAME "register interrupt %d failed, err %d", digi->irq, err);
 		goto error_irq;
@@ -387,17 +400,14 @@ static int __init piper_probe(struct platform_device* pdev)
 	{
 	    printk(KERN_INFO PIPER_DRIVER_NAME " IRQ %d installed.\n", digi->irq);
 	}
+
 	disable_irq(digi->irq);
 
-	if (gpio_request(PIPER_IRQ_GPIO, PIPER_DRIVER_NAME) != 0) 
-	{
-		ERROR("PIPER_IRQ_GPIO already in use");
-		goto irqGpioInuse;
-	}
-	
-    gpio_configure_ns921x(PIPER_IRQ_GPIO, NS921X_GPIO_INPUT, NS921X_GPIO_DONT_INVERT, 
-		                NS921X_GPIO_FUNC_2, NS921X_GPIO_ENABLE_PULLUP);
-		                
+	/* TODO move this to platform code*/
+	gpio_configure_ns921x(pdata->irq_gpio, NS921X_GPIO_INPUT,
+			      NS921X_GPIO_DONT_INVERT, NS921X_GPIO_FUNC_2,
+			      NS921X_GPIO_ENABLE_PULLUP);
+
 	err = digiWifiRegisterHw(digi, &pdev->dev, &al7230_rf_ops);
 	if (err) {
 		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv\n");
@@ -411,14 +421,10 @@ static int __init piper_probe(struct platform_device* pdev)
 	goto piper_probe_exit;
 
 
-do_free_rx:    
+do_free_rx:
     free_rx_tx(digi);
-irqGpioInuse:
-    gpio_free(PIPER_IRQ_GPIO);
 error_irq:
-    free_irq(pdev->resource[1].start, digi);    
-resetGpioInuse:
-    gpio_free(PIPER_RESET_GPIO);
+    free_irq(pdev->resource[1].start, digi);
     iounmap(digi->vbase);
     digi->vbase = NULL;
 error_remap:
@@ -428,78 +434,37 @@ piper_probe_exit:
 }
 
 
-static int piper_remove(struct platform_device *dev)
+static int piper_remove(struct platform_device *pdev)
 {
-#if 0
-    /* TODO:  Figure out why this doesn't work and get rid of localCopyDigi */
-    struct piper_priv *digi = platform_get_drvdata(dev);
-#else
-    struct piper_priv *digi;
-    
-    digi = localCopyDigi;
-#endif
+	struct piper_priv *digi;
+
+	digi = dev_get_drvdata(&pdev->dev);
+
     printk(KERN_INFO "piper_remove called\n");
     printk(KERN_INFO "digi = 0x%p\n", digi);
 
     /* extern void enable_irq(unsigned int irq); */
     digiWifiUnregisterHw(digi);
-	disable_irq(dev->resource[1].start);
+	disable_irq(pdev->resource[1].start);
     clearIrqMaskBit(digi, 0xffffffff);
-    free_irq(dev->resource[1].start, digi);
+    free_irq(pdev->resource[1].start, digi);
     free_rx_tx(digi);
-    gpio_free(PIPER_IRQ_GPIO);
-    gpio_free(PIPER_RESET_GPIO);
-    release_resource(dev->resource);
+    release_resource(pdev->resource);
     printk(KERN_INFO "piper_remove release_resource() has returned\n");
-	digiWifiFreeHw(digi); 
-    
+	digiWifiFreeHw(digi);
+
     printk(KERN_INFO "piper_remove returning\n");
     return 0;
 }
 
 
-static void piper_release_device(struct device* dev)
-{
-	/* nothing to do. But we need a !NULL function */
-}
-
-
-
-
-/* define the resources the driver will use */
-/* This structure must match piper_resources in ns921x_devices.c*/
-static struct resource piper_resources[] = 
-{
-    {
-    	.name  = PIPER_DRIVER_NAME,
-    	.start = MAC_REG_BASE,
-    	.end   = MAC_REG_BASE + MAC_REG_SIZE,
-    	.flags = IORESOURCE_MEM,
-    }, 
-    {
-		.start	= IRQ_NS9XXX_EXT0,
-		.flags	= IORESOURCE_IRQ,
-    }
-};
-
-/* describes the device */
-static struct platform_device piper_device = {
-	.id     = -1,
-	.name   = PIPER_DRIVER_NAME,/* must be equal to platform-driver.driver.name*/
-    .num_resources = ARRAY_SIZE(piper_resources),
-	.resource = piper_resources,
-	.dev = {
-		.release = piper_release_device,
-	},
-};
-
 /* describes the driver */
 static struct platform_driver piper_driver = {
-	.probe  = piper_probe,
-	.remove = piper_remove,
-	.suspend = NULL,
-	.resume = NULL,
-	.driver = {
+	.probe		= piper_probe,
+	.remove		= piper_remove,
+	.suspend 	= piper_suspend,
+	.resume		= piper_resume,
+	.driver 	= {
 		.name  = PIPER_DRIVER_NAME,
 		.owner = THIS_MODULE,
 	},
@@ -507,34 +472,13 @@ static struct platform_driver piper_driver = {
 
 static int __init piper_init_module(void)
 {
-	int err;
-
-#ifdef BUILD_AS_LOADABLE_MODULE
-    err = platform_device_register(&piper_device);
-    if (err) {
-            printk(KERN_ALERT "Device Register Failed, error = %d\n", err);
-            goto error;
-    }
-#endif
-    err = platform_driver_register(&piper_driver);
-    if (err) {
-            printk(KERN_ALERT "Driver Register Failed, error = %d\n", err);
-            goto error;
-    }
-
-    return 0;
-
-error:
-    return err;
+	return platform_driver_register(&piper_driver);
 }
 
 static void __exit piper_exit_module(void)
 {
-    platform_driver_unregister(&piper_driver);
-    platform_device_unregister(&piper_device);
+	platform_driver_unregister(&piper_driver);
 }
-
-
 
 module_init(piper_init_module);
 module_exit(piper_exit_module);
