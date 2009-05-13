@@ -138,6 +138,7 @@ struct piper_priv {
     spinlock_t aesLock;
     
 	struct ieee80211_hw *hw;
+	struct piper_pdata *pdata;
 	const char *drv_name;
 
 	int (*write_reg)(struct piper_priv *, uint8_t reg, uint32_t val, piperRegisterWriteOperation_t op);

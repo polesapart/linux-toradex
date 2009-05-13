@@ -316,6 +316,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	}
 
 	dev_set_drvdata(&pdev->dev, digi);
+	digi->pdata = pdata;
 	digi->drv_name = PIPER_DRIVER_NAME;
 	digi->txStartCount = 0;
 	digi->txCompleteCount = 0;
