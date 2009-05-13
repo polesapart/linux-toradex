@@ -248,8 +248,9 @@ static int initHw(struct piper_priv *digi, enum ieee80211_band band)
     digi->write_reg(digi, MAC_BSS_ID0, 0xffffffff, op_write);
     digi->write_reg(digi, MAC_BSS_ID1, 0xffffffff, op_write);
 
-#ifdef AIROHA_PWR_CALIBRATION
-    initPwrCal();
+#if WANT_AIROHA_CALIBRATION
+    digi_dbg("Calling digiWifiInitCalibration()\n");
+    digiWifiInitCalibration(digi);
 #endif
 
     
@@ -404,9 +405,6 @@ static int __init piper_probe(struct platform_device* pdev)
 		goto do_free_rx;
 	}
 
-#if WANT_AIROHA_CALIBRATION
-    digiWifiInitCalibration(digi);
-#endif
 
 	goto piper_probe_exit;
 

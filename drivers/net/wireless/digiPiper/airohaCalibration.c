@@ -25,6 +25,11 @@
 #define MAX_ALLOWED_ADC_ERROR           (200)           /* TODO: come up with a rational value for this */
 #define POWER_INDEX_STEP                (10)            /* TODO: come up with a rational value for this */
 
+
+#define CONVERT_TO_MILLI_DBM(x)         (1000 * x)      /* power levels are dBm externally, but mdBm internally */
+
+
+
 /*
  * Events we will wait for, also return values for waitForEvent().
  */
@@ -46,7 +51,14 @@ enum
     POWER_INDEX
 };
 
-
+#ifdef DEBUG
+static const char *fieldDescription[] =
+{
+    "OUT_POWER",
+    "ADC_VAL",
+    "POWER_INDEX"
+};
+#endif
 
 /*
  * States for the auto calibration thread.
@@ -58,7 +70,14 @@ enum
     RECALIBRATE_STATE
 };
 
-
+#ifdef DEBUG
+static const char *stateText[] =
+{
+    "RESTART_STATE",
+    "COLLECT_SAMPLES_STATE",
+    "RECALIBRATE_STATE"
+};
+#endif
 
 
 /*
@@ -238,7 +257,7 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
 	int result = TIMED_OUT_EVENT;
 	                                    
     ccode = wait_event_interruptible_timeout(waitQueue, 
-                                             ALL_EVENTS_TO_WAIT_FOR(eventToWaitFor),
+                                             ((calibration.events & ALL_EVENTS_TO_WAIT_FOR(eventToWaitFor)) != 0),
                                              timeout);
                                              
     spin_lock_irqsave(&calibration.lock, spinlockFlags);
@@ -259,6 +278,10 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
     else if (event & eventToWaitFor)
     {
         result = (event & eventToWaitFor);
+    }
+    else
+    {
+        result = TIMED_OUT_EVENT;
     }
         
     return result;
@@ -292,6 +315,11 @@ static unsigned fieldAbs(wcd_point_t *p1, int value, int field)
 }
 
 
+static void printPoint(wcd_point_t *p)
+{
+    printk("(%d, %d, %d)", p->out_power, p->adc_val, p->power_index);
+}
+
 /*
  * This routine finds the closest pair of points in a calibration curve.
  *
@@ -301,41 +329,55 @@ static unsigned fieldAbs(wcd_point_t *p1, int value, int field)
  *      p2          storage for another point
  *      field       tells us which field in the point struct to compare
  */
-static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t *p1, wcd_point_t *p2, int field)
+static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t **p1, wcd_point_t **p2, int field)
 {
     unsigned int idx;
     wcd_point_t *temp;
+
+    digi_dbg("Searching for the points closest to %d %s.\n", value, fieldDescription[field]);
+    digi_dbg("Examining these points on the curve:\n");
+    digi_dbg("   ");
+    for (idx = 0; idx < calibration.nvram.header.numcalpoints; idx++)
+    {
+        printPoint(&curve->points[idx]);
+    }
+    printk("\n");
     
-    p1 = &curve->points[0];
+    *p1 = &curve->points[0];
     
     for (idx = 1; idx < calibration.nvram.header.numcalpoints; idx++)
     {
-        if (fieldAbs(p1, value, field) > fieldAbs(&curve->points[idx], value, field))
+        if (fieldAbs(*p1, value, field) > fieldAbs(&curve->points[idx], value, field))
         {
-            p1 = &curve->points[idx];
+            *p1 = &curve->points[idx];
         }
     }
-    
-    if (p1 == &curve->points[0])
+    digi_dbg("p1 set to ");
+    printPoint(*p1);
+    printk("\n");
+    if (*p1 == &curve->points[0])
     {
-        p2 = &curve->points[1];
+        *p2 = &curve->points[1];
     }
     else
     {
-        p2 = &curve->points[0];
+        *p2 = &curve->points[0];
     }
     
     for (idx = 0; idx < calibration.nvram.header.numcalpoints; idx++)
     {
-        if ((p1 != &curve->points[idx]) && (p2 != &curve->points[idx]))
+        if ((*p1 != &curve->points[idx]) && (*p2 != &curve->points[idx]))
         {
-            if (fieldAbs(p2, value, field) > fieldAbs(&curve->points[idx], value, field))
+            if (fieldAbs(*p2, value, field) > fieldAbs(&curve->points[idx], value, field))
             {
-                p2 = &curve->points[idx];
+                *p2 = &curve->points[idx];
             }
         }
     }
 
+    digi_dbg("p2 set to ");
+    printPoint(*p2);
+    printk("\n");
     /*
      * Make sure p1 is before p2.  Swap them if necessary.
      *
@@ -345,32 +387,49 @@ static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t *p1, wc
     switch (field)
     {
         case OUT_POWER:
-            if (p1->out_power > p2->out_power)
+            if ((*p1)->out_power > (*p2)->out_power)
             {
-                temp = p2;
-                p2 = p1;
-                p1 = temp;
+                temp = *p2;
+                *p2 = *p1;
+                *p1 = temp;
             }
             break;
         case ADC_VAL:
-            if (p1->adc_val > p2->adc_val)
+            if ((*p1)->adc_val > (*p2)->adc_val)
             {
-                temp = p2;
-                p2 = p1;
-                p1 = temp;
+                temp = *p2;
+                *p2 = *p1;
+                *p1 = temp;
             }
             break;
         case POWER_INDEX:
-            if (p1->power_index > p2->power_index)
+            if ((*p1)->power_index > (*p2)->power_index)
             {
-                temp = p2;
-                p2 = p1;
-                p1 = temp;
+                temp = *p2;
+                *p2 = *p1;
+                *p1 = temp;
             }
             break;
         default:
             digi_dbg("Unknown field type %d.\n", field);
     }
+    
+#ifdef DEBUG
+    switch (field)
+    {
+        case OUT_POWER:
+            digi_dbg("Found points %d and %d.\n", (*p1)->out_power, (*p2)->out_power);
+            break;
+        case ADC_VAL:
+            digi_dbg("Found points %d and %d.\n", (*p1)->adc_val, (*p2)->adc_val);
+            break;
+        case POWER_INDEX:
+            digi_dbg("Found points %d and %d.\n", (*p1)->power_index, (*p2)->power_index);
+            break;
+        default:
+            digi_dbg("Unknown field type %d.\n", field);
+    }
+#endif
 }
 
 
@@ -389,7 +448,9 @@ static int computeSlope(wcd_point_t *p1, wcd_point_t *p2, int slopeType)
             digi_dbg("Unexpected slope type %d.\n", slopeType);
             break;
         case POWER_INDEX_OVER_OUT_POWER:
+            digi_dbg("Finding slope between (%d, %d) and (%d, %d)\n", p1->power_index, p1->out_power, p2->power_index, p2->out_power);
             divisor = (p2->out_power - p1->out_power);
+            digi_dbg("divisor = %d\n", divisor);
             if (divisor != 0)
             {
                 slope = ((p2->power_index - p1->power_index) + (divisor / 2))/(p2->out_power - p1->out_power);
@@ -400,7 +461,9 @@ static int computeSlope(wcd_point_t *p1, wcd_point_t *p2, int slopeType)
             }
             break;
         case ADC_OVER_OUT_POWER:
+            digi_dbg("Finding slope between (%d, %d) and (%d, %d)\n", p1->power_index, p1->adc_val, p2->power_index, p2->adc_val);
             divisor = (p2->out_power - p1->out_power);
+            digi_dbg("divisor = %d\n", divisor);
             if (divisor != 0)
             {
                 slope = ((p2->adc_val - p1->adc_val) + (divisor / 2))/(p2->out_power - p1->out_power);
@@ -412,6 +475,7 @@ static int computeSlope(wcd_point_t *p1, wcd_point_t *p2, int slopeType)
             break;
     }
     
+    digi_dbg("slope = %d.\n", slope);
     return slope;
 }
 
@@ -436,13 +500,16 @@ static int computeY(wcd_point_t *p1, int slope, int x, int slopeType)
             digi_dbg("Unexpected slope type %d.\n", slopeType);
             break;
         case POWER_INDEX_OVER_OUT_POWER:
+            digi_dbg("Computing Y where p1 = (%d, %d), slope = %d, and x = %d.\n", p1->power_index, p1->out_power, slope, x);
             y = (slope*x) - (slope*p1->out_power) + p1->power_index;
             break;
         case ADC_OVER_OUT_POWER:
+            digi_dbg("Computing Y where p1 = (%d, %d), slope = %d, and x = %d.\n", p1->adc_val, p1->out_power, slope, x);
             y = (slope*x) - (slope*p1->out_power) + p1->adc_val;
             break;
     }
     
+    digi_dbg("(x,y) = (%d, %d)\n", x, y);
     return y;
 }
     
@@ -457,16 +524,19 @@ static wcd_curve_t *determineCurve(struct piper_priv *digi)
     {
         if (rates & MAC_PSK_BRS_MASK)
         {
-            curve = &calibration.nvram.cal_curves_bg[digi->channel - 1][WCD_B_CURVE_INDEX];
+            digi_dbg("Using bg curve [%d][%d]\n", digi->channel, WCD_B_CURVE_INDEX);
+            curve = &calibration.nvram.cal_curves_bg[digi->channel][WCD_B_CURVE_INDEX];
         }
         else /* if associated with AP that only supports G rates */
         {
-            curve = &calibration.nvram.cal_curves_bg[digi->channel - 1][WCD_G_CURVE_INDEX];
+            digi_dbg("Using bg curve [%d][%d]\n", digi->channel, WCD_G_CURVE_INDEX);
+            curve = &calibration.nvram.cal_curves_bg[digi->channel][WCD_G_CURVE_INDEX];
         }
     }
     else
     {
         curve = &calibration.nvram.cal_curves_a[digi->channel - BAND_A_OFFSET];
+        digi_dbg("Using A curve [%d]\n", digi->channel - BAND_A_OFFSET);
     }
     
     return curve;
@@ -480,21 +550,24 @@ static wcd_curve_t *determineCurve(struct piper_priv *digi)
  */
 static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
 {
-    wcd_point_t p1, p2;
+    wcd_point_t *p1, *p2;
     
+    digi_dbg("Setting initial powerlevel %d milli dBm.\n", mdBm);
     calibration.curve = determineCurve(digi);
     findClosestPoints(calibration.curve, mdBm, &p1, &p2, OUT_POWER);
-    calibration.slope = computeSlope(&p1, &p2, POWER_INDEX_OVER_OUT_POWER);
-    calibration.powerIndex = computeY(&p1, calibration.slope, mdBm, POWER_INDEX_OVER_OUT_POWER);
+    calibration.slope = computeSlope(p1, p2, POWER_INDEX_OVER_OUT_POWER);
+    calibration.powerIndex = computeY(p1, calibration.slope, mdBm, POWER_INDEX_OVER_OUT_POWER);
     
+    digi_dbg("Computed power index = %d.\n", calibration.powerIndex);
     digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
     
     /*
      * Let's compute and save the expected ADC value while we have all the necessary 
      * information handy.
      */
-    calibration.adcSlope = computeSlope(&p1, &p2, ADC_OVER_OUT_POWER);
-    calibration.expectedAdc = computeY(&p1, calibration.adcSlope, mdBm, ADC_OVER_OUT_POWER);
+    calibration.adcSlope = computeSlope(p1, p2, ADC_OVER_OUT_POWER);
+    calibration.expectedAdc = computeY(p1, calibration.adcSlope, mdBm, ADC_OVER_OUT_POWER);
+    digi_dbg("Expected ADC = %d.\n", calibration.expectedAdc);
 }
 
 
@@ -689,29 +762,34 @@ static int digiWifiCalibrationThreadEntry(void *data)
         ssleep(10);
         if (digiWifiInitAdc(digi) == 0)
         {
+            digi_dbg("ADC driver loaded...\n");
             break;
         }
+        digi_dbg("Will try to load ADC driver again...\n");
     }
     
     while (getCalibrationData() == -1)
     {
+        digi_dbg("getCalibrationData() failed.  Will try again in 60 seconds.\n");
         ssleep(60);
     }
     digi->rf->set_pwr = setNewPowerLevel;
 
     calibration.state = RESTART_STATE;
     
+    digi_dbg("Starting autocalibration state machine.\n");
     while (1)
     {
         int ccode;
         
+        digi_dbg("Calibration state = %s.\n", stateText[calibration.state]);
         switch (calibration.state)
         {
             case RESTART_STATE:
-                setInitialPowerLevel(digi, digi->tx_power);
+                setInitialPowerLevel(digi, CONVERT_TO_MILLI_DBM(digi->tx_power));
                 /* Fall through is intended operation */
             case COLLECT_SAMPLES_STATE:
-#define SAMPLE_TIMEOUT      (HZ * 5)            /* TODO: What is a good sample timeout?  Do we need one? */
+#define SAMPLE_TIMEOUT      (HZ * 1)            /* TODO: What is a good sample timeout?  Do we need one? */
                 startSampleCollection(digi);
                 calibration.state = RECALIBRATE_STATE;
                 ccode = waitForEvent(SAMPLE_TIMEOUT, SAMPLES_DONE_EVENT);
@@ -730,15 +808,24 @@ static int digiWifiCalibrationThreadEntry(void *data)
                 break;
         }
 
-            
         if (ccode == SHUTDOWN_AUTOCALIBRATION_EVENT)
         {
+            digi_dbg("Received SHUTDOWN_AUTOCALIBRATION_EVENT\n");
             break;
         }
         else if (ccode == RESTART_AUTOCALIBRATION_EVENT)
         {
+            digi_dbg("Received RESTART_AUTOCALIBRATION_EVENT\n");
             calibration.state = RESTART_STATE;
             break;
+        }
+        else if (ccode == TIMED_OUT_EVENT)
+        {
+            digi_dbg("Timed out.\n");
+            if (calibration.state == RECALIBRATE_STATE)
+            {
+                calibration.state = COLLECT_SAMPLES_STATE;
+            }
         }
     }
     
