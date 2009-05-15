@@ -263,17 +263,31 @@ static void resetMac(struct piper_priv *piper)
  */
 static void setMacAddress(struct piper_priv *piper)
 {
-	/* This default MAC Addr is reserved by FS Forth-Systeme for the case of
-	   EEPROM failures */
-	unsigned char aucMACAddr[ 6 ] =  { 0x00,0x04,0xf3,0x00,0x43,0x35 };
-
-    memcpy(piper->hw->wiphy->perm_addr, aucMACAddr, sizeof(piper->hw->wiphy->perm_addr));
+    unsigned char macAddress[6] = {0x00, 0x04, 0xf3, 0x00, 0x43, 0x35};
+    
+    if (((piper->pdata->macaddr[0] & 1) == 0) 
+        && ((piper->pdata->macaddr[0] | piper->pdata->macaddr[1] | piper->pdata->macaddr[2]
+             | piper->pdata->macaddr[3] | piper->pdata->macaddr[4] | piper->pdata->macaddr[5])
+             != 0))
+    {
+        memcpy (macAddress, piper->pdata->macaddr, sizeof(macAddress));
+    }
+    else
+    {
+        digi_dbg("Invalid MAC address set in NVRAM.  Using default MAC address.\n");
+    }
+    memcpy(piper->hw->wiphy->perm_addr, macAddress, sizeof(piper->hw->wiphy->perm_addr));
 
         /* configure ethernet address */
-    iowrite32(aucMACAddr[ 3 ] | aucMACAddr[ 2 ] << 8 | aucMACAddr[ 1 ] << 16 | aucMACAddr[ 0 ] << 24,
+    iowrite32(macAddress[ 3 ] | macAddress[ 2 ] << 8 | macAddress[ 1 ] << 16 | macAddress[ 0 ] << 24,
                 piper->vbase + MAC_STA_ID0);
-    iowrite32(aucMACAddr[ 5 ] << 16 | aucMACAddr[ 4 ] << 24,
+    iowrite32(macAddress[ 5 ] << 16 | macAddress[ 4 ] << 24,
                 piper->vbase + MAC_STA_ID1);
+#if 0
+    digi_dbg("MAC address set to %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n", macAddress[0],
+             macAddress[1], macAddress[2], macAddress[3], 
+             macAddress[4], macAddress[5]);
+#endif
 }
 
 /*

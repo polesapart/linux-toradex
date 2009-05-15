@@ -574,10 +574,6 @@ void digiWifiTxRetryTaskletEntry (unsigned long context)
         	 */
         	err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,  
         	                      op_and); 
-        	if (digi->txTransmitStarted)
-        	{
-        	    digi->txTransmitStarted(digi);
-        	}
 
 	        /*
 	         * Set interrupt flags.  Use the timeout interrupt if we expect

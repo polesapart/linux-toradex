@@ -147,7 +147,6 @@ int digiWifiInitAdc(struct piper_priv *digi)
     if (needToGetAdapter)
     {
         adapter = i2c_get_adapter(0);
-        printk(KERN_ALERT "****************i2c_get_adapter(0) returned 0x%p\n", adapter);
         needToGetAdapter = (adapter == NULL);
     }
     
@@ -155,7 +154,6 @@ int digiWifiInitAdc(struct piper_priv *digi)
     {
         digi->adcI2cClient = i2c_new_device(adapter, 
                             &board_info);
-        printk("i2c_new_device returned 0x%p\n", digi->adcI2cClient);
         if (digi->adcI2cClient != NULL)
         {
             adcInitializeHw(digi);

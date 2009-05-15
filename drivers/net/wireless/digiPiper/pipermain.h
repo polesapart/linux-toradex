@@ -168,7 +168,6 @@ struct piper_priv {
 	void (*adcClearPeak)(struct piper_priv *digi);
 	u16 (*adcReadLastValue)(struct piper_priv *digi);
 	void (*adcShutdown)(struct piper_priv *digi);
-    void (*txTransmitStarted)(struct piper_priv *digi);
     void (*txTransmitFinished)(struct piper_priv *digi);
     struct ieee80211_rate *calibrationTxRate;
 };
