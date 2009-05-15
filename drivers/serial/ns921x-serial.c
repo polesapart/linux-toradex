@@ -59,6 +59,7 @@
 #define UART_WC		0x1000
 #define UART_WC_RXEN		(1 << 30)
 #define UART_WC_TXEN		(1 << 29)
+#define UART_WC_RTSEN		(1 << 19)
 #define UART_WC_RXFLUSH		(1 << 17)
 #define UART_WC_TXFLUSH		(1 << 16)
 #define UART_WC_TXFLOW_CHAR	(1 << 11)
@@ -765,6 +766,7 @@ static int ns921x_uart_startup(struct uart_port *port)
 	struct uart_ns921x_port *unp = up2unp(port);
 	int ret;
 	u32 rxic;
+	u32 wc;
 
 	unp->flags = 0;
 
@@ -792,7 +794,10 @@ err_clkenable:
 	uartwrite32(port, rxic | im2mask(RXTHRESHOLD, HUB_RXIC_RXTHRS)
 			| HUB_RXIC_RXFSRIE, HUB_RXIC);
 
-	uartwrite32(port, UART_WC_RXEN | UART_WC_TXEN, UART_WC);
+	wc = UART_WC_RXEN | UART_WC_TXEN;
+	if (unp->data->rtsen)
+		wc |= UART_WC_RTSEN;
+	uartwrite32(port, wc, UART_WC);
 	uartwrite32(&unp->port, UART_FCR_FIFOEN, UART_FCR);
 
 	return 0;

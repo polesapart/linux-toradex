@@ -247,6 +247,12 @@ choice
 config CC9P9215JS_SERIAL_PORTA_RXTX
 	bool "RX/TX only"
 
+config CC9P9215JS_SERIAL_PORTA_RXTX485
+	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
+	help
+	  This mode enables the RS-485 transceiver control functionality 
+	  of the RTS line in the serial port.
+
 config CC9P9215JS_SERIAL_PORTA_CTSRTSRXTX
 	bool "CTS/RTS/RX/TX"
 
@@ -267,6 +273,12 @@ choice
 
 config CC9P9215JS_SERIAL_PORTB_RXTX
 	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTB_RXTX485
+	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
+	help
+	  This mode enables the RS-485 transceiver control functionality 
+	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX
 	bool "CTS/RTS/RX/TX"
@@ -289,6 +301,12 @@ choice
 config CC9P9215JS_SERIAL_PORTC_RXTX
 	bool "RX/TX only"
 
+config CC9P9215JS_SERIAL_PORTC_RXTX485
+	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
+	help
+	  This mode enables the RS-485 transceiver control functionality 
+	  of the RTS line in the serial port.
+
 config CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX
 	bool "CTS/RTS/RX/TX"
 
@@ -309,6 +327,12 @@ choice
 
 config CC9P9215JS_SERIAL_PORTD_RXTX
 	bool "RX/TX only"
+
+config CC9P9215JS_SERIAL_PORTD_RXTX485
+	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
+	help
+	  This mode enables the RS-485 transceiver control functionality 
+	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX
 	bool "CTS/RTS/RX/TX"
@@ -505,6 +529,12 @@ choice
 
 config CME9210JS_SERIAL_PORTA_RXTX
 	bool "RX/TX only"
+
+config CME9210JS_SERIAL_PORTA_RXTX485
+	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
+	help
+	  This mode enables the RS-485 transceiver control functionality 
+	  of the RTS line in the serial port.
 
 config CME9210JS_SERIAL_PORTA_CTSRTSRXTX
 	bool "CTS/RTS/RX/TX"

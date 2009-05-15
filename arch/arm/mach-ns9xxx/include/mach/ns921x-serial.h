@@ -16,6 +16,7 @@
 struct ns921x_uart_data {
 	unsigned int gpios[8];
 	unsigned int nr_gpios;
+	unsigned int rtsen;	/* RTS for 485 transceiver control */
 };
 
 #endif

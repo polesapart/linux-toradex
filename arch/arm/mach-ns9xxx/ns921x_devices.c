@@ -317,21 +317,27 @@ static struct platform_device ns9xxx_device_ns921x_uartd = {
 	.num_resources	= ARRAY_SIZE(uartd_resources),
 };
 
-int __init uart_register_gpios(int gpio_start, int gpio_nr, int func, unsigned int *gpios)
+int __init uart_register_gpios(int gpio_start, 
+				int gpio_nr, 
+				int func, 
+				struct ns921x_uart_data *data)
 {
 	int i;
 	int gpio[] = { 3, 7, 1, 5, 0, 2, 4, 6 };
 
 	for (i = 0; i < gpio_nr; i++) {
-		if (gpio_request(gpio_start + gpio[i], "ns921x-serial"))
-			goto err;
+		if (i!=2 || !data->rtsen) /* Skip request of CTS line */
+		{
+			if (gpio_request(gpio_start + gpio[i], "ns921x-serial"))
+				goto err;
 #ifdef CONFIG_NS921X_SERIAL_RTS_AS_GPIO
-		if (i==3) /* RTS needs to be used as gpio to allow using AFE */
-			gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, 3, 0);
-		else
+			if (i==3) /* RTS needs to be used as gpio to allow using AFE */
+				gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, 3, 0);
+			else
 #endif
-			gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, func, 0);
-		*gpios++ = gpio_start + gpio[i];
+				gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, func, 0);
+		}
+		data->gpios[i] = gpio_start + gpio[i];
 	}
 
 	return 0;
@@ -346,8 +352,13 @@ void __init ns9xxx_add_device_ns921x_uarta(int gpio_start,
 		int gpio_nr, int func)
 {
 	uarta_data.nr_gpios = gpio_nr;
-
-	if (uart_register_gpios(gpio_start, gpio_nr, func, &uarta_data.gpios[0]))
+#if defined(CONFIG_CC9P9215JS_SERIAL_PORTA_RXTX485) || \
+	defined(CONFIG_CME9210JS_SERIAL_PORTA_RXTX485)
+	uarta_data.rtsen = 1;
+#else
+	uarta_data.rtsen = 0;
+#endif
+	if (uart_register_gpios(gpio_start, gpio_nr, func, &uarta_data))
 		return;
 
 	if (clk_register(&uarta_clk.clk))
@@ -360,8 +371,13 @@ void __init ns9xxx_add_device_ns921x_uartb(int gpio_start,
 		int gpio_nr, int func)
 {
 	uartb_data.nr_gpios = gpio_nr;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTB_RXTX485
+	uartb_data.rtsen = 1;
+#else
+	uartb_data.rtsen = 0;
+#endif
 
-	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartb_data.gpios[0]))
+	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartb_data))
 		return;
 
 	if (clk_register(&uartb_clk.clk))
@@ -374,8 +390,13 @@ void __init ns9xxx_add_device_ns921x_uartc(int gpio_start,
 		int gpio_nr, int func)
 {
 	uartc_data.nr_gpios = gpio_nr;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTC_RXTX485
+	uartc_data.rtsen = 1;
+#else
+	uartc_data.rtsen = 0;
+#endif
 
-	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartc_data.gpios[0]))
+	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartc_data))
 		return;
 
 	if (clk_register(&uartc_clk.clk))
@@ -388,8 +409,13 @@ void __init ns9xxx_add_device_ns921x_uartd(int gpio_start,
 		int gpio_nr, int func)
 {
 	uartd_data.nr_gpios = gpio_nr;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTD_RXTX485
+	uartd_data.rtsen = 1;
+#else
+	uartd_data.rtsen = 0;
+#endif
 
-	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartd_data.gpios[0]))
+	if (uart_register_gpios(gpio_start, gpio_nr, func, &uartd_data))
 		return;
 
 	if (clk_register(&uartd_clk.clk))

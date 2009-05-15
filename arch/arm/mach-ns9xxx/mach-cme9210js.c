@@ -50,7 +50,8 @@ static void __init mach_cme9210js_init_machine(void)
 	/* UART */
 #if defined(CONFIG_CME9210JS_SERIAL_PORTA_RXTX)
 	ns9xxx_add_device_cme9210_uarta_rxtx();
-#elif defined(CONFIG_CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
+#elif defined(CONFIG_CME9210JS_SERIAL_PORTA_CTSRTSRXTX) || \
+	defined(CONFIG_CME9210JS_SERIAL_PORTA_RXTX485)
 	ns9xxx_add_device_cme9210_uarta_ctsrtsrxtx();
 #elif defined(CONFIG_CME9210JS_SERIAL_PORTA_FULL)
 	ns9xxx_add_device_cme9210_uarta_full();
