@@ -36,6 +36,9 @@
 
 #define NVRAM_WCAL_SIGNATURE            "WCALDATA"
 
+#define MINIMUM_POWER_INDEX             (10)
+
+
 /*
  * Events we will wait for, also return values for waitForEvent().
  */
@@ -125,7 +128,7 @@ typedef struct
     int outPowerSlopeTimes1000;
     int powerIndexSlopeTimes1000;
     int expectedAdc;
-    unsigned int powerIndex, correctedPowerIndex;
+    int powerIndex, correctedPowerIndex;
     wcd_point_t *p1;
 } airohaCalibrationData_t;
 
@@ -585,12 +588,13 @@ static void recalibrate(struct piper_priv *digi)
     if (errorInMdbm > MAX_TOLERATED_ERROR_IN_MDBM)
     {
         int correction = computeY(calibration.p1, calibration.powerIndexSlopeTimes1000, 
-                                       (calibration.expectedAdc - errorInAdc), POWER_INDEX_OVER_ADC);
-        correction -= calibration.powerIndex;
+                                       actualAdc/*(calibration.expectedAdc - errorInAdc)*/, POWER_INDEX_OVER_ADC);
+/*        correction -= calibration.powerIndex; */
+        correction = (calibration.powerIndex - correction) / 2;
         calibration.correctedPowerIndex += correction;
-        if (calibration.correctedPowerIndex < 0)
+        if (calibration.correctedPowerIndex < MINIMUM_POWER_INDEX)
         {
-            calibration.correctedPowerIndex = 0;
+            calibration.correctedPowerIndex = MINIMUM_POWER_INDEX;
         }
         else if (calibration.correctedPowerIndex > calibration.curve->max_power_index)
         {
