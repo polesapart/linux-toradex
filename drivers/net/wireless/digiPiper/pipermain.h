@@ -11,7 +11,7 @@
 #define DRV_VERS "0.1"
 
 
-#define DEBUG
+/* #define DEBUG */
 #ifdef DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)

@@ -537,7 +537,9 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
      * Let's compute and save the expected ADC value while we have all the necessary 
      * information handy.
      */
+#ifdef DEBUG
     digi_dbg("Using points "); printPoint(p1); printPoint(p2); printk("\n");
+#endif
     calibration.adcSlopeTimes1000 = computeSlopeTimes1000(p1, p2, ADC_OVER_OUT_POWER);
     calibration.expectedAdc = computeY(calibration.p1, calibration.adcSlopeTimes1000, mdBm, ADC_OVER_OUT_POWER);
     digi_dbg("adcSlopeTimes1000 = %d, expectedAdc = %d\n", calibration.adcSlopeTimes1000, calibration.expectedAdc);
@@ -567,10 +569,14 @@ static void recalibrate(struct piper_priv *digi)
     digi_dbg("Samples: ");
     for (idx = 0; idx < calibration.sampleCount; idx++)
     {
+#ifdef DEBUG
         printk("%d, ", calibration.sample[idx].sample);
+#endif
         actualAdc += calibration.sample[idx].sample;
     }
+#ifdef DEBUG
     printk("\n");
+#endif
     actualAdc = actualAdc / calibration.sampleCount;
     
 #if 1
@@ -615,18 +621,24 @@ static void recalibrate(struct piper_priv *digi)
                 calibration.powerIndex = calibration.curve->max_power_index;
             }
             digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
+#ifdef DEBUG
             printk(" ++ index to %d\n", calibration.powerIndex);
+#endif
         }
         else if (actualAdc > calibration.expectedAdc)
         {
             calibration.powerIndex -= POWER_INDEX_STEP;
             digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
+#ifdef DEBUG
             printk(" -- index to %d\n", calibration.powerIndex);
+#endif
         }
     }
     else
     {
+#ifdef DEBUG
         printk("Leaving power level unchanged.\n");
+#endif
     }
 #endif
 }
