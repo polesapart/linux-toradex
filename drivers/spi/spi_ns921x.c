@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2008 by Digi International Inc.
  * All rights reserved.
+ * (C) Copyright 2009, Emerald Electronics Design, LLC,
+ *		Mark Litwack <mlitwack@employees.org>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
@@ -352,7 +354,16 @@ static void spi_ns921x_next_xfer(struct spi_master *master,
 	tx_dma = xfer->tx_dma;
 	rx_dma = xfer->rx_dma;
 
-	if (rx_dma == INVALID_DMA_ADDRESS) {
+	/* Some drivers (like mmc_spi) set rx_dma=0 if they
+	 * don't need any return data.  If they do this, we
+	 * put the unwanted rx data in rx_dma and hope they
+	 * didn't ask to send more than BUFFER_SIZE (4096)
+	 * bytes.  This is at least better than trashing
+	 * page 0.
+	 *
+	 * - mwl
+	 */
+	if (!rx_dma || rx_dma == INVALID_DMA_ADDRESS) {
 		rx_dma = info->buf_rx_dma;
 		if (len > BUFFER_SIZE)
 			len = BUFFER_SIZE;
@@ -370,6 +381,28 @@ static void spi_ns921x_next_xfer(struct spi_master *master,
 			/* Send undefined data; rx_dma is handy */
 			tx_dma = rx_dma;
 		}
+	}
+
+	/* The IO hub DMA controller doesn't cope well with
+	 * non-aligned rx buffers (and possibly tx too).  On
+	 * rx, at least, it causes the last byte read by the
+	 * peripheral on the *previous* transfer to be
+	 * delivered again if the current transfer is
+	 * unaligned.
+	 *
+	 * For now, just warn about it so someone can fix
+	 * the offending caller when it occurs.  It might
+	 * not be a problem on tx.
+	 *
+	 * - mwl
+	 */
+	if (rx_dma & 0x3) {
+		dev_err(&master->dev, "unaligned rx_dma (=0x%08x, len=%u) - expect problems\n",
+			rx_dma, len);
+	}
+	if (tx_dma & 0x3) {
+		dev_err(&master->dev, "unaligned tx_dma (=0x%08x, len=%u) - possible problems\n",
+			tx_dma, len);
 	}
 
 	/* Setup the DMA channels */
@@ -568,9 +601,13 @@ static irqreturn_t spi_ns921x_irq(int irq, void *dev_id)
 	/* RX interrupt error conditions */
 	rx_status = ioread32(info->ioaddr + DMA_RXIRQCFG);
 	dlen = rx_status & DMA_IRQCFG_BLENSTAT;
-	if (info->dma_xfer_len != dlen)
+
+	/* We need to wait until rx is done before checking
+	 * xfer count. -mwl
+	 */
+	if ((status & DMA_IRQSTAT_RXNCIP) && (info->dma_xfer_len != dlen))
 		/* ?? what to do... ?? */
-		dev_err(&master->dev, "incomplete dma xfer"
+		dev_err(&master->dev, "incomplete rx dma xfer"
 				"(%d/%d bytes transfered) \n",
 				dlen, info->dma_xfer_len);
 
