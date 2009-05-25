@@ -21,6 +21,7 @@
 #include <mach/regs-sys-common.h>
 #include <mach/regs-sys-ns921x.h>
 #include <mach/regs-mem.h>
+#include <net/piper_pdata.h>
 
 #include <video/hx8347fb.h>
 #include <linux/fb.h>
@@ -35,6 +36,51 @@
  * Use newer boards, defined to 0
  */
 #define INT_FIM_BOARD	0	
+
+#if defined(CONFIG_DIGI_PIPER_WIFI)
+
+static struct resource piper_resources[] = {
+	{
+		.start = 0x70000000,
+		.end   = 0x70000000 + 0x100,
+		.flags = IORESOURCE_MEM,
+	}, {
+		.start	= IRQ_NS9XXX_EXT0,
+		.flags	= IORESOURCE_IRQ,
+	}
+};
+
+/* describes the device */
+static struct platform_device piper_device = {
+	.id		= 0,
+	.name		= PIPER_DRIVER_NAME,/* must be equal to platform-driver.driver.name*/
+	.num_resources	= ARRAY_SIZE(piper_resources),
+	.resource	= piper_resources,
+};
+
+void __init ns9xxx_add_device_ccw9p9215_wifi(struct piper_pdata *pdata)
+{
+	if (!pdata)
+		return;
+
+	if (pdata->rst_gpio > 0)
+		gpio_request(pdata->rst_gpio, PIPER_DRIVER_NAME);
+	if (pdata->irq_gpio > 0)
+		gpio_request(pdata->irq_gpio, PIPER_DRIVER_NAME);
+
+#if 0
+	gpio_configure_ns921x(pdata->irq_gpio, NS921X_GPIO_INPUT,
+			      NS921X_GPIO_DONT_INVERT, NS921X_GPIO_FUNC_2,
+			      NS921X_GPIO_ENABLE_PULLUP);
+#endif
+	piper_device.dev.platform_data = pdata;
+
+	platform_device_register(&piper_device);
+}
+
+#else
+void __init ns9xxx_add_device_ccw9p9215_wifi(struct piper_pdata *pdata) {}
+#endif
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)

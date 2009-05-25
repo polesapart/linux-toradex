@@ -34,7 +34,7 @@ static int __init ns9xxx_init_leds(void)
 {
 	int ret;
 
-	if (!module_is_cc9p9215())
+	if (!module_is_cc9p9215() && !module_is_ccw9p9215())
 		return -ENODEV;
 
 	ret = gpio_request(89, "idle led");
