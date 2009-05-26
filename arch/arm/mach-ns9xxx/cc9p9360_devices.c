@@ -143,17 +143,10 @@ void __init ns9xxx_add_device_cc9p9360_uartd_full(void) {}
 #if defined(CONFIG_FB_NS9360) || defined(CONFIG_FB_NS9360_MODULE)
 void __init ns9xxx_add_device_cc9p9360_fb(int power)
 {
-#if defined(NS9360_DISPLAY_EXTCLK)
-	int gpio[] = {15, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30,
-		      31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41};
-	int func[] = { 2,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-		       1,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2};
-#else
 	int gpio[] = {19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30,
 		      31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41};
 	int func[] = { 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
 		       1,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2};
-#endif
 
 	ns9xxx_add_device_ns9360_fb(gpio, ARRAY_SIZE(gpio), func, power);
 }

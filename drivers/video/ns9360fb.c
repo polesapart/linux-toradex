@@ -17,6 +17,7 @@
 
 #include <mach/regs-sys-ns9360.h>
 #include <mach/ns9360fb.h>
+#include <mach/gpio.h>
 
 #define LCD_TIMING(x)	((x) * 4)
 #define LCD_TIMING2_BCD		(1 << 26)
@@ -50,15 +51,22 @@ static void ns9360fb_select_video_clk_src(int source)
 	reset = __raw_readl(SYS_RESET) & ~SYS_RESET_LCDC;
 	__raw_writel(reset, SYS_RESET);
 
-	clock = __raw_readl(SYS_CLOCK) | SYS_CLOCK_LPCSEXT;
-	if (source)
-		clock &= ~SYS_CLOCK_LPCSEXT;
+	clock = __raw_readl(SYS_CLOCK) & ~SYS_CLOCK_LPCSEXT;
+	if (!source) {
+		/* Use external clock */
+		if (!gpio_request(15, "ns9360fb-extclk")) {
+			gpio_configure_ns9360(15, 0, 0, 2);
+			clock |= SYS_CLOCK_LPCSEXT;
+		} else {
+			printk(KERN_ERR DRIVER_NAME
+			       ": unable to request gpio for external video clock\n");
+		}
+	}
 	__raw_writel(clock, SYS_CLOCK);
 
 	reset = __raw_readl(SYS_RESET) | SYS_RESET_LCDC;
 	__raw_writel(reset, SYS_RESET);
 }
-
 
 static int ns9360fb_set_par(struct fb_info *fb)
 {
