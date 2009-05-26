@@ -397,11 +397,11 @@ static void spi_ns921x_next_xfer(struct spi_master *master,
 	 * - mwl
 	 */
 	if (rx_dma & 0x3) {
-		dev_err(&master->dev, "unaligned rx_dma (=0x%08x, len=%u) - expect problems\n",
+		dev_err(&master->dev, "unaligned rx_dma (=0x%08x, len=%u)\n",
 			rx_dma, len);
 	}
 	if (tx_dma & 0x3) {
-		dev_err(&master->dev, "unaligned tx_dma (=0x%08x, len=%u) - possible problems\n",
+		dev_err(&master->dev, "unaligned tx_dma (=0x%08x, len=%u)\n",
 			tx_dma, len);
 	}
 
@@ -602,12 +602,9 @@ static irqreturn_t spi_ns921x_irq(int irq, void *dev_id)
 	rx_status = ioread32(info->ioaddr + DMA_RXIRQCFG);
 	dlen = rx_status & DMA_IRQCFG_BLENSTAT;
 
-	/* We need to wait until rx is done before checking
-	 * xfer count. -mwl
-	 */
-	if ((status & DMA_IRQSTAT_RXNCIP) && (info->dma_xfer_len != dlen))
+	if (info->dma_xfer_len != dlen)
 		/* ?? what to do... ?? */
-		dev_err(&master->dev, "incomplete rx dma xfer"
+		dev_err(&master->dev, "incomplete dma xfer"
 				"(%d/%d bytes transfered) \n",
 				dlen, info->dma_xfer_len);
 
