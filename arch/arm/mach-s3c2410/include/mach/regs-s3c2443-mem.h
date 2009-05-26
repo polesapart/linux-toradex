@@ -22,8 +22,8 @@
 
 #define S3C2443_MEMREG(x)               (S3C24XX_VA_MEMCTRL + (x))
 
-/* 
- * @XXX: Add the SSMC registers to the minimal IO mapping table of [1] 
+/*
+ * @XXX: Add the SSMC registers to the minimal IO mapping table of [1]
  * [1] arch/arm/plat-s3c24xx/cpu.c
  *
  * Luis Galdos
@@ -100,6 +100,27 @@
 #define S3C2443_SSMC_SMBCR5	    S3C2443_SSMCREG(0x00B4)
 #define S3C2443_SSMC_SMBCR6	    S3C2443_SSMCREG(0x00D4)
 #define S3C2443_SSMC_SMBCR7	    S3C2443_SSMCREG(0x00F4)
+
+/* Bank Control bitfields */
+#define S3C2443_SSMC_SMBC_AVWE		1 << 20
+#define S3C2443_SSMC_SMBC_BLW_8		1 << 18
+#define S3C2443_SSMC_SMBC_BLW_CONT	3 << 18
+#define S3C2443_SSMC_SMBC_BMW		1 << 16
+#define S3C2443_SSMC_SMBC_DROWE		1 << 15
+#define S3C2443_SSMC_SMBC_WR		1 << 14
+#define S3C2443_SSMC_SMBC_AVRE		1 << 12
+#define S3C2443_SSMC_SMBC_BLR_8		1 << 10
+#define S3C2443_SSMC_SMBC_BLR_16	2 << 10
+#define S3C2443_SSMC_SMBC_BLR_CONT	3 << 10
+#define S3C2443_SSMC_SMBC_SRD		1 << 9
+#define S3C2443_SSMC_SMBC_BMR		1 << 8
+#define S3C2443_SSMC_SMBC_DRCS		1 << 7
+#define S3C2443_SSMC_SMBC_SMBLSPOL	1 << 6
+#define S3C2443_SSMC_SMBC_MW_16		1 << 4
+#define S3C2443_SSMC_SMBC_WP		1 << 3
+#define S3C2443_SSMC_SMBC_WAIT		1 << 2
+#define S3C2443_SSMC_SMBC_WPOL		1 << 1
+#define S3C2443_SSMC_SMBC_RBLE		1 << 0
 
 /* Bank Status Registers 0-5 */
 #define S3C2443_SSMC_SMBSR0	    S3C2443_SSMCREG(0x0018)
