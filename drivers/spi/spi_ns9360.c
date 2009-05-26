@@ -326,7 +326,16 @@ static void spi_ns9360_next_xfer(struct spi_master *master,
 	tx_dma = xfer->tx_dma;
 	rx_dma = xfer->rx_dma;
 
-	if (rx_dma == INVALID_DMA_ADDRESS) {
+	/* Some drivers (like mmc_spi) set rx_dma=0 if they
+	 * don't need any return data.  If they do this, we
+	 * put the unwanted rx data in rx_dma and hope they
+	 * didn't ask to send more than BUFFER_SIZE (4096)
+	 * bytes.  This is at least better than trashing
+	 * page 0.
+	 *
+	 * - mwl
+	 */
+	if (!rx_dma || rx_dma == INVALID_DMA_ADDRESS) {
 		rx_dma = info->buf_rx_dma;
 		if (len > BUFFER_SIZE)
 			len = BUFFER_SIZE;
@@ -344,6 +353,28 @@ static void spi_ns9360_next_xfer(struct spi_master *master,
 			/* Send undefined data; rx_dma is handy */
 			tx_dma = rx_dma;
 		}
+	}
+
+	/* The IO hub DMA controller doesn't cope well with
+	 * non-aligned rx buffers (and possibly tx too).  On
+	 * rx, at least, it causes the last byte read by the
+	 * peripheral on the *previous* transfer to be
+	 * delivered again if the current transfer is
+	 * unaligned.
+	 *
+	 * For now, just warn about it so someone can fix
+	 * the offending caller when it occurs.  It might
+	 * not be a problem on tx.
+	 *
+	 * - mwl
+	 */
+	if (rx_dma & 0x3) {
+		dev_err(&master->dev, "unaligned rx_dma (=0x%08x, len=%u)\n",
+			rx_dma, len);
+	}
+	if (tx_dma & 0x3) {
+		dev_err(&master->dev, "unaligned tx_dma (=0x%08x, len=%u)\n",
+			tx_dma, len);
 	}
 
 	/* setup the DMA channels */
