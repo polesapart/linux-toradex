@@ -48,6 +48,7 @@
 #include <mach/regs-irq.h>
 #include <mach/gpio.h>
 #include <asm/mach/time.h>
+#include <asm/mach/irq.h>
 
 #include <plat/pm.h>
 
@@ -1005,7 +1006,23 @@ static int s3c2443_pm_enter(suspend_state_t state)
 	
 	/* Reinit the CPU */
 	cpu_init();
-		
+
+#ifdef CONFIG_S3C2443_PCMCIA
+	/*
+	 * When PCMCIA is enabled, there is a problem when wakeing up from
+	 * sleep. this is becasue the register EXTINT(0,1,2) should be saved
+	 * before going to sleep and restored after the wake up interrupt.
+	 * On the S3C2443 there is a problem to read that register being
+	 * necessary to use a special access sequence.
+	 * That sequence is unknown at the moment and, for that reason, we
+	 * just reconfigure here the card detect gpio line.
+	 * This hack should be removed in the near future and some additional
+	 * code should be added here to save/restore some of the external
+	 * interrupt registers.
+	 */
+	set_irq_type(62, IRQ_TYPE_EDGE_BOTH);
+#endif
+
 	/* These functions are normally called below */
 	s3c2410_pm_do_restore_core(s3c2443_core_regs,
 				   ARRAY_SIZE(s3c2443_core_regs));
