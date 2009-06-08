@@ -15,16 +15,17 @@
 #include <linux/spi/ads7846.h>
 #include <linux/gpio.h>
 #include <linux/crc32.h>
-#include <net/piper_pdata.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
 
 #include "irq.h"
+#include "pipermain.h"
 #include "processor-ns921x.h"
 #include "ns921x_devices.h"
 #include "ns9215_devices.h"
 #include "cc9p9215_devices.h"
+#include "ccw9p9215_devices.h"
 
 
 /* I2C devices */
@@ -113,7 +114,7 @@ static void __init ccw9p9215js_fixup(struct machine_desc *desc,
 
 	/* 8 bytes after the mac address, its located the calibration data */
 	pwcal = (wcd_data_t *)(mac + 8);
-	
+
 	memcpy(&ccw9p9215_piper_pdata.macaddr[0], mac, 6);
 
 	if (!strncmp(pwcal->header.magic_string, WCD_MAGIC,

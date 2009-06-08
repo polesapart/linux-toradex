@@ -13,16 +13,17 @@
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/hwmon-sysfs.h>
+
+#include "airohaCalibration.h"
 #include "pipermain.h"
 
 /* Addresses to scan: none, device is not autodetected */
 /* static const unsigned short normal_i2c[] = { I2C_CLIENT_END }; */
 
-/* Insmod parameters */
-#define ADC_I2C_ADDR        (0x51)
+#define ADC_I2C_ADDR		(0x51)
+#define ADC_CYCLE_TIME		(0x20)
 
-static const unsigned short normal_i2c[] =
-    { ADC_I2C_ADDR, I2C_CLIENT_END };
+static const unsigned short normal_i2c[] = { ADC_I2C_ADDR, I2C_CLIENT_END };
 static const unsigned short dummy_i2c_addrlist[] = { I2C_CLIENT_END };
 
 static struct i2c_client_address_data addr = {
@@ -30,10 +31,8 @@ static struct i2c_client_address_data addr = {
 	.probe = dummy_i2c_addrlist,
 	.ignore = dummy_i2c_addrlist,
 };
-/*I2C_CLIENT_INSMOD_1(adc121C027);*/
 
-enum adc121C027_cmd
-{
+enum adc121C027_cmd {
         ADC_RESULT              = 0,
         ADC_ALERT_STATUS        = 1,
         ADC_CONFIGURATION       = 2,
@@ -44,133 +43,119 @@ enum adc121C027_cmd
         ADC_HIGHEST_VALUE       = 7,
 };
 
-
-
-static u16 adcReadPeak(struct piper_priv *digi)
+static u16 adc121C027_read_peak(struct airohaCalibrationData *cal)
 {
-    return be16_to_cpu(i2c_smbus_read_word_data(digi->adcI2cClient, ADC_HIGHEST_VALUE));
+	struct i2c_client *i2cclient = (struct i2c_client *)cal->priv;
+
+	return be16_to_cpu(i2c_smbus_read_word_data(i2cclient, ADC_HIGHEST_VALUE));
 }
 
-static void adcClearPeak(struct piper_priv *digi)
+static void adc121C027_clear_peak(struct airohaCalibrationData *cal)
 {
-    i2c_smbus_write_word_data(digi->adcI2cClient, ADC_HIGHEST_VALUE, 0);
+	struct i2c_client *i2cclient = (struct i2c_client *)cal->priv;
+
+	i2c_smbus_write_word_data(i2cclient, ADC_HIGHEST_VALUE, 0);
 }
 
-static u16 adcReadLastValue(struct piper_priv *digi)
+static u16 adc121C027_read_last_sample(struct airohaCalibrationData *cal)
 {
-    return be16_to_cpu(i2c_smbus_read_word_data(digi->adcI2cClient, ADC_RESULT));
+	struct i2c_client *i2cclient = (struct i2c_client *)cal->priv;
+
+	return be16_to_cpu(i2c_smbus_read_word_data(i2cclient, ADC_RESULT));
 }
 
-
-
-static int adc121C027_probe(struct i2c_client *client,
-                         const struct i2c_device_id *id)
+static int adc121C027_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
-    int result = -EINVAL;
-    
-    if (client->addr == ADC_I2C_ADDR)
-    {
-        result = 0;
-    }
-    
-    return result;
+	return (client->addr != ADC_I2C_ADDR) ? -EINVAL : 0;
 }
 
 static int adc121C027_remove(struct i2c_client *client)
 {
-    /*
-     * Real shut down will be done by adcShutdown().
-     */
-    return 0;
+	/* Real shut down will be done by adc121C027_shutdown() */
+	return 0;
 }
 
 static const struct i2c_device_id adc121C027_id[] = {
-        { "adc121C027", 0 },
-        { }
+	{ "adc121C027", 0 },
+	{}
 };
 
 static struct i2c_driver adc121C027_driver = {
-        .driver = {
-                .name   = "adc121C027",
-        },
-        .probe          = adc121C027_probe,
-        .remove         = adc121C027_remove,
-        .id_table       = adc121C027_id,
-
-        .address_data   = &addr,
+	.driver = {
+		.name   = "adc121C027",
+	},
+	.probe          = adc121C027_probe,
+	.remove         =  __devexit_p(adc121C027_remove),
+	.id_table       = adc121C027_id,
+	.address_data   = &addr,
 };
 
-
-/*
- * Turn on automatic A/D process by setting a non zero cycle time.
- */
-static void adcInitializeHw(struct piper_priv *digi)
+/* Turn on automatic A/D process by setting a non zero cycle time */
+static void adc121C027_hw_init(struct airohaCalibrationData *cal)
 {
-    #define ADC_CYCLE_TIME      (0x20)
-    
-    i2c_smbus_write_word_data(digi->adcI2cClient, ADC_CONFIGURATION, ADC_CYCLE_TIME);
+	struct i2c_client *i2cclient = (struct i2c_client *)cal->priv;
+
+	i2c_smbus_write_word_data(i2cclient, ADC_CONFIGURATION, ADC_CYCLE_TIME);
 }
 
-void adcShutdown(struct piper_priv *digi)
+void adc121C027_shutdown(struct airohaCalibrationData *cal)
 {
-    if (digi->adcI2cClient)
-    {
-        i2c_unregister_device(digi->adcI2cClient);
-        digi->adcI2cClient = NULL;
-    }
-    
-    i2c_del_driver(&adc121C027_driver);
-}
-    
-    
-int digiWifiInitAdc(struct piper_priv *digi)
-{
-    int result = -1;
-    static struct i2c_adapter *adapter;    
-    struct i2c_board_info board_info = 
-    {
-        .type = "adc121C027",
-        .addr = ADC_I2C_ADDR,
-    };
-    static int needToAddDriver = 1;
-    static int needToGetAdapter = 1;
-    
-    if (needToAddDriver)
-    {
-        needToAddDriver = (i2c_add_driver(&adc121C027_driver) != 0);
-        if (needToAddDriver)
-        {
-            goto done;
-        }
-    }
+	struct i2c_client *i2cclient = (struct i2c_client *)cal->priv;
 
-    if (needToGetAdapter)
-    {
-        adapter = i2c_get_adapter(0);
-        needToGetAdapter = (adapter == NULL);
-    }
-    
-    if (adapter)
-    {
-        digi->adcI2cClient = i2c_new_device(adapter, 
-                            &board_info);
-        if (digi->adcI2cClient != NULL)
-        {
-            adcInitializeHw(digi);
-            result = 0;
-        }
-    }
-
-done:
-    digi->adcReadPeak = adcReadPeak;
-    digi->adcClearPeak = adcClearPeak;
-    digi->adcReadLastValue = adcReadLastValue;
-    digi->adcShutdown = adcShutdown;
-    
-    return result;
+	if (i2cclient) {
+		i2c_unregister_device(i2cclient);
+		cal->priv = NULL;
+	}
+	i2c_del_driver(&adc121C027_driver);
 }
 
+int adc121C027_init(struct airohaCalibrationData *cal)
+{
+	struct i2c_board_info board_info = {
+		.type = "adc121C027",
+		.addr = ADC_I2C_ADDR,
+	};
+	struct i2c_adapter *adapter;
+	struct i2c_client *adc_i2c_client;
+	int ret;
+
+	ret = i2c_add_driver(&adc121C027_driver);
+	if (ret) {
+		printk(KERN_WARNING PIPER_DRIVER_NAME
+			": error adding driver adc121C027_driver (%d)\n", ret);
+		return ret;
+	}
+
+	adapter = i2c_get_adapter(0);
+	if (!adapter) {
+		printk(KERN_WARNING PIPER_DRIVER_NAME
+			": error getting i2c adapter\n");
+		return -EINVAL;
+	}
     
-EXPORT_SYMBOL_GPL(digiWifiInitAdc);
+	adc_i2c_client = i2c_new_device(adapter, &board_info);
+	if (!adc_i2c_client) {
+		printk(KERN_WARNING PIPER_DRIVER_NAME
+			": error creating new i2c client\n");
+		return -EINVAL;
+	}
+
+	cal->priv = (void *)adc_i2c_client;
+	adc121C027_hw_init(cal);
+
+	cal->cops = kmalloc(sizeof(struct calibration_ops), GFP_KERNEL);
+	if (!cal->cops) {
+		printk(KERN_WARNING PIPER_DRIVER_NAME
+			": unable to allocate memory for cal->cops\n");
+		return -ENOMEM;
+	}
+	cal->cops->adc_read_peak = adc121C027_read_peak;
+	cal->cops->adc_clear_peak = adc121C027_clear_peak;
+	cal->cops->adc_read_last_val = adc121C027_read_last_sample;
+	cal->cops->adc_shutdown = adc121C027_shutdown;
+    
+	return 0;
+}    
+EXPORT_SYMBOL_GPL(adc121C027_init);
 
 

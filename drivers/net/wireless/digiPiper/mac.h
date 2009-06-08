@@ -137,10 +137,10 @@ enum mac_control_regs {
 	/*MAC_REMAIN_BO = 0x6a,*/
 	MAC_BEACON_FILT = 0x6c,	/* actally 0x6d */
 	/*MAC_BEACON_BO = 0x6e,*/
-    MAC_STA2_ID0 = 0xb0,
-    MAC_STA2_ID1 = 0xb4,
-    MAC_STA3_ID0 = 0xb8,
-    MAC_STA3_ID1 = 0xbc,
+	MAC_STA2_ID0 = 0xb0,
+	MAC_STA2_ID1 = 0xb4,
+	MAC_STA3_ID0 = 0xb8,
+	MAC_STA3_ID1 = 0xbc,
 
 	MAC_EEPROM_CTL = 0xf0,
 	MAC_EEPROM_DATA = 0xf8,
@@ -214,20 +214,20 @@ enum mac_control_regs {
 #define	TYPE_PROBE_REQ		0x40	// Probe request
 #define	TYPE_PROBE_RESP		0x50	// Probe response
 
-#define	TYPE_BEACON			0x80	// Beacon
-#define	TYPE_ATIM			0x90	// Annoucement traffice indication
+#define	TYPE_BEACON		0x80	// Beacon
+#define	TYPE_ATIM		0x90	// Annoucement traffice indication
 #define	TYPE_DISASSOC		0xa0	// Disassociation
-#define	TYPE_AUTH			0xb0	// Authentication
-#define	TYPE_DEAUTH			0xc0	// Deauthentication
-#define TYPE_ACTION         0xd0    // Action 
+#define	TYPE_AUTH		0xb0	// Authentication
+#define	TYPE_DEAUTH		0xc0	// Deauthentication
+#define TYPE_ACTION		0xd0    // Action 
 
-#define TYPE_RTS			0xb4	// Request to send
-#define TYPE_CTS			0xc4	// Clear to send
-#define TYPE_ACK			0xd4	// Acknowledgement
-#define TYPE_PSPOLL			0xa4	// Power Save(PS)-Poll
+#define TYPE_RTS		0xb4	// Request to send
+#define TYPE_CTS		0xc4	// Clear to send
+#define TYPE_ACK		0xd4	// Acknowledgement
+#define TYPE_PSPOLL		0xa4	// Power Save(PS)-Poll
 
-#define TYPE_DATA			0x08	// Data
-#define TYPE_NULL_DATA      0x48    // Null Data
+#define TYPE_DATA		0x08	// Data
+#define TYPE_NULL_DATA		0x48    // Null Data
 
 struct tx_frame_hdr {
 #if 1
@@ -352,8 +352,8 @@ typedef PACKED_H struct {
 	SeqControlU squ;			// Sequence control fields
 } PACKED_F _80211HeaderType;
 
-#define _80211_HEADER_LENGTH        (sizeof(_80211HeaderType))
-#define TX_HEADER_LENGTH        (sizeof(struct ofdm_hdr) + sizeof(struct tx_frame_hdr))
+#define _80211_HEADER_LENGTH	(sizeof(_80211HeaderType))
+#define TX_HEADER_LENGTH	(sizeof(struct ofdm_hdr) + sizeof(struct tx_frame_hdr))
 /* FIFO sizes in bytes */
 #define TX_FIFO_SIZE            1792
 #define RX_FIFO_SIZE            2048
@@ -365,8 +365,8 @@ typedef PACKED_H struct {
 #define BEACON_INT		100	/* in TU */
 
 
-#define	DEFAULT_CW_MIN				32			// Min contention window size
-#define	DEFAULT_CW_MAX				1024		// Max contention window size
+#define	DEFAULT_CW_MIN		32			// Min contention window size
+#define	DEFAULT_CW_MAX		1024		// Max contention window size
 
-#define ASLOT_TIME                  20
+#define ASLOT_TIME		20
 #endif

@@ -24,7 +24,11 @@ obj-$(CONFIG_PROCESSOR_NS9215) += ns9215_devices.o
 obj-$(CONFIG_PROCESSOR_NS9360) += gpio-ns9360.o processor-ns9360.o time-ns9360.o ns9360_devices.o
 
 obj-$(CONFIG_MODULE_CC9P9215) += cc9p9215_devices.o
-obj-$(CONFIG_MODULE_CCW9P9215) += cc9p9215_devices.o
+ifeq ($(CONFIG_MODULE_CCW9P9215),y)
+CFLAGS_ccw9p9215_devices.o += -I$(srctree)/drivers/net/wireless/digiPiper/
+CFLAGS_mach-ccw9p9215js.o += -I$(srctree)/drivers/net/wireless/digiPiper/
+endif
+obj-$(CONFIG_MODULE_CCW9P9215) += cc9p9215_devices.o ccw9p9215_devices.o
 obj-$(CONFIG_MODULE_CC9P9360) += cc9p9360_devices.o
 obj-$(CONFIG_MODULE_CC9C) += ccx9c_devices.o
 obj-$(CONFIG_MODULE_CCW9C) += ccx9c_devices.o
@@ -38,3 +42,4 @@ pm-$(CONFIG_PROCESSOR_NS921X) += pm-ns921x.o
 ifeq ($(CONFIG_PM_VERBOSE),y)
 CFLAGS_pm-ns921x.o += -DDEBUG
 endif
+

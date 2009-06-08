@@ -17,24 +17,30 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/kthread.h>
+#include <linux/etherdevice.h>
 #include <net/mac80211.h>
 #include <crypto/aes.h>
-
-
 
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
 
+#define MAC_DEBUG	(1)
 
+#if MAC_DEBUG
+static int dlevel = DWARNING;
+#define dprintk(level, fmt, arg...)	if (level >= dlevel)			\
+					printk(KERN_ERR PIPER_DRIVER_NAME	\
+					    ": %s - " fmt, __func__, ##arg)
+#else
+#define dprintk(level, fmt, arg...)	do {} while (0)
+#endif
 
-enum antenna_select
-{
+enum antenna_select {
 	ANTENNA_BOTH = 0,
 	ANTENNA_1,
 	ANTENNA_2,
 };
-
 
 /*
  * This routine is called to enable IBSS support whenever we receive
@@ -43,142 +49,107 @@ enum antenna_select
  * support should be enabled and, if so, turns on automatic beacon
  * generation.
  *
- * TODO: This code may need to be moved into piper.c since other 
+ * TODO: This code may need to be moved into piper.c since other
  *       H/W does not implement automatic generate of beacons.
  */
-static int enableIbssSupport(struct piper_priv *digi, enum nl80211_iftype nodeType)
+static void piper_enable_ibss(struct piper_priv *piperp, enum nl80211_iftype iftype)
 {
-    int result = 0;
-    
-    if (   ((nodeType == NL80211_IFTYPE_ADHOC) || (nodeType == NL80211_IFTYPE_MESH_POINT))
-        && (digi->beacon.loaded)
-        && (digi->beacon.enabled)
-        && ((digi->read_reg(digi, MAC_CFP_ATIM) & MAC_BEACON_INTERVAL_MASK) != 0))
-    {
-        /*
-         * If we come here, then we are running in IBSS mode, beacons are enabled,
-         * and we have the information we need, so start sending beacons.
-         */
-        /* TODO: Handle non-zero ATIM period.  mac80211 currently has no way to
-                 tell us what the ATIM period is, but someday they might fix that.*/
-                                                    /* set a beacon backoff value */
-         u32 reg = digi->read_reg(digi, MAC_BEACON_FILT) & ~MAC_BEACON_BACKOFF_MASK;
-         digi->write_reg(digi, MAC_BEACON_FILT, reg | digi->getNextBeaconBackoff(), op_write);
-         digi->setIrqMaskBit(digi, BB_IRQ_MASK_TBTT); /* enable beacon interrupts*/
-                                                    /* and let her rip */
-         result = digi->write_reg(digi, MAC_CTL, MAC_CTL_BEACON_TX | MAC_CTL_IBSS, op_or);
-         digi_dbg("IBSS supported turned on!\n");
-    }
-    else
-    {
-        /*
-         * If we come here, then either we are not suppose to transmit beacons,
-         * or we do not yet have all the information we need to transmit 
-         * beacons.  Make sure the automatic beacon function is disabled.
-         */
-                                                    /* shut down beacons */
-         result = digi->write_reg(digi, MAC_CTL, ~(MAC_CTL_BEACON_TX | MAC_CTL_IBSS), op_and);
-         digi->setIrqMaskBit(digi, BB_IRQ_MASK_TBTT);     /* disable beacon interrupts*/
-         digi_dbg("IBSS supported turned OFF\n");
-    }
-    
-    return result;
-}
+	dprintk(DVVERBOSE, "\n");
 
+	if (((iftype == NL80211_IFTYPE_ADHOC) || (iftype == NL80211_IFTYPE_MESH_POINT))
+	    && (piperp->beacon.loaded) && (piperp->beacon.enabled)
+	    && ((piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & MAC_BEACON_INTERVAL_MASK) != 0)) {
+		/*
+		 * If we come here, then we are running in IBSS mode, beacons are enabled,
+		 * and we have the information we need, so start sending beacons.
+		 */
+		/* TODO: Handle non-zero ATIM period.  mac80211 currently has no way to
+		 * tell us what the ATIM period is, but someday they might fix that.*/
+
+		u32 reg = piperp->ac->rd_reg(piperp, MAC_BEACON_FILT) & ~MAC_BEACON_BACKOFF_MASK;
+		piperp->ac->wr_reg(piperp, MAC_BEACON_FILT,
+				  reg | piperp->get_next_beacon_backoff(), op_write);
+		/* enable beacon interrupts*/
+		piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_TBTT);
+		piperp->ac->wr_reg(piperp,
+				  MAC_CTL, MAC_CTL_BEACON_TX | MAC_CTL_IBSS, op_or);
+		dprintk(DVERBOSE, "IBSS turned ON\n");
+	} else {
+		/*
+		 * If we come here, then either we are not suppose to transmit beacons,
+		 * or we do not yet have all the information we need to transmit
+		 * beacons.  Make sure the automatic beacon function is disabled.
+		 */
+                 /* shut down beacons */
+		piperp->ac->wr_reg(piperp, MAC_CTL,
+				  ~(MAC_CTL_BEACON_TX | MAC_CTL_IBSS), op_and);
+		piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_TBTT);
+		dprintk(DVERBOSE, "IBSS turned OFF\n");
+	}
+}
 
 /*
  * Configure the H/W with the correct antenna diversity settings.
  */
-static int set_antenna_div(struct ieee80211_hw *hw, enum antenna_select sel)
+static int piper_set_antenna_div(struct ieee80211_hw *hw,
+				 enum antenna_select sel)
 {
-	int err = 0;
-#ifdef DEBUG
-    const char *antennaText[] = {
-        "ANTENNA_BOTH",
-    	"ANTENNA_1",
-    	"ANTENNA_2"
-    };
-#endif
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piper = hw->priv;
+	const char *antennatext[] = {"ANTENNA_BOTH", "ANTENNA_1", "ANTENNA_2"};
 	static enum antenna_select prevSel = ANTENNA_BOTH;
-	
-	if (prevSel != sel)
-	{
-	    digi_dbg("set_antenna_div called, sel = %s\n", antennaText[sel]);
+
+	dprintk(DVVERBOSE, "\n");
+
+	if (prevSel != sel) {
+		dprintk(DVERBOSE, "antenna sel = %s\n", antennatext[sel]);
 	}
-	
-	prevSel = sel;
-	
+
 	/* set antenna diversity */
-	if (sel == ANTENNA_BOTH)
-	{
-		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				BB_GENERAL_CTL_ANT_DIV, op_or);
-		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				~BB_GENERAL_CTL_ANT_SEL, op_and);
-	}
-	else {
-		err = digi->write_reg(digi, BB_GENERAL_CTL,
-				~BB_GENERAL_CTL_ANT_DIV, op_and);
-		if (err)
-			goto done;
-
-		/* selected the antenna if !diversity */
+	if (sel == ANTENNA_BOTH) {
+		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
+				 BB_GENERAL_CTL_ANT_DIV, op_or);
+		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
+				 ~BB_GENERAL_CTL_ANT_SEL, op_and);
+	} else {
+		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
+				 ~BB_GENERAL_CTL_ANT_DIV, op_and);
+		/* select the antenna if !diversity */
 		if (sel == ANTENNA_1)
-			err = digi->write_reg(digi, BB_GENERAL_CTL,
-					~BB_GENERAL_CTL_ANT_SEL, op_and);
+			piper->ac->wr_reg(piper, BB_GENERAL_CTL,
+					 ~BB_GENERAL_CTL_ANT_SEL, op_and);
 		else
-			err = digi->write_reg(digi, BB_GENERAL_CTL,
-					BB_GENERAL_CTL_ANT_SEL, op_or);
+			piper->ac->wr_reg(piper, BB_GENERAL_CTL,
+					 BB_GENERAL_CTL_ANT_SEL, op_or);
 	}
-	if (err)
-		goto done;
-	
+
 	/* select which antenna to transmit on */
-	err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
-	if (err)
-		goto done;
+	piper->ac->wr_reg(piper, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
 	if (sel == ANTENNA_BOTH)
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
-    else
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
-done:
-
-	if (err)
-		printk(KERN_ERR PIPER_DRIVER_NAME ": %s failed - %d\n", __func__, err);
-	return err;
-}
-
-
-/*
- * Adjust the LED as appropriate.
- */
-static int set_status_led(struct ieee80211_hw *hw, int on)
-{
-#if 0
-	struct piper_priv *digi = hw->priv;
-	int err;
-
-	if (on)
-		err = digi->write_reg(digi, BB_RSSI, BB_RSSI_LED, op_or);
+		piper->ac->wr_reg(piper, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
 	else
-		err = digi->write_reg(digi, BB_RSSI, ~BB_RSSI_LED, op_and);
-	
-	return err;
-#else
-    return 0;
-#endif
+		piper->ac->wr_reg(piper, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
+
+	prevSel = sel;
+
+	return 0;
 }
 
+static int piper_set_status_led(struct ieee80211_hw *hw, int on)
+{
+	dprintk(DVVERBOSE, "\n");
+	return 0;
+}
 
 /*
  * Set the transmit power level.  The real work is done in the
  * transceiver code.
  */
-static int set_tx_power(struct ieee80211_hw *hw, int power)
+static int piper_set_tx_power(struct ieee80211_hw *hw, int power)
 {
 	struct piper_priv *digi = hw->priv;
 	int err;
+
+	dprintk(DVVERBOSE, "\n");
 
 	if (power == digi->tx_power)
 		return 0;
@@ -186,42 +157,37 @@ static int set_tx_power(struct ieee80211_hw *hw, int power)
 	err = digi->rf->set_pwr(hw, power);
 	if (!err)
 		digi->tx_power = power;
-    
+
 	return err;
 }
-
 
 /*
  * Utility routine that sets a sequence number for a data packet.
  */
-static void assignSequenceNumber(struct sk_buff *skb, bool shouldIncrement)
+static void assign_seq_number(struct sk_buff *skb, bool increment)
 {
-    #define SEQUENCE_NUMBER_MASK        (0xfff0)
-    
-	static u16 sequenceNumber = 0;
-    _80211HeaderType *header = (_80211HeaderType *) skb->data;
-    
-    if (skb->len >= sizeof(*header))
-    {
-        u16 sequenceField;
-        
-        /*
-         * TODO:  memcpy's are here because I am concerned we may get
-         *        an unaligned frame.  Is this a real possibility?  Or
-         *        am I just wasting CPU time?
-         */
-        memcpy(&sequenceField, &header->squ.sq16, sizeof(header->squ.sq16));
-        sequenceField &= ~SEQUENCE_NUMBER_MASK;
-        sequenceField |= (SEQUENCE_NUMBER_MASK & (sequenceNumber << 4));
-        memcpy(&header->squ.sq16, &sequenceField, sizeof(header->squ.sq16));
-        if (shouldIncrement)
-        {
-            sequenceNumber++;
-        }
-    }
+#define SEQUENCE_NUMBER_MASK        (0xfff0)
+	static u16 seq_number = 0;
+	_80211HeaderType *header = (_80211HeaderType *)skb->data;
+
+	dprintk(DVVERBOSE, "\n");
+
+	if (skb->len >= sizeof(*header)) {
+		u16 seq_field;
+
+		/*
+		 * TODO:  memcpy's are here because I am concerned we may get
+		 *        an unaligned frame.  Is this a real possibility?  Or
+		 *        am I just wasting CPU time?
+		 */
+		memcpy(&seq_field, &header->squ.sq16, sizeof(header->squ.sq16));
+		seq_field &= ~SEQUENCE_NUMBER_MASK;
+		seq_field |= (SEQUENCE_NUMBER_MASK & (seq_number << 4));
+		memcpy(&header->squ.sq16, &seq_field, sizeof(header->squ.sq16));
+		if (increment)
+			seq_number++;
+	}
 }
-
-
 
 #define GETU32(pt) (((u32)(pt)[0] << 24) ^ ((u32)(pt)[1] << 16) ^ ((u32)(pt)[2] <<  8) ^ ((u32)(pt)[3]))
 /* Get 16 bits at byte pointer */
@@ -243,42 +209,36 @@ static inline void dw_inc_48(u48* n)
 	*n &= ((u64) 1 << 48) - 1;
 }
 
-
 /*
- * This function prepares a blob of data we will have to send to the AES 
- * H/W encryption engine.  The data consists of the AES initialization 
+ * This function prepares a blob of data we will have to send to the AES
+ * H/W encryption engine.  The data consists of the AES initialization
  * vector and 2 16 byte headers.
  *
  * Returns true if successful, or false if something goes wrong
  */
-bool digiWifiPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex, 
-                             u8 *aesBlob, u8 *frame, u32 length, bool isTransmit)
+bool piper_prepare_aes_datablob(struct piper_priv *piperp, unsigned int keyIndex,
+				u8 *aesBlob, u8 *frame, u32 length, bool isTransmit)
 {
-//
-// 802.11 MAC frame formats
-//
-    bool result = false;
-    _80211HeaderType *header = (_80211HeaderType *) frame;
-    u8 *body = &frame[sizeof(*header)];
+	_80211HeaderType *header = (_80211HeaderType *)frame;
+	u8 *body = &frame[sizeof(*header)];
 	int dlen = length - (_80211_HEADER_LENGTH + PIPER_EXTIV_SIZE);
-    
-    if (keyIndex >= PIPER_MAX_KEYS) 
-    {
-        digi_dbg("encryption key index %d is out of range.\n", keyIndex);
-        goto prepareAESBlobDone;
-    }
-    
-    if (digi->key[keyIndex].valid == false)
-    {
-        goto prepareAESBlobDone;
-    }
-    
-	// Set up CCM initial block for MIC IV
+
+	dprintk(DVVERBOSE, "\n");
+
+	if (keyIndex >= PIPER_MAX_KEYS) {
+		dprintk(DWARNING, "encryption key index %d is out of range.\n",
+			keyIndex);
+		return false;
+	}
+
+	if (piperp->key[keyIndex].valid == false)
+		return false;
+
+	/* Set up CCM initial block for MIC IV */
 	memset(aesBlob, 0, AES_BLOB_LENGTH);
 	aesBlob[0] = 0x59;
 	aesBlob[1] = 0;
 	memcpy (&aesBlob[2], header->addr2, ETH_ALEN);
-	
 	aesBlob[8]  = body[7];
 	aesBlob[9]  = body[6];
 	aesBlob[10] = body[5];
@@ -287,9 +247,8 @@ bool digiWifiPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex,
 	aesBlob[13] = body[0];
 	aesBlob[14] = dlen >> 8;
 	aesBlob[15] = dlen;
-	
-	// Set up MIC header blocks
 
+	/* Set up MIC header blocks */
 #define AES_HEADER_0_OFFSET (16)
 #define AES_HEADER_1_OFFSET (32)
 	aesBlob[AES_HEADER_0_OFFSET+0] = 0;
@@ -305,11 +264,8 @@ bool digiWifiPrepareAESDataBlob(struct piper_priv *digi, unsigned int keyIndex,
 	aesBlob[AES_HEADER_1_OFFSET+6] = header->squ.sq.frag;
 	aesBlob[AES_HEADER_1_OFFSET+7] = 0;
 	memset (&aesBlob[AES_HEADER_1_OFFSET+8], 0, 8);	/* clear vector location in data */
-	
-	result = true;
-	
-prepareAESBlobDone:
-    return result;
+
+	return true;
 }
 
 /*
@@ -317,354 +273,337 @@ prepareAESBlobDone:
  * up the information the trasmit tasklet will need, and then
  * schedule the tasklet.
  */
-static int hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
+static int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
 
-/* TODO: remove this */ if (digi->txPacket != NULL) digi_dbg("Reentrant call to hw_tx\n");
-    if (digi->isRadioOn == false)
-    {
-        /*
-         * If we come here, then someone told us to turn our radio off.  This
-         * function is never suppose to fail, but they told us to turn our 
-         * radio off!
-         */
-        return -EBUSY;
-    }
-    
-    /*
-     * Our H/W can only transmit a single packet at a time.  mac80211
-     * already maintains a queue of packets, so there is no reason
-     * for us to set up another one.  We stop the mac80211 queue everytime
-     * we get a transmit request and restart it when the transmit 
-     * operation completes.
-     */
-    ieee80211_stop_queues(hw);      
+	dprintk(DVVERBOSE, "\n");
 
-	if (txInfo->flags & IEEE80211_TX_CTL_ASSIGN_SEQ)
-	{
-        /*
-         * Set up the sequence number if necesary.
-         */
-	    assignSequenceNumber(skb, !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
+	/* Sanity checks */
+	if (piperp->txPacket != NULL) {
+		dprintk(DERROR, "called with txPacket not null!\n");
+		return -EBUSY;
 	}
 
-    if (txInfo->control.hw_key != NULL)
-    {
-        /*
-         * We've been passed an encryption key, so mac80211 must want us 
-         * to encrypt the packet with our fancy H/W encryptor.  Let's get
-         * set up for that now.
-         */
-        digi->txAesKey = txInfo->control.hw_key->hw_key_idx;
-        digi->useAesHwEncryption = digiWifiPrepareAESDataBlob(digi, 
-                                        txInfo->control.hw_key->hw_key_idx, 
-                                        (u8 *) digi->txAesBlob, skb->data, skb->len,
-                                        true);
-    }
-    else
-    {
-        digi->useAesHwEncryption = false;
-    }
+	if (piperp->is_radio_on == false) {
+		dprintk(DERROR, "called with radio off\n");
+		return -EBUSY;
+	}
 
-    /*
-     * Add space at the start of the frame for the H/W level transmit header.
-     * We can't generate the header now.  It must be generated everytime we
-     * transmit because the transmit rate changes when we do retries.
-     */
+	/*
+	 * Our H/W can only transmit a single packet at a time.  mac80211
+	 * already maintains a queue of packets, so there is no reason
+	 * for us to set up another one.  We stop the mac80211 queue everytime
+	 * we get a transmit request and restart it when the transmit
+	 * operation completes.
+	 */
+	ieee80211_stop_queues(hw);
+
+	if (txInfo->flags & IEEE80211_TX_CTL_ASSIGN_SEQ) {
+		assign_seq_number(skb,
+				  !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
+	}
+
+	piperp->use_hw_aes = false;
+	if (txInfo->control.hw_key != NULL) {
+		/*
+		 * We've been passed an encryption key, so mac80211 must want us
+		 * to encrypt the packet with our fancy H/W encryptor.  Let's get
+		 * set up for that now.
+		 */
+		piperp->tx_aes_key = txInfo->control.hw_key->hw_key_idx;
+		piperp->use_hw_aes =
+			  piper_prepare_aes_datablob(piperp,
+						     txInfo->control.hw_key->hw_key_idx,
+						     (u8 *)piperp->tx_aes_blob, skb->data,
+						     skb->len, true);
+	}
+
+	/*
+	 * Add space at the start of the frame for the H/W level transmit header.
+	 * We can't generate the header now. It must be generated everytime we
+	 * transmit because the transmit rate changes when we do retries.
+	 */
 	skb_push(skb, TX_HEADER_LENGTH);
 
-	digi->txRetryIndex = 0;
-	digi->txTotalRetries = 0;
-	memset(digi->txRetryCount, 0, sizeof(digi->txRetryCount));
-    txInfo->flags &= ~(IEEE80211_TX_STAT_TX_FILTERED
-                                | IEEE80211_TX_STAT_ACK
-                                | IEEE80211_TX_STAT_AMPDU
-                                | IEEE80211_TX_STAT_AMPDU_NO_BACK);
-	digi->txPacket = skb;
-	digi->txQueueStats.len++;
-	digi->txQueueStats.count++;
+	piperp->pstats.tx_retry_index = 0;
+	piperp->pstats.tx_total_tetries = 0;
+	memset(piperp->pstats.tx_retry_count, 0, sizeof(piperp->pstats.tx_retry_count));
+	txInfo->flags &= ~(IEEE80211_TX_STAT_TX_FILTERED |
+			   IEEE80211_TX_STAT_ACK |
+			   IEEE80211_TX_STAT_AMPDU |
+			   IEEE80211_TX_STAT_AMPDU_NO_BACK);
+	piperp->txPacket = skb;
+	piperp->pstats.tx_queue.len++;
+	piperp->pstats.tx_queue.count++;
 
-    /*
-     * Wake up the transmit tasklet.
-     */
-	tasklet_hi_schedule(&digi->txRetryTasklet);
-	digi->txStartCount++;
+	tasklet_hi_schedule(&piperp->tx_tasklet);
+	piperp->pstats.tx_start_count++;
+
 	return 0;
 }
 
 /*
  * mac80211 calls this routine to initialize the H/W.
  */
-static int hw_start(struct ieee80211_hw *hw)
+static int piper_hw_start(struct ieee80211_hw *hw)
 {
-	int err = 0;
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
+	int ret = 0;
 
-	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
+	dprintk(DVVERBOSE, "\n");
+	piperp->if_type = __NL80211_IFTYPE_AFTER_LAST;
+
+	/* Initialize the MAC H/W */
+	if ((ret = piperp->init_hw(piperp, IEEE80211_BAND_2GHZ)) != 0) {
+		dprintk(DERROR, "unable to initialize piper HW (%d)\n", ret);
+		return ret;
+	}
+
+	piperp->is_radio_on = true;
+	piperp->txPacket = NULL;
 
 	/*
-	 * Initialize the MAC H/W.
+	 * Default antenna diversity setting to transmit on primary
+	 * antenna and receive on either.
+	 *
+	 * TODO:  Is this really what we want to do?  Will this
+	 *        be harmful if there is no secondary antenna?
 	 */
-    err = digi->initHw(digi, IEEE80211_BAND_2GHZ);
-    digi->isRadioOn = true;
-	
-    /*
-     * Default antenna diversity setting to transmit on primary
-     * antenna and receive on either.
-     *
-     * TODO:  Is this really what we want to do?  Will this 
-     *        be harmful if there is no secondary antenna?
-     */
-	err = set_antenna_div(hw, ANTENNA_BOTH);
-	if (err)
-	{
-	    digi_dbg("set_antenna_div failed, err = %d\n", err);
-		goto done;
-    }
+	if ((ret = piper_set_antenna_div(hw, ANTENNA_BOTH)) != 0) {
+		dprintk(DERROR, "piper_set_antenna_div() failed (%d)\n", ret);
+		return ret;
+	}
 
 	/* set status led to link off */
-	err = set_status_led(hw, 0);
+	piper_set_status_led(hw, 0);
 
-    /*
-     * Get the tasklets ready to roll.
-     */
-    tasklet_enable(&digi->rxTasklet);
-    tasklet_enable(&digi->txRetryTasklet);
+	/* Get the tasklets ready to roll */
+	tasklet_enable(&piperp->rx_tasklet);
+	tasklet_enable(&piperp->tx_tasklet);
 
-    /*
-     * Enable receive interrupts, but leave the transmit interrupts
-     * and beacon interrupts off for now.
-     */
-    digi->clearIrqMaskBit(digi, 0xffffffff);
-    digi->setIrqMaskBit(digi, BB_IRQ_MASK_RX_OVERRUN | BB_IRQ_MASK_RX_FIFO);
-	enable_irq(digi->irq);
-	if (err)
-		goto done;
+	/*
+	 * Enable receive interrupts, but leave the transmit interrupts
+	 * and beacon interrupts off for now.
+	 */
+	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
+	piperp->set_irq_mask_bit(piperp,
+				 BB_IRQ_MASK_RX_OVERRUN | BB_IRQ_MASK_RX_FIFO);
+	enable_irq(piperp->irq);
 
-	memset(digi->bssid, 0, ETH_ALEN);
-done:
+	memset(piperp->bssid, 0, ETH_ALEN);
 
-	return err;
+	return 0;
 }
 
 /*
  * mac80211 calls this routine to shut us down.
  */
-static void hw_stop(struct ieee80211_hw *hw)
+static void piper_hw_stop(struct ieee80211_hw *hw)
 {
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
+
+	dprintk(DVVERBOSE, "\n");
+
+	/* Initialize the MAC H/W */
+	if (piperp->deinit_hw)
+		piperp->deinit_hw(piperp);
 
 	/* set status led to link off */
-	if (set_status_led(hw, 0))
+	if (piper_set_status_led(hw, 0))
 		return;		/* hardware's probably gone, give up */
 
 	/* turn off phy */
-	digi->rf->stop(hw);
+	piperp->rf->stop(hw);
+
+	/* Disable interrupts before turning off */
+	disable_irq(piperp->irq);
 
 	/* turn off MAX_GAIN, ADC clocks, and so on */
-	digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RESET, op_and);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RESET, op_and);
 
 	/* turn off MAC control/mac filt/aes key */
-	digi->write_reg(digi, MAC_CTL, 0, op_write);
+	piperp->ac->wr_reg(piperp, MAC_CTL, 0, op_write);
 
 	/* turn off interrupts */
-    tasklet_disable(&digi->rxTasklet);
-    tasklet_disable(&digi->txRetryTasklet);
-	digi->clearIrqMaskBit(digi, 0xffffffff);
-	disable_irq(digi->irq);
+	tasklet_disable(&piperp->rx_tasklet);
+	tasklet_disable(&piperp->tx_tasklet);
+	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
 }
 
 /*
  * mac80211 calls this routine to really start the H/W.
  * The device type is also set here.
  */
-static int hw_add_intf(struct ieee80211_hw *hw,
+static int piper_hw_add_intf(struct ieee80211_hw *hw,
 		struct ieee80211_if_init_conf *conf)
 {
-	int err = 0;
 	struct piper_priv *digi = hw->priv;
 
-	digi_dbg("hw_add_intf called\n");
-	digi_dbg("if_type: %x\n", conf->type);
+	dprintk(DVVERBOSE, "if type: %x\n", conf->type);
 
 	/* __NL80211_IFTYPE_AFTER_LAST means no mode selected */
-	if (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)
-	{
-	    digi_dbg("hw_add_intf (digi->if_type != __NL80211_IFTYPE_AFTER_LAST)\n");
-		err = -EOPNOTSUPP;
-		goto done;
-    }
-    
-	switch (conf->type) 
-	{
-    	case NL80211_IFTYPE_ADHOC:
-    	case NL80211_IFTYPE_STATION:
-    	case NL80211_IFTYPE_MESH_POINT:
-    		digi->if_type = conf->type;
-    		break;
-    	default:
-	        digi_dbg("hw_add_intf conf->type is unsupported\n");
-    		return -EOPNOTSUPP;
+	if (digi->if_type != __NL80211_IFTYPE_AFTER_LAST) {
+		dprintk(DERROR, "unsupported interface type %x, expected %x\n",
+			conf->type, __NL80211_IFTYPE_AFTER_LAST);
+		return -EOPNOTSUPP;
 	}
 
-done:
+	switch (conf->type) {
+	case NL80211_IFTYPE_ADHOC:
+	case NL80211_IFTYPE_STATION:
+	case NL80211_IFTYPE_MESH_POINT:
+		digi->if_type = conf->type;
+		break;
+	default:
+		return -EOPNOTSUPP;
+	}
 
-	return err;
+	return 0;
 }
-
 
 /*
  * mac80211 calls this function to shut down us down.
  */
-static void hw_rm_intf(struct ieee80211_hw *hw,
+static void piper_hw_rm_intf(struct ieee80211_hw *hw,
 		struct ieee80211_if_init_conf *conf)
 {
 	struct piper_priv *digi = hw->priv;
 
-	digi_dbg("hw_rm_intf called\n");
-
+	dprintk(DVVERBOSE, "\n");
 	digi->if_type = __NL80211_IFTYPE_AFTER_LAST;
-
 }
 
 /*
  * mac80211 calls this function to pass us configuration information.
  */
-static int hw_config(struct ieee80211_hw *hw, u32 changed)
+static int piper_config(struct ieee80211_hw *hw, u32 changed)
 {
-	struct piper_priv *digi = hw->priv;
-	int channelIndex;
-	int err = 0;
-    unsigned int word;
-    struct ieee80211_conf *conf = &hw->conf;
-    
-    /*
-     * Should we turn the radio off?
-     */
-	digi->isRadioOn = (conf->radio_enabled != 0);
-	if (digi->isRadioOn)
-	{
-	    digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
-	}
-	else
-	{
-	    digi_dbg("Turning radio off\n");
-	    err = digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
-	    /*
-	     * Besides turning off the receiver, the transmit function will fail
-	     * if digi->isRadioOn = false.
-	     */
-	    goto done;
-	}
-    
-    /*
-     * Adjust the beacon interval and listen interval.
-     */
-	word = digi->read_reg(digi, MAC_CFP_ATIM) & ~MAC_BEACON_INTERVAL_MASK;
-	word |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
-	digi->write_reg(digi, MAC_CFP_ATIM, word, op_write);
-	
-	word = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_LISTEN_INTERVAL_MASK;
-	word |= conf->listen_interval;
-	digi->write_reg(digi, MAC_DTIM_PERIOD, word, op_write);
-	
-    /*
-     * Adjust the power level.
-     */
-	err = set_tx_power(hw, conf->power_level);
-	if (err)
-	{
-	    goto done;
-	}
-    
-    /*
-     * Set the channel. 
-     */
-	channelIndex = conf->channel->hw_value;
-	if (channelIndex != digi->channel) {
-		err = digi->rf->set_chan(hw, channelIndex);
-		if (err) {
-			printk(KERN_ERR PIPER_DRIVER_NAME
-					": unable to set channel (%d)\n", channelIndex);
-			goto done;
-		} else
-			digi->channel = channelIndex;
+	struct piper_priv *piperp = hw->priv;
+	struct ieee80211_conf *conf = &hw->conf;
+	u32 tempval;
+	int err;
+
+	dprintk(DVVERBOSE, "\n");
+
+	/* Should we turn the radio off? */
+	if ((piperp->is_radio_on = (conf->radio_enabled != 0)) != 0) {
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+				  BB_GENERAL_CTL_RX_EN, op_or);
+	} else {
+		dprintk(DNORMAL, "Turning radio off\n");
+		return piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+					~BB_GENERAL_CTL_RX_EN, op_and);
 	}
 
-done:
-	return err;
+	/* Adjust the beacon interval and listen interval */
+	tempval = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_BEACON_INTERVAL_MASK;
+	tempval |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
+	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, tempval, op_write);
+
+	tempval = piperp->ac->rd_reg(piperp, MAC_DTIM_PERIOD) & ~MAC_LISTEN_INTERVAL_MASK;
+	tempval |= conf->listen_interval;
+	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, tempval, op_write);
+
+	/* Adjust the power level */
+	if ((err = piper_set_tx_power(hw, conf->power_level)) != 0) {
+		dprintk(DERROR, "unable to set tx power to %d\n",
+		      conf->power_level);
+		return err;
+	}
+
+	/* Set channel */
+	if (conf->channel->hw_value != piperp->channel) {
+		if ((err = piperp->rf->set_chan(hw, conf->channel->hw_value)) !=0) {
+			dprintk(DERROR, "unable to set ch to %d\n",
+				conf->channel->hw_value);
+			return err;
+		}
+		piperp->channel = conf->channel->hw_value;
+	}
+
+	return 0;
 }
-
 
 /*
  * mac80211 calls this routine to set BSS related configuration settings.
  */
-static int hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+static int piper_hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		struct ieee80211_if_conf *conf)
 {
-	int err = -EOPNOTSUPP;
-	struct piper_priv *digi = hw->priv;
-    unsigned int bssid[2];
+	struct piper_priv *piperp = hw->priv;
+	u32 bssid[2];
 
-	if (conf->changed & IEEE80211_IFCC_BSSID)
-	{
-        /*
-         * The BSSID has changed.
-         */
-    	digi_dbg("bssid: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n", conf->bssid[0], conf->bssid[1], conf->bssid[2], conf->bssid[3], conf->bssid[4], conf->bssid[5]);
-        bssid[0] = conf->bssid[ 3 ] | conf->bssid[ 2 ] << 8 | conf->bssid[ 1 ] << 16 | conf->bssid[ 0 ] << 24;
-        bssid[1] = conf->bssid[ 5 ] << 16 | conf->bssid[ 4 ] << 24;
-        if ((bssid[0] == 0) && (bssid[1] == 0))
-        {
-            /*
-             * If we come here, then the MAC layer is telling us to set a 0
-             * SSID.  In this case, we really want to set the SSID to the broadcast
-             * address so that we receive broadcasts.
-             */
-            bssid[0] = 0xffffffff;
-            bssid[1] = 0xffffffff;
-        }
+	dprintk(DVVERBOSE, "\n");
 
-        digi->write_reg(digi, MAC_BSS_ID0, bssid[0], op_write);
-        digi->write_reg(digi, MAC_BSS_ID1, bssid[1], op_write);
-    	memcpy(digi->bssid, conf->bssid, ETH_ALEN);
-    	err = 0;
-    }
-    if (conf->changed & IEEE80211_IFCC_BEACON)
-    {
-        /*
-         * mac80211 wants to set a new beacon frame.
-         */
-        struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
-        struct ieee80211_rate rate;
-        
-        rate.bitrate = 10;              /* beacons always sent at 1 Megabit*/
-        skb_push(beacon, TX_HEADER_LENGTH);
-        phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate, 0);
-        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
-        digi->load_beacon(digi, beacon->data, beacon->len);
-        digi_dbg("Beacon has been loaded\n");
-        /* TODO: digi->beacon.enabled should be set by IEEE80211_IFCC_BEACON_ENABLED
-                 when we update to latest mac80211 */ digi->beacon.enabled = true;
-        err = enableIbssSupport(digi, vif->type);
-        dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
-    	err = 0;
-    }
-    
-	return err;
+	if (conf->changed & IEEE80211_IFCC_BSSID &&
+	    !is_zero_ether_addr(conf->bssid) &&
+	    !is_multicast_ether_addr(conf->bssid)) {
+
+		switch (vif->type) {
+		case NL80211_IFTYPE_STATION:
+		case NL80211_IFTYPE_ADHOC:
+			dprintk(DVERBOSE, "BSSID: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+				conf->bssid[0], conf->bssid[1], conf->bssid[2],
+				conf->bssid[3],	conf->bssid[4], conf->bssid[5]);
+
+			bssid[0] = conf->bssid[3] | conf->bssid[2] << 8 |
+				  conf->bssid[1] << 16 | conf->bssid[0] << 24;
+			bssid[1] = conf->bssid[5] << 16 | conf->bssid[4] << 24;
+
+			if ((bssid[0] == 0) && (bssid[1] == 0)) {
+				/*
+				* If we come here, then the MAC layer is telling us to set a 0
+				* SSID.  In this case, we really want to set the SSID to the
+				* broadcast address so that we receive broadcasts.
+				*/
+				bssid[0] = 0xffffffff;
+				bssid[1] = 0xffffffff;
+			}
+			piperp->ac->wr_reg(piperp, MAC_BSS_ID0, bssid[0], op_write);
+			piperp->ac->wr_reg(piperp, MAC_BSS_ID1, bssid[1], op_write);
+			memcpy(piperp->bssid, conf->bssid, ETH_ALEN);
+			break;
+		default:
+			break;
+		}
+	}
+
+	if ((conf->changed & IEEE80211_IFCC_BEACON) &&
+	    (piperp->if_type == NL80211_IFTYPE_ADHOC)) {
+		struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
+		struct ieee80211_rate rate;
+
+		if (!beacon)
+			return -ENOMEM;
+
+		rate.bitrate = 10;	/* beacons always sent at 1 Megabit*/
+		skb_push(beacon, TX_HEADER_LENGTH);
+		phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate, 0);
+		piperp->ac->wr_reg(piperp, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
+		piperp->load_beacon(piperp, beacon->data, beacon->len);
+
+		/* TODO: digi->beacon.enabled should be set by IEEE80211_IFCC_BEACON_ENABLED
+                 when we update to latest mac80211 */
+		piperp->beacon.enabled = true;
+		piper_enable_ibss(piperp, vif->type);
+		dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
+	}
+
+	return 0;
 }
-
 
 /*
  * mac80211 wants to change our frame filtering settings.  We don't
  * actually support this.
  */
-static void hw_configure_filter(struct ieee80211_hw *hw,
+static void piper_hw_config_filter(struct ieee80211_hw *hw,
 		unsigned int changed_flags, unsigned int *total_flags,
 		int mc_count, struct dev_addr_list *mclist)
 {
+	dprintk(DVVERBOSE, "\n");
+
 	/* we don't support filtering so clear all flags; however, we also
 	 * can't pass failed FCS/PLCP frames, so don't clear those. */
 	*total_flags &= (FIF_FCSFAIL | FIF_PLCPFAIL);
@@ -674,249 +613,217 @@ static void hw_configure_filter(struct ieee80211_hw *hw,
  * mac80211 calls this routine when something about our BSS has changed.
  * Usually, this routine only gets called when we associate, or disassociate.
  */
-static void hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-		struct ieee80211_bss_conf *conf, u32 changed)
+static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+			   struct ieee80211_bss_conf *conf, u32 changed)
 {
-	struct piper_priv *digi = hw->priv;
-	unsigned int reg;
-	
-	if (changed & BSS_CHANGED_ASSOC)
-	{
-        /*
-         * Our association status has changed.
-         */
-		set_status_led(hw, conf->assoc ? 1 : 0);
-    }
-    if (changed & BSS_CHANGED_ERP_CTS_PROT)
-    {
-        digi->bssWantCtsProtection = conf->use_cts_prot;
-    }
-    if (changed & BSS_CHANGED_ERP_PREAMBLE)
-    {
+	struct piper_priv *piperp = hw->priv;
+	u32 reg;
+
+	dprintk(DVVERBOSE, " changed = 0x%08x\n", changed);
+
+	if (changed & BSS_CHANGED_ASSOC) {
+		/* Our association status has changed */
+		piper_set_status_led(hw, conf->assoc ? 1 : 0);
+
+		dprintk(DVERBOSE, " AP %s\n", conf->assoc ?
+			"associated" : "disassociated");
+	}
+	if (changed & BSS_CHANGED_ERP_CTS_PROT) {
+		piperp->tx_cts = conf->use_cts_prot;
+	}
+	if (changed & BSS_CHANGED_ERP_PREAMBLE) {
 #define WANT_SHORT_PREAMBLE_SUPPORT     (0)
 /* TODO: Determine if short preambles really hurt us, or if I'm just seeing things. */
 #if WANT_SHORT_PREAMBLE_SUPPORT
-        if (conf->use_short_preamble)
-        {
-            digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
-        }
-        else
-        {
-            digi->write_reg(digi, BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
-        }
+		if (conf->use_short_preamble) {
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+					   BB_GENERAL_CTL_SH_PRE, op_or);
+		} else {
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+					   ~BB_GENERAL_CTL_SH_PRE, op_and);
+		}
 #else
-            digi->write_reg(digi, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
 #endif
-    }
-    if (changed & BSS_CHANGED_BASIC_RATES)
-    {
-        /*
-         * The list of transmit rates has changed.  Update the 
-         * rates we will receive at to match those the AP will
-         * transmit at.  This should improve our receive performance
-         * since we won't listen to junk at the wrong rate.
-         */
-        unsigned int word = digi->read_reg(digi, MAC_SSID_LEN) 
-                        & ~(MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK);
-        unsigned int ofdm = 0, psk = 0;
-        
-        digi->rf->getOfdmBrs(conf->basic_rates, &ofdm, &psk);
-        
-        word |= ofdm << MAC_OFDM_BRS_SHIFT;
-        word |= psk << MAC_PSK_BRS_SHIFT;
-        digi->write_reg(digi, MAC_SSID_LEN, word, op_write);
-        digi_dbg("BRS mask set to 0x%8.8X\n", word);
-        if (ofdm == 0)
-        {
-            /*
-             * Disable ofdm receiver if no ofdm rates supported.
-             */
-            digi->write_reg(digi, BB_GENERAL_STAT, ~BB_GENERAL_STAT_A_EN, op_and);
-        }
-        else
-        {
-            /*
-             * Enable ofdm receiver if any ofdm rates supported.
-             */
-            digi->write_reg(digi, BB_GENERAL_STAT, BB_GENERAL_STAT_A_EN, op_or);
-        }
-            
-    }
-    /*
-     * Save new DTIM period.
-     */
-    reg = digi->read_reg(digi, MAC_DTIM_PERIOD) & ~MAC_DTIM_PERIOD_MASK;
-    reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
-    digi->write_reg(digi, MAC_DTIM_PERIOD, reg, op_write);
-    reg = digi->read_reg(digi, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
-    reg |= conf->beacon_int << 16;
-    digi->write_reg(digi, MAC_CFP_ATIM, reg, op_write);
+	}
 
+	if (changed & BSS_CHANGED_BASIC_RATES) {
+		/*
+		 * The list of transmit rates has changed.  Update the
+		 * rates we will receive at to match those the AP will
+		 * transmit at.  This should improve our receive performance
+		 * since we won't listen to junk at the wrong rate.
+		 */
+		unsigned int ofdm = 0, psk = 0;
+
+		reg = piperp->ac->rd_reg(piperp, MAC_SSID_LEN) &
+				         ~(MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK);
+
+		piperp->rf->getOfdmBrs(conf->basic_rates, &ofdm, &psk);
+		reg |= ofdm << MAC_OFDM_BRS_SHIFT;
+		reg |= psk << MAC_PSK_BRS_SHIFT;
+		piperp->ac->wr_reg(piperp, MAC_SSID_LEN, reg, op_write);
+
+		dprintk(DVERBOSE, "BRS mask set to 0x%8.8X\n", reg);
+
+		if (ofdm == 0) {
+			/* Disable ofdm receiver if no ofdm rates supported */
+			piperp->ac->wr_reg(piperp, BB_GENERAL_STAT,
+					   ~BB_GENERAL_STAT_A_EN, op_and);
+		} else {
+			/* Enable ofdm receiver if any ofdm rates supported */
+			piperp->ac->wr_reg(piperp, BB_GENERAL_STAT,
+					   BB_GENERAL_STAT_A_EN, op_or);
+		}
+	}
+
+	/* Save new DTIM period */
+	reg = piperp->ac->rd_reg(piperp, MAC_DTIM_PERIOD) & ~MAC_DTIM_PERIOD_MASK;
+	reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
+	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, reg, op_write);
+	reg = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
+	reg |= conf->beacon_int << 16;
+	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, reg, op_write);
 }
-
-
 
 /*
  * Use the SSL library routines to expand the AES key.
  */
-static int expand_aes_key(struct ieee80211_key_conf *key, u32 *expandedKey)
+static int piper_expand_aes_key(struct ieee80211_key_conf *key,
+				u32 *expandedKey)
 {
 	struct crypto_aes_ctx aes;
-	int err;
+	int ret;
+
+	dprintk(DVVERBOSE, "\n");
 
 	if (key->keylen != AES_KEYSIZE_128)
 		return -EOPNOTSUPP;
-	
-	err = crypto_aes_expand_key(&aes, key->key, key->keylen);
-	if (err)
+
+	ret = crypto_aes_expand_key(&aes, key->key, key->keylen);
+	if (ret)
 		return -EOPNOTSUPP;
 
-    memcpy(expandedKey, aes.key_enc, EXPANDED_KEY_LENGTH);
+	memcpy(expandedKey, aes.key_enc, EXPANDED_KEY_LENGTH);
 
 	return 0;
 }
-
 
 /*
  * mac80211 calls this routine to set a new encryption key, or to
  * retire an old one.  We support H/W AES encryption/decryption, so
  * save the AES related keys.
  */
-#if 1
-    /* They seem to keep switching the prototype of this function around */
-    
-static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
-		       const u8 *local_address, const u8 *address,
-		       struct ieee80211_key_conf *key)
-#else
-static int hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
-		                struct ieee80211_vif *vif, struct ieee80211_sta *sta,
-		                struct ieee80211_key_conf *key)
-#endif
+static int piper_hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
+			    const u8 *local_address, const u8 *address,
+			    struct ieee80211_key_conf *key)
 {
-	int err = -EOPNOTSUPP;
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
+	int ret = 0;
 
-    if ((key->alg != ALG_CCMP) || (key->keyidx >= PIPER_MAX_KEYS))
-    {
-        /*
-         * If we come here, then mac80211 was trying to set a key for some
-         * algorithm other than AES, or trying to set a key index greater
-         * than 3.  We only support AES, and only 4 keys.
-         */
-        err = -EOPNOTSUPP;
-        goto hw_set_key_done;
-    }
+	dprintk(DVVERBOSE, "\n");
 
-	key->hw_key_idx = key->keyidx;
-	if (cmd == SET_KEY) 
-	{
-		err = expand_aes_key(key, digi->key[key->keyidx].expandedKey);
-		if ((!digi->key[key->keyidx].valid) && (err == 0))
-		{
-		    digi->AESKeyCount++;
-		}
-		digi->key[key->keyidx].txPn = 0;
-		digi->key[key->keyidx].rxPn = 0;
-		digi->key[key->keyidx].valid = (err == 0);
-		key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
-	} 
-	else 
-	{
-		/* disable key */
-		if (digi->key[key->keyidx].valid)
-		{
-		    digi->AESKeyCount--;
-		}
-		digi->key[key->keyidx].valid = false;
-		err = 0;
+	if ((key->alg != ALG_CCMP) || (key->keyidx >= PIPER_MAX_KEYS)) {
+		/*
+		 * If we come here, then mac80211 was trying to set a key for some
+		 * algorithm other than AES, or trying to set a key index greater
+		 * than 3.  We only support AES, and only 4 keys.
+		 */
+		ret = -EOPNOTSUPP;
+		goto set_key_error;
 	}
-	
-    if (digi->AESKeyCount > 0)
-    {
-        digi->write_reg(digi, MAC_CTL, ~MAC_CTL_AES_DISABLE, op_and);
-    }
-    else
-    {
-        digi->write_reg(digi, MAC_CTL, MAC_CTL_AES_DISABLE, op_or);
-    }
+	key->hw_key_idx = key->keyidx;
 
-hw_set_key_done:
-	if (err)
-		printk(KERN_ERR PIPER_DRIVER_NAME ": unable to set AES key\n");
+	if (cmd == SET_KEY) {
+		ret = piper_expand_aes_key(key, piperp->key[key->keyidx].expandedKey);
+		if (ret)
+			goto set_key_error;
 
-    return err;
+		if (!piperp->key[key->keyidx].valid)
+			piperp->aes_key_count++;
+		piperp->key[key->keyidx].txPn = 0;
+		piperp->key[key->keyidx].rxPn = 0;
+		piperp->key[key->keyidx].valid = (ret == 0);
+		key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
+	} else {
+		/* disable key */
+		if (piperp->key[key->keyidx].valid)
+			piperp->aes_key_count--;
+		piperp->key[key->keyidx].valid = false;
+	}
+
+	if (piperp->aes_key_count > 0)
+		piperp->ac->wr_reg(piperp, MAC_CTL, ~MAC_CTL_AES_DISABLE, op_and);
+	else
+		piperp->ac->wr_reg(piperp, MAC_CTL, MAC_CTL_AES_DISABLE, op_or);
+
+set_key_error:
+	if (ret)
+		dprintk(DVERBOSE, "unable to set AES key\n");
+
+	return ret;
 }
-
 
 /*
  * mac80211 calls this routine to determine if we transmitted the
  * last beacon.  Unfortunately, we can't tell for sure.  We give
  * mac80211 our best guess.
  */
-static int hw_tx_last_beacon(struct ieee80211_hw *hw)
+static int piper_hw_tx_last_beacon(struct ieee80211_hw *hw)
 {
-    struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
 
-    return digi->beacon.weSentLastOne ? 1 : 0;
+	dprintk(DVVERBOSE, "\n");
+	return piperp->beacon.weSentLastOne ? 1 : 0;
 }
 
-
-/*
- * Return the low level transmit queue statistics.
- */
-static int get_tx_stats(struct ieee80211_hw *hw,
-			    struct ieee80211_tx_queue_stats *stats)
+static int piper_get_tx_stats(struct ieee80211_hw *hw,
+			      struct ieee80211_tx_queue_stats *stats)
 {
-    struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
 
-    if (stats != NULL)
-    {
-        memcpy(stats, &digi->txQueueStats, sizeof(digi->txQueueStats));
-    }
-    return 0;
+	dprintk(DVVERBOSE, "\n");
+	if (stats)
+		memcpy(stats, &piperp->pstats.tx_queue, sizeof(piperp->pstats.tx_queue));
+
+	return 0;
 }
 
-
-/*
- * Return the low level statistics.
- */
-static int get_stats(struct ieee80211_hw *hw,
-			 struct ieee80211_low_level_stats *stats)
+static int piper_get_stats(struct ieee80211_hw *hw,
+			   struct ieee80211_low_level_stats *stats)
 {
-    struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
 
-    if (stats != NULL)
-    {
-        memcpy(stats, &digi->lowLevelStats, sizeof(digi->lowLevelStats));
-    }
-    return 0;
+	dprintk(DVVERBOSE, "\n");
+	if (stats)
+		memcpy(stats, &piperp->pstats.ll_stats, sizeof(piperp->pstats.ll_stats));
+
+	return 0;
 }
-
 
 const struct ieee80211_ops hw_ops = {
-	.tx = hw_tx,
-	.start = hw_start,
-	.stop = hw_stop,
-	.add_interface = hw_add_intf,
-	.remove_interface = hw_rm_intf,
-	.config = hw_config,
-	.config_interface = hw_config_intf,
-	.configure_filter = hw_configure_filter,
-	.bss_info_changed = hw_bss_changed,
-	.tx_last_beacon = hw_tx_last_beacon,
-	.set_key = hw_set_key,
-	.get_tx_stats = get_tx_stats,
-	.get_stats = get_stats,
+	.tx			= piper_hw_tx,
+	.start 			= piper_hw_start,
+	.stop			= piper_hw_stop,
+	.add_interface		= piper_hw_add_intf,
+	.remove_interface	= piper_hw_rm_intf,
+	.config			= piper_config,
+	.config_interface	= piper_hw_config_intf,
+	.configure_filter 	= piper_hw_config_filter,
+	.bss_info_changed 	= piper_hw_bss_changed,
+	.tx_last_beacon		= piper_hw_tx_last_beacon,
+	.set_key		= piper_hw_set_key,
+	.get_tx_stats 		= piper_get_tx_stats,
+	.get_stats 		= piper_get_stats,
 };
 
 /*
  * This routine is called by the probe routine to allocate the
  * data structure we need to communicate with mac80211.
  */
-int digiWifiAllocateHw(struct piper_priv **priv, size_t priv_sz)
+int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 {
-	struct piper_priv *digi;
+	struct piper_priv *piperp;
 	struct ieee80211_hw *hw;
 
 	hw = ieee80211_alloc_hw(priv_sz, &hw_ops);
@@ -924,52 +831,52 @@ int digiWifiAllocateHw(struct piper_priv **priv, size_t priv_sz)
 		return -ENOMEM;
 
 	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS
-	             | IEEE80211_HW_SIGNAL_DBM
-	             | IEEE80211_HW_NOISE_DBM
+		  | IEEE80211_HW_SIGNAL_DBM
+		  | IEEE80211_HW_NOISE_DBM
 #if !WANT_SHORT_PREAMBLE_SUPPORT
-	             /* TODO: Remove this */ | IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE
+		  | IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE
 #endif
 	             /* | IEEE80211_HW_SPECTRUM_MGMT TODO:  Turn this on when we are ready*/;
+
 	hw->queues = 1;
 	hw->ampdu_queues = 0;
-	hw->extra_tx_headroom = 4 +
-			sizeof(struct ofdm_hdr);
-	*priv = digi = hw->priv;
-	digi->txQueueStats.len = 0;
-	digi->txQueueStats.limit = 1;
-	digi->txQueueStats.count = 0;
-	memset(&digi->lowLevelStats, 0, sizeof(digi->lowLevelStats));
-	digi->hw = hw;
+	hw->extra_tx_headroom = 4 + sizeof(struct ofdm_hdr);
+	piperp = hw->priv;
+	*priv = piperp;
+	piperp->pstats.tx_queue.len = 0;
+	piperp->pstats.tx_queue.limit = 1;
+	piperp->pstats.tx_queue.count = 0;
+	memset(&piperp->pstats.ll_stats, 0, sizeof(piperp->pstats.ll_stats));
+	piperp->hw = hw;
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(piper_alloc_hw);
 
 /*
  * This routine is called by the remove function to free the memory
  * allocated by piper_alloc_hw.
  */
-void digiWifiFreeHw(struct piper_priv *digi)
+void piper_free_hw(struct piper_priv *piperp)
 {
-    ieee80211_free_hw(digi->hw);
+	ieee80211_free_hw(piperp->hw);
 }
-
-
-EXPORT_SYMBOL_GPL(digiWifiAllocateHw);
-EXPORT_SYMBOL_GPL(digiWifiFreeHw);
+EXPORT_SYMBOL_GPL(piper_free_hw);
 
 /*
  * This routine is called by the probe routine to register
  * with mac80211.
  */
-int digiWifiRegisterHw(struct piper_priv *priv, struct device *dev,
-		struct digi_rf_ops *rf)
+int piper_register_hw(struct piper_priv *priv, struct device *dev,
+		      struct digi_rf_ops *rf)
 {
 	struct ieee80211_hw *hw = priv->hw;
-	int i, err;
-	unsigned char macAddress[2*sizeof(unsigned int)];
-    unsigned int word;
-    
-	digi_dbg("piper_register_hw called\n");
+	u8 macaddr[8];
+	u32 temp;
+	int i, ret;
+
+	dprintk(DVVERBOSE, "\n");
+
 	priv->rf = rf;
 	for (i = 0; i < rf->n_bands; i++) {
 		enum ieee80211_band b = rf->bands[i].band;
@@ -979,40 +886,41 @@ int digiWifiRegisterHw(struct piper_priv *priv, struct device *dev,
 	                             | BIT(NL80211_IFTYPE_STATION)
 /* TODO: Enable this             | BIT(NL80211_IFTYPE_MESH_POINT) */
 	                             ;
-
 	hw->channel_change_time = rf->channelChangeTime;
 	hw->vif_data_size = 0;
 	hw->sta_data_size = 0;
 	hw->max_rates = IEEE80211_TX_MAX_RATES;
 	hw->max_rate_tries = 5;             /* completely arbitrary */
-    hw->max_signal = rf->maxSignal;
-    hw->max_listen_interval = 10;       /* I don't think APs will work with values larger than 4 actually */
-    
+	hw->max_signal = rf->maxSignal;
+	hw->max_listen_interval = 10;       /* I don't think APs will work with values larger than 4 actually */
+
 	SET_IEEE80211_DEV(hw, dev);
-	
-    word = cpu_to_be32(priv->read_reg(priv, MAC_STA_ID0));
-    memcpy(macAddress, &word, sizeof(word));
-    word = cpu_to_be32(priv->read_reg(priv, MAC_STA_ID1));
-    memcpy(&macAddress[4], &word, sizeof(word));
-    SET_IEEE80211_PERM_ADDR(hw, macAddress);
-    
-	err = ieee80211_register_hw(hw);
-	if (err)
-		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register ieee80211 hw\n");
-	else
-		printk(KERN_INFO PIPER_DRIVER_NAME ": registered as %s\n",
-				wiphy_name(hw->wiphy));
-	return err;
+
+	temp = cpu_to_be32(priv->ac->rd_reg(priv, MAC_STA_ID0));
+	memcpy(macaddr, &temp, sizeof(temp));
+	temp = cpu_to_be32(priv->ac->rd_reg(priv, MAC_STA_ID1));
+	memcpy(&macaddr[4], &temp, sizeof(temp));
+	SET_IEEE80211_PERM_ADDR(hw, macaddr);
+
+	if ((ret = ieee80211_register_hw(hw)) != 0) {
+		dprintk(DERROR, "unable to register ieee80211 hw\n");
+		goto error;
+	}
+
+	printk(KERN_INFO PIPER_DRIVER_NAME ": registered as %s\n",
+	      	wiphy_name(hw->wiphy));
+error:
+	return ret;
 }
-EXPORT_SYMBOL_GPL(digiWifiRegisterHw);
+EXPORT_SYMBOL_GPL(piper_register_hw);
 
 
-void digiWifiUnregisterHw(struct piper_priv *digi)
+void piper_unregister_hw(struct piper_priv *piperp)
 {
-	digi_dbg("piper_unregister_hw called\n");
-	ieee80211_unregister_hw(digi->hw);
+	dprintk(DVVERBOSE, "\n");
+	ieee80211_unregister_hw(piperp->hw);
 }
-EXPORT_SYMBOL_GPL(digiWifiUnregisterHw);
+EXPORT_SYMBOL_GPL(piper_unregister_hw);
 
 
 MODULE_DESCRIPTION("Digi Piper WLAN core");

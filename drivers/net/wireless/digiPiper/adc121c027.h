@@ -8,14 +8,10 @@
     the Free Software Foundation; version 2 of the License.
 */
 
-#ifndef adc121c027_h
+#ifndef ADC121C027_H
+#define ADC121C027_H
 
-#define adc121c027_h
+int adc121C027_init(struct airohaCalibrationData *cal);
 
-int digiWifiInitAdc(struct piper_priv *digi);
-
-
-
-
-#endif
+#endif /* ADC121C027_H */
 

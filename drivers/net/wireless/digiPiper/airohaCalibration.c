@@ -5,7 +5,7 @@
  * Copyright (C) 2009 by Digi International Inc.
  * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
+ * This program is free softbware; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
  * the Free Software Foundation.
  */
@@ -15,15 +15,13 @@
 #include <linux/kthread.h>
 #include <linux/timer.h>
 #include <linux/crc32.h>
-#include <net/piper_pdata.h>
 
 #include "pipermain.h"
 #include "mac.h"
 #include "airoha.h"
-#include "adc121c027.h"
 #include "airohaCalibration.h"
+#include "adc121c027.h"
 
-#define MAX_SAMPLES                     (3)
 #define MAX_ALLOWED_ADC_ERROR           (2)             /* TODO: come up with a rational value for this */
 #define POWER_INDEX_STEP                (1)             /* TODO: come up with a rational value for this */
 
@@ -50,90 +48,9 @@
 
 
 
-/*
- * Field values used for computing ABS values.
- */
-enum 
-{
-    OUT_POWER,
-    ADC_VAL,
-    POWER_INDEX
-};
-
-#ifdef DEBUG
-static const char *fieldDescription[] =
-{
-    "OUT_POWER",
-    "ADC_VAL",
-    "POWER_INDEX"
-};
-#endif
-
-/*
- * States for the auto calibration thread.
- */
-enum
-{
-    RESTART_STATE,
-    COLLECT_SAMPLES_STATE,
-    GOT_SAMPLE_STATE,
-    RECALIBRATE_STATE
-};
-
-#ifdef DEBUG
-static const char *stateText[] =
-{
-    "RESTART_STATE",
-    "COLLECT_SAMPLES_STATE",
-    "GOT_SAMPLE_STATE",
-    "RECALIBRATE_STATE"
-};
-#endif
-
-
-/*
- * Slope types accepted by computeSlope().
- */
-enum
-{
-    POWER_INDEX_OVER_OUT_POWER,
-    ADC_OVER_OUT_POWER,
-    OUT_POWER_OVER_ADC,
-    POWER_INDEX_OVER_ADC
-};
-
-
+static struct airohaCalibrationData calibration;
 
 static DECLARE_WAIT_QUEUE_HEAD(waitQueue);
-
-typedef struct
-{
-    unsigned rate;              /* rate packet transmitted at */
-    unsigned int sample;        /* measured sample */
-} sampleInfo_t;
-
-
-
-typedef struct
-{
-    struct task_struct *threadCB;
-    spinlock_t lock;
-    volatile unsigned int events;
-    unsigned int sampleCount;
-    sampleInfo_t sample[MAX_SAMPLES];
-    wcd_data_t *nvram;
-    wcd_curve_t *curve;
-    int slopeTimes1000;
-    int adcSlopeTimes1000;
-    int outPowerSlopeTimes1000;
-    int powerIndexSlopeTimes1000;
-    int expectedAdc;
-    int powerIndex, correctedPowerIndex;
-    wcd_point_t *p1;
-} airohaCalibrationData_t;
-
-static airohaCalibrationData_t calibration;
-
 
 
 /*
@@ -142,17 +59,19 @@ static airohaCalibrationData_t calibration;
  * The frame should be going out now.  We reset the peak
  * ADC measurement register and the receive frame count.
  */
+#if 0
 static void transmitIsStarting(struct piper_priv *digi)
 {
-    digi->adcClearPeak(digi);
+    calibration.cops->adc_clear_peak(&calibration);
 }
+#endif
 
 /*
  * This routine is called to shut down the transmit ADC sampler.
  */
 static void stopSampler(struct piper_priv *digi)
 {
-    digi->txTransmitFinished = NULL;
+    digi->tx_calib_cb = NULL;
 }
 
 /*
@@ -162,14 +81,14 @@ static void stopSampler(struct piper_priv *digi)
 static void kickCalibrationThread(struct piper_priv *digi, unsigned int event)
 {
     unsigned long spinlockFlags;
-    
+
     spin_lock_irqsave(&calibration.lock, spinlockFlags);
     calibration.events |= event;
     spin_unlock_irqrestore(&calibration.lock, spinlockFlags);
     wake_up_interruptible(&waitQueue);
 }
 
-    
+
 /*
  * This routine is called each time we complete a transmit while we are in
  * the sampling state.  We record the peak ADC reading.  We kick the state
@@ -181,10 +100,10 @@ static void processSample(struct piper_priv *digi)
     if (calibration.sampleCount < MAX_SAMPLES)
     {
         /*
-         * Read the ADC value.  It is a 12-bit value.  We shift it 4 bits to 
+         * Read the ADC value.  It is a 12-bit value.  We shift it 4 bits to
          * create an 8-bit value.
          */
-        calibration.sample[calibration.sampleCount].sample = (digi->adcReadPeak(digi) >> 4);
+        calibration.sample[calibration.sampleCount].sample = (calibration.cops->adc_read_peak(&calibration) >> 4);
         if (calibration.sample[calibration.sampleCount].sample > MINIMUM_ADC_VALUE)
         {
             calibration.sampleCount++;
@@ -206,7 +125,7 @@ static void transmitHasCompleted(struct piper_priv *digi)
 static struct ieee80211_rate *findLowestRate(struct piper_priv *digi, unsigned int rates)
 {
     unsigned int idx, rateIndex = 0;
-    
+
     for (idx = 16; idx < sizeof(rates); idx++)
     {
         if (rates & (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK))
@@ -218,7 +137,7 @@ static struct ieee80211_rate *findLowestRate(struct piper_priv *digi, unsigned i
             rateIndex++;
         }
     }
-    
+
     return (struct ieee80211_rate *) digi->rf->getRate(rateIndex);
 }
 
@@ -229,9 +148,9 @@ static struct ieee80211_rate *findLowestRate(struct piper_priv *digi, unsigned i
  */
 static struct ieee80211_rate *determineCalibrationTxRate(struct piper_priv *digi)
 {
-    unsigned int rates = digi->read_reg(digi, MAC_SSID_LEN);
+    unsigned int rates = digi->ac->rd_reg(digi, MAC_SSID_LEN);
     struct ieee80211_rate *calibrationTxRate;
-    
+
     if (   (digi->rf->getBand(digi->channel) == IEEE80211_BAND_2GHZ)
         && (rates & MAC_PSK_BRS_MASK))
     {
@@ -241,12 +160,12 @@ static struct ieee80211_rate *determineCalibrationTxRate(struct piper_priv *digi
     {
         calibrationTxRate = findLowestRate(digi, rates & MAC_OFDM_BRS_MASK);
     }
-    
+
     return calibrationTxRate;
 }
 
 
-                
+
 
 /*
  * Start collecting sample ADC peak measurements for calibration.  Start
@@ -255,8 +174,8 @@ static struct ieee80211_rate *determineCalibrationTxRate(struct piper_priv *digi
  */
 static void startSampleCollection(struct piper_priv *digi)
 {
-    digi->adcClearPeak(digi);
-    digi->txTransmitFinished = transmitHasCompleted;
+    calibration.cops->adc_clear_peak(&calibration);
+    digi->tx_calib_cb = transmitHasCompleted;
 }
 
 
@@ -270,17 +189,19 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
 	int ccode;
 	unsigned int event;
 	int result = TIMED_OUT_EVENT;
-	                                    
+
     if (timeout != 0)
     {
-        ccode = wait_event_interruptible_timeout(waitQueue, 
+        ccode = wait_event_interruptible_timeout(waitQueue,
                                                  ((calibration.events & ALL_EVENTS_TO_WAIT_FOR(eventToWaitFor)) != 0),
                                                  timeout);
+	__set_current_state(TASK_RUNNING);
+
     }
     else
     {
         ccode = 0;
-    }                                      
+    }
     spin_lock_irqsave(&calibration.lock, spinlockFlags);
     event = calibration.events;
     calibration.events = 0;
@@ -302,7 +223,7 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
     {
         result = TIMED_OUT_EVENT;
     }
-        
+
     return result;
 }
 
@@ -318,7 +239,7 @@ static void printPoint(wcd_point_t *p)
 /*
  * This routine finds the closest pair of points in a calibration curve.
  *
- *      curve       calibration curve 
+ *      curve       calibration curve
  *      value       look for the pr of points closest to this value
  *      p1          storage for one point
  *      p2          storage for another point
@@ -339,7 +260,7 @@ static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t **p1, w
     else
     {
         unsigned int idx;
-        
+
         for (idx = 1; idx < calibration.nvram->header.numcalpoints; idx++)
         {
             if (value < curve->points[idx].out_power)
@@ -351,8 +272,8 @@ static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t **p1, w
             else if (value == curve->points[idx].out_power)
             {
                 /*
-                 * Note that the if statement befpre the for loop already tested for the 
-                 * value being equal to the first or last point in the curve, so we don't 
+                 * Note that the if statement befpre the for loop already tested for the
+                 * value being equal to the first or last point in the curve, so we don't
                  * have to worry about that condition in the code below.
                  */
                 if ((value - curve->points[idx - 1].out_power) >= (curve->points[idx + 1].out_power - value))
@@ -384,7 +305,7 @@ static int computeSlopeTimes1000(wcd_point_t *p1, wcd_point_t *p2, int slopeType
 {
     int slope = 0;
     int divisor;
-    
+
     switch (slopeType)
     {
         default:
@@ -435,7 +356,7 @@ static int computeSlopeTimes1000(wcd_point_t *p1, wcd_point_t *p2, int slopeType
             }
             break;
     }
-    
+
     return slope;
 }
 
@@ -453,7 +374,7 @@ static int computeSlopeTimes1000(wcd_point_t *p1, wcd_point_t *p2, int slopeType
 static int computeY(wcd_point_t *p1, int slopeTimes1000, int x, int slopeType)
 {
     int y = 0;
-    
+
     switch (slopeType)
     {
         default:
@@ -472,17 +393,17 @@ static int computeY(wcd_point_t *p1, int slopeTimes1000, int x, int slopeType)
             y = (((slopeTimes1000*x) - (slopeTimes1000*p1->adc_val) + 500)/ 1000) + p1->power_index;
             break;
     }
-    
+
     return y;
 }
-    
+
 
 
 static wcd_curve_t *determineCurve(struct piper_priv *digi)
 {
-    unsigned int rates = digi->read_reg(digi, MAC_SSID_LEN);
+    unsigned int rates = digi->ac->rd_reg(digi, MAC_SSID_LEN);
     wcd_curve_t *curve = NULL;
-    
+
     if (digi->rf->getBand(digi->channel) == IEEE80211_BAND_2GHZ)
     {
         if (rates & MAC_PSK_BRS_MASK)
@@ -501,20 +422,20 @@ static wcd_curve_t *determineCurve(struct piper_priv *digi)
         curve = &calibration.nvram->cal_curves_a[digi->channel - BAND_A_OFFSET];
         digi_dbg("Using A curve [%d]\n", digi->channel - BAND_A_OFFSET);
     }
-    
+
     return curve;
 }
 
-                
+
 /*
  * This routine performs open loop calibration for Airoha.  It takes a value in mdbm
- * and uses the factory calibration routines to determine the appropriate register 
+ * and uses the factory calibration routines to determine the appropriate register
  * value to write to airoha.
  */
 static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
 {
     wcd_point_t *p1, *p2;
-    
+
     digi_dbg("Setting initial powerlevel %d milli dBm.\n", mdBm);
     calibration.curve = determineCurve(digi);
     findClosestPoints(calibration.curve, mdBm, &p1, &p2, OUT_POWER);
@@ -529,12 +450,12 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
     }
     calibration.powerIndex = computeY(calibration.p1, calibration.slopeTimes1000, mdBm, POWER_INDEX_OVER_OUT_POWER);
     calibration.correctedPowerIndex = calibration.powerIndex;
-    
+
     digi_dbg("Computed power index = %d.\n", calibration.powerIndex);
     digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
-    
+
     /*
-     * Let's compute and save the expected ADC value while we have all the necessary 
+     * Let's compute and save the expected ADC value while we have all the necessary
      * information handy.
      */
 #ifdef DEBUG
@@ -555,7 +476,7 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
  * for several transmit frames have been sampled.  It does the following:
  *
  *      1.  Average the samples together.
- *      2.  If the measured ADC level is too low, then increase the power 
+ *      2.  If the measured ADC level is too low, then increase the power
  *          level one step.
  *      3.  If the measured ADC level is too high, then decrease the power
  *          level one step.
@@ -565,7 +486,7 @@ static void recalibrate(struct piper_priv *digi)
     unsigned int idx;
     int actualAdc = 0;
     int errorInAdc, errorInMdbm;
-    
+
     digi_dbg("Samples: ");
     for (idx = 0; idx < calibration.sampleCount; idx++)
     {
@@ -578,22 +499,22 @@ static void recalibrate(struct piper_priv *digi)
     printk("\n");
 #endif
     actualAdc = actualAdc / calibration.sampleCount;
-    
+
 #if 1
     errorInAdc = actualAdc - calibration.expectedAdc;
     {
-        wcd_point_t p = 
+        wcd_point_t p =
         {
             .out_power = 0,
             .adc_val = 0
         };
-        
+
         errorInMdbm = computeY(&p, calibration.outPowerSlopeTimes1000, abs(errorInAdc), OUT_POWER_OVER_ADC);
     }
     digi_dbg("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n", actualAdc, calibration.expectedAdc, errorInMdbm);
     if (errorInMdbm > MAX_TOLERATED_ERROR_IN_MDBM)
     {
-        int correction = computeY(calibration.p1, calibration.powerIndexSlopeTimes1000, 
+        int correction = computeY(calibration.p1, calibration.powerIndexSlopeTimes1000,
                                        actualAdc/*(calibration.expectedAdc - errorInAdc)*/, POWER_INDEX_OVER_ADC);
 /*        correction -= calibration.powerIndex; */
         correction = (calibration.powerIndex - correction) / 2;
@@ -642,7 +563,7 @@ static void recalibrate(struct piper_priv *digi)
     }
 #endif
 }
-    
+
 
 /*
  * This routine is called by the 80211mac library to set a new power level.  We
@@ -659,7 +580,7 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t value)
      */
     stopSampler(digi);
     kickCalibrationThread(digi, RESTART_AUTOCALIBRATION_EVENT);
-    
+
     return 0;
 }
 
@@ -668,21 +589,21 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t value)
 /*
  * The calibration data is passed to the kernel from U-Boot.  The kernel
  * start up routines will have copied the data into digi->pdata->wcd.
- * We do a few sanity checks on the data and set up our own pointers to 
+ * We do a few sanity checks on the data and set up our own pointers to
  * it.
  */
 static int getCalibrationData(struct piper_priv *digi)
 {
     int result = -1;
-    
+
     calibration.nvram = &digi->pdata->wcd;
-    
+
     if (strncmp(calibration.nvram->header.magic_string,
                 NVRAM_WCAL_SIGNATURE, strlen(NVRAM_WCAL_SIGNATURE)) == 0)
     {
         unsigned int crc = ~crc32_le(~0, (unsigned char const *)calibration.nvram->cal_curves_bg,
                                          calibration.nvram->header.wcd_len);
-        
+
         if (crc == calibration.nvram->header.wcd_crc)
         {
             digi_dbg("CRC and signature for calibration data is okay\n");
@@ -697,25 +618,25 @@ static int getCalibrationData(struct piper_priv *digi)
     {
         digi_dbg("Calibration data has invalid signature.\n");
     }
-    
+
     return result;
 }
 
 #else
 
 /*
- * This routine generates dummy calibration data for testing.  
+ * This routine generates dummy calibration data for testing.
  */
 static int getCalibrationData(struct piper_priv *digi)
 {
 	int ret=-1;
 	int i, j;
     static wcd_data_t nvram;
-    
+
     (void) digi;
-    
+
     calibration.nvram = &nvram;
-    
+
 	strncpy(calibration.nvram->header.magic_string,"WCALDATA",strlen("WCALDATA"));
 	calibration.nvram->header.numcalpoints = 5;
 
@@ -724,23 +645,23 @@ static int getCalibrationData(struct piper_priv *digi)
 	    for (j = 0; j < 2; j++)
 	    {
     		calibration.nvram->cal_curves_bg[i][j].max_power_index = 63;
-    
+
     		calibration.nvram->cal_curves_bg[i][j].points[0].out_power= 	-2905;		/* Output Power */
     		calibration.nvram->cal_curves_bg[i][j].points[0].adc_val=	 5;			    /* Measured ADC val */
     		calibration.nvram->cal_curves_bg[i][j].points[0].power_index= 0;				/* Airoha Power Index */;
-    
+
     		calibration.nvram->cal_curves_bg[i][j].points[1].out_power= 	6457;		/* Output Power */
     		calibration.nvram->cal_curves_bg[i][j].points[1].adc_val=	 32;			/* Measured ADC val */
     		calibration.nvram->cal_curves_bg[i][j].points[1].power_index= 24;				/* Airoha Power Index */;
-    
+
     		calibration.nvram->cal_curves_bg[i][j].points[2].out_power= 	 11287;		/* Output Power */
     		calibration.nvram->cal_curves_bg[i][j].points[2].adc_val=	 68;			/* Measured ADC val */
     		calibration.nvram->cal_curves_bg[i][j].points[2].power_index= 37;				/* Airoha Power Index */;
-    
+
     		calibration.nvram->cal_curves_bg[i][j].points[3].out_power= 	16307;		/* Output Power */
     		calibration.nvram->cal_curves_bg[i][j].points[3].adc_val=	108;			/* Measured ADC val */
     		calibration.nvram->cal_curves_bg[i][j].points[3].power_index= 54;				/* Airoha Power Index */;
-    
+
     		calibration.nvram->cal_curves_bg[i][j].points[4].out_power=	18198;		/* Output Power */
     		calibration.nvram->cal_curves_bg[i][j].points[4].adc_val=	130; 			/* Measured ADC val */
     		calibration.nvram->cal_curves_bg[i][j].points[4].power_index= 63;				/* Airoha Power Index */;
@@ -783,7 +704,7 @@ static int getCalibrationData(struct piper_priv *digi)
 /*
  * This routine:
  *
- *      1. Loads the ADC driver.  
+ *      1. Loads the ADC driver.
  *      2. Loads the calibration data.
  *      3. Implements the automatic calibration state machine.
  *
@@ -792,7 +713,9 @@ static int digiWifiCalibrationThreadEntry(void *data)
 {
 	struct piper_priv *digi = data;
 	int state;
-    
+
+	__set_current_state(TASK_RUNNING);
+
     while (1)
     {
         /*
@@ -801,7 +724,10 @@ static int digiWifiCalibrationThreadEntry(void *data)
          * which is an I2C client driver, when we load.  This loop tries
          * and retries to load the ADC driver until it succeeds.
          */
-        if (digiWifiInitAdc(digi) == 0)
+
+	/* TODO, FIXME make following code dependent on platform information
+	 * allowign to initialize different adc */
+        if (adc121C027_init(&calibration) == 0)
         {
             digi_dbg("ADC driver loaded...\n");
             break;
@@ -809,7 +735,7 @@ static int digiWifiCalibrationThreadEntry(void *data)
         digi_dbg("Will try to load ADC driver again...\n");
         ssleep(10);
     }
-    
+
     while (getCalibrationData(digi) == -1)
     {
         digi_dbg("getCalibrationData() failed.  Will try again in 60 seconds.\n");
@@ -818,15 +744,15 @@ static int digiWifiCalibrationThreadEntry(void *data)
     digi->rf->set_pwr = setNewPowerLevel;
 
     state = RESTART_STATE;
-    
+
     digi_dbg("Starting autocalibration state machine.\n");
-    while (1)
+    do
     {
         int event;
         int timeout = 0;
         int expectedEvent = TIMED_OUT_EVENT;
         int nextState = RESTART_STATE;
-        
+
         switch (state)
         {
             case RESTART_STATE:
@@ -866,6 +792,7 @@ static int digiWifiCalibrationThreadEntry(void *data)
 
         state = nextState;
         event = waitForEvent(timeout, expectedEvent);
+
         switch (event)
         {
             case SHUTDOWN_AUTOCALIBRATION_EVENT:
@@ -883,8 +810,10 @@ static int digiWifiCalibrationThreadEntry(void *data)
                     state = COLLECT_SAMPLES_STATE;
                 }
         }
-    }
-    
+    } while (!kthread_should_stop());
+
+    calibration.cops->adc_shutdown(&calibration);
+
     return 0;
 }
 
@@ -895,14 +824,21 @@ static int digiWifiCalibrationThreadEntry(void *data)
  */
 void digiWifiInitCalibration(struct piper_priv *digi)
 {
-	
+
     calibration.events = 0;
     calibration.sampleCount = 0;
-    
+
     spin_lock_init(&calibration.lock);
-    
+
     calibration.threadCB = kthread_run(digiWifiCalibrationThreadEntry, digi, PIPER_DRIVER_NAME " - calibration");
 }
 
-EXPORT_SYMBOL_GPL(digiWifiInitCalibration);
+void digiWifiDeInitCalibration(struct piper_priv *digi)
+{
+    calibration.events = SHUTDOWN_AUTOCALIBRATION_EVENT;
+
+    wake_up_interruptible(&waitQueue);
+    kthread_stop(calibration.threadCB);
+}
+EXPORT_SYMBOL_GPL(digiWifiDeInitCalibration);
 
