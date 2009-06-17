@@ -111,11 +111,12 @@ static void __init ccw9p9215js_fixup(struct machine_desc *desc,
 	unsigned char *mac = phys_to_virt(desc->boot_params) + 0xf00;
 	wcd_data_t *pwcal;
 	u32 crc;
+	const u8 default_mac[6] = {0x00, 0x04, 0xf3, 0x00, 0x43, 0x35};
 
 	/* 8 bytes after the mac address, its located the calibration data */
 	pwcal = (wcd_data_t *)(mac + 8);
+	memcpy(&ccw9p9215_piper_pdata.macaddr[0], default_mac, 6);
 
-	memcpy(&ccw9p9215_piper_pdata.macaddr[0], mac, 6);
 
 	if (!strncmp(pwcal->header.magic_string, WCD_MAGIC,
 	    sizeof(pwcal->header.magic_string))) {
@@ -126,6 +127,7 @@ static void __init ccw9p9215js_fixup(struct machine_desc *desc,
 					pwcal->header.wcd_len);
 			if (crc == pwcal->header.wcd_crc) {
 				memcpy(&ccw9p9215_piper_pdata.wcd, pwcal, sizeof(wcd_data_t));
+				memcpy(&ccw9p9215_piper_pdata.macaddr[0], mac, 6);
 				return;
 			}
 		}
