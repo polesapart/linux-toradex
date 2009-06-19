@@ -123,9 +123,6 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
 {
 	struct ieee80211_rate *ret = NULL;
 
-	if (piperp->calibrationTxRate)
-		return piperp->calibrationTxRate;
-
 	if (txInfo->control.rates[piperp->pstats.tx_retry_index].count >
 	    piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]) {
 		if (piperp->pstats.tx_retry_index == 0) {
@@ -228,6 +225,11 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
     }
     result = ieee80211_get_tx_rate(piperp->hw, txInfo);
 #endif
+
+	if (ret != NULL) {
+		if (piperp->calibrationTxRate)
+			return piperp->calibrationTxRate;
+	}
 
 	return ret;
 }
@@ -424,7 +426,7 @@ void piper_tx_tasklet(unsigned long context)
 		struct ieee80211_rate *txRate = get_tx_rate(piperp, txInfo);
 
 		if (txRate != NULL) {
-			fc = (frameControlFieldType_t *) 
+			fc = (frameControlFieldType_t *)
 					&piperp->txPacket->data[FRAME_CONTROL_FIELD_OFFSET];
 
 			/* set the retry bit if this is not the first try */

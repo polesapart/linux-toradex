@@ -157,7 +157,7 @@ struct piper_priv {
 	struct ieee80211_cts		ctsFrame;
 	struct ieee80211_rts		rtsFrame;
 	struct ieee80211_rate 		*calibrationTxRate;
-	struct piper_stats 		pstats;	
+	struct piper_stats 		pstats;
 	struct tasklet_struct		rx_tasklet;
 	struct tasklet_struct		tx_tasklet;
 	struct sk_buff			*txPacket;

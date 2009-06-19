@@ -36,6 +36,12 @@
 
 #define MINIMUM_POWER_INDEX             (10)
 
+/*
+ * Set piperp->calibrationTxRate to this value to make the
+ * transmit routine use the data rate specified by the
+ * mac80211 library.
+ */
+#define USE_MAC80211_DATA_RATE			(NULL)
 
 /*
  * Events we will wait for, also return values for waitForEvent().
@@ -585,7 +591,7 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t value)
 }
 
 
-#if 0 //126
+#if 1
 /*
  * The calibration data is passed to the kernel from U-Boot.  The kernel
  * start up routines will have copied the data into digi->pdata->wcd.
@@ -778,6 +784,7 @@ static int digiWifiCalibrationThreadEntry(void *data)
             case RECALIBRATE_STATE:
                 recalibrate(digi);
                 calibration.sampleCount = 0;
+                digi->calibrationTxRate = USE_MAC80211_DATA_RATE;
                 nextState = COLLECT_SAMPLES_STATE;
                 timeout = RECALIBRATION_PERIOD;
                 expectedEvent = TIMED_OUT_EVENT;
