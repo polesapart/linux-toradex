@@ -34,9 +34,9 @@ void digiWifiDumpWordsDump(void)
 {
     unsigned int *p = dumpWordsWord;
     unsigned int wordsToGo = dumpWordsCount;
-    
+
     dumpWordsCount = 0;
-    
+
     while (wordsToGo >= 4)
     {
         digi_dbg("%8.8X %8.8X - %8.8X %8.8X\n", p[0], p[1], p[2], p[3]);
@@ -67,15 +67,15 @@ void digiWifiDumpWordsReset(void)
 void digiWifiDumpBuffer(u8 *buffer, unsigned int length)
 {
     unsigned int i, word;
-    
+
     digiWifiDumpWordsReset();
-    
+
     for (i = 0; i < length / sizeof(unsigned int); i++)
     {
         memcpy(&word, &buffer[i*sizeof(unsigned int)], sizeof(word));
         digiWifiDumpWordsAdd(cpu_to_be32(word));
     }
-    
+
     digiWifiDumpWordsDump();
 }
 
@@ -84,7 +84,7 @@ void digiWifiDumpSkb(struct sk_buff *skb)
 {
     unsigned int bytesLeft = skb->len;
     unsigned char *p = skb->data;
-        
+
     digi_dbg("skb has %d bytes\n", skb->len);
     while (bytesLeft >= 16)
     {
@@ -124,22 +124,22 @@ void digiWifiDumpSkb(struct sk_buff *skb)
 }
 
 EXPORT_SYMBOL_GPL(digiWifiDumpSkb);
- 
+
 
 void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
 {
 #ifdef DEBUG
     unsigned int i;
-    
+
     if (regs & CTRL_STATUS_REGS)
     {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "Gen Ctrl", digi->read_reg(digi, BB_GENERAL_CTL), 
-                         "Gen Status", digi->read_reg(digi, BB_GENERAL_STAT));
+                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "Gen Ctrl", digi->ac->rd_reg(digi, BB_GENERAL_CTL),
+                         "Gen Status", digi->ac->rd_reg(digi, BB_GENERAL_STAT));
     }
     else if (regs & IRQ_REGS)
     {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "IRQ Mask", digi->read_reg(digi, BB_IRQ_MASK), 
-                         "IRQ Status", digi->read_reg(digi, BB_IRQ_STAT));
+                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "IRQ Mask", digi->ac->rd_reg(digi, BB_IRQ_MASK),
+                         "IRQ Status", digi->ac->rd_reg(digi, BB_IRQ_STAT));
     }
     else if (regs & MAIN_REGS)
     {
@@ -152,7 +152,7 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
         {
             if ((i != BB_DATA_FIFO) && (i != BB_AES_FIFO))
             {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[i>>2], digi->read_reg(digi, i), regNames[(i>>2) + 1], digi->read_reg(digi, i+4));
+                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[i>>2], digi->ac->rd_reg(digi, i), regNames[(i>>2) + 1], digi->ac->rd_reg(digi, i+4));
             }
         }
     }
@@ -161,45 +161,45 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
         const char *regNames[] = {"STA ID0", "STA ID1", "BSS ID0", "BSS ID1",
                                   "OFDM/PSK", "Backoff", "DTIM/List", "B Int",
                                 "Rev/M Stat", "C C/M CTL", "Measure", "Beac Fltr"};
-                               
+
         digi_dbg("Secondary Registers:\n");
         for (i = MAC_STA_ID0; i <= MAC_BEACON_FILT; i = i+8)
         {
-            digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[((i - MAC_STA_ID0) >>2)], digi->read_reg(digi, i), regNames[((i - MAC_STA_ID0)>>2) + 1], digi->read_reg(digi, i+4));
+            digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[((i - MAC_STA_ID0) >>2)], digi->ac->rd_reg(digi, i), regNames[((i - MAC_STA_ID0)>>2) + 1], digi->ac->rd_reg(digi, i+4));
         }
     }
     if (regs & FRAME_BUFFER_REGS)
     {
         unsigned int word[4];
         digi_dbg("Real time frame buffer\n");
-            
-        word[0] = be32_to_cpu(digi->read_reg(digi, 0xc0));
-        word[1] = be32_to_cpu(digi->read_reg(digi, 0xc4));
-        word[2] = be32_to_cpu(digi->read_reg(digi, 0xc8));
-        word[3] = be32_to_cpu(digi->read_reg(digi, 0xcc));
+
+        word[0] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc0));
+        word[1] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc4));
+        word[2] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc8));
+        word[3] = be32_to_cpu(digi->ac->rd_reg(digi, 0xcc));
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
-        word[0] = be32_to_cpu(digi->read_reg(digi, 0xd0));
-        word[1] = be32_to_cpu(digi->read_reg(digi, 0xd4));
-        word[2] = be32_to_cpu(digi->read_reg(digi, 0xd8));
-        word[3] = be32_to_cpu(digi->read_reg(digi, 0xdc));
+        word[0] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd0));
+        word[1] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd4));
+        word[2] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd8));
+        word[3] = be32_to_cpu(digi->ac->rd_reg(digi, 0xdc));
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
     if (regs & FIFO_REGS)
     {
         unsigned int word[4];
         digi_dbg("FIFO contents\n");
-            
-        word[0] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[1] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[2] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[3] = digi->read_reg(digi, BB_DATA_FIFO);
+
+        word[0] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[1] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[2] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[3] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
-        word[0] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[1] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[2] = digi->read_reg(digi, BB_DATA_FIFO);
-        word[3] = digi->read_reg(digi, BB_DATA_FIFO);
+        word[0] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[1] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[2] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
+        word[3] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
 #endif
-}       
+}
 EXPORT_SYMBOL_GPL(digiWifiDumpRegisters);
