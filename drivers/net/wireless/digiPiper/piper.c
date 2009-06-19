@@ -24,7 +24,7 @@
 #include "airoha.h"
 #include "airohaCalibration.h"
 
-#define WANT_AIROHA_CALIBRATION     (1)
+#define WANT_AIROHA_CALIBRATION     (0)
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)
 {
@@ -37,7 +37,7 @@ static void piper_set_irq_mask(struct piper_priv *piperp, unsigned int bits)
 }
 
 /* Generate a random number */
-static int local_rand(void) 
+static int local_rand(void)
 {
 	static unsigned long next = 1;
 
@@ -215,7 +215,7 @@ static void tx_timer_timeout(unsigned long arg)
 u32 saved_mac_regs[][2] = {
 	/* Register, value */
 	{BB_GENERAL_CTL,	0},
-	{BB_GENERAL_STAT,	0},	
+	{BB_GENERAL_STAT,	0},
 	{BB_RSSI,		0},
 	{BB_IRQ_MASK,		0},
 	{BB_SPI_CTRL,		0},
@@ -267,7 +267,7 @@ static int piper_resume(struct platform_device *dev)
 	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
 		piperp->ac->wr_reg(piperp, saved_mac_regs[i][0],
 				  saved_mac_regs[i][0], op_write);
-		
+
 	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
 	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0x0, op_write);
 
@@ -283,7 +283,7 @@ static int piper_resume(struct platform_device *dev)
 	/* clear the TX-FIFO memory */
 	for (i = 0; i < 448; i++)
 		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
-	
+
 	/* reset the TX-FIFO */
 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
 			   0x377200C0, op_write);
