@@ -46,6 +46,36 @@ static int local_rand(void)
 	return((unsigned)(next/65536) % 32768);
 }
 
+/* Configure the H/W with the antenna settings */
+static int piper_set_antenna(struct piper_priv *piperp, enum antenna_select sel)
+{
+	if (sel == ANTENNA_BOTH) {
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+				   BB_GENERAL_CTL_ANT_DIV, op_or);
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+				   ~BB_GENERAL_CTL_ANT_SEL, op_and);
+	} else {
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+				   ~BB_GENERAL_CTL_ANT_DIV, op_and);
+		/* select the antenna if !diversity */
+		if (sel == ANTENNA_1)
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+					   ~BB_GENERAL_CTL_ANT_SEL, op_and);
+		else
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+					   BB_GENERAL_CTL_ANT_SEL, op_or);
+	}
+
+	/* select which antenna to transmit on */
+	piperp->ac->wr_reg(piperp, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
+	if (sel == ANTENNA_BOTH)
+		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
+	else
+		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
+
+	return 0;
+}
+
 /*
  * Compute a beacon backoff time as described in section 11.1.2.2 of 802.11 spec.
  *
@@ -209,6 +239,73 @@ static void tx_timer_timeout(unsigned long arg)
 	packet_tx_done(piperp, RECEIVED_ACK, 0);
 }
 
+/* sysfs entries to get/set antenna mode */
+static ssize_t show_antenna_sel(struct device *dev,
+			 struct device_attribute *attr,
+			 char *buf)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n", piperp->antenna == ANTENNA_BOTH ? "diversity" :
+		       piperp->antenna == ANTENNA_1 ? "primary" : "secondary");
+}
+
+static ssize_t store_antenna_sel(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+	enum antenna_select ant;
+	size_t len = count;
+	int ret;
+
+	ant = piperp->antenna;
+
+	if (buf[count - 1] == '\n')
+		len--;
+
+	/* TODO check also string length */
+	if (!strncmp("diversity", buf, len))
+		ant = ANTENNA_BOTH;
+	else if (!strncmp("primary", buf, len))
+		ant = ANTENNA_1;
+	else if (!strncmp("secondary", buf, len))
+		ant = ANTENNA_2;
+
+	if (ant != piperp->antenna) {
+		if ((ret = piperp->set_antenna(piperp, ant)) != 0) {
+			printk(KERN_WARNING PIPER_DRIVER_NAME
+			       ": error setting antenna to %d (err: %d)\n", ant, ret);
+		} else
+			piperp->antenna = ant;
+	}
+
+	return count;
+}
+static DEVICE_ATTR(antenna_sel, S_IWUSR | S_IRUGO, show_antenna_sel, store_antenna_sel);
+
+static ssize_t show_power_duty(struct device *dev, struct device_attribute *attr,
+			       char *buf)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", piperp->power_duty);
+}
+
+static ssize_t store_power_duty(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+	int pw_duty;
+	ssize_t ret = -EINVAL;
+
+	ret = sscanf(buf, "%d\n", &pw_duty);
+	if (ret > 0 && pw_duty >= 0 && pw_duty <= 100) {
+		piperp->power_duty = pw_duty;
+	}
+
+	return ret < 0 ? ret : count;
+}
+static DEVICE_ATTR(power_duty, S_IWUSR | S_IRUGO, show_power_duty, store_power_duty);
 
 #ifdef CONFIG_PM
 
@@ -370,6 +467,14 @@ static int __init piper_probe(struct platform_device* pdev)
 	piperp->load_beacon = load_beacon;
 	piperp->rand = local_rand;
 	piperp->get_next_beacon_backoff = get_next_beacon_backoff;
+	piperp->set_antenna = piper_set_antenna;
+	piperp->antenna = ANTENNA_BOTH;
+
+	/* This disables the duty power cycle control */
+	piperp->power_duty = 100;
+
+	/* TODO this should be read earlier and actions should be taken 
+	 * based on different revisions at driver initialization or runtime */
 	piperp->version = piperp->ac->rd_reg(piperp, BB_VERSION);
 
 	piperp->irq = pdev->resource[1].start;
@@ -390,18 +495,32 @@ static int __init piper_probe(struct platform_device* pdev)
 	ret = piper_register_hw(piperp, &pdev->dev, &al7230_rf_ops);
 	if (ret) {
 		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv\n");
-		goto do_free_rx;
+		goto error_reg_hw;
 	}
 
 	if (pdata->late_init)
 		pdata->late_init(piperp);
+
+	ret = device_create_file(&pdev->dev, &dev_attr_antenna_sel);
+	if (ret) {
+		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to create sysfs file\n");
+		goto error_sysfs;
+	}
+
+	ret = device_create_file(&pdev->dev, &dev_attr_power_duty);
+	if (ret) {
+		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to create sysfs file\n");
+		goto error_sysfs;
+	}
 
 	printk(KERN_INFO PIPER_DRIVER_NAME ": driver loaded (fw ver = 0x%08x)\n",
 		piperp->version);
 
 	return 0;
 
-do_free_rx:
+error_sysfs:
+	piper_unregister_hw(piperp);
+error_reg_hw:
 	piper_free_rx_tx(piperp);
 retor_irq:
 	free_irq(piperp->irq, piperp);
@@ -419,6 +538,9 @@ static int piper_remove(struct platform_device *pdev)
 	struct piper_priv *piperp = dev_get_drvdata(&pdev->dev);
 
 	printk(KERN_DEBUG PIPER_DRIVER_NAME " %s\n", __func__);
+
+	device_remove_file(&pdev->dev, &dev_attr_antenna_sel);
+	device_remove_file(&pdev->dev, &dev_attr_power_duty);
 
 	piper_unregister_hw(piperp);
 	disable_irq(piperp->irq);

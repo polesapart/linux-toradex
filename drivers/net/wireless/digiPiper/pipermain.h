@@ -96,6 +96,12 @@ typedef enum {
 	op_and
 } reg_op_t;
 
+enum antenna_select {
+	ANTENNA_BOTH = 0,
+	ANTENNA_1,
+	ANTENNA_2,
+};
+
 typedef struct {
 	bool loaded;
 	bool enabled;
@@ -120,21 +126,20 @@ struct piperKeyInfo {
 
 /* rf */
 struct digi_rf_ops {
-	const char *name;
-	void (*init) (struct ieee80211_hw *, int);
-	int (*stop) (struct ieee80211_hw *);
-	int (*set_chan) (struct ieee80211_hw *, int chan);
-	int (*set_pwr) (struct ieee80211_hw *, uint8_t val);
-	void (*set_pwr_index) (struct ieee80211_hw *, unsigned int val);
-	void (*getOfdmBrs) (u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
-	enum ieee80211_band (*getBand) (int);
-	int (*getFrequency) (int);
-	const struct ieee80211_rate *(*getRate) (unsigned int);
-	int channelChangeTime;
-	s8 maxSignal;
-
-	struct ieee80211_supported_band *bands;
-	uint8_t n_bands;
+	const char			*name;
+	void				(*init) (struct ieee80211_hw *, int);
+	int				(*stop) (struct ieee80211_hw *);
+	int				(*set_chan) (struct ieee80211_hw *, int chan);
+	int				(*set_pwr) (struct ieee80211_hw *, uint8_t val);
+	void				(*set_pwr_index) (struct ieee80211_hw *, unsigned int val);
+	void				(*getOfdmBrs) (u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
+	enum ieee80211_band		(*getBand) (int);
+	int				(*getFrequency) (int);
+	const struct ieee80211_rate *	(*getRate) (unsigned int);
+	int				channelChangeTime;
+	s8				maxSignal;
+	struct ieee80211_supported_band	*bands;
+	u8				n_bands;
 };
 
 struct piper_stats {
@@ -178,6 +183,7 @@ struct piper_priv {
 	int				(*rand) (void);
 	void				(*kick_tx_task) (void);
 	void				(*tx_calib_cb) (struct piper_priv *);
+	int				(*set_antenna) (struct piper_priv *, enum antenna_select);
 
 	/* General settings */
 	enum nl80211_iftype		if_type;
@@ -187,6 +193,8 @@ struct piper_priv {
 	u8				bssid[ETH_ALEN];
 	bool				tx_cts;
 	bool				tx_rts;
+	enum antenna_select		antenna;
+	int				power_duty;
 
 	/* AES stuff */
 	bool				use_hw_aes;

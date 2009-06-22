@@ -36,12 +36,6 @@ static int dlevel = DWARNING;
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
 
-enum antenna_select {
-	ANTENNA_BOTH = 0,
-	ANTENNA_1,
-	ANTENNA_2,
-};
-
 /*
  * This routine is called to enable IBSS support whenever we receive
  * configuration commands from mac80211 related to IBSS support.  The
@@ -86,52 +80,6 @@ static void piper_enable_ibss(struct piper_priv *piperp, enum nl80211_iftype ift
 		piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_TBTT);
 		dprintk(DVERBOSE, "IBSS turned OFF\n");
 	}
-}
-
-/*
- * Configure the H/W with the correct antenna diversity settings.
- */
-static int piper_set_antenna_div(struct ieee80211_hw *hw,
-				 enum antenna_select sel)
-{
-	struct piper_priv *piper = hw->priv;
-	const char *antennatext[] = {"ANTENNA_BOTH", "ANTENNA_1", "ANTENNA_2"};
-	static enum antenna_select prevSel = ANTENNA_BOTH;
-
-	dprintk(DVVERBOSE, "\n");
-
-	if (prevSel != sel) {
-		dprintk(DVERBOSE, "antenna sel = %s\n", antennatext[sel]);
-	}
-
-	/* set antenna diversity */
-	if (sel == ANTENNA_BOTH) {
-		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
-				 BB_GENERAL_CTL_ANT_DIV, op_or);
-		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
-				 ~BB_GENERAL_CTL_ANT_SEL, op_and);
-	} else {
-		piper->ac->wr_reg(piper, BB_GENERAL_CTL,
-				 ~BB_GENERAL_CTL_ANT_DIV, op_and);
-		/* select the antenna if !diversity */
-		if (sel == ANTENNA_1)
-			piper->ac->wr_reg(piper, BB_GENERAL_CTL,
-					 ~BB_GENERAL_CTL_ANT_SEL, op_and);
-		else
-			piper->ac->wr_reg(piper, BB_GENERAL_CTL,
-					 BB_GENERAL_CTL_ANT_SEL, op_or);
-	}
-
-	/* select which antenna to transmit on */
-	piper->ac->wr_reg(piper, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
-	if (sel == ANTENNA_BOTH)
-		piper->ac->wr_reg(piper, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
-	else
-		piper->ac->wr_reg(piper, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
-
-	prevSel = sel;
-
-	return 0;
 }
 
 static int piper_set_status_led(struct ieee80211_hw *hw, int on)
@@ -364,14 +312,12 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 	piperp->is_radio_on = true;
 	piperp->txPacket = NULL;
 
-	/*
-	 * Default antenna diversity setting to transmit on primary
-	 * antenna and receive on either.
-	 *
-	 * TODO:  Is this really what we want to do?  Will this
-	 *        be harmful if there is no secondary antenna?
+	/* 
+	 * Initialize the antenna with the defualt setting defined in the 
+	 * probe function. This can be changed, currently, through a sysfs 
+	 * entry in the device directory 
 	 */
-	if ((ret = piper_set_antenna_div(hw, ANTENNA_BOTH)) != 0) {
+	if ((ret = piperp->set_antenna(piperp, piperp->antenna)) != 0) {
 		dprintk(DERROR, "piper_set_antenna_div() failed (%d)\n", ret);
 		return ret;
 	}
