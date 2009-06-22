@@ -66,6 +66,28 @@ unsigned int s3c2443_gpio_read_porta(unsigned int pin)
 	return res;
 }
 
+/* Code coming from the U-Boot 1.1.6 */
+void s3c2443_gpio_setpin(unsigned int pin, unsigned int to)
+{
+	unsigned long dat;
+	void __iomem *base = S3C24XX_GPIO_BASE(pin);
+	unsigned long offs = S3C2410_GPIO_OFFSET(pin);
+
+	if (pin < S3C2410_GPIO_BANKB) {
+		dat = s3c2443_gpio_read_porta(pin);
+		if (pin > S3C2410_GPA7) {
+			dat &= ~(1 << ((offs - S3C2410_GPA7 - 1)  * 2));
+			dat |= to << ((offs - S3C2410_GPA7 - 1) * 2);
+			writel(dat, base + 0x04);
+		} else {
+			dat &= ~(1 << (offs * 2));
+			dat |= to << (offs * 2);
+			writel(dat, base);
+		}
+	} else
+		s3c2410_gpio_setpin(pin, to);	
+}
+
 void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function)
 {
 	void __iomem *base;
@@ -96,6 +118,27 @@ void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function)
 
 	local_irq_save(flags);
 	__raw_writel(con, base);
+	local_irq_restore(flags);
+}
+
+/* Setup the UDP register of the S3C2443 ports */
+void s3c2443_gpio_set_udp(unsigned int pin, int val)
+{
+	void __iomem *base = S3C24XX_GPIO_BASE(pin);
+	unsigned long offs = S3C2410_GPIO_OFFSET(pin) * 2;
+	unsigned long flags;
+	unsigned long up;
+
+	if (pin < S3C2410_GPIO_BANKB)
+		return;
+
+	local_irq_save(flags);
+
+	up = __raw_readl(base + 0x08);
+	up &= ~(3L << offs);
+	up |= val << offs;
+	__raw_writel(up, base + 0x08);
+
 	local_irq_restore(flags);
 }
 
@@ -234,7 +277,7 @@ static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int e
 		s3c2443_gpio_dir_input(chip, gpio);
 	}
 
-exit_wakeup:
+ exit_wakeup:
 	return ret;
 }
 
@@ -287,3 +330,5 @@ pure_initcall(s3c2443_gpio_init);
 EXPORT_SYMBOL(s3c2443_gpio_getirq);
 EXPORT_SYMBOL(s3c2443_gpio_extpull);
 EXPORT_SYMBOL(s3c2443_gpio_cfgpin);
+EXPORT_SYMBOL(s3c2443_gpio_set_udp);
+EXPORT_SYMBOL(s3c2443_gpio_setpin);
