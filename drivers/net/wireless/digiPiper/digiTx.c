@@ -119,116 +119,24 @@ static int piper_write_aes(struct piper_priv *piperp, unsigned char *buffer,
  * is decremented each time we retry.  When it reaches zero, we try the
  * next rate in the array.
  */
-static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee80211_tx_info *txInfo)
+static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee80211_tx_info *info)
 {
 	struct ieee80211_rate *ret = NULL;
+	int nextidx;
 
-	if (txInfo->control.rates[piperp->pstats.tx_retry_index].count >
-	    piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]) {
-		if (piperp->pstats.tx_retry_index == 0) {
-			ret = ieee80211_get_tx_rate(piperp->hw, txInfo);
-		} else {
-			ret = ieee80211_get_alt_retry_rate(piperp->hw, txInfo,
-							  piperp->pstats.tx_retry_index - 1);
-		}
-	} else if (txInfo->control.rates[piperp->pstats.tx_retry_index + 1].idx != -1) {
-		ret = ieee80211_get_alt_retry_rate(piperp->hw, txInfo,
-						   piperp->pstats.tx_retry_index);
+	if (piperp->calibrationTxRate)
+		return piperp->calibrationTxRate;
+
+	if (piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index] <
+	    info->control.rates[piperp->pstats.tx_retry_index].count) {
+		ret = ieee80211_get_tx_rate(piperp->hw, info);
+	} else {
 		piperp->pstats.tx_retry_index++;
-	}
-	if (ret != NULL) {
-		piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
-	}
-#if 0
-    if (   (txInfo->status.retries[FIRST_RETRY_INDEX].limit == 0)
-        || (txInfo->status.retries[FIRST_RETRY_INDEX].limit == -1)
-        || (txInfo->status.retries[FIRST_RETRY_INDEX].rate_idx == -1))
-    {
-        /*
-         * At the time this driver was written, the mac80211 library was passing
-         * the retry array uninitialized.  So this piece of code will default to
-         * retrying the transmit at a lower speed each time it is retried until
-         * we reach 1 Mbps.  The last retry is always done at 1 Mbps.
-         */
-        txInfo->tx_rate_idx = txInfo->status.retries[0].rate_idx - (txInfo->status.retry_count - 1);
-        if (txInfo->tx_rate_idx < 0)
-        {
-            txInfo->tx_rate_idx = 0;
-        }
-    }
-    else
-    {
-        /*
-         * We will come here if it looks like mac80211 actually gave us some
-         * different rates to use for retries.
-         *
-         * Note:  The ieee80211_get_tx_rate and ieee80211_get_alt_retry_rate
-         *        functions are essentually worthless because they attempt to
-         *        access fields in the control part of the tx info structure
-         *        that have may already have been overwritten by information
-         *        written in the status portion.  This is a UNION!
-         */
-        if (txInfo->status.retries[piperp->pstats.tx_retry_index].limit == 0)
-        {
-            /*
-             * If we get here, then it's time to try a new rate.
-             */
-            if (   (IEEE80211_TX_MAX_ALTRATE != piperp->pstats.tx_retry_index)
-                && (txInfo->status.retries[piperp->pstats.tx_retry_index+1].rate_idx != -1)
-                && (txInfo->status.retries[piperp->pstats.tx_retry_index+1].limit > 0))
-            {
-#if 0
-                digi_dbg("Trying next rate, rate_idx = %d, limit = %d\n",
-                            txInfo->status.retries[piperp->pstats.tx_retry_index+1].rate_idx,
-                            txInfo->status.retries[piperp->pstats.tx_retry_index+1].limit);
-#endif
-                /*
-                 * Looks like we still have more entries in the array.  Update
-                 * our array index and load the rate index with the new rate.
-                 */
-                piperp->pstats.tx_retry_index++;
-                txInfo->tx_rate_idx = txInfo->status.retries[piperp->pstats.tx_retry_index].rate_idx;
-#if 0
-                digi_dbg("Try new rate index %d\n", txInfo->tx_rate_idx);
-#endif
-            }
-            else
-            {
-                /*
-                 * Oops.  Out of rate entries.  Default to 1 Mbps.
-                 */
-                txInfo->tx_rate_idx = 0;
-            }
-        }
-    }
-    if (txInfo->tx_rate_idx == -1)
-    {
-        /*
-         * A rate index of -1 indicates an unitialized entry.  Default it
-         * to 1 Mbps.
-         */
-        txInfo->tx_rate_idx = 0;
-    }
-    if (txInfo->status.retry_count == piperp->txMaxRetries)
-    {
-        /*
-         * Send the last retry out at 1 Mbps reguardless.
-         */
-        txInfo->tx_rate_idx = 0;
-    }
-    if (txInfo->status.retries[piperp->pstats.tx_retry_index].limit > 0)
-    {
-        /*
-         * One less retry to go at this rate.
-         */
-        txInfo->status.retries[piperp->pstats.tx_retry_index].limit--;
-    }
-    result = ieee80211_get_tx_rate(piperp->hw, txInfo);
-#endif
+		nextidx = info->control.rates[0].idx - 1 - piperp->pstats.tx_retry_index;
+		if (nextidx < 0)
+			return NULL;
 
-	if (ret != NULL) {
-		if (piperp->calibrationTxRate)
-			return piperp->calibrationTxRate;
+		ret = ieee80211_get_alt_retry_rate(piperp->hw, info, nextidx);
 	}
 
 	return ret;
