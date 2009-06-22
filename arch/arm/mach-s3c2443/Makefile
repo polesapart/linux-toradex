@@ -22,5 +22,8 @@ obj-$(CONFIG_MACH_CC9M2443JS)   += mach-cc9m2443js.o
 
 obj-$(CONFIG_MACH_CC9M2443JS)   += gpio.o
 
+# Support for the USB overload protection
+obj-$(CONFIG_MACH_CC9M2443JS_USB) += cc9m2443js-usb.o
+
 # Power Management support
 obj-$(CONFIG_MACH_CC9M2443JS_PM) += cc9m2443js-pm.o cc9m2443js-sleep.o

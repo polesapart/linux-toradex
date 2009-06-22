@@ -78,6 +78,7 @@
 
 #include "displays/displays.h"
 #include "cc9m2443js-pm.h"
+#include "cc9m2443js-usb.h"
 
 /*
  * IMPORTANT: We are using the Ethernet-driver of the Blackfin-project because:
@@ -682,6 +683,11 @@ static void __init cc9m2443_machine_init(void)
         /* SPI devices */
         spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
 
+	/* Start the platform dependent part of the USB host controller */
+#if defined(CONFIG_MACH_CC9M2443JS_USB)
+	cc9m2443js_usb_init();
+#endif
+	
 	/* Call the function for enabling the PM support */
 #if defined(CONFIG_MACH_CC9M2443JS_PM)
 	cc9m2443js_pm_init();
