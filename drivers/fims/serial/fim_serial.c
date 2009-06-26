@@ -94,6 +94,10 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 
 
 /* Special control registers */
+#define FIM_SERIAL_TXIO_REG			0
+#define FIM_SERIAL_RXIO_REG			1
+#define FIM_SERIAL_RTSIO_REG			2
+#define FIM_SERIAL_CTSIO_REG			3
 #define FIM_SERIAL_CTRL_REG			6
 
 
@@ -113,7 +117,11 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIM_SERIAL_TX_DMA_BUFFERS		64
 #define FIM_SERIAL_RX_DMA_BUFFERS		32
 
-
+#define FIM_SERIAL_GPIO_RX			(0)
+#define FIM_SERIAL_GPIO_TX			(1)
+#define FIM_SERIAL_GPIO_CTS			(2)
+#define FIM_SERIAL_GPIO_RTS			(3)
+#define FIM_SERIAL_GPIO_LAST			(4)
 
 #define printk_err(fmt, args...)                printk(KERN_DEBUG "[ ERROR ] fim-serial: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_DEBUG "fim-serial: " fmt, ## args)
@@ -209,10 +217,6 @@ static struct fim_serials_t *fim_serials;
 #define FIM_SERIAL_STAT_HW_FLOW 		0x04
 #define FIM_SERIAL_STAT_MATCH_CHAR1		0x08
 #define FIM_SERIAL_STAT_MATCH_CHAR2		0x10
-
-
-/* Special control registers */
-#define FIM_SERIAL_CTRL_REG			6
 
 
 inline static struct fim_serial_t *get_port_from_uart(struct uart_port *uart)
@@ -572,8 +576,45 @@ static int fim_sw_flowctrl(struct fim_serial_t *port, struct ktermios *termios)
 	return 0;
 }
 
+/* Function for the setup of the bit positions in the FIM-firmware */
+static int fim_serial_setup_bitpos(struct fim_serial_t *port, ulong hwflow)
+{
+	struct fim_driver *fim;
+	struct fim_gpio_t *gpios;
+	unsigned int cts, rts;
+	int offset;
 
+	/* Depending on the processor we have different offset */
+	if (processor_is_ns9215())
+		offset = 68;
+	else if (processor_is_ns9210())
+		offset = 0;
+	else
+		return -EINVAL;
 
+	fim = &port->fim;
+	gpios = port->gpios;
+		
+	/* Set the TX- and RX-line */
+	printk_debug("TX %u | RX %u | RTS %u | CTS %u | Offset %i\n",
+		     gpios[FIM_SERIAL_GPIO_TX].nr, gpios[FIM_SERIAL_GPIO_RX].nr,
+		     gpios[FIM_SERIAL_GPIO_RTS].nr, gpios[FIM_SERIAL_GPIO_CTS].nr,
+		     offset);
+		
+	fim_set_ctrl_reg(fim, FIM_SERIAL_TXIO_REG,
+			 1 << (gpios[FIM_SERIAL_GPIO_TX].nr - offset));
+	
+	fim_set_ctrl_reg(fim, FIM_SERIAL_RXIO_REG,
+			 1 << (gpios[FIM_SERIAL_GPIO_RX].nr - offset));
+
+	/* Setup the CTS and RTS if HW flow controls is requested */
+	cts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_CTS].nr - offset) : 0;
+	rts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_RTS].nr - offset) : 0;
+	fim_set_ctrl_reg(fim, FIM_SERIAL_CTSIO_REG, cts);
+	fim_set_ctrl_reg(fim, FIM_SERIAL_RTSIO_REG, rts);
+		
+	return fim_send_interrupt2(fim, FIM_SERIAL_INT_BIT_POS);
+}
 
 /*
  * The ktermios structure is declared under: include/asm-arm/termbits.h
@@ -677,28 +718,13 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	 * the bits position and then enable the HW-flow control in the config register
 	 */
 	if ((cflag & CRTSCTS) != (old_cflag & CRTSCTS)) {
-
-		/* Set the TX- and RX-line */
-		fim_set_ctrl_reg(fim, 0, 0x01 << (fim->picnr * 4));
-		fim_set_ctrl_reg(fim, 1, 0x02 << (fim->picnr * 4));
-
-		if (cflag & CRTSCTS) {
-			printk_debug("Enabling the HW flow ctrl for the FIM %i\n",
-				     fim->picnr);
-			fim_set_ctrl_reg(fim, 2, 0x04 << (fim->picnr * 4));
-			fim_set_ctrl_reg(fim, 3, 0x08 << (fim->picnr * 4));
-		} else {
-			fim_set_ctrl_reg(fim, 2, 0x00);
-			fim_set_ctrl_reg(fim, 3, 0x00);
-		}
-
-		retval = fim_send_interrupt2(fim, FIM_SERIAL_INT_BIT_POS);
+				
+		retval = fim_serial_setup_bitpos(port, cflag & CRTSCTS);
 		if (retval) {
-			printk_err("Couldn't set the HW flow control for the FIM %i\n",
+			printk_err("Couldn't setup the FIM port %i\n",
 				   fim->picnr);
 			goto exit_unlock;
 		}
-
 
 		/* Now set the control status register to the correct value */
 		fim_get_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, &regval);
@@ -709,7 +735,6 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 		fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, regval);
 	}
 
-	
 	/* After each reconfiguration we need to re-init the FIM-firmware */
 	fim_get_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, &regval);
 	fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG,
@@ -1350,13 +1375,10 @@ static int fim_serial_register_port(struct device *dev,
 
 	/* This is required for the FIM-firmware */
 	fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, 0x00);
-	
-	/* Set the default configuration (coming from the Net+OS world) */
-	fim_set_ctrl_reg(fim, 0, 0x01 << (fim->picnr * 4));
-	fim_set_ctrl_reg(fim, 1, 0x02 << (fim->picnr * 4));
-	fim_set_ctrl_reg(fim, 2, 0);
-	fim_set_ctrl_reg(fim, 3, 0);
-	retval = fim_send_interrupt2(fim, FIM_SERIAL_INT_BIT_POS);
+
+	/* Setup the bit positions but disable the HW flow control first */
+	memcpy(port->gpios, gpios, FIM_SERIAL_MAX_GPIOS * sizeof(struct fim_gpio_t));
+	retval = fim_serial_setup_bitpos(port, 0);
 	if (retval) {
 		printk_err("Setting the default GPIOs\n");
 		goto err_unreg_fim;
@@ -1404,7 +1426,6 @@ static int fim_serial_register_port(struct device *dev,
         tasklet_init(&port->tasklet, fim_serial_tasklet_func, (unsigned long)port);
 
 	spin_lock_init(&port->tx_lock);
-	memcpy(port->gpios, gpios, FIM_SERIAL_MAX_GPIOS * sizeof(struct fim_gpio_t));
 	port->minor = minor;
 	port->reg = 1;
 	port->driver = &fim_serials->driver;
@@ -1479,15 +1500,15 @@ static int __devinit fim_serial_probe(struct platform_device *pdev)
 	port = fim_serials->ports + pdata->fim_nr;
 
 	/* @XXX: The below code is really ugly, remove it! */
-	gpios[0].nr   = pdata->rx_gpio_nr;
-	gpios[0].func = pdata->rx_gpio_func;
-	gpios[1].nr   = pdata->tx_gpio_nr;
-	gpios[1].func = pdata->tx_gpio_func;
-	gpios[2].nr   = pdata->cts_gpio_nr;
-	gpios[2].func = pdata->cts_gpio_func;
-	gpios[3].nr   = pdata->rts_gpio_nr;
-	gpios[3].func = pdata->rts_gpio_func;
-	gpios[4].nr   = FIM_LAST_GPIO;
+	gpios[FIM_SERIAL_GPIO_RX].nr   = pdata->rx_gpio_nr;
+	gpios[FIM_SERIAL_GPIO_RX].func = pdata->rx_gpio_func;
+	gpios[FIM_SERIAL_GPIO_TX].nr   = pdata->tx_gpio_nr;
+	gpios[FIM_SERIAL_GPIO_TX].func = pdata->tx_gpio_func;
+	gpios[FIM_SERIAL_GPIO_CTS].nr   = pdata->cts_gpio_nr;
+	gpios[FIM_SERIAL_GPIO_CTS].func = pdata->cts_gpio_func;
+	gpios[FIM_SERIAL_GPIO_RTS].nr   = pdata->rts_gpio_nr;
+	gpios[FIM_SERIAL_GPIO_RTS].func = pdata->rts_gpio_func;
+	gpios[FIM_SERIAL_GPIO_LAST].nr   = FIM_LAST_GPIO;
 
 	/* And try to register the FIM */
 	printk_debug("FIM %i | Port %p | Uart %p)\n", pdata->fim_nr, port, &port->uart);
