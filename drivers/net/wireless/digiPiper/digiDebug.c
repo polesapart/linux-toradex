@@ -128,7 +128,7 @@ EXPORT_SYMBOL_GPL(digiWifiDumpSkb);
 
 void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
 {
-#ifdef DEBUG
+#ifdef WANT_DEBUG
     unsigned int i;
 
     if (regs & CTRL_STATUS_REGS)
