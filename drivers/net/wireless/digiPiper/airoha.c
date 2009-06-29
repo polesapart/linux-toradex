@@ -21,10 +21,10 @@
 
 /*
  * Number of us to change channels.  I counted the number of udelays once
- * and it was about 1030, plus the 1 us delays for each register write.
- * So probably about 1200 in reality, I'm saying 1500 to be safe.
+ * and it was about 2030, plus the 1 us delays for each register write.
+ * So probably about 2200 in reality, I'm saying 2500 to be safe.
  */
-#define CHANNEL_CHANGE_TIME	(1500)
+#define CHANNEL_CHANGE_TIME	(2500)
 
 /*
  * Maximum possible receive signal strength in dbm.  Most of the
@@ -46,7 +46,7 @@ static const struct {
 	unsigned int tracking;
 } freqTableAiroha_7230[] = {
 	{ 0, 0, 0, 0 },					// 0
-    
+
 	// 2.4 GHz band (802.11b/g)
 	{ 0x00379, 0x13333, 0x7FD78, TRACK_BG_BAND },	// B-1   (2412 MHz)   1
 	{ 0x00379, 0x1B333, 0x7FD78, TRACK_BG_BAND },	// B-2   (2417 MHz)   2
@@ -84,12 +84,12 @@ static const struct {
 	{ 0x0FF57, 0x00000, 0x67F78, TRACK_5150_5350_A_BAND }, // A-44  (5220 MHz)  29
 	{ 0x0FF57, 0x05555, 0x77F78, TRACK_5150_5350_A_BAND }, // A-46  (5230 MHz)  30
 	{ 0x0FF57, 0x0AAAA, 0x77F78, TRACK_5150_5350_A_BAND }, // A-48  (5240 MHz)  31
-	
+
 	{ 0x0FF58, 0x15555, 0x77F78, TRACK_5150_5350_A_BAND }, // A-52  (5260 MHz)  32
 	{ 0x0FF58, 0x00000, 0x67F78, TRACK_5150_5350_A_BAND }, // A-56  (5280 MHz)  33
 	{ 0x0FF58, 0x0AAAA, 0x77F78, TRACK_5150_5350_A_BAND }, // A-60  (5300 MHz)  34
 	{ 0x0FF59, 0x15555, 0x77F78, TRACK_5150_5350_A_BAND }, // A-64  (5320 MHz)  35
-	
+
 	{ 0x0FF5C, 0x15555, 0x77F78, TRACK_5470_5725_A_BAND }, // A-100 (5500 MHz)  36
 	{ 0x0FF5C, 0x00000, 0x67F78, TRACK_5470_5725_A_BAND }, // A-104 (5520 MHz)  37
 	{ 0x0FF5C, 0x0AAAA, 0x77F78, TRACK_5470_5725_A_BAND }, // A-108 (5540 MHz)  38
@@ -101,7 +101,7 @@ static const struct {
 	{ 0x0FF5E, 0x0AAAA, 0x77F78, TRACK_5470_5725_A_BAND }, // A-132 (5660 MHz)  44
 	{ 0x0FF5F, 0x15555, 0x77F78, TRACK_5470_5725_A_BAND }, // A-136 (5680 MHz)  45
 	{ 0x0FF5F, 0x00000, 0x67F78, TRACK_5470_5725_A_BAND }, // A-140 (5700 MHz)  46
-	
+
 	{ 0x0FF60, 0x18000, 0x77F78, TRACK_5725_5825_A_BAND }, // A-149 (5745 MHz)  47
 	{ 0x0FF60, 0x02AAA, 0x77F78, TRACK_5725_5825_A_BAND }, // A-153 (5765 MHz)  48
 	{ 0x0FF60, 0x0D555, 0x77F78, TRACK_5725_5825_A_BAND }, // A-157 (5785 MHz)  49
@@ -114,7 +114,7 @@ static const struct {
 	.center_freq		= (_freq),			\
 	.hw_value		= idx,				\
 	.max_antenna_gain	= 0,				\
-	.max_power		= 12				
+	.max_power		= 12
 
 static struct ieee80211_channel al7230_bg_channels[] = {
 	{ CHAN4G(1, 2412) },
@@ -233,7 +233,7 @@ static struct ieee80211_channel al7230_a_channels[] = {
 	{ CHAN5G(49, 5785) },
 	{ CHAN5G(50, 5805) },
 	{ CHAN5G(51, 5825) }
-};           
+};
 
 static const struct ieee80211_rate al7230_a_rates[] = {
 	/* ofdm rates */
@@ -270,7 +270,7 @@ static const struct ieee80211_rate al7230_a_rates[] = {
 		.hw_value = 0xc,
 	},
 };
-    
+
 static enum ieee80211_band getBand(int channelIndex)
 {
 	enum ieee80211_band result;
@@ -306,7 +306,7 @@ static int write_rf(struct ieee80211_hw *hw, unsigned char reg, unsigned int val
 	udelay(3);		/* Mike Schaffner says to allow 2 us or more between all writes */
 	return err;
 }
-    
+
 static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 {
 	struct piper_priv *priv = hw->priv;
@@ -402,10 +402,10 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		/* critical delay for correct calibration */
 		udelay(10);
 
-		/* 
-		 * TXON, PAON and RXON should all be low before Calibration 
+		/*
+		 * TXON, PAON and RXON should all be low before Calibration
 		 * TXON and PAON will be low as long as no frames are written to the TX
-                 * DATA fifo.  
+                 * DATA fifo.
 		 * RXON will be low as long as the receive path is not enabled (bit 0 of
                  * GEN CTL register is 0).
 		 */
@@ -441,9 +441,9 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 			write_reg(BB_TRACK_CONTROL, TRACK_BG_BAND, op_or);
 
 		} else {
-			//HW_GEN_CONTROL |= GEN_PA_ON; 
+			//HW_GEN_CONTROL |= GEN_PA_ON;
 
-			// turn off PSK/CCK  
+			// turn off PSK/CCK
 			write_reg(BB_GENERAL_STAT, ~BB_GENERAL_STAT_B_EN, op_and);
 
 			// turn on OFDM
@@ -469,6 +469,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 
 		/* critical delay for correct calibration */
 		udelay(10);
+		udelay(1000); 				/* 10 uS is not enough for 802.11A channels */
 
 		// Select the frequency band: 5Ghz or 2.4Ghz
 		if (rf_band == IEEE80211_BAND_5GHZ) {
@@ -518,11 +519,14 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 
 		/*Re-enable the rx processing path */
 		udelay(150);	/* Airoha says electronics will be ready in 150 us */
+
 		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
 	} else {
 		printk(KERN_WARNING PIPER_DRIVER_NAME ": undefined rf transceiver!\n");
 		return -EINVAL;
 	}
+//	priv->set_tracking_constant(priv, getFrequency(channelIndex));
+
 	return 0;
 }
 
@@ -558,27 +562,27 @@ static void al7230_set_power_index(struct ieee80211_hw *hw, unsigned int value)
 static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 {
 	struct piper_priv *priv = hw->priv;
-	
+
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
 		digi_dbg("**** transceiver == RF_AIROHA_2236\n");
-		/* Initial settings for 20 MHz reference frequency, 802.11b/g */	                   
+		/* Initial settings for 20 MHz reference frequency, 802.11b/g */
 		write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
 		write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
 		udelay(150);
-		  
-		/* CH_integer: Frequency register 0 */ 
+
+		/* CH_integer: Frequency register 0 */
 		write_rf(hw, 0, 0x01f79 );
 
-		/* CH_fraction: Frequency register 1 */		
+		/* CH_fraction: Frequency register 1 */
 		write_rf(hw, 1, 0x03333 );
 
 		/*Config 1 = default value */
 		write_rf(hw, 2, 0x00B80 );
 
-		/*Config 2 = default value */		
+		/*Config 2 = default value */
 		write_rf(hw, 3, 0x00E7F );
 
-		/*Config 3 = default value */		
+		/*Config 3 = default value */
 		write_rf(hw, 4, 0x0905A );
 
 		/*Config 4 = default value */
@@ -591,19 +595,19 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 		write_rf(hw, 7, 0x0116C );
 
 		/*Config 7 = RSSI = default value */
-		write_rf(hw, 8, 0x05B68 );   
+		write_rf(hw, 8, 0x05B68 );
 
 		/* TX gain control for LA2236 */
 		write_rf(hw, 9, 0x05460 );   // sit at the middle
 
-		/* RX Gain = digi specific value: AGC adjustment is done over the GC1-GC7 
-		IC pins interface. AGC MAX GAIN value is configured in the FPGA BB register 
+		/* RX Gain = digi specific value: AGC adjustment is done over the GC1-GC7
+		IC pins interface. AGC MAX GAIN value is configured in the FPGA BB register
 		instead of the RF register here below */
 		write_rf(hw, 10, 0x001BB );
 
 		/* TX Gain = digi specific vaue: TX GAIN set using the register */
-		write_rf(hw, 11, 0x000f9 );   
-		  
+		write_rf(hw, 11, 0x000f9 );
+
 		/* PA current = default value */
 		write_rf(hw, 12, 0x039D8 );
 
@@ -621,18 +625,18 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 		/* Calibration procedure */
 		write_reg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
 		udelay(150);
-	
+
 		/* TXDCOC->active; RCK->disable */
 		write_rf(hw, 15, 0x00D87 );
 		udelay(50);
 
-		/* TXDCOC->disable; RCK->enable */		
-		write_rf(hw, 15, 0x00787 );	
-		udelay(50);	
+		/* TXDCOC->disable; RCK->enable */
+		write_rf(hw, 15, 0x00787 );
+		udelay(50);
 
 		/* TXDCOC->disable; RCK->disable */
-		write_rf(hw, 15, 0x00587 );	
-		udelay(50);	
+		write_rf(hw, 15, 0x00587 );
+		udelay(50);
 	} else if (priv->pdata->rf_transceiver == RF_AIROHA_7230) {
 		switch (band_selection) {
 		case IEEE80211_BAND_2GHZ:
@@ -641,20 +645,20 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
 			udelay(150);
 
-			/* Frequency register 0 */ 
+			/* Frequency register 0 */
 			write_rf(hw, 0, 0x00379 );
 
-			/* Frequency register 1 */		
+			/* Frequency register 1 */
 			write_rf(hw, 1, 0x13333 );
 			udelay(10);
 
 			/*Config 1 = default value */
 			write_rf(hw, 2, 0x841FF );
 
-			/*Config 2 = default value */		
+			/*Config 2 = default value */
 			write_rf(hw, 3, 0x3FDFA );
 
-			/*Config 3 = default value */		
+			/*Config 3 = default value */
 			write_rf(hw, 4, 0x7FD78 );
 
 			/*Config 4 = default value */
@@ -672,14 +676,14 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			/* Filter BW  = default value */
 			write_rf(hw, 9, 0x221BB );
 
-			/* RX Gain = digi specific value: AGC adjustment is done over the GC1-GC7 
-			IC pins interface. AGC MAX GAIN value is configured in the FPGA BB register 
+			/* RX Gain = digi specific value: AGC adjustment is done over the GC1-GC7
+			IC pins interface. AGC MAX GAIN value is configured in the FPGA BB register
 			instead of the RF register here below */
-			write_rf(hw, 10, 0xE0040 );   
+			write_rf(hw, 10, 0xE0040 );
 
 			/* TX Gain = digi specific vaue: TX GAIN set using the register */
 			// write_rf(hw, 11, 0x08070);
-			mac_set_tx_power (priv->tx_power);  //Digi value                                        
+			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
 			write_rf(hw, 12, 0x000A3 );
@@ -704,36 +708,36 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			write_rf(hw, 15, 0x9ABA8 );
 			udelay(50);
 
-			/* TXDCOC->disable; RCK->enable */		
-			write_rf(hw, 15, 0x3ABA8 );	
+			/* TXDCOC->disable; RCK->enable */
+			write_rf(hw, 15, 0x3ABA8 );
 			udelay(50);
 
 			/* TXDCOC->disable; RCK->disable */
 			write_rf(hw, 15, 0x1ABA8 );
-			udelay(50);				
+			udelay(50);
 			break;
-                
+
 		case IEEE80211_BAND_5GHZ:
 			/* Initial settings for 20 MHz reference frequency, 802.11a */
 			write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
 			write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
 			udelay(150);
 
-			/* Frequency register 0 */ 
+			/* Frequency register 0 */
 			write_rf(hw, 0, 0x0FF56 );
 
-			/* Frequency register 1 */		
+			/* Frequency register 1 */
 			write_rf(hw, 1, 0x0AAAA );
-			
-			udelay(10); 
+
+			udelay(10);
 
 			/*Config 1 = default value */
 			write_rf(hw, 2, 0x451FE );
 
-			/*Config 2 = default value */		
+			/*Config 2 = default value */
 			write_rf(hw, 3, 0x5FDFA );
 
-			/*Config 3 = default value */		
+			/*Config 3 = default value */
 			write_rf(hw, 4, 0x67f78 );
 
 			/*Config 4 = default value */
@@ -752,11 +756,11 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			write_rf(hw, 9, 0x221BB );
 
 			/* RX Gain = digi value */
-			write_rf(hw, 10, 0xE0600 ); 
+			write_rf(hw, 10, 0xE0600 );
 
 			/* TX Gain = digi specific vaue: TX GAIN set using the register */
-			// write_rf(hw, 11, 0x08070 );  
-			mac_set_tx_power (priv->tx_power);  //Digi value                    
+			// write_rf(hw, 11, 0x08070 );
+			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
 			write_rf(hw, 12, 0x00143 );
@@ -781,12 +785,12 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			write_rf(hw, 15, 0x9ABA8 );
 			udelay(50);
 
-			/* TXDCOC->disable; RCK->enable */		
+			/* TXDCOC->disable; RCK->enable */
 			write_rf(hw, 15, 0x3ABA8 );
-			udelay(50);		
+			udelay(50);
 
 			/* TXDCOC->disable; RCK->disable */
-			write_rf(hw, 15, 0x12BAC );	
+			write_rf(hw, 15, 0x12BAC );
 			udelay(50);
 			break;
 		}
@@ -801,7 +805,7 @@ static int al7230_rf_stop(struct ieee80211_hw *hw)
 	return 0;
 }
 
-static void getOfdmBrs(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
+static void getOfdmBrs(int channelIndex, u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
 {
 	/*
 	 * brsBitMask is a bit mask into the al7230_bg_rates array.  Bit 0 refers
@@ -811,8 +815,16 @@ static void getOfdmBrs(u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
 	 * mask is bits 0-3, the OFDM bit mask is bits 4-11.
 	 */
 
-	*psk = brsBitMask & 0xf;	/* TODO:  Should we set this to zero for band A channels? */
-	*ofdm = (brsBitMask & 0xff0) >> 4;
+	if (getBand(channelIndex) == IEEE80211_BAND_2GHZ)
+	{
+		*psk = brsBitMask & 0xf;
+		*ofdm = (brsBitMask & 0xff0) >> 4;
+	}
+	else
+	{
+		*psk = 0;
+		*ofdm = (brsBitMask & 0xff);
+	}
 }
 
 static struct ieee80211_supported_band al7230_bands[] = {
