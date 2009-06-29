@@ -96,15 +96,17 @@ static int piper_set_tx_power(struct ieee80211_hw *hw, int power)
 {
 	struct piper_priv *digi = hw->priv;
 	int err;
+	int oldTxPower = digi->tx_power;
 
 	dprintk(DVVERBOSE, "\n");
 
 	if (power == digi->tx_power)
 		return 0;
 
+	digi->tx_power = power;
 	err = digi->rf->set_pwr(hw, power);
-	if (!err)
-		digi->tx_power = power;
+	if (err)
+		digi->tx_power = oldTxPower;
 
 	return err;
 }
@@ -312,10 +314,10 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 	piperp->is_radio_on = true;
 	piperp->txPacket = NULL;
 
-	/* 
-	 * Initialize the antenna with the defualt setting defined in the 
-	 * probe function. This can be changed, currently, through a sysfs 
-	 * entry in the device directory 
+	/*
+	 * Initialize the antenna with the defualt setting defined in the
+	 * probe function. This can be changed, currently, through a sysfs
+	 * entry in the device directory
 	 */
 	if ((ret = piperp->set_antenna(piperp, piperp->antenna)) != 0) {
 		dprintk(DERROR, "piper_set_antenna_div() failed (%d)\n", ret);
@@ -605,7 +607,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 		reg = piperp->ac->rd_reg(piperp, MAC_SSID_LEN) &
 				         ~(MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK);
 
-		piperp->rf->getOfdmBrs(conf->basic_rates, &ofdm, &psk);
+		piperp->rf->getOfdmBrs(piperp->channel, conf->basic_rates, &ofdm, &psk);
 		reg |= ofdm << MAC_OFDM_BRS_SHIFT;
 		reg |= psk << MAC_PSK_BRS_SHIFT;
 		piperp->ac->wr_reg(piperp, MAC_SSID_LEN, reg, op_write);
@@ -779,6 +781,7 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS
 		  | IEEE80211_HW_SIGNAL_DBM
 		  | IEEE80211_HW_NOISE_DBM
+		  | IEEE80211_HW_SPECTRUM_MGMT
 #if !WANT_SHORT_PREAMBLE_SUPPORT
 		  | IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE
 #endif
