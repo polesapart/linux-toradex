@@ -8,8 +8,8 @@
 #include <linux/i2c.h>
 
 
-/* #define DEBUG */
-#ifdef DEBUG
+// #define WANT_DEBUG
+#ifdef WANT_DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)
 #else
@@ -78,7 +78,7 @@ typedef struct wcd_point {
 } wcd_point_t;
 
 typedef struct wcd_curve {
-	u8 max_power_index;	/* Airoha Max Power Index */
+	u8 max_adc_value;	/* maximum allowed ADC value for this curve*/
 	u8 reserved[3];		/* Resered for future use */
 	/* Calibration curve points */
 	wcd_point_t points[WCD_MAX_CAL_POINTS];
@@ -132,7 +132,7 @@ struct digi_rf_ops {
 	int				(*set_chan) (struct ieee80211_hw *, int chan);
 	int				(*set_pwr) (struct ieee80211_hw *, uint8_t val);
 	void				(*set_pwr_index) (struct ieee80211_hw *, unsigned int val);
-	void				(*getOfdmBrs) (u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
+	void				(*getOfdmBrs) (int channel, u64 brsBitMask, unsigned int *ofdm, unsigned int *psk);
 	enum ieee80211_band		(*getBand) (int);
 	int				(*getFrequency) (int);
 	const struct ieee80211_rate *	(*getRate) (unsigned int);
@@ -184,6 +184,7 @@ struct piper_priv {
 	void				(*kick_tx_task) (void);
 	void				(*tx_calib_cb) (struct piper_priv *);
 	int				(*set_antenna) (struct piper_priv *, enum antenna_select);
+	int				(*set_tracking_constant)(struct piper_priv *piperp, unsigned megahertz);
 
 	/* General settings */
 	enum nl80211_iftype		if_type;
