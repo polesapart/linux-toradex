@@ -28,7 +28,7 @@ enum
     POWER_INDEX
 };
 
-#ifdef DEBUG
+#ifdef WANT_DEBUG
 static const char *fieldDescription[] =
 {
     "OUT_POWER",
@@ -48,7 +48,7 @@ enum
     RECALIBRATE_STATE
 };
 
-#ifdef DEBUG
+#ifdef WANT_DEBUG
 static const char *stateText[] =
 {
     "RESTART_STATE",
