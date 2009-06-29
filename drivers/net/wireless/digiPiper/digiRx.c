@@ -175,7 +175,7 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 			}
 			result = ((piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_MIC) != 0);
 			spin_unlock_irqrestore(&piperp->aesLock, flags);
-			
+
 			/*  pad an extra 8 bytes for the MIC which the H/W strips */
 			skb_put(skb, 8);
 			if (result) {
@@ -202,20 +202,9 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 
 #if WANT_RECEIVE_COUNT_SCROLL
 	if (((++packetCount) & 1023) == 0) {
-		dprintk(DVERBOSE, "%d recd, tx_start_count = %d, tx_complete_count = %d.\n",
+		digi_dbg("\n%d recd, tx_start_count = %d, tx_complete_count = %d.\n",
 			packetCount, piperp->pstats.tx_start_count,
 			piperp->pstats.tx_complete_count);
-		
-		if (piperp->txPacket) {
-			struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piperp->txPacket);
-
-			dprintk(DVERBOSE,
-				"TxPacket yes!, totalRetries = %d, flags = 0x%8.8X\n",
-				piperp->txTotalRetries, txInfo->flags);
-		} else {
-			dprintk(DVERBOSE, "TxPacket == NULL, totalRetries = %d\n",
-				piperp->txTotalRetries);
-		}
 	}
 #endif
 	return result;
@@ -298,6 +287,7 @@ void piper_rx_tasklet(unsigned long context)
 					if (fr_ctrl_field.type == TYPE_BEACON) {
 						piperp->beacon.weSentLastOne = false;
 					}
+
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
 					ieee80211_rx_irqsafe(piperp->hw, skb, &status);
 #else
