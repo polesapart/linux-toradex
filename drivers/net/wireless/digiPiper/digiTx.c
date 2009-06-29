@@ -37,6 +37,8 @@ static int dlevel = DWARNING;
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
 
+
+
 /*
  * This routine writes a frame using H/W AES encryption.
  *
@@ -124,9 +126,6 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
 	struct ieee80211_rate *ret = NULL;
 	int nextidx;
 
-	if (piperp->calibrationTxRate)
-		return piperp->calibrationTxRate;
-
 	if (piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index] <
 	    info->control.rates[piperp->pstats.tx_retry_index].count) {
 		ret = ieee80211_get_tx_rate(piperp->hw, info);
@@ -137,6 +136,12 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
 			return NULL;
 
 		ret = ieee80211_get_alt_retry_rate(piperp->hw, info, nextidx);
+	}
+
+	if (ret != NULL) {
+		if (piperp->calibrationTxRate) {
+			return piperp->calibrationTxRate;
+		}
 	}
 
 	return ret;
