@@ -32,7 +32,7 @@ static int dlevel = DWARNING;
 #endif
 
 /*
- * This routine handles interrupts from the MAC.  
+ * This routine handles interrupts from the MAC.
  */
 irqreturn_t piper_irq_handler(int irq, void *dev_id)
 {
@@ -43,16 +43,16 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 	status = piperp->ac->rd_reg(piperp, BB_IRQ_STAT);
 	status &= piperp->ac->rd_reg(piperp, BB_IRQ_MASK);
 	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, status, op_write);
-    
+
 	if (status & BB_IRQ_MASK_RX_FIFO) {
-		/* 
+		/*
 		 * This interrupt indicates we have a frame in the FIFO.
 		 * Set up to receive the packet.  Disable further interrupts
 		 * until the receive is complete.
-		 */	
-		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_RX_FIFO); 
+		 */
+		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_RX_FIFO);
 		/*
-		 * Call the receive routine directly inside the irq handler 
+		 * Call the receive routine directly inside the irq handler
 		 * or in the tasklet, depending on configuration.
 		 */
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
@@ -60,7 +60,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 #else
 		tasklet_hi_schedule(&piperp->rx_tasklet);
 #endif
-	} 
+	}
 
 	if (status & BB_IRQ_MASK_TX_FIFO_EMPTY) {
 		/*
@@ -74,7 +74,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TX_FIFO_EMPTY and null packet?\n");
 		}
-		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY | 
+		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY |
 					BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
@@ -87,7 +87,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TIMEOUT and null packet?\n");
 		}
-		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY | 
+		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY |
 					BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
@@ -100,7 +100,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TX_ABORT and null packet?\n");
 		}
-		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY | 
+		piperp->clear_irq_mask_bit(piperp, BB_IRQ_MASK_TX_FIFO_EMPTY |
 					BB_IRQ_MASK_TIMEOUT | BB_IRQ_MASK_TX_ABORT);
 	}
 
@@ -110,7 +110,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		 * we need to do is to write a new beacon backoff value.
 		 */
 		u32 reg = piperp->ac->rd_reg(piperp, MAC_BEACON_FILT) & ~MAC_BEACON_BACKOFF_MASK;
-		piperp->ac->wr_reg(piperp, MAC_BEACON_FILT, 
+		piperp->ac->wr_reg(piperp, MAC_BEACON_FILT,
 				reg | piperp->get_next_beacon_backoff(), op_write);
 		/*
 		 * TODO:
@@ -118,10 +118,10 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		 * beacon.  What we are doing now is to assume that we did until and
 		 * unless we receive a beacon.  What we should do is look for either
 		 * a beacon or a TX end interrupt.  However, since mac80211 doesn't
-		 * tell us what the ATIM window is, we have to assume it is zero, 
+		 * tell us what the ATIM window is, we have to assume it is zero,
 		 * which means we could be transmitting a frame at the same
 		 * time we are sending the beacon, so there isn't really any easy
-		 * way for us to do this.  In fact, even if there was an ATIM 
+		 * way for us to do this.  In fact, even if there was an ATIM
 		 * window, we could have started a transmit just before we get this
 		 * interrupt, so I'm not sure how we are really suppose to keep
 		 * track of this.
@@ -139,8 +139,8 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		 * for us to find out how long the ATIM period is, so we have to assume
 		 * that there isn't one.
 		 *
-		 * If we were supporting this interrupt we would have to synchronize 
-		 * with the transmit routine so that transmit is paused during this 
+		 * If we were supporting this interrupt we would have to synchronize
+		 * with the transmit routine so that transmit is paused during this
 		 * time.
 		 */
 		dprintk(DWARNING, "BB_IRQ_MASK_ATIM irq (0x%08x)\n", status);
@@ -153,6 +153,6 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 EXPORT_SYMBOL_GPL(piper_irq_handler);
-        
+
 
 
