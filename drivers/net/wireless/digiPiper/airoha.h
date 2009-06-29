@@ -10,8 +10,11 @@
 #define	GEN_INIT_AIROHA_24GHZ	(0x31720005)	/*  Initial state; 2.4GHZ_PA_ON= active low; bit 25 */
 #define	GEN_INIT_AIROHA_50GHZ	(0x33760008)	/* Initial state; 5.0GHZ_PA_ON= active high; bit 25 */
 
+#define AIROHA_LOWEST_PSK_RATE_INDEX	(0)
+#define AIROHA_LOWEST_OFDM_RATE_INDEX	(4)
+
 /*
- * Subtract this number from the channel index to index into 
+ * Subtract this number from the channel index to index into
  * the 802.11a channel array.
  */
 #define BAND_A_OFFSET		(17)
