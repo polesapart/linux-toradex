@@ -12,6 +12,8 @@
 #include <linux/mtd/physmap.h>
 #include <mach/fim-ns921x.h>
 #include <linux/gpio.h>
+#include <linux/mmc/host.h>
+#include <linux/w1-gpio.h>
 
 #include "ns921x_devices.h"
 #include "cme9210_devices.h"
@@ -129,3 +131,81 @@ struct platform_device ns921x_fim_can1 = {
 };
 EXPORT_SYMBOL(ns921x_fim_can1);
 #endif /* CONFIG_FIM_TWO_CAN */
+
+#if defined(CONFIG_FIM_ONE_SDIO)
+static struct fim_sdio_platform_data fim_sdio_data0 = {
+	.fim_nr        = 0,
+	.host_caps     = MMC_CAP_SDIO_IRQ,
+
+	.d0_gpio_nr    = 0,
+	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
+	.d1_gpio_nr    = FIM_GPIO_DONT_USE,
+	.d2_gpio_nr    = FIM_GPIO_DONT_USE,
+	.d3_gpio_nr    = FIM_GPIO_DONT_USE,
+	
+	.clk_gpio_nr   = 1,
+	.clk_gpio_func = NS921X_GPIO_FUNC_2,
+	
+	.cmd_gpio_nr   = 2,
+	.cmd_gpio_func = NS921X_GPIO_FUNC_2,
+	
+	.cd_gpio_nr    = 9,
+	.cd_gpio_func  = NS921X_GPIO_FUNC_2,
+
+	.wp_gpio_nr    = 6,
+	.wp_gpio_func  = NS921X_GPIO_FUNC_3,
+};
+struct platform_device ns921x_fim_sdio0 = {
+	.name              = "fim-sdio",
+	.id                = 0,
+	.dev.platform_data = &fim_sdio_data0,
+};
+EXPORT_SYMBOL(ns921x_fim_sdio0);
+#endif /* CONFIG_FIM_ONE_SDIO */
+
+/* The second SDIO-port will be available by the CC9P9210JS first */
+#if defined(CONFIG_FIM_TWO_SDIO)
+static struct fim_sdio_platform_data fim_sdio_data1 = {
+	.fim_nr        = 1,
+	.host_caps     = MMC_CAP_SDIO_IRQ,
+
+	.d0_gpio_nr    = 26,
+	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
+	.d1_gpio_nr    = FIM_GPIO_DONT_USE,
+	.d2_gpio_nr    = FIM_GPIO_DONT_USE,
+	.d3_gpio_nr    = FIM_GPIO_DONT_USE,
+
+	.clk_gpio_nr   = 27,
+	.clk_gpio_func = NS921X_GPIO_FUNC_2,
+	
+	.cmd_gpio_nr   = 28,
+	.cmd_gpio_func = NS921X_GPIO_FUNC_2,
+	
+	.cd_gpio_nr    = 9,
+	.cd_gpio_func  = NS921X_GPIO_FUNC_2,
+
+	.wp_gpio_nr    = 6,
+	.wp_gpio_func  = NS921X_GPIO_FUNC_3,
+};
+struct platform_device ns921x_fim_sdio1 = {
+	.name              = "fim-sdio",
+	.id                = 1,
+	.dev.platform_data = &fim_sdio_data1,
+};
+EXPORT_SYMBOL(ns921x_fim_sdio1);
+#endif /* CONFIG_FIM_TWO_SDIO */
+
+#if defined(CONFIG_FIM_ONE_W1)
+static struct w1_gpio_platform_data fim_w1_data0 = {
+	.pin           = 1,
+	.is_open_drain = 0,
+};
+struct platform_device ns921x_fim0_w1 = {
+	.name		= "w1-gpio",
+	.id		= 0,
+	.dev		= {
+		.platform_data		= &fim_w1_data0,
+	},
+};
+EXPORT_SYMBOL(ns921x_fim0_w1);
+#endif /* CONFIG_FIM_ONE_W1 */

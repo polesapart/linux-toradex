@@ -248,12 +248,13 @@ struct fim_serial_platform_data {
  * If a GPIO should not be used, then it's required to disable it by using the
  * macro 'FIM_GPIO_DONT_USE'
  *
- * fim_nr  : Number of the FIM to use for the device
- * gpio_nr : GPIO to use for the interface line
- * fim_cfg : Currently not used 
+ * fim_nr    : Number of the FIM to use for the device
+ * host_caps : Specific host capabilities (see: linux/mmc/host.h)
  */
 struct fim_sdio_platform_data {
 	int fim_nr;
+	unsigned int host_caps;         /* Host capabilities */
+	
 	int d0_gpio_nr;			/* data 0 */
 	unsigned int d0_gpio_func;
 	int d1_gpio_nr;			/* data 1 */
@@ -295,6 +296,23 @@ struct fim_sdio_platform_data {
 		.cmd_gpio_nr = cmd, \
 		.cmd_gpio_func = func
 
+/* 
+ * The new FIM board doesn't connect all the lines to the FIM. The CMD
+ * and CD are not connected to the FIM.
+ */
+#define NS921X_FIM_SDIO_GPIOS_FIM(d0, d1, d2, d3, clk, cmd, func)	\
+		.d0_gpio_nr = d0, \
+		.d0_gpio_func = func, \
+		.d1_gpio_nr = d1, \
+		.d1_gpio_func = func, \
+		.d2_gpio_nr = d2, \
+		.d2_gpio_func = func, \
+		.d3_gpio_nr = d3, \
+		.d3_gpio_func = func, \
+		.clk_gpio_nr = clk, \
+		.clk_gpio_func = func, \
+		.cmd_gpio_nr = cmd, \
+		.cmd_gpio_func = func
 
 /*
  * Structure for the FIM-devices with CAN-support

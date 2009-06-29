@@ -34,6 +34,7 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/err.h>
+#include <linux/irq.h>
 
 #include <asm/scatterlist.h>
 #include <asm/uaccess.h>
@@ -55,14 +56,17 @@
  * be read with the help of the firmware-subsystem
  */
 #if !defined(MODULE)
-#include "fim_sdio.h"
+#include "fim_sdio0.h"
+#include "fim_sdio1.h"
 extern const unsigned char fim_sdio_firmware[];
-#define FIM_SDIO_FIRMWARE_FILE			(NULL)
-#define FIM_SDIO_FIRMWARE_CODE			fim_sdio_firmware
+#define FIM_SDIO_FW_FILE			(NULL)
+#define FIM_SDIO_FW_CODE0			fim_sdio_firmware0
+#define FIM_SDIO_FW_CODE1			fim_sdio_firmware1
 #else
 const unsigned char *fim_sdio_firmware = NULL;
-#define FIM_SDIO_FIRMWARE_FILE			"fim_sdio.bin"
-#define FIM_SDIO_FIRMWARE_CODE			(NULL)
+#define FIM_SDIO_FW_FILE_PAT			"fim_sdio%i.bin"
+#define FIM_SDIO_FW_LEN				sizeof(FIM_SDIO_FW_FILE_PAT) + 10
+#define FIM_SDIO_FW_CODE			(NULL)
 #endif
 
 /* Driver informations */
@@ -121,6 +125,8 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIM_SD_BLOCKS_REG                       2
 #define FIM_SD_BLKSZ_LSB_REG                    3
 #define FIM_SD_BLKSZ_MSB_REG                    4
+#define FIM_SD_MAIN_REG				5
+#define FIM_SD_MAIN_START			(1 << 0)
 
 /* Internal flags for the request function */
 #define FIM_SD_REQUEST_NEW			0x00
@@ -133,7 +139,19 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIM_SD_DMA_RX_BUFFERS			21
 #define FIM_SD_DMA_TX_BUFFERS			10
 
-#if 1
+/* Used for the Card Detect timer */
+#define FIM_SD_CD_POLLING_TIMER			(HZ / 2)
+
+/*
+ * The below macro force the use of the timer for polling the state of the card
+ * detection line
+ */
+#if 0
+#define FIM_SDIO_FORCE_CD_POLLING
+#endif
+
+/* Enable the multipple block transfer (in development) */
+#if 0
 # define FIM_SD_MULTI_BLOCK
 # define FIM_SD_MAX_BLOCKS			(FIM_SD_DMA_RX_BUFFERS - 10)
 # define SKIP_CRC_CHECK
@@ -218,6 +236,10 @@ struct fim_sdio_t {
 
 	int wp_gpio;
 	struct clk *sys_clk;
+	int cd_gpio;
+	int cd_irq;
+	int cd_value;
+	struct timer_list cd_timer;
 
 	/* struct scatterlist *sg; */
 	u8 *sg_virt;
@@ -258,7 +280,6 @@ struct fim_sdios_t {
 
 
 static struct fim_sdios_t *fim_sdios;
-static int rx_blocks = 0;
 
 /* Internal functions */
 static void fim_sd_process_next(struct fim_sdio_t *port);
@@ -298,6 +319,49 @@ static void fim_sd_cmd_timeout(unsigned long data)
 	spin_unlock(&port->mmc_lock);
 }
 
+/* Check the status of the card detect line if no external IRQ supported */
+static void fim_sd_cd_timer_func(unsigned long _port)
+{
+	struct fim_sdio_t *port;
+	int val;
+	
+	port = (struct fim_sdio_t *)_port;
+	val = gpio_get_value_ns921x(port->cd_gpio);
+
+	if (val != port->cd_value) {
+		port->cd_value = val;
+		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+	}
+
+	mod_timer(&port->cd_timer, jiffies + FIM_SD_CD_POLLING_TIMER);
+}
+
+/*
+ * The external interrupt line only supports one edge detection! That means, we must
+ * check the status of the line and reconfigure the interrupt trigger type.
+ */
+static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
+{
+	struct fim_sdio_t *port;
+	int val;
+	unsigned int type;
+
+	port = (struct fim_sdio_t *)_port;
+	val = gpio_get_value_ns921x(port->cd_gpio);
+	printk_debug("CD interrupt received (val %i)\n", val);
+
+	if (!val)
+		type = IRQF_TRIGGER_RISING;
+	else
+		type = IRQF_TRIGGER_FALLING;
+	
+	val = set_irq_type(port->cd_irq, type);
+	if (val)
+		printk_err("Failed CD IRQ reconfiguration (%i)\n", val);
+
+	mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+	return IRQ_HANDLED;
+}
 
 inline static int fim_sd_card_plugged(struct fim_sdio_t *port)
 {
@@ -816,8 +880,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		fim_set_ctrl_reg(&port->fim, FIM_SD_BLKSZ_LSB_REG, block_length);
 		fim_set_ctrl_reg(&port->fim, FIM_SD_BLKSZ_MSB_REG, (block_length >> 8));
 
-		rx_blocks += blocks;
-		
 		/* Check if the transfer request is for reading or writing */
 		if (cmd->data->flags & MMC_DATA_READ) {
 			txcmd->opctl |= SDIO_FIFO_TX_BLKRD;
@@ -966,7 +1028,7 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 
 	/* Now write the value to the corresponding FIM-register */
 	if (clockrate >= 0) {
-		printk_debug("Setting the clock to %ld (%x)\n",
+		printk_debug("Setting the clock to %ld (%lx)\n",
 			     clockrate, clkdiv);
 		fim_set_ctrl_reg(&port->fim, FIM_SD_CLKDIV_REG, clkdiv);
 	}
@@ -1062,7 +1124,10 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	mmc_free_host(port->mmc);
 
 	del_timer_sync(&port->mmc_timer);
-		
+
+	/* Reset the main control register */
+	fim_set_ctrl_reg(&port->fim, FIM_SD_MAIN_REG, 0);
+	
 	fim_unregister_driver(&port->fim);
 
 	for (cnt=0; cnt < FIM_SDIO_MAX_GPIOS; cnt++) {
@@ -1079,6 +1144,11 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 		clk_put(port->sys_clk);
 		port->sys_clk = NULL;
 	}
+
+	if (port->cd_irq > 0) {
+		free_irq(port->cd_irq, port);
+		port->cd_irq = -1;
+	}
 	
 	port->reg = 0;
 	return 0;
@@ -1088,12 +1158,24 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 
 /* Register the new FIM driver by the FIM-API */
 static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
-				  int picnr, struct fim_gpio_t gpios[])
+				  struct fim_sdio_platform_data *pdata,
+				  struct fim_gpio_t gpios[])
 {
 	int retval;
-	int cnt, func;
+	int cnt;
 	struct fim_dma_cfg_t dma_cfg;
+	int picnr = pdata->fim_nr;
+	unsigned long hcaps = pdata->host_caps;
 
+#if defined(MODULE)
+	const char *fwcode = NULL;
+	char fwname[FIM_SDIO_FW_LEN];
+	snprintf(fwname, FIM_SDIO_FW_LEN, FIM_SDIO_FW_FILE_PAT, picnr);
+#else
+	char *fwname = NULL;
+	const char *fwcode = (picnr == 0) ? FIM_SDIO_FW_CODE0 : FIM_SDIO_FW_CODE1;
+#endif
+	
 	/* Specific DMA configuration for the SD-host driver */
 	dma_cfg.rxnr = FIM_SD_DMA_RX_BUFFERS;
 	dma_cfg.txnr = FIM_SD_DMA_TX_BUFFERS;
@@ -1111,8 +1193,8 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->fim.dma_cfg = &dma_cfg;
 
 	/* Check if have a firmware code for using to */
-	port->fim.fw_name = FIM_SDIO_FIRMWARE_FILE;
-	port->fim.fw_code = FIM_SDIO_FIRMWARE_CODE;
+	port->fim.fw_name = fwname;
+	port->fim.fw_code = fwcode;
 	retval = fim_register_driver(&port->fim);
 	if (retval) {
 		printk_err("Couldn't register the FIM driver.\n");
@@ -1132,26 +1214,17 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 			     gpios[cnt].nr, gpios[cnt].func);
 		retval = gpio_request(gpios[cnt].nr, gpios[cnt].name);
 		if (!retval) {
-
-			func = gpios[cnt].func;
-			
-			/*
-			 * Since the FIM-firmware doesn't support the WP-GPIO, we will
-			 * read the status of the GPIO inside the driver. For this reason
-			 * configure the WP-line as GPIO (Function three)
-			 */
-			if (gpios[cnt].nr == port->wp_gpio)
-				func = NS921X_GPIO_FUNC_3;
-				
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,
 						       NS921X_GPIO_INPUT,
 						       NS921X_GPIO_DONT_INVERT,
-						       func,
+						       gpios[cnt].func,
 						       NS921X_GPIO_DISABLE_PULLUP);
 		} else {
 			/* Free the already requested GPIOs */
 			printk_err("Couldn't request the GPIO %i\n", gpios[cnt].nr);
-			while (cnt) gpio_free(gpios[--cnt].nr);
+			while (cnt)
+				gpio_free(gpios[--cnt].nr);
+			
 			goto exit_unreg_fim;
 		}
 	}
@@ -1164,6 +1237,11 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	init_timer(&port->mmc_timer);
 	port->mmc_timer.function = fim_sd_cmd_timeout;
 	port->mmc_timer.data = (unsigned long)port;
+
+	/* This is the timer for checking the state of the card detect line */
+	init_timer(&port->cd_timer);
+	port->cd_timer.function = fim_sd_cd_timer_func;
+	port->cd_timer.data = (unsigned long)port;
 	
 	port->mmc = mmc_alloc_host(sizeof(struct fim_sdio_t *), port->fim.dev);
 	if (!port->mmc) {
@@ -1185,7 +1263,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->mmc->f_min = 320000;
 	port->mmc->f_max = 25000000;
 	port->mmc->ocr_avail = MMC_VDD_33_34 | MMC_VDD_32_33;
-	port->mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ;
+	port->mmc->caps = hcaps;
 
 	/* Maximum number of blocks in one req */
 	port->mmc->max_blk_count = FIM_SD_MAX_BLOCKS;
@@ -1213,8 +1291,43 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	/* Fist disable the SDIO-IRQ */
 	fim_sd_enable_sdio_irq(port->mmc, 0);
 	
+	/*
+	 * If no interrupt line is available for the card detection, then use the timer
+	 * for the polling.
+	 */
+	port->cd_irq = gpio_to_irq(port->cd_gpio);
+
+#if defined(FIM_SDIO_FORCE_CD_POLLING)
+	port->cd_irq = -1;
+#endif
+	
+	if (port->cd_irq > 0) {
+		int iret;
+		
+		/* First check if we have an IRQ at this line */
+		printk_info("Got IRQ %i for GPIO %i\n", port->cd_irq,
+			    port->cd_gpio);
+
+		iret = request_irq(port->cd_irq, fim_sd_cd_irq,
+				   IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+				   "fim-sdio-cd", port);
+		if (iret) {
+			printk_err("Failed IRQ %i request (%i)\n", port->cd_irq, iret);
+			port->cd_irq = -1;
+		}
+	}
+
+	/* By errors use the polling of the line */
+	if (port->cd_irq < 0) {
+		printk(KERN_DEBUG "Polling the Card Detect line (no IRQ)\n");
+		port->cd_value = 1; /* @XXX: Use an invert value for this purpose */
+		mod_timer(&port->cd_timer, jiffies + HZ / 2);
+	}
+
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
+	fim_set_ctrl_reg(&port->fim, FIM_SD_MAIN_REG, FIM_SD_MAIN_START);
+	
 	return 0;
 
  exit_put_clk:
@@ -1280,11 +1393,10 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	gpios[6].func = pdata->clk_gpio_func;
 	gpios[7].nr   = pdata->cmd_gpio_nr;
 	gpios[7].func = pdata->cmd_gpio_func;
-	port->wp_gpio = pdata->wp_gpio_nr;	
+	port->wp_gpio = pdata->wp_gpio_nr;
+	port->cd_gpio = pdata->cd_gpio_nr;
 	
-	retval = fim_sdio_register_port(&pdev->dev, port,
-					pdata->fim_nr,
-					gpios);
+	retval = fim_sdio_register_port(&pdev->dev, port, pdata, gpios);
 	
 	return retval;
 }
@@ -1372,7 +1484,6 @@ static void __exit fim_sdio_exit(void)
 	printk_info("Removing the FIM SDIO driver\n");
 	platform_driver_unregister(&fim_sdio_platform_driver);		
 	kfree(fim_sdios);
-	printk_dbg("RX blocks %i\n", rx_blocks);
 }
 
 

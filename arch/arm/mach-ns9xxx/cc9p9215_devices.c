@@ -24,6 +24,8 @@
 
 #include <video/hx8347fb.h>
 #include <linux/fb.h>
+#include <linux/mmc/host.h>
+#include <linux/w1-gpio.h>
 
 #include "ns921x_devices.h"
 #include "cc9p9215_devices.h"
@@ -191,16 +193,21 @@ EXPORT_SYMBOL(ns921x_fim_serial1);
 #if defined(CONFIG_FIM_ONE_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
+	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
 #if INT_FIM_BOARD
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
 			      NS921X_GPIO_FUNC_0),
 #else
-	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
-			      100, 101,         /* WP + CD */
-			      76, 77,         /* CLK + CMD */
-			      NS921X_GPIO_FUNC_0),
+	NS921X_FIM_SDIO_GPIOS_FIM(68, 69, 70, 71, /* D0 to D3 */
+				  76, 77,         /* CLK + CMD */
+				  NS921X_GPIO_FUNC_0),
+	.cd_gpio_nr   = 101,         /* CD as external intrrupt */
+	.cd_gpio_func = NS921X_GPIO_FUNC_2,
+
+	.wp_gpio_nr   = 100,         /* WP as normal GPIO */
+	.wp_gpio_func = NS921X_GPIO_FUNC_3,	
 #endif
 };
 struct platform_device ns921x_fim_sdio0 = {
@@ -215,16 +222,21 @@ EXPORT_SYMBOL(ns921x_fim_sdio0);
 #if defined(CONFIG_FIM_TWO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
+	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
 #if INT_FIM_BOARD
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
 			      NS921X_GPIO_FUNC_1),
 #else
-	NS921X_FIM_SDIO_GPIOS(72, 73, 74, 75, /* D0 to D3 */
-			      100, 101,         /* WP + CD */
-			      78, 79,         /* CLK + CMD */
-			      NS921X_GPIO_FUNC_1),
+	NS921X_FIM_SDIO_GPIOS_FIM(72, 73, 74, 75, /* D0 to D3 */
+				  78, 79,         /* CLK + CMD */
+				  NS921X_GPIO_FUNC_1),
+	.cd_gpio_nr   = 101,         /* CD as external intrrupt */
+	.cd_gpio_func = NS921X_GPIO_FUNC_2,
+
+	.wp_gpio_nr   = 100,         /* WP as normal GPIO */
+	.wp_gpio_func = NS921X_GPIO_FUNC_3,
 #endif
 };
 struct platform_device ns921x_fim_sdio1 = {
@@ -270,6 +282,36 @@ struct platform_device ns921x_fim_can1 = {
 };
 EXPORT_SYMBOL(ns921x_fim_can1);
 #endif /* CONFIG_FIM_TWO_CAN */
+
+#if defined(CONFIG_FIM_ONE_W1)
+static struct w1_gpio_platform_data fim_w1_data0 = {
+	.pin           = 68,
+	.is_open_drain = 0,
+};
+struct platform_device ns921x_fim0_w1 = {
+	.name		= "w1-gpio",
+	.id		= 0,
+	.dev		= {
+		.platform_data		= &fim_w1_data0,
+	},
+};
+EXPORT_SYMBOL(ns921x_fim0_w1);
+#endif /* CONFIG_FIM_ONE_W1 */
+
+#if defined(CONFIG_FIM_TWO_W1)
+static struct w1_gpio_platform_data fim_w1_data1 = {
+	.pin           = 72,
+	.is_open_drain = 0,
+};
+struct platform_device ns921x_fim1_w1 = {
+	.name		= "w1-gpio",
+	.id		= 1,
+	.dev		= {
+		.platform_data		= &fim_w1_data1,
+	},
+};
+EXPORT_SYMBOL(ns921x_fim1_w1);
+#endif /* CONFIG_FIM_TWO_W1 */
 
 #if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA

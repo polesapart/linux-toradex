@@ -719,6 +719,26 @@ void __init ns9xxx_add_device_ns921x_fim_can1(void)
 void __init ns9xxx_add_device_ns921x_fim_can1(void) {}
 #endif
 
+#if defined(CONFIG_FIM_ONE_W1)
+static void __init ns9xxx_add_device_ns921x_fim0_w1(void)
+{
+	extern struct platform_device ns921x_fim0_w1;
+	platform_device_register(&ns921x_fim0_w1);
+}
+#else
+static inline void __init ns9xxx_add_device_ns921x_fim0_w1(void) { }
+#endif
+
+#if defined(CONFIG_FIM_TWO_W1)
+static void __init ns9xxx_add_device_ns921x_fim1_w1(void)
+{
+	extern struct platform_device ns921x_fim1_w1;
+	platform_device_register(&ns921x_fim1_w1);
+}
+#else
+static inline void __init ns9xxx_add_device_ns921x_fim1_w1(void) { }
+#endif
+
 #if defined(CONFIG_FIM_CORE)
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
@@ -726,11 +746,13 @@ void __init ns9xxx_add_device_ns921x_fims(void)
 	ns9xxx_add_device_ns921x_fim_serial0();
 	ns9xxx_add_device_ns921x_fim_sdio0();
 	ns9xxx_add_device_ns921x_fim_can0();
+	ns9xxx_add_device_ns921x_fim0_w1();
 
         /* FIM 1 */
 	ns9xxx_add_device_ns921x_fim_serial1();
 	ns9xxx_add_device_ns921x_fim_sdio1();
 	ns9xxx_add_device_ns921x_fim_can1();
+	ns9xxx_add_device_ns921x_fim1_w1();        
 }
 #else
 void __init ns9xxx_add_device_ns921x_fims(void) {}
