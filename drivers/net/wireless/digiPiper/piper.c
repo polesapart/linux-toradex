@@ -24,7 +24,7 @@
 #include "airoha.h"
 #include "airohaCalibration.h"
 
-#define WANT_AIROHA_CALIBRATION     (0)
+#define WANT_AIROHA_CALIBRATION     (1)
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)
 {
@@ -119,6 +119,38 @@ static void piper_free_rx_tx(struct piper_priv *piperp)
 	tasklet_kill(&piperp->tx_tasklet);
 }
 
+/*
+ * This function sets the tracking control according to a channel's
+ * frequency.
+ */
+static int piper_set_tracking_constant(struct piper_priv *piperp, unsigned megahertz)
+{
+	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, ~TRACK_CONSTANT_MASK, op_and);
+	if (megahertz < 4920)
+	{
+		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_BG_BAND, op_or);
+	}
+	else if (megahertz <= 4980)
+	{
+		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_4920_4980_A_BAND, op_or);
+	}
+	else if (megahertz <= 5350)
+	{
+		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_5150_5350_A_BAND, op_or);
+	}
+	else if (megahertz <= 5725)
+	{
+		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_5470_5725_A_BAND, op_or);
+	}
+	else
+	{
+		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_5725_5825_A_BAND, op_or);
+	}
+
+	return 0;
+}
+
+
 static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 {
 	int ret = 0;
@@ -185,6 +217,8 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 						 | BB_GENERAL_CTL_TXFIFORST), op_and);
 
 	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, 0xC043002C, op_write);
+	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, ~TRACK_TX_B_GAIN_MASK, op_and);
+	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_TX_B_GAIN_NORMAL, op_or);
 
 	/* Initialize RF transceiver */
 	piperp->rf->init(piperp->hw, band);
@@ -468,12 +502,13 @@ static int __init piper_probe(struct platform_device* pdev)
 	piperp->rand = local_rand;
 	piperp->get_next_beacon_backoff = get_next_beacon_backoff;
 	piperp->set_antenna = piper_set_antenna;
+	piperp->set_tracking_constant = piper_set_tracking_constant;
 	piperp->antenna = ANTENNA_BOTH;
 
 	/* This disables the duty power cycle control */
 	piperp->power_duty = 100;
 
-	/* TODO this should be read earlier and actions should be taken 
+	/* TODO this should be read earlier and actions should be taken
 	 * based on different revisions at driver initialization or runtime */
 	piperp->version = piperp->ac->rd_reg(piperp, BB_VERSION);
 
