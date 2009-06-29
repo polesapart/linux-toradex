@@ -1,7 +1,7 @@
 #ifndef DIGI_MAC_H_
 #define DIGI_MAC_H_
 
-/* 
+/*
  * Defines for debugging function dumpRegisters
  */
 void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
@@ -65,7 +65,7 @@ enum baseband_control_regs {
 		BB_GENERAL_CTL_SPI_RST)
 #else
 #define BB_GENERAL_CTL_INIT		(BB_GENERAL_CTL_MAX_GAIN(0x7a)
-		
+
 #define BB_GENERAL_CTL_RESET		(BB_GENERAL_CTL_MAX_GAIN(0x7f) | \
                                 BB_GENERAL_CTL_SPI_RST
 #endif
@@ -100,7 +100,10 @@ enum baseband_control_regs {
 #define BB_GENERAL_STAT_RX_FIFO_EMPTY   (1 << 4)
 #define BB_GENERAL_STAT_DC_DIS      (1 << 24)
 #define BB_GENERAL_STAT_SPRD_DIS    (1 << 17)
+#define TRACK_TX_B_GAIN_MASK	0xff000000		// Mask word for B_TX_GAIN
+#define TRACK_TX_B_GAIN_NORMAL	0xC0000000		// normal setting for B_TX_GAIN
 #define TRACK_BG_BAND           0x00430000     // Tracking constant for 802.11 b/g frequency band
+#define TRACK_CONSTANT_MASK		0x00ff0000		// mask for tracking constant
 #define TRACK_4920_4980_A_BAND  0x00210000     // Tracking constant for 802.11 a sub-frequency band
 #define TRACK_5150_5350_A_BAND  0x001F0000     // Tracking constant for 802.11 a sub-frequency band
 #define TRACK_5470_5725_A_BAND  0x001D0000     // Tracking constant for 802.11 a sub-frequency band
@@ -146,7 +149,7 @@ enum mac_control_regs {
 	MAC_EEPROM_DATA = 0xf8,
 
 	MAC_SSID = 0x80,
-	
+
 	BEACON_FIFO = 0x85,     /* dummy value used to select data fifo for beacon load */
 };
 
@@ -219,7 +222,7 @@ enum mac_control_regs {
 #define	TYPE_DISASSOC		0xa0	// Disassociation
 #define	TYPE_AUTH		0xb0	// Authentication
 #define	TYPE_DEAUTH		0xc0	// Deauthentication
-#define TYPE_ACTION		0xd0    // Action 
+#define TYPE_ACTION		0xd0    // Action
 
 #define TYPE_RTS		0xb4	// Request to send
 #define TYPE_CTS		0xc4	// Clear to send
@@ -271,7 +274,7 @@ struct rx_frame_hdr {
 	unsigned int rssi_low_noise_amp:2;
 	unsigned int antenna:1;
 	__be16 freq_offset;
-	union 
+	union
 	{
 	    struct psk_cck_hdr psk;
 	    struct ofdm_hdr ofdm;
