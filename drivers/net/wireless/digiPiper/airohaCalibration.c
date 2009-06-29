@@ -22,15 +22,21 @@
 #include "airohaCalibration.h"
 #include "adc121c027.h"
 
-#define MAX_ALLOWED_ADC_ERROR           (2)             /* TODO: come up with a rational value for this */
 #define POWER_INDEX_STEP                (1)             /* TODO: come up with a rational value for this */
 
 #define SAMPLE_TIMEOUT              (HZ * 10)            /* TODO: What is a good sample timeout?  Do we need one? */
-#define RECALIBRATION_PERIOD        (HZ * 1)           /* amount of time to wait between recalibrations*/
+#define RECALIBRATION_PERIOD        (HZ * 15)           /* amount of time to wait between recalibrations*/
 
-#define MAX_TOLERATED_ERROR_IN_MDBM     (1000)          /* amount of error we will ignore */
+/*
+ * This defines the amount of time to wait for the power levels
+ * to settle down after making a large correction (user has
+ * changed power level).
+ */
+#define DEBOUNCE_DELAY				(HZ * 2)
 
-#define CONVERT_TO_MDBM(x)              (1000 * x)     /* power levels are dBm externally, but dBm/1000 internally */
+#define MAX_TOLERATED_ERROR_HIGH		(300)			/* maximum over target we will allow*/
+#define MAX_TOLERATED_ERROR_LOW			(500)			/* maximum under the target we will allow*/
+#define CONVERT_TO_MDBM(x)              (1000 * (x))   /* power levels are dBm externally, but dBm/1000 internally */
 
 #define NVRAM_WCAL_SIGNATURE            "WCALDATA"
 
@@ -59,18 +65,6 @@ static struct airohaCalibrationData calibration;
 static DECLARE_WAIT_QUEUE_HEAD(waitQueue);
 
 
-/*
- * This routine is called when the transmit frame has been
- * loaded into the FIFO and we just cleared the TX_HOLD bit.
- * The frame should be going out now.  We reset the peak
- * ADC measurement register and the receive frame count.
- */
-#if 0
-static void transmitIsStarting(struct piper_priv *digi)
-{
-    calibration.cops->adc_clear_peak(&calibration);
-}
-#endif
 
 /*
  * This routine is called to shut down the transmit ADC sampler.
@@ -124,30 +118,6 @@ static void transmitHasCompleted(struct piper_priv *digi)
 }
 
 
-/*
- * Scan the BRS mask and determine the lowest rate.  Look up the ieee80211_rate struct
- * for that rate and return it.
- */
-static struct ieee80211_rate *findLowestRate(struct piper_priv *digi, unsigned int rates)
-{
-    unsigned int idx, rateIndex = 0;
-
-    for (idx = 16; idx < sizeof(rates); idx++)
-    {
-        if (rates & (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK))
-        {
-            if (rates & (1 << idx))
-            {
-                break;
-            }
-            rateIndex++;
-        }
-    }
-
-    return (struct ieee80211_rate *) digi->rf->getRate(rateIndex);
-}
-
-
 
 /*
  * Determine the appropriate transmit rate to use during calibration.
@@ -157,14 +127,16 @@ static struct ieee80211_rate *determineCalibrationTxRate(struct piper_priv *digi
     unsigned int rates = digi->ac->rd_reg(digi, MAC_SSID_LEN);
     struct ieee80211_rate *calibrationTxRate;
 
+	rates &= (MAC_PSK_BRS_MASK | MAC_OFDM_BRS_MASK);
+
     if (   (digi->rf->getBand(digi->channel) == IEEE80211_BAND_2GHZ)
         && (rates & MAC_PSK_BRS_MASK))
     {
-        calibrationTxRate = findLowestRate(digi, rates & MAC_PSK_BRS_MASK);
+        calibrationTxRate = (struct ieee80211_rate *) digi->rf->getRate(AIROHA_LOWEST_PSK_RATE_INDEX);
     }
     else
     {
-        calibrationTxRate = findLowestRate(digi, rates & MAC_OFDM_BRS_MASK);
+        calibrationTxRate = (struct ieee80211_rate *) digi->rf->getRate(AIROHA_LOWEST_OFDM_RATE_INDEX);
     }
 
     return calibrationTxRate;
@@ -234,7 +206,7 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
 }
 
 
-#ifdef DEBUG
+#ifdef WANT_DEBUG
 static void printPoint(wcd_point_t *p)
 {
     printk("(%d, %d, %d)", p->out_power, p->adc_val, p->power_index);
@@ -404,7 +376,10 @@ static int computeY(wcd_point_t *p1, int slopeTimes1000, int x, int slopeType)
 }
 
 
-
+/*
+ * Return a pointer to the curve we should use for the currently selected
+ * channel.
+ */
 static wcd_curve_t *determineCurve(struct piper_priv *digi)
 {
     unsigned int rates = digi->ac->rd_reg(digi, MAC_SSID_LEN);
@@ -414,22 +389,65 @@ static wcd_curve_t *determineCurve(struct piper_priv *digi)
     {
         if (rates & MAC_PSK_BRS_MASK)
         {
+        	/*
+        	 * This is the normal case for 802.11b and 802.11bg.  We select
+        	 * the PSK curve.
+        	 */
             digi_dbg("Using bg curve [%d][%d]\n", digi->channel, WCD_B_CURVE_INDEX);
             curve = &calibration.nvram->cal_curves_bg[digi->channel][WCD_B_CURVE_INDEX];
         }
         else /* if associated with AP that only supports G rates */
         {
+        	/*
+        	 * This is a very unusual, but theoretically possible case.  We
+        	 * are associated with an AP that only supports OFDM modulation
+        	 * (G only, no B).  We determine this by looking at the BRS
+        	 * setting.  If no PSK rates are set for BRS, then we assume that
+        	 * this must be a G only AP.  Obviously, we must select the OFDM curve.
+        	 */
             digi_dbg("Using bg curve [%d][%d]\n", digi->channel, WCD_G_CURVE_INDEX);
             curve = &calibration.nvram->cal_curves_bg[digi->channel][WCD_G_CURVE_INDEX];
         }
     }
     else
     {
+    	/*
+    	 * An 802.11a channel is selected.
+    	 */
         curve = &calibration.nvram->cal_curves_a[digi->channel - BAND_A_OFFSET];
         digi_dbg("Using A curve [%d]\n", digi->channel - BAND_A_OFFSET);
     }
 
     return curve;
+}
+
+/*
+ * Determine the maximum mdBm allowed for the current channel.  Return the
+ * lesser of the max and the mdBm value passed to us.
+ */
+static int getFilteredPower(struct piper_priv *digi, int mdBm)
+{
+	int max = 0;
+
+	if (digi->channel < BAND_A_OFFSET)
+	{
+		max = 16000;		/* all BG channels can go to 16 dBm*/
+	}
+	else if (digi->channel < (BAND_A_OFFSET + 4))
+	{
+		max = 3000;			/* first 4 A channels max out at 3 dBm */
+	}
+	else
+	{
+		max = 8000;			/* all other A channels can handle 8 dBm */
+	}
+
+	if (mdBm > max)
+	{
+		mdBm = max;
+	}
+
+	return mdBm;
 }
 
 
@@ -442,6 +460,7 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
 {
     wcd_point_t *p1, *p2;
 
+	mdBm = getFilteredPower(digi, mdBm);
     digi_dbg("Setting initial powerlevel %d milli dBm.\n", mdBm);
     calibration.curve = determineCurve(digi);
     findClosestPoints(calibration.curve, mdBm, &p1, &p2, OUT_POWER);
@@ -464,11 +483,16 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
      * Let's compute and save the expected ADC value while we have all the necessary
      * information handy.
      */
-#ifdef DEBUG
+#ifdef WANT_DEBUG
     digi_dbg("Using points "); printPoint(p1); printPoint(p2); printk("\n");
+    digi_dbg("Max ADC = %d.\n", calibration.curve->max_adc_value);
 #endif
     calibration.adcSlopeTimes1000 = computeSlopeTimes1000(p1, p2, ADC_OVER_OUT_POWER);
     calibration.expectedAdc = computeY(calibration.p1, calibration.adcSlopeTimes1000, mdBm, ADC_OVER_OUT_POWER);
+    if (calibration.expectedAdc > calibration.curve->max_adc_value)
+    {
+    	calibration.expectedAdc = calibration.curve->max_adc_value;
+    }
     digi_dbg("adcSlopeTimes1000 = %d, expectedAdc = %d\n", calibration.adcSlopeTimes1000, calibration.expectedAdc);
     calibration.outPowerSlopeTimes1000 = computeSlopeTimes1000(p1, p2, OUT_POWER_OVER_ADC);
     calibration.powerIndexSlopeTimes1000 = computeSlopeTimes1000(p1, p2, POWER_INDEX_OVER_ADC);
@@ -492,79 +516,72 @@ static void recalibrate(struct piper_priv *digi)
     unsigned int idx;
     int actualAdc = 0;
     int errorInAdc, errorInMdbm;
+    wcd_point_t p =
+    {
+        .out_power = 0,
+        .adc_val = 0
+    };
+	int needCorrection = 0;
 
+#ifdef WANT_DEBUG_1
     digi_dbg("Samples: ");
+#endif
     for (idx = 0; idx < calibration.sampleCount; idx++)
     {
-#ifdef DEBUG
+#ifdef WANT_DEBUG_1
         printk("%d, ", calibration.sample[idx].sample);
 #endif
         actualAdc += calibration.sample[idx].sample;
     }
-#ifdef DEBUG
+#ifdef WANT_DEBUG_1
     printk("\n");
 #endif
     actualAdc = actualAdc / calibration.sampleCount;
 
-#if 1
-    errorInAdc = actualAdc - calibration.expectedAdc;
-    {
-        wcd_point_t p =
-        {
-            .out_power = 0,
-            .adc_val = 0
-        };
+#ifdef WANT_TO_FORCE_26
 
-        errorInMdbm = computeY(&p, calibration.outPowerSlopeTimes1000, abs(errorInAdc), OUT_POWER_OVER_ADC);
-    }
-    digi_dbg("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n", actualAdc, calibration.expectedAdc, errorInMdbm);
-    if (errorInMdbm > MAX_TOLERATED_ERROR_IN_MDBM)
+	digi->rf->set_pwr_index(digi->hw, 26);
+#else
+
+    errorInAdc = actualAdc - calibration.expectedAdc;
+	errorInMdbm = computeY(&p, calibration.outPowerSlopeTimes1000, errorInAdc, OUT_POWER_OVER_ADC);
+	needCorrection = (errorInMdbm > MAX_TOLERATED_ERROR_HIGH);
+	if (errorInMdbm < 0)
+	{
+		needCorrection = ((MAX_TOLERATED_ERROR_LOW + errorInMdbm) < 0);
+	}
+	if (needCorrection)
     {
         int correction = computeY(calibration.p1, calibration.powerIndexSlopeTimes1000,
-                                       actualAdc/*(calibration.expectedAdc - errorInAdc)*/, POWER_INDEX_OVER_ADC);
-/*        correction -= calibration.powerIndex; */
-        correction = (calibration.powerIndex - correction) / 2;
+                                       actualAdc, POWER_INDEX_OVER_ADC);
+#ifdef WANT_DEBUG
+		int oldIndex = calibration.correctedPowerIndex;
+#endif
+        correction = (3*(calibration.powerIndex - correction)) / 4;
+        if (correction == 0) {
+        	if (errorInAdc > 0) {
+        		/*
+        	 	 * If power level is too high but the minimum correction would
+        	 	 * overshoot the target, do it anyway because we would rather
+        	 	 * be below the target rather than over the target.
+        	 	 */
+        		correction = -1;
+        	} else {
+        		/*
+        		 * But if the power level is too low, but the minimum correction
+        		 * would overshoot, then leave it be.  Better too low than too high.
+        		 */
+        	}
+        }
         calibration.correctedPowerIndex += correction;
         if (calibration.correctedPowerIndex < MINIMUM_POWER_INDEX)
         {
             calibration.correctedPowerIndex = MINIMUM_POWER_INDEX;
         }
-        else if (calibration.correctedPowerIndex > calibration.curve->max_power_index)
-        {
-            calibration.correctedPowerIndex = calibration.curve->max_power_index;
-        }
         digi->rf->set_pwr_index(digi->hw, calibration.correctedPowerIndex);
-        digi_dbg("Power index corrected by %d, set to %d.\n", correction, calibration.correctedPowerIndex);
-    }
-#else
-    digi_dbg("actualAdc = %d, expectedAdc = %d, ", actualAdc, calibration.expectedAdc);
-    if (abs(actualAdc - calibration.expectedAdc) > MAX_ALLOWED_ADC_ERROR)
-    {
-        if (actualAdc < calibration.expectedAdc)
-        {
-            calibration.powerIndex += POWER_INDEX_STEP;
-            if (calibration.powerIndex > calibration.curve->max_power_index)
-            {
-                calibration.powerIndex = calibration.curve->max_power_index;
-            }
-            digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
-#ifdef DEBUG
-            printk(" ++ index to %d\n", calibration.powerIndex);
-#endif
-        }
-        else if (actualAdc > calibration.expectedAdc)
-        {
-            calibration.powerIndex -= POWER_INDEX_STEP;
-            digi->rf->set_pwr_index(digi->hw, calibration.powerIndex);
-#ifdef DEBUG
-            printk(" -- index to %d\n", calibration.powerIndex);
-#endif
-        }
-    }
-    else
-    {
-#ifdef DEBUG
-        printk("Leaving power level unchanged.\n");
+#ifdef WANT_DEBUG
+    	digi_dbg("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n", actualAdc, calibration.expectedAdc, errorInMdbm);
+        digi_dbg("Power index corrected by %d: was %d, set to %d.\n", correction, oldIndex, calibration.correctedPowerIndex);
 #endif
     }
 #endif
@@ -575,12 +592,11 @@ static void recalibrate(struct piper_priv *digi)
  * This routine is called by the 80211mac library to set a new power level.  We
  * update the value in context memory and then kick the autocalibration thread.
  */
-static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t value)
+static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t newPowerLevel)
 {
     struct piper_priv *digi = hw->priv;
 
-    digi->tx_power = value;             /* save new power level */
-
+	(void) newPowerLevel;		/* has already been written into piper->tx_power */
     /*
      * Kick the calibration thread.
      */
@@ -592,6 +608,70 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t value)
 
 
 #if 1
+
+
+/*
+ * Compute the maximum ADC value for a curve given the maximum
+ * allowed power in dBm.
+ */
+static u8 getMaxAdcValue(wcd_curve_t *curve, int dBm)
+{
+	wcd_point_t *p1, *p2;
+	int slopeTimes1000;
+	u8 result = 0;
+	int mdBm = 1000 * dBm;
+
+    findClosestPoints(curve, mdBm, &p1, &p2, OUT_POWER);
+    slopeTimes1000 = computeSlopeTimes1000(p1, p2, ADC_OVER_OUT_POWER);
+
+    if (abs(p1->out_power - mdBm) < abs(p2->out_power - mdBm))
+    {
+        result = computeY(p1, slopeTimes1000, mdBm, ADC_OVER_OUT_POWER);
+    }
+    else
+    {
+        result = computeY(p2, slopeTimes1000, mdBm, ADC_OVER_OUT_POWER);
+    }
+
+    return result;
+}
+
+
+/*
+ * The version 1.0 calibration data provided maximum Airoha index
+ * values, but later versions provided maximum ADC values.  This
+ * routine replaces the max Airoha indexes with max ADC values.
+ */
+static void determineMaxAdcValues(wcd_data_t *cdata)
+{
+	int i;
+
+	for (i = 0; i < WCD_CHANNELS_BG; i++)
+	{
+		/*
+		 * All BG channels are limited to 16 dBm.
+		 */
+		cdata->cal_curves_bg[i][0].max_adc_value = getMaxAdcValue(&cdata->cal_curves_bg[i][0], 16);
+		cdata->cal_curves_bg[i][1].max_adc_value = getMaxAdcValue(&cdata->cal_curves_bg[i][1], 16);
+	}
+	for (i = 0; i < 4; i++)
+	{
+		/*
+		 * First 4 802.11a channels are limited to 3 dBm.
+		 */
+		cdata->cal_curves_a[i].max_adc_value = getMaxAdcValue(&cdata->cal_curves_a[i], 3);
+	}
+	for (i = 4; i < WCD_CHANNELS_A; i++)
+	{
+		/*
+		 * All other 802.11a channels are limited to 8 dBm.
+		 */
+		cdata->cal_curves_a[i].max_adc_value = getMaxAdcValue(&cdata->cal_curves_a[i], 8);
+	}
+}
+
+
+
 /*
  * The calibration data is passed to the kernel from U-Boot.  The kernel
  * start up routines will have copied the data into digi->pdata->wcd.
@@ -614,6 +694,12 @@ static int getCalibrationData(struct piper_priv *digi)
         {
             digi_dbg("CRC and signature for calibration data is okay\n");
             result = 0;
+            if (   (calibration.nvram->header.ver_major == '1')
+            	&& (calibration.nvram->header.ver_minor == '1'))
+            {
+            	digi_dbg("Converting version 1.0 calibration data\n");
+            	determineMaxAdcValues(calibration.nvram);
+            }
         }
         else
         {
@@ -763,10 +849,13 @@ static int digiWifiCalibrationThreadEntry(void *data)
         {
             case RESTART_STATE:
                 setInitialPowerLevel(digi, CONVERT_TO_MDBM(digi->tx_power));
-                digi->calibrationTxRate = determineCalibrationTxRate(digi);
                 calibration.sampleCount = 0;
-                /* Fall through is intended operation */
+                nextState = COLLECT_SAMPLES_STATE;
+                timeout = DEBOUNCE_DELAY;
+                expectedEvent = TIMED_OUT_EVENT;
+                break;
             case COLLECT_SAMPLES_STATE:
+                digi->calibrationTxRate = determineCalibrationTxRate(digi);
                 startSampleCollection(digi);
                 nextState = GOT_SAMPLE_STATE;
                 timeout = SAMPLE_TIMEOUT;
