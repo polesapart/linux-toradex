@@ -150,7 +150,7 @@ static int calculate_link_quality(int signal)
 	quality = (signal - PIPER_MIN_SIGNAL_DBM) * 100 /
 		  (PIPER_MAX_SIGNAL_DBM - PIPER_MIN_SIGNAL_DBM);
 
-	if (quality < 0)	
+	if (quality < 0)
 		quality = 0;
 	if (quality > 100)
 		quality = 100;
@@ -169,8 +169,8 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 	memset(status, 0, sizeof(*status));
 	status->signal = get_signal(hdr);
 	status->antenna = hdr->antenna;
-	status->band = IEEE80211_BAND_2GHZ;	/* hw only supports 2G */
-	status->freq = piper->rf->bands[IEEE80211_BAND_2GHZ].channels[piper->channel - 1].center_freq;
+	status->band = piper->rf->getBand(piper->channel);
+	status->freq = piper->rf->getFrequency(piper->channel);
 	status->qual = calculate_link_quality(status->signal);
 
 	if (hdr->modulation_type == MOD_TYPE_OFDM) {
