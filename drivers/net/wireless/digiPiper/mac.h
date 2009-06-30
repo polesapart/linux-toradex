@@ -99,7 +99,9 @@ enum baseband_control_regs {
 #define BB_GENERAL_STAT_A_EN		0x20000000      // A EN (OFDM)
 #define BB_GENERAL_STAT_RX_FIFO_EMPTY   (1 << 4)
 #define BB_GENERAL_STAT_DC_DIS      (1 << 24)
+#define BB_GENERAL_STAT_SRC_DIS		(1 << 16)
 #define BB_GENERAL_STAT_SPRD_DIS    (1 << 17)
+#define BB_GENERAL_STAT_DLL_DIS		(1 << 18)
 #define TRACK_TX_B_GAIN_MASK	0xff000000		// Mask word for B_TX_GAIN
 #define TRACK_TX_B_GAIN_NORMAL	0xC0000000		// normal setting for B_TX_GAIN
 #define TRACK_BG_BAND           0x00430000     // Tracking constant for 802.11 b/g frequency band
