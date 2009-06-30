@@ -784,8 +784,13 @@ static int __init piper_probe(struct platform_device* pdev)
 	 * Platform initialization. This will initialize the hardware, including the load
 	 * of the mac and dsp firmware into the piper chip
 	 */
-	if (pdata->init)
-		pdata->init(piperp);
+	if (pdata->init) {
+		if ((ret = pdata->init(piperp)) != 0) {
+			printk(KERN_ERR PIPER_DRIVER_NAME
+				": platform init() returned error (%d)\n", ret);
+			goto error_init;
+		}
+	}
 
 	init_timer(&piperp->tx_timer);
 	piperp->tx_timer.function = tx_timer_timeout;
