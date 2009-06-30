@@ -280,9 +280,20 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piperp->txPacket);
 	int i;
-
+#define WANT_TRANSMIT_RESULT 	(0)
+#if WANT_TRANSMIT_RESULT
+	const char *resultText[] =
+	{
+		"RECEIVED_ACK",
+		"TX_COMPLETE",
+		"OUT_OF_RETRIES"
+	};
+#endif
 	del_timer_sync(&piperp->tx_timer);
 
+#if WANT_TRANSMIT_RESULT
+	digi_dbg("Transmit result %s\n", resultText[result]);
+#endif
 	if (piperp->tx_calib_cb)
 		piperp->tx_calib_cb(piperp);
 
