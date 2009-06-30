@@ -246,6 +246,11 @@ void piper_rx_tasklet(unsigned long context);
 void piper_tx_tasklet(unsigned long context);
 bool piper_prepare_aes_datablob(struct piper_priv *digi, unsigned int keyIndex,
                                 u8 *aesBlob, u8 *frame, u32 length, bool isTransmit);
+void piper_load_mac_firmware(struct piper_priv *piperp);
+void piper_load_dsp_firmware(struct piper_priv *piperp);
+int piper_spike_suppression(struct piper_priv *piperp);
+void piper_reset_mac(struct piper_priv *piperp);
+void piper_set_macaddr(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters

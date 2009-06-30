@@ -23,6 +23,8 @@
 #include "phy.h"
 #include "airoha.h"
 #include "airohaCalibration.h"
+#include "piperDsp.h"
+#include "piperMacAssist.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
 
@@ -44,6 +46,184 @@ static int local_rand(void)
 	/* RAND_MAX assumed to be 32767 */
 	next = next * 1103515245 + 12345;
 	return((unsigned)(next/65536) % 32768);
+}
+
+/*
+ * Load the MAC Assist firmware into the chip. This is done by setting a bit
+ * in the control register to enable MAC Assist firmware download, and then
+ * writing the firmware into the data FIFO.
+ */
+void piper_load_mac_firmware(struct piper_priv *piperp)
+{
+	unsigned int i;
+
+	printk(KERN_DEBUG PIPER_DRIVER_NAME ": loading MAC Assist firmware\n");
+
+	/* Zero out MAC assist SRAM (put into known state before enabling MAC assist) */
+	for (i = 0; i < 0x100; i += 4)
+		piperp->ac->wr_reg(piperp, i, 0, op_write);
+
+	/* Enable download the MAC Assist program RAM */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_FW_LOAD_ENABLE, op_or);
+
+	/* load MAC Assist data */
+	for (i = 0; i < piper_macassist_data_len; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, piper_wifi_macassist_ucode[i],
+				   op_write);
+
+	/* disable MAC Assist download */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_FW_LOAD_ENABLE, op_and);
+}
+
+/*
+ * Load the DSP firmware into the chip.  This is done by setting a bit
+ * in the control register to enable DSP firmware download, and then
+ * writing the firmware into the data FIFO.
+ */
+void piper_load_dsp_firmware(struct piper_priv *piperp)
+{
+	unsigned int i;
+
+	printk(KERN_DEBUG PIPER_DRIVER_NAME ": loading DSP firmware\n");
+
+	/* Enable load of DSP firmware */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_DSP_LOAD_ENABLE, op_or);
+
+	/* load DSP data */
+	for (i = 0; i < piper_dsp_data_len; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, piper_wifi_dsp_ucode[i],
+				   op_write);
+
+	/* Disable load of DSP firmware */
+	udelay(10);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_DSP_LOAD_ENABLE, op_and);
+
+	/* Let her rip */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
+}
+
+
+/*
+ * This routine corrects a bug in the Piper chip where internal clocks would
+ * be out of sync with each other and cause the chip to generate noise spikes.
+ * This problem should be fixed in the next chip (Chopper).
+ *
+ * I'm not sure exactly what this code is doing.  It comes straight from the
+ * guy who designed the chip.
+ */
+int piper_spike_suppression(struct piper_priv *piperp)
+{
+	int timeout1 = 300, timeout2 = 300;
+	int ret = 0;
+
+	/*
+	 * Initial timing measurement to avoid spike
+	 * The new "magic" value is 0x63 at address 0xA62.  Bit-0 indicates the
+	 * timing measurement is complete.  Bit-1 indicates that a second timing
+	 * measurment was performed.  The upper nibble is the timing measurement
+	 * value. This code should eliminate the possibility of spikes at the
+	 * beginning of all PSK/CCK frames and eliminate the spikes at the end of
+	 * all PSK (1M, 2M) frames.
+	 */
+
+	/* reset the timing value */
+	piperp->ac->wr_reg(piperp, MAC_STATUS, 0xffff00ff, op_and);
+
+	while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x0000ff00) != 0x00006300) {
+
+		/* reset the timing value */
+		piperp->ac->wr_reg(piperp, MAC_STATUS, 0xffff00ff, op_and);
+
+		/* issue WiFi soft reset */
+		piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x40000000, op_write);
+
+		/* Set TX_ON Low */
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xffffff3f, op_and);
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x00000080, op_or);
+
+		/* Set PA_2G Low */
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xfffff0ff, op_and);
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x00000a00, op_or);
+
+		/* Set RX_ON low  */
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xcfffffff, op_and);
+		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x20000000, op_or);
+
+		/* start the WiFi mac & dsp */
+		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720820, op_write);
+		timeout1 = 500;
+
+		/* Wait for timing measurement to finish */
+		while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x0000ff00) != 0x00000100) {
+			udelay(2);
+			timeout1--;
+			if (!timeout1)
+				break;
+		}
+
+		timeout2--;
+		if (!timeout2)
+			ret = -EIO;
+	}
+
+	/* Set TX_ON/RXHP_ON and RX to normal wifi, restore the reset value to HW_OUT_CTRL */
+	piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x1, op_write);
+
+	return ret;
+}
+
+void piper_reset_mac(struct piper_priv *piperp)
+{
+	int i;
+
+	/* set the TX-hold bit */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720080, op_write);
+
+	/* clear the TX-FIFO memory */
+	for (i = 0; i < 448; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
+
+	/* reset the TX-FIFO */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
+
+	/* release the TX-hold and reset */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720000, op_write);
+
+/*	iowrite32(ioread32(piperp->vbase + MAC_STATUS) & ~0x40000000,
+		  piperp->vbase + BB_GENERAL_STAT);*/
+	mdelay(1);
+}
+
+/*
+ * Load the MAC address into the chip. Use the value stored in the
+ * environment, if there is one, otherwise use the default value.
+ */
+void piper_set_macaddr(struct piper_priv *piperp)
+{
+	/* Default MAC Addr used if the nvram parameters are corrupted */
+	u8 mac[6] = {0x00, 0x04, 0xf3, 0x00, 0x43, 0x35};
+	u8 *pmac = piperp->pdata->macaddr;
+	int i;
+
+	for (i = 0; i < 6; i++) {
+		if (*(pmac + i) != 0)
+			break;
+		if (i == 5) {
+			/* There is a problem with the parameters, use default */
+			printk(KERN_INFO PIPER_DRIVER_NAME
+				": invalid mac address, using default\n");
+			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
+		}
+	}
+
+	memcpy(piperp->hw->wiphy->perm_addr, piperp->pdata->macaddr,
+	       sizeof(piperp->hw->wiphy->perm_addr));
+
+	/* configure ethernet address */
+	piperp->ac->wr_reg(piperp, MAC_STA_ID0, *(pmac + 3) | *(pmac + 2) << 8 |
+			   *(pmac + 1) << 16 | *(pmac + 0) << 24, op_write);
+	piperp->ac->wr_reg(piperp, MAC_STA_ID1, *(pmac + 5) << 16 | *(pmac + 4) << 24,
+			   op_write);
 }
 
 /* Configure the H/W with the antenna settings */

@@ -4,6 +4,7 @@
  * Copyright (C) 2009 by Digi International Inc.
  * All rights reserved.
  *
+#include <linux/gpio.h>
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
  * the Free Software Foundation.
@@ -11,7 +12,6 @@
 
 
 #include <linux/clk.h>
-#include <linux/gpio.h>
 #include <linux/mtd/physmap.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
@@ -22,8 +22,6 @@
 
 #include "pipermain.h"
 #include "mac.h"
-#include "piperDsp.h"
-#include "piperMacAssist.h"
 #include "airoha.h"
 
 #if defined(CONFIG_DIGI_PIPER_WIFI)
@@ -117,7 +115,6 @@ static int write_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
 
 			wait_for_aes_ready();
 
-			//iowrite32(cpu_to_be32(*word), piperp->vbase + addr);
 			iowrite16((u16)(tmp >> 16), piperp->vbase + addr + 2);
 			iowrite16((u16)tmp, piperp->vbase + addr);
 			len -= 4;
@@ -141,9 +138,9 @@ static int write_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
 		 * Ugh!  Data is not 32-bit aligned.  We have to memcpy it!
 		 */
 		for (wordIndex = 0; wordIndex < wordLength; wordIndex++) {
-			
+
 			memcpy(&tmp, &buf[wordIndex * sizeof(u32)], sizeof(u32));
-		  
+
 			tmp = cpu_to_be32(tmp);
 
 			wait_for_aes_ready();
@@ -189,7 +186,7 @@ static int write_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
 		tmp = ioread32(piperp->vbase + BB_GENERAL_CTL) & ~BB_GENERAL_CTL_BEACON_EN;
 		iowrite16((u16)(tmp >> 16), piperp->vbase + BB_GENERAL_CTL + 2);
 		iowrite16((u16)tmp, piperp->vbase + BB_GENERAL_CTL);
-		
+
 		piperp->beacon.loaded = true;
 	}
 
@@ -210,8 +207,6 @@ static int write_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
 			timeout = 10000;						\
 		}									\
 	}
-
-//TODO		piperpWifiDumpRegisters(piperp, MAIN_REGS);
 
 
 static int read_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
@@ -259,184 +254,6 @@ static int read_fifo(struct piper_priv *piperp, u8 addr, u8 *buf, int len)
 	return 0;
 }
 
-/*
- * Load the MAC Assist firmware into the chip. This is done by setting a bit
- * in the control register to enable MAC Assist firmware download, and then
- * writing the firmware into the data FIFO.
- */
-static void piper_load_mac_firmware(struct piper_priv *piperp)
-{
-	unsigned int i;
-
-	printk(KERN_DEBUG PIPER_DRIVER_NAME ": loading MAC Assist firmware\n");
-
-	/* Zero out MAC assist SRAM (put into known state before enabling MAC assist) */
-	for (i = 0; i < 0x100; i += 4)
-		piperp->ac->wr_reg(piperp, i, 0, op_write);
-
-	/* Enable download the MAC Assist program RAM */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_FW_LOAD_ENABLE, op_or);
-
-	/* load MAC Assist data */
-	for (i = 0; i < piper_macassist_data_len; i++)
-		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, piper_wifi_macassist_ucode[i],
-				   op_write);
-
-	/* disable MAC Assist download */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_FW_LOAD_ENABLE, op_and);
-}
-
-/*
- * Load the DSP firmware into the chip.  This is done by setting a bit
- * in the control register to enable DSP firmware download, and then
- * writing the firmware into the data FIFO.
- */
-static void piper_load_dsp_firmware(struct piper_priv *piperp)
-{
-	unsigned int i;
-
-	printk(KERN_DEBUG PIPER_DRIVER_NAME ": loading DSP firmware\n");
-
-	/* Enable load of DSP firmware */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_DSP_LOAD_ENABLE, op_or);
-
-	/* load DSP data */
-	for (i = 0; i < piper_dsp_data_len; i++)
-		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, piper_wifi_dsp_ucode[i],
-				   op_write);
-
-	/* Disable load of DSP firmware */
-	udelay(10);
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_DSP_LOAD_ENABLE, op_and);
-
-	/* Let her rip */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
-}
-
-
-/*
- * This routine corrects a bug in the Piper chip where internal clocks would
- * be out of sync with each other and cause the chip to generate noise spikes.
- * This problem should be fixed in the next chip (Chopper).
- *
- * I'm not sure exactly what this code is doing.  It comes straight from the
- * guy who designed the chip.
- */
-static int piper_spike_suppression(struct piper_priv *piperp)
-{
-	int timeout1 = 300, timeout2 = 300;
-	int ret = 0;
-
-	/*
-	 * Initial timing measurement to avoid spike
-	 * The new "magic" value is 0x63 at address 0xA62.  Bit-0 indicates the
-	 * timing measurement is complete.  Bit-1 indicates that a second timing
-	 * measurment was performed.  The upper nibble is the timing measurement
-	 * value. This code should eliminate the possibility of spikes at the
-	 * beginning of all PSK/CCK frames and eliminate the spikes at the end of
-	 * all PSK (1M, 2M) frames.
-	 */
-
-	/* reset the timing value */
-	piperp->ac->wr_reg(piperp, MAC_STATUS, 0xffff00ff, op_and);
-
-	while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x0000ff00) != 0x00006300) {
-
-		/* reset the timing value */
-		piperp->ac->wr_reg(piperp, MAC_STATUS, 0xffff00ff, op_and);
-		
-		/* issue WiFi soft reset */
-		piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x40000000, op_write);
-
-		/* Set TX_ON Low */
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xffffff3f, op_and);
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x00000080, op_or);
-
-		/* Set PA_2G Low */
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xfffff0ff, op_and);
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x00000a00, op_or);
-
-		/* Set RX_ON low  */
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0xcfffffff, op_and);
-		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x20000000, op_or);
-
-		/* start the WiFi mac & dsp */
-		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720820, op_write);
-		timeout1 = 500;
-
-		/* Wait for timing measurement to finish */
-		while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x0000ff00) != 0x00000100) {
-			udelay(2);
-			timeout1--;
-			if (!timeout1)
-				break;
-		}
-
-		timeout2--;
-		if (!timeout2)
-			ret = -EIO;
-	}
-
-	/* Set TX_ON/RXHP_ON and RX to normal wifi, restore the reset value to HW_OUT_CTRL */
-	piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x1, op_write);
-
-	return ret;
-}
-
-static void piper_reset_mac(struct piper_priv *piperp)
-{
-	int i;
-
-	/* set the TX-hold bit */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720080, op_write);
-
-	/* clear the TX-FIFO memory */
-	for (i = 0; i < 448; i++)
-		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
-
-	/* reset the TX-FIFO */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
-
-	/* release the TX-hold and reset */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720000, op_write);
-
-/*	iowrite32(ioread32(piperp->vbase + MAC_STATUS) & ~0x40000000,
-		  piperp->vbase + BB_GENERAL_STAT);*/
-	mdelay(1);
-}
-
-/*
- * Load the MAC address into the chip. Use the value stored in the
- * environment, if there is one, otherwise use the default value.
- */
-static void piper_set_macaddr(struct piper_priv *piperp)
-{
-	/* Default MAC Addr used if the nvram parameters are corrupted */
-	u8 mac[6] = {0x00, 0x04, 0xf3, 0x00, 0x43, 0x35};
-	u8 *pmac = piperp->pdata->macaddr;
-	int i;
-
-	for (i = 0; i < 6; i++) {
-		if (*(pmac + i) != 0)
-			break;
-		if (i == 5) {
-			/* There is a problem with the parameters, use default */
-			printk(KERN_INFO PIPER_DRIVER_NAME
-				": invalid mac address, using default\n");
-			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
-		}
-	}
-
-	memcpy(piperp->hw->wiphy->perm_addr, piperp->pdata->macaddr,
-	       sizeof(piperp->hw->wiphy->perm_addr));
-
-	/* configure ethernet address */
-	piperp->ac->wr_reg(piperp, MAC_STA_ID0, *(pmac + 3) | *(pmac + 2) << 8 |
-			   *(pmac + 1) << 16 | *(pmac + 0) << 24, op_write);
-	piperp->ac->wr_reg(piperp, MAC_STA_ID1, *(pmac + 5) << 16 | *(pmac + 4) << 24,
-			   op_write);
-}
-
 /* Initialize piper hardware, mac and dsp firmwares and mac address */
 static int piper_init_chip_hw(struct piper_priv *piperp)
 {
@@ -456,8 +273,8 @@ static int piper_init_chip_hw(struct piper_priv *piperp)
 
 	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xffffffff, op_write);
 	piperp->ac->wr_reg(piperp, BB_IRQ_MASK, 0, op_write);
-	
-	/* Enable host interface output control, to ensure a correct 
+
+	/* Enable host interface output control, to ensure a correct
 	 * level on the interrupt line */
 	piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, 0x04000000, op_or);
 
@@ -477,7 +294,7 @@ static int ccw9m2443_wifi_cs_config(void)
 
 	/* Configure the memory controller (CS3) with the appropriate settings */
  	if ((ssmc = ioremap(S3C2443_PA_SSMC, 0x100)) == NULL)
-		return -EBUSY;  
+		return -EBUSY;
 
 	writel(10, ssmc + S3C2443_SSMC_SMBIDCYR4);	/* Idle cycle ctrl */
 	writel(14, ssmc + S3C2443_SSMC_SMBWSTWRR4);	/* Write Wait State ctrl */
