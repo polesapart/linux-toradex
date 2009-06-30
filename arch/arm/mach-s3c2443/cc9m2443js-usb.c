@@ -68,13 +68,28 @@ static void cc9m2443js_usb_timer_func(unsigned long _info)
 	enable_irq(info->oc_irq);
 }
 
+/*
+ * If the USB-PHY is used as second root hub port, then we must take care of its
+ * current state, otherwise only the first port is considered.
+ */
+#if defined(CONFIG_S3C2443_USB_PHY_PORT)
+# define CC9M2443JS_USB_PORT_ON(state)		(state[0] && state[1])
+#else
+# define CC9M2443JS_USB_PORT_ON(state)		(state[0])
+#endif /* CONFIG_S3C2443_USB_PHY_PORT */
+
 static void cc9m2443js_usb_powercontrol(struct s3c2410_hcd_info * info, int port, int to)
 {
-	pr_debug("%s [port %d | to %d]\n", __func__, port, to);
+	pr_debug("USB power: port %d | to %d [%d %d]\n",
+		 port, to, power_state[0], power_state[1]);
 
 	power_state[port] = to;
 
-	if (power_state[0] && power_state[1])
+	/* @XXX: Power control without a configured GPIO? */
+	if (!info->pw_gpio)
+		return;
+	
+	if (CC9M2443JS_USB_PORT_ON(power_state))
 		s3c2443_gpio_setpin(info->pw_gpio, 1 ^ info->pw_gpio_inv);
 	else
 		s3c2443_gpio_setpin(info->pw_gpio, 0 ^ info->pw_gpio_inv);
@@ -134,7 +149,7 @@ static struct s3c2410_hcd_info cc9m2443js_usb_info = {
 	.port[1]	= {
 		.flags	= S3C_HCDFLG_USED
 	},
-#endif
+#endif /* CONFIG_S3C2443_USB_PHY_PORT */
 	
 	.power_control	= cc9m2443js_usb_powercontrol,
 	.enable_oc	= cc9m2443js_usb_enableoc,
@@ -149,7 +164,7 @@ static struct s3c2410_hcd_info cc9m2443js_usb_info = {
 	.pw_gpio_inv	= 1,
 };
 
-int cc9m2443js_usb_init(void)
+int __init cc9m2443js_usb_init(void)
 {
 	struct s3c2410_hcd_info *info = &cc9m2443js_usb_info;
 
@@ -164,7 +179,9 @@ int cc9m2443js_usb_init(void)
 
 	if (info->pw_gpio) {
 		s3c2443_gpio_cfgpin(info->pw_gpio, info->pw_gpio_cfg);
-		s3c2443_gpio_setpin(info->pw_gpio, 1 ^ info->pw_gpio_inv);
+
+		/* At first power off the ports */
+		s3c2443_gpio_setpin(info->pw_gpio, 0 ^ info->pw_gpio_inv);
 	}
 
 	/* Init the internal timer */
@@ -173,6 +190,6 @@ int cc9m2443js_usb_init(void)
 	info->timer.data = (unsigned long)info;
 	info->timer.function = cc9m2443js_usb_timer_func;
 	add_timer(&info->timer);
-	
+
 	return 0;
 }
