@@ -226,6 +226,9 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, 0x0, op_write);
 	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_DC_DIS
 						  | BB_GENERAL_STAT_SPRD_DIS), op_and);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, ~(BB_GENERAL_STAT_SRC_DIS
+						  | BB_GENERAL_STAT_DLL_DIS), op_and);
+
 	piperp->ac->wr_reg(piperp, MAC_SSID_LEN, (MAC_OFDM_BRS_MASK | MAC_PSK_BRS_MASK),
 			   op_write);
 
