@@ -21,7 +21,7 @@
 #ifndef __SMSC911X_H__
 #define __SMSC911X_H__
 
-#if defined(CONFIG_MACH_CC9M2443JS)
+#if defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)
 # define SMSC_CAN_USE_32BIT	0
 #else
 # define SMSC_CAN_USE_32BIT	1

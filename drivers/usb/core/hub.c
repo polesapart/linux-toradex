@@ -890,7 +890,7 @@ static int hub_configure(struct usb_hub *hub,
 	 * This seems to be a hardware BUG.
 	 * (Luis Galdos)
 	 */
-#if defined(CONFIG_MACH_CC9M2443JS) && defined(CONFIG_USB_GADGET_S3C2443)
+#if (defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)) && defined(CONFIG_USB_GADGET_S3C2443)
 	/* Only use one port by the internal Root-Hub (devnum = 1) */
 	if (hdev->devnum == 1)
 		hub->descriptor->bNbrPorts = 1;

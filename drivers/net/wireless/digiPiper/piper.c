@@ -184,6 +184,7 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 		printk(KERN_WARNING PIPER_DRIVER_NAME ": undefined rf transceiver!\n");
 		return -EINVAL;
 	}
+
 	/*
 	 *Clear the Intretupt Mask Register before enabling external intretupts.
 	 * Also clear out any status bits in the Intretupt Status Register.
@@ -487,13 +488,17 @@ static int __init piper_probe(struct platform_device* pdev)
 	 * Platform initialization. This will initialize the hardware, including the load
 	 * of the mac and dsp firmware into the piper chip
 	 */
-	if (pdata->init)
-		pdata->init(piperp);
+	if (pdata->init) {
+		if ((ret = pdata->init(piperp)) != 0) {
+			printk(KERN_ERR PIPER_DRIVER_NAME
+				": platform init() returned error (%d)\n", ret);
+			goto error_init;
+		}
+	}
 
 	init_timer(&piperp->tx_timer);
 	piperp->tx_timer.function = tx_timer_timeout;
 	piperp->tx_timer.data = (unsigned long) piperp;
-
 	piper_init_rx_tx(piperp);
 	piper_init_keys(piperp);
 
@@ -528,6 +533,7 @@ static int __init piper_probe(struct platform_device* pdev)
 			piperp->irq, ret);
 		goto retor_irq;
 	}
+
 	disable_irq(piperp->irq);
 
 	ret = piper_register_hw(piperp, &pdev->dev, &al7230_rf_ops);
@@ -562,6 +568,7 @@ error_reg_hw:
 	piper_free_rx_tx(piperp);
 retor_irq:
 	free_irq(piperp->irq, piperp);
+error_init:
 	iounmap(piperp->vbase);
 	piperp->vbase = NULL;
 error_remap:
