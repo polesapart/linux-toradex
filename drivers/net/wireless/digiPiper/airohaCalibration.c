@@ -699,6 +699,14 @@ static int getCalibrationData(struct piper_priv *digi)
             {
             	digi_dbg("Converting version 1.0 calibration data\n");
             	determineMaxAdcValues(calibration.nvram);
+            	/*
+            	 * Now that we have updated the format of the data, we need
+            	 * to recompute the check sum and set the new version.
+            	 */
+                calibration.nvram->header.ver_minor = '2';
+                calibration.nvram->header.wcd_crc = ~crc32_le(~0,
+                		(unsigned char const *)calibration.nvram->cal_curves_bg,
+                        calibration.nvram->header.wcd_len);
             }
         }
         else
