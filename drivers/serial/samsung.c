@@ -63,7 +63,7 @@
 #ifdef CONFIG_CPU_S3C2400
 #define NR_PORTS (2)
 #else
-#ifdef CONFIG_MACH_CC9M2443JS
+#if defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)
 #define NR_PORTS (4)
 #else
 #define NR_PORTS (3)
