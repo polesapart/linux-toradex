@@ -311,7 +311,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 {
 	struct piper_priv *priv = hw->priv;
 	static int rf_band;
-#ifdef DEBUG
+#ifdef WANT_DEBUG
 	const char *channelLookup[] = {
 		"invalid 0",
 		"B-1",

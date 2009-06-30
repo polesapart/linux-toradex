@@ -160,6 +160,14 @@ static int calculate_link_quality(int signal)
 	return quality;
 }
 
+unsigned int phy_determine_rssi(struct rx_frame_hdr *hdr)
+{
+	return (hdr->rssi_low_noise_amp << 5) | hdr->rssi_variable_gain_attenuator;
+}
+EXPORT_SYMBOL_GPL(phy_determine_rssi);
+
+
+
 void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 		struct ieee80211_rx_status *status, unsigned int *length)
 {

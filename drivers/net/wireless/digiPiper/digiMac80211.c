@@ -572,8 +572,9 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 	if (changed & BSS_CHANGED_ASSOC) {
 		/* Our association status has changed */
 		piper_set_status_led(hw, conf->assoc ? 1 : 0);
+		piperp->areWeAssociated = conf->assoc;
 
-		dprintk(DVERBOSE, " AP %s\n", conf->assoc ?
+		digi_dbg(" AP %s\n", conf->assoc ?
 			"associated" : "disassociated");
 	}
 	if (changed & BSS_CHANGED_ERP_CTS_PROT) {
@@ -795,6 +796,7 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 	piperp->pstats.tx_queue.len = 0;
 	piperp->pstats.tx_queue.limit = 1;
 	piperp->pstats.tx_queue.count = 0;
+	piperp->areWeAssociated = false;
 	memset(&piperp->pstats.ll_stats, 0, sizeof(piperp->pstats.ll_stats));
 	piperp->hw = hw;
 

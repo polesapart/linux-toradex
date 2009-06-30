@@ -6,6 +6,7 @@
 #include <linux/spinlock.h>
 #include <net/mac80211.h>
 #include <linux/i2c.h>
+#include "mac.h"
 
 
 // #define WANT_DEBUG
@@ -185,9 +186,11 @@ struct piper_priv {
 	void				(*tx_calib_cb) (struct piper_priv *);
 	int				(*set_antenna) (struct piper_priv *, enum antenna_select);
 	int				(*set_tracking_constant)(struct piper_priv *piperp, unsigned megahertz);
+	void			(*adjust_max_agc)(struct piper_priv *piperp, unsigned int rssi, _80211HeaderType *header);
 
 	/* General settings */
 	enum nl80211_iftype		if_type;
+	bool				areWeAssociated;
 	bool				is_radio_on;
 	int				channel;
 	int				tx_power;
@@ -244,9 +247,23 @@ void piper_tx_tasklet(unsigned long context);
 bool piper_prepare_aes_datablob(struct piper_priv *digi, unsigned int keyIndex,
                                 u8 *aesBlob, u8 *frame, u32 length, bool isTransmit);
 
+/*
+ * Defines for debugging function dumpRegisters
+ */
+#define MAIN_REGS           (1)
+#define MAC_REGS            (2)
+#define RF_REGS             (4)
+#define FRAME_BUFFER_REGS   (8)
+#define CTRL_STATUS_REGS    (0x10)
+#define FIFO_REGS           (0x20)
+#define IRQ_REGS            (0x40)
+#define ALL_REGS            (0xf)
+
+void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
+void digiWifiDumpSkb(struct sk_buff *skb);
+
 extern void digiWifiDumpWordsAdd(unsigned int word);
 extern void digiWifiDumpWordsDump(void);
 extern void digiWifiDumpWordsReset(void);
-extern void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
 
 #endif /* __PIPER_H_ */

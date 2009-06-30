@@ -259,6 +259,122 @@ static int piper_deinit_hw(struct piper_priv *piperp)
 	return ret;
 }
 
+
+static void adjust_max_agc(struct piper_priv *piperp, unsigned int rssi, _80211HeaderType *header)
+{
+#define LOWEST_MAXAGC_AL2236        0x76
+#define HIGHEST_MAXAGC_AL2236       0x7B
+#define LOWEST_MAXAGC_AL7230        0x72
+#define HIGHEST_MAXAGC_AL7230_24GHZ       0x78
+#define HIGHEST_MAXAGC_AL7230_50GHZ       0x77
+#define RSSI_AVG_COUNT  8
+
+    unsigned char maxgain = 0;
+    static unsigned char lowest = 0, highest = 0;
+    static int k=0, j=0, i =0, tempRssi=0;
+	static unsigned int savedRSSI[RSSI_AVG_COUNT]; /****/
+
+	savedRSSI[k % RSSI_AVG_COUNT] = rssi;
+	if (   (piperp->pdata->rf_transceiver == RF_AIROHA_2236)
+		|| (piperp->pdata->rf_transceiver == RF_AIROHA_7230)) {
+
+	    if (piperp->pdata->rf_transceiver == RF_AIROHA_2236)
+	    {
+	        lowest = LOWEST_MAXAGC_AL2236;
+	        highest = HIGHEST_MAXAGC_AL2236;
+	    }
+	    else
+	    {
+	        lowest = LOWEST_MAXAGC_AL7230;
+	        if (piperp->rf->getBand(piperp->channel) == IEEE80211_BAND_5GHZ)
+	            highest = HIGHEST_MAXAGC_AL7230_50GHZ;
+	        else
+	            highest = HIGHEST_MAXAGC_AL7230_24GHZ;
+	    }
+
+	    if (piperp->areWeAssociated)
+	    {
+
+	        if (   (piperp->if_type == NL80211_IFTYPE_ADHOC)
+	        	|| (piperp->if_type == NL80211_IFTYPE_MESH_POINT))
+	        {
+	            //Monitor the receive signal strength from Ad-hoc network
+	            if (memcmp (piperp->bssid, header->addr3, sizeof(piperp->bssid)) == 0)
+	            {
+	                /* we don't do avareging on all the signals here because it may come from different
+	                 * unit in that Ad-hoc network. Instead, we do avareging on the signals with higher rssi
+	                 */
+
+	                if ((rssi + 4) > lowest)
+	                {
+	                    k++;
+	                    tempRssi += rssi;
+
+	                    if (k >= RSSI_AVG_COUNT)
+	                    {
+	                        maxgain = (((tempRssi/k) + 4) > highest)? highest : ((tempRssi/k) + 4) ;
+	                        k = 0;
+	                        tempRssi = 0;
+	                        i =0;
+	                    }
+	                }
+	                else
+	                {
+	                    i++;
+	                    if (i >= (RSSI_AVG_COUNT*4))
+	                    {
+	                        maxgain = lowest;
+	                        i = 0;
+	                    }
+
+	                }
+	            }
+	        }
+	        else
+	        {
+	            //Monitor the receive signal strength from the frames we received from the associated AP
+	            if (memcmp (piperp->bssid, header->addr2, sizeof(piperp->bssid)) == 0)
+	            {
+	                //averaging all the signals because they come from the same AP
+	                k++;
+	                tempRssi += rssi;
+
+	                if (k >= RSSI_AVG_COUNT*2)
+	                {
+	                    if (((tempRssi/k) + 4) > lowest)
+	                        maxgain = (((tempRssi/k) + 4) > highest)? highest : ((tempRssi/k) + 4) ;
+	                    else
+	                        maxgain = lowest;
+
+	                    k = 0;
+	                    tempRssi = 0;
+	                }
+	            }
+	        }
+	        j = 0;
+	    }
+	    else
+	    {
+	        j++;
+	        if (j >= (RSSI_AVG_COUNT*4))
+	        {
+	            maxgain = highest;
+	            j = 0;
+	        }
+	        k = 0;
+	        tempRssi = 0;
+	    }
+
+	    if(   (maxgain != 0)
+	       && (maxgain != ((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_MAX_GAIN_MASK) >> 16)))
+	    {
+	    	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_MAX_GAIN_MASK, op_and);
+	    	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, (maxgain << 16) & BB_GENERAL_CTL_MAX_GAIN_MASK, op_or);
+	    }
+	}
+}
+
+
 /* Make sure all keys are disabled when we start */
 static void piper_init_keys(struct piper_priv *piperp)
 {
@@ -488,13 +604,8 @@ static int __init piper_probe(struct platform_device* pdev)
 	 * Platform initialization. This will initialize the hardware, including the load
 	 * of the mac and dsp firmware into the piper chip
 	 */
-	if (pdata->init) {
-		if ((ret = pdata->init(piperp)) != 0) {
-			printk(KERN_ERR PIPER_DRIVER_NAME
-				": platform init() returned error (%d)\n", ret);
-			goto error_init;
-		}
-	}
+	if (pdata->init)
+		pdata->init(piperp);
 
 	init_timer(&piperp->tx_timer);
 	piperp->tx_timer.function = tx_timer_timeout;
@@ -512,6 +623,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	piperp->set_antenna = piper_set_antenna;
 	piperp->set_tracking_constant = piper_set_tracking_constant;
 	piperp->antenna = ANTENNA_BOTH;
+	piperp->adjust_max_agc = adjust_max_agc;
 
 	/* This disables the duty power cycle control */
 	piperp->power_duty = 100;

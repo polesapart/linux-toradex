@@ -268,9 +268,21 @@ void piper_rx_tasklet(unsigned long context)
 		 */
 		piperp->ac->rd_fifo(piperp, BB_DATA_FIFO, (u8 *)&header, sizeof(header));
 		phy_process_plcp(piperp, &header, &status, &length);
-
 		if (length != 0) {
 			if (receive_packet(piperp, skb, length, &fr_ctrl_field, &status)) {
+
+				if (length >= _80211_HEADER_LENGTH)
+				{
+					/*
+					 * If using the Airoha transceiver, then we want to monitor
+					 * the receive signal strength and continuously adjust the
+					 * receive amplifier so that we get the best possible signal
+					 * to noise ratio.
+					 */
+					unsigned int rssi = phy_determine_rssi(&header);
+
+					piperp->adjust_max_agc(piperp, rssi, (_80211HeaderType *) skb->data);
+				}
 
 				if (fr_ctrl_field.type == TYPE_ACK)
 					handle_ack(piperp, status.signal);

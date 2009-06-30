@@ -1,20 +1,6 @@
 #ifndef DIGI_MAC_H_
 #define DIGI_MAC_H_
 
-/*
- * Defines for debugging function dumpRegisters
- */
-void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs);
-void digiWifiDumpSkb(struct sk_buff *skb);
-#define MAIN_REGS           (1)
-#define MAC_REGS            (2)
-#define RF_REGS             (4)
-#define FRAME_BUFFER_REGS   (8)
-#define CTRL_STATUS_REGS    (0x10)
-#define FIFO_REGS           (0x20)
-#define IRQ_REGS            (0x40)
-#define ALL_REGS            (0xf)
-
 enum baseband_control_regs {
 	BB_VERSION = 0x00,
 	BB_GENERAL_CTL = 0x04,
@@ -54,6 +40,8 @@ enum baseband_control_regs {
 #define BB_GENERAL_CTL_BOOT_STAT	(1<<28)
 #define BB_GENERAL_CTL_CLK_EN		(1<<29)
 #define BB_GENERAL_CTL_SPI_RST		(1<<30)
+
+#define BB_GENERAL_CTL_MAX_GAIN_MASK (0x007F0000)
 
 #if defined(CONFIG_PIPER_WIFI)
 #if 0
