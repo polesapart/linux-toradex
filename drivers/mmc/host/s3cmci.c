@@ -1578,6 +1578,22 @@ static void s3cmci_shutdown(struct platform_device *pdev)
 	clk_disable(host->clk);
 }
 
+/*
+ * Don't remove the MMC-host when going to shutdown the system. This can lead to some
+ * failures when the host has mounted a card with our root file system.
+ * (Luis Galdos)
+ */
+static void s3cmci_2440_shutdown(struct platform_device *pdev)
+{
+	struct mmc_host	*mmc = platform_get_drvdata(pdev);
+	struct s3cmci_host *host = mmc_priv(mmc);
+
+	if (host->irq_cd >= 0)
+		free_irq(host->irq_cd, host);
+
+	clk_disable(host->clk);
+}
+
 static int __devexit s3cmci_remove(struct platform_device *pdev)
 {
 	struct mmc_host		*mmc  = platform_get_drvdata(pdev);
@@ -1725,7 +1741,7 @@ static struct platform_driver s3cmci_2440_driver = {
 	.driver.owner	= THIS_MODULE,
 	.probe		= s3cmci_2440_probe,
 	.remove		= __devexit_p(s3cmci_remove),
-	.shutdown	= s3cmci_shutdown,
+	.shutdown	= s3cmci_2440_shutdown,
 	.suspend	= s3cmci_suspend,
 	.resume		= s3cmci_resume,
 };
