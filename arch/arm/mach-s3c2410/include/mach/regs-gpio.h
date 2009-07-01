@@ -45,7 +45,7 @@
                                  S3C2400_BASEA2B(pin)+S3C24XX_VA_GPIO : \
                                  S3C2400_BASEC2H(pin)+S3C24XX_VA_GPIO)
 
-
+#define S3C2410_BANKBASE(pin)     ((pin) & ~31)
 #define S3C2410_GPIO_BASE(pin)   ((((pin) & ~31) >> 1) + S3C24XX_VA_GPIO)
 #define S3C2410_GPIO_OFFSET(pin) ((pin) & 31)
 

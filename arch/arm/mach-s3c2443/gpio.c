@@ -1,5 +1,5 @@
 /* -*- linux-c -*-
- * 
+ *
  * linux/arch/arm/mach-s3c2443/gpio.c
  *
  * Copyright (c) 2009 Digi International Spain
@@ -59,10 +59,10 @@ unsigned int s3c2443_gpio_read_porta(unsigned int pin)
 		res |= (((gpacdh & mask) | ((gpacdl & mask) << 1)) << i);
 		mask = mask << 1;
 	}
-	
+
 	if (pin > S3C2410_GPA7)
 		res |= (gpacdh & mask) << i;
-	
+
 	return res;
 }
 
@@ -85,7 +85,7 @@ void s3c2443_gpio_setpin(unsigned int pin, unsigned int to)
 			writel(dat, base);
 		}
 	} else
-		s3c2410_gpio_setpin(pin, to);	
+		s3c2410_gpio_setpin(pin, to);
 }
 
 void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function)
@@ -100,12 +100,12 @@ void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function)
 		s3c2410_gpio_cfgpin(pin, function);
 		return;
 	}
-  
+
 	/* Port A requieres special handling... */
 	con  = s3c2443_gpio_read_porta(pin);
 
 	offs = S3C2410_GPIO_OFFSET(pin);
-	if (pin > S3C2410_GPA7) 
+	if (pin > S3C2410_GPA7)
 		offs = offs - S3C2410_GPA7 - 1;
 
 	mask = 1 << ((offs * 2) + 1);
@@ -148,7 +148,7 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 	void __iomem *base;
 	unsigned long regval;
 	unsigned int offs;
-	
+
 	if (pin < S3C2410_GPF0 || pin > S3C2410_GPG15)
 		return -ENODEV;
 
@@ -168,7 +168,7 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 	/* There is a HW bug in the EXTINT0 register (code coming from the SMDK) */
 	regval = __raw_readl(base);
 	if (base == S3C24XX_EXTINT0) {
-		unsigned int t;		
+		unsigned int t;
 		t  =   (regval  &  0x0000000f)  <<  28;
 		t  |=  (regval  &  0x000000f0)  <<  20;
 		t  |=  (regval  &  0x00000f00)  <<  12;
@@ -179,14 +179,15 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 		t  |=  (regval  &  0xf0000000)  >>  28;
 		regval  =  t;
 	}
-	
+
 	regval &= (~0x1UL << offs);
 	regval |= (pullup << offs);
 	__raw_writel(regval, base);
 	return 0;
 }
 
-static inline unsigned int s3c2443_remap_gpio(struct gpio_chip *chip, unsigned gpio)
+/* Gets the s3c2410 GPIO number from a s3c2443 GPIO number */
+static inline unsigned int s3c2410_gpio_num(struct gpio_chip *chip, unsigned gpio)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
 
@@ -195,7 +196,7 @@ static inline unsigned int s3c2443_remap_gpio(struct gpio_chip *chip, unsigned g
 
 static int s3c2443_gpio_to_irq(struct gpio_chip *chip, unsigned gpio)
 {
-	return s3c2410_gpio_getirq(s3c2443_remap_gpio(chip, gpio));
+	return s3c2410_gpio_getirq(s3c2410_gpio_num(chip, gpio));
 }
 
 int s3c2443_gpio_getirq(unsigned gpio)
@@ -208,7 +209,7 @@ static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
 
 	if ((1 << gpio) & port->in_mask) {
-		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
+		s3c2410_gpio_cfgpin(s3c2410_gpio_num(chip, gpio),
 				    S3C2410_GPIO_INPUT);
 		return 0;
 	}
@@ -221,9 +222,9 @@ static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int va
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
 
 	if ((1 << gpio) & port->out_mask) {
-		s3c2410_gpio_cfgpin(s3c2443_remap_gpio(chip, gpio),
+		s3c2410_gpio_cfgpin(s3c2410_gpio_num(chip, gpio),
 				    S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(s3c2443_remap_gpio(chip, gpio), value);
+		s3c2410_gpio_setpin(s3c2410_gpio_num(chip, gpio), value);
 		return 0;
 	}
 
@@ -232,12 +233,12 @@ static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int va
 
 static int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio)
 {
-	return s3c2410_gpio_getpin(s3c2443_remap_gpio(chip, gpio)) ? 1 : 0;
+	return s3c2410_gpio_getpin(s3c2410_gpio_num(chip, gpio)) ? 1 : 0;
 }
 
 static void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 {
-	s3c2410_gpio_setpin(s3c2443_remap_gpio(chip, gpio), value);
+	s3c2410_gpio_setpin(s3c2410_gpio_num(chip, gpio), value);
 }
 
 static irqreturn_t s3c2443_wakeup_irq(int irq, void *data)
@@ -316,10 +317,24 @@ static struct s3c2443_gpio_chip s3c2443_gpio_ports[] = {
 	S3C2443_GPIO_PORT(M,  2, 145, S3C2410_GPIO_BANKM, 0x00000003, 0x00000000, 0),
 };
 
+/* Gets the s3c2443 GPIO number from a s3c2410 GPIO number */
+unsigned int s3c2443_gpio_num(unsigned gpio)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(s3c2443_gpio_ports); i++) {
+		if (S3C2410_BANKBASE(gpio) == s3c2443_gpio_ports[i].oldbase) {
+			return (s3c2443_gpio_ports[i].chip.base + S3C2410_GPIO_OFFSET(gpio));
+		}
+	}
+
+	return -1;
+}
+
 static int __init s3c2443_gpio_init(void)
 {
 	int i;
-	  
+
 	for (i = 0; i < ARRAY_SIZE(s3c2443_gpio_ports); i++)
 		gpiochip_add(&s3c2443_gpio_ports[i].chip);
 
@@ -332,3 +347,4 @@ EXPORT_SYMBOL(s3c2443_gpio_extpull);
 EXPORT_SYMBOL(s3c2443_gpio_cfgpin);
 EXPORT_SYMBOL(s3c2443_gpio_set_udp);
 EXPORT_SYMBOL(s3c2443_gpio_setpin);
+EXPORT_SYMBOL(s3c2443_gpio_num);

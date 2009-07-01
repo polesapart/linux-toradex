@@ -26,3 +26,4 @@ int s3c2443_gpio_getirq(unsigned int gpio);
 unsigned int s3c2443_gpio_read_porta(unsigned int pin);
 void s3c2443_gpio_set_udp(unsigned int pin, int val);
 void s3c2443_gpio_setpin(unsigned int pin, unsigned int to);
+unsigned int s3c2443_gpio_num(unsigned gpio);
