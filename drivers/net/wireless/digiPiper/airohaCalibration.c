@@ -836,86 +836,88 @@ static int digiWifiCalibrationThreadEntry(void *data)
         ssleep(10);
     }
 
-    while (getCalibrationData(digi) == -1)
-    {
-        digi_dbg("getCalibrationData() failed.  Will try again in 60 seconds.\n");
-        ssleep(60);
-    }
-    digi->rf->set_pwr = setNewPowerLevel;
+	if (getCalibrationData(digi) == 0) {
+	    digi->rf->set_pwr = setNewPowerLevel;
 
-    state = RESTART_STATE;
+	    state = RESTART_STATE;
 
-    digi_dbg("Starting autocalibration state machine.\n");
-    do
-    {
-        int event;
-        int timeout = 0;
-        int expectedEvent = TIMED_OUT_EVENT;
-        int nextState = RESTART_STATE;
+	    digi_dbg("Starting autocalibration state machine.\n");
+	    do
+	    {
+	        int event;
+	        int timeout = 0;
+	        int expectedEvent = TIMED_OUT_EVENT;
+	        int nextState = RESTART_STATE;
 
-        switch (state)
-        {
-            case RESTART_STATE:
-                setInitialPowerLevel(digi, CONVERT_TO_MDBM(digi->tx_power));
-                calibration.sampleCount = 0;
-                nextState = COLLECT_SAMPLES_STATE;
-                timeout = DEBOUNCE_DELAY;
-                expectedEvent = TIMED_OUT_EVENT;
-                break;
-            case COLLECT_SAMPLES_STATE:
-                digi->calibrationTxRate = determineCalibrationTxRate(digi);
-                startSampleCollection(digi);
-                nextState = GOT_SAMPLE_STATE;
-                timeout = SAMPLE_TIMEOUT;
-                expectedEvent = TRANSMIT_DONE_EVENT;
-                break;
-            case GOT_SAMPLE_STATE:
-                processSample(digi);
-                if (calibration.sampleCount < MAX_SAMPLES)
-                {
-                    nextState = COLLECT_SAMPLES_STATE;
-                    timeout = 0;
-                    break;
-                }
-                /* fall through is intended operation */
-            case RECALIBRATE_STATE:
-                recalibrate(digi);
-                calibration.sampleCount = 0;
-                digi->calibrationTxRate = USE_MAC80211_DATA_RATE;
-                nextState = COLLECT_SAMPLES_STATE;
-                timeout = RECALIBRATION_PERIOD;
-                expectedEvent = TIMED_OUT_EVENT;
-                break;
-            default:
-                digi_dbg("Unknown state %d\n", state);
-                nextState = COLLECT_SAMPLES_STATE;
-                timeout = RECALIBRATION_PERIOD;
-                expectedEvent = TIMED_OUT_EVENT;
-                break;
-        }
+	        switch (state)
+	        {
+	            case RESTART_STATE:
+	                setInitialPowerLevel(digi, CONVERT_TO_MDBM(digi->tx_power));
+	                calibration.sampleCount = 0;
+	                nextState = COLLECT_SAMPLES_STATE;
+	                timeout = DEBOUNCE_DELAY;
+	                expectedEvent = TIMED_OUT_EVENT;
+	                break;
+	            case COLLECT_SAMPLES_STATE:
+	                digi->calibrationTxRate = determineCalibrationTxRate(digi);
+	                startSampleCollection(digi);
+	                nextState = GOT_SAMPLE_STATE;
+	                timeout = SAMPLE_TIMEOUT;
+	                expectedEvent = TRANSMIT_DONE_EVENT;
+	                break;
+	            case GOT_SAMPLE_STATE:
+	                processSample(digi);
+	                if (calibration.sampleCount < MAX_SAMPLES)
+	                {
+	                    nextState = COLLECT_SAMPLES_STATE;
+	                    timeout = 0;
+	                    break;
+	                }
+	                /* fall through is intended operation */
+	            case RECALIBRATE_STATE:
+	                recalibrate(digi);
+	                calibration.sampleCount = 0;
+	                digi->calibrationTxRate = USE_MAC80211_DATA_RATE;
+	                nextState = COLLECT_SAMPLES_STATE;
+	                timeout = RECALIBRATION_PERIOD;
+	                expectedEvent = TIMED_OUT_EVENT;
+	                break;
+	            default:
+	                digi_dbg("Unknown state %d\n", state);
+	                nextState = COLLECT_SAMPLES_STATE;
+	                timeout = RECALIBRATION_PERIOD;
+	                expectedEvent = TIMED_OUT_EVENT;
+	                break;
+	        }
 
-        state = nextState;
-        event = waitForEvent(timeout, expectedEvent);
+	        state = nextState;
+	        event = waitForEvent(timeout, expectedEvent);
 
-        switch (event)
-        {
-            case SHUTDOWN_AUTOCALIBRATION_EVENT:
-                digi_dbg("Received SHUTDOWN_AUTOCALIBRATION_EVENT\n");
-                break;
-            case RESTART_AUTOCALIBRATION_EVENT:
-                digi_dbg("Received RESTART_AUTOCALIBRATION_EVENT\n");
-                state = RESTART_STATE;
-                break;
-            case TRANSMIT_DONE_EVENT:
-                break;
-            case TIMED_OUT_EVENT:
-                if (state == GOT_SAMPLE_STATE)
-                {
-                    state = COLLECT_SAMPLES_STATE;
-                }
-        }
-    } while (!kthread_should_stop());
-
+	        switch (event)
+	        {
+	            case SHUTDOWN_AUTOCALIBRATION_EVENT:
+	                digi_dbg("Received SHUTDOWN_AUTOCALIBRATION_EVENT\n");
+	                break;
+	            case RESTART_AUTOCALIBRATION_EVENT:
+	                digi_dbg("Received RESTART_AUTOCALIBRATION_EVENT\n");
+	                state = RESTART_STATE;
+	                break;
+	            case TRANSMIT_DONE_EVENT:
+	                break;
+	            case TIMED_OUT_EVENT:
+	                if (state == GOT_SAMPLE_STATE)
+	                {
+	                    state = COLLECT_SAMPLES_STATE;
+	                }
+	        }
+	    } while (!kthread_should_stop());
+	} else {
+		printk(KERN_ERR "\nWarning: Wireless interface calibration data is corrupted.\n");
+		printk(KERN_ERR "         The wireless interface will operate at a low power level.\n");
+		while (!kthread_should_stop()) {
+			ssleep(1);
+		}
+	}
     calibration.cops->adc_shutdown(&calibration);
 
     return 0;
@@ -940,7 +942,6 @@ void digiWifiInitCalibration(struct piper_priv *digi)
 void digiWifiDeInitCalibration(struct piper_priv *digi)
 {
     calibration.events = SHUTDOWN_AUTOCALIBRATION_EVENT;
-
     wake_up_interruptible(&waitQueue);
     kthread_stop(calibration.threadCB);
 }
