@@ -20,7 +20,7 @@
 #include <linux/etherdevice.h>
 #include <net/mac80211.h>
 #include <crypto/aes.h>
-
+#include <asm/leds.h>
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
@@ -35,6 +35,82 @@ static int dlevel = DWARNING;
 #else
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
+
+
+
+/*
+ * This constant determines how many times per second the led_timer_fn
+ * function will be called.  (HZ >> 3) means 8 times a second.
+ */
+#define LED_TIMER_RATE		(HZ >> 3)
+
+/*
+ * This function is called from a timer to blink an LED in order to
+ * indicate what are current state is.
+ */
+static void led_timer_fn(unsigned long context)
+{
+#define MAX_COUNT	(15)
+	struct piper_priv *piperp = (struct piper_priv *) context;
+	static unsigned int count = 0;
+
+	switch (piperp->led_state) {
+		case led_shutdown:
+			/*
+			 * Turn LED off if we are shut down.
+			 */
+			leds_event(led_green_off);
+			break;
+		case led_adhoc:
+			/*
+			 * Blink LED slowly in ad-hoc mode.
+			 */
+			leds_event((count & 8) ? led_green_off : led_green_on);
+			break;
+		case led_not_associated:
+			/*
+			 * Blink LED rapidly when not associated with an AP.
+			 */
+			leds_event((count & 1) ? led_green_off : led_green_on);
+			break;
+		case led_associated:
+			/*
+			 * LED steadily on when associated.
+			 */
+			leds_event(led_green_on);
+			break;
+		default:
+			/*
+			 * Oops.  How did we get here?
+			 */
+			leds_event((count & 1) ? led_green_off : led_green_on);
+			break;
+	}
+	count++;
+	if (count > MAX_COUNT) {
+		count = 0;
+	}
+
+	piperp->led_timer.expires += LED_TIMER_RATE;
+	add_timer(&piperp->led_timer);
+}
+
+
+/*
+ * This function sets the current LED state.
+ */
+static int piper_set_status_led(struct ieee80211_hw *hw, enum led_states state)
+{
+	struct piper_priv *digi = hw->priv;
+
+	digi->led_state = state;
+
+	if (state == led_shutdown)
+		leds_event(led_green_off);
+
+	return 0;
+}
+
 
 /*
  * This routine is called to enable IBSS support whenever we receive
@@ -68,6 +144,7 @@ static void piper_enable_ibss(struct piper_priv *piperp, enum nl80211_iftype ift
 		piperp->ac->wr_reg(piperp,
 				  MAC_CTL, MAC_CTL_BEACON_TX | MAC_CTL_IBSS, op_or);
 		dprintk(DVERBOSE, "IBSS turned ON\n");
+		piper_set_status_led(piperp->hw, led_adhoc);
 	} else {
 		/*
 		 * If we come here, then either we are not suppose to transmit beacons,
@@ -82,11 +159,6 @@ static void piper_enable_ibss(struct piper_priv *piperp, enum nl80211_iftype ift
 	}
 }
 
-static int piper_set_status_led(struct ieee80211_hw *hw, int on)
-{
-	dprintk(DVVERBOSE, "\n");
-	return 0;
-}
 
 /*
  * Set the transmit power level.  The real work is done in the
@@ -325,7 +397,7 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 	}
 
 	/* set status led to link off */
-	piper_set_status_led(hw, 0);
+	piper_set_status_led(hw, led_shutdown);
 
 	/* Get the tasklets ready to roll */
 	tasklet_enable(&piperp->rx_tasklet);
@@ -359,7 +431,7 @@ static void piper_hw_stop(struct ieee80211_hw *hw)
 		piperp->deinit_hw(piperp);
 
 	/* set status led to link off */
-	if (piper_set_status_led(hw, 0))
+	if (piper_set_status_led(hw, led_shutdown))
 		return;		/* hardware's probably gone, give up */
 
 	/* turn off phy */
@@ -571,7 +643,9 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 
 	if (changed & BSS_CHANGED_ASSOC) {
 		/* Our association status has changed */
-		piper_set_status_led(hw, conf->assoc ? 1 : 0);
+		if (piperp->if_type == NL80211_IFTYPE_STATION) {
+			piper_set_status_led(hw, conf->assoc ? led_associated : led_not_associated);
+		}
 		piperp->areWeAssociated = conf->assoc;
 
 		digi_dbg(" AP %s\n", conf->assoc ?
@@ -860,6 +934,14 @@ int piper_register_hw(struct piper_priv *priv, struct device *dev,
 
 	printk(KERN_INFO PIPER_DRIVER_NAME ": registered as %s\n",
 	      	wiphy_name(hw->wiphy));
+
+	init_timer(&priv->led_timer);
+	priv->led_state = led_shutdown;
+	priv->led_timer.function = led_timer_fn;
+	priv->led_timer.data = (unsigned long) priv;
+	priv->led_timer.expires = jiffies + LED_TIMER_RATE;
+	add_timer(&priv->led_timer);
+
 error:
 	return ret;
 }
@@ -869,6 +951,8 @@ EXPORT_SYMBOL_GPL(piper_register_hw);
 void piper_unregister_hw(struct piper_priv *piperp)
 {
 	dprintk(DVVERBOSE, "\n");
+	del_timer_sync(&piperp->led_timer);
+	piper_set_status_led(piperp->hw, led_shutdown);
 	ieee80211_unregister_hw(piperp->hw);
 }
 EXPORT_SYMBOL_GPL(piper_unregister_hw);

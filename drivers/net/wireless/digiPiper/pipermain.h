@@ -60,6 +60,17 @@
 
 typedef u64 u48;
 
+/*
+ * This enum lists the possible LED states.
+ */
+enum led_states {
+	led_shutdown,
+	led_adhoc,
+	led_not_associated,
+	led_associated
+};
+
+
 typedef struct nv_wcd_header {
 	char magic_string[8];	/* WCALDATA */
 	char ver_major;		/* Major version in ascii */
@@ -168,6 +179,8 @@ struct piper_priv {
 	struct tasklet_struct		tx_tasklet;
 	struct sk_buff			*txPacket;
 	struct timer_list		tx_timer;
+	struct timer_list		led_timer;
+	enum led_states			led_state;
 	struct access_ops		*ac;
 	spinlock_t			aesLock;
 	struct digi_rf_ops		*rf;
