@@ -25,6 +25,14 @@ static void cc9p9215_leds_event(led_event_t evt)
 	case led_idle_end:
 		gpio_set_value(89, 0);
 		break;
+	case led_green_on:
+		if (module_is_ccw9p9215())
+			gpio_set_value(88, 0);
+		break;
+	case led_green_off:
+		if (module_is_ccw9p9215())
+			gpio_set_value(88, 1);
+		break;
 	default:
 		break;
 	}
@@ -40,6 +48,12 @@ static int __init ns9xxx_init_leds(void)
 	ret = gpio_request(89, "idle led");
 	if (ret)
 		return ret;
+
+	if (module_is_ccw9p9215()) {
+		ret = gpio_request(88, "wifi led");
+		if (ret)
+			return ret;
+	}
 
 	leds_event = cc9p9215_leds_event;
 
