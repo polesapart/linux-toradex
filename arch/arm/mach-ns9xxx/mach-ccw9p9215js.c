@@ -176,7 +176,9 @@ static void __init mach_ccw9p9215js_init_machine(void)
 	ns9xxx_add_device_cc9p9215_eth();
 
 	/* 802.11 */
+#if defined(CONFIG_DIGI_PIPER_WIFI)
 	ns9xxx_add_device_ccw9p9215_wifi(&ccw9p9215_piper_pdata);
+#endif
 
 	/* SPI */
 #ifdef CONFIG_CC9P9215JS_SPI
