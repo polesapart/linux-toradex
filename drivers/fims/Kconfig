@@ -65,7 +65,7 @@ config FIM_ONE_W1_SELECTED
 	select W1_MASTER_GPIO
 	help
 	  Enables the 1-wire GPIO driver on the FIM-board. For the selection of the
-	  connected slaves you need to enter the menuconfig of the 1-wire subsystem.
+	  connected slaves you need to enter the config menu of the 1-wire subsystem.
 
 endchoice # FIM_ONE
 
@@ -112,7 +112,7 @@ config FIM_TWO_W1_SELECTED
 	select W1_MASTER_GPIO
 	help
 	  Enables the 1-wire GPIO driver on the FIM-board. For the selection of the
-	  connected slaves you need to enter the menuconfig of the 1-wire subsystem.
+	  connected slaves you need to enter the config menu of the 1-wire subsystem.
 	  
 endchoice # FIM_TWO
 
@@ -146,7 +146,7 @@ config FIM_SERIAL_MODULE
 	select FIM_ONE_SERIAL
 	select FIM_TWO_SERIAL
 	help
-          Enables the FIM SDIO as loadable module. The number of FIMs to be
+          Enables the FIM Serial loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
 
 config FIM_CAN_MODULE
@@ -155,7 +155,7 @@ config FIM_CAN_MODULE
 	select FIM_ONE_CAN
 	select FIM_TWO_CAN
 	help
-          Enables the FIM SDIO as loadable module. The number of FIMs to be
+          Enables the FIM CAN as loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
 
 endif # FIM_MODULES
