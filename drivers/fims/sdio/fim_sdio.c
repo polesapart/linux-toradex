@@ -56,15 +56,28 @@
  * be read with the help of the firmware-subsystem
  */
 #if !defined(MODULE)
-#include "fim_sdio0.h"
-#include "fim_sdio1.h"
+# if defined(CONFIG_PROCESSOR_NS9215)
+#  include "fim_sdio0.h"
+#  include "fim_sdio1.h"
+# elif defined(CONFIG_PROCESSOR_NS9210)
+#  include "fim_sdio0_9210.h"
+#  include "fim_sdio1_9210.h"
+# else
+#  error "FIM-SDIO: Unsupported processor type."
+# endif /* CONFIG_PROCESSOR_NS9215 */
 extern const unsigned char fim_sdio_firmware[];
 #define FIM_SDIO_FW_FILE			(NULL)
 #define FIM_SDIO_FW_CODE0			fim_sdio_firmware0
 #define FIM_SDIO_FW_CODE1			fim_sdio_firmware1
 #else
 const unsigned char *fim_sdio_firmware = NULL;
-#define FIM_SDIO_FW_FILE_PAT			"fim_sdio%i.bin"
+# if defined(CONFIG_PROCESSOR_NS9215)
+#  define FIM_SDIO_FW_FILE_PAT			"fim_sdio%i.bin"
+# elif defined(CONFIG_PROCESSOR_NS9210)
+#  define FIM_SDIO_FW_FILE_PAT			"fim_sdio%i_9210.bin"
+# else
+#  error "FIM-SDIO: Unsupported processor type."
+# endif /* CONFIG_PROCESSOR_NS9215 */
 #define FIM_SDIO_FW_LEN				sizeof(FIM_SDIO_FW_FILE_PAT) + 10
 #define FIM_SDIO_FW_CODE			(NULL)
 #endif
@@ -83,14 +96,14 @@ MODULE_VERSION(DRIVER_VERSION);
 NS921X_FIM_NUMBERS_PARAM(fims_number);
 
 /* Registers with status information */
-#define FIM_SD_GPIOS_REG			0x02
-#define FIM_SD_GPIOS_REG_CD			0x01
-#define FIM_SD_GPIOS_REG_WP			0x02
-#define FIM_SD_CARD_STATREG			0x00
+#define FIM_SDIO_GPIOS_REG			0x02
+#define FIM_SDIO_GPIOS_REG_CD			0x01
+#define FIM_SDIO_GPIOS_REG_WP			0x02
+#define FIM_SDIO_CARD_STATREG			0x00
 
 /* Interrupts from the FIM to the driver */
-#define FIM_SD_INTARM_CARD_DAT1			0x01
-#define FIM_SD_INTARM_CARD_DETECTED		0x02
+#define FIM_SDIO_INTARM_CARD_DAT1			0x01
+#define FIM_SDIO_INTARM_CARD_DETECTED		0x02
 
 
 /* Macros for the SDIO-interface to the FIM-firmware */
@@ -104,43 +117,46 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define SDIO_FIFO_TX_DISCRC			0x20
 
 /* User specified macros */
-#define FIM_SD_TIMEOUT_MS			10000
-#define FIM_SD_TX_CMD_LEN			5
-#define FIM_SD_MAX_RESP_LENGTH			17
+#define FIM_SDIO_TIMEOUT_MS			10000
+#define FIM_SDIO_TX_CMD_LEN			5
+#define FIM_SDIO_MAX_RESP_LENGTH			17
 
 /* Status bits from the PIC-firmware */
-#define FIM_SD_RX_RSP				0x01
-#define FIM_SD_RX_BLKRD				0x02
-#define FIM_SD_RX_TIMEOUT			0x04
+#define FIM_SDIO_RX_RSP				0x01
+#define FIM_SDIO_RX_BLKRD				0x02
+#define FIM_SDIO_RX_TIMEOUT			0x04
 
 /*
  * Firmware specific control registers
  * IMPORTANT: The control bit for the card detect is enabled wih the main control!
  */
-#define FIM_SD_CLKDIV_REG			0
-#define FIM_SD_INTCFG_REG			1
-#define FIM_SD_INTCFG_MAIN			(1 << 0)
-#define FIM_SD_INTCFG_CARD			(1 << 1)
-#define FIM_SD_INTCFG_SDIO			(1 << 2)
-#define FIM_SD_BLOCKS_REG                       2
-#define FIM_SD_BLKSZ_LSB_REG                    3
-#define FIM_SD_BLKSZ_MSB_REG                    4
-#define FIM_SD_MAIN_REG				5
-#define FIM_SD_MAIN_START			(1 << 0)
+#define FIM_SDIO_CLKDIV_REG			0
+#define FIM_SDIO_INTCFG_REG			1
+#define FIM_SDIO_INTCFG_MAIN			(1 << 0)
+#define FIM_SDIO_INTCFG_CARD			(1 << 1)
+#define FIM_SDIO_INTCFG_SDIO			(1 << 2)
+#define FIM_SDIO_BLOCKS_REG                     2
+#define FIM_SDIO_BLKSZ_LSB_REG			3
+#define FIM_SDIO_BLKSZ_MSB_REG			4
+#define FIM_SDIO_MAIN_REG			5
+#define FIM_SDIO_MAIN_START			(1 << 0)
+
+/* Firmware specific status registers */
+#define FIM_SDIO_VERSION_SREG			0
 
 /* Internal flags for the request function */
-#define FIM_SD_REQUEST_NEW			0x00
-#define FIM_SD_REQUEST_CMD			0x01
-#define FIM_SD_REQUEST_STOP			0x02
-#define FIM_SD_SET_BUS_WIDTH			0x04
+#define FIM_SDIO_REQUEST_NEW			0x00
+#define FIM_SDIO_REQUEST_CMD			0x01
+#define FIM_SDIO_REQUEST_STOP			0x02
+#define FIM_SDIO_SET_BUS_WIDTH			0x04
 
 /* Macros for the DMA-configuraton */
-#define FIM_SD_DMA_BUFFER_SIZE			PAGE_SIZE
-#define FIM_SD_DMA_RX_BUFFERS			21
-#define FIM_SD_DMA_TX_BUFFERS			10
+#define FIM_SDIO_DMA_BUFFER_SIZE			PAGE_SIZE
+#define FIM_SDIO_DMA_RX_BUFFERS			21
+#define FIM_SDIO_DMA_TX_BUFFERS			10
 
 /* Used for the Card Detect timer */
-#define FIM_SD_CD_POLLING_TIMER			(HZ / 2)
+#define FIM_SDIO_CD_POLLING_TIMER			(HZ / 2)
 
 /*
  * The below macro force the use of the timer for polling the state of the card
@@ -152,12 +168,11 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 
 /* Enable the multipple block transfer (in development) */
 #if 0
-# define FIM_SD_MULTI_BLOCK
-# define FIM_SD_MAX_BLOCKS			(FIM_SD_DMA_RX_BUFFERS - 10)
-# define SKIP_CRC_CHECK
-//# define FIM_SD_DEBUG_CRC
+# define FIM_SDIO_MULTI_BLOCK
+# define FIM_SDIO_MAX_BLOCKS			(FIM_SDIO_DMA_RX_BUFFERS - 10)
+# define FIM_SDIO_SKIP_CRC_CHECK
 #else
-# define FIM_SD_MAX_BLOCKS			1
+# define FIM_SDIO_MAX_BLOCKS			1
 #endif
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] fim-sdio: " fmt, ## args)
@@ -165,10 +180,11 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define printk_dbg(fmt, args...)                printk(KERN_DEBUG "fim-sdio: " fmt, ## args)
 
 #if 0
-#define FIM_SD_DEBUG
+#define FIM_SDIO_DEBUG
+#define FIM_SDIO_DEBUG_CRC
 #endif
 
-#ifdef FIM_SD_DEBUG
+#ifdef FIM_SDIO_DEBUG
 #  define printk_debug(fmt, args...)		printk(KERN_DEBUG "fim-sdio: %s() " fmt, __FUNCTION__ , ## args)
 #else
 #  define printk_debug(fmt, args...)
@@ -176,7 +192,7 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 
 /* If enabled will generate an CRC error in the function that checks it */
 #if 0
-#define FIM_SD_FORCE_CRC
+#define FIM_SDIO_FORCE_CRC
 #endif
 
 /*
@@ -184,6 +200,14 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
  * Please note that the write protect GPIO must be under the index [4], then
  * the driver will read its status (the firmware doesn't support it)
  */
+#define FIM_SDIO_D0_GPIO			0
+#define FIM_SDIO_D1_GPIO			1
+#define FIM_SDIO_D2_GPIO			2
+#define FIM_SDIO_D3_GPIO			3
+#define FIM_SDIO_WP_GPIO			4
+#define FIM_SDIO_CD_GPIO			5
+#define FIM_SDIO_CLK_GPIO			6
+#define FIM_SDIO_CMD_GPIO			7
 #define FIM_SDIO_MAX_GPIOS			8
 
 /* Values for the block read state machine */
@@ -218,14 +242,12 @@ struct fim_sdio_t {
 	struct device *device;
 	int index;
 
-	struct semaphore sem;
 	struct fim_gpio_t gpios[FIM_SDIO_MAX_GPIOS];
 	struct fim_buffer_t *buf;
 	struct mmc_command *mmc_cmd;
 	struct timer_list mmc_timer;
 	struct mmc_host *mmc;
 	struct mmc_request *mmc_req;
-	spinlock_t mmc_lock;
 
 	enum fim_cmd_state cmd_state;
 	enum fim_blkrd_state blkrd_state;
@@ -255,7 +277,7 @@ struct fim_sd_tx_cmd_t {
 	unsigned char opctl;
 	unsigned char blksz_msb;
         unsigned char blksz_lsb;
-        unsigned char cmd[FIM_SD_TX_CMD_LEN];
+        unsigned char cmd[FIM_SDIO_TX_CMD_LEN];
 }__attribute__((__packed__));
 
 
@@ -267,7 +289,7 @@ struct fim_sd_tx_cmd_t {
  */
 struct fim_sd_rx_resp_t {
         unsigned char stat;
-        unsigned char resp[FIM_SD_MAX_RESP_LENGTH];
+        unsigned char resp[FIM_SDIO_MAX_RESP_LENGTH];
         unsigned char crc;
 }__attribute__((__packed__));
 
@@ -310,13 +332,11 @@ static void fim_sd_cmd_timeout(unsigned long data)
 	port = (struct fim_sdio_t *)data;
 
 	/* If the command pointer isn't NULL then a timeout has ocurred */
-	spin_lock(&port->mmc_lock);
 	if (port->mmc_cmd) {
 		printk_err("A MMC-command timeout ocurred\n");
 		port->mmc_cmd->error = -ETIMEDOUT;
 		fim_sd_process_next(port);
-	}	
-	spin_unlock(&port->mmc_lock);
+	}
 }
 
 /* Check the status of the card detect line if no external IRQ supported */
@@ -333,7 +353,7 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 	}
 
-	mod_timer(&port->cd_timer, jiffies + FIM_SD_CD_POLLING_TIMER);
+	mod_timer(&port->cd_timer, jiffies + FIM_SDIO_CD_POLLING_TIMER);
 }
 
 /*
@@ -369,7 +389,7 @@ inline static int fim_sd_card_plugged(struct fim_sdio_t *port)
 	unsigned int val;
 	
 	fim = &port->fim;
-	fim_get_stat_reg(fim, FIM_SD_CARD_STATREG, &val);
+	fim_get_stat_reg(fim, FIM_SDIO_CARD_STATREG, &val);
 	return !val;
 }
 
@@ -388,16 +408,16 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 	port = driver->driver_data;
 
 	switch (code) {
-	case FIM_SD_INTARM_CARD_DETECTED:
+	case FIM_SDIO_INTARM_CARD_DETECTED:
 		if (fim_sd_card_plugged(port)) {
-			fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, 0);
+			fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, 0);
 			printk_debug("SD card detected\n");
 		} else {
 			printk_debug("SD card removed\n");
 		}
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 		break;
-	case FIM_SD_INTARM_CARD_DAT1:
+	case FIM_SDIO_INTARM_CARD_DAT1:
 		printk_debug("SDIO IRQ\n");
 		mmc_signal_sdio_irq(port->mmc);
 		break;
@@ -498,7 +518,7 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 	 * crc_error = 10 : Error reading the partition table
 	 * crc_error = 40 : Error by a block read transfer
 	 */
-#ifdef FIM_SD_FORCE_CRC
+#ifdef FIM_SDIO_FORCE_CRC
 	static int crc_error = 0;
 	if (crc_error == 40) {
 		crc_error++;
@@ -511,21 +531,23 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 	if (crc_len == 1)
 		return 0;
 
-#if defined(FIM_SD_DEBUG_CRC)
+#if defined(FIM_SDIO_DEBUG_CRC)
+#define FIM_SDIO_CRC_PATTERN                   "%02x %02x %02x %02x %02x %02x %02x %02x"
 	{
 		int retval, len;
 		
 		len = crc_len >> 1;
 		retval = memcmp(data, pic_crc, len);
-
-		printk_dbg("CRC FIM : %02x %02x %02x %02x %02x %02x %02x %02x\n",
-			   *pic_crc, *(pic_crc + 1),
-			   *(pic_crc + 2), *(pic_crc + 3),
-			   *(pic_crc + 4), *(pic_crc + 5),
-			   *(pic_crc + 6), *(pic_crc + 7));
-
 		if (retval) {
-			printk_dbg("CRC MMC : %02x %02x %02x %02x %02x %02x %02x %02x\n",
+
+			printk_dbg("Data len %i | CRC len %i\n", length, len);
+			
+			printk_dbg("CRC FIM : " FIM_SDIO_CRC_PATTERN "\n",
+				   *pic_crc, *(pic_crc + 1),
+				   *(pic_crc + 2), *(pic_crc + 3),
+				   *(pic_crc + 4), *(pic_crc + 5),
+				   *(pic_crc + 6), *(pic_crc + 7));
+			printk_dbg("CRC MMC : " FIM_SDIO_CRC_PATTERN "\n",
 				   *data, *(data + 1),
 				   *(data + 2), *(data + 3),
 				   *(data + 4), *(data + 5),
@@ -568,7 +590,6 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	/* Get the correct port from the FIM-driver structure */
 	len = pdata->length;
 	port = (struct fim_sdio_t *)driver->driver_data;
-	spin_lock(&port->mmc_lock);
 
 	/*
 	 * The timeout function can set the command structure to NULL, for this reason
@@ -587,22 +608,22 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	resp = (struct fim_sd_rx_resp_t *)pdata->data;
 	is_ack = (pdata->length == 1) ? 1 : 0;
 	
-	printk_debug("CMD%i | PIC stat %x | CMD stat %i | BLKRD stat %i | Len %i\n",
-	       mmc_cmd->opcode, resp->stat, port->cmd_state,
-	       port->blkrd_state, pdata->length);
+	printk_debug("CMD%i | RESP stat %x | CMD stat %i | BLKRD stat %i | Len %i\n",
+		     mmc_cmd->opcode, resp->stat, port->cmd_state,
+		     port->blkrd_state, pdata->length);
 
 	/*
 	 * By the ACKs the PIC will NOT send a timeout. Timeouts are only
 	 * set by the response and and block read data
 	 */
-	if (is_ack && resp->stat & FIM_SD_RX_TIMEOUT) {
+	if (is_ack && resp->stat & FIM_SDIO_RX_TIMEOUT) {
 		mmc_cmd->error = -ETIMEDOUT;
 		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 		port->cmd_state = CMD_STATE_HAVE_RSP;
 
 		/* Check the conditions for the BLOCK READ state machine */
 	} else if (port->blkrd_state == BLKRD_STATE_WAIT_ACK && is_ack &&
-		   resp->stat & FIM_SD_RX_BLKRD) {
+		   resp->stat & FIM_SDIO_RX_BLKRD) {
 		port->blkrd_state = BLKRD_STATE_WAIT_DATA;
 		
 		/* Check if the block read data has arrived */
@@ -611,20 +632,23 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		crc_ptr = pdata->data + mmc_cmd->data->blksz;
 		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 
-#if !defined(SKIP_CRC_CHECK)
+#if !defined(FIM_SDIO_SKIP_CRC_CHECK)
+#define FIM_SDIO_RDBLK_PATTERN "%02x %02x %02x %02x %02x %02x " \
+				"%02x %02x %02x %02x %02x %02x"
 		if (fim_sd_check_blkrd_crc(port, crc_ptr, crc_len)) {
-			printk_err("CRC failure detected!\n");
-			printk(KERN_DEBUG "DATA ER: %02x %02x %02x\n",
-			       *pdata->data,
-			       *(pdata->data + pdata->length - 18),
-			       *(pdata->data + pdata->length - 17));
+			printk_err("CRC failure | Data %i | CRC %i | Retries %i\n",
+				   len, crc_len, mmc_cmd->retries);
+
+			printk_dbg(FIM_SDIO_RDBLK_PATTERN "\n",
+				   *pdata->data      , *(pdata->data + 1),
+				   *(pdata->data + 2), *(pdata->data + 3),
+				   *(pdata->data + 4), *(pdata->data + 5),
+				   *(pdata->data + 6), *(pdata->data + 7),
+				   *(pdata->data + 8), *(pdata->data + 9),
+				   *(pdata->data + 10), *(pdata->data + 11));
+
 			mmc_cmd->error = -EILSEQ;
 		} else {
-			/* fim_print_fifo_status(&port->fim); */
-			printk_debug("DATA OK: %02x %02x %02x\n",
-			       *pdata->data,
-			       *(pdata->data + pdata->length - 18),
-			       *(pdata->data + pdata->length - 17));
 			fim_sd_dma_to_sg(port, mmc_cmd->data,
 					 pdata->data, pdata->length - crc_len);
  		}
@@ -642,7 +666,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		
 		/* Check the conditions for the COMMAND state machine */
 	} else if (is_ack && port->cmd_state == CMD_STATE_WAIT_ACK &&
-		   resp->stat & FIM_SD_RX_RSP) {
+		   resp->stat & FIM_SDIO_RX_RSP) {
 		port->cmd_state = CMD_STATE_WAIT_DATA;
 	} else if (!is_ack && port->cmd_state == CMD_STATE_WAIT_DATA) {
 		fim_sd_parse_resp(mmc_cmd, resp);
@@ -676,20 +700,21 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	if (port->cmd_state == CMD_STATE_HAVE_RSP &&
 	    port->blkrd_state == BLKRD_STATE_HAVE_DATA) {
 
-		/* if (mmc_cmd->opcode == SD_IO_RW_EXTENDED) */
+#if defined(FIM_SDIO_MULTI_BLOCK)
 		if (mmc_cmd->data) {
 			uint blocks;
 			
-			fim_get_ctrl_reg(&port->fim, FIM_SD_BLOCKS_REG, &blocks);
+			fim_get_ctrl_reg(&port->fim, FIM_SDIO_BLOCKS_REG, &blocks);
 			printk_debug("CMD%u: End code %i | Blocks %u\n",
 				   mmc_cmd->opcode, mmc_cmd->error, blocks);
 		}
+#endif /* FIM_SDIO_MULTI_BLOCK */
 		
 		fim_sd_process_next(port);
 	}
 
  exit_unlock:
-	spin_unlock(&port->mmc_lock);
+	return;
 }
 
 /* Send a buffer over the FIM-API */
@@ -855,7 +880,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		block_length = data->blksz;
 		blocks = data->blocks;
 
-#if !defined(FIM_SD_MULTI_BLOCK)
+#if !defined(FIM_SDIO_MULTI_BLOCK)
 		if (blocks != 1) {
 			printk_err("Only supports single block transfer (%i)\n", blocks);
 			cmd->error = -EILSEQ;
@@ -876,9 +901,12 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		port->trans_blocks = blocks;
 
 		/* Setup the FIM registers (number of blocks and block size) */
-		fim_set_ctrl_reg(&port->fim, FIM_SD_BLOCKS_REG, blocks);
-		fim_set_ctrl_reg(&port->fim, FIM_SD_BLKSZ_LSB_REG, block_length);
-		fim_set_ctrl_reg(&port->fim, FIM_SD_BLKSZ_MSB_REG, (block_length >> 8));
+#if defined(FIM_SDIO_MULTI_BLOCK)
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLOCKS_REG, blocks);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKSZ_LSB_REG, block_length);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKSZ_MSB_REG,
+				 (block_length >> 8));
+#endif
 
 		/* Check if the transfer request is for reading or writing */
 		if (cmd->data->flags & MMC_DATA_READ) {
@@ -925,7 +953,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	port->buf = buf;
 	port->mmc_cmd = cmd;
 	buf->private = port;
-	mod_timer(&port->mmc_timer, jiffies + msecs_to_jiffies(FIM_SD_TIMEOUT_MS));
+	mod_timer(&port->mmc_timer, jiffies + msecs_to_jiffies(FIM_SDIO_TIMEOUT_MS));
 	if ((retval = fim_sd_send_buffer(port, buf))) {
 		printk_err("MMC command %i (err %i)\n", cmd->opcode,
 			   retval);
@@ -965,11 +993,11 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
  */
 static void fim_sd_process_next(struct fim_sdio_t *port)
 {
-	if (port->flags == FIM_SD_REQUEST_NEW) {
-		port->flags = FIM_SD_REQUEST_CMD;
+	if (port->flags == FIM_SDIO_REQUEST_NEW) {
+		port->flags = FIM_SDIO_REQUEST_CMD;
 		fim_sd_send_command(port, port->mmc_req->cmd);
-	} else if ((!(port->flags & FIM_SD_REQUEST_STOP)) && port->mmc_req->stop) {
-		port->flags = FIM_SD_REQUEST_STOP;
+	} else if ((!(port->flags & FIM_SDIO_REQUEST_STOP)) && port->mmc_req->stop) {
+		port->flags = FIM_SDIO_REQUEST_STOP;
 		fim_sd_send_command(port, port->mmc_req->stop);
 	} else {
 		/* By timeouts the core might retry sending another command */
@@ -994,11 +1022,9 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	/*
 	 * Wait if the timeout function is running or the RX-callback is active
 	 */
-	spin_lock(&port->mmc_lock);
 	port->mmc_req = mrq;
-	port->flags = FIM_SD_REQUEST_NEW;	
+	port->flags = FIM_SDIO_REQUEST_NEW;	
 	fim_sd_process_next(port);
-	spin_unlock(&port->mmc_lock);
 }
 
 /* Set the transfer clock using the pre-defined values */
@@ -1030,7 +1056,7 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 	if (clockrate >= 0) {
 		printk_debug("Setting the clock to %ld (%lx)\n",
 			     clockrate, clkdiv);
-		fim_set_ctrl_reg(&port->fim, FIM_SD_CLKDIV_REG, clkdiv);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_CLKDIV_REG, clkdiv);
 	}
 }
 
@@ -1055,11 +1081,11 @@ static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	case MMC_POWER_OFF:
 	case MMC_POWER_UP:
 	case MMC_POWER_ON:
-		ireg |= FIM_SD_INTCFG_MAIN | FIM_SD_INTCFG_CARD;
+		ireg |= FIM_SDIO_INTCFG_MAIN | FIM_SDIO_INTCFG_CARD;
 		break;
 	}
 
-	fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, ireg);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
 	
 	fim_sd_set_clock(port, ios->clock);
 }
@@ -1092,13 +1118,13 @@ static void fim_sd_enable_sdio_irq(struct mmc_host *mmc, int enable)
 		return;
 	}
 
-	fim_get_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, &ireg);		
+	fim_get_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, &ireg);		
 	if (enable)
-		ireg |= FIM_SD_INTCFG_SDIO;
+		ireg |= FIM_SDIO_INTCFG_SDIO;
 	else
-		ireg &= ~FIM_SD_INTCFG_SDIO;
+		ireg &= ~FIM_SDIO_INTCFG_SDIO;
 		
-	fim_set_ctrl_reg(&port->fim, FIM_SD_INTCFG_REG, ireg);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
 }
 
 
@@ -1126,7 +1152,7 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	del_timer_sync(&port->mmc_timer);
 
 	/* Reset the main control register */
-	fim_set_ctrl_reg(&port->fim, FIM_SD_MAIN_REG, 0);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, 0);
 	
 	fim_unregister_driver(&port->fim);
 
@@ -1166,6 +1192,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	struct fim_dma_cfg_t dma_cfg;
 	int picnr = pdata->fim_nr;
 	unsigned long hcaps = pdata->host_caps;
+	unsigned int fwver;
 
 #if defined(MODULE)
 	const char *fwcode = NULL;
@@ -1177,10 +1204,10 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 #endif
 	
 	/* Specific DMA configuration for the SD-host driver */
-	dma_cfg.rxnr = FIM_SD_DMA_RX_BUFFERS;
-	dma_cfg.txnr = FIM_SD_DMA_TX_BUFFERS;
-	dma_cfg.rxsz = FIM_SD_DMA_BUFFER_SIZE;
-	dma_cfg.txsz = FIM_SD_DMA_BUFFER_SIZE;
+	dma_cfg.rxnr = FIM_SDIO_DMA_RX_BUFFERS;
+	dma_cfg.txnr = FIM_SDIO_DMA_TX_BUFFERS;
+	dma_cfg.rxsz = FIM_SDIO_DMA_BUFFER_SIZE;
+	dma_cfg.txsz = FIM_SDIO_DMA_BUFFER_SIZE;
 
 	port->index = picnr;
 	port->fim.picnr = picnr;
@@ -1228,10 +1255,6 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 			goto exit_unreg_fim;
 		}
 	}
-
-	/* First init the internal data */
-	init_MUTEX(&port->sem);
-	spin_lock_init(&port->mmc_lock);
 	
 	/* Configure and init the timer for the command timeouts */
 	init_timer(&port->mmc_timer);
@@ -1266,15 +1289,15 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->mmc->caps = hcaps;
 
 	/* Maximum number of blocks in one req */
-	port->mmc->max_blk_count = FIM_SD_MAX_BLOCKS;
-	port->mmc->max_blk_size  = FIM_SD_DMA_BUFFER_SIZE;
+	port->mmc->max_blk_count = FIM_SDIO_MAX_BLOCKS;
+	port->mmc->max_blk_size  = FIM_SDIO_DMA_BUFFER_SIZE;
 	/* The maximum per SG entry depends on the buffer size */
-	port->mmc->max_seg_size  = FIM_SD_DMA_BUFFER_SIZE;
+	port->mmc->max_seg_size  = FIM_SDIO_DMA_BUFFER_SIZE;
 
-	port->mmc->max_req_size       = 4095 * FIM_SD_MAX_BLOCKS;
+	port->mmc->max_req_size       = 4095 * FIM_SDIO_MAX_BLOCKS;
 	port->mmc->max_seg_size       = port->mmc->max_req_size;
-	port->mmc->max_phys_segs      = FIM_SD_MAX_BLOCKS;
-	port->mmc->max_hw_segs        = FIM_SD_MAX_BLOCKS;
+	port->mmc->max_phys_segs      = FIM_SDIO_MAX_BLOCKS;
+	port->mmc->max_hw_segs        = FIM_SDIO_MAX_BLOCKS;
 	
 	/* Save our port structure into the private pointer */
 	port->mmc->private[0] = (unsigned long)port;
@@ -1326,8 +1349,11 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
-	fim_set_ctrl_reg(&port->fim, FIM_SD_MAIN_REG, FIM_SD_MAIN_START);
-	
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, FIM_SDIO_MAIN_START);
+
+	/* Print the firmware version */
+	fim_get_stat_reg(&port->fim, FIM_SDIO_VERSION_SREG, &fwver);
+	printk_dbg("FIM%d running [fw rev 0x%02x]\n", port->fim.picnr, fwver);
 	return 0;
 
  exit_put_clk:
@@ -1377,22 +1403,22 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	port = fim_sdios->ports + pdata->fim_nr;
 
 	/* Get the GPIOs-table from the platform data structure */
-	gpios[0].nr   = pdata->d0_gpio_nr;
-	gpios[0].func = pdata->d0_gpio_func;
-	gpios[1].nr   = pdata->d1_gpio_nr;
-	gpios[1].func = pdata->d1_gpio_func;
-	gpios[2].nr   = pdata->d2_gpio_nr;
-	gpios[2].func = pdata->d2_gpio_func;
-	gpios[3].nr   = pdata->d3_gpio_nr;
-	gpios[3].func = pdata->d3_gpio_func;
-	gpios[4].nr   = pdata->wp_gpio_nr;
-	gpios[4].func = pdata->wp_gpio_func;
-	gpios[5].nr   = pdata->cd_gpio_nr;
-	gpios[5].func = pdata->cd_gpio_func;
-	gpios[6].nr   = pdata->clk_gpio_nr;
-	gpios[6].func = pdata->clk_gpio_func;
-	gpios[7].nr   = pdata->cmd_gpio_nr;
-	gpios[7].func = pdata->cmd_gpio_func;
+	gpios[FIM_SDIO_D0_GPIO].nr   = pdata->d0_gpio_nr;
+	gpios[FIM_SDIO_D0_GPIO].func = pdata->d0_gpio_func;
+	gpios[FIM_SDIO_D1_GPIO].nr   = pdata->d1_gpio_nr;
+	gpios[FIM_SDIO_D1_GPIO].func = pdata->d1_gpio_func;
+	gpios[FIM_SDIO_D2_GPIO].nr   = pdata->d2_gpio_nr;
+	gpios[FIM_SDIO_D2_GPIO].func = pdata->d2_gpio_func;
+	gpios[FIM_SDIO_D3_GPIO].nr   = pdata->d3_gpio_nr;
+	gpios[FIM_SDIO_D3_GPIO].func = pdata->d3_gpio_func;
+	gpios[FIM_SDIO_WP_GPIO].nr   = pdata->wp_gpio_nr;
+	gpios[FIM_SDIO_WP_GPIO].func = pdata->wp_gpio_func;
+	gpios[FIM_SDIO_CD_GPIO].nr   = pdata->cd_gpio_nr;
+	gpios[FIM_SDIO_CD_GPIO].func = pdata->cd_gpio_func;
+	gpios[FIM_SDIO_CLK_GPIO].nr   = pdata->clk_gpio_nr;
+	gpios[FIM_SDIO_CLK_GPIO].func = pdata->clk_gpio_func;
+	gpios[FIM_SDIO_CMD_GPIO].nr   = pdata->cmd_gpio_nr;
+	gpios[FIM_SDIO_CMD_GPIO].func = pdata->cmd_gpio_func;
 	port->wp_gpio = pdata->wp_gpio_nr;
 	port->cd_gpio = pdata->cd_gpio_nr;
 	

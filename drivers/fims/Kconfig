@@ -36,7 +36,7 @@ choice
 
 config FIM_ONE_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK
+	depends on MMC && MMC_BLOCK || ((MACH_CME9210 || MACH_CME9210JS) && !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX))
 	select FIM_ONE_SDIO
 	help
 	  Enables the FIM-SDIO driver.
