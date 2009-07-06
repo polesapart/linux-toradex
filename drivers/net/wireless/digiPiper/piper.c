@@ -570,7 +570,7 @@ static void tx_timer_timeout(unsigned long arg)
 {
 	struct piper_priv *piperp = (struct piper_priv *) arg;
 
-	packet_tx_done(piperp, RECEIVED_ACK, 0);
+	tasklet_hi_schedule(&piperp->tx_tasklet);
 }
 
 /* sysfs entries to get/set antenna mode */
