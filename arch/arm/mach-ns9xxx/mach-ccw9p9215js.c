@@ -145,28 +145,32 @@ static void __init mach_ccw9p9215js_init_machine(void)
 	/* UARTs */
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTA_RXTX)
 	ns9xxx_add_device_cc9p9215_uarta_rxtx();
-#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTA_CTSRTSRXTX)
+#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTA_CTSRTSRXTX) || \
+	defined(CONFIG_CC9P9215JS_SERIAL_PORTA_RXTX485)
 	ns9xxx_add_device_cc9p9215_uarta_ctsrtsrxtx();
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTA_FULL)
 	ns9xxx_add_device_cc9p9215_uarta_full();
 #endif
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTB_RXTX)
 	ns9xxx_add_device_cc9p9215_uartb_rxtx();
-#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX)
+#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX) || \
+	defined(CONFIG_CC9P9215JS_SERIAL_PORTB_RXTX485)
 	ns9xxx_add_device_cc9p9215_uartb_ctsrtsrxtx();
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTB_FULL)
 	ns9xxx_add_device_cc9p9215_uartb_full();
 #endif
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTC_RXTX)
 	ns9xxx_add_device_cc9p9215_uartc_rxtx();
-#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX)
+#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX) || \
+	defined(CONFIG_CC9P9215JS_SERIAL_PORTC_RXTX485)
 	ns9xxx_add_device_cc9p9215_uartc_ctsrtsrxtx();
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTC_FULL)
 	ns9xxx_add_device_cc9p9215_uartc_full();
 #endif
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTD_RXTX)
 	ns9xxx_add_device_cc9p9215_uartd_rxtx();
-#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX)
+#elif defined(CONFIG_CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX) || \
+	defined(CONFIG_CC9P9215JS_SERIAL_PORTD_RXTX485)
 	ns9xxx_add_device_cc9p9215_uartd_ctsrtsrxtx();
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTD_FULL)
 	ns9xxx_add_device_cc9p9215_uartd_full();

@@ -36,7 +36,7 @@ choice
 
 config FIM_ONE_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK
+	depends on MMC && MMC_BLOCK || ((MACH_CME9210 || MACH_CME9210JS) && !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX))
 	select FIM_ONE_SDIO
 	help
 	  Enables the FIM-SDIO driver.
@@ -124,16 +124,18 @@ config SERIAL_FIM_CONSOLE
           Enables the console functionality on the FIM serial ports.
 
 config FIM_MODULES
-	bool "Enable FIM driver as loadable modules"
+	bool "Enable FIM drivers as loadable modules"
+	depends on !FIM_ONE || !FIM_TWO
 	help
-	  Nothing to comment here.
+	  This option allows to build the FIM drivers as loadable modules
+	  rather than as built-in features.
 
 if FIM_MODULES
 
 # -- These are the options for enabling the FIM-drivers as loadable modules
 config FIM_SDIO_MODULE
 	bool "SDIO as loadable module"
-	depends on MMC && MMC_BLOCK && !FIM_ONE_SDIO_SELECTED && !FIM_TWO_SDIO_SELECTED
+	depends on MMC && MMC_BLOCK && !FIM_ONE_SDIO_SELECTED && !FIM_TWO_SDIO_SELECTED && (!FIM_ONE || !FIM_TWO)
 	select FIM_ONE_SDIO
 	select FIM_TWO_SDIO
 	help
@@ -142,7 +144,7 @@ config FIM_SDIO_MODULE
 
 config FIM_SERIAL_MODULE
 	bool "Serial as loadable module"
-	depends on !FIM_ONE_SERIAL_SELECTED && !FIM_TWO_SERIAL_SELECTED
+	depends on !FIM_ONE_SERIAL_SELECTED && !FIM_TWO_SERIAL_SELECTED && (!FIM_ONE || !FIM_TWO)
 	select FIM_ONE_SERIAL
 	select FIM_TWO_SERIAL
 	help
@@ -151,7 +153,7 @@ config FIM_SERIAL_MODULE
 
 config FIM_CAN_MODULE
 	bool "CAN as loadable module"
-	depends on CAN && CAN_DEV && !FIM_ONE_CAN_SELECTED && !FIM_TWO_CAN_SELECTED
+	depends on CAN && CAN_DEV && !FIM_ONE_CAN_SELECTED && !FIM_TWO_CAN_SELECTED && (!FIM_ONE || !FIM_TWO)
 	select FIM_ONE_CAN
 	select FIM_TWO_CAN
 	help
