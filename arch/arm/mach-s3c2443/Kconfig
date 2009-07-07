@@ -59,6 +59,7 @@ config MACH_CC9M2443JS_PM
 config MACH_CC9M2443JS_USB
 	bool "Enable the USB overload protection"
 	depends on MACH_CC9M2443JS && USB_OHCI_HCD
+	default y
 	help
 	  Enable the overload protection for the ConnectCore 9M 2443 module on a
 	  JSCC9M2443 Development Board.
@@ -67,7 +68,7 @@ config S3C2443_USB_PHY
         bool "Enable the USB PHY for the S3C2443"
         depends on CPU_S3C2443
         depends on USB_SUPPORT
-        default n
+        default y
         help
           This option enables the USB PHY on the S3C2443.
 
@@ -81,9 +82,10 @@ config S3C2443_USB_PHY
 choice
 	prompt "Functionality"
 	depends on S3C2443_USB_PHY
+	bool
 
 config S3C2443_USB_PHY_UDC
-        bool "USB Device Controller"
+        bool "Device Controller"
         select USB_GADGET
         select USB_GADGET_SELECTED
         select USB_GADGET_DUALSPEED
