@@ -44,12 +44,20 @@ config FIM_ONE_SDIO_SELECTED
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
 
-config FIM_ONE_SERIAL_SELECTED
-	bool "Serial driver"
-	depends on ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && !CME9210JS_SERIAL_PORTA ))
-	select FIM_ONE_SERIAL
+config FIM_ONE_SERIAL_RXTX
+	bool "Serial driver 2-wires (RX/TX)"
+	depends on !((MACH_CME9210 || MACH_CME9210JS) && (CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX))
+	select FIM_ONE_SERIAL_SELECTED
 	help
-	  Enables the FIM-serial driver. 
+	  Enables the FIM-serial driver without the HW flow control (CTS and RTS
+	  lines are not requested by the driver).
+
+config FIM_ONE_SERIAL_CTSRTS
+	bool "Serial driver 4-wires (RX/TX/CTS/RTS)"
+	depends on ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && !CME9210JS_SERIAL_PORTA))
+	select FIM_ONE_SERIAL_SELECTED
+	help
+	  Enables the FIM-serial driver with HW flow control support. 
 
 config FIM_ONE_CAN_SELECTED
 	bool "CAN-bus driver"
@@ -91,13 +99,21 @@ config FIM_TWO_SDIO_SELECTED
           For testing the SDIO functionality is required to choose an additional 
           SDIO-driver (GPS/UART) from the MMC-core.
 
-config FIM_TWO_SERIAL_SELECTED
-	bool "Serial driver"
+config FIM_TWO_SERIAL_RXTX
+	bool "Serial driver 2-wires (RX/TX)"
 	depends on !MACH_CME9210 && !MACH_CME9210JS
-	select FIM_TWO_SERIAL
+	select FIM_TWO_SERIAL_SELECTED
 	help
-	  Enables the FIM-serial driver.
+	  Enables the FIM-serial driver without the HW flow control (CTS and RTS
+          lines are not requested by the driver).
 
+config FIM_TWO_SERIAL_CTSRTS
+	bool "Serial driver 4-wires (RX/TX/CTS/RTS)"
+	depends on !MACH_CME9210 && !MACH_CME9210JS
+	select FIM_TWO_SERIAL_SELECTED
+	help
+	  Enables the FIM-serial driver with HW flow control support. 
+	  
 config FIM_TWO_CAN_SELECTED
 	bool "CAN-bus driver"
 	depends on CAN && CAN_DEV && ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && (!CME9210JS_SERIAL_PORTA_FULL && !FIM_ONE_SERIAL_SELECTED && !FIM_ONE_SDIO_SELECTED)))
@@ -172,7 +188,15 @@ config FIM_TWO_SDIO
 config FIM_ONE_SERIAL
 	bool
 
+config FIM_ONE_SERIAL_SELECTED
+        select FIM_ONE_SERIAL
+	bool
+	
 config FIM_TWO_SERIAL
+	bool
+
+config FIM_TWO_SERIAL_SELECTED
+        select FIM_TWO_SERIAL
 	bool
 
 config FIM_ONE_CAN

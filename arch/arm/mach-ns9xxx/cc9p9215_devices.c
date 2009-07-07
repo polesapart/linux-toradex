@@ -162,9 +162,16 @@ void __init ns9xxx_add_device_cc9p9215_spi(void) {}
 #if defined(CONFIG_FIM_ONE_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
+#if defined(CONFIG_FIM_ONE_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(69, 68, /* RX + TX */
 				70, 71, /* RTS + CTS */
 				NS921X_GPIO_FUNC_0),
+#else
+	NS921X_FIM_SERIAL_GPIOS(69, 68, /* RX + TX */
+				FIM_GPIO_DONT_USE, /* RTS */
+				FIM_GPIO_DONT_USE, /* CTS */
+				NS921X_GPIO_FUNC_0),
+#endif
 };
 struct platform_device ns921x_fim_serial0 = {
 	.name              = "fim-serial",
@@ -177,9 +184,16 @@ EXPORT_SYMBOL(ns921x_fim_serial0);
 #if defined(CONFIG_FIM_TWO_SERIAL)
 static struct fim_serial_platform_data fim_serial_data1 = {
 	.fim_nr        = 1,
+#if defined(CONFIG_FIM_TWO_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(73, 72, /* RX + TX */
 				74, 75, /* RTS + CTS */
 				NS921X_GPIO_FUNC_1),
+#else
+	NS921X_FIM_SERIAL_GPIOS(73, 72, /* RX + TX */
+				FIM_GPIO_DONT_USE, /* RTS */
+				FIM_GPIO_DONT_USE, /* CTS */
+				NS921X_GPIO_FUNC_1),
+#endif
 };
 struct platform_device ns921x_fim_serial1 = {
 	.name              = "fim-serial",

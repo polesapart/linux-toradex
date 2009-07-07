@@ -594,7 +594,7 @@ static int fim_serial_setup_bitpos(struct fim_serial_t *port, ulong hwflow)
 
 	fim = &port->fim;
 	gpios = port->gpios;
-		
+
 	/* Set the TX- and RX-line */
 	printk_debug("TX %u | RX %u | RTS %u | CTS %u | Offset %i\n",
 		     gpios[FIM_SERIAL_GPIO_TX].nr, gpios[FIM_SERIAL_GPIO_RX].nr,
@@ -607,12 +607,19 @@ static int fim_serial_setup_bitpos(struct fim_serial_t *port, ulong hwflow)
 	fim_set_ctrl_reg(fim, FIM_SERIAL_RXIO_REG,
 			 1 << (gpios[FIM_SERIAL_GPIO_RX].nr - offset));
 
+	/* Check if the GPIOs are available for the HW flow control */
+	if (hwflow && (gpios[FIM_SERIAL_GPIO_CTS].nr == FIM_GPIO_DONT_USE ||
+		       gpios[FIM_SERIAL_GPIO_RTS].nr == FIM_GPIO_DONT_USE)) {
+		printk_dbg("HW flow control not supported (GPIOs not defined)\n");
+		return -EOPNOTSUPP;
+	}
+	
 	/* Setup the CTS and RTS if HW flow controls is requested */
 	cts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_CTS].nr - offset) : 0;
 	rts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_RTS].nr - offset) : 0;
 	fim_set_ctrl_reg(fim, FIM_SERIAL_CTSIO_REG, cts);
 	fim_set_ctrl_reg(fim, FIM_SERIAL_RTSIO_REG, rts);
-		
+
 	return fim_send_interrupt2(fim, FIM_SERIAL_INT_BIT_POS);
 }
 
@@ -629,6 +636,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	int retval;
 	unsigned int regval;
 	int timeout;
+	unsigned long flags;
 
 	/* @BUG: The info pointer is NULL when the console is started! */
 	fim = &port->fim;
@@ -666,7 +674,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 		parbit = 1;
 
 	/* Lock the below code segment first */
-	spin_lock(&port->tx_lock);
+	spin_lock_irqsave(&port->tx_lock, flags);
 
 	/* Now, we must wait for the empty DMA-buffers */
 	timeout = 1000;
@@ -721,6 +729,16 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 				
 		retval = fim_serial_setup_bitpos(port, cflag & CRTSCTS);
 		if (retval) {
+
+			/*
+			 * This return value means that the HW flow control could not
+			 * be enabled. Reset this flag so that the higher TTY layer
+			 * knows that a requested operation failed and informs the user
+			 * space about this.
+			 */
+			if (retval == -EOPNOTSUPP)
+				termios->c_cflag &= ~CRTSCTS;
+			
 			printk_err("Couldn't setup the FIM port %i\n",
 				   fim->picnr);
 			goto exit_unlock;
@@ -743,7 +761,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	retval = 0;
 	
  exit_unlock:
-	spin_unlock(&port->tx_lock);
+	spin_unlock_irqrestore(&port->tx_lock, flags);
 	return retval;
 }
 

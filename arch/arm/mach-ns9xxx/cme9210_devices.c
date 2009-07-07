@@ -105,9 +105,16 @@ void __init ns9xxx_add_device_cme9210_spi(void) {}
 #if defined(CONFIG_FIM_ONE_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
+#if defined(CONFIG_FIM_ONE_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(2, 1, /* RX(2,23) + TX(1) */
 				0, 3, /* RTS(0) + CTS(3) */
 				NS921X_GPIO_FUNC_2),
+#else
+	NS921X_FIM_SERIAL_GPIOS(2, 1, /* RX(2,23) + TX(1) */
+				FIM_GPIO_DONT_USE, /* RTS */
+				FIM_GPIO_DONT_USE, /* CTS */
+				NS921X_GPIO_FUNC_2),
+#endif
 };
 struct platform_device ns921x_fim_serial0 = {
 	.name              = "fim-serial",
