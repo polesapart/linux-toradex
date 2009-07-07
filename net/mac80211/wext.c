@@ -143,6 +143,8 @@ static int ieee80211_ioctl_giwrange(struct net_device *dev,
 	struct iw_range *range = (struct iw_range *) extra;
 	enum ieee80211_band band;
 	int c = 0;
+	int max_power = 0;
+	int i;
 
 	data->length = sizeof(struct iw_range);
 	memset(range, 0, sizeof(struct iw_range));
@@ -188,9 +190,7 @@ static int ieee80211_ioctl_giwrange(struct net_device *dev,
 	range->enc_capa = IW_ENC_CAPA_WPA | IW_ENC_CAPA_WPA2 |
 			  IW_ENC_CAPA_CIPHER_TKIP | IW_ENC_CAPA_CIPHER_CCMP;
 
-
 	for (band = 0; band < IEEE80211_NUM_BANDS; band ++) {
-		int i;
 		struct ieee80211_supported_band *sband;
 
 		sband = local->hw.wiphy->bands[band];
@@ -208,11 +208,43 @@ static int ieee80211_ioctl_giwrange(struct net_device *dev,
 				range->freq[c].m = chan->center_freq;
 				range->freq[c].e = 6;
 				c++;
+				if (chan->max_power > max_power)
+					max_power = chan->max_power;
+			}
+		}
+
+		for (i=0; i< sband->n_bitrates; i++) {
+			struct ieee80211_rate *brate = &sband->bitrates[i];
+			int j;
+
+			/* avoid duplicating rates from previous bands */
+			for (j = 0; j < range->num_bitrates; j++)
+				if (range->bitrate[j] == brate->bitrate * 100000)
+					break;
+
+			if (j == range->num_bitrates) {
+				range->bitrate[range->num_bitrates] =
+							      brate->bitrate * 100000;
+				range->num_bitrates++;
 			}
 		}
 	}
+
 	range->num_channels = c;
 	range->num_frequency = c;
+
+	if (max_power >= IW_MAX_TXPOWER) {
+		range->num_txpower = IW_MAX_TXPOWER;
+		range->txpower[0] = 0;
+		for (i = 1; i < IW_MAX_TXPOWER; i++) {
+			range->txpower[i] = max_power - (IW_MAX_TXPOWER - (i + 1));
+		}
+	} else {
+		range->num_txpower = max_power + 1;
+		for (i = 0; i < max_power; i++) {
+			range->txpower[i] = i;
+		}
+	}
 
 	IW_EVENT_CAPA_SET_KERNEL(range->event_capa);
 	IW_EVENT_CAPA_SET(range->event_capa, SIOCGIWAP);
