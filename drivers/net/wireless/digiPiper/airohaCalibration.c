@@ -57,7 +57,11 @@
 #define SHUTDOWN_AUTOCALIBRATION_EVENT  (1 << 2)
 #define RESTART_AUTOCALIBRATION_EVENT   (1 << 3)
 
-
+/*
+ * Set this constant to (1) if you want to force calibration status to
+ * be printed.
+ */
+#define WANT_CALIBRATION_STATUS		(0)
 
 
 static struct airohaCalibrationData calibration;
@@ -554,7 +558,7 @@ static void recalibrate(struct piper_priv *digi)
     {
         int correction = computeY(calibration.p1, calibration.powerIndexSlopeTimes1000,
                                        actualAdc, POWER_INDEX_OVER_ADC);
-#ifdef WANT_DEBUG
+#if defined(WANT_DEBUG)
 		int oldIndex = calibration.correctedPowerIndex;
 #endif
         correction = (3*(calibration.powerIndex - correction)) / 4;
@@ -580,8 +584,12 @@ static void recalibrate(struct piper_priv *digi)
         }
         digi->rf->set_pwr_index(digi->hw, calibration.correctedPowerIndex);
 #ifdef WANT_DEBUG
-    	digi_dbg("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n", actualAdc, calibration.expectedAdc, errorInMdbm);
-        digi_dbg("Power index corrected by %d: was %d, set to %d.\n", correction, oldIndex, calibration.correctedPowerIndex);
+		digi_dbg("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n", actualAdc, calibration.expectedAdc, errorInMdbm);
+		digi_dbg("Power index corrected by %d: was %d, set to %d.\n", correction, oldIndex, calibration.correctedPowerIndex);
+#endif
+#if WANT_CALIBRATION_STATUS
+		if (correction != 0)
+    		printk(KERN_ERR "error mdBm = %d, correcting airoha index by %d\n", errorInMdbm, correction);
 #endif
     }
 #endif
