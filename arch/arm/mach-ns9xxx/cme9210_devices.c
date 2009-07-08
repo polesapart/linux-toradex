@@ -102,10 +102,10 @@ void __init ns9xxx_add_device_cme9210_spi(void) {}
  * XXX Need testing and it might be incomplete add_device()? 
  */
 
-#if defined(CONFIG_FIM_ONE_SERIAL)
+#if defined(CONFIG_FIM_ZERO_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
-#if defined(CONFIG_FIM_ONE_SERIAL_CTSRTS)
+#if defined(CONFIG_FIM_ZERO_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(2, 1, /* RX(2,23) + TX(1) */
 				0, 3, /* RTS(0) + CTS(3) */
 				NS921X_GPIO_FUNC_2),
@@ -122,9 +122,9 @@ struct platform_device ns921x_fim_serial0 = {
 	.dev.platform_data = &fim_serial_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_serial0);
-#endif /* CONFIG_FIM_ONE_SERIAL */
+#endif /* CONFIG_FIM_ZERO_SERIAL */
 
-#if defined(CONFIG_FIM_TWO_CAN)
+#if defined(CONFIG_FIM_ONE_CAN)
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr        = 1,
 	.fim_can_bitrate	= 500000,
@@ -137,9 +137,9 @@ struct platform_device ns921x_fim_can1 = {
 	.dev.platform_data = &fim_can_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_can1);
-#endif /* CONFIG_FIM_TWO_CAN */
+#endif /* CONFIG_FIM_ONE_CAN */
 
-#if defined(CONFIG_FIM_ONE_SDIO)
+#if defined(CONFIG_FIM_ZERO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
 	.host_caps     = MMC_CAP_SDIO_IRQ,
@@ -168,10 +168,10 @@ struct platform_device ns921x_fim_sdio0 = {
 	.dev.platform_data = &fim_sdio_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio0);
-#endif /* CONFIG_FIM_ONE_SDIO */
+#endif /* CONFIG_FIM_ZERO_SDIO */
 
 /* The second SDIO-port will be available by the CC9P9210JS first */
-#if defined(CONFIG_FIM_TWO_SDIO)
+#if defined(CONFIG_FIM_ONE_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
 	.host_caps     = MMC_CAP_SDIO_IRQ,
@@ -200,9 +200,9 @@ struct platform_device ns921x_fim_sdio1 = {
 	.dev.platform_data = &fim_sdio_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio1);
-#endif /* CONFIG_FIM_TWO_SDIO */
+#endif /* CONFIG_FIM_ONE_SDIO */
 
-#if defined(CONFIG_FIM_ONE_W1)
+#if defined(CONFIG_FIM_ZERO_W1)
 static struct w1_gpio_platform_data fim_w1_data0 = {
 	.pin           = 1,
 	.is_open_drain = 0,
@@ -215,4 +215,4 @@ struct platform_device ns921x_fim0_w1 = {
 	},
 };
 EXPORT_SYMBOL(ns921x_fim0_w1);
-#endif /* CONFIG_FIM_ONE_W1 */
+#endif /* CONFIG_FIM_ZERO_W1 */

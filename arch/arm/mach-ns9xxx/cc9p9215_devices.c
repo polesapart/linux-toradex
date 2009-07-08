@@ -159,10 +159,10 @@ void __init ns9xxx_add_device_cc9p9215_spi(void) {}
 #endif
 
 
-#if defined(CONFIG_FIM_ONE_SERIAL)
+#if defined(CONFIG_FIM_ZERO_SERIAL)
 static struct fim_serial_platform_data fim_serial_data0 = {
 	.fim_nr        = 0,
-#if defined(CONFIG_FIM_ONE_SERIAL_CTSRTS)
+#if defined(CONFIG_FIM_ZERO_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(69, 68, /* RX + TX */
 				70, 71, /* RTS + CTS */
 				NS921X_GPIO_FUNC_0),
@@ -179,12 +179,12 @@ struct platform_device ns921x_fim_serial0 = {
 	.dev.platform_data = &fim_serial_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_serial0);
-#endif /* CONFIG_FIM_ONE_SERIAL */
+#endif /* CONFIG_FIM_ZERO_SERIAL */
 
-#if defined(CONFIG_FIM_TWO_SERIAL)
+#if defined(CONFIG_FIM_ONE_SERIAL)
 static struct fim_serial_platform_data fim_serial_data1 = {
 	.fim_nr        = 1,
-#if defined(CONFIG_FIM_TWO_SERIAL_CTSRTS)
+#if defined(CONFIG_FIM_ONE_SERIAL_CTSRTS)
 	NS921X_FIM_SERIAL_GPIOS(73, 72, /* RX + TX */
 				74, 75, /* RTS + CTS */
 				NS921X_GPIO_FUNC_1),
@@ -201,10 +201,10 @@ struct platform_device ns921x_fim_serial1 = {
 	.dev.platform_data = &fim_serial_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_serial1);
-#endif /* CONFIG_FIM_TWO_SERIAL */
+#endif /* CONFIG_FIM_ONE_SERIAL */
 
 
-#if defined(CONFIG_FIM_ONE_SDIO)
+#if defined(CONFIG_FIM_ZERO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
@@ -230,10 +230,10 @@ struct platform_device ns921x_fim_sdio0 = {
 	.dev.platform_data = &fim_sdio_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio0);
-#endif /* CONFIG_FIM_ONE_SDIO */
+#endif /* CONFIG_FIM_ZERO_SDIO */
 
 
-#if defined(CONFIG_FIM_TWO_SDIO)
+#if defined(CONFIG_FIM_ONE_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
@@ -259,10 +259,10 @@ struct platform_device ns921x_fim_sdio1 = {
 	.dev.platform_data = &fim_sdio_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_sdio1);
-#endif /* CONFIG_FIM_TWO_SDIO */
+#endif /* CONFIG_FIM_ONE_SDIO */
 
 
-#if defined(CONFIG_FIM_ONE_CAN) || defined(CONFIG_PROCESSOR_NS9215)
+#if defined(CONFIG_FIM_ZERO_CAN) || defined(CONFIG_PROCESSOR_NS9215)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr			= 0,
 	.fim_can_bitrate	= 500000,
@@ -275,9 +275,9 @@ struct platform_device ns921x_fim_can0 = {
 	.dev.platform_data = &fim_can_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_can0);
-#endif /* CONFIG_FIM_ONE_CAN */
+#endif /* CONFIG_FIM_ZERO_CAN */
 
-#if defined(CONFIG_FIM_TWO_CAN)
+#if defined(CONFIG_FIM_ONE_CAN)
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr			= 1,
 	.fim_can_bitrate	= 500000,
@@ -295,9 +295,9 @@ struct platform_device ns921x_fim_can1 = {
 	.dev.platform_data = &fim_can_data1,
 };
 EXPORT_SYMBOL(ns921x_fim_can1);
-#endif /* CONFIG_FIM_TWO_CAN */
+#endif /* CONFIG_FIM_ONE_CAN */
 
-#if defined(CONFIG_FIM_ONE_W1)
+#if defined(CONFIG_FIM_ZERO_W1)
 static struct w1_gpio_platform_data fim_w1_data0 = {
 	.pin           = 68,
 	.is_open_drain = 0,
@@ -310,9 +310,9 @@ struct platform_device ns921x_fim0_w1 = {
 	},
 };
 EXPORT_SYMBOL(ns921x_fim0_w1);
-#endif /* CONFIG_FIM_ONE_W1 */
+#endif /* CONFIG_FIM_ZERO_W1 */
 
-#if defined(CONFIG_FIM_TWO_W1)
+#if defined(CONFIG_FIM_ONE_W1)
 static struct w1_gpio_platform_data fim_w1_data1 = {
 	.pin           = 72,
 	.is_open_drain = 0,
@@ -325,7 +325,7 @@ struct platform_device ns921x_fim1_w1 = {
 	},
 };
 EXPORT_SYMBOL(ns921x_fim1_w1);
-#endif /* CONFIG_FIM_TWO_W1 */
+#endif /* CONFIG_FIM_ONE_W1 */
 
 #if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA

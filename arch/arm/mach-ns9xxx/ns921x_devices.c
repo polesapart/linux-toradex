@@ -658,7 +658,7 @@ int __init ns921x_extgpio_pm_wakeup_init(unsigned int gpio)
 }
 #endif /* CONFIG_PM */
 
-#if defined(CONFIG_FIM_ONE_SDIO)
+#if defined(CONFIG_FIM_ZERO_SDIO)
 void __init ns9xxx_add_device_ns921x_fim_sdio0(void)
 {
 	extern struct platform_device ns921x_fim_sdio0;
@@ -668,7 +668,7 @@ void __init ns9xxx_add_device_ns921x_fim_sdio0(void)
 void __init ns9xxx_add_device_ns921x_fim_sdio0(void) {}
 #endif
 
-#if defined(CONFIG_FIM_TWO_SDIO)
+#if defined(CONFIG_FIM_ONE_SDIO)
 void __init ns9xxx_add_device_ns921x_fim_sdio1(void)
 {
 	extern struct platform_device ns921x_fim_sdio1;
@@ -679,7 +679,7 @@ void __init ns9xxx_add_device_ns921x_fim_sdio1(void) {}
 #endif
 
 
-#if defined(CONFIG_FIM_ONE_SERIAL)
+#if defined(CONFIG_FIM_ZERO_SERIAL)
 void __init ns9xxx_add_device_ns921x_fim_serial0(void)
 {
 	extern struct platform_device ns921x_fim_serial0;
@@ -689,7 +689,7 @@ void __init ns9xxx_add_device_ns921x_fim_serial0(void)
 void __init ns9xxx_add_device_ns921x_fim_serial0(void) {}
 #endif /* CONFIG_FIM_SERIAL */
 
-#if defined(CONFIG_FIM_TWO_SERIAL)
+#if defined(CONFIG_FIM_ONE_SERIAL)
 void __init ns9xxx_add_device_ns921x_fim_serial1(void)
 {
 	extern struct platform_device ns921x_fim_serial1;
@@ -699,7 +699,7 @@ void __init ns9xxx_add_device_ns921x_fim_serial1(void)
 void __init ns9xxx_add_device_ns921x_fim_serial1(void) {}
 #endif /* CONFIG_FIM_SERIAL */
 
-#if defined(CONFIG_FIM_ONE_CAN)
+#if defined(CONFIG_FIM_ZERO_CAN)
 void __init ns9xxx_add_device_ns921x_fim_can0(void)
 {
 	extern struct platform_device ns921x_fim_can0;
@@ -709,7 +709,7 @@ void __init ns9xxx_add_device_ns921x_fim_can0(void)
 void __init ns9xxx_add_device_ns921x_fim_can0(void) {}
 #endif
 
-#if defined(CONFIG_FIM_TWO_CAN)
+#if defined(CONFIG_FIM_ONE_CAN)
 void __init ns9xxx_add_device_ns921x_fim_can1(void)
 {
 	extern struct platform_device ns921x_fim_can1;
@@ -719,7 +719,7 @@ void __init ns9xxx_add_device_ns921x_fim_can1(void)
 void __init ns9xxx_add_device_ns921x_fim_can1(void) {}
 #endif
 
-#if defined(CONFIG_FIM_ONE_W1)
+#if defined(CONFIG_FIM_ZERO_W1)
 static void __init ns9xxx_add_device_ns921x_fim0_w1(void)
 {
 	extern struct platform_device ns921x_fim0_w1;
@@ -729,7 +729,7 @@ static void __init ns9xxx_add_device_ns921x_fim0_w1(void)
 static inline void __init ns9xxx_add_device_ns921x_fim0_w1(void) { }
 #endif
 
-#if defined(CONFIG_FIM_TWO_W1)
+#if defined(CONFIG_FIM_ONE_W1)
 static void __init ns9xxx_add_device_ns921x_fim1_w1(void)
 {
 	extern struct platform_device ns921x_fim1_w1;

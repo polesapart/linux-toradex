@@ -3,9 +3,9 @@
 #
 
 obj-$(CONFIG_FIM_CORE)		+= fim.o
+obj-$(CONFIG_FIM_ZERO_SERIAL)	+= serial/
+obj-$(CONFIG_FIM_ZERO_SDIO)	+= sdio/
+obj-$(CONFIG_FIM_ZERO_CAN)	+= can/
 obj-$(CONFIG_FIM_ONE_SERIAL)	+= serial/
 obj-$(CONFIG_FIM_ONE_SDIO)	+= sdio/
 obj-$(CONFIG_FIM_ONE_CAN)	+= can/
-obj-$(CONFIG_FIM_TWO_SERIAL)	+= serial/
-obj-$(CONFIG_FIM_TWO_SDIO)	+= sdio/
-obj-$(CONFIG_FIM_TWO_CAN)	+= can/
