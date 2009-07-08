@@ -36,7 +36,7 @@ choice
 
 config FIM_ZERO_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK || ((MACH_CME9210 || MACH_CME9210JS) && !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX))
+	depends on MMC && MMC_BLOCK && !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_SDIO
 	help
 	  Enables the FIM-SDIO driver.
@@ -46,7 +46,7 @@ config FIM_ZERO_SDIO_SELECTED
 
 config FIM_ZERO_SERIAL_RXTX
 	bool "Serial driver 2-wires (RX/TX)"
-	depends on !((MACH_CME9210 || MACH_CME9210JS) && (CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX))
+	depends on !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_SERIAL_SELECTED
 	help
 	  Enables the FIM-serial driver without the HW flow control (CTS and RTS
@@ -54,7 +54,7 @@ config FIM_ZERO_SERIAL_RXTX
 
 config FIM_ZERO_SERIAL_CTSRTS
 	bool "Serial driver 4-wires (RX/TX/CTS/RTS)"
-	depends on ((MACH_CC9P9215 || MACH_CC9P9215JS) || ((MACH_CME9210 || MACH_CME9210JS) && !CME9210JS_SERIAL_PORTA))
+	depends on !(CME9210JS_SERIAL_PORTA || CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_SERIAL_SELECTED
 	help
 	  Enables the FIM-serial driver with HW flow control support. 
@@ -68,6 +68,7 @@ config FIM_ZERO_CAN_SELECTED
 
 config FIM_ZERO_W1_SELECTED
 	bool "1-wire driver"
+	depends on !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_W1
 	select W1
 	select W1_MASTER_GPIO
@@ -210,6 +211,6 @@ config FIM_ZERO_W1
 
 config FIM_ONE_W1
         bool
-		
+
 endif # FIM_CORE
 
