@@ -662,12 +662,15 @@ static int piper_suspend(struct platform_device *dev, pm_message_t state)
 	int i;
 
 	/* wait until aes done  */
-	while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
-			;
+	i = 10000;
+	while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY && i-- > 0)
+		udelay(1);
+
 	/* wait for tx fifo empty */
-	while ((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) &
-		BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
-		;
+	i = 10000;
+	while (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) &
+		BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0) && i-- > 0)
+		udelay(1);
 
 	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
 		saved_mac_regs[i][1] = piperp->ac->rd_reg(piperp, saved_mac_regs[i][0]);
@@ -697,12 +700,10 @@ static int piper_resume(struct platform_device *dev)
 
 	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
 		piperp->ac->wr_reg(piperp, saved_mac_regs[i][0],
-				  saved_mac_regs[i][0], op_write);
+				  saved_mac_regs[i][1], op_write);
 
 	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
 	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0x0, op_write);
-
-	/* Sanity checks... interrupt mask is not null... */
 
 	/* Restart the processors */
 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
