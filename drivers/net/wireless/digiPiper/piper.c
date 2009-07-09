@@ -206,7 +206,7 @@ void piper_set_macaddr(struct piper_priv *piperp)
 	int i;
 
 	for (i = 0; i < 6; i++) {
-		if (*(pmac + i) != 0)
+		if (*(pmac + i) != 0xff)
 			break;
 		if (i == 5) {
 			/* There is a problem with the parameters, use default */
