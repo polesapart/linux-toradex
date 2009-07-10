@@ -1,6 +1,6 @@
 config DIGI_PIPER_WIFI
 	tristate "Digi Piper Wifi support"
-	depends on MAC80211 && WLAN_80211 && (MACH_CCW9P9215JS || MACH_CCW9M2443JS)
+	depends on MAC80211 && WLAN_80211 && I2C && (MACH_CCW9P9215JS || MACH_CCW9M2443JS)
 	---help---
 	  This driver is for the Piper 802.11 MAC by Digi.  This MAC is
 	  supported on the Digi ConnectCore Wi-9P 9215 and Digi ConnectCore Wi-9M 2443
