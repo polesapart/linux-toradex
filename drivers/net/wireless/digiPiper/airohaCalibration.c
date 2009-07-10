@@ -703,7 +703,7 @@ static int getCalibrationData(struct piper_priv *digi)
             digi_dbg("CRC and signature for calibration data is okay\n");
             result = 0;
             if (   (calibration.nvram->header.ver_major == '1')
-            	&& (calibration.nvram->header.ver_minor == '1'))
+            	&& (calibration.nvram->header.ver_minor == '0'))
             {
             	digi_dbg("Converting version 1.0 calibration data\n");
             	determineMaxAdcValues(calibration.nvram);
