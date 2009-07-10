@@ -23,6 +23,8 @@
 #include <mach/regs-sys-ns921x.h>
 #include <mach/regs-mem.h>
 
+#include <asm/leds.h>
+
 #include "pipermain.h"
 #include "mac.h"
 #include "airoha.h"
@@ -260,6 +262,12 @@ static int piper_init_chip_hw(struct piper_priv *piperp)
 	return ret;
 }
 
+static void ccw9p9215_piper_set_led(struct piper_priv *piperp, enum wireless_led led, int val)
+{
+	if(led == STATUS_LED)
+		leds_event(val ? led_green_on : led_green_off);
+}
+
 static void ccw9p9215_piper_reset(struct piper_priv *piperp, int reset)
 {
 	gpio_set_value(piperp->pdata->rst_gpio, !reset);
@@ -347,6 +355,7 @@ void __init ns9xxx_add_device_ccw9p9215_wifi(struct piper_pdata *pdata)
 	pdata->init = ccw9p9215_piper_init;
 	pdata->late_init = ccw9p9215_piper_late_init;
 	pdata->reset = ccw9p9215_piper_reset;
+	pdata->set_led = ccw9p9215_piper_set_led;
 	piper_device.dev.platform_data = pdata;
 
 	platform_device_register(&piper_device);

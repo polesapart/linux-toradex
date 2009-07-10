@@ -20,7 +20,6 @@
 #include <linux/etherdevice.h>
 #include <net/mac80211.h>
 #include <crypto/aes.h>
-#include <asm/leds.h>
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
@@ -36,13 +35,12 @@ static int dlevel = DWARNING;
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
 
-
-
 /*
  * This constant determines how many times per second the led_timer_fn
  * function will be called.  (HZ >> 3) means 8 times a second.
  */
 #define LED_TIMER_RATE		(HZ >> 3)
+#define LED_MAX_COUNT			(15)
 
 /*
  * This function is called from a timer to blink an LED in order to
@@ -50,44 +48,35 @@ static int dlevel = DWARNING;
  */
 static void led_timer_fn(unsigned long context)
 {
-#define MAX_COUNT	(15)
 	struct piper_priv *piperp = (struct piper_priv *) context;
 	static unsigned int count = 0;
 
+	if(!piperp->pdata->set_led)
+		return;
+
 	switch (piperp->led_state) {
 		case led_shutdown:
-			/*
-			 * Turn LED off if we are shut down.
-			 */
-			leds_event(led_green_off);
+			/* Turn LED off if we are shut down */
+			piperp->pdata->set_led(piperp, STATUS_LED, 0);
 			break;
 		case led_adhoc:
-			/*
-			 * Blink LED slowly in ad-hoc mode.
-			 */
-			leds_event((count & 8) ? led_green_off : led_green_on);
+			/* Blink LED slowly in ad-hoc mode */
+			piperp->pdata->set_led(piperp, STATUS_LED, (count & 8) ? 0 : 1);
 			break;
 		case led_not_associated:
-			/*
-			 * Blink LED rapidly when not associated with an AP.
-			 */
-			leds_event((count & 1) ? led_green_off : led_green_on);
+			/* Blink LED rapidly when not associated with an AP */
+			piperp->pdata->set_led(piperp, STATUS_LED, (count & 1) ? 0 : 1);
 			break;
 		case led_associated:
-			/*
-			 * LED steadily on when associated.
-			 */
-			leds_event(led_green_on);
+			/* LED steadily on when associated */
+			piperp->pdata->set_led(piperp, STATUS_LED, 1);
 			break;
 		default:
-			/*
-			 * Oops.  How did we get here?
-			 */
-			leds_event((count & 1) ? led_green_off : led_green_on);
+			/* Oops.  How did we get here? */
 			break;
 	}
 	count++;
-	if (count > MAX_COUNT) {
+	if (count > LED_MAX_COUNT) {
 		count = 0;
 	}
 
@@ -95,22 +84,23 @@ static void led_timer_fn(unsigned long context)
 	add_timer(&piperp->led_timer);
 }
 
-
 /*
  * This function sets the current LED state.
  */
 static int piper_set_status_led(struct ieee80211_hw *hw, enum led_states state)
 {
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = (struct piper_priv *)hw->priv;
 
-	digi->led_state = state;
+	piperp->led_state = state;
+
+	if(!piperp->pdata->set_led)
+		return -ENOSYS;
 
 	if (state == led_shutdown)
-		leds_event(led_green_off);
+		piperp->pdata->set_led(piperp, STATUS_LED, 0);
 
 	return 0;
 }
-
 
 /*
  * This routine is called to enable IBSS support whenever we receive
@@ -158,7 +148,6 @@ static void piper_enable_ibss(struct piper_priv *piperp, enum nl80211_iftype ift
 		dprintk(DVERBOSE, "IBSS turned OFF\n");
 	}
 }
-
 
 /*
  * Set the transmit power level.  The real work is done in the
@@ -459,12 +448,12 @@ static void piper_hw_stop(struct ieee80211_hw *hw)
 static int piper_hw_add_intf(struct ieee80211_hw *hw,
 		struct ieee80211_if_init_conf *conf)
 {
-	struct piper_priv *digi = hw->priv;
+	struct piper_priv *piperp = hw->priv;
 
 	dprintk(DVVERBOSE, "if type: %x\n", conf->type);
 
 	/* __NL80211_IFTYPE_AFTER_LAST means no mode selected */
-	if (digi->if_type != __NL80211_IFTYPE_AFTER_LAST) {
+	if (piperp->if_type != __NL80211_IFTYPE_AFTER_LAST) {
 		dprintk(DERROR, "unsupported interface type %x, expected %x\n",
 			conf->type, __NL80211_IFTYPE_AFTER_LAST);
 		return -EOPNOTSUPP;
@@ -472,9 +461,17 @@ static int piper_hw_add_intf(struct ieee80211_hw *hw,
 
 	switch (conf->type) {
 	case NL80211_IFTYPE_ADHOC:
+		piper_set_status_led(piperp->hw, led_adhoc);
+		piperp->if_type = conf->type;
+		break;
+
 	case NL80211_IFTYPE_STATION:
+		piper_set_status_led(hw, led_not_associated);
+		piperp->if_type = conf->type;
+		break;
+
 	case NL80211_IFTYPE_MESH_POINT:
-		digi->if_type = conf->type;
+		piperp->if_type = conf->type;
 		break;
 	default:
 		return -EOPNOTSUPP;

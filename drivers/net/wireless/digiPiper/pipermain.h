@@ -70,6 +70,11 @@ enum led_states {
 	led_associated
 };
 
+/* Available leds */
+enum wireless_led {
+	STATUS_LED,
+	ACTIVITY_LED,
+};
 
 typedef struct nv_wcd_header {
 	char magic_string[8];	/* WCALDATA */
@@ -244,6 +249,7 @@ struct piper_pdata {
 	void			(*reset) (struct piper_priv *, int);
 	int			(*init) (struct piper_priv *);
 	int			(*late_init) (struct piper_priv *);
+	void		(*set_led) (struct piper_priv *, enum wireless_led, int);
 };
 
 /* main */
