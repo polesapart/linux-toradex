@@ -20,6 +20,7 @@
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
+#include "airoha.h"
 #include "digiPs.h"
 
 
@@ -50,6 +51,170 @@ struct ps_stats {
 	unsigned int jiffiesOn;
 	unsigned int jiffiesOff;
 } stats;
+
+int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb);
+
+
+static int ps_free_frame(struct piper_priv *piperp, struct sk_buff *skb)
+{
+	if (skb)
+	{
+		dev_kfree_skb(skb);
+		piperp->ps.tx_complete_fn = NULL;
+	}
+
+	return PS_DONT_RETURN_SKB_TO_MAC80211;
+}
+
+static int ps_inject_frame(struct piper_priv *piperp, struct sk_buff *skb)
+{
+	if (piper_hw_tx(piperp->hw, piperp->ps.psFrame) == 0)
+	{
+		piperp->ps.tx_complete_fn = ps_free_frame;
+	}
+	else
+	{
+		printk(KERN_ERR "ps_inject_frame() failed unexpectedly when sending null data frame.\n");
+		ps_free_frame(piperp, piperp->ps.psFrame);
+	}
+	piperp->ps.psFrame = NULL;
+
+	return PS_RETURN_SKB_TO_MAC80211;
+}
+
+
+#define PS_ON			(true)
+#define PS_OFF			(false)
+
+
+#define ACK_SIZE		(14)	/* length of ACK in bytes */
+
+// Length (in usecs) of a MAC frame of bytes at rate (in 500kbps units)
+// not including SIFS and PLCP preamble/header
+#define	CCK_DURATION(bytes, rate)		((16*(bytes)+(rate)-1)/(rate))
+
+#define USE_SHORTPREAMBLE(is_1_Mbit, use_short_preamble)	((!is_1_Mbit) & use_short_preamble)
+
+// Length (in usecs) of SIFS and PLCP preamble/header.
+#define	PRE_LEN(is_1_Mbit, use_short_preamble)			(USE_SHORTPREAMBLE(is_1_Mbit, use_short_preamble) ? 106 : 202)
+
+// Duration (in usecs) of an OFDM frame at rate (in 500kbps units)
+// including SIFS and PLCP preamble/header
+#define	OFDM_DURATION(bytes, rate)	(36 + 4*((4*(bytes)+(rate)+10)/(rate)))
+
+static unsigned int getRateIndex(struct piper_priv *piperp)
+{
+    unsigned int rates = piperp->ac->rd_reg(piperp, MAC_SSID_LEN);
+    unsigned int result = AIROHA_LOWEST_OFDM_RATE_INDEX;
+
+    if (piperp->rf->getBand(piperp->channel) == IEEE80211_BAND_2GHZ)
+    {
+        if ((rates & MAC_PSK_BRS_MASK) == 0)
+        {
+        	result = AIROHA_LOWEST_PSK_RATE_INDEX;
+        }
+    }
+
+    return result;
+}
+
+static int getAckDuration (struct piper_priv *piperp)
+{
+	bool is_1_Mbit = (getRateIndex(piperp) == AIROHA_LOWEST_PSK_RATE_INDEX);
+	int duration = 0;
+
+	if (is_1_Mbit)
+	{
+		duration = CCK_DURATION(ACK_SIZE, 1);
+	}
+	else
+	{
+		duration = OFDM_DURATION(ACK_SIZE, 6);
+	}
+
+	duration += PRE_LEN(is_1_Mbit, piperp->use_short_preamble);
+
+	return duration;
+}
+
+
+/*
+ * This function is used to notify the AP about the current state of
+ * power save.  One of the bits in the 802.11 header field is set to
+ * indicate the status of power save.  This bit is actually set appropriately
+ * for all frames sent, we just send a null data frame just to make
+ * sure something is sent to the AP in a reasonable amount of time.
+ */
+static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
+{
+	struct sk_buff *skb = NULL;
+	_80211HeaderType *header;
+	struct ieee80211_tx_info *tx_info;
+
+	if ((piperp->ps.tx_complete_fn != NULL) || (piperp->ps.psFrame != NULL))
+	{
+		printk(KERN_DEBUG "sendNullDataFrame called when there was a frame already on the queue.\n");
+		goto sendNullDataFrame_Exit;
+	}
+
+	skb = __dev_alloc_skb(sizeof(_80211HeaderType), GFP_ATOMIC);
+	if (skb == NULL)
+		goto sendNullDataFrame_Exit;
+
+	tx_info = (struct ieee80211_tx_info *) skb->cb;
+
+	skb_reserve(skb, piperp->hw->extra_tx_headroom);
+	header = (_80211HeaderType *) skb_put(skb, sizeof(_80211HeaderType));
+	memset(header, 0, sizeof(*header));
+	header->fc.type = TYPE_NULL_DATA;
+	header->fc.pwrMgt = isPowerSaveOn;
+	header->duration = getAckDuration(piperp);
+	memcpy(header->addr1, piperp->bssid, sizeof(header->addr1));
+	memcpy(header->addr2, piperp->pdata->macaddr, sizeof(header->addr2));
+	memcpy(header->addr3, piperp->bssid, sizeof(header->addr3));
+
+	tx_info->flags = IEEE80211_TX_CTL_ASSIGN_SEQ | IEEE80211_TX_CTL_FIRST_FRAGMENT;
+	tx_info->band = piperp->rf->getBand(piperp->channel);
+	tx_info->antenna_sel_tx = 1;	/* actually this is ignored for now*/
+	tx_info->control.rates[0].idx = 0;
+	tx_info->control.rates[0].count = 3;		/* 3 retries, value is completely arbitrary*/
+	tx_info->control.rates[0].flags = 0;
+	tx_info->control.rates[1].idx = -1;
+	tx_info->control.rts_cts_rate_idx = -1;
+
+	if ((piperp->txPacket == NULL) && (piperp->is_radio_on))
+	{
+		/*
+		 * Note that we are called with interrupts off, so there should
+		 * be no race condition with the fn call below.
+		 */
+		if (piper_hw_tx(piperp->hw, skb) != 0)
+		{
+			printk(KERN_ERR "piper_hw_tx() failed unexpectedly when sending null data frame.\n");
+			ps_free_frame(piperp, skb);
+		}
+		else
+		{
+			/*
+			 * Use our special tx complete function which will free
+			 * the SKB.
+			 */
+			piperp->ps.tx_complete_fn = ps_free_frame;
+		}
+	}
+	else
+	{
+		piperp->ps.tx_complete_fn = ps_inject_frame;
+		piperp->ps.psFrame = skb;
+	}
+
+sendNullDataFrame_Exit:
+	return;
+}
+
+
+
+
 
 /*
  * This API backs up the required transceiver register value and holds the
@@ -317,6 +482,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			memset(&stats, 0, sizeof(stats));
 			stats.modeStart = jiffies;
 			stats.cycleStart = jiffies;
+			sendNullDataFrame(piperp, PS_ON);
 			/*
 			 * Will start it the next time we receive a beacon.
 			 */
@@ -335,11 +501,12 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 		if (   (piperp->ps.beacon_int != 0)
 		    && ((jiffies - stats.modeStart) != 0))
 		{
-			printk(KERN_ERR "jiffiesOff = %u, jiffiesOn = %u, total time = %u\n", stats.jiffiesOff, stats.jiffiesOn, (jiffies - stats.modeStart));
+			printk(KERN_ERR "jiffiesOff = %u, jiffiesOn = %u, total time = %lu\n", stats.jiffiesOff, stats.jiffiesOn, (jiffies - stats.modeStart));
 			printk(KERN_ERR "Powered down %ld percent of the time.\n", (stats.jiffiesOff * 100) / (jiffies - stats.modeStart));
-			printk(KERN_ERR "Received %u of %u beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / piperp->ps.beacon_int);
+			printk(KERN_ERR "Received %u of %lu beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / piperp->ps.beacon_int);
 		}
 		piperp->ps.mode = PS_MODE_FULL_POWER;
+		sendNullDataFrame(piperp, PS_OFF);
 	}
 
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);

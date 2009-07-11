@@ -285,7 +285,7 @@ bool piper_prepare_aes_datablob(struct piper_priv *piperp, unsigned int keyIndex
  * up the information the trasmit tasklet will need, and then
  * schedule the tasklet.
  */
-static int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
+int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
 	struct piper_priv *piperp = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
@@ -294,7 +294,6 @@ static int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 
 	/* Sanity checks */
 	if (piperp->txPacket != NULL) {
-		dprintk(DERROR, "called with txPacket not null!\n");
 		return -EBUSY;
 	}
 
@@ -355,6 +354,8 @@ static int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(piper_hw_tx);
+
 
 /*
  * mac80211 calls this routine to initialize the H/W.
@@ -680,6 +681,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
 					   ~BB_GENERAL_CTL_SH_PRE, op_and);
 		}
+		piperp->use_short_preamble = conf->use_short_preamble;
 #else
 		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_SH_PRE, op_or);
 #endif

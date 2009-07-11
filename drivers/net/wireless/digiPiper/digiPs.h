@@ -14,6 +14,12 @@ enum piper_ps_idle_command {
 	PS_RESET_IDLE_TIMER
 };
 
+enum piper_ps_tx_completion_result {
+	PS_RETURN_SKB_TO_MAC80211,
+	PS_DONT_RETURN_SKB_TO_MAC80211
+};
+
+
 /*
  * Current version of mac80211 doesn't set power management bit in frame headers,
  * so I guess we have to for now.

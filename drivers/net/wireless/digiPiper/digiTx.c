@@ -281,6 +281,8 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piperp->txPacket);
 	int i;
+	struct sk_buff *skb;
+
 #define WANT_TRANSMIT_RESULT 	(0)
 #if WANT_TRANSMIT_RESULT
 	const char *resultText[] =
@@ -312,10 +314,27 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	if (piperp->tx_rts)
 		piperp->pstats.ll_stats.dot11RTSSuccessCount++;
 
-	ieee80211_tx_status_irqsafe(piperp->hw, piperp->txPacket);
-
+	skb = piperp->txPacket;
 	piperp->txPacket = NULL;
-	ieee80211_wake_queues(piperp->hw);
+
+	if (piperp->ps.tx_complete_fn) {
+		/*
+		 * If power save has something for us to do...
+		 */
+		if (piperp->ps.tx_complete_fn(piperp, skb) == PS_RETURN_SKB_TO_MAC80211) {
+			ieee80211_tx_status_irqsafe(piperp->hw, skb);
+		}
+	} else {
+		ieee80211_tx_status_irqsafe(piperp->hw, skb);
+	}
+
+	/*
+	 * Although we set piperp->txPacket to NULL above, the piperp->ps.tx_complete_fn
+	 * fn may have started another transmit, so check it before waking up
+	 * the mac80211 library queues.
+	 */
+	if (piperp->txPacket == NULL)
+		ieee80211_wake_queues(piperp->hw);
 }
 EXPORT_SYMBOL_GPL(packet_tx_done);
 

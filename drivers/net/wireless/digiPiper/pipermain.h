@@ -181,6 +181,8 @@ enum piper_ps_state {
 	PS_STATE_WAITING_FOR_BEACON,
 };
 
+struct piper_priv;
+
 struct piper_ps {
 	u32					beacon_int;
 	u32					next_beacon;
@@ -190,6 +192,8 @@ struct piper_ps {
 	enum piper_ps_mode	mode;
 	enum piper_ps_state	state;
 	spinlock_t			lock;
+	int (*tx_complete_fn)(struct piper_priv *piperp, struct sk_buff *skb);
+	struct sk_buff 		*psFrame;
 };
 
 struct piper_priv {
@@ -233,6 +237,7 @@ struct piper_priv {
 	enum nl80211_iftype		if_type;
 	bool				areWeAssociated;
 	bool				is_radio_on;
+	bool				use_short_preamble;
 	int				channel;
 	int				tx_power;
 	u8				bssid[ETH_ALEN];
