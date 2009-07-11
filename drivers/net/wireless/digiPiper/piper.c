@@ -25,6 +25,7 @@
 #include "airohaCalibration.h"
 #include "piperDsp.h"
 #include "piperMacAssist.h"
+#include "digiPs.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
 
@@ -793,6 +794,7 @@ static int __init piper_probe(struct platform_device* pdev)
 		}
 	}
 
+	piper_ps_init(piperp);
 	init_timer(&piperp->tx_timer);
 	piperp->tx_timer.function = tx_timer_timeout;
 	piperp->tx_timer.data = (unsigned long) piperp;
@@ -863,6 +865,7 @@ static int __init piper_probe(struct platform_device* pdev)
 error_sysfs:
 	piper_unregister_hw(piperp);
 error_reg_hw:
+	piper_ps_deinit(piperp);
 	piper_free_rx_tx(piperp);
 retor_irq:
 	free_irq(piperp->irq, piperp);
@@ -885,6 +888,7 @@ static int piper_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_antenna_sel);
 	device_remove_file(&pdev->dev, &dev_attr_power_duty);
 
+	piper_ps_deinit(piperp);
 	piper_unregister_hw(piperp);
 	disable_irq(piperp->irq);
 	piper_clear_irq_mask(piperp, 0xffffffff);

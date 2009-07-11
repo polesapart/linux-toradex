@@ -20,6 +20,7 @@
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
+#include "digiPs.h"
 
 #define WANT_RECEIVE_COUNT_SCROLL	(0)
 #define AES_TIMEOUT			(10000)
@@ -232,6 +233,7 @@ static inline void handle_ack(struct piper_priv *piperp, int signal_strength)
 	}
 }
 
+
 /*
  * This is the entry point for the receive tasklet.  It is executed
  * to process receive packets.  It allocates an SKB and receives
@@ -286,6 +288,9 @@ void piper_rx_tasklet(unsigned long context)
 
 				if (fr_ctrl_field.type == TYPE_ACK)
 					handle_ack(piperp, status.signal);
+
+				if (fr_ctrl_field.type == TYPE_BEACON)
+					piper_ps_handle_beacon(piperp, skb);
 
 				if ((fr_ctrl_field.type == TYPE_ACK)
 				    || (fr_ctrl_field.type == TYPE_RTS)

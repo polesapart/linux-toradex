@@ -22,6 +22,7 @@
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
+#include "digiPs.h"
 
 #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
 #define AES_TIMEOUT			(10000)
@@ -334,6 +335,7 @@ void piper_tx_tasklet(unsigned long context)
 	int err;
 
 	del_timer_sync(&piperp->tx_timer);
+	piper_ps_active(piperp);
 
 	/*
 	 * Clear flags here to cover ACK case.  We do not clear the flags in the ACK

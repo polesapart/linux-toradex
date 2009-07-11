@@ -23,6 +23,7 @@
 #include "pipermain.h"
 #include "mac.h"
 #include "phy.h"
+#include "digiPs.h"
 
 #define MAC_DEBUG	(1)
 
@@ -315,7 +316,7 @@ static int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 		assign_seq_number(skb,
 				  !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
 	}
-
+	piper_ps_set_header_flag(piperp, ((_80211HeaderType *)skb->data));
 	piperp->use_hw_aes = false;
 	if (txInfo->control.hw_key != NULL) {
 		/*
@@ -504,6 +505,15 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
 
 	dprintk(DVVERBOSE, "\n");
 
+	if (changed & IEEE80211_CONF_CHANGE_PS) {
+		/*
+		 * Enable power save mode if bit set in flags, and if we are in station
+		 * mode.  Power save is not supported in ad-hoc/mesh mode.
+		 */
+		piper_ps_set(piperp, (	(conf->flags & IEEE80211_CONF_PS)
+							  && (piperp->if_type == NL80211_IFTYPE_STATION)
+							  && (piperp->areWeAssociated)));
+	}
 	/* Should we turn the radio off? */
 	if ((piperp->is_radio_on = (conf->radio_enabled != 0)) != 0) {
 		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
@@ -627,6 +637,13 @@ static void piper_hw_config_filter(struct ieee80211_hw *hw,
 }
 
 /*
+ * There are 1024 TU's (time units) to a second, and HZ jiffies to a
+ * second.  This macro converts TUs to jiffies.
+ */
+#define TU_TO_JIFFIES(x)		(((x*HZ) + 512) / 1024)
+
+
+/*
  * mac80211 calls this routine when something about our BSS has changed.
  * Usually, this routine only gets called when we associate, or disassociate.
  */
@@ -644,6 +661,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 			piper_set_status_led(hw, conf->assoc ? led_associated : led_not_associated);
 		}
 		piperp->areWeAssociated = conf->assoc;
+		piperp->ps.aid = conf->aid;
 
 		digi_dbg(" AP %s\n", conf->assoc ?
 			"associated" : "disassociated");
@@ -652,7 +670,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 		piperp->tx_cts = conf->use_cts_prot;
 	}
 	if (changed & BSS_CHANGED_ERP_PREAMBLE) {
-#define WANT_SHORT_PREAMBLE_SUPPORT     (0)
+#define WANT_SHORT_PREAMBLE_SUPPORT     (1)
 /* TODO: Determine if short preambles really hurt us, or if I'm just seeing things. */
 #if WANT_SHORT_PREAMBLE_SUPPORT
 		if (conf->use_short_preamble) {
@@ -702,6 +720,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 	reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
 	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, reg, op_write);
 	reg = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
+	piperp->ps.beacon_int = TU_TO_JIFFIES(conf->beacon_int);
 	reg |= conf->beacon_int << 16;
 	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, reg, op_write);
 }
@@ -854,6 +873,7 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 		  | IEEE80211_HW_SIGNAL_DBM
 		  | IEEE80211_HW_NOISE_DBM
 		  | IEEE80211_HW_SPECTRUM_MGMT
+		  | IEEE80211_HW_NO_STACK_DYNAMIC_PS
 #if !WANT_SHORT_PREAMBLE_SUPPORT
 		  | IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE
 #endif

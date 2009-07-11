@@ -168,6 +168,28 @@ struct piper_stats {
 	u32				tx_retry_index;
 	struct ieee80211_tx_queue_stats		tx_queue;
 	struct ieee80211_low_level_stats	ll_stats;
+	spinlock_t		lock;
+};
+
+enum piper_ps_mode {
+	PS_MODE_LOW_POWER,
+	PS_MODE_FULL_POWER
+};
+
+enum piper_ps_state {
+	PS_STATE_WANT_TO_SLEEP,
+	PS_STATE_WAITING_FOR_BEACON,
+};
+
+struct piper_ps {
+	u32					beacon_int;
+	u32					next_beacon;
+	u32					next_wakeup;
+	u16					aid;
+	struct timer_list	timer;
+	enum piper_ps_mode	mode;
+	enum piper_ps_state	state;
+	spinlock_t			lock;
 };
 
 struct piper_priv {
@@ -186,6 +208,7 @@ struct piper_priv {
 	struct timer_list		tx_timer;
 	struct timer_list		led_timer;
 	enum led_states			led_state;
+	struct piper_ps			ps;
 	struct access_ops		*ac;
 	spinlock_t			aesLock;
 	struct digi_rf_ops		*rf;

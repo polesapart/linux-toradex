@@ -11,5 +11,6 @@ mpiper-y += piperMacAssist.o
 mpiper-y += phy.o
 mpiper-y += adc121c027.o
 mpiper-y += airohaCalibration.o
+mpiper-y += digiPs.o
 obj-$(CONFIG_DIGI_PIPER_WIFI) := mpiper.o
 
