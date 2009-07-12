@@ -178,7 +178,9 @@ enum piper_ps_mode {
 
 enum piper_ps_state {
 	PS_STATE_WANT_TO_SLEEP,
+	PS_STATE_SLEEPING,
 	PS_STATE_WAITING_FOR_BEACON,
+	PS_STATE_WAITING_FOR_BUFFERED_DATA
 };
 
 struct piper_priv;
@@ -194,6 +196,8 @@ struct piper_ps {
 	spinlock_t			lock;
 	int (*tx_complete_fn)(struct piper_priv *piperp, struct sk_buff *skb);
 	struct sk_buff 		*psFrame;
+	bool				apHasBufferedFrame;
+	bool				expectingMulticastFrames;
 };
 
 struct piper_priv {

@@ -157,7 +157,8 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 		goto sendNullDataFrame_Exit;
 	}
 
-	skb = __dev_alloc_skb(sizeof(_80211HeaderType), GFP_ATOMIC);
+	skb = __dev_alloc_skb(sizeof(_80211HeaderType) + piperp->hw->extra_tx_headroom,
+							GFP_ATOMIC);
 	if (skb == NULL)
 		goto sendNullDataFrame_Exit;
 
@@ -177,7 +178,7 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	tx_info->band = piperp->rf->getBand(piperp->channel);
 	tx_info->antenna_sel_tx = 1;	/* actually this is ignored for now*/
 	tx_info->control.rates[0].idx = 0;
-	tx_info->control.rates[0].count = 3;		/* 3 retries, value is completely arbitrary*/
+	tx_info->control.rates[0].count = 5;		/* 5 retries, value is completely arbitrary*/
 	tx_info->control.rates[0].flags = 0;
 	tx_info->control.rates[1].idx = -1;
 	tx_info->control.rts_cts_rate_idx = -1;
@@ -209,6 +210,79 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	}
 
 sendNullDataFrame_Exit:
+	return;
+}
+
+/*
+ * This routine sends a PS-Poll frame, which is used to request a buffered
+ * frame from the AP.
+ *
+ * TODO: Share code with sendNullDataFrame.
+ */
+static void sendPSPollFrame(struct piper_priv *piperp)
+{
+	struct sk_buff *skb = NULL;
+	_80211PSPollType *header;
+	struct ieee80211_tx_info *tx_info;
+
+	if ((piperp->ps.tx_complete_fn != NULL) || (piperp->ps.psFrame != NULL))
+	{
+		printk(KERN_DEBUG "sendPSPollFrame called when there was a frame already on the queue.\n");
+		goto sendPSPollFrame_Exit;
+	}
+
+	skb = __dev_alloc_skb(sizeof(_80211PSPollType) + piperp->hw->extra_tx_headroom,
+							GFP_ATOMIC);
+	if (skb == NULL)
+		goto sendPSPollFrame_Exit;
+
+	tx_info = (struct ieee80211_tx_info *) skb->cb;
+
+	skb_reserve(skb, piperp->hw->extra_tx_headroom);
+	header = (_80211PSPollType *) skb_put(skb, sizeof(_80211PSPollType));
+	memset(header, 0, sizeof(*header));
+	header->fc.type = TYPE_PSPOLL;
+	header->fc.pwrMgt = (piperp->ps.mode == PS_MODE_LOW_POWER);
+	header->aid = piperp->ps.aid;
+	memcpy(header->addr1, piperp->bssid, sizeof(header->addr1));
+	memcpy(header->addr2, piperp->pdata->macaddr, sizeof(header->addr2));
+
+	tx_info->flags = IEEE80211_TX_CTL_FIRST_FRAGMENT;
+	tx_info->band = piperp->rf->getBand(piperp->channel);
+	tx_info->antenna_sel_tx = 1;	/* actually this is ignored for now*/
+	tx_info->control.rates[0].idx = 0;
+	tx_info->control.rates[0].count = 3;		/* 3 retries, value is completely arbitrary*/
+	tx_info->control.rates[0].flags = 0;
+	tx_info->control.rates[1].idx = -1;
+	tx_info->control.rts_cts_rate_idx = -1;
+
+	if ((piperp->txPacket == NULL) && (piperp->is_radio_on))
+	{
+		/*
+		 * Note that we are called with interrupts off, so there should
+		 * be no race condition with the fn call below.
+		 */
+		if (piper_hw_tx(piperp->hw, skb) != 0)
+		{
+			printk(KERN_ERR "piper_hw_tx() failed unexpectedly when sending PS-Poll frame.\n");
+			ps_free_frame(piperp, skb);
+		}
+		else
+		{
+			/*
+			 * Use our special tx complete function which will free
+			 * the SKB.
+			 */
+			piperp->ps.tx_complete_fn = ps_free_frame;
+		}
+	}
+	else
+	{
+		piperp->ps.tx_complete_fn = ps_inject_frame;
+		piperp->ps.psFrame = skb;
+	}
+
+sendPSPollFrame_Exit:
 	return;
 }
 
@@ -246,13 +320,13 @@ static void MacEnterSleepMode(struct piper_priv *piperp)
     piperp->ac->wr_reg(piperp, MAC_CTL, 0, op_write);
     piperp->ac->wr_reg(piperp, BB_IRQ_MASK, 0, op_write);
 
-#if 0
     // held the transceiver in reset mode
 	if (piperp->pdata->reset)
 		piperp->pdata->reset(piperp, 1);
-#endif
+
     stats.jiffiesOn += jiffies - stats.cycleStart;
     stats.cycleStart = jiffies;
+	disable_irq(piperp->irq);
 }
 
 
@@ -265,12 +339,10 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
 {
     int i;
 
-#if 0
 	if (piperp->pdata->reset) {
 		piperp->pdata->reset(piperp, 0);
 		udelay(500);
 	}
-#endif
 /*
  * TODO:  Fix these magic numbers.  They came from the NET+OS driver.
  */
@@ -278,6 +350,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
     // store the registers back
     piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
     piperp->ac->wr_reg(piperp, BB_RSSI, savedRegs[INDX_RSSI_AES], op_write);
+    piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
     piperp->ac->wr_reg(piperp, BB_SPI_CTRL, savedRegs[INDX_SPI_CTRL], op_write);
     piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, savedRegs[INDX_CONF1], op_write);
     piperp->ac->wr_reg(piperp, BB_CONF_2, savedRegs[INDX_CONF2], op_write);
@@ -307,10 +380,10 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
 	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xff, op_write);
 	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0, op_write);
 
-    piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
-
+	piperp->rf->set_chan(piperp->hw, piperp->channel);
     stats.jiffiesOff += jiffies - stats.cycleStart;
     stats.cycleStart = jiffies;
+	enable_irq(piperp->irq);
 }
 
 
@@ -326,7 +399,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  * Amount of time we have to be idle before we will go to sleep.
  * This value is completely arbitrary.
  */
-#define IDLE_TIMEOUT			(10)
+#define IDLE_TIMEOUT			(20)
 
 /*
  * Number of milliseconds to wake up before beacon.  Linux might wake us
@@ -334,7 +407,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  * to account for errors in the kernel's scheduler.  It is very important
  * for us to be awake when the beacon arrives.
  */
-#define WAKEUP_TIME_BEFORE_BEACON	(10)
+#define WAKEUP_TIME_BEFORE_BEACON	(20)
 
 /*
  * Minimum amount of time we will sleep.  If we will end up sleeping
@@ -367,7 +440,7 @@ static void piper_ps_set_next_timer_event(struct piper_priv *piperp)
 				add_timer(&piperp->ps.timer);
 			}
 		}
-		else if (piperp->ps.state == PS_STATE_WAITING_FOR_BEACON)
+		else if (piperp->ps.state == PS_STATE_SLEEPING)
 		{
 			piperp->ps.timer.expires = piperp->ps.next_wakeup;
 			add_timer(&piperp->ps.timer);
@@ -392,7 +465,7 @@ void piper_ps_active(struct piper_priv *piperp)
 			 * This will reset the idle timer.
 			 */
 			piper_ps_set_next_timer_event(piperp);
-		} else {
+		} else if (piperp->ps.state == PS_STATE_SLEEPING) {
 			/*
 			 * If we are powered down, then power up and
 			 * reset the idle timer.
@@ -426,17 +499,16 @@ static void ps_timer(unsigned long context)
 			if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
 			{
 				/* TODO:  What about roll over */
-				piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
+				piperp->ps.state = PS_STATE_SLEEPING;
 				MacEnterSleepMode(piperp);
 				piper_ps_set_next_timer_event(piperp);
 			}
 		}
-		else if (piperp->ps.state == PS_STATE_WAITING_FOR_BEACON)
+		else if (piperp->ps.state == PS_STATE_SLEEPING)
 		{
 			stats.expectedBeacons++;
 			MacEnterActiveMode(piperp);
-			piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
-			piper_ps_set_next_timer_event(piperp);
+			piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
 		}
 	}
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);
@@ -446,9 +518,14 @@ static void ps_timer(unsigned long context)
  * Called on every beacon.  Reset timer for next beacon, and process the
  * beacon's TIM information.
  */
-void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb)
+#define FCS_SIZE		(4)
+#define TIM_ELEMENT		(5)
+#define MIN_TIM_SIZE	(5)
+static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb)
 {
 	unsigned long flags;
+	unsigned char *bp = skb->data + sizeof(_80211HeaderType) + 12;
+	unsigned char *end = &skb->data[skb->len - FCS_SIZE - MIN_TIM_SIZE];
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
@@ -458,12 +535,125 @@ void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb)
 
 	if (piperp->ps.mode == PS_MODE_LOW_POWER)
 	{
-		piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
-		piper_ps_set_next_timer_event(piperp);
+		for ( ; bp < end; bp = bp+bp[1]+2) {
+			if (*bp == TIM_ELEMENT) {
+				u8 length = bp[1];
+				bool is_aid_0_set = bp[4] & 1;
+				u8 offset = bp[4] & 0xfe;
+
+				piperp->ps.expectingMulticastFrames = is_aid_0_set;
+
+				if (length > 3)	{ /* if partial virtual bitmap is not empty */
+					int firstBit = offset * 16;
+					int lastBit = (((length - 3) * 8) + firstBit) - 1;
+
+					if ((piperp->ps.aid >= firstBit) && (piperp->ps.aid <= lastBit)) {
+						int idx = (piperp->ps.aid - firstBit) / 8;
+						u8 mask = 1 << ((piperp->ps.aid - firstBit) % 8);
+
+						piperp->ps.apHasBufferedFrame = (bp[5 + idx] & mask) != 0;
+					}
+					break;
+				}
+				if (piperp->ps.expectingMulticastFrames || piperp->ps.apHasBufferedFrame)
+					printk (KERN_ERR "multicast %d, to us %d\n", piperp->ps.expectingMulticastFrames,
+							piperp->ps.apHasBufferedFrame);
+			}
+		}
+		if (piperp->ps.expectingMulticastFrames)
+		{
+			piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
+			/*
+			 * AP will be sending us multicast frames.  The receive processor
+			 * will take care of scheduling further stuff after we have received
+			 * them.
+			 */
+		}
+		else
+		{
+			/*
+			 * Not expecting any multicast frames to follow.
+			 */
+			if (piperp->ps.apHasBufferedFrame)
+			{
+				/*
+				 * Ask for our buffered data if there is any.
+				 */
+				piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
+				sendPSPollFrame(piperp);
+			}
+			else
+			{
+				/*
+				 * Go back to sleep.  We let the idle timer time us out
+				 * because we could be in the middle of a transmit.
+				 */
+				piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
+				piper_ps_set_next_timer_event(piperp);
+			}
+		}
+
 	}
+
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);
 }
-EXPORT_SYMBOL_GPL(piper_ps_handle_beacon);
+
+
+/*
+ * This routine is called so we can process incoming frames.  We do the
+ * handshaking to receive buffered frames in PS mode here.
+ */
+void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb)
+{
+	_80211HeaderType *header = (_80211HeaderType *) skb->data;
+
+	if (header->fc.type == TYPE_BEACON)
+	{
+		piper_ps_handle_beacon(piperp, skb);
+	}
+	else
+	{
+		unsigned long flags;
+
+		/*
+		 * The lock is needed because we may call sendPSPollFrame which
+		 * expected to be called locked.
+		 */
+		spin_lock_irqsave(&piperp->ps.lock, flags);
+
+		if (piperp->ps.expectingMulticastFrames)
+		{
+			if (((header->addr1[0] & 1) == 0) || (header->fc.moreData == 0))
+			{
+				piperp->ps.expectingMulticastFrames = false;
+				if (piperp->ps.apHasBufferedFrame)
+				{
+					sendPSPollFrame(piperp);
+				}
+				else
+				{
+					piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
+					piper_ps_set_next_timer_event(piperp);
+				}
+			}
+		}
+		else if (piperp->ps.apHasBufferedFrame)
+		{
+			if (header->fc.moreData)
+			{
+				sendPSPollFrame(piperp);
+			}
+			else
+			{
+				piperp->ps.apHasBufferedFrame = false;
+				piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
+				piper_ps_set_next_timer_event(piperp);
+			}
+		}
+		spin_unlock_irqrestore(&piperp->ps.lock, flags);
+	}
+}
+EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
 
 
 /*
@@ -478,6 +668,9 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 	if (powerSaveOn) {
 		printk(KERN_ERR "** Power save on\n");
 		if (piperp->ps.mode != PS_MODE_LOW_POWER) {
+printk(KERN_ERR "AID = %d, gpio = %d.\n", piperp->ps.aid, piperp->pdata->rst_gpio);
+			piperp->ps.apHasBufferedFrame = false;
+			piperp->ps.expectingMulticastFrames = false;
 			piperp->ps.mode = PS_MODE_LOW_POWER;
 			memset(&stats, 0, sizeof(stats));
 			stats.modeStart = jiffies;
@@ -491,7 +684,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 		printk(KERN_ERR "** Power save off\n");
 		del_timer_sync(&piperp->ps.timer);
 		if (   (piperp->ps.mode == PS_MODE_LOW_POWER)
-			&& (piperp->ps.state == PS_STATE_WAITING_FOR_BEACON))
+			&& (piperp->ps.state == PS_STATE_SLEEPING))
 		{
 			/*
 			 * If we were powered down, then power up.

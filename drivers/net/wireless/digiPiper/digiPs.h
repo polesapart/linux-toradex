@@ -30,7 +30,7 @@ enum piper_ps_tx_completion_result {
 
 
 void piper_ps_active(struct piper_priv *piperp);
-void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb);
+void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb);
 void piper_ps_init(struct piper_priv *piperp);
 void piper_ps_deinit(struct piper_priv *piperp);
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn);

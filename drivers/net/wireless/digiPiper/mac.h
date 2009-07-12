@@ -345,6 +345,13 @@ typedef PACKED_H struct {
 	SeqControlU squ;			// Sequence control fields
 } PACKED_F _80211HeaderType;
 
+typedef PACKED_H struct {
+	FrameControl_t fc;			// Frame control
+	unsigned short aid;   		// association identifier
+	MacAddr	addr1;				// Address 1
+	MacAddr	addr2;				// Address 2
+} PACKED_F _80211PSPollType;
+
 #define _80211_HEADER_LENGTH	(sizeof(_80211HeaderType))
 #define TX_HEADER_LENGTH	(sizeof(struct ofdm_hdr) + sizeof(struct tx_frame_hdr))
 /* FIFO sizes in bytes */

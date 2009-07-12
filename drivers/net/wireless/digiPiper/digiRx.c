@@ -289,9 +289,6 @@ void piper_rx_tasklet(unsigned long context)
 				if (fr_ctrl_field.type == TYPE_ACK)
 					handle_ack(piperp, status.signal);
 
-				if (fr_ctrl_field.type == TYPE_BEACON)
-					piper_ps_handle_beacon(piperp, skb);
-
 				if ((fr_ctrl_field.type == TYPE_ACK)
 				    || (fr_ctrl_field.type == TYPE_RTS)
 				    || (fr_ctrl_field.type == TYPE_CTS)) {
@@ -305,6 +302,7 @@ void piper_rx_tasklet(unsigned long context)
 						piperp->beacon.weSentLastOne = false;
 					}
 
+				piper_ps_process_receive_frame(piperp, skb);
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
 					ieee80211_rx_irqsafe(piperp->hw, skb, &status);
 #else
