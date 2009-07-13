@@ -66,6 +66,7 @@ static int ps_free_frame(struct piper_priv *piperp, struct sk_buff *skb)
 	return PS_DONT_RETURN_SKB_TO_MAC80211;
 }
 
+
 static int ps_inject_frame(struct piper_priv *piperp, struct sk_buff *skb)
 {
 	if (piper_hw_tx(piperp->hw, piperp->ps.psFrame) == 0)
@@ -81,6 +82,7 @@ static int ps_inject_frame(struct piper_priv *piperp, struct sk_buff *skb)
 
 	return PS_RETURN_SKB_TO_MAC80211;
 }
+
 
 
 #define PS_ON			(true)
@@ -287,6 +289,18 @@ sendPSPollFrame_Exit:
 }
 
 
+static u32 saved_mac_regs[][2] = {
+	/* Register, value */
+	{BB_GENERAL_CTL,	0},
+	{BB_GENERAL_STAT,	0},
+	{BB_RSSI,		0},
+	{BB_IRQ_MASK,		0},
+	{BB_SPI_CTRL,		0},
+	{BB_TRACK_CONTROL,	0},
+	{BB_CONF_2,		0},
+	{BB_OUTPUT_CONTROL,	0},
+	{MAC_CTL,		0}
+};
 
 
 
@@ -297,36 +311,36 @@ sendPSPollFrame_Exit:
  */
 static void MacEnterSleepMode(struct piper_priv *piperp)
 {
-	/*
-	 * Interrupts are already disabled when we get here.
-	 */
-    while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
-        ;
+	int i;
 
-    while ((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
-                ;//wait for tx fifo empty
+	/* wait until aes done  */
+	i = 10000;
+	while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY && i-- > 0)
+		udelay(1);
 
-    savedRegs[INDX_GEN_CONTROL] = piperp->ac->rd_reg(piperp, BB_GENERAL_CTL);
-    savedRegs[INDX_GEN_STATUS]  = piperp->ac->rd_reg(piperp, BB_GENERAL_STAT);
-    savedRegs[INDX_RSSI_AES]    = piperp->ac->rd_reg(piperp, BB_RSSI) & ~BB_RSSI_EAS_BUSY;
-    savedRegs[INDX_INTR_MASK]   = piperp->ac->rd_reg(piperp, BB_IRQ_MASK);
-    savedRegs[INDX_SPI_CTRL]    = piperp->ac->rd_reg(piperp, BB_SPI_CTRL);
-    savedRegs[INDX_CONF1]       = piperp->ac->rd_reg(piperp, BB_TRACK_CONTROL);
-    savedRegs[INDX_CONF2]       = piperp->ac->rd_reg(piperp, BB_CONF_2);
-    savedRegs[INDX_OUT_CTRL]    = piperp->ac->rd_reg(piperp, BB_OUTPUT_CONTROL);
-    savedRegs[INDX_MAC_CONTROL] = piperp->ac->rd_reg(piperp, MAC_CTL);
+	/* wait for tx fifo empty */
+	i = 10000;
+	while (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) &
+		BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0) && i-- > 0)
+		udelay(1);
 
-    piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and); //disable receiving
-    piperp->ac->wr_reg(piperp, MAC_CTL, 0, op_write);
-    piperp->ac->wr_reg(piperp, BB_IRQ_MASK, 0, op_write);
+	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
+		saved_mac_regs[i][1] = piperp->ac->rd_reg(piperp, saved_mac_regs[i][0]);
 
-    // held the transceiver in reset mode
-	if (piperp->pdata->reset)
-		piperp->pdata->reset(piperp, 1);
+	/* disable receiver */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST, op_or);
+	piperp->ac->wr_reg(piperp, MAC_CTL, 0, op_write);
+	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
+
+	disable_irq(piperp->irq);
+
+	/* held the transceiver in reset mode, if reset cb was defined */
+//	if (piperp->pdata->reset)
+//		piperp->pdata->reset(piperp, 1);
 
     stats.jiffiesOn += jiffies - stats.cycleStart;
     stats.cycleStart = jiffies;
-	disable_irq(piperp->irq);
 }
 
 
@@ -337,52 +351,57 @@ static void MacEnterSleepMode(struct piper_priv *piperp)
  */
 static void MacEnterActiveMode(struct piper_priv *piperp)
 {
-    int i;
+	int i;
 
-	if (piperp->pdata->reset) {
-		piperp->pdata->reset(piperp, 0);
-		udelay(500);
-	}
-/*
- * TODO:  Fix these magic numbers.  They came from the NET+OS driver.
- */
+// 	if (piperp->pdata->reset)
+// 		piperp->pdata->reset(piperp, 0);
+//	mdelay(2);
 
-    // store the registers back
-    piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
-    piperp->ac->wr_reg(piperp, BB_RSSI, savedRegs[INDX_RSSI_AES], op_write);
-    piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
-    piperp->ac->wr_reg(piperp, BB_SPI_CTRL, savedRegs[INDX_SPI_CTRL], op_write);
-    piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, savedRegs[INDX_CONF1], op_write);
-    piperp->ac->wr_reg(piperp, BB_CONF_2, savedRegs[INDX_CONF2], op_write);
-    piperp->ac->wr_reg(piperp, BB_AES_CTL, 0, op_write);
-    piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, savedRegs[INDX_OUT_CTRL], op_write);
-    piperp->ac->wr_reg(piperp, MAC_CTL, savedRegs[INDX_MAC_CONTROL], op_write);
+	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
+		piperp->ac->wr_reg(piperp, saved_mac_regs[i][0],
+				  saved_mac_regs[i][1], op_write);
 
-    // set bit-11 in the general control register to a 1 to start the processors
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
+	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0x0, op_write);
 
-    // set the TX-hold bit
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720080, op_write);
+	/* Restart the processors */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~(BB_GENERAL_CTL_RXFIFORST | BB_GENERAL_CTL_TXFIFORST), op_and);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+			   BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
+	/* set the TX-hold bit */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+			   0x37720080, op_write);
 
-    // clear the TX-FIFO memory
-    for (i=0; i<448; i++)
-    	piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
+	/* clear the TX-FIFO memory */
+	for (i = 0; i < 448; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
 
-    // reset the TX-FIFO
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
+	/* reset the TX-FIFO */
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+			   0x377200C0, op_write);
 
-    // release the TX-hold and reset
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720000, op_write);
+	/* release the TX-hold and reset */
+ 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+			   0x37720000, op_write);
 
-    piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, (savedRegs[INDX_GEN_CONTROL] |
-    					0x37000000 | BB_GENERAL_CTL_RX_EN), op_write);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, saved_mac_regs[0][1] |
+			   0x37000000 | BB_GENERAL_CTL_RX_EN, op_write);
 
 	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xff, op_write);
-	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0, op_write);
+	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0x0, op_write);
 
-	piperp->rf->set_chan(piperp->hw, piperp->channel);
+	/*
+	 * Reset the interrupt mask.  We could have been receiving a frame when we
+	 * powered down.  This could cause us to store the wrong mask, so we want
+	 * to make sure we enabe the RX interrupts.  However, we should not have the
+	 * TX interrupts enabled when we come out of power save mode.
+	 */
+	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
+	piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_RX_OVERRUN | BB_IRQ_MASK_RX_FIFO);
+
     stats.jiffiesOff += jiffies - stats.cycleStart;
     stats.cycleStart = jiffies;
+//	mdelay(5);
 	enable_irq(piperp->irq);
 }
 
