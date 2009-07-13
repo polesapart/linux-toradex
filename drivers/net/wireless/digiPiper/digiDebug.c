@@ -133,12 +133,12 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
 
     if (regs & CTRL_STATUS_REGS)
     {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "Gen Ctrl", digi->ac->rd_reg(digi, BB_GENERAL_CTL),
+                printk(KERN_ERR "  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "Gen Ctrl", digi->ac->rd_reg(digi, BB_GENERAL_CTL),
                          "Gen Status", digi->ac->rd_reg(digi, BB_GENERAL_STAT));
     }
     else if (regs & IRQ_REGS)
     {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "IRQ Mask", digi->ac->rd_reg(digi, BB_IRQ_MASK),
+                printk(KERN_ERR "  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", "IRQ Mask", digi->ac->rd_reg(digi, BB_IRQ_MASK),
                          "IRQ Status", digi->ac->rd_reg(digi, BB_IRQ_STAT));
     }
     else if (regs & MAIN_REGS)
@@ -147,12 +147,12 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
                                   "Int Mask", "Int Status", "SPI Data", "SPI Ctrl",
                                   "Data FIFO", "not used", "conf-1", "conf-2", "AES FIFO",
                                 "not used", "AES Ctrl", "IO Ctrl"};
-        digi_dbg("Main Registers:\n");
+        printk(KERN_ERR "Main Registers:\n");
         for (i = BB_VERSION; i <= BB_OUTPUT_CONTROL; i = i+8)
         {
             if ((i != BB_DATA_FIFO) && (i != BB_AES_FIFO))
             {
-                digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[i>>2], digi->ac->rd_reg(digi, i), regNames[(i>>2) + 1], digi->ac->rd_reg(digi, i+4));
+                printk(KERN_ERR "  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[i>>2], digi->ac->rd_reg(digi, i), regNames[(i>>2) + 1], digi->ac->rd_reg(digi, i+4));
             }
         }
     }
@@ -162,43 +162,43 @@ void digiWifiDumpRegisters(struct piper_priv *digi, unsigned int regs)
                                   "OFDM/PSK", "Backoff", "DTIM/List", "B Int",
                                 "Rev/M Stat", "C C/M CTL", "Measure", "Beac Fltr"};
 
-        digi_dbg("Secondary Registers:\n");
+        printk(KERN_ERR "Secondary Registers:\n");
         for (i = MAC_STA_ID0; i <= MAC_BEACON_FILT; i = i+8)
         {
-            digi_dbg("  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[((i - MAC_STA_ID0) >>2)], digi->ac->rd_reg(digi, i), regNames[((i - MAC_STA_ID0)>>2) + 1], digi->ac->rd_reg(digi, i+4));
+            printk(KERN_ERR "  %10.10s = 0x%8.8X  %10.10s = 0x%8.8X\n", regNames[((i - MAC_STA_ID0) >>2)], digi->ac->rd_reg(digi, i), regNames[((i - MAC_STA_ID0)>>2) + 1], digi->ac->rd_reg(digi, i+4));
         }
     }
     if (regs & FRAME_BUFFER_REGS)
     {
         unsigned int word[4];
-        digi_dbg("Real time frame buffer\n");
+        printk(KERN_ERR "Real time frame buffer\n");
 
         word[0] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc0));
         word[1] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc4));
         word[2] = be32_to_cpu(digi->ac->rd_reg(digi, 0xc8));
         word[3] = be32_to_cpu(digi->ac->rd_reg(digi, 0xcc));
-        digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
+        printk(KERN_ERR " %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
         word[0] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd0));
         word[1] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd4));
         word[2] = be32_to_cpu(digi->ac->rd_reg(digi, 0xd8));
         word[3] = be32_to_cpu(digi->ac->rd_reg(digi, 0xdc));
-        digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
+        printk(KERN_ERR " %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
     if (regs & FIFO_REGS)
     {
         unsigned int word[4];
-        digi_dbg("FIFO contents\n");
+        printk(KERN_ERR "FIFO contents\n");
 
         word[0] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[1] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[2] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[3] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
-        digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
+        printk(KERN_ERR " %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
         word[0] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[1] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[2] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
         word[3] = digi->ac->rd_reg(digi, BB_DATA_FIFO);
-        digi_dbg(" %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
+        printk(KERN_ERR " %8.8X %8.8X - %8.8X %8.8X\n", word[0], word[1], word[2], word[3]);
     }
 #endif
 }
