@@ -692,6 +692,7 @@ printk(KERN_ERR "AID = %d, gpio = %d.\n", piperp->ps.aid, piperp->pdata->rst_gpi
 			piperp->ps.apHasBufferedFrame = false;
 			piperp->ps.expectingMulticastFrames = false;
 			piperp->ps.mode = PS_MODE_LOW_POWER;
+			piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
 			memset(&stats, 0, sizeof(stats));
 			stats.modeStart = jiffies;
 			stats.cycleStart = jiffies;
