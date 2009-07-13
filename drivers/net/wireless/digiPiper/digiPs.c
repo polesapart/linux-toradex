@@ -416,7 +416,8 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
 
 /*
  * Amount of time we have to be idle before we will go to sleep.
- * This value is completely arbitrary.
+ * This value has to be large enough to allow us to send a full size
+ * frame at 1 Mbps and receive an ACK.
  */
 #define IDLE_TIMEOUT			(20)
 
@@ -426,7 +427,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  * to account for errors in the kernel's scheduler.  It is very important
  * for us to be awake when the beacon arrives.
  */
-#define WAKEUP_TIME_BEFORE_BEACON	(20)
+#define WAKEUP_TIME_BEFORE_BEACON	(15)
 
 /*
  * Minimum amount of time we will sleep.  If we will end up sleeping
@@ -718,6 +719,7 @@ printk(KERN_ERR "AID = %d, gpio = %d.\n", piperp->ps.aid, piperp->pdata->rst_gpi
 			printk(KERN_ERR "Received %u of %lu beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / piperp->ps.beacon_int);
 		}
 		piperp->ps.mode = PS_MODE_FULL_POWER;
+		piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
 		sendNullDataFrame(piperp, PS_OFF);
 	}
 
