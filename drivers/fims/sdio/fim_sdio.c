@@ -357,16 +357,14 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 }
 
 /*
- * The external interrupt line only supports one edge detection! That means, we must
- * check the status of the line and reconfigure the interrupt trigger type.
+ * Configure the trigger edge of the CD interrupt depending on the current
+ * state of the GPIO
  */
-static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
+static inline int fim_sd_prepare_cd_irq(struct fim_sdio_t *port)
 {
-	struct fim_sdio_t *port;
 	int val;
 	unsigned int type;
-
-	port = (struct fim_sdio_t *)_port;
+ 
 	val = gpio_get_value_ns921x(port->cd_gpio);
 	printk_debug("CD interrupt received (val %i)\n", val);
 
@@ -375,9 +373,21 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 	else
 		type = IRQF_TRIGGER_FALLING;
 	
-	val = set_irq_type(port->cd_irq, type);
-	if (val)
-		printk_err("Failed CD IRQ reconfiguration (%i)\n", val);
+	return set_irq_type(port->cd_irq, type);
+}
+
+/*
+ * The external interrupt line only supports one edge detection! That means, we must
+ * check the status of the line and reconfigure the interrupt trigger type.
+ */
+static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
+{
+	struct fim_sdio_t *port;
+	int ret;
+
+	port = (struct fim_sdio_t *)_port;
+	if ((ret = fim_sd_prepare_cd_irq(port)))
+		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);
 
 	mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 	return IRQ_HANDLED;
@@ -1340,13 +1350,26 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 		}
 	}
 
-	/* By errors use the polling of the line */
+	/*
+	 * By errors (e.g. in the case that we couldn't request the IRQ) use the
+	 * polling function
+	 */
 	if (port->cd_irq < 0) {
 		printk(KERN_DEBUG "Polling the Card Detect line (no IRQ)\n");
 		port->cd_value = 1; /* @XXX: Use an invert value for this purpose */
 		mod_timer(&port->cd_timer, jiffies + HZ / 2);
+	} else {
+		/*
+		 * Setup the card detect interrupt at this point, otherwise the first
+		 * event detection will not work when the system is booted with a
+		 * plugged card.
+		 */
+		if ((retval = fim_sd_prepare_cd_irq(port))) {
+			printk_err("Failed card detect IRQ setup\n");
+			goto exit_free_cdirq;
+		}
 	}
-
+	
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, FIM_SDIO_MAIN_START);
@@ -1356,6 +1379,9 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	printk_dbg("FIM%d running [fw rev 0x%02x]\n", port->fim.picnr, fwver);
 	return 0;
 
+ exit_free_cdirq:
+	free_irq(port->cd_irq, port);
+	
  exit_put_clk:
 	clk_put(port->sys_clk);
 	
