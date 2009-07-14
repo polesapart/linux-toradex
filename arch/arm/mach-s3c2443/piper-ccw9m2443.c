@@ -17,6 +17,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
+#include <linux/gpio.h>
 
 #include <mach/regs-s3c2443-mem.h>
 
@@ -281,6 +282,12 @@ static int piper_init_chip_hw(struct piper_priv *piperp)
 	return ret;
 }
 
+static void ccw9m2443_piper_set_led(struct piper_priv *piperp, enum wireless_led led, int val)
+{
+	if(led == STATUS_LED)
+		gpio_set_value(piperp->pdata->status_led_gpio, (val == 0));
+}
+
 static void ccw9m2443_piper_reset(struct piper_priv *piperp, int reset)
 {
 	gpio_set_value(piperp->pdata->rst_gpio, !reset);
@@ -360,21 +367,45 @@ static struct platform_device piper_device = {
 
 void __init add_device_ccw9m2443_piper(struct piper_pdata *pdata)
 {
+	int ret;
+
 	if (!pdata)
 		return;
 
-	if (pdata->rst_gpio > 0)
-		gpio_request(pdata->rst_gpio, PIPER_DRIVER_NAME);
-	if (pdata->irq_gpio > 0)
-		gpio_request(pdata->irq_gpio, PIPER_DRIVER_NAME);
+	if (pdata->rst_gpio >= 0) {
+		ret = gpio_request(pdata->rst_gpio, PIPER_DRIVER_NAME "-reset-gpio");
+		if (ret != 0)
+			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			       ": failed to request reset gpio %d\n", pdata->rst_gpio);
+		else {
+			/* Configure reset line and hold the chip in reset */
+			gpio_direction_output(pdata->rst_gpio, 0);
+			pdata->reset = ccw9m2443_piper_reset;
+		}
+	}
+	
+	if (pdata->irq_gpio >= 0) {
+		ret = gpio_request(pdata->irq_gpio, PIPER_DRIVER_NAME "-irq-gpio");
+		if (ret != 0)
+			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			       ": failed to request irq gpio %d\n", pdata->irq_gpio);
+	}
 
-	/* Configure reset line and hold the chip in reset */
-	gpio_direction_output(pdata->rst_gpio, 0);
+	if (pdata->status_led_gpio >= 0) {
+		ret = gpio_request(pdata->status_led_gpio, PIPER_DRIVER_NAME "-stat-led");
+		if (ret != 0)
+			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			       ": failed to request status led gpio %d\n",
+			       pdata->status_led_gpio);
+		else {
+			gpio_direction_output(pdata->status_led_gpio, 0);
+			pdata->set_led = ccw9m2443_piper_set_led;
+		}
+	}
 
 	pdata->rf_transceiver = RF_AIROHA_7230;
 	pdata->init = ccw9m2443_piper_init;
 	pdata->late_init = ccw9m2443_piper_late_init;
-	pdata->reset = ccw9m2443_piper_reset;
 	piper_device.dev.platform_data = pdata;
 	platform_device_register(&piper_device);
 }

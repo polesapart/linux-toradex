@@ -241,6 +241,7 @@ struct piper_pdata {
 	u8			macaddr[6];
 	int			rst_gpio;
 	int			irq_gpio;
+	int			status_led_gpio;
 	int			rf_transceiver;
 	wcd_data_t		wcd;
 	struct piper_priv	*piperp;
