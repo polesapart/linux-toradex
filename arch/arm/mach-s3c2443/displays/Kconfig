@@ -5,7 +5,7 @@
 
 if FB_S3C2443_TFT
 
-menu "ConnectCore 9M/Wi9M 2443 Display Type"
+comment "Display selection"
 
 config CC9M2443_VGA
 	bool "CRT VGA video support"
@@ -29,6 +29,4 @@ config CC9M2443_CUSTOM
 	  This enables the support for a customer specific display.
 	  displays/CUSTOM.h has to be modified when selecting this.
 
-endmenu
 endif
-
