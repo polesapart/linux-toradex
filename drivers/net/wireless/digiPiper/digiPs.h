@@ -8,10 +8,9 @@
 
 #include "pipermain.h"
 
-enum piper_ps_idle_command {
-	PS_STOP_IDLE_TIMER,
-	PS_START_IDLE_TIMER,
-	PS_RESET_IDLE_TIMER
+enum piper_ps_events {
+	PS_EVENT_WAKEUP_FOR_BEACON,
+	PS_EVENT_DUTY_CYCLE_EXPIRED
 };
 
 enum piper_ps_tx_completion_result {
@@ -19,6 +18,10 @@ enum piper_ps_tx_completion_result {
 	PS_DONT_RETURN_SKB_TO_MAC80211
 };
 
+enum piper_ps_active_result {
+	PS_CONTINUE_TRANSMIT,
+	PS_STOP_TRANSMIT
+};
 
 /*
  * Current version of mac80211 doesn't set power management bit in frame headers,
@@ -29,7 +32,7 @@ enum piper_ps_tx_completion_result {
 #define piper_ps_set_header_flag(piperp, header) 	header->fc.pwrMgt = (piperp->ps.mode == PS_MODE_LOW_POWER)
 
 
-void piper_ps_active(struct piper_priv *piperp);
+int piper_ps_active(struct piper_priv *piperp);
 void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb);
 void piper_ps_init(struct piper_priv *piperp);
 void piper_ps_deinit(struct piper_priv *piperp);

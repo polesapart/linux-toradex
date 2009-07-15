@@ -189,15 +189,19 @@ struct piper_ps {
 	u32					beacon_int;
 	u32					next_beacon;
 	u32					next_wakeup;
+	u32					next_duty_cycle;
 	u16					aid;
 	struct timer_list	timer;
 	enum piper_ps_mode	mode;
 	enum piper_ps_state	state;
+	unsigned int 		this_event;
 	spinlock_t			lock;
 	int (*tx_complete_fn)(struct piper_priv *piperp, struct sk_buff *skb);
 	struct sk_buff 		*psFrame;
 	bool				apHasBufferedFrame;
 	bool				expectingMulticastFrames;
+	volatile bool		stoppedTransmit;
+	volatile bool		allowTransmits;
 };
 
 struct piper_priv {
