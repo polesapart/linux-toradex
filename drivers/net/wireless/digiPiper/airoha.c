@@ -464,12 +464,12 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 
 		/* Set the channel frequency */
 		write_rf(hw, 0, freqTableAiroha_7230[channelIndex].integer);
+		udelay(150);				/* Mike Schaffner says this is needed here */
 		write_rf(hw, 1, freqTableAiroha_7230[channelIndex].fraction);
+		udelay(150);				/* Mike Schaffner says this is needed here */
 		write_rf(hw, 4, freqTableAiroha_7230[channelIndex].address4);
+		udelay(150);				/* Mike Schaffner says this is needed here */
 
-		/* critical delay for correct calibration */
-		udelay(10);
-		udelay(1000); 				/* 10 uS is not enough for 802.11A channels */
 
 		// Select the frequency band: 5Ghz or 2.4Ghz
 		if (rf_band == IEEE80211_BAND_5GHZ) {
@@ -518,7 +518,6 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		}
 
 		/*Re-enable the rx processing path */
-		udelay(150);	/* Airoha says electronics will be ready in 150 us */
 
 		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
 	} else {
