@@ -61,7 +61,7 @@
  * Set this constant to (1) if you want to force calibration status to
  * be printed.
  */
-#define WANT_CALIBRATION_STATUS		(1)
+#define WANT_CALIBRATION_STATUS		(0)
 
 
 static struct airohaCalibrationData calibration;
