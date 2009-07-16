@@ -61,7 +61,7 @@
  * Set this constant to (1) if you want to force calibration status to
  * be printed.
  */
-#define WANT_CALIBRATION_STATUS		(0)
+#define WANT_CALIBRATION_STATUS		(1)
 
 
 static struct airohaCalibrationData calibration;
@@ -245,7 +245,8 @@ static void findClosestPoints(wcd_curve_t *curve, int value, wcd_point_t **p1, w
 
         for (idx = 1; idx < calibration.nvram->header.numcalpoints; idx++)
         {
-            if (value < curve->points[idx].out_power)
+            if (   (value < curve->points[idx].out_power)
+            	|| (idx == (calibration.nvram->header.numcalpoints - 1)))
             {
                 *p1 = &curve->points[idx - 1];
                 *p2 = &curve->points[idx];
@@ -615,7 +616,6 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t newPowerLevel)
 }
 
 
-#if 1
 
 
 /*
@@ -681,6 +681,108 @@ static void determineMaxAdcValues(wcd_data_t *cdata)
 
 
 /*
+ * This routine writes a default set of calibration values into the
+ * calibration data structure.  Maximum power output is severely limited.
+ */
+static void setDefaultCalibrationValues(struct piper_priv *piperp)
+{
+#define MIN_MDBM			(-2905)
+#define MAX_BG_MDBM			(6000)
+#define DEFAULT_NUM_POINTS	(DEFAULT_NUM_POINTS)
+#define BAND_A_1_START		(0)
+#define BAND_A_2_START		(4)
+#define BAND_A_3_START		(7)
+#define BAND_A_4_START		(15)
+#define BAND_A_5_START		(19)
+#define BAND_A_6_START		(30)
+
+	int i;
+
+	calibration.nvram->header.numcalpoints = 2;
+
+	for (i = 0; i < WCD_CHANNELS_BG; i++)
+	{
+		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 52;
+		calibration.nvram->cal_curves_bg[i][0].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_bg[i][0].points[0].adc_val = 19;
+		calibration.nvram->cal_curves_bg[i][0].points[0].power_index = 0;
+		calibration.nvram->cal_curves_bg[i][0].points[1].out_power = 6000;
+		calibration.nvram->cal_curves_bg[i][0].points[1].adc_val = 52;
+		calibration.nvram->cal_curves_bg[i][0].points[1].power_index = 16;
+
+		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 48;
+		calibration.nvram->cal_curves_bg[i][1].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_bg[i][1].points[0].adc_val = 12;
+		calibration.nvram->cal_curves_bg[i][1].points[0].power_index = 0;
+		calibration.nvram->cal_curves_bg[i][1].points[1].out_power = 6000;
+		calibration.nvram->cal_curves_bg[i][1].points[1].adc_val = 48;
+		calibration.nvram->cal_curves_bg[i][1].points[1].power_index = 24;
+	}
+
+	for (i = BAND_A_1_START; i < BAND_A_2_START; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 22;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 0;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 22;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 19;
+	}
+	for (i = BAND_A_2_START; i < BAND_A_3_START; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 29;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 29;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 20;
+	}
+	for (i = BAND_A_3_START; i < BAND_A_4_START; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 42;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 15;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 4000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 42;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 22;
+	}
+	for (i = BAND_A_4_START; i < BAND_A_5_START; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 54;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 21;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 54;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 18;
+	}
+	for (i = BAND_A_5_START; i < BAND_A_6_START; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 39;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 39;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 26;
+	}
+	for (i = BAND_A_6_START; i < WCD_CHANNELS_A; i++)
+	{
+		calibration.nvram->cal_curves_a[i].max_adc_value = 31;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 31;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 30;
+	}
+}
+
+
+/*
  * The calibration data is passed to the kernel from U-Boot.  The kernel
  * start up routines will have copied the data into digi->pdata->wcd.
  * We do a few sanity checks on the data and set up our own pointers to
@@ -688,7 +790,7 @@ static void determineMaxAdcValues(wcd_data_t *cdata)
  */
 static int getCalibrationData(struct piper_priv *digi)
 {
-    int result = -1;
+    int result = 0;
 
     calibration.nvram = &digi->pdata->wcd;
 
@@ -720,93 +822,18 @@ static int getCalibrationData(struct piper_priv *digi)
         else
         {
             digi_dbg("Calibration data has invalid CRC.\n");
+            setDefaultCalibrationValues(digi);
         }
     }
     else
     {
         digi_dbg("Calibration data has invalid signature.\n");
+        setDefaultCalibrationValues(digi);
     }
 
     return result;
 }
 
-#else
-
-/*
- * This routine generates dummy calibration data for testing.
- */
-static int getCalibrationData(struct piper_priv *digi)
-{
-	int ret=-1;
-	int i, j;
-    static wcd_data_t nvram;
-
-    (void) digi;
-
-    calibration.nvram = &nvram;
-
-	strncpy(calibration.nvram->header.magic_string,"WCALDATA",strlen("WCALDATA"));
-	calibration.nvram->header.numcalpoints = 5;
-
-	for (i=0;i<WCD_CHANNELS_BG;i++) //Fill BG-CCK channels 1-14
-	{
-	    for (j = 0; j < 2; j++)
-	    {
-    		calibration.nvram->cal_curves_bg[i][j].max_power_index = 63;
-
-    		calibration.nvram->cal_curves_bg[i][j].points[0].out_power= 	-2905;		/* Output Power */
-    		calibration.nvram->cal_curves_bg[i][j].points[0].adc_val=	 5;			    /* Measured ADC val */
-    		calibration.nvram->cal_curves_bg[i][j].points[0].power_index= 0;				/* Airoha Power Index */;
-
-    		calibration.nvram->cal_curves_bg[i][j].points[1].out_power= 	6457;		/* Output Power */
-    		calibration.nvram->cal_curves_bg[i][j].points[1].adc_val=	 32;			/* Measured ADC val */
-    		calibration.nvram->cal_curves_bg[i][j].points[1].power_index= 24;				/* Airoha Power Index */;
-
-    		calibration.nvram->cal_curves_bg[i][j].points[2].out_power= 	 11287;		/* Output Power */
-    		calibration.nvram->cal_curves_bg[i][j].points[2].adc_val=	 68;			/* Measured ADC val */
-    		calibration.nvram->cal_curves_bg[i][j].points[2].power_index= 37;				/* Airoha Power Index */;
-
-    		calibration.nvram->cal_curves_bg[i][j].points[3].out_power= 	16307;		/* Output Power */
-    		calibration.nvram->cal_curves_bg[i][j].points[3].adc_val=	108;			/* Measured ADC val */
-    		calibration.nvram->cal_curves_bg[i][j].points[3].power_index= 54;				/* Airoha Power Index */;
-
-    		calibration.nvram->cal_curves_bg[i][j].points[4].out_power=	18198;		/* Output Power */
-    		calibration.nvram->cal_curves_bg[i][j].points[4].adc_val=	130; 			/* Measured ADC val */
-    		calibration.nvram->cal_curves_bg[i][j].points[4].power_index= 63;				/* Airoha Power Index */;
-        }
-	}
-
-
-	for (i=0;i<WCD_CHANNELS_A;i++) //Fill A channels 17-51
-	{
-		calibration.nvram->cal_curves_a[i].max_power_index = 63;
-
-		calibration.nvram->cal_curves_a[i].points[0].out_power= 	-2905;		/* Output Power */
-		calibration.nvram->cal_curves_a[i].points[0].adc_val=	 19;			/* Measured ADC val */
-		calibration.nvram->cal_curves_a[i].points[0].power_index= 0;				/* Airoha Power Index */;
-
-		calibration.nvram->cal_curves_a[i].points[1].out_power= 	6457;		/* Output Power */
-		calibration.nvram->cal_curves_a[i].points[1].adc_val=	 62;			/* Measured ADC val */
-		calibration.nvram->cal_curves_a[i].points[1].power_index= 24;				/* Airoha Power Index */;
-
-		calibration.nvram->cal_curves_a[i].points[2].out_power= 	 11287;		/* Output Power */
-		calibration.nvram->cal_curves_a[i].points[2].adc_val=	 116;			/* Measured ADC val */
-		calibration.nvram->cal_curves_a[i].points[2].power_index= 37;				/* Airoha Power Index */;
-
-		calibration.nvram->cal_curves_a[i].points[3].out_power= 	16307;		/* Output Power */
-		calibration.nvram->cal_curves_a[i].points[3].adc_val=	187;			/* Measured ADC val */
-		calibration.nvram->cal_curves_a[i].points[3].power_index= 54;				/* Airoha Power Index */;
-
-		calibration.nvram->cal_curves_a[i].points[4].out_power=	18198;		/* Output Power */
-		calibration.nvram->cal_curves_a[i].points[4].adc_val=	190; 			/* Measured ADC val */
-		calibration.nvram->cal_curves_a[i].points[4].power_index= 63;				/* Airoha Power Index */;
-	}
-
-	ret = 0;
-
-	return ret;
-}
-#endif
 
 
 /*
