@@ -411,7 +411,6 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
 
     stats.jiffiesOff += jiffies - stats.cycleStart;
     stats.cycleStart = jiffies;
-    piperp->ps.next_duty_cycle = jiffies + (((piperp->power_duty * piperp->ps.beacon_int) + 50) / 100);
     enable_irq(piperp->irq);
 }
 
@@ -534,26 +533,28 @@ static void set_timer_event(struct piper_priv *piperp,
  */
 static void startDutyCyleTimer(struct piper_priv *piperp)
 {
-	if ((piperp->ps.next_duty_cycle & 0x80000000) && ((jiffies & 0x80000000) == 0))
+	if (piperp->ps.wantToSleepThisDutyCycle)
 	{
-printk(KERN_ERR "Overflow\n");
-		/*
-		 * Don't do duty cycle if jiffies has rolled over.
-		 */
-	}
-	else
-	{
-		if (jiffies < piperp->ps.next_duty_cycle)
+		if ((piperp->ps.next_duty_cycle & 0x80000000) && ((jiffies & 0x80000000) == 0))
 		{
-			set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, piperp->ps.next_duty_cycle);
+	printk(KERN_ERR "Overflow\n");
+			/*
+			 * Don't do duty cycle if jiffies has rolled over.
+			 */
 		}
 		else
 		{
-			/*
-			 * If late on duty cycle, then start on next tick.
-			 */
-printk(KERN_ERR "Duty cycle late\n");
-			set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, jiffies+1);
+			if (jiffies < piperp->ps.next_duty_cycle)
+			{
+				set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, piperp->ps.next_duty_cycle);
+			}
+			else
+			{
+				/*
+				 * If late on duty cycle, then start on next tick.
+				 */
+	printk(KERN_ERR "Duty cycle late\n");
+			}
 		}
 	}
 }
@@ -576,16 +577,8 @@ static void ps_timer(unsigned long context)
 	{
 		if (piperp->ps.this_event == PS_EVENT_DUTY_CYCLE_EXPIRED)
 		{
-			u32 minSleepEnd = jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD);
-
 			piperp->ps.allowTransmits = false;
-			if ((piperp->ps.next_wakeup & 0x80000000) && ((minSleepEnd & 0x80000000) == 0))
-			{
-				/*
-				 * Don't do duty cycle if jiffies has rolled over.
-				 */
-			}
-			else if (minSleepEnd < piperp->ps.next_wakeup)
+			if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
 			{
 				if (MacEnterSleepMode(piperp) == 0)
 				{
@@ -699,12 +692,29 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	unsigned char *bp = skb->data + sizeof(_80211HeaderType) + 12;
 	unsigned char *end = &skb->data[skb->len - FCS_SIZE - MIN_TIM_SIZE];
 	u32 this_beacon = piperp->ps.next_beacon;
-
+	int duty_cycle_duration = (((piperp->power_duty * piperp->ps.beacon_int) + 50) / 100) - MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON);
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
 	stats.receivedBeacons++;
 	piperp->ps.next_beacon = next_beacon_time(piperp);
 	piperp->ps.next_wakeup = piperp->ps.next_beacon - MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON);
+
+	if (duty_cycle_duration < 1)
+		duty_cycle_duration = 1;
+
+    piperp->ps.next_duty_cycle = jiffies + duty_cycle_duration;
+    duty_cycle_duration = ((((100 - piperp->power_duty) * piperp->ps.beacon_int) + 50) / 100);
+    if (   (duty_cycle_duration >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+        && (piperp->power_duty != 100)
+        && ((piperp->ps.next_wakeup - piperp->ps.next_duty_cycle) >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)))
+    {
+    	piperp->ps.wantToSleepThisDutyCycle = true;
+    }
+    else
+    {
+    	piperp->ps.wantToSleepThisDutyCycle = false;
+    }
+
 //	if (piperp->ps.mode == PS_MODE_LOW_POWER)
 //		printk(KERN_ERR "%lu, %u, %u\n",
 //				jiffies, this_beacon, piperp->ps.next_beacon);
@@ -833,6 +843,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 printk(KERN_ERR "AID = %d, gpio = %d, beacon_int = %d.\n", piperp->ps.aid, piperp->pdata->rst_gpio, piperp->ps.beacon_int);
 				piperp->ps.allowTransmits = true;
 				piperp->ps.stoppedTransmit = false;
+				piperp->ps.wantToSleepThisDutyCycle = false;
 				beaconHistoryIndex = 0;
 				beaconHistoryCount = 0;
 				piperp->ps.next_beacon = 0;
@@ -894,6 +905,7 @@ void piper_ps_init(struct piper_priv *piperp)
 	init_timer(&piperp->ps.timer);
 	piperp->ps.timer.function = ps_timer;
 	piperp->ps.timer.data = (unsigned long) piperp;
+	piperp->ps.wantToSleepThisDutyCycle = false;
 }
 EXPORT_SYMBOL_GPL(piper_ps_init);
 

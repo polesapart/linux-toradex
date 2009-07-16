@@ -200,6 +200,7 @@ struct piper_ps {
 	struct sk_buff 		*psFrame;
 	bool				apHasBufferedFrame;
 	bool				expectingMulticastFrames;
+	bool				wantToSleepThisDutyCycle;
 	volatile bool		stoppedTransmit;
 	volatile bool		allowTransmits;
 };
