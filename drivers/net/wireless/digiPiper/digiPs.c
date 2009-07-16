@@ -307,8 +307,6 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 	if ((!piperp->ps.stoppedTransmit) && (piperp->txPacket))
 		return -1;
 
-//	ieee80211_stop_queues(piperp->hw);
-
     savedRegs[INDX_GEN_CONTROL] = piperp->ac->rd_reg(piperp, BB_GENERAL_CTL);
     savedRegs[INDX_GEN_STATUS]  = piperp->ac->rd_reg(piperp, BB_GENERAL_STAT);
     savedRegs[INDX_RSSI_AES]    = piperp->ac->rd_reg(piperp, BB_RSSI) & ~BB_RSSI_EAS_BUSY;
@@ -438,44 +436,13 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  */
 #define WAKEUP_TIME_BEFORE_BEACON	(15)
 
+
 /*
  * Minimum amount of time we will sleep.  If we will end up sleeping
  * for less than this, then don't go to sleep.
  */
 #define MINIMUM_SLEEP_PERIOD	(20)
 
-/*
- * Program timer for next event which will either be an idle timeout
- * or beacon wake up.
- */
-static void piper_ps_set_next_timer_event(struct piper_priv *piperp)
-{
-	/*
-	 * piperp->ps.lock has already been grabbed by the time we get here.
-	 */
-
-	del_timer_sync(&piperp->ps.timer);
-
-	if (piperp->ps.mode == PS_MODE_LOW_POWER)
-	{
-		if (piperp->ps.state == PS_STATE_WANT_TO_SLEEP)
-		{
-			u32 idleStart = jiffies + MILLS_TO_JIFFIES(IDLE_TIMEOUT);
-
-			if ((idleStart + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
-			{
-				/* TODO:  What about roll over */
-				piperp->ps.timer.expires = idleStart;
-				add_timer(&piperp->ps.timer);
-			}
-		}
-		else if (piperp->ps.state == PS_STATE_SLEEPING)
-		{
-			piperp->ps.timer.expires = piperp->ps.next_wakeup;
-			add_timer(&piperp->ps.timer);
-		}
-	}
-}
 
 /*
  * This function is called when there is activity, such as a command
@@ -507,6 +474,10 @@ EXPORT_SYMBOL_GPL(piper_ps_active);
 
 
 
+/*
+ * This routine is called to restart the transmit task if
+ * we had to stop it while duty cycling off.
+ */
 static void resume_transmits(struct piper_priv *piperp)
 {
 	piperp->ps.allowTransmits = true;
@@ -519,6 +490,9 @@ static void resume_transmits(struct piper_priv *piperp)
 
 
 
+/*
+ * Programs the next timer event.
+ */
 static void set_timer_event(struct piper_priv *piperp,
 							  enum piper_ps_events next_event, u32 delay)
 {
@@ -526,6 +500,37 @@ static void set_timer_event(struct piper_priv *piperp,
 	piperp->ps.this_event = next_event;
 	piperp->ps.timer.expires = delay;
 	add_timer(&piperp->ps.timer);
+}
+
+/*
+ * Called by either the duty cycle timer or the startDutyCycleTimer routine
+ * to duty cycle us off.
+ */
+static void dutyCycleOff(struct piper_priv *piperp)
+{
+	piperp->ps.allowTransmits = false;
+	if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
+	{
+		if (MacEnterSleepMode(piperp) == 0)
+		{
+			set_timer_event(piperp, PS_EVENT_WAKEUP_FOR_BEACON, piperp->ps.next_wakeup);
+			piperp->ps.state = PS_STATE_SLEEPING;
+		}
+		else
+		{
+			/*
+			 * If we couldn't go to sleep this time, then try again
+			 * in 1 tick.
+			 */
+			piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
+			set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, 1);
+		}
+	}
+	else if (piperp->ps.state == PS_STATE_WANT_TO_SLEEP)
+	{
+		piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
+		resume_transmits(piperp);
+	}
 }
 
 /*
@@ -537,23 +542,25 @@ static void startDutyCyleTimer(struct piper_priv *piperp)
 	{
 		if ((piperp->ps.next_duty_cycle & 0x80000000) && ((jiffies & 0x80000000) == 0))
 		{
-	printk(KERN_ERR "Overflow\n");
 			/*
 			 * Don't do duty cycle if jiffies has rolled over.
 			 */
 		}
 		else
 		{
-			if (jiffies < piperp->ps.next_duty_cycle)
+			if (jiffies == piperp->ps.next_duty_cycle)
+			{
+				dutyCycleOff(piperp);
+			}
+			else if (jiffies < piperp->ps.next_duty_cycle)
 			{
 				set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, piperp->ps.next_duty_cycle);
 			}
 			else
 			{
 				/*
-				 * If late on duty cycle, then start on next tick.
+				 * If late on duty cycle, skip it.
 				 */
-	printk(KERN_ERR "Duty cycle late\n");
 			}
 		}
 	}
@@ -577,29 +584,7 @@ static void ps_timer(unsigned long context)
 	{
 		if (piperp->ps.this_event == PS_EVENT_DUTY_CYCLE_EXPIRED)
 		{
-			piperp->ps.allowTransmits = false;
-			if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
-			{
-				if (MacEnterSleepMode(piperp) == 0)
-				{
-					set_timer_event(piperp, PS_EVENT_WAKEUP_FOR_BEACON, piperp->ps.next_wakeup);
-					piperp->ps.state = PS_STATE_SLEEPING;
-				}
-				else
-				{
-					/*
-					 * If we couldn't go to sleep this time, then try again
-					 * in 1 tick.
-					 */
-					piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
-					set_timer_event(piperp, PS_EVENT_DUTY_CYCLE_EXPIRED, 1);
-				}
-			}
-			else if (piperp->ps.state == PS_STATE_WANT_TO_SLEEP)
-			{
-				piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
-				resume_transmits(piperp);
-			}
+			dutyCycleOff(piperp);
 		}
 		else if (piperp->ps.this_event == PS_EVENT_WAKEUP_FOR_BEACON)
 		{
@@ -615,12 +600,24 @@ static void ps_timer(unsigned long context)
 
 static unsigned int beaconHistoryIndex = 0, beaconHistoryCount = 0;
 
+/*
+ * This routine predicts when the next beacon will occur.  We have to use
+ * this convoluted routine because the hardware screws up the timing of
+ * receive packets, and somehow makes it appear that beacons come later
+ * than they really do.  This only occurs when we are duty cycling the
+ * hardware.  This routine uses the average of the last 16 beacon times
+ * to predict when we will see the next one.
+ */
 static u32 next_beacon_time(struct piper_priv *piperp)
 {
 #define MAX_BEACON_ENTRIES		(16)
 #define BEACON_SHIFT_FOR_DIVIDE	(4)
 #define NEXT_BEACON_INDEX(x)	((x + 1) % MAX_BEACON_ENTRIES)
-#define FUDGE_FACTOR			(3)
+/*
+ * The fudge factor is needed because the beacon interval is not really an
+ * even multiple of ticks long.
+ */
+#define FUDGE_FACTOR			(4)
 	u32 result = 0;
 	static u32 beacon[MAX_BEACON_ENTRIES];
 
@@ -631,7 +628,6 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 		if (   (jiffies > (piperp->ps.next_beacon + (piperp->ps.beacon_int / 2)))
 			&& (piperp->ps.next_beacon != 0))
 		{
-//			printk("Inserting beacon @ %u, %lu\n", piperp->ps.next_beacon, jiffies);
 			beacon[beaconHistoryIndex] = piperp->ps.next_beacon;
 			beaconHistoryIndex = NEXT_BEACON_INDEX(beaconHistoryIndex);
 		}
@@ -645,7 +641,7 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 			beaconHistoryIndex = 0;
 			beaconHistoryCount = 0;
 		}
-		beacon[beaconHistoryIndex] = piperp->ps.next_beacon;
+		beacon[beaconHistoryIndex] = jiffies;
 		beaconHistoryIndex = NEXT_BEACON_INDEX(beaconHistoryIndex);
 
 		if (beaconHistoryCount == MAX_BEACON_ENTRIES)
@@ -661,9 +657,6 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 			average = ((sum + (MAX_BEACON_ENTRIES / 2)) >> BEACON_SHIFT_FOR_DIVIDE) & 0xffffffff;
 			offset = (((MAX_BEACON_ENTRIES / 2) * piperp->ps.beacon_int) + (piperp->ps.beacon_int));
 			result = average + offset - FUDGE_FACTOR;
-//			printk(KERN_ERR "average = %u, offset = %u, result = %u\n", average, offset, result);
-
-	//		result = average + ((MAX_BEACON_ENTRIES / 2) + 1) * piperp->ps.beacon_int;
 		}
 		else
 		{
@@ -691,33 +684,35 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	unsigned long flags;
 	unsigned char *bp = skb->data + sizeof(_80211HeaderType) + 12;
 	unsigned char *end = &skb->data[skb->len - FCS_SIZE - MIN_TIM_SIZE];
-	u32 this_beacon = piperp->ps.next_beacon;
-	int duty_cycle_duration = (((piperp->power_duty * piperp->ps.beacon_int) + 50) / 100) - MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON);
-	spin_lock_irqsave(&piperp->ps.lock, flags);
+	int time_to_next_beacon, duty_cycle_off, time_remaining;
 
+	spin_lock_irqsave(&piperp->ps.lock, flags);
 	stats.receivedBeacons++;
 	piperp->ps.next_beacon = next_beacon_time(piperp);
 	piperp->ps.next_wakeup = piperp->ps.next_beacon - MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON);
 
-	if (duty_cycle_duration < 1)
-		duty_cycle_duration = 1;
+	time_to_next_beacon = piperp->ps.next_beacon - jiffies;
+	duty_cycle_off = ((time_to_next_beacon * (100 - piperp->power_duty)) + 50) / 100;
+	time_remaining = time_to_next_beacon - (duty_cycle_off + MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON));
 
-    piperp->ps.next_duty_cycle = jiffies + duty_cycle_duration;
-    duty_cycle_duration = ((((100 - piperp->power_duty) * piperp->ps.beacon_int) + 50) / 100);
-    if (   (duty_cycle_duration >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
-        && (piperp->power_duty != 100)
-        && ((piperp->ps.next_wakeup - piperp->ps.next_duty_cycle) >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)))
-    {
-    	piperp->ps.wantToSleepThisDutyCycle = true;
-    }
-    else
-    {
-    	piperp->ps.wantToSleepThisDutyCycle = false;
-    }
+	if (   (time_remaining >= 0)
+	    && (piperp->power_duty != 100))
+	{
+		piperp->ps.wantToSleepThisDutyCycle = true;
+		piperp->ps.next_duty_cycle = jiffies + time_remaining;
+	}
+	else if (  (MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON) + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+			  < time_to_next_beacon)
+	{
+		piperp->ps.wantToSleepThisDutyCycle = true;
+		piperp->ps.next_duty_cycle = jiffies;
+	}
+	else
+	{
+		piperp->ps.wantToSleepThisDutyCycle = false;
+	}
+	time_remaining = piperp->ps.next_duty_cycle - jiffies;
 
-//	if (piperp->ps.mode == PS_MODE_LOW_POWER)
-//		printk(KERN_ERR "%lu, %u, %u\n",
-//				jiffies, this_beacon, piperp->ps.next_beacon);
 
 	if (piperp->ps.mode == PS_MODE_LOW_POWER)
 	{
@@ -746,27 +741,30 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 							piperp->ps.apHasBufferedFrame);
 			}
 		}
-		if (piperp->ps.expectingMulticastFrames)
+		if ((!piperp->ps.wantToSleepThisDutyCycle) || (time_remaining > 0))
 		{
-			piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
-			/*
-			 * AP will be sending us multicast frames.  The receive processor
-			 * will take care of scheduling further stuff after we have received
-			 * them.
-			 */
-		}
-		else
-		{
-			/*
-			 * Not expecting any multicast frames to follow.
-			 */
-			if (piperp->ps.apHasBufferedFrame)
+			if (piperp->ps.expectingMulticastFrames)
+			{
+				piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
+				/*
+				 * AP will be sending us multicast frames.  The receive processor
+				 * will take care of scheduling further stuff after we have received
+				 * them.
+				 */
+			}
+			else
 			{
 				/*
-				 * Ask for our buffered data if there is any.
+				 * Not expecting any multicast frames to follow.
 				 */
-				piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
-				sendPSPollFrame(piperp);
+				if (piperp->ps.apHasBufferedFrame)
+				{
+					/*
+					 * Ask for our buffered data if there is any.
+					 */
+					piperp->ps.state = PS_STATE_WAITING_FOR_BUFFERED_DATA;
+					sendPSPollFrame(piperp);
+				}
 			}
 		}
 		startDutyCyleTimer(piperp);
@@ -837,10 +835,8 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
 	if (powerSaveOn)  {
-		printk(KERN_ERR "** Power save on\n");
 		if (piperp->ps.beacon_int >= MINIMUM_PS_BEACON_INT) {
 			if (piperp->ps.mode != PS_MODE_LOW_POWER) {
-printk(KERN_ERR "AID = %d, gpio = %d, beacon_int = %d.\n", piperp->ps.aid, piperp->pdata->rst_gpio, piperp->ps.beacon_int);
 				piperp->ps.allowTransmits = true;
 				piperp->ps.stoppedTransmit = false;
 				piperp->ps.wantToSleepThisDutyCycle = false;
@@ -863,7 +859,6 @@ printk(KERN_ERR "AID = %d, gpio = %d, beacon_int = %d.\n", piperp->ps.aid, piper
 			printk(KERN_ERR "\nUnable to set power save mode because the beacon \ninterval set on this access point less than 100ms.\n");
 		}
 	} else {
-		printk(KERN_ERR "** Power save off\n");
 		del_timer_sync(&piperp->ps.timer);
 		if (   (piperp->ps.mode == PS_MODE_LOW_POWER)
 			&& (piperp->ps.state == PS_STATE_SLEEPING))
@@ -876,9 +871,12 @@ printk(KERN_ERR "AID = %d, gpio = %d, beacon_int = %d.\n", piperp->ps.aid, piper
 		if (   (piperp->ps.beacon_int != 0)
 		    && ((jiffies - stats.modeStart) != 0))
 		{
+#define WANT_STATS		(0)
+#if WANT_STATS
 			printk(KERN_ERR "jiffiesOff = %u, jiffiesOn = %u, total time = %lu\n", stats.jiffiesOff, stats.jiffiesOn, (jiffies - stats.modeStart));
 			printk(KERN_ERR "Powered down %ld percent of the time.\n", (stats.jiffiesOff * 100) / (jiffies - stats.modeStart));
 			printk(KERN_ERR "Received %u of %lu beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / piperp->ps.beacon_int);
+#endif
 		}
 		piperp->ps.mode = PS_MODE_FULL_POWER;
 		piperp->ps.state = PS_STATE_WANT_TO_SLEEP;

@@ -630,16 +630,14 @@ static ssize_t show_power_duty(struct device *dev, struct device_attribute *attr
 static ssize_t store_power_duty(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-#define MINIMUM_DUTY_CYCLE	(35)
-#define MAXIMUM_DUTY_CYCLE	(90)
-#define DEFAULT_DUTY_CYCLE	(MINIMUM_DUTY_CYCLE)
+#define DEFAULT_DUTY_CYCLE	(35)
 	struct piper_priv *piperp = dev_get_drvdata(dev);
 	int pw_duty;
 	ssize_t ret = -EINVAL;
 
 	ret = sscanf(buf, "%d\n", &pw_duty);
 	if (ret > 0) {
-		if (pw_duty >= MINIMUM_DUTY_CYCLE && pw_duty <= MAXIMUM_DUTY_CYCLE) {
+		if (pw_duty >= 0 && pw_duty <= 100) {
 			piperp->power_duty = pw_duty;
 		} else {
 			piperp->power_duty = DEFAULT_DUTY_CYCLE;
@@ -827,7 +825,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	 * the user types "iwconfig wlan0 power on".  I just love the
 	 * "power on" syntax to turn *down* the power.
 	 */
-	piperp->power_duty = DEFAULT_DUTY_CYCLE;
+	piperp->power_duty = 100;
 
 	/* TODO this should be read earlier and actions should be taken
 	 * based on different revisions at driver initialization or runtime */
