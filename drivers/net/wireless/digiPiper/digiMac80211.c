@@ -722,7 +722,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 	reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
 	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, reg, op_write);
 	reg = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
-	piperp->ps.beacon_int = TU_TO_JIFFIES(conf->beacon_int);
+	piperp->ps.beacon_int = conf->beacon_int;
 	reg |= conf->beacon_int << 16;
 	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, reg, op_write);
 }
