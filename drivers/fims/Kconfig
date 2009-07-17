@@ -124,7 +124,7 @@ config FIM_ONE_CAN_SELECTED
 
 config FIM_ONE_W1_SELECTED
 	bool "1-wire driver"
-	depends on !MACH_CME9210 && !MACH_CME9210JS
+	depends on !MACH_CME9210 && !MACH_CME9210JS && !FIM_ZERO_W1_SELECTED
 	select FIM_ONE_W1
 	select W1_MASTER_GPIO
 	help
