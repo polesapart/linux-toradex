@@ -419,7 +419,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  *
  * TODO:  Look for standard Linux version of this.
  */
-#define MILLS_TO_JIFFIES(x)		(((x*HZ) + 500) / 1000)
+#define MILLS_TO_JIFFIES(x)		((((x)*HZ) + 500) / 1000)
 
 /*
  * Amount of time we have to be idle before we will go to sleep.
@@ -602,11 +602,10 @@ static unsigned int beaconHistoryIndex = 0, beaconHistoryCount = 0;
 
 /*
  * This routine predicts when the next beacon will occur.  We have to use
- * this convoluted routine because the hardware screws up the timing of
- * receive packets, and somehow makes it appear that beacons come later
- * than they really do.  This only occurs when we are duty cycling the
- * hardware.  This routine uses the average of the last 16 beacon times
- * to predict when we will see the next one.
+ * this convoluted routine because the process of power down and then
+ * powering up Piper and the transceiver screws up the timing of when we
+ * receive beacons.  This routine averages together the timing for the
+ * last 16 beacons to predict when the next one will occur.
  */
 static u32 next_beacon_time(struct piper_priv *piperp)
 {
@@ -615,17 +614,19 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 #define NEXT_BEACON_INDEX(x)	((x + 1) % MAX_BEACON_ENTRIES)
 /*
  * The fudge factor is needed because the beacon interval is not really an
- * even multiple of ticks long.
+ * even multiple of ticks long.  This fudge factor will need to be adjusted
+ * if you change the macros above since duty cycling the H/W induces delays
+ * which have to be accounted for in this fudge factor.
  */
-#define FUDGE_FACTOR			(4)
+#define FUDGE_FACTOR			MILLS_TO_JIFFIES((4*piperp->ps.beacon_int)/10)
 	u32 result = 0;
 	static u32 beacon[MAX_BEACON_ENTRIES];
 
 	if (piperp->areWeAssociated)
 	{
-		result = piperp->ps.beacon_int + jiffies;
+		result = MILLS_TO_JIFFIES(piperp->ps.beacon_int - 10) + jiffies;
 
-		if (   (jiffies > (piperp->ps.next_beacon + (piperp->ps.beacon_int / 2)))
+		if (   (jiffies > (piperp->ps.next_beacon + (MILLS_TO_JIFFIES(piperp->ps.beacon_int) / 2)))
 			&& (piperp->ps.next_beacon != 0))
 		{
 			beacon[beaconHistoryIndex] = piperp->ps.next_beacon;
@@ -654,9 +655,19 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 			{
 				sum += beacon[i];
 			}
+			/*
+			 * This strange looking code divides the sum of the beacon times by 16.
+			 * We have to do it this way because we needed to use a u64 to sum up
+			 * the beacon times, which are u32s.  The Linux kernel does not have
+			 * a u64 divide operation.
+			 */
 			average = ((sum + (MAX_BEACON_ENTRIES / 2)) >> BEACON_SHIFT_FOR_DIVIDE) & 0xffffffff;
-			offset = (((MAX_BEACON_ENTRIES / 2) * piperp->ps.beacon_int) + (piperp->ps.beacon_int));
+			offset = MILLS_TO_JIFFIES((((MAX_BEACON_ENTRIES / 2) * piperp->ps.beacon_int) + (piperp->ps.beacon_int)));
 			result = average + offset - FUDGE_FACTOR;
+			if (piperp->ps.beacon_int >= 200)
+			{
+				result += MILLS_TO_JIFFIES((piperp->ps.beacon_int + 100) / 30);
+			}
 		}
 		else
 		{
@@ -665,7 +676,7 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 	}
 	else
 	{
-		result = 10 + jiffies;
+		result = MILLS_TO_JIFFIES(10) + jiffies;
 	}
 
 	return result;
@@ -676,15 +687,34 @@ static u32 next_beacon_time(struct piper_priv *piperp)
  * Called on every beacon.  Reset timer for next beacon, and process the
  * beacon's TIM information.
  */
-#define FCS_SIZE		(4)
-#define TIM_ELEMENT		(5)
-#define MIN_TIM_SIZE	(5)
+#define FCS_SIZE						(4)
+#define TIM_ELEMENT						(5)
+#define MIN_TIM_SIZE					(5)
+#define TAGGED_BEACON_FIELDS_START		(12)
+#define BEACON_INT_LSB					(8)
+#define BEACON_INT_MSB					(9)
+
 static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb)
 {
 	unsigned long flags;
-	unsigned char *bp = skb->data + sizeof(_80211HeaderType) + 12;
+	unsigned char *bp = skb->data + sizeof(_80211HeaderType) + TAGGED_BEACON_FIELDS_START;
 	unsigned char *end = &skb->data[skb->len - FCS_SIZE - MIN_TIM_SIZE];
 	int time_to_next_beacon, duty_cycle_off, time_remaining;
+	u32 beacon_int;
+
+	/*
+	 * mac80211 does not inform us when the beacon interval changes, so we have
+	 * to read this information from the beacon ourselves.  Reset the beacon
+	 * history if the beacon interval has changed.
+	 */
+	beacon_int = skb->data[sizeof(_80211HeaderType) + BEACON_INT_LSB];
+	beacon_int |= (skb->data[sizeof(_80211HeaderType) + BEACON_INT_MSB] << 8);
+	if (beacon_int != piperp->ps.beacon_int)
+	{
+		piperp->ps.beacon_int = beacon_int;
+		beaconHistoryIndex = 0;
+		beaconHistoryCount = 0;
+	}
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 	stats.receivedBeacons++;
@@ -696,7 +726,8 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	time_remaining = time_to_next_beacon - (duty_cycle_off + MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON));
 
 	piperp->ps.wantToSleepThisDutyCycle = false;
-	if (duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+	if ((duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+	    && ((jiffies & 0x80000000) == ((piperp->ps.next_beacon + 1) & 0x80000000)))
 	{
 		if (   (time_remaining >= 0)
 		    && (piperp->power_duty != 100))
@@ -739,9 +770,6 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 					}
 					break;
 				}
-				if (piperp->ps.expectingMulticastFrames || piperp->ps.apHasBufferedFrame)
-					printk (KERN_ERR "multicast %d, to us %d\n", piperp->ps.expectingMulticastFrames,
-							piperp->ps.apHasBufferedFrame);
 			}
 		}
 		if ((!piperp->ps.wantToSleepThisDutyCycle) || (time_remaining > 0))
@@ -832,7 +860,7 @@ EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
  */
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 {
-#define MINIMUM_PS_BEACON_INT		MILLS_TO_JIFFIES(100)
+#define MINIMUM_PS_BEACON_INT		(100)
 	unsigned long flags;
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
@@ -878,7 +906,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 #if WANT_STATS
 			printk(KERN_ERR "jiffiesOff = %u, jiffiesOn = %u, total time = %lu\n", stats.jiffiesOff, stats.jiffiesOn, (jiffies - stats.modeStart));
 			printk(KERN_ERR "Powered down %ld percent of the time.\n", (stats.jiffiesOff * 100) / (jiffies - stats.modeStart));
-			printk(KERN_ERR "Received %u of %lu beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / piperp->ps.beacon_int);
+			printk(KERN_ERR "Received %u of %lu beacons while in powersave mode.\n", stats.receivedBeacons, (jiffies - stats.modeStart) / MILLS_TO_JIFFIES(piperp->ps.beacon_int));
 #endif
 		}
 		piperp->ps.mode = PS_MODE_FULL_POWER;
