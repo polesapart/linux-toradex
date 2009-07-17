@@ -441,7 +441,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  * Minimum amount of time we will sleep.  If we will end up sleeping
  * for less than this, then don't go to sleep.
  */
-#define MINIMUM_SLEEP_PERIOD	(20)
+#define MINIMUM_SLEEP_PERIOD	(30)
 
 
 /*
@@ -508,9 +508,9 @@ static void set_timer_event(struct piper_priv *piperp,
  */
 static void dutyCycleOff(struct piper_priv *piperp)
 {
-	piperp->ps.allowTransmits = false;
 	if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup)
 	{
+		piperp->ps.allowTransmits = false;
 		if (MacEnterSleepMode(piperp) == 0)
 		{
 			set_timer_event(piperp, PS_EVENT_WAKEUP_FOR_BEACON, piperp->ps.next_wakeup);
@@ -695,24 +695,27 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	duty_cycle_off = ((time_to_next_beacon * (100 - piperp->power_duty)) + 50) / 100;
 	time_remaining = time_to_next_beacon - (duty_cycle_off + MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON));
 
-	if (   (time_remaining >= 0)
-	    && (piperp->power_duty != 100))
+	piperp->ps.wantToSleepThisDutyCycle = false;
+	if (duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
 	{
-		piperp->ps.wantToSleepThisDutyCycle = true;
-		piperp->ps.next_duty_cycle = jiffies + time_remaining;
-	}
-	else if (  (MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON) + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
-			  < time_to_next_beacon)
-	{
-		piperp->ps.wantToSleepThisDutyCycle = true;
-		piperp->ps.next_duty_cycle = jiffies;
+		if (   (time_remaining >= 0)
+		    && (piperp->power_duty != 100))
+		{
+			piperp->ps.wantToSleepThisDutyCycle = true;
+			piperp->ps.next_duty_cycle = jiffies + time_remaining;
+		}
+		else if (  (MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON) + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+				  < time_to_next_beacon)
+		{
+			piperp->ps.wantToSleepThisDutyCycle = true;
+			piperp->ps.next_duty_cycle = jiffies;
+		}
+		time_remaining = piperp->ps.next_duty_cycle - jiffies;
 	}
 	else
 	{
-		piperp->ps.wantToSleepThisDutyCycle = false;
+		time_remaining = time_to_next_beacon;
 	}
-	time_remaining = piperp->ps.next_duty_cycle - jiffies;
-
 
 	if (piperp->ps.mode == PS_MODE_LOW_POWER)
 	{
