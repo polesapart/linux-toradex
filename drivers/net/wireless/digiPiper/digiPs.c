@@ -484,7 +484,7 @@ struct ieee80211_rate *piper_ps_check_rate(struct piper_priv *piperp,
 {
 #define BAD_RATE_1MBPS		(10)
 #define BAD_RATE_2MBPS		(20)
-	if (piperp->ps.mode == PS_MODE_LOW_POWER)
+	if ((piperp->ps.mode == PS_MODE_LOW_POWER) && (rate != NULL))
 	{
 		if ((rate->bitrate == BAD_RATE_1MBPS) || (rate->bitrate == BAD_RATE_2MBPS))
 		{
