@@ -6,6 +6,7 @@
 
 #define digiPS_h
 
+#include <net/mac80211.h>
 #include "pipermain.h"
 
 enum piper_ps_events {
@@ -37,6 +38,7 @@ void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *s
 void piper_ps_init(struct piper_priv *piperp);
 void piper_ps_deinit(struct piper_priv *piperp);
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn);
+struct ieee80211_rate *piper_ps_check_rate(struct piper_priv *piperp, struct ieee80211_rate *rate);
 
 #endif
 

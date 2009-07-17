@@ -289,7 +289,7 @@ sendPSPollFrame_Exit:
 }
 
 
-int piper_spike_suppression(struct piper_priv *piperp);
+
 
 #define RESET_PIPER		(1)
 
@@ -341,7 +341,7 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
  * transceiver register value. This API can also be called in power save mode
  * after coming out of the sleep mode.
  */
-static void MacEnterActiveMode(struct piper_priv *piperp)
+static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
     int i;
 
@@ -350,7 +350,8 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
             piperp->pdata->reset(piperp, 0);
     		piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, savedRegs[INDX_OUT_CTRL], op_write);
             udelay(150);
-//            piper_spike_suppression(piperp);
+            if (want_spike_suppression)
+	            piper_spike_suppression(piperp);
       }
 #endif
 /*
@@ -421,12 +422,6 @@ static void MacEnterActiveMode(struct piper_priv *piperp)
  */
 #define MILLS_TO_JIFFIES(x)		((((x)*HZ) + 500) / 1000)
 
-/*
- * Amount of time we have to be idle before we will go to sleep.
- * This value has to be large enough to allow us to send a full size
- * frame at 1 Mbps and receive an ACK.
- */
-#define IDLE_TIMEOUT			(20)
 
 /*
  * Number of milliseconds to wake up before beacon.  Linux might wake us
@@ -471,6 +466,35 @@ int piper_ps_active(struct piper_priv *piperp)
 	return result;
 }
 EXPORT_SYMBOL_GPL(piper_ps_active);
+
+
+/*
+ * So what crazy thing are we doing here?  Well, Piper has a bug where it
+ * can send noise spikes at 1 Mbps and 2 Mbps if it is powered up without
+ * running a special spike suppression routine.  The spike suppression code
+ * takes an average of 30 ms, and I have timed it taking as long as 300 ms.
+ * This is not something you want to use for duty cycling.  The solution is
+ * to avoid sending at those two rates.  After the transmit routine determines
+ * the rate mac80211 specified, it will call us and we will decide whether
+ * we like that rate.  If it is one of our bad rates, then we will bump it
+ * up to a good rate.
+ */
+struct ieee80211_rate *piper_ps_check_rate(struct piper_priv *piperp,
+										struct ieee80211_rate *rate)
+{
+#define BAD_RATE_1MBPS		(10)
+#define BAD_RATE_2MBPS		(20)
+	if (piperp->ps.mode == PS_MODE_LOW_POWER)
+	{
+		if ((rate->bitrate == BAD_RATE_1MBPS) || (rate->bitrate == BAD_RATE_2MBPS))
+		{
+			rate = (struct ieee80211_rate *) piperp->rf->getRate(AIROHA_55_MBPS_RATE_INDEX);
+		}
+	}
+
+	return rate;
+}
+EXPORT_SYMBOL_GPL(piper_ps_check_rate);
 
 
 
@@ -589,7 +613,7 @@ static void ps_timer(unsigned long context)
 		else if (piperp->ps.this_event == PS_EVENT_WAKEUP_FOR_BEACON)
 		{
 			stats.expectedBeacons++;
-			MacEnterActiveMode(piperp);
+			MacEnterActiveMode(piperp, false);
 			resume_transmits(piperp);
 			piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
 		}
@@ -666,6 +690,7 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 			result = average + offset - FUDGE_FACTOR;
 			if (piperp->ps.beacon_int >= 200)
 			{
+				/* Yes, another fudge factor */
 				result += MILLS_TO_JIFFIES((piperp->ps.beacon_int + 100) / 30);
 			}
 		}
@@ -895,10 +920,25 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			&& (piperp->ps.state == PS_STATE_SLEEPING))
 		{
 			/*
-			 * If we were powered down, then power up.
+			 * If we were powered down, then power up and do the spike suppression.
 			 */
-			MacEnterActiveMode(piperp);
-		} else stats.jiffiesOn += jiffies - stats.cycleStart;
+			MacEnterActiveMode(piperp, true);
+		} else if (piperp->ps.mode == PS_MODE_LOW_POWER)
+		{
+			/*
+			 * If we were in power save mode, but powered up, then we must power
+			 * down and then back up so that we can do spike suppression.
+			 */
+			piperp->ps.mode = PS_MODE_FULL_POWER;	/* stop duty cycle timer */
+			while (MacEnterSleepMode(piperp) != 0)
+			{
+				spin_unlock_irqrestore(&piperp->ps.lock, flags);
+				mdelay(10);
+				spin_lock_irqsave(&piperp->ps.lock, flags);
+			}
+			MacEnterActiveMode(piperp, true);
+			stats.jiffiesOn += jiffies - stats.cycleStart;
+		}
 		if (   (piperp->ps.beacon_int != 0)
 		    && ((jiffies - stats.modeStart) != 0))
 		{

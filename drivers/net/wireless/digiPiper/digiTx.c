@@ -141,9 +141,11 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
 
 	if (ret != NULL) {
 		if (piperp->calibrationTxRate) {
-			return piperp->calibrationTxRate;
+			ret = piperp->calibrationTxRate;
 		}
 	}
+
+	ret = piper_ps_check_rate(piperp, ret);
 
 	return ret;
 }

@@ -12,6 +12,7 @@
 
 #define AIROHA_LOWEST_PSK_RATE_INDEX	(0)
 #define AIROHA_LOWEST_OFDM_RATE_INDEX	(4)
+#define AIROHA_55_MBPS_RATE_INDEX		(2)
 
 /*
  * Subtract this number from the channel index to index into
