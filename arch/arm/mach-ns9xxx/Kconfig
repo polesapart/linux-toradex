@@ -99,14 +99,6 @@ config MACH_CC9C
 	help
 	  Say Y here if you are using the ConnectCore 9C.
 
-config MACH_CCW9P9215JS
-	bool "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard"
-	select MODULE_CCW9P9215
-	select BOARD_JSCCW9P9215
-	help
-	  Say Y here if you are using the ConnectCore Wi-9P 9215 module
-	  on a JSCCW9P9215 Development Board.
-
 config MACH_CCW9C
 	bool "ConnectCore Wi-9C"
 	select MODULE_CCW9C
