@@ -34,11 +34,12 @@ enum piper_ps_active_result {
 
 
 int piper_ps_active(struct piper_priv *piperp);
-void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb);
+void piper_ps_process_receive_frame(struct piper_priv *piperp,
+				    struct sk_buff *skb);
 void piper_ps_init(struct piper_priv *piperp);
 void piper_ps_deinit(struct piper_priv *piperp);
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn);
-struct ieee80211_rate *piper_ps_check_rate(struct piper_priv *piperp, struct ieee80211_rate *rate);
+struct ieee80211_rate *piper_ps_check_rate(struct piper_priv *piperp,
+					   struct ieee80211_rate *rate);
 
 #endif
-

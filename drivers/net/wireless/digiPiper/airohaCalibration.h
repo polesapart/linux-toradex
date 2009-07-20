@@ -21,40 +21,36 @@
 /*
  * Field values used for computing ABS values.
  */
-enum
-{
-    OUT_POWER,
-    ADC_VAL,
-    POWER_INDEX
+enum {
+	OUT_POWER,
+	ADC_VAL,
+	POWER_INDEX
 };
 
 #ifdef WANT_DEBUG
-static const char *fieldDescription[] =
-{
-    "OUT_POWER",
-    "ADC_VAL",
-    "POWER_INDEX"
+static const char *fieldDescription[] = {
+	"OUT_POWER",
+	"ADC_VAL",
+	"POWER_INDEX"
 };
 #endif
 
 /*
  * States for the auto calibration thread.
  */
-enum
-{
-    RESTART_STATE,
-    COLLECT_SAMPLES_STATE,
-    GOT_SAMPLE_STATE,
-    RECALIBRATE_STATE
+enum {
+	RESTART_STATE,
+	COLLECT_SAMPLES_STATE,
+	GOT_SAMPLE_STATE,
+	RECALIBRATE_STATE
 };
 
 #ifdef WANT_DEBUG
-static const char *stateText[] =
-{
-    "RESTART_STATE",
-    "COLLECT_SAMPLES_STATE",
-    "GOT_SAMPLE_STATE",
-    "RECALIBRATE_STATE"
+static const char *stateText[] = {
+	"RESTART_STATE",
+	"COLLECT_SAMPLES_STATE",
+	"GOT_SAMPLE_STATE",
+	"RECALIBRATE_STATE"
 };
 #endif
 
@@ -62,47 +58,45 @@ static const char *stateText[] =
 /*
  * Slope types accepted by computeSlope().
  */
-enum
-{
-    POWER_INDEX_OVER_OUT_POWER,
-    ADC_OVER_OUT_POWER,
-    OUT_POWER_OVER_ADC,
-    POWER_INDEX_OVER_ADC
+enum {
+	POWER_INDEX_OVER_OUT_POWER,
+	ADC_OVER_OUT_POWER,
+	OUT_POWER_OVER_ADC,
+	POWER_INDEX_OVER_ADC
 };
 
 
-typedef struct
-{
-    unsigned rate;              /* rate packet transmitted at */
-    unsigned int sample;        /* measured sample */
+typedef struct {
+	unsigned rate;		/* rate packet transmitted at */
+	unsigned int sample;	/* measured sample */
 } sampleInfo_t;
 
 struct airohaCalibrationData {
-    struct task_struct *threadCB;
-    spinlock_t lock;
-    volatile unsigned int events;
-    unsigned int sampleCount;
-    sampleInfo_t sample[MAX_SAMPLES];
-    wcd_data_t *nvram;
-    wcd_curve_t *curve;
-    int slopeTimes1000;
-    int adcSlopeTimes1000;
-    int outPowerSlopeTimes1000;
-    int powerIndexSlopeTimes1000;
-    int expectedAdc;
-    int powerIndex, correctedPowerIndex;
-    wcd_point_t *p1;
+	struct task_struct *threadCB;
+	spinlock_t lock;
+	volatile unsigned int events;
+	unsigned int sampleCount;
+	sampleInfo_t sample[MAX_SAMPLES];
+	wcd_data_t *nvram;
+	wcd_curve_t *curve;
+	int slopeTimes1000;
+	int adcSlopeTimes1000;
+	int outPowerSlopeTimes1000;
+	int powerIndexSlopeTimes1000;
+	int expectedAdc;
+	int powerIndex, correctedPowerIndex;
+	wcd_point_t *p1;
 
 
-	void			*priv;
-	struct calibration_ops	*cops;
+	void *priv;
+	struct calibration_ops *cops;
 };
 
 struct calibration_ops {
-	u16			(*adc_read_peak) (struct airohaCalibrationData *);
-	void			(*adc_clear_peak) (struct airohaCalibrationData *);
-	u16			(*adc_read_last_val) (struct airohaCalibrationData *);
-	void			(*adc_shutdown) (struct airohaCalibrationData *);
+	u16(*adc_read_peak) (struct airohaCalibrationData *);
+	void (*adc_clear_peak) (struct airohaCalibrationData *);
+	 u16(*adc_read_last_val) (struct airohaCalibrationData *);
+	void (*adc_shutdown) (struct airohaCalibrationData *);
 };
 
 
@@ -110,4 +104,4 @@ void digiWifiInitCalibration(struct piper_priv *digi);
 void digiWifiDeInitCalibration(struct piper_priv *digi);
 
 
-#endif /* AIROHA_CALIBRATION_H */
+#endif				/* AIROHA_CALIBRATION_H */
