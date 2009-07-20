@@ -82,6 +82,9 @@ config BOARD_JSCME9210
 config BOARD_UNCBAS
 	bool
 
+choice
+	prompt "NS9xxx Implementations"
+
 config MACH_CC7UCAMRY
 	bool "ConnectCore 7U Camry"
 	depends on DIGI_UNSUPPORTED
@@ -105,8 +108,82 @@ config MACH_CCW9C
 	help
 	  Say Y here if you are using the ConnectCore Wi-9C.
 
+config MACH_CC9P9215
+	bool "ConnectCore 9P 9215"
+	select MODULE_CC9P9215
+	help
+	  Say Y here if you are using the ConnectCore 9P 9215 module on an
+	  currently unsupported board.
+
+config MACH_CC9P9215JS
+	bool "ConnectCore 9P 9215 on a JSCC9P9215 Devboard"
+	select MODULE_CC9P9215
+	select BOARD_JSCC9P9215
+	help
+	  Say Y here if you are using the ConnectCore 9P 9215 module
+	  on a JSCC9P9215 Development Board.
+
+config MACH_CCW9P9215
+	bool "ConnectCore Wi-9P 9215"
+	select MODULE_CCW9P9215
+	help
+	  Say Y here if you are using the ConnectCore Wi-9P 9215 module on an
+	  currently unsupported board.
+
+config MACH_CCW9P9215JS
+	bool "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard"
+	select MODULE_CCW9P9215
+	select BOARD_JSCCW9P9215
+	help
+	  Say Y here if you are using the ConnectCore Wi-9P 9215 module
+	  on a JSCCW9P9215 Development Board.
+
+config MACH_CC9P9360DEV
+	bool "ConnectCore 9P 9360 on an A9M9750 Devboard"
+	depends on DIGI_UNSUPPORTED
+	select MODULE_CC9P9360
+	select BOARD_A9M9750DEV
+	help
+	  Say Y here if you are using the ConnectCore 9P 9360
+	  on an A9M9750 Development Board.
+
+config MACH_CC9P9360JS
+	bool "ConnectCore 9P 9360 on a JSCC9P9360 Devboard"
+	select MODULE_CC9P9360
+	select BOARD_JSCC9P9360
+	help
+	  Say Y here if you are using the ConnectCore 9P 9360
+	  on a JSCC9P9360 Development Board.
+
+config MACH_CME9210
+	bool "Digi Connect ME 9210"
+	select MODULE_CME9210
+
+config MACH_CME9210JS
+	bool "Digi Connect ME 9210 on Devboard"
+	select MODULE_CME9210
+	select BOARD_JSCME9210
+
+config MACH_INC20OTTER
+	bool "Inc20-Otter"
+	depends on DIGI_UNSUPPORTED
+	select MODULE_INC20OTTER
+
+config MACH_OTTER
+	bool "Otter"
+	depends on DIGI_UNSUPPORTED
+	select PROCESSOR_NS9210
+
+endchoice
+
+config NS9XXX_HAVE_GPIO_LIB
+	bool "Use GPIO_LIB" if DIGI_UNSUPPORTED
+	default y
+	select ARCH_REQUIRE_GPIOLIB
 
 if (MACH_CC9C || MACH_CCW9C)
+
+comment "ConnectCore 9C/Wi-9C configuration"
 
 config CCX9C_SERIAL_PORTA
 	bool "Serial port A"
@@ -222,41 +299,12 @@ config CCX9C_TOUCH
 	default y
 	depends on TOUCHSCREEN_ADS7846 && CCX9C_FB && CCX9C_SPI_PORTB
 
-endif
-
-config MACH_CC9P9215
-	bool "ConnectCore 9P 9215"
-	select MODULE_CC9P9215
-	help
-	  Say Y here if you are using the ConnectCore 9P 9215 module on an
-	  currently unsupported board.
-
-config MACH_CC9P9215JS
-	bool "ConnectCore 9P 9215 on a JSCC9P9215 Devboard"
-	select MODULE_CC9P9215
-	select BOARD_JSCC9P9215
-	help
-	  Say Y here if you are using the ConnectCore 9P 9215 module
-	  on a JSCC9P9215 Development Board.
-
-
-config MACH_CCW9P9215
-	bool "ConnectCore Wi-9P 9215"
-	select MODULE_CCW9P9215
-	help
-	  Say Y here if you are using the ConnectCore Wi-9P 9215 module on an
-	  currently unsupported board.
-
-config MACH_CCW9P9215JS
-	bool "ConnectCore Wi-9P 9215 on a JSCCW9P9215 Devboard"
-	select MODULE_CCW9P9215
-	select BOARD_JSCCW9P9215
-	help
-	  Say Y here if you are using the ConnectCore Wi-9P 9215 module
-	  on a JSCCW9P9215 Development Board.
+endif	## if (MACH_CC9C || MACH_CCW9C)
 
 
 if (MACH_CC9P9215JS || MACH_CCW9P9215JS)
+
+comment "ConnectCore 9P/Wi-9P 9215 configuration"
 
 config CC9P9215JS_SERIAL_PORTA
 	bool "Serial port A"
@@ -274,7 +322,7 @@ config CC9P9215JS_SERIAL_PORTA_RXTX
 config CC9P9215JS_SERIAL_PORTA_RXTX485
 	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
 	help
-	  This mode enables the RS-485 transceiver control functionality 
+	  This mode enables the RS-485 transceiver control functionality
 	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTA_CTSRTSRXTX
@@ -301,7 +349,7 @@ config CC9P9215JS_SERIAL_PORTB_RXTX
 config CC9P9215JS_SERIAL_PORTB_RXTX485
 	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
 	help
-	  This mode enables the RS-485 transceiver control functionality 
+	  This mode enables the RS-485 transceiver control functionality
 	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX
@@ -328,7 +376,7 @@ config CC9P9215JS_SERIAL_PORTC_RXTX
 config CC9P9215JS_SERIAL_PORTC_RXTX485
 	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
 	help
-	  This mode enables the RS-485 transceiver control functionality 
+	  This mode enables the RS-485 transceiver control functionality
 	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX
@@ -355,7 +403,7 @@ config CC9P9215JS_SERIAL_PORTD_RXTX
 config CC9P9215JS_SERIAL_PORTD_RXTX485
 	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
 	help
-	  This mode enables the RS-485 transceiver control functionality 
+	  This mode enables the RS-485 transceiver control functionality
 	  of the RTS line in the serial port.
 
 config CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX
@@ -381,29 +429,12 @@ config CC9P9215JS_TOUCH
 	default y
 	depends on TOUCHSCREEN_ADS7846 && CC9P9215JS_EDT_DISPLAY_QVGA && CC9P9215JS_SPI
 
-endif
+endif	## if (MACH_CC9P9215JS || MACH_CCW9P9215JS)
 
-
-
-
-config MACH_CC9P9360DEV
-	bool "ConnectCore 9P 9360 on an A9M9750 Devboard"
-	depends on DIGI_UNSUPPORTED
-	select MODULE_CC9P9360
-	select BOARD_A9M9750DEV
-	help
-	  Say Y here if you are using the ConnectCore 9P 9360
-	  on an A9M9750 Development Board.
-
-config MACH_CC9P9360JS
-	bool "ConnectCore 9P 9360 on a JSCC9P9360 Devboard"
-	select MODULE_CC9P9360
-	select BOARD_JSCC9P9360
-	help
-	  Say Y here if you are using the ConnectCore 9P 9360
-	  on a JSCC9P9360 Development Board.
 
 if MACH_CC9P9360JS
+
+comment "ConnectCore 9P 9360 configuration"
 
 config CC9P9360JS_SERIAL_PORTA
 	bool "Serial port A"
@@ -526,23 +557,17 @@ config CC9P9360JS_TOUCH
 #	default n
 #	depends on !CC9P9360JS_SERIAL_PORTA_FULL
 #	help
-#	  This enables the interrupt coming from the external 
+#	  This enables the interrupt coming from the external
 #	  I2C DS1337 Real Time Clock.
 #comment "--- External RTC Alarm interrupt (disable Serial port A Full)"
 #	depends on CC9P9360JS_SERIAL_PORTA_FULL
 
-endif
+endif	## if MACH_CC9P9360JS
 
-config MACH_CME9210
-	bool "Digi Connect ME 9210"
-	select MODULE_CME9210
-
-config MACH_CME9210JS
-	bool "Digi Connect ME 9210 on Devboard"
-	select MODULE_CME9210
-	select BOARD_JSCME9210
 
 if MACH_CME9210JS
+
+comment "Digi Connect ME 9210 configuration"
 
 config CME9210JS_SERIAL_PORTA
 	bool "Serial port A"
@@ -560,7 +585,7 @@ config CME9210JS_SERIAL_PORTA_RXTX
 config CME9210JS_SERIAL_PORTA_RXTX485
 	bool "RX/TX/RTS (RTS for RS-485 transceiver control)"
 	help
-	  This mode enables the RS-485 transceiver control functionality 
+	  This mode enables the RS-485 transceiver control functionality
 	  of the RTS line in the serial port.
 
 config CME9210JS_SERIAL_PORTA_CTSRTSRXTX
@@ -588,27 +613,11 @@ config CME9210JS_SERIAL_PORTC_RXTX
 
 endchoice
 
-
 config CME9210JS_SPI
 	bool "SPI port"
 	depends on !CME9210JS_SERIAL_PORTA
 
-endif
-
-config MACH_INC20OTTER
-	bool "Inc20-Otter"
-	depends on DIGI_UNSUPPORTED
-	select MODULE_INC20OTTER
-
-config MACH_OTTER
-	bool "Otter"
-	depends on DIGI_UNSUPPORTED
-	select PROCESSOR_NS9210
-
-config NS9XXX_HAVE_GPIO_LIB
-	bool "Use GPIO_LIB" if DIGI_UNSUPPORTED
-	default y
-	select ARCH_REQUIRE_GPIOLIB
+endif	## if MACH_CME9210JS
 
 source "arch/arm/mach-ns9xxx/include/mach/display/Kconfig"
 

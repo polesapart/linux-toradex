@@ -5,7 +5,7 @@
 
 if (CC9P9360JS_FB || CCX9C_FB)
 
-menu "Display selection"
+comment "Display selection"
 
 config NS9XXX_FB_VGA
 	bool "CRT VGA video support"
@@ -33,5 +33,4 @@ config NS9XXX_FB_CUSTOM
 	  This enables the support for a customer specific display.
 	  displays/CUSTOM.h has to be modified when selecting this.
 
-endmenu
 endif
