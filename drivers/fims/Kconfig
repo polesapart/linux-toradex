@@ -154,7 +154,7 @@ config FIM_SDIO_MODULE
 	bool "SDIO as loadable module"
 	depends on MMC && MMC_BLOCK && !FIM_ZERO_SDIO_SELECTED && !FIM_ONE_SDIO_SELECTED && (!FIM_ZERO || !FIM_ONE)
 	select FIM_ZERO_SDIO
-	select FIM_ONE_SDIO
+	select FIM_ONE_SDIO if !(MACH_CME9210JS || MACH_CME9210)
 	help
           Enables the FIM SDIO as loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
@@ -163,7 +163,7 @@ config FIM_SERIAL_MODULE
 	bool "Serial as loadable module"
 	depends on !FIM_ZERO_SERIAL_SELECTED && !FIM_ONE_SERIAL_SELECTED && (!FIM_ZERO || !FIM_ONE)
 	select FIM_ZERO_SERIAL
-	select FIM_ONE_SERIAL
+	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210)
 	help
           Enables the FIM Serial loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
@@ -171,7 +171,7 @@ config FIM_SERIAL_MODULE
 config FIM_CAN_MODULE
 	bool "CAN as loadable module"
 	depends on CAN && CAN_DEV && !FIM_ZERO_CAN_SELECTED && !FIM_ONE_CAN_SELECTED && (!FIM_ZERO || !FIM_ONE)
-	select FIM_ZERO_CAN
+	select FIM_ZERO_CAN if !(MACH_CME9210JS || MACH_CME9210)
 	select FIM_ONE_CAN
 	help
           Enables the FIM CAN as loadable module. The number of FIMs to be

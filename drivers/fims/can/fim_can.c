@@ -1216,8 +1216,13 @@ static int unregister_fim_can(struct fim_can_t *port)
 
 	/* And free the GPIOs */
 	memcpy(gpios, port->gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
-	for (cnt = 0; gpios[cnt].nr < FIM_CAN_MAX_GPIOS; cnt++)
-		gpio_free(gpios[cnt].nr);
+	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
+		
+		if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
+			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
+			gpio_free(gpios[cnt].nr);
+		}
+	}
 
 	/* Free the obtained clock */
 	if (!IS_ERR(port->cpu_clk))
@@ -1277,7 +1282,8 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 		} else {
 			/* Free the already requested GPIOs */
 			printk_err("Couldn't request the GPIO %i\n", gpios[cnt].nr);
-			while (cnt) gpio_free(gpios[--cnt].nr);
+			while (cnt)
+				gpio_free(gpios[--cnt].nr);
 			goto err_free_candev;
 		}
 	}
@@ -1359,9 +1365,14 @@ err_unreg_fim:
 	fim_unregister_driver(&port->fim);
 
 err_free_gpios:
-	for (cnt = 0; gpios[cnt].nr < FIM_CAN_MAX_GPIOS; cnt++)
-		gpio_free(gpios[cnt].nr);
-
+	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
+		
+                if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
+			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
+			gpio_free(gpios[cnt].nr);
+		}
+	}
+	
 err_free_candev:
 	free_candev(dev);
 
