@@ -719,7 +719,6 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 
 	if (piperp->ps.reallyDoDutyCycling != (piperp->power_duty <= MAX_DUTY_CYCLE)) {
 		piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
-		printk(KERN_ERR "piperp->ps.reallyDoDutyCycling = %d.\n", piperp->ps.reallyDoDutyCycling);
 		sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
 	}
 	spin_lock_irqsave(&piperp->ps.lock, flags);
