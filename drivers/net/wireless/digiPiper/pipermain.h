@@ -201,6 +201,7 @@ struct piper_ps {
 	bool				apHasBufferedFrame;
 	bool				expectingMulticastFrames;
 	bool				wantToSleepThisDutyCycle;
+	bool				reallyDoDutyCycling;
 	volatile bool		stoppedTransmit;
 	volatile bool		allowTransmits;
 };

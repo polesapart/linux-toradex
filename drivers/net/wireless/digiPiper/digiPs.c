@@ -548,7 +548,8 @@ static void dutyCycleOff(struct piper_priv *piperp)
  */
 static void startDutyCyleTimer(struct piper_priv *piperp)
 {
-	if (piperp->ps.wantToSleepThisDutyCycle) {
+	if ((piperp->ps.wantToSleepThisDutyCycle)
+		&& (piperp->ps.reallyDoDutyCycling)) {
 		if ((piperp->ps.next_duty_cycle & 0x80000000)
 		    && ((jiffies & 0x80000000) == 0)) {
 			/*
@@ -693,7 +694,7 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 #define TAGGED_BEACON_FIELDS_START		(12)
 #define BEACON_INT_LSB					(8)
 #define BEACON_INT_MSB					(9)
-
+#define MAX_DUTY_CYCLE					(90)
 static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *skb)
 {
 	unsigned long flags;
@@ -716,6 +717,11 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 		beaconHistoryCount = 0;
 	}
 
+	if (piperp->ps.reallyDoDutyCycling != (piperp->power_duty <= MAX_DUTY_CYCLE)) {
+		piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
+		printk(KERN_ERR "piperp->ps.reallyDoDutyCycling = %d.\n", piperp->ps.reallyDoDutyCycling);
+		sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+	}
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 	stats.receivedBeacons++;
 	piperp->ps.next_beacon = next_beacon_time(piperp);
@@ -728,22 +734,27 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	    time_to_next_beacon - (duty_cycle_off +
 				   MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON));
 
-	piperp->ps.wantToSleepThisDutyCycle = false;
-	if ((duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
-	    && ((jiffies & 0x80000000) == ((piperp->ps.next_beacon + 1) & 0x80000000))) {
-		if ((time_remaining >= 0)
-		    && (piperp->power_duty != 100)) {
-			piperp->ps.wantToSleepThisDutyCycle = true;
-			piperp->ps.next_duty_cycle = jiffies + time_remaining;
-		} else
-		    if ((MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON) +
-			 MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
-			< time_to_next_beacon) {
-			piperp->ps.wantToSleepThisDutyCycle = true;
-			piperp->ps.next_duty_cycle = jiffies;
+	if (piperp->ps.reallyDoDutyCycling) {
+		piperp->ps.wantToSleepThisDutyCycle = false;
+		if ((duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+		    && ((jiffies & 0x80000000) == ((piperp->ps.next_beacon + 1) & 0x80000000))) {
+			if ((time_remaining >= 0)
+			    && (piperp->power_duty != 100)) {
+				piperp->ps.wantToSleepThisDutyCycle = true;
+				piperp->ps.next_duty_cycle = jiffies + time_remaining;
+			} else
+			    if ((MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON) +
+				 MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
+				< time_to_next_beacon) {
+				piperp->ps.wantToSleepThisDutyCycle = true;
+				piperp->ps.next_duty_cycle = jiffies;
+			}
+			time_remaining = piperp->ps.next_duty_cycle - jiffies;
+		} else {
+			time_remaining = time_to_next_beacon;
 		}
-		time_remaining = piperp->ps.next_duty_cycle - jiffies;
 	} else {
+		piperp->ps.wantToSleepThisDutyCycle = false;
 		time_remaining = time_to_next_beacon;
 	}
 
@@ -872,7 +883,8 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				memset(&stats, 0, sizeof(stats));
 				stats.modeStart = jiffies;
 				stats.cycleStart = jiffies;
-				sendNullDataFrame(piperp, PS_ON);
+				piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
+				sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
 				/*
 				 * Will start it the next time we receive a beacon.
 				 */
@@ -925,6 +937,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 		piperp->ps.mode = PS_MODE_FULL_POWER;
 		piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
 		resume_transmits(piperp);
+		piperp->ps.reallyDoDutyCycling = false;
 		sendNullDataFrame(piperp, PS_OFF);
 	}
 
@@ -949,6 +962,7 @@ void piper_ps_init(struct piper_priv *piperp)
 	piperp->ps.timer.function = ps_timer;
 	piperp->ps.timer.data = (unsigned long) piperp;
 	piperp->ps.wantToSleepThisDutyCycle = false;
+	piperp->ps.reallyDoDutyCycling = false;
 }
 
 EXPORT_SYMBOL_GPL(piper_ps_init);

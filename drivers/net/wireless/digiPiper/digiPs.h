@@ -30,7 +30,9 @@ enum piper_ps_active_result {
  *
  * TODO:  See if we still have to do this in the next drop.
  */
-#define piper_ps_set_header_flag(piperp, header) 	header->fc.pwrMgt = (piperp->ps.mode == PS_MODE_LOW_POWER)
+#define piper_ps_set_header_flag(piperp, header) 	\
+			header->fc.pwrMgt = ((piperp->ps.mode == PS_MODE_LOW_POWER) \
+								&& (piperp->ps.reallyDoDutyCycling))
 
 
 int piper_ps_active(struct piper_priv *piperp);
