@@ -1344,8 +1344,22 @@ static int s3c_hsmmc_resume(struct platform_device *pdev)
 	}
 
 	s3c_hsmmc_ios_init(host);
-	
+
+	 /*
+	  * By unsafe resumes we MUST check the card state at this point, then the
+	  * higher MMC-layer is probably transferring some kind of data to the
+	  * block device that doesn't exist any more.
+	  */
+#if defined(CONFIG_MMC_UNSAFE_RESUME)
+	if (s3c_hsmmc_readl(S3C2410_HSMMC_PRNSTS) & S3C_HSMMC_CARD_PRESENT)
+		retval = mmc_resume_host(mmc);
+	else {
+		retval = 0;
+		mmc_detect_change(mmc, msecs_to_jiffies(500));
+	}
+#else
 	retval = mmc_resume_host(mmc);	
+#endif /* CONFIG_MMC_UNSAFE_RESUME */
 	
 	return retval;
 }

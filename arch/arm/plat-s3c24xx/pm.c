@@ -990,15 +990,27 @@ static int s3c2443_pm_enter(suspend_state_t state)
 		flush_cache_all();
 
 #if 0
+/*
+ * When enabled skip the entering of the suspend mode and wait by using
+ * the function mdelay().
+ */
 #define S3C2443_PM_SKIP_SLEEP
+#define S3C2443_PM_SKIP_SLEEP_SECS		(10)
 #endif
-		
+
 		/* This is the suspend function of the core */
 #if !defined(S3C2443_PM_SKIP_SLEEP)
 		pm_cpu_sleep();
 #else
-		printk(KERN_INFO "[ SUSPEND ] Skipping the sleep mode\n");
-		mdelay(100);
+		{
+			int cnt;
+			int secs = S3C2443_PM_SKIP_SLEEP_SECS;
+			
+			printk(KERN_INFO "[ SUSPEND ] Skipping the sleep mode\n");
+
+			for (cnt = 0; cnt < secs * 10; cnt++)
+				mdelay(100);
+		}
 #endif
 	} else
 		printk(KERN_ERR "[ ERROR ] Save of CPU registers failed\n");

@@ -1704,7 +1704,22 @@ static int s3cmci_resume(struct platform_device *pdev)
 	/* @FIXME: Why do we need to free que DMA-channel? */
 	s3c2410_dma_free(host->dma, &s3cmci_dma_client);
 	s3c2410_dma_request(host->dma, &s3cmci_dma_client, NULL);
+
+	/*
+	 * By unsafe resumes we MUST check the card state at this point, then the
+	 * higher MMC-layer is probably transferring some kind of data to the
+	 * block device that doesn't exist any more.
+	 */
+#if defined(CONFIG_MMC_UNSAFE_RESUME)
+	if (s3cmci_card_present(mmc))
+		retval = mmc_resume_host(mmc);
+	else {
+		retval = 0;
+		mmc_detect_change(mmc, msecs_to_jiffies(500));
+	}
+#else
 	retval = mmc_resume_host(mmc);
+#endif /* CONFIG_MMC_UNSAFE_RESUME */
 	
 exit_resume:
 	return retval;
