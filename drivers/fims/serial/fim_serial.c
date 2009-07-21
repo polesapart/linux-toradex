@@ -609,6 +609,10 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	int timeout;
 	unsigned long flags;
 
+	/* That's really bad but it can happen */
+	if (!termios)
+		return -EINVAL;
+	
 	/* @BUG: The info pointer is NULL when the console is started! */
 	fim = &port->fim;
 	cflag = termios->c_cflag;
@@ -1544,9 +1548,15 @@ static int fim_serial_resume(struct platform_device *pdev)
                 goto exit_resume;
         }
 
-	retval = fim_serial_configure_port(port, port->termios, NULL);
-	if (retval)
-		printk_err("Port configuration failed\n");
+	/*
+	 * If the port was not opened yet, then no termios will be available, so
+	 * only return at this point.
+	 */
+	if (port->termios) {
+		retval = fim_serial_configure_port(port, port->termios, NULL);
+		if (retval)
+			printk_err("Port configuration failed\n");
+	}
 	
  exit_resume:
 	return retval;
