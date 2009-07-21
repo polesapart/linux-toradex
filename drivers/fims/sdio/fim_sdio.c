@@ -416,8 +416,13 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 	struct fim_sdio_t *port;
 	
 	port = driver->driver_data;
-
+	if (!port || !port->mmc) {
+		printk_dbg("Null pointer by unexpected IRQ 0x%02x\n", code);
+		return;
+	}
+	
 	switch (code) {
+
 	case FIM_SDIO_INTARM_CARD_DETECTED:
 		if (fim_sd_card_plugged(port)) {
 			fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, 0);
@@ -427,9 +432,18 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		}
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 		break;
+
 	case FIM_SDIO_INTARM_CARD_DAT1:
 		printk_debug("SDIO IRQ\n");
-		mmc_signal_sdio_irq(port->mmc);
+
+		/*
+		 * Normally we don't need this sanity check but the FIM is reporting
+		 * some SDIO-interrupts where no SDIO-card was initialized.
+		 */
+		if (port->mmc->sdio_irq_thread)
+			mmc_signal_sdio_irq(port->mmc);
+		else
+			printk_dbg("Premature SDIO IRQ received!\n");
 		break;
 	default:
 		printk_err("Unknown IRQ %i | FIM %i | %x\n",
