@@ -756,13 +756,12 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 		piperp->ps.wantToSleepThisDutyCycle = false;
 		time_remaining = time_to_next_beacon;
 	}
-
 	if (piperp->ps.mode == PS_MODE_LOW_POWER) {
 		for (; bp < end; bp = bp + bp[1] + 2) {
 			if (*bp == TIM_ELEMENT) {
 				u8 length = bp[1];
 				bool is_aid_0_set = bp[4] & 1;
-				u8 offset = bp[4] & 0xfe;
+				u8 offset = (bp[4] & 0xfe) >> 1;
 
 				piperp->ps.expectingMulticastFrames = is_aid_0_set;
 
