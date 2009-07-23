@@ -50,7 +50,7 @@ struct gpio_desc {
 #define FLAG_EXPORT	3	/* protected by sysfs_lock */
 #define FLAG_SYSFS	4	/* exported via /sys/class/gpio/control */
 #define FLAG_IS_WAKEUP	5
-	
+
 #ifdef CONFIG_DEBUG_FS
 	const char		*label;
 #endif
@@ -1153,7 +1153,6 @@ EXPORT_SYMBOL_GPL(__gpio_get_value);
 void __gpio_set_value(unsigned gpio, int value)
 {
 	struct gpio_chip	*chip;
-
 	chip = gpio_to_chip(gpio);
 	WARN_ON(extra_checks && chip->can_sleep);
 	chip->set(chip, gpio - chip->base, value);
@@ -1197,7 +1196,21 @@ int __gpio_to_irq(unsigned gpio)
 }
 EXPORT_SYMBOL_GPL(__gpio_to_irq);
 
+/**
+ * __gpio_set_pullupdown() - set pull up/down resistor
+ * Context: any
+ *
+ * This is used, where available, to set the internal
+ * GPIO pull up/down resistor.
+ */
+void __gpio_set_pullupdown(unsigned gpio, int value)
+{
+	struct gpio_chip	*chip;
 
+	chip = gpio_to_chip(gpio);
+	chip->pullupdown(chip, gpio - chip->base, value);
+}
+EXPORT_SYMBOL_GPL(__gpio_set_pullupdown);
 
 /* There's no value in making it easy to inline GPIO calls that may sleep.
  * Common examples include ones connected to I2C or SPI chips.

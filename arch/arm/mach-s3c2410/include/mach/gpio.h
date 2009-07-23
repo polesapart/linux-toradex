@@ -15,6 +15,7 @@
 #define gpio_set_value  __gpio_set_value
 #define gpio_cansleep   __gpio_cansleep
 #define gpio_to_irq     __gpio_to_irq
+#define gpio_set_pullupdown __gpio_set_pullupdown
 
 #include <asm-generic/gpio.h>
 #include <mach/regs-gpio.h>

@@ -282,6 +282,11 @@ static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int e
 	return ret;
 }
 
+static void s3c2443_set_pullupdown(struct gpio_chip *chip, unsigned gpio, int value)
+{
+	s3c2443_gpio_set_udp( s3c2410_gpio_num(chip, gpio), value);
+}
+
 #define S3C2443_GPIO_PORT(name,num,start,obase,				\
 			  inmsk,outmsk,wakemsk)				\
 	{								\
@@ -293,6 +298,7 @@ static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int e
 			.set		  = s3c2443_gpio_set,		\
 			.to_irq           = s3c2443_gpio_to_irq,	\
 			.wakeup_configure = s3c2443_gpio_wakeup_conf,	\
+			.pullupdown	  = s3c2443_set_pullupdown,	\
 			.base		  = start,			\
 			.ngpio		  = num,			\
 		},							\
