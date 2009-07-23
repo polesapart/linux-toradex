@@ -125,18 +125,15 @@ static int piper_write_aes(struct piper_priv *piperp, unsigned char *buffer,
 static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee80211_tx_info *info)
 {
 	struct ieee80211_rate *ret = NULL;
-	int nextidx;
 
-	if (piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index] <
+	if (piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index] >=
 	    info->control.rates[piperp->pstats.tx_retry_index].count) {
+		piperp->pstats.tx_retry_index++;
+	}
+	if (piperp->pstats.tx_retry_index == 0) {
 		ret = ieee80211_get_tx_rate(piperp->hw, info);
 	} else {
-		piperp->pstats.tx_retry_index++;
-		nextidx = info->control.rates[0].idx - 1 - piperp->pstats.tx_retry_index;
-		if (nextidx < 0)
-			return NULL;
-
-		ret = ieee80211_get_alt_retry_rate(piperp->hw, info, nextidx);
+		ret = ieee80211_get_alt_retry_rate(piperp->hw, info, piperp->pstats.tx_retry_index - 1);
 	}
 
 	if (ret != NULL) {
