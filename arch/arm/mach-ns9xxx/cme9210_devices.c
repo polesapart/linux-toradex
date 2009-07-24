@@ -142,7 +142,7 @@ EXPORT_SYMBOL(ns921x_fim_can1);
 #if defined(CONFIG_FIM_ZERO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
-	.host_caps     = MMC_CAP_SDIO_IRQ,
+	.host_caps     = 0,
 
 	.d0_gpio_nr    = 0,
 	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
@@ -174,7 +174,7 @@ EXPORT_SYMBOL(ns921x_fim_sdio0);
 #if defined(CONFIG_FIM_ONE_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
-	.host_caps     = MMC_CAP_SDIO_IRQ,
+	.host_caps     = 0,
 
 	.d0_gpio_nr    = 26,
 	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
