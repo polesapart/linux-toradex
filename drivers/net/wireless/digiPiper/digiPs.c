@@ -609,7 +609,6 @@ static void ps_timer(unsigned long context)
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);
 }
 
-
 static unsigned int beaconHistoryIndex = 0, beaconHistoryCount = 0;
 
 /*
@@ -624,6 +623,7 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 #define MAX_BEACON_ENTRIES		(16)
 #define BEACON_SHIFT_FOR_DIVIDE	(4)
 #define NEXT_BEACON_INDEX(x)	((x + 1) % MAX_BEACON_ENTRIES)
+#define PREV_BEACON_INDEX(x)	((x + 15) % MAX_BEACON_ENTRIES)
 /*
  * The fudge factor is needed because the beacon interval is not really an
  * even multiple of ticks long.  This fudge factor will need to be adjusted
@@ -640,18 +640,26 @@ static u32 next_beacon_time(struct piper_priv *piperp)
 		if ((jiffies >
 		     (piperp->ps.next_beacon +
 		      (MILLS_TO_JIFFIES(piperp->ps.beacon_int) / 2)))
-		    && (piperp->ps.next_beacon != 0)) {
-			beacon[beaconHistoryIndex] = piperp->ps.next_beacon;
+		    && (piperp->ps.next_beacon != 0)
+		    && (beaconHistoryCount > 0)) {
+			u64 sum = ((u64)beacon[PREV_BEACON_INDEX(beaconHistoryIndex)]) + (u64)jiffies;
+
+			sum = sum >> 1;
+			beacon[beaconHistoryIndex] = (u32) (sum & 0xffffffff);
 			beaconHistoryIndex = NEXT_BEACON_INDEX(beaconHistoryIndex);
 		}
 
-
-		if (jiffies < beacon[beaconHistoryIndex]) {
+		if (beaconHistoryCount != 0) {
+			if ((jiffies < beacon[PREV_BEACON_INDEX(beaconHistoryIndex)])
+			   || ((jiffies - beacon[PREV_BEACON_INDEX(beaconHistoryIndex)])
+		   	   > (3*MILLS_TO_JIFFIES(piperp->ps.beacon_int)))) {
 			/*
-			 * Reset history if system clock rolls over.
+			 * Reset history if system clock rolls over or we miss a lot of beacons
+			 * at once.
 			 */
-			beaconHistoryIndex = 0;
-			beaconHistoryCount = 0;
+				beaconHistoryIndex = 0;
+				beaconHistoryCount = 0;
+			}
 		}
 		beacon[beaconHistoryIndex] = jiffies;
 		beaconHistoryIndex = NEXT_BEACON_INDEX(beaconHistoryIndex);
