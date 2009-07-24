@@ -250,8 +250,9 @@ void piper_rx_tasklet(unsigned long context)
 	 * This while loop will keep executing as long as the H/W indicates there
 	 * are more frames in the FIFO to be received.
 	 */
-	while ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
-		BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0) {
+	while (((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
+			BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
+			&& (!piperp->ps.poweredDown)) {
 		struct sk_buff *skb = NULL;
 		struct ieee80211_rx_status status = { 0 };
 		struct rx_frame_hdr header;

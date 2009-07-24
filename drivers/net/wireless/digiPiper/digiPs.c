@@ -284,6 +284,10 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 	/*
 	 * Interrupts are already disabled when we get here.
 	 */
+
+	if (piperp->ps.poweredDown)
+		return 0;
+
 	if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
 		return -1;
 
@@ -292,6 +296,10 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 		return -1;
 
 	if ((!piperp->ps.stoppedTransmit) && (piperp->txPacket))
+		return -1;
+
+	if ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
+		BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
 		return -1;
 
 	savedRegs[INDX_GEN_CONTROL] = piperp->ac->rd_reg(piperp, BB_GENERAL_CTL);
@@ -318,6 +326,7 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 	stats.jiffiesOn += jiffies - stats.cycleStart;
 	stats.cycleStart = jiffies;
 	disable_irq(piperp->irq);
+	piperp->ps.poweredDown = true;
 
 	return 0;
 }
@@ -403,6 +412,8 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 	stats.jiffiesOff += jiffies - stats.cycleStart;
 	stats.cycleStart = jiffies;
 	enable_irq(piperp->irq);
+
+	piperp->ps.poweredDown = false;
 }
 
 
@@ -756,6 +767,10 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 		piperp->ps.wantToSleepThisDutyCycle = false;
 		time_remaining = time_to_next_beacon;
 	}
+	if (strcmp(piperp->debug_cmd, "on") == 0)
+		printk("%u %u %lu %d %d\n", piperp->ps.next_beacon, piperp->ps.next_wakeup,
+				jiffies, piperp->ps.wantToSleepThisDutyCycle, time_remaining);
+
 	if (piperp->ps.mode == PS_MODE_LOW_POWER) {
 		for (; bp < end; bp = bp + bp[1] + 2) {
 			if (*bp == TIM_ELEMENT) {
@@ -804,6 +819,8 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 					piperp->ps.state =
 					    PS_STATE_WAITING_FOR_BUFFERED_DATA;
 					sendPSPollFrame(piperp);
+					if (strcmp(piperp->debug_cmd, "on") == 0)
+						printk(KERN_ERR "Sending ps-poll\n");
 				}
 			}
 		}

@@ -28,6 +28,8 @@
 #include "digiPs.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
+#define WANT_DEBUG_COMMANDS			(0)
+
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)
 {
@@ -203,7 +205,7 @@ void piper_reset_mac(struct piper_priv *piperp)
 void piper_set_macaddr(struct piper_priv *piperp)
 {
 	/* Default MAC Addr used if the nvram parameters are corrupted */
-	u8 mac[6] = {0x00, 0x04, 0xf3, 0x00, 0x43, 0x35};
+	u8 mac[6] = {0x00, 0x04, 0xf3, 0x11, 0x43, 0x35};
 	u8 *pmac = piperp->pdata->macaddr;
 	int i;
 
@@ -217,6 +219,8 @@ void piper_set_macaddr(struct piper_priv *piperp)
 			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 		}
 	}
+printk(KERN_ERR "Forcing default MAC address\n");
+memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 
 	memcpy(piperp->hw->wiphy->perm_addr, piperp->pdata->macaddr,
 	       sizeof(piperp->hw->wiphy->perm_addr));
@@ -421,6 +425,8 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 	 */
 	piperp->ac->wr_reg(piperp, MAC_BSS_ID0, 0xffffffff, op_write);
 	piperp->ac->wr_reg(piperp, MAC_BSS_ID1, 0xffffffff, op_write);
+
+	piperp->ps.poweredDown = false;
 
 #if WANT_AIROHA_CALIBRATION
 	digi_dbg("Calling digiWifiInitCalibration()\n");
@@ -649,6 +655,35 @@ static ssize_t store_power_duty(struct device *dev, struct device_attribute *att
 }
 static DEVICE_ATTR(power_duty, S_IWUSR | S_IRUGO, show_power_duty, store_power_duty);
 
+#if WANT_DEBUG_COMMANDS
+
+static ssize_t show_debug_cmd(struct device *dev, struct device_attribute *attr,
+			       char *buf)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", piperp->debug_cmd);
+}
+
+static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct piper_priv *piperp = dev_get_drvdata(dev);
+	ssize_t ret = -EINVAL;
+
+	if (strlen(buf) < sizeof(piperp->debug_cmd))
+	{
+		strcpy(piperp->debug_cmd, buf);
+		piperp->debug_cmd[strlen(buf)-1] = 0;		/* truncate the \n */
+		ret = count;
+	}
+
+	return ret < 0 ? ret : count;
+}
+static DEVICE_ATTR(debug_cmd, S_IWUSR | S_IRUGO, show_debug_cmd, store_debug_cmd);
+
+#endif
+
 #ifdef CONFIG_PM
 
 u32 saved_mac_regs[][2] = {
@@ -869,6 +904,15 @@ static int __init piper_probe(struct platform_device* pdev)
 		goto error_sysfs;
 	}
 
+	strcpy(piperp->debug_cmd, "off");
+#if WANT_DEBUG_COMMANDS
+	ret = device_create_file(&pdev->dev, &dev_attr_debug_cmd);
+	if (ret) {
+		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to create sysfs file\n");
+		goto error_sysfs;
+	}
+#endif
+
 	printk(KERN_INFO PIPER_DRIVER_NAME ": driver loaded (fw ver = 0x%08x)\n",
 		piperp->version);
 
@@ -899,6 +943,9 @@ static int piper_remove(struct platform_device *pdev)
 
 	device_remove_file(&pdev->dev, &dev_attr_antenna_sel);
 	device_remove_file(&pdev->dev, &dev_attr_power_duty);
+#if WANT_DEBUG_COMMANDS
+	device_remove_file(&pdev->dev, &dev_attr_debug_cmd);
+#endif
 
 	piper_ps_deinit(piperp);
 	piper_unregister_hw(piperp);
