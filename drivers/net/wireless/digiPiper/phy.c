@@ -88,6 +88,7 @@ void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *
 			}
 			break;
 		default:
+			printk(KERN_ERR "rate = %p, rate->bitrate%d\n", rate, rate->bitrate);
 			WARN_ON(1);
 			us_len = 0;
 		}
