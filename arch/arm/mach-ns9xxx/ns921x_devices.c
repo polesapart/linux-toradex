@@ -742,6 +742,19 @@ static inline void __init ns9xxx_add_device_ns921x_fim1_w1(void) { }
 #if defined(CONFIG_FIM_CORE)
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
+	/*
+	 * By the CME9210s with the CAN-support the GPIOs 2 and 23 are inter-connected.
+	 * This is just problematic when these modules should use the FIM-serial
+	 * interface, then the GPIO23 is not configured as input GPIO after the resets.
+	 * IMPORTANT: The below code will disappear in one of the next U-Boot releases
+	 * with the FIMs-support.
+	 * (Luis Galdos)
+	 */
+#if defined(CONFIG_FIM_CORE) && \
+		(defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS))
+	gpio_direction_input_ns921x_unlocked(23);
+#endif
+	
 	/* FIM 0 */
 	ns9xxx_add_device_ns921x_fim_serial0();
 	ns9xxx_add_device_ns921x_fim_sdio0();
