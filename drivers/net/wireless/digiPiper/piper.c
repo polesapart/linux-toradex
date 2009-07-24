@@ -219,8 +219,6 @@ void piper_set_macaddr(struct piper_priv *piperp)
 			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 		}
 	}
-printk(KERN_ERR "Forcing default MAC address\n");
-memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 
 	memcpy(piperp->hw->wiphy->perm_addr, piperp->pdata->macaddr,
 	       sizeof(piperp->hw->wiphy->perm_addr));
