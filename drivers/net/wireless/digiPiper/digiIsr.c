@@ -69,7 +69,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		 * broadcasts.  In this case, tell mac80211 the transmit occurred and
 		 * restart the tx queue.
 		 */
-		if (piperp->txPacket != NULL) {
+		if (piper_tx_getqueue(piperp) != NULL) {
 			packet_tx_done(piperp, TX_COMPLETE, 0);
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TX_FIFO_EMPTY and null packet?\n");
@@ -80,7 +80,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 
 	if (status & BB_IRQ_MASK_TIMEOUT) {
 		/* AP did not ACK our TX packet */
-		if (piperp->txPacket != NULL) {
+		if (piper_tx_getqueue(piperp) != NULL) {
 			/* Update retry counter */
 			piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
 			tasklet_hi_schedule(&piperp->tx_tasklet);
@@ -95,7 +95,7 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		dprintk(DWARNING, "TX abort\n");
 
 		/* Could not transmit a packet because the media was busy */
-		if (piperp->txPacket != NULL) {
+		if (piper_tx_getqueue(piperp) != NULL) {
 			tasklet_hi_schedule(&piperp->tx_tasklet);
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TX_ABORT and null packet?\n");

@@ -285,17 +285,13 @@ bool piper_prepare_aes_datablob(struct piper_priv *piperp, unsigned int keyIndex
  * up the information the trasmit tasklet will need, and then
  * schedule the tasklet.
  */
-int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
+int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb)
 {
 	struct piper_priv *piperp = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
+	unsigned long flags;
 
 	dprintk(DVVERBOSE, "\n");
-
-	/* Sanity checks */
-	if (piperp->txPacket != NULL) {
-		return -EBUSY;
-	}
 
 	if (piperp->is_radio_on == false) {
 		dprintk(DERROR, "called with radio off\n");
@@ -345,16 +341,30 @@ int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 			   IEEE80211_TX_STAT_ACK |
 			   IEEE80211_TX_STAT_AMPDU |
 			   IEEE80211_TX_STAT_AMPDU_NO_BACK);
-	piperp->txPacket = skb;
 	piperp->pstats.tx_queue.len++;
 	piperp->pstats.tx_queue.count++;
 
-	tasklet_hi_schedule(&piperp->tx_tasklet);
+	if (piper_tx_enqueue(piperp, skb, skb_return_cb) == -1)
+		return -EBUSY;
+
+	spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
+	if (!piperp->tx_tasklet_running) {
+		piperp->tx_tasklet_running = true;
+		tasklet_hi_schedule(&piperp->tx_tasklet);
+	}
+	spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
+
 	piperp->pstats.tx_start_count++;
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(piper_hw_tx);
+EXPORT_SYMBOL_GPL(piper_hw_tx_private);
+
+
+int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
+{
+	return piper_hw_tx_private(hw, skb, ieee80211_tx_status_irqsafe);
+}
 
 
 /*
@@ -375,7 +385,6 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 	}
 
 	piperp->is_radio_on = true;
-	piperp->txPacket = NULL;
 
 	/*
 	 * Initialize the antenna with the defualt setting defined in the

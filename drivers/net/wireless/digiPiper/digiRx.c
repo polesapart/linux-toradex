@@ -221,8 +221,8 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
  */
 static inline void handle_ack(struct piper_priv *piperp, int signal_strength)
 {
-	if (piperp->txPacket) {
-		struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piperp->txPacket);
+	if (piper_tx_getqueue(piperp)) {
+		struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
 		if ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0) {
 			piperp->clear_irq_mask_bit(piperp,
 						   BB_IRQ_MASK_TX_FIFO_EMPTY |
@@ -250,6 +250,9 @@ void piper_rx_tasklet(unsigned long context)
 	 * This while loop will keep executing as long as the H/W indicates there
 	 * are more frames in the FIFO to be received.
 	 */
+
+	piperp->ps.rxTaskletRunning = true;
+
 	while (((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
 			BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
 			&& (!piperp->ps.poweredDown)) {
@@ -259,7 +262,7 @@ void piper_rx_tasklet(unsigned long context)
 		unsigned int length = 0;
 		frameControlFieldType_t fr_ctrl_field;
 
-		skb = __dev_alloc_skb(RX_FIFO_SIZE, GFP_ATOMIC);
+		skb = __dev_alloc_skb(RX_FIFO_SIZE + 100, GFP_ATOMIC);
 		if (skb == NULL) {
 			/* Oops.  Out of memory.  Exit the tasklet */
 			dprintk(DERROR, "__dev_alloc_skb failed\n");
@@ -271,6 +274,11 @@ void piper_rx_tasklet(unsigned long context)
 		 */
 		piperp->ac->rd_fifo(piperp, BB_DATA_FIFO, (u8 *)&header, sizeof(header));
 		phy_process_plcp(piperp, &header, &status, &length);
+		if (length > 2000) {
+			printk(KERN_ERR "Bogus length of %d read\n", length);
+			printk(KERN_ERR "0x%8.8X 0x%8.8X\n", *(u32 *)&header, *(((u32 *)&header) + 1));
+		}
+
 		if (length != 0) {
 			if (receive_packet(piperp, skb, length, &fr_ctrl_field, &status)) {
 
@@ -321,6 +329,7 @@ void piper_rx_tasklet(unsigned long context)
 		}
 	}
 
+	piperp->ps.rxTaskletRunning = false;
 	piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_RX_FIFO);
 }
 EXPORT_SYMBOL_GPL(piper_rx_tasklet);

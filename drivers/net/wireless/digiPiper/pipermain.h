@@ -204,10 +204,23 @@ struct piper_ps {
     bool expectingMulticastFrames;
     bool wantToSleepThisDutyCycle;
     bool reallyDoDutyCycling;
-    bool poweredDown;
+    volatile bool poweredDown;
+    bool forceOfdm;
     volatile bool stoppedTransmit;
     volatile bool allowTransmits;
+    volatile bool rxTaskletRunning;
 };
+
+typedef void (*tx_skb_return_cb_t)(struct ieee80211_hw *hw,
+				 struct sk_buff *skb);
+
+struct piper_queue {
+	struct sk_buff *skb;
+	tx_skb_return_cb_t skb_return_cb;
+};
+
+#define PIPER_TX_QUEUE_SIZE			(16)
+#define NEXT_TX_QUEUE_INDEX(x)		((x+1) & 0xf)
 
 struct piper_priv {
     const char *drv_name;
@@ -222,7 +235,12 @@ struct piper_priv {
     struct piper_stats pstats;
     struct tasklet_struct rx_tasklet;
     struct tasklet_struct tx_tasklet;
-    struct sk_buff *txPacket;
+    spinlock_t tx_tasklet_lock;
+    bool tx_tasklet_running;
+    spinlock_t tx_queue_lock;
+    struct piper_queue tx_queue[PIPER_TX_QUEUE_SIZE];
+    unsigned int tx_queue_head;
+    unsigned int tx_queue_tail;
     struct timer_list tx_timer;
     struct timer_list led_timer;
     enum led_states led_state;
@@ -241,7 +259,6 @@ struct piper_priv {
      u16(*get_next_beacon_backoff) (void);
     int (*load_beacon) (struct piper_priv *, u8 *, u32);
     int (*rand) (void);
-    void (*kick_tx_task) (void);
     void (*tx_calib_cb) (struct piper_priv *);
     int (*set_antenna) (struct piper_priv *, enum antenna_select);
     int (*set_tracking_constant) (struct piper_priv * piperp,
@@ -316,6 +333,10 @@ void piper_load_dsp_firmware(struct piper_priv *piperp);
 int piper_spike_suppression(struct piper_priv *piperp);
 void piper_reset_mac(struct piper_priv *piperp);
 void piper_set_macaddr(struct piper_priv *piperp);
+int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn);
+void piper_empty_tx_queue(struct piper_priv *piperp);
+int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb);
+struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters

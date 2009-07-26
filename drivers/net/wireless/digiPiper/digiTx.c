@@ -38,6 +38,81 @@ static int dlevel = DWARNING;
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
 
+/*
+ * Adds an entry into the tx queue.
+ */
+int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb)
+{
+	unsigned long flags;
+	int result = -1;
+
+	spin_lock_irqsave(piperp->tx_queue_lock, flags);
+	if (NEXT_TX_QUEUE_INDEX(piperp->tx_queue_head) != piperp->tx_queue_tail) {
+		piperp->tx_queue[piperp->tx_queue_head].skb = skb;
+		piperp->tx_queue[piperp->tx_queue_head].skb_return_cb = skb_return_cb;
+		piperp->tx_queue_head = NEXT_TX_QUEUE_INDEX(piperp->tx_queue_head);
+		result = 0;
+	}
+	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
+
+	return result;
+}
+EXPORT_SYMBOL_GPL(piper_tx_enqueue);
+
+
+/*
+ * Returns the skb for the current element.
+ */
+struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp)
+{
+	if (piperp->tx_queue_head == piperp->tx_queue_tail) {
+		return NULL;
+	} else {
+		return piperp->tx_queue[piperp->tx_queue_tail].skb;
+	}
+}
+EXPORT_SYMBOL_GPL(piper_tx_getqueue);
+
+/*
+ * Returns the skb buffer call back for the current element.
+ */
+static inline tx_skb_return_cb_t piper_tx_getqueue_return_fn(struct piper_priv *piperp)
+{
+	return piperp->tx_queue[piperp->tx_queue_tail].skb_return_cb;
+}
+
+
+/*
+ * Called to advance the queue tail.
+ */
+static inline void piper_tx_queue_next(struct piper_priv *piperp)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(piperp->tx_queue_lock, flags);
+	if (piperp->tx_queue_head != piperp->tx_queue_tail) {
+		piperp->tx_queue[piperp->tx_queue_tail].skb = NULL;
+		piperp->tx_queue[piperp->tx_queue_tail].skb_return_cb = NULL;
+		piperp->tx_queue_tail = NEXT_TX_QUEUE_INDEX(piperp->tx_queue_tail);
+	}
+	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
+}
+
+/*
+ * Called when we unload to clear any remaining queue entries.
+ */
+void piper_empty_tx_queue(struct piper_priv *piperp)
+{
+	while (piper_tx_getqueue(piperp)) {
+		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
+
+		ieee80211_tx_info_clear_status(info);
+		piper_tx_getqueue_return_fn(piperp)(piperp->hw, piper_tx_getqueue(piperp));
+		piper_tx_queue_next(piperp);
+	}
+}
+EXPORT_SYMBOL_GPL(piper_empty_tx_queue);
+
 
 
 /*
@@ -220,8 +295,8 @@ static void handle_rts_cts(struct piper_priv *piperp,
 			struct ieee80211_rts rtsFrame;
 
 			ieee80211_rts_get(piperp->hw, txInfo->control.vif,
-					  piperp->txPacket->data + TX_HEADER_LENGTH,
-					  piperp->txPacket->len - TX_HEADER_LENGTH, txInfo,
+					  piper_tx_getqueue(piperp)->data + TX_HEADER_LENGTH,
+					  piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH, txInfo,
 					  &rtsFrame);
 			/*
 			 * If we come here, then we need to send an RTS frame ahead of the
@@ -244,8 +319,8 @@ static void handle_rts_cts(struct piper_priv *piperp,
 			struct ieee80211_cts ctsFrame;
 
 			ieee80211_ctstoself_get(piperp->hw, txInfo->control.vif,
-						piperp->txPacket->data + TX_HEADER_LENGTH,
-						piperp->txPacket->len - TX_HEADER_LENGTH,
+						piper_tx_getqueue(piperp)->data + TX_HEADER_LENGTH,
+						piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH,
 						txInfo, &ctsFrame);
 			/*
 			 * At the time this code was written, the mac80211 library had
@@ -272,15 +347,17 @@ static void handle_rts_cts(struct piper_priv *piperp,
 /*
  * This routine is called to report the result of a transmit operation to
  * mac80211.  It is used for both successful transmissions and failures.
- * It sends the result to the stack, zeros piperp->txPacket, and then wakes
+ * It sends the result to the stack, removes the current tx frame from the
+ * queue, and then wakes
  * up the transmit queue.
  */
 void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 			   int singalstrength)
 {
-	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piperp->txPacket);
+	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
 	int i;
 	struct sk_buff *skb;
+	unsigned long flags;
 
 #define WANT_TRANSMIT_RESULT 	(0)
 #if WANT_TRANSMIT_RESULT
@@ -299,7 +376,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	if (piperp->tx_calib_cb)
 		piperp->tx_calib_cb(piperp);
 
-	skb_pull(piperp->txPacket, TX_HEADER_LENGTH);
+	skb_pull(piper_tx_getqueue(piperp), TX_HEADER_LENGTH);
 
 	ieee80211_tx_info_clear_status(info);
 
@@ -313,27 +390,19 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	if (piperp->tx_rts)
 		piperp->pstats.ll_stats.dot11RTSSuccessCount++;
 
-	skb = piperp->txPacket;
-	piperp->txPacket = NULL;
+	skb = piper_tx_getqueue(piperp);
+	piper_tx_getqueue_return_fn(piperp)(piperp->hw, skb);
 
-	if (piperp->ps.tx_complete_fn) {
-		/*
-		 * If power save has something for us to do...
-		 */
-		if (piperp->ps.tx_complete_fn(piperp, skb) == PS_RETURN_SKB_TO_MAC80211) {
-			ieee80211_tx_status_irqsafe(piperp->hw, skb);
-		}
-	} else {
-		ieee80211_tx_status_irqsafe(piperp->hw, skb);
-	}
+	piper_tx_queue_next(piperp);
 
-	/*
-	 * Although we set piperp->txPacket to NULL above, the piperp->ps.tx_complete_fn
-	 * fn may have started another transmit, so check it before waking up
-	 * the mac80211 library queues.
-	 */
-	if (piperp->txPacket == NULL)
+	if (piper_tx_getqueue(piperp) == NULL) {
+		spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
+		piperp->tx_tasklet_running = false;
+		spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
 		ieee80211_wake_queues(piperp->hw);
+	} else {
+		tasklet_hi_schedule(&piperp->tx_tasklet);
+	}
 }
 EXPORT_SYMBOL_GPL(packet_tx_done);
 
@@ -365,13 +434,13 @@ void piper_tx_tasklet(unsigned long context)
 					BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
 					BB_IRQ_MASK_TX_ABORT);
 
-		if (piperp->txPacket != NULL) {
-			struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piperp->txPacket);
+		if (piper_tx_getqueue(piperp) != NULL) {
+			struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
 			struct ieee80211_rate *txRate = get_tx_rate(piperp, txInfo);
 
 			if (txRate != NULL) {
 				fc = (frameControlFieldType_t *)
-						&piperp->txPacket->data[FRAME_CONTROL_FIELD_OFFSET];
+						&piper_tx_getqueue(piperp)->data[FRAME_CONTROL_FIELD_OFFSET];
 
 				/* set the retry bit if this is not the first try */
 				if (piperp->pstats.tx_retry_count[0] != 0)
@@ -387,8 +456,8 @@ void piper_tx_tasklet(unsigned long context)
 				 * retry because it has the TX rate information which may change for
 				 * retries.
 				 */
-				phy_set_plcp(piperp->txPacket->data,
-					     piperp->txPacket->len - TX_HEADER_LENGTH,
+				phy_set_plcp(piper_tx_getqueue(piperp)->data,
+					     piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH,
 					     txRate, piperp->use_hw_aes ? 8 : 0);
 
 				/*
@@ -405,12 +474,12 @@ void piper_tx_tasklet(unsigned long context)
 
 				if (piperp->use_hw_aes) {
 					err =
-					    piper_write_aes(piperp, piperp->txPacket->data,
-							    piperp->txPacket->len);
+					    piper_write_aes(piperp, piper_tx_getqueue(piperp)->data,
+							    piper_tx_getqueue(piperp)->len);
 				} else {
 					err =
-					    piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, piperp->txPacket->data,
-							piperp->txPacket->len);
+					    piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, piper_tx_getqueue(piperp)->data,
+							piper_tx_getqueue(piperp)->len);
 				}
 
 				/*
@@ -455,7 +524,12 @@ void piper_tx_tasklet(unsigned long context)
 				packet_tx_done(piperp, OUT_OF_RETRIES, 0);
 			}
 		} else {
-			dprintk(DERROR, "piperp->txPacket == NULL\n");
+			long unsigned int flags;
+
+			spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
+			piperp->tx_tasklet_running = false;
+			spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
+			dprintk(DERROR, "piper_tx_getqueue(piperp) == NULL\n");
 		}
 	}
 }

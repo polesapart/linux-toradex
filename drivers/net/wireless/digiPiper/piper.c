@@ -288,7 +288,12 @@ static int piper_init_rx_tx(struct piper_priv *piperp)
 	tasklet_init(&piperp->rx_tasklet, piper_rx_tasklet, (unsigned long)piperp);
 	tasklet_disable(&piperp->rx_tasklet);
 
-	piperp->txPacket = NULL;
+	spin_lock_init(&piperp->tx_tasklet_lock);
+	spin_lock_init(&piperp->tx_queue_lock);
+	piperp->tx_tasklet_running = false;
+    memset(&piperp->tx_queue, 0, sizeof(piperp->tx_queue));
+    piperp->tx_queue_head = 0;
+    piperp->tx_queue_tail = 0;
 	tasklet_init(&piperp->tx_tasklet, piper_tx_tasklet, (unsigned long)piperp);
 	tasklet_disable(&piperp->tx_tasklet);
 
@@ -301,6 +306,7 @@ static void piper_free_rx_tx(struct piper_priv *piperp)
 	tasklet_kill(&piperp->rx_tasklet);
 	tasklet_disable(&piperp->tx_tasklet);
 	tasklet_kill(&piperp->tx_tasklet);
+	piper_empty_tx_queue(piperp);
 }
 
 /*
@@ -671,8 +677,13 @@ static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr
 
 	if (strlen(buf) < sizeof(piperp->debug_cmd))
 	{
-		strcpy(piperp->debug_cmd, buf);
-		piperp->debug_cmd[strlen(buf)-1] = 0;		/* truncate the \n */
+		if (strstr(buf, "dump") != NULL) {
+			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+			ret = 1;
+		} else {
+			strcpy(piperp->debug_cmd, buf);
+			piperp->debug_cmd[strlen(buf)-1] = 0;		/* truncate the \n */
+		}
 		ret = count;
 	}
 
