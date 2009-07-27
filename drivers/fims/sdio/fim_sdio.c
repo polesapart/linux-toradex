@@ -117,7 +117,7 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define SDIO_FIFO_TX_DISCRC			0x20
 
 /* User specified macros */
-#define FIM_SDIO_TIMEOUT_MS			10000
+#define FIM_SDIO_TIMEOUT_MS			500
 #define FIM_SDIO_TX_CMD_LEN			5
 #define FIM_SDIO_MAX_RESP_LENGTH			17
 
@@ -265,6 +265,10 @@ struct fim_sdio_t {
 
 	/* struct scatterlist *sg; */
 	u8 *sg_virt;
+
+	/* Members used for restarting the FIM */
+	atomic_t fim_is_down;
+	struct work_struct restart_work;
 };
 
 /*
@@ -313,7 +317,6 @@ static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port);
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd);
 
 
-
 /* Return the corresponding port structure */
 inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc)
 {
@@ -323,8 +326,12 @@ inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc)
 	return (struct fim_sdio_t *)mmc->private[0];
 }
 
-
-/* Timeout function called when a MMC-command doesn't return correctly */
+/*
+ * This function is called when the FIM didn't respond to our requests. This normally
+ * happens when the card was unplugged during a data transfer or by another similar
+ * errors. So, for avoiding some additional failure we stop any further transfers to
+ * the FIM.
+ */
 static void fim_sd_cmd_timeout(unsigned long data)
 {
 	struct fim_sdio_t *port;
@@ -333,10 +340,49 @@ static void fim_sd_cmd_timeout(unsigned long data)
 
 	/* If the command pointer isn't NULL then a timeout has ocurred */
 	if (port->mmc_cmd) {
-		printk_err("A MMC-command timeout ocurred\n");
-		port->mmc_cmd->error = -ETIMEDOUT;
+		atomic_set(&port->fim_is_down, 1);
+		port->mmc_cmd->error = -ENOMEDIUM;
 		fim_sd_process_next(port);
 	}
+}
+
+/* Workqueue for restarting a FIM */
+static void fim_sd_restart_work_func(struct work_struct *work)
+{
+	struct fim_sdio_t *port;
+	struct fim_driver *fim;
+	int ret;
+       
+	port = container_of(work, struct fim_sdio_t, restart_work);
+	fim = &port->fim;
+
+	printk_dbg("Going to restart the FIM%i\n", fim->picnr);
+	fim_disable_irq(&port->fim);
+       
+	ret = fim_send_stop(&port->fim);
+	if (ret) {
+		printk_err("Couldn't stop the FIM%i\n", fim->picnr);
+		return;
+	}
+
+	ret = fim_download_firmware(&port->fim);
+	if (ret) {
+		printk_err("FIM%i download failed\n", fim->picnr);
+		return;
+	}
+
+        ret = fim_send_start(&port->fim);
+        if (ret) {
+		printk_err("FIM%i start failed\n", fim->picnr);
+		return;
+        }
+
+	/* Reset the internal values */
+	printk_dbg("Re-enabling the IRQ of FIM%u\n", fim->picnr);
+	atomic_set(&port->fim_is_down, 0);
+	fim_enable_irq(&port->fim);
+	port->mmc_cmd = NULL;
+	mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 }
 
 /* Check the status of the card detect line if no external IRQ supported */
@@ -350,7 +396,11 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 
 	if (val != port->cd_value) {
 		port->cd_value = val;
-		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+
+		if (atomic_read(&port->fim_is_down))
+			schedule_work(&port->restart_work);
+		else
+			mmc_detect_change(port->mmc, msecs_to_jiffies(100));
 	}
 
 	mod_timer(&port->cd_timer, jiffies + FIM_SDIO_CD_POLLING_TIMER);
@@ -389,7 +439,15 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 	if ((ret = fim_sd_prepare_cd_irq(port)))
 		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);
 
-	mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+	/*
+	 * If the FIM was stopped, then only schedule the workqueue for restarting it
+	 * again. This worker will call the detect change function.
+	 */
+	if (atomic_read(&port->fim_is_down))
+		schedule_work(&port->restart_work);
+	else
+		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+	
 	return IRQ_HANDLED;
 }
 
@@ -402,8 +460,6 @@ inline static int fim_sd_card_plugged(struct fim_sdio_t *port)
 	fim_get_stat_reg(fim, FIM_SDIO_CARD_STATREG, &val);
 	return !val;
 }
-
-
 
 /*
  * Handler for the incoming FIM-interrupts. Available interrupts:
@@ -745,18 +801,13 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 {
 	struct fim_driver *fim;
-	int retval;
 
 	if (!buf || !port)
 		return -EINVAL;
 	
 	fim = &port->fim;
 	buf->private = buf;
-
-	if ((retval = fim_send_buffer(fim, buf)))
-		printk_err("FIM send buffer request failed.\n");
-
-	return retval;
+	return fim_send_buffer(fim, buf);
 }
 
 /* Returns a command buffer allocated from the FIM-API */
@@ -977,13 +1028,16 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	port->buf = buf;
 	port->mmc_cmd = cmd;
 	buf->private = port;
-	mod_timer(&port->mmc_timer, jiffies + msecs_to_jiffies(FIM_SDIO_TIMEOUT_MS));
 	if ((retval = fim_sd_send_buffer(port, buf))) {
-		printk_err("MMC command %i (err %i)\n", cmd->opcode,
-			   retval);
+/* 		printk_err("MMC command %i (err %i)\n", cmd->opcode, */
+/* 			   retval); */
 		fim_sd_free_buffer(port, buf);
+		mod_timer(&port->mmc_timer,
+			  jiffies + msecs_to_jiffies(1/* FIM_SDIO_TIMEOUT_MS */));
 		goto exit_ok;
-	}
+	} else
+		mod_timer(&port->mmc_timer,
+			  jiffies + msecs_to_jiffies(FIM_SDIO_TIMEOUT_MS));
 
 	/*
 	 * If we have a write command then fill a next buffer and send it
@@ -1043,6 +1097,13 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	if (!(port = get_port_from_mmc(mmc)))
 		return;
 
+	/* In the case that the FIM was shutdown return at this point */
+	if (atomic_read(&port->fim_is_down)) {
+		mrq->cmd->error = -ENOMEDIUM;
+		mmc_request_done(mmc, mrq);
+		return;
+	}
+	
 	/*
 	 * Wait if the timeout function is running or the RX-callback is active
 	 */
@@ -1383,7 +1444,9 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 			goto exit_free_cdirq;
 		}
 	}
-	
+
+	INIT_WORK(&port->restart_work, fim_sd_restart_work_func);
+
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, FIM_SDIO_MAIN_START);
@@ -1463,10 +1526,9 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	port->cd_gpio = pdata->cd_gpio_nr;
 	
 	retval = fim_sdio_register_port(&pdev->dev, port, pdata, gpios);
-	
+
 	return retval;
 }
-
 
 static int __devexit fim_sdio_remove(struct platform_device *pdev)
 {
@@ -1482,7 +1544,6 @@ static int __devexit fim_sdio_remove(struct platform_device *pdev)
 	return retval;
 }
 
-
 static struct platform_driver fim_sdio_platform_driver = {
 	.probe	= fim_sdio_probe,
 	.remove	= __devexit_p(fim_sdio_remove),
@@ -1491,8 +1552,6 @@ static struct platform_driver fim_sdio_platform_driver = {
 		   .name  = FIM_SDIO_DRIVER_NAME,
 	},
 };
-
-
 
 /*
  * This is the function that will be called when the module is loaded
@@ -1522,17 +1581,16 @@ static int __init fim_sdio_init(void)
 	fim_sdios->fims = nrpics;
 	fim_sdios->ports = (void *)fim_sdios + sizeof(struct fim_sdios_t);	
 
-
 	retval = platform_driver_register(&fim_sdio_platform_driver);
 	if (retval)
 		goto exit_free_ports;
 	
 	printk_info(DRIVER_DESC " v" DRIVER_VERSION "\n");
 	return 0;
-	
+
  exit_free_ports:
 	kfree(fim_sdios);
-	
+
 	return retval;
 }
 
