@@ -173,13 +173,13 @@ static int calculate_link_quality(int signal)
 {
 	int quality;
 
-	quality = (signal - PIPER_MIN_SIGNAL_DBM) * 100 /
-		  (PIPER_MAX_SIGNAL_DBM - PIPER_MIN_SIGNAL_DBM);
-
-	if (quality < 0)
+	if (signal < PIPER_MIN_SIGNAL_DBM)
 		quality = 0;
-	if (quality > 100)
+	else if (signal > PIPER_MAX_SIGNAL_DBM)
 		quality = 100;
+	else
+		quality = (signal - PIPER_MIN_SIGNAL_DBM) * 100 /
+			  (PIPER_MAX_SIGNAL_DBM - PIPER_MIN_SIGNAL_DBM);
 
 	dprintk(DVERBOSE, "signal: %d, quality: %d/100\n", signal, quality);
 
