@@ -111,7 +111,7 @@ static const struct ieee80211_regdomain *cfg80211_world_regdom =
 	&world_regdom;
 
 #ifdef CONFIG_WIRELESS_OLD_REGULATORY
-static char *ieee80211_regdom = "US";
+static char *ieee80211_regdom = "";
 module_param(ieee80211_regdom, charp, 0444);
 MODULE_PARM_DESC(ieee80211_regdom, "IEEE 802.11 regulatory domain code");
 
@@ -190,8 +190,14 @@ static const struct ieee80211_regdomain *static_regdom(char *alpha2)
 		return &jp_regdom;
 	if (alpha2[0] == 'E' && alpha2[1] == 'U')
 		return &eu_regdom;
+
+#if 1
+	/* PPH Default to europe now... */
+	return &eu_regdom;
+#else
 	/* Default, as per the old rules */
 	return &us_regdom;
+#endif
 }
 
 static bool is_old_static_regdom(const struct ieee80211_regdomain *rd)
