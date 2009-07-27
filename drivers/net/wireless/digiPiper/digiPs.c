@@ -316,7 +316,92 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 }
 
 
+#if 1
+static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
+{
+	int i;
+#if RESET_PIPER
+	if (piperp->pdata->reset) {
+	    piperp->pdata->reset(piperp, 0);
+	    udelay(500);
+	    piper_spike_suppression(piperp, want_spike_suppression);
+	}
+#endif
 
+	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xff, op_write);
+
+
+#if RESET_PIPER
+	piperp->rf->set_chan(piperp->hw, piperp->channel);
+#endif
+
+      // store the registers back
+
+	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
+	piperp->ac->wr_reg(piperp, BB_RSSI, savedRegs[INDX_RSSI_AES], op_write);
+//	piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
+	piperp->ac->wr_reg(piperp, BB_SPI_CTRL, savedRegs[INDX_SPI_CTRL], op_write);
+	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, savedRegs[INDX_CONF1], op_write);
+	piperp->ac->wr_reg(piperp, BB_CONF_2, savedRegs[INDX_CONF2], op_write);
+	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0, op_write);
+	piperp->ac->wr_reg(piperp, BB_OUTPUT_CONTROL, savedRegs[INDX_OUT_CTRL], op_write);
+	piperp->ac->wr_reg(piperp, MAC_CTL, savedRegs[INDX_MAC_CONTROL], op_write);
+
+	piperp->ac->wr_reg(piperp, MAC_STA_ID0,     savedRegs[INDX_STAID_1],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_STA_ID1,     savedRegs[INDX_STAID_2],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_BSS_ID0,     savedRegs[INDX_BSSID_1],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_BSS_ID1,     savedRegs[INDX_BSSID_2],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_SSID_LEN,    savedRegs[INDX_BRS_SSID],       op_write);
+	piperp->ac->wr_reg(piperp, MAC_BACKOFF,     savedRegs[INDX_BACKOFF],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, savedRegs[INDX_DTIM_LISTEN],  op_write);
+	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM,    savedRegs[INDX_BEACON_INT], op_write);
+	piperp->ac->wr_reg(piperp, MAC_CTL,         savedRegs[INDX_MAC_CTL],          op_write);
+	piperp->ac->wr_reg(piperp, MAC_BEACON_FILT, savedRegs[INDX_BEACON_MASK],  op_write);
+
+//****
+	// set bit-11 in the general control register to a 1 to start the processors
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+			   BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
+
+	// set the TX-hold bit
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720080, op_write);
+
+	// clear the TX-FIFO memory
+	for (i = 0; i < 448; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
+
+	// reset the TX-FIFO
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
+
+	// release the TX-hold and reset
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720000, op_write);
+
+
+//***
+	/*
+	 * Reset the interrupt mask.  We could have been receiving a frame when we
+	 * powered down.  This could cause us to store the wrong mask, so we want
+	 * to make sure we enabe the RX interrupts.  However, we should not have the
+	 * TX interrupts enabled when we come out of power save mode.
+	 */
+	udelay(50);
+	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xff, op_write);
+	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
+	piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_RX_OVERRUN | BB_IRQ_MASK_RX_FIFO);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
+	             (savedRegs[INDX_GEN_CONTROL] | 0x37000000 |
+	              BB_GENERAL_CTL_RX_EN), op_write);
+
+	stats.jiffiesOff += jiffies - stats.cycleStart;
+	stats.cycleStart = jiffies;
+
+	enable_irq(piperp->irq);
+
+	piperp->ps.poweredDown = false;
+}
+
+
+#else
 /*
  * This API releases the transceiver reset line and writes back the stored
  * transceiver register value. This API can also be called in power save mode
@@ -333,7 +418,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 				   savedRegs[INDX_OUT_CTRL], op_write);
 		udelay(150);
 		if (want_spike_suppression)
-			piper_spike_suppression(piperp);
+			piper_spike_suppression(piperp, true);
 	}
 #endif
 /*
@@ -410,7 +495,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 
 	piperp->ps.poweredDown = false;
 }
-
+#endif
 
 
 /*
@@ -505,7 +590,9 @@ static void resume_transmits(struct piper_priv *piperp)
 	piperp->ps.allowTransmits = true;
 	if (piperp->ps.stoppedTransmit) {
 		piperp->ps.stoppedTransmit = false;
-		tasklet_hi_schedule(&piperp->tx_tasklet);
+		if (piperp->tx_tasklet_running) {
+			tasklet_hi_schedule(&piperp->tx_tasklet);
+		}
 	}
 }
 
@@ -733,7 +820,9 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 
 	if (piperp->ps.reallyDoDutyCycling != (piperp->power_duty <= MAX_DUTY_CYCLE)) {
 		piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
-		sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+		if (!piperp->ps.transmitter_backed_up) {
+			sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+		}
 	}
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 	stats.receivedBeacons++;
@@ -747,7 +836,20 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	    time_to_next_beacon - (duty_cycle_off +
 				   MILLS_TO_JIFFIES(WAKEUP_TIME_BEFORE_BEACON));
 
-	if (piperp->ps.reallyDoDutyCycling) {
+	if ((piper_tx_queue_half_full(piperp)) && (!piperp->ps.transmitter_backed_up)) {
+		/*
+		 * If we are so backed up we are having trouble sending PS-Poll frames,
+		 * then turn power save off for a few cycles so that we can try to
+		 * clear this condition.
+		 */
+		piperp->ps.transmitter_backed_up = true;
+		sendNullDataFrame(piperp, false);
+	} else if ((piperp->tx_queue_count == 0) && (piperp->ps.transmitter_backed_up)) {
+		piperp->ps.transmitter_backed_up = false;
+		sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+	}
+
+	if ((piperp->ps.reallyDoDutyCycling) && (!piperp->ps.transmitter_backed_up)) {
 		piperp->ps.wantToSleepThisDutyCycle = false;
 		if ((duty_cycle_off >= MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD))
 		    && ((jiffies & 0x80000000) == ((piperp->ps.next_beacon + 1) & 0x80000000))) {
@@ -772,6 +874,8 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	}
 
 	if (piperp->ps.mode == PS_MODE_LOW_POWER) {
+		piperp->ps.apHasBufferedFrame = false;
+		piperp->ps.expectingMulticastFrames = false;
 		for (; bp < end; bp = bp + bp[1] + 2) {
 			if (*bp == TIM_ELEMENT) {
 				u8 length = bp[1];
@@ -820,7 +924,9 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 					    PS_STATE_WAITING_FOR_BUFFERED_DATA;
 					if ((strcmp(piperp->debug_cmd, "on") == 0) && (piperp->ps.forceOfdm))
 						printk(KERN_ERR "Forcing OFDM\n");
-					sendPSPollFrame(piperp, piperp->ps.forceOfdm);
+					if (!piperp->ps.transmitter_backed_up) {
+						sendPSPollFrame(piperp, piperp->ps.forceOfdm);
+					}
 					piperp->ps.forceOfdm = true;
 				}
 			}
@@ -857,12 +963,16 @@ void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *s
 			    || (header->fc.moreData == 0)) {
 				piperp->ps.expectingMulticastFrames = false;
 				if (piperp->ps.apHasBufferedFrame) {
-					sendPSPollFrame(piperp, false);
+					if (!piperp->ps.transmitter_backed_up) {
+						sendPSPollFrame(piperp, false);
+					}
 				}
 			}
-		} else if (piperp->ps.apHasBufferedFrame) {
+		} else if ((piperp->ps.apHasBufferedFrame) && ((header->addr1[0] & 1) == 0)) {
 			if (header->fc.moreData) {
-				sendPSPollFrame(piperp, piperp->ps.forceOfdm);
+				if (!piperp->ps.transmitter_backed_up) {
+					sendPSPollFrame(piperp, piperp->ps.forceOfdm);
+				}
 				piperp->ps.forceOfdm = true;
 			} else {
 				piperp->ps.apHasBufferedFrame = false;
@@ -900,6 +1010,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				piperp->ps.expectingMulticastFrames = false;
 				piperp->ps.mode = PS_MODE_LOW_POWER;
 				piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
+				piperp->ps.transmitter_backed_up = false;
 				memset(&stats, 0, sizeof(stats));
 				stats.modeStart = jiffies;
 				stats.cycleStart = jiffies;
@@ -941,8 +1052,9 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				printk(KERN_ERR "BB_GENERAL_STAT_RX_FIFO_EMPTY = %d\n",
 					piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY);
 				digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+			} else {
+				MacEnterActiveMode(piperp, true);
 			}
-			MacEnterActiveMode(piperp, true);
 			stats.jiffiesOn += jiffies - stats.cycleStart;
 		}
 		if ((piperp->ps.beacon_int != 0)

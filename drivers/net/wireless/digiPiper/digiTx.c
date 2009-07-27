@@ -51,6 +51,7 @@ int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_retu
 		piperp->tx_queue[piperp->tx_queue_head].skb = skb;
 		piperp->tx_queue[piperp->tx_queue_head].skb_return_cb = skb_return_cb;
 		piperp->tx_queue_head = NEXT_TX_QUEUE_INDEX(piperp->tx_queue_head);
+		piperp->tx_queue_count++;
 		result = 0;
 	}
 	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
@@ -94,6 +95,7 @@ static inline void piper_tx_queue_next(struct piper_priv *piperp)
 		piperp->tx_queue[piperp->tx_queue_tail].skb = NULL;
 		piperp->tx_queue[piperp->tx_queue_tail].skb_return_cb = NULL;
 		piperp->tx_queue_tail = NEXT_TX_QUEUE_INDEX(piperp->tx_queue_tail);
+		piperp->tx_queue_count--;
 	}
 	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
 }
@@ -112,6 +114,13 @@ void piper_empty_tx_queue(struct piper_priv *piperp)
 	}
 }
 EXPORT_SYMBOL_GPL(piper_empty_tx_queue);
+
+
+bool piper_tx_queue_half_full(struct piper_priv *piperp)
+{
+	return (piperp->tx_queue_count >= (PIPER_TX_QUEUE_SIZE >> 1));
+}
+EXPORT_SYMBOL_GPL(piper_tx_queue_half_full);
 
 
 
@@ -376,33 +385,35 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	if (piperp->tx_calib_cb)
 		piperp->tx_calib_cb(piperp);
 
-	skb_pull(piper_tx_getqueue(piperp), TX_HEADER_LENGTH);
+	if (piper_tx_getqueue(piperp) != NULL) {
+		skb_pull(piper_tx_getqueue(piperp), TX_HEADER_LENGTH);
 
-	ieee80211_tx_info_clear_status(info);
+		ieee80211_tx_info_clear_status(info);
 
-	/* prepare statistics and pass them to the stack */
-	for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
-		info->status.rates[i].count = piperp->pstats.tx_retry_count[i];
-	info->status.ack_signal = singalstrength;
-	info->flags |= (result == RECEIVED_ACK) ? IEEE80211_TX_STAT_ACK : 0;
-	piperp->pstats.tx_complete_count++;
-	piperp->pstats.tx_queue.len--;
-	if (piperp->tx_rts)
-		piperp->pstats.ll_stats.dot11RTSSuccessCount++;
+		/* prepare statistics and pass them to the stack */
+		for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
+			info->status.rates[i].count = piperp->pstats.tx_retry_count[i];
+		info->status.ack_signal = singalstrength;
+		info->flags |= (result == RECEIVED_ACK) ? IEEE80211_TX_STAT_ACK : 0;
+		piperp->pstats.tx_complete_count++;
+		piperp->pstats.tx_queue.len--;
+		if (piperp->tx_rts)
+			piperp->pstats.ll_stats.dot11RTSSuccessCount++;
 
-	skb = piper_tx_getqueue(piperp);
-	piper_tx_getqueue_return_fn(piperp)(piperp->hw, skb);
+		skb = piper_tx_getqueue(piperp);
+		piper_tx_getqueue_return_fn(piperp)(piperp->hw, skb);
 
-	piper_tx_queue_next(piperp);
+		piper_tx_queue_next(piperp);
 
-	if (piper_tx_getqueue(piperp) == NULL) {
-		spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
-		piperp->tx_tasklet_running = false;
-		spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
-		ieee80211_wake_queues(piperp->hw);
-	} else {
-		tasklet_hi_schedule(&piperp->tx_tasklet);
-	}
+		if (piper_tx_getqueue(piperp) == NULL) {
+			spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
+			piperp->tx_tasklet_running = false;
+			spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
+			ieee80211_wake_queues(piperp->hw);
+		} else {
+			tasklet_hi_schedule(&piperp->tx_tasklet);
+		}
+	} else printk(KERN_ERR "packet_tx_done called with empty queue\n");
 }
 EXPORT_SYMBOL_GPL(packet_tx_done);
 
@@ -466,10 +477,6 @@ void piper_tx_tasklet(unsigned long context)
 				 */
 				piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_TX_HOLD, op_or);
 
-				/* Clear any pending TX interrupts */
-				piperp->ac->wr_reg(piperp, BB_IRQ_STAT,
-						  BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
-						  BB_IRQ_MASK_TX_ABORT, op_write);
 				handle_rts_cts(piperp, txInfo, fc->type);
 
 				if (piperp->use_hw_aes) {
@@ -481,6 +488,11 @@ void piper_tx_tasklet(unsigned long context)
 					    piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, piper_tx_getqueue(piperp)->data,
 							piper_tx_getqueue(piperp)->len);
 				}
+
+				/* Clear any pending TX interrupts */
+				piperp->ac->wr_reg(piperp, BB_IRQ_STAT,
+						  BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
+						  BB_IRQ_MASK_TX_ABORT, op_write);
 
 				/*
 				 * Now start the transmitter.

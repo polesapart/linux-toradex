@@ -565,9 +565,6 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
 		digi_dbg("**** transceiver == RF_AIROHA_2236\n");
 		/* Initial settings for 20 MHz reference frequency, 802.11b/g */
-		write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
-		write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
-		udelay(150);
 
 		/* CH_integer: Frequency register 0 */
 		write_rf(hw, 0, 0x01f79 );

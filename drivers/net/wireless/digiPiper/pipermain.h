@@ -209,6 +209,7 @@ struct piper_ps {
     volatile bool stoppedTransmit;
     volatile bool allowTransmits;
     volatile bool rxTaskletRunning;
+    bool transmitter_backed_up;
 };
 
 typedef void (*tx_skb_return_cb_t)(struct ieee80211_hw *hw,
@@ -241,6 +242,7 @@ struct piper_priv {
     struct piper_queue tx_queue[PIPER_TX_QUEUE_SIZE];
     unsigned int tx_queue_head;
     unsigned int tx_queue_tail;
+    unsigned int tx_queue_count;
     struct timer_list tx_timer;
     struct timer_list led_timer;
     enum led_states led_state;
@@ -330,13 +332,14 @@ bool piper_prepare_aes_datablob(struct piper_priv *digi,
 				u8 * frame, u32 length, bool isTransmit);
 void piper_load_mac_firmware(struct piper_priv *piperp);
 void piper_load_dsp_firmware(struct piper_priv *piperp);
-int piper_spike_suppression(struct piper_priv *piperp);
+int piper_spike_suppression(struct piper_priv *piperp, bool retry);
 void piper_reset_mac(struct piper_priv *piperp);
 void piper_set_macaddr(struct piper_priv *piperp);
 int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn);
 void piper_empty_tx_queue(struct piper_priv *piperp);
 int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb);
 struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp);
+bool piper_tx_queue_half_full(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters

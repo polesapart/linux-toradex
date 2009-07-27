@@ -250,7 +250,7 @@ static int piper_init_chip_hw(struct piper_priv *piperp)
 	piper_load_mac_firmware(piperp);
 	piper_load_dsp_firmware(piperp);
 
-	ret = piper_spike_suppression(piperp);
+	ret = piper_spike_suppression(piperp, true);
 	if (ret) {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
 		       ": spike suppresion error\n");
@@ -323,14 +323,14 @@ static struct platform_device piper_device = {
 void __init ns9xxx_add_device_ccw9p9215_wifi(struct piper_pdata *pdata)
 {
 	int ret;
-	
+
 	if (!pdata)
 		return;
 
 	if (pdata->rst_gpio >= 0) {
 		ret = gpio_request(pdata->rst_gpio, PIPER_DRIVER_NAME "-reset-gpio");
 		if (ret != 0)
-			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			printk(KERN_WARNING PIPER_DRIVER_NAME
 			       ": failed to request reset gpio %d\n", pdata->rst_gpio);
 		else {
 			/* Configure reset line and hold the chip in reset */
@@ -338,11 +338,11 @@ void __init ns9xxx_add_device_ccw9p9215_wifi(struct piper_pdata *pdata)
 			pdata->reset = ccw9p9215_piper_reset;
 		}
 	}
-	
+
 	if (pdata->irq_gpio >= 0) {
 		ret = gpio_request(pdata->irq_gpio, PIPER_DRIVER_NAME "-irq-gpio");
 		if (ret != 0)
-			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			printk(KERN_WARNING PIPER_DRIVER_NAME
 			       ": failed to request irq gpio %d\n", pdata->irq_gpio);
 	}
 

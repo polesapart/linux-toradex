@@ -114,7 +114,7 @@ void piper_load_dsp_firmware(struct piper_priv *piperp)
  * I'm not sure exactly what this code is doing.  It comes straight from the
  * guy who designed the chip.
  */
-int piper_spike_suppression(struct piper_priv *piperp)
+int piper_spike_suppression(struct piper_priv *piperp, bool retry)
 {
 	int timeout1 = 300, timeout2 = 300;
 	int ret = 0;
@@ -167,6 +167,10 @@ int piper_spike_suppression(struct piper_priv *piperp)
 		timeout2--;
 		if (!timeout2)
 			ret = -EIO;
+		if (!retry) {
+			ret = -EIO;
+			break;
+		}
 	}
 
 	/* Set TX_ON/RXHP_ON and RX to normal wifi, restore the reset value to HW_OUT_CTRL */
@@ -294,6 +298,7 @@ static int piper_init_rx_tx(struct piper_priv *piperp)
     memset(&piperp->tx_queue, 0, sizeof(piperp->tx_queue));
     piperp->tx_queue_head = 0;
     piperp->tx_queue_tail = 0;
+    piperp->tx_queue_count = 0;
 	tasklet_init(&piperp->tx_tasklet, piper_tx_tasklet, (unsigned long)piperp);
 	tasklet_disable(&piperp->tx_tasklet);
 
