@@ -111,10 +111,6 @@ static void autodetect(void (**putc)(char, void __iomem *), void __iomem **base)
 		*putc = putc_ns9360;
 		*base = NS9360_UARTD;
 		return;
-	} else if (__raw_readl(__REG(0xa09001f4)) == 0xfffff001) {
-		*putc = putc_a9m9750dev;
-		*base = A9M9750DEV_UARTA;
-		return;
 	}
 #elif defined(CONFIG_PROCESSOR_NS921X)
 	/* ns921x */
