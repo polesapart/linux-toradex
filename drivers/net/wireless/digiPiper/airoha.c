@@ -376,8 +376,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 	/* Disable the rx processing path */
 	write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
 
-	write_reg(BB_OUTPUT_CONTROL, 0xfffffc3f, op_and);
-	write_reg(BB_OUTPUT_CONTROL, 0x00000280, op_or);
+	write_reg(BB_OUTPUT_CONTROL, 0xfffff33f, op_and);
+	write_reg(BB_OUTPUT_CONTROL, 0x00000880, op_or);
 
 
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
@@ -467,8 +467,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		write_rf(hw, 4, freqTableAiroha_7230[channelIndex].address4);
 
 
-    	write_reg(BB_OUTPUT_CONTROL, 0xffffff3f, op_and);
-    	write_reg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
+    	write_reg(BB_OUTPUT_CONTROL, 0xfffff33f, op_and);
+    	write_reg(BB_OUTPUT_CONTROL, 0x00000000, op_or);
 		/*Re-enable the rx processing path */
 
 		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
