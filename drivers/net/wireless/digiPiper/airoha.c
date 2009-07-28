@@ -366,6 +366,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		"A-161",
 		"A-165"
 	};
+
+	printk(KERN_ERR "Setting channel %s\n", channelLookup[channelIndex]);
 #endif
 	if (channelIndex >= BAND_A_OFFSET)
 		rf_band = IEEE80211_BAND_5GHZ;
@@ -373,6 +375,10 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		rf_band = IEEE80211_BAND_2GHZ;
 	/* Disable the rx processing path */
 	write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
+
+	write_reg(BB_OUTPUT_CONTROL, 0xfffffc3f, op_and);
+	write_reg(BB_OUTPUT_CONTROL, 0x00000280, op_or);
+
 
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
 /* TODO, when using this transceiver, resolve this commented code */
@@ -399,8 +405,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		write_rf(hw, 0, freqTableAiroha_2236[channelIndex].integer);
 		write_rf(hw, 1, freqTableAiroha_2236[channelIndex].fraction);
 
-		/* critical delay for correct calibration */
-		udelay(10);
+		/* channe switch delay = 150 us */
+		udelay(150);
 
 		/*
 		 * TXON, PAON and RXON should all be low before Calibration
@@ -410,17 +416,10 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
                  * GEN CTL register is 0).
 		 */
 
-		/* calibrate RF transceiver */
-
-		/* TXDCOC->active; RCK->disable */
-		write_rf(hw, 15, 0x00D87);
-		udelay(50);
-		/* TXDCOC->disable; RCK->enable */
-		write_rf(hw, 15, 0x00787);
-		udelay(50);
-		/* TXDCOC->disable; RCK->disable */
-		write_rf(hw, 15, 0x00587);
-		udelay(50);
+		/*
+		 * No need to do calibration routine.  It was already done by
+		 * the call to InitializeRf().
+		 */
 
 		/* configure the baseband processing engine */
 		write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
@@ -464,59 +463,12 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 
 		/* Set the channel frequency */
 		write_rf(hw, 0, freqTableAiroha_7230[channelIndex].integer);
-		udelay(150);				/* Mike Schaffner says this is needed here */
 		write_rf(hw, 1, freqTableAiroha_7230[channelIndex].fraction);
-		udelay(150);				/* Mike Schaffner says this is needed here */
 		write_rf(hw, 4, freqTableAiroha_7230[channelIndex].address4);
-		udelay(150);				/* Mike Schaffner says this is needed here */
 
 
-		// Select the frequency band: 5Ghz or 2.4Ghz
-		if (rf_band == IEEE80211_BAND_5GHZ) {
-			/* calibrate RF transceiver */
-
-			/* TXDCOC->active; RCK->disable */
-			write_rf(hw, 15, 0x9ABA8);
-			udelay(50);
-
-			/* TXDCOC->disable; RCK->enable */
-			write_rf(hw, 15, 0x3ABA8);
-			udelay(50);
-
-			/* TXDCOC->disable; RCK->disable */
-			write_rf(hw, 15, 0x12BAC);
-			udelay(50);
-
-			/* configure the baseband processing engine */
-			/*
-			 * This bit always as to be turned off when we are using
-			 * the Airoha chip, even though it's named the 5G EN bit.
-			 * It has to do with how they hooked up the Airoha.
-			 */
-			write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
-		} else {
-			/* calibrate RF transceiver */
-
-			/* TXDCOC->active; RCK->disable */
-			write_rf(hw, 15, 0x9ABA8);
-			udelay(50);
-
-			/* TXDCOC->disable; RCK->enable */
-			write_rf(hw, 15, 0x3ABA8);
-			udelay(50);
-
-			/* TXDCOC->disable; RCK->disable */
-			write_rf(hw, 15, 0x1ABA8);
-			udelay(50);
-
-			/* configure the baseband processing engine */
-			write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
-			/*
-			 * No short preambles allowed for ODFM.
-			 */
-			write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_SH_PRE, op_and);
-		}
-
+    	write_reg(BB_OUTPUT_CONTROL, 0xffffff3f, op_and);
+    	write_reg(BB_OUTPUT_CONTROL, 0x00000300, op_or);
 		/*Re-enable the rx processing path */
 
 		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
@@ -524,7 +476,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		printk(KERN_WARNING PIPER_DRIVER_NAME ": undefined rf transceiver!\n");
 		return -EINVAL;
 	}
-//	priv->set_tracking_constant(priv, getFrequency(channelIndex));
+
 
 	return 0;
 }
@@ -565,6 +517,9 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
 		digi_dbg("**** transceiver == RF_AIROHA_2236\n");
 		/* Initial settings for 20 MHz reference frequency, 802.11b/g */
+		write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
+		write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
+		udelay(150);
 
 		/* CH_integer: Frequency register 0 */
 		write_rf(hw, 0, 0x01f79 );
@@ -637,16 +592,12 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 		switch (band_selection) {
 		case IEEE80211_BAND_2GHZ:
 			/* Initial settings for 20 MHz reference frequency, 802.11b/g */
-			write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
-			write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
-			udelay(150);
 
 			/* Frequency register 0 */
 			write_rf(hw, 0, 0x00379 );
 
 			/* Frequency register 1 */
 			write_rf(hw, 1, 0x13333 );
-			udelay(10);
 
 			/*Config 1 = default value */
 			write_rf(hw, 2, 0x841FF );
@@ -715,17 +666,12 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 
 		case IEEE80211_BAND_5GHZ:
 			/* Initial settings for 20 MHz reference frequency, 802.11a */
-			write_reg(BB_OUTPUT_CONTROL, 0xfffffcff, op_and);
-			write_reg(BB_OUTPUT_CONTROL, 0x00000200, op_or);
-			udelay(150);
 
 			/* Frequency register 0 */
 			write_rf(hw, 0, 0x0FF56 );
 
 			/* Frequency register 1 */
 			write_rf(hw, 1, 0x0AAAA );
-
-			udelay(10);
 
 			/*Config 1 = default value */
 			write_rf(hw, 2, 0x451FE );
@@ -790,6 +736,9 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			udelay(50);
 			break;
 		}
+		/* This bit should always be set clear with the airoha transceiver, reguardless
+		   of whether we are in the 5G Hz band. */
+        write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_GEN_5GEN, op_and);
 	} else {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
 		       ": undefined rf transceiver!\n");
