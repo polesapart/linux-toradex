@@ -16,6 +16,7 @@
 
 #include "pipermain.h"
 #include "mac.h"
+#include "airoha.h"
 #include "phy.h"
 
 #define PHY_DEBUG	(0)
@@ -114,35 +115,59 @@ void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *
 }
 EXPORT_SYMBOL_GPL(phy_set_plcp);
 
-static int get_signal(struct rx_frame_hdr *hdr)
+
+static int get_signal(struct rx_frame_hdr *hdr, enum ieee80211_band rf_band, int transceiver)
 {
-	int gain;
-	int signal;
+    int gain;
+    int signal;
 
-	/* map LNA value to gain value */
-	const unsigned char lna_table[] = {
-		0, 0, 23, 39
-	};
-	/* map high gain values to dBm */
-	const char gain_table[] = {
-		-82, -84, -85, -86, -87, -89, -90, -92, -94, -98
-	};
+    if (transceiver == RF_AIROHA_2236) {
+        const u8 lnaTable_al2236[] =
+        {
+            0, 0, 20, 36
+        };
 
-	gain = lna_table[hdr->rssi_low_noise_amp] +
-			2 * hdr->rssi_variable_gain_attenuator;
-	if (gain > 96)
-		signal = -98;
-	else if (gain > 86)
-		signal = gain_table[gain - 87];
-	else
-		signal = 5 - gain;
+        // Map high gain values to dbm
+        const signed char gainTable_al2236[] =
+        {
+           -85, -85, -88, -88, -92
+        };
+        // Convert received signal strength to dbm
+        gain = lnaTable_al2236[hdr->rssi_low_noise_amp] + 2*hdr->rssi_variable_gain_attenuator;
+        if (gain > 92)
+            signal = -96;
+        else if (gain > 87)
+            signal = gainTable_al2236[gain - 88];
+        else
+            signal = 4 - gain;
+    } else {
+        static const u8 lnaTable_al7230_24ghz[] =
+        {
+            0, 0, 18, 42
+        };
+        static const u8 lnaTable_al7230_50ghz[] =
+        {
+            0, 0, 17, 37
+        };
+        /* Convert received signal strength to dbm for RF_AIROHA_7230 */
+        if (rf_band == IEEE80211_BAND_2GHZ) {
+            gain = lnaTable_al7230_24ghz[hdr->rssi_low_noise_amp] + 2*hdr->rssi_variable_gain_attenuator;
+            signal = 2 - gain;
+        } else {
+            gain = lnaTable_al7230_50ghz[hdr->rssi_low_noise_amp] + 2*hdr->rssi_variable_gain_attenuator;
+            signal = -5 - gain;
+        }
+    }
 
-	return signal;
+    return signal;
 }
 
+
+
+
 /* FIXME, following limtis should depend on the platform */
-#define PIPER_MAX_SIGNAL_DBM		(-5)
-#define PIPER_MIN_SIGNAL_DBM		(-80)
+#define PIPER_MAX_SIGNAL_DBM		(-30)
+#define PIPER_MIN_SIGNAL_DBM		(-90)
 
 static int calculate_link_quality(int signal)
 {
@@ -176,9 +201,9 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 	struct digi_rf_ops *rf = piper->rf;
 
 	memset(status, 0, sizeof(*status));
-	status->signal = get_signal(hdr);
-	status->antenna = hdr->antenna;
 	status->band = piper->rf->getBand(piper->channel);
+	status->signal = get_signal(hdr, status->band, piper->pdata->rf_transceiver);
+	status->antenna = hdr->antenna;
 	status->freq = piper->rf->getFrequency(piper->channel);
 	status->qual = calculate_link_quality(status->signal);
 
