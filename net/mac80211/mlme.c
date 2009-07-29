@@ -439,7 +439,7 @@ static void ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata,
 }
 
 
-static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
+void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 					   u16 stype, u16 reason)
 {
 	struct ieee80211_local *local = sdata->local;
@@ -467,6 +467,7 @@ static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 
 	ieee80211_tx_skb(sdata, skb, 0);
 }
+EXPORT_SYMBOL(ieee80211_send_deauth_disassoc);
 
 /* MLME */
 static void ieee80211_sta_def_wmm_params(struct ieee80211_sub_if_data *sdata,
