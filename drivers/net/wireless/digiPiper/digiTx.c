@@ -380,7 +380,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	del_timer_sync(&piperp->tx_timer);
 
 #if WANT_TRANSMIT_RESULT
-	digi_dbg("Transmit result %s\n", resultText[result]);
+	printk(KERN_ERR "Transmit result %s\n", resultText[result]);
 #endif
 	if (piperp->tx_calib_cb)
 		piperp->tx_calib_cb(piperp);
@@ -526,11 +526,11 @@ void piper_tx_tasklet(unsigned long context)
 								 BB_IRQ_MASK_TIMEOUT |
 								 BB_IRQ_MASK_TX_ABORT);
 				}
-
 				if ((piperp->pstats.tx_total_tetries != 0) &&
 				    ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)) {
 					piperp->pstats.ll_stats.dot11ACKFailureCount++;
 				}
+			    piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
 				piperp->pstats.tx_total_tetries++;
 			} else {
 				packet_tx_done(piperp, OUT_OF_RETRIES, 0);
@@ -541,7 +541,7 @@ void piper_tx_tasklet(unsigned long context)
 			spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
 			piperp->tx_tasklet_running = false;
 			spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
-			dprintk(DERROR, "piper_tx_getqueue(piperp) == NULL\n");
+//			dprintk(DERROR, "piper_tx_getqueue(piperp) == NULL\n");
 		}
 	}
 }

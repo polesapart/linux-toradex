@@ -82,7 +82,6 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		/* AP did not ACK our TX packet */
 		if (piper_tx_getqueue(piperp) != NULL) {
 			/* Update retry counter */
-			piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
 			tasklet_hi_schedule(&piperp->tx_tasklet);
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TIMEOUT and null packet?\n");
