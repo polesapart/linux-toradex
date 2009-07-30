@@ -99,9 +99,7 @@ static inline struct s3c24xx_udc *gadget_to_udc(struct usb_gadget *gadget)
         return container_of(gadget, struct s3c24xx_udc, gadget);
 }
 
-
 static spinlock_t regs_lock = SPIN_LOCK_UNLOCKED;
-
 
 static inline void s3c2443_print_err_packet_setup(int errcode,
 						  struct usb_ctrlrequest *pctrl)
@@ -169,6 +167,45 @@ static inline void s3c24xx_ep_irq_enable(struct s3c24xx_udc *udc, int epnr, int 
 	else
 		eier &= ~(1 << epnr);
 	writel(eier, udc->base + S3C24XX_UDC_EIER_REG);
+}
+
+static inline void s3c2443_udc_print_regs(char *marke, struct s3c24xx_udc *udc, int epnr)
+{
+	struct regs_t {
+		char *name;
+		ulong addr;
+	};
+
+	int pos, old_epnr;
+	ulong regval;
+	static const struct regs_t regs[] = {
+		{ "EIR   ", S3C24XX_UDC_EIR_REG },
+		{ "EIER  ", S3C24XX_UDC_EIER_REG },
+		{ "EDR   ", S3C24XX_UDC_EDR_REG },
+		{ "TR    ", S3C24XX_UDC_TR_REG },
+		{ "SSR   ", S3C24XX_UDC_SSR_REG },
+		{ "SCR   ", S3C24XX_UDC_SCR_REG },
+		{ "EP0SR ", S3C24XX_UDC_EP0SR_REG },
+		{ "FCON  ", S3C24XX_UDC_FIFO_CON_REG },
+		{ "FSTAT ", S3C24XX_UDC_FIFO_STATUS_REG },
+		{ "ESR   ", S3C24XX_UDC_ESR_REG },
+		{ "ECR   ", S3C24XX_UDC_ECR_REG },
+		{ "BRCR  ", S3C24XX_UDC_BRCR_REG },
+		{ "BWCR  ", S3C24XX_UDC_BWCR_REG },
+	};
+
+	/* First get a backup of the current EP number */
+	old_epnr = readl(udc->base + S3C24XX_UDC_IR_REG);
+	writel(epnr, udc->base + S3C24XX_UDC_IR_REG);
+
+	/* Now print all the registers */
+	printk(KERN_DEBUG "%s\n", marke);
+	for (pos = 0; pos < ARRAY_SIZE(regs); pos++) {
+		regval = usb_read(udc, regs[pos].addr, epnr);
+		printk(KERN_DEBUG "%s: 0x%08lx\n", regs[pos].name, regval);
+	}
+
+	writel(old_epnr, udc->base + S3C24XX_UDC_IR_REG);
 }
 
 static struct usb_ep_ops s3c24xx_ep_ops = {
@@ -355,7 +392,6 @@ static void s3c24xx_udc_disable(struct s3c24xx_udc *udc)
 	       S3C24XX_UDC_EP0SR_SHT | S3C24XX_UDC_EP0SR_LWO,
 	       udc->base + S3C24XX_UDC_EP0SR_REG);
 	writel(0, udc->base + S3C24XX_UDC_EP0CR_REG);
-	usb_write(udc, S3C24XX_UDC_ECR_FLUSH, S3C24XX_UDC_ECR_REG, 0);
 
 	/* Unset the function address */
 	s3c24xx_udc_set_address(udc, 0);
@@ -540,8 +576,7 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	regval = __raw_readl(S3C2443_UCLKCON);
 	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE |
 		S3C2443_UCLKCON_TFUNC_ENABLE | S3C2443_UCLKCON_THOST_DISABLE;
-	__raw_writel(regval, S3C2443_UCLKCON);
-
+	__raw_writel(regval, S3C2443_UCLKCON);	
 	return 0;
 }
 
@@ -1856,9 +1891,21 @@ static void s3c24xx_udc_fifo_flush(struct usb_ep *_ep)
 		return;
 	}
 
-	/* Flush the EP by using the control register */
-	printk_debug("EP%i: Flushing now\n", epnr);
-	usb_write(udc, S3C24XX_UDC_ECR_FLUSH, S3C24XX_UDC_ECR_REG, epnr);
+	/*
+	 * Flush the EP by using the control register
+	 * IMPORTANT: Dont enable the below code, otherwise is not possible to
+	 * recover the EP from it, we need to restart the UDC for this purpose (we dont
+	 * really want to do it!).
+	 */
+#if 0
+	{
+		ulong ecr;
+		
+		ecr = usb_read(udc, S3C24XX_UDC_ECR_REG, epnr);
+		printk_err("EP%i: Flushing now [ecr 0x%08lx]\n", epnr, ecr);
+		usb_write(udc, ecr | S3C24XX_UDC_ECR_FLUSH, S3C24XX_UDC_ECR_REG, epnr);
+	}
+#endif
 }
 
 /*
