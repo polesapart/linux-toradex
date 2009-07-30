@@ -895,6 +895,21 @@ static void s3c2443_pm_input_gpios(struct gpio_sleep *gps, int count)
 	}
 }
 
+/* Return zero if at least one wakeup source was configured */
+static int s3c2443_pm_valid_irq_wakeup(void)
+{
+	int retval;
+
+	retval = 1;
+	if (!any_allowed(s3c_irqwake_intmask, s3c_irqwake_intallow) &&
+	    !any_allowed(s3c_irqwake_eintmask, s3c_irqwake_eintallow)) {
+		printk(KERN_ERR PFX "No sources enabled for wake-up! Sleep abort.\n");
+		retval = 0;
+	}
+
+	return retval;
+}
+
 /*
  * PM enter function for the S3C2443
  * (Luis Galdos)
@@ -916,15 +931,9 @@ static int s3c2443_pm_enter(suspend_state_t state)
 		return -EINVAL;
 	}
 
-	/* check if we have anything to wake-up with... bad things seem
-	 * to happen if you suspend with no wakeup (system will often
-	 * require a full power-cycle)
-	*/
-	if (!any_allowed(s3c_irqwake_intmask, s3c_irqwake_intallow) &&
-	    !any_allowed(s3c_irqwake_eintmask, s3c_irqwake_eintallow)) {
-		printk(KERN_ERR PFX "No sources enabled for wake-up! Sleep abort.\n");
+	/* Be sure that we have an available wakeup source */
+	if (!s3c2443_pm_valid_irq_wakeup())
 		return -EINVAL;
-	}
 	
 	/* prepare check area if configured */
 
@@ -1083,9 +1092,28 @@ static int s3c24xx_pm_enter(suspend_state_t state)
 	return retval;
 }
 
+/*
+ * According to [1], this function is called right prior to suspending the devices.
+ * We can check here if we have a valid wakeup source configured, otherwise return
+ * zero and the system will not continue with the next PM functions.
+ *
+ * [1] include/linux/suspend.h
+ */
+static int s3c2443_pm_valid(suspend_state_t state)
+{
+	int ret;
+
+	/* This function returns zero if the passed state is invalid for us */
+	ret = suspend_valid_only_mem(state);
+	if (ret)
+		ret = s3c2443_pm_valid_irq_wakeup();
+
+	return ret;
+}
+
 static struct platform_suspend_ops s3c24xx_pm_ops = {
+	.valid		= s3c2443_pm_valid,
 	.enter		= s3c24xx_pm_enter,
-	.valid		= suspend_valid_only_mem,
 };
 
 /* s3c2410_pm_init
