@@ -212,14 +212,18 @@ void piper_set_macaddr(struct piper_priv *piperp)
 	u8 mac[6] = {0x00, 0x04, 0xf3, 0x11, 0x43, 0x35};
 	u8 *pmac = piperp->pdata->macaddr;
 	int i;
-
+    bool firstTime = true;
+    
 	for (i = 0; i < 6; i++) {
 		if (*(pmac + i) != 0xff)
 			break;
 		if (i == 5) {
 			/* There is a problem with the parameters, use default */
-			printk(KERN_INFO PIPER_DRIVER_NAME
-				": invalid mac address, using default\n");
+			if (firstTime) {
+    			printk(KERN_INFO PIPER_DRIVER_NAME
+    				": invalid mac address, using default\n");
+    			firstTime = false;
+    		}
 			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 		}
 	}
@@ -233,6 +237,8 @@ void piper_set_macaddr(struct piper_priv *piperp)
 	piperp->ac->wr_reg(piperp, MAC_STA_ID1, *(pmac + 5) << 16 | *(pmac + 4) << 24,
 			   op_write);
 }
+EXPORT_SYMBOL_GPL(piper_set_macaddr);
+
 
 /* Configure the H/W with the antenna settings */
 static int piper_set_antenna(struct piper_priv *piperp, enum antenna_select sel)

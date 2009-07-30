@@ -340,6 +340,7 @@ void piper_empty_tx_queue(struct piper_priv *piperp);
 int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb);
 struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp);
 bool piper_tx_queue_half_full(struct piper_priv *piperp);
+void piper_set_macaddr(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters

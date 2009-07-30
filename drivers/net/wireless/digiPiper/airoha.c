@@ -524,8 +524,15 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		printk(KERN_WARNING PIPER_DRIVER_NAME ": undefined rf transceiver!\n");
 		return -EINVAL;
 	}
-//	priv->set_tracking_constant(priv, getFrequency(channelIndex));
 
+    /*
+     * This is a patch for a problem which should be corrected in
+     * hardware on new units.  We are rewriting the MAC address
+     * because on units without the H/W patch the address can
+     * be corrupted when we change channels.
+     */
+    piper_set_macaddr(priv);
+    
 	return 0;
 }
 
