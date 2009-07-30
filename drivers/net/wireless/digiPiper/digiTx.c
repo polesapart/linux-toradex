@@ -30,7 +30,7 @@
 #define TX_DEBUG			(1)
 
 #if TX_DEBUG
-static int dlevel = DWARNING;
+//static int dlevel = DWARNING;
 #define dprintk(level, fmt, arg...)	if (level >= dlevel)			\
 					printk(KERN_ERR PIPER_DRIVER_NAME	\
 					    ": %s - " fmt, __func__, ##arg)
