@@ -156,6 +156,14 @@ static int ns921x_aes_setkey(struct crypto_ablkcipher *tfm, const u8 *key,
 		goto err_keylen;
 	}
 
+	/* Free DMA allocation, just in case this function was
+	 * called but there was not a call to crypt or decrypt */
+	if (NULL != dev_data.v_key) {
+		dma_free_coherent(&dev_data.pdev->dev, dev_data.keylen,
+				dev_data.v_key, dev_data.p_key);
+		dev_data.v_key = NULL;
+	}
+
 	dev_data.v_key = dma_alloc_coherent(&dev_data.pdev->dev,
 			keylen, &dev_data.p_key, GFP_KERNEL);
 	if (!dev_data.v_key) {
@@ -268,6 +276,7 @@ err_mismatch:
 	memset(dev_data.v_key, 0, dev_data.keylen);
 	dma_free_coherent(&dev_data.pdev->dev, dev_data.keylen,
 			dev_data.v_key, dev_data.p_key);
+	dev_data.v_key = NULL;
 
 	/* convert output back to cpu endianes */
 	for (i = 0; i < v_buffers; i++)
@@ -329,6 +338,7 @@ buff:	dev_data.v_dma_descr[0].control =
 	memset(v_expkey, 0, KEYEXP_SIZE(dev_data.keylen));
 	dma_free_coherent(&dev_data.pdev->dev, KEYEXP_SIZE(dev_data.keylen),
 			v_expkey, p_expkey);
+	dev_data.v_key = NULL;
 
 	return ret;
 }
