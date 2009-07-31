@@ -39,28 +39,6 @@ static DEFINE_MUTEX(device_list_mutex);
 static struct class pwm_class;
 static struct workqueue_struct *pwm_handler_workqueue;
 
-/* Function that checks for overflows */
-static int check_flow(const char *buf)
-{
-
-	int i;
-	const char *overflow = "4294967295";
-
-	i = strcmp(buf, overflow);
-	pr_debug("buffer is ");
-	if (i < 0)
-		pr_debug("minor than");
-	else if (i > 0) {
-		pr_debug("greater than");
-		pr_err("This value is greater that 32-bit value.\n");
-		return -EINVAL;
-	} else
-		pr_debug("equals to");
-	pr_debug(" %s\n", overflow);
-
-	return 0;
-}
-
 int pwm_register(struct pwm_device *pwm)
 {
 	struct pwm_channel *p;
@@ -513,13 +491,6 @@ static ssize_t pwm_duty_ns_store(struct device *dev,
 {
 	unsigned long duty_ns;
 	struct pwm_channel *p = dev_get_drvdata(dev);
-	int ret;
-
-	ret = check_flow(buf);
-	if (ret) {
-		pr_err("Overflow or underflow detected.\n");
-		return -EINVAL;
-	}
 
 	if (1 == sscanf(buf, "%lu", &duty_ns))
 		pwm_set_duty_ns(p, duty_ns);
@@ -539,13 +510,6 @@ static ssize_t pwm_period_ns_store(struct device *dev,
 {
 	unsigned long period_ns;
 	struct pwm_channel *p = dev_get_drvdata(dev);
-	int ret;
-
-	ret = check_flow(buf);
-	if (ret) {
-		pr_err("Overflow or underflow detected.\n");
-		return -EINVAL;
-	}
 
 	if (1 == sscanf(buf, "%lu", &period_ns))
 		pwm_set_period_ns(p, period_ns);
