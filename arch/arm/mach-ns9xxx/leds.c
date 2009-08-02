@@ -53,6 +53,8 @@ static int __init ns9xxx_init_leds(void)
 		ret = gpio_request(88, "wifi led");
 		if (ret)
 			return ret;
+		/* switch the led, just in case it were on */
+		gpio_set_value(88, 1);
 	}
 
 	leds_event = cc9p9215_leds_event;

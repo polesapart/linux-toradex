@@ -204,7 +204,6 @@ static void __init mach_ccw9p9215js_init_machine(void)
 
 	/* Leds */
 	ns9xxx_add_device_ns9215_leds();
-	leds_event(led_green_off);
 
 	/* Analog Digital Converter */
 	ns9xxx_add_device_ns9215_adc();
