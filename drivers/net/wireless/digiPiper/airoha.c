@@ -374,6 +374,9 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 	/* Disable the rx processing path */
 	write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
 
+    write_reg(BB_OUTPUT_CONTROL, 0xfffff33f, op_and);
+    write_reg(BB_OUTPUT_CONTROL, 0x00000880, op_or);
+
 	if (priv->pdata->rf_transceiver == RF_AIROHA_2236) {
 /* TODO, when using this transceiver, resolve this commented code */
 #ifdef BUILD_THIS_CODE_SECTION
@@ -400,7 +403,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		write_rf(hw, 1, freqTableAiroha_2236[channelIndex].fraction);
 
 		/* critical delay for correct calibration */
-		udelay(10);
+		udelay(150);
 
 		/*
 		 * TXON, PAON and RXON should all be low before Calibration
@@ -520,6 +523,9 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		/*Re-enable the rx processing path */
 
 		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
+
+		/* re-enable transmitter */
+        write_reg(BB_OUTPUT_CONTROL, 0xfffff33f, op_and);
 	} else {
 		printk(KERN_WARNING PIPER_DRIVER_NAME ": undefined rf transceiver!\n");
 		return -EINVAL;
@@ -532,7 +538,7 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
      * be corrupted when we change channels.
      */
     piper_set_macaddr(priv);
-    
+
 	return 0;
 }
 
