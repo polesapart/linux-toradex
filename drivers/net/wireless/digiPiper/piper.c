@@ -28,7 +28,7 @@
 #include "digiPs.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
-#define WANT_DEBUG_COMMANDS			(0)
+#define WANT_DEBUG_COMMANDS			(1)
 
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)
@@ -213,7 +213,7 @@ void piper_set_macaddr(struct piper_priv *piperp)
 	u8 *pmac = piperp->pdata->macaddr;
 	int i;
     bool firstTime = true;
-    
+
 	for (i = 0; i < 6; i++) {
 		if (*(pmac + i) != 0xff)
 			break;
@@ -691,6 +691,20 @@ static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr
 		if (strstr(buf, "dump") != NULL) {
 			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
 			ret = 1;
+		} else if (strstr(buf, "rssi_dump") != NULL) {
+		    spinlock_t lock;
+		    unsigned long flags;
+            unsigned int rssi;
+
+	        spin_lock_init(&lock);
+	        spin_lock_irqsave(&piperp->ps.lock, flags);
+		    piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
+		    udelay(15);
+		    rssi = piperp->ac->rd_reg(piperp, BB_RSSI);
+		    printk(KERN_ERR "rssi = 0x8.8\n", rssi);
+			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+			ret = 1;
+			spin_unlock_irqrestore(&lock, flags);
 		} else {
 			strcpy(piperp->debug_cmd, buf);
 			piperp->debug_cmd[strlen(buf)-1] = 0;		/* truncate the \n */
