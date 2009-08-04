@@ -274,12 +274,23 @@ void piper_rx_tasklet(unsigned long context)
 		 */
 		piperp->ac->rd_fifo(piperp, BB_DATA_FIFO, (u8 *)&header, sizeof(header));
 		phy_process_plcp(piperp, &header, &status, &length);
-		if (length > 2000) {
-			printk(KERN_ERR "Bogus length of %d read\n", length);
-			printk(KERN_ERR "0x%8.8X 0x%8.8X\n", *(u32 *)&header, *(((u32 *)&header) + 1));
+		if ((length == 0) || (length > (RX_FIFO_SIZE - 48))) {	/* 48 bytes for padding and related stuff */
+			dprintk(DERROR, "bogus frame length (%d)\n", length);
+			dprintk(DERROR, "0x%08x 0x%08x\n", *(u32 *)&header, *(((u32 *)&header) + 1));
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST, op_or);
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RXFIFORST, op_and);
+			continue;
 		}
 
 		if (length != 0) {
+
+			skb = __dev_alloc_skb(RX_FIFO_SIZE + 100, GFP_ATOMIC);
+			if (skb == NULL) {
+				/* Oops.  Out of memory.  Exit the tasklet */
+				dprintk(DERROR, "__dev_alloc_skb failed\n");
+				break;
+			}
+
 			if (receive_packet(piperp, skb, length, &fr_ctrl_field, &status)) {
 
 				if (length >= _80211_HEADER_LENGTH)
