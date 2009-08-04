@@ -55,7 +55,7 @@
  * Set this #define to receive frames in the ISR.  This may improve
  * performance under heavy load at the expense of interrupt latency.
  */
-#define WANT_TO_RECEIVE_FRAMES_IN_ISR	(0)
+#define WANT_TO_RECEIVE_FRAMES_IN_ISR	(1)
 
 
 typedef u64 u48;
@@ -149,6 +149,7 @@ struct digi_rf_ops {
     int (*set_chan) (struct ieee80211_hw *, int chan);
     int (*set_pwr) (struct ieee80211_hw *, uint8_t val);
     void (*set_pwr_index) (struct ieee80211_hw *, unsigned int val);
+    void (*power_on) (struct ieee80211_hw *, bool want_power_on);
     void (*getOfdmBrs) (int channel, u64 brsBitMask, unsigned int *ofdm,
 			unsigned int *psk);
     enum ieee80211_band (*getBand) (int);
@@ -197,9 +198,6 @@ struct piper_ps {
     enum piper_ps_state state;
     unsigned int this_event;
     spinlock_t lock;
-    int (*tx_complete_fn) (struct piper_priv * piperp,
-			   struct sk_buff * skb);
-    struct sk_buff *psFrame;
     bool apHasBufferedFrame;
     bool expectingMulticastFrames;
     bool wantToSleepThisDutyCycle;
