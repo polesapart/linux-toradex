@@ -258,6 +258,7 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 	if (i != rf->bands[status->band].n_bitrates)
 		status->rate_idx = i;
 	else {
+	    *length = 0;
 		printk(KERN_ERR PIPER_DRIVER_NAME
 				": couldn't find bitrate index for %d?\n",
 				rate);
