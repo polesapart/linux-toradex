@@ -862,6 +862,7 @@ static int digiWifiCalibrationThreadEntry(void *data)
 			case RESTART_STATE:
 				setInitialPowerLevel(digi,
 						     CONVERT_TO_MDBM(digi->tx_power));
+	            calibration.initialized = true;
 				calibration.sampleCount = 0;
 				nextState = COLLECT_SAMPLES_STATE;
 				timeout = DEBOUNCE_DELAY;
@@ -942,6 +943,7 @@ void digiWifiInitCalibration(struct piper_priv *digi)
 
 	calibration.events = 0;
 	calibration.sampleCount = 0;
+	calibration.initialized = false;
 
 	spin_lock_init(&calibration.lock);
 
@@ -950,11 +952,21 @@ void digiWifiInitCalibration(struct piper_priv *digi)
 			PIPER_DRIVER_NAME " - calibration");
 }
 
+int digiWifiCalibrationPowerIndex(struct piper_priv *piperp)
+{
+    if (calibration.initialized)
+        return calibration.correctedPowerIndex;
+    else
+        return -1;
+}
+
+
 void digiWifiDeInitCalibration(struct piper_priv *digi)
 {
 	calibration.events = SHUTDOWN_AUTOCALIBRATION_EVENT;
 	wake_up_interruptible(&waitQueue);
 	kthread_stop(calibration.threadCB);
+	calibration.initialized = false;
 }
 
 EXPORT_SYMBOL_GPL(digiWifiDeInitCalibration);

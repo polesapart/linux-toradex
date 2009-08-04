@@ -90,6 +90,7 @@ struct airohaCalibrationData {
 
 	void *priv;
 	struct calibration_ops *cops;
+	bool initialized;
 };
 
 struct calibration_ops {
@@ -102,6 +103,6 @@ struct calibration_ops {
 
 void digiWifiInitCalibration(struct piper_priv *digi);
 void digiWifiDeInitCalibration(struct piper_priv *digi);
-
+int digiWifiCalibrationPowerIndex(struct piper_priv *piperp);
 
 #endif				/* AIROHA_CALIBRATION_H */
