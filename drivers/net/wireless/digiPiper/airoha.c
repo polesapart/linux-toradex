@@ -17,6 +17,7 @@
 
 #include "pipermain.h"
 #include "mac.h"
+#include "airohaCalibration.h"
 #include "airoha.h"
 
 /*
@@ -557,7 +558,13 @@ static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t value)
 			0x14, 0x14, 0x14, 0x18, 0x18, 0x1c, 0x1c, 0x20,
 			0x20, 0x24, 0x24, 0x29, 0x29, 0x2c, 0x2c, 0x30
 		};
-		write_rf(hw, 11, 0x08040 | powerTable_7230[value & 0xf]);
+		int correctedPowerIndex = digiWifiCalibrationPowerIndex(priv);
+
+		if (correctedPowerIndex != -1) {
+		    write_rf(hw, 11, 0x08040 | correctedPowerIndex);
+		} else {
+		    write_rf(hw, 11, 0x08040 | powerTable_7230[value & 0xf]);
+		}
 	} else {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
 		       ": undefined rf transceiver!\n");
@@ -858,6 +865,21 @@ static const struct ieee80211_rate *getRate(unsigned int rateIndex)
     return &al7230_bg_rates[rateIndex];
 }
 
+
+/*
+ * This routine can power up or power down the airoha transceiver.
+ * When the transceiver is powered back up, you must delay 1 ms and
+ * then call the set channel routine to make it operational again.
+ */
+static void power_on(struct ieee80211_hw *hw, bool want_power_on)
+{
+    if (want_power_on) {
+		write_rf(hw, 15, 0x1ABA8 ); /* this is actually for 2 Ghz */
+    } else {
+        write_rf(hw, 15, 0x1ABAE );
+    }
+}
+
 struct digi_rf_ops al7230_rf_ops = {
 	.name			= "Airoha 7230",
 	.init			= InitializeRF,
@@ -872,6 +894,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.getFrequency		= getFrequency,
 	.getRate		= getRate,
 	.bands			= al7230_bands,
+	.power_on       = power_on,
 	.n_bands		= ARRAY_SIZE(al7230_bands),
 };
 EXPORT_SYMBOL_GPL(al7230_rf_ops);
