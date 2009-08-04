@@ -138,13 +138,6 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	_80211HeaderType *header;
 	struct ieee80211_tx_info *tx_info;
 
-	if ((piperp->ps.tx_complete_fn != NULL)
-	    || (piperp->ps.psFrame != NULL)) {
-		printk(KERN_DEBUG
-		       "sendNullDataFrame called when there was a frame already on the queue.\n");
-		goto sendNullDataFrame_Exit;
-	}
-
 	skb =
 	    __dev_alloc_skb(sizeof(_80211HeaderType) +
 			    piperp->hw->extra_tx_headroom, GFP_ATOMIC);
@@ -193,13 +186,6 @@ static void sendPSPollFrame(struct piper_priv *piperp, bool forceOfdm)
 	struct sk_buff *skb = NULL;
 	_80211PSPollType *header;
 	struct ieee80211_tx_info *tx_info;
-
-	if ((piperp->ps.tx_complete_fn != NULL)
-	    || (piperp->ps.psFrame != NULL)) {
-		printk(KERN_DEBUG
-		       "sendPSPollFrame called when there was a frame already on the queue.\n");
-		goto sendPSPollFrame_Exit;
-	}
 
 	skb =
 	    __dev_alloc_skb(sizeof(_80211PSPollType) +
@@ -308,6 +294,7 @@ static int MacEnterSleepMode(struct piper_priv *piperp, bool force)
 	// held the transceiver in reset mode
 	if (piperp->pdata->reset)
 		piperp->pdata->reset(piperp, 1);
+	piperp->rf->power_on(piperp->hw, false);
 #endif
 
 	stats.jiffiesOn += jiffies - stats.cycleStart;
@@ -325,7 +312,8 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 #if RESET_PIPER
 	if (piperp->pdata->reset) {
 	    piperp->pdata->reset(piperp, 0);
-	    udelay(500);
+	    piperp->rf->power_on(piperp->hw, true);
+	    mdelay(1);
 	    piper_spike_suppression(piperp, want_spike_suppression);
 	}
 #endif
