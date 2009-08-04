@@ -248,7 +248,7 @@ sendPSPollFrame_Exit:
 
 #define RESET_PIPER		(1)
 
-static int MacEnterSleepMode(struct piper_priv *piperp)
+static int MacEnterSleepMode(struct piper_priv *piperp, bool force)
 {
 	/*
 	 * Interrupts are already disabled when we get here.
@@ -257,22 +257,24 @@ static int MacEnterSleepMode(struct piper_priv *piperp)
 	if (piperp->ps.poweredDown)
 		return 0;
 
-	if (piperp->ps.rxTaskletRunning)
-		return -1;
+    if (!force) {
+    	if (piperp->ps.rxTaskletRunning)
+    		return -1;
 
-	if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
-		return -1;
+    	if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
+    		return -1;
 
-	if ((piperp->ac->
-	     rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
-		return -1;
+    	if ((piperp->ac->
+    	     rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
+    		return -1;
 
-	if ((!piperp->ps.stoppedTransmit) && (piperp->tx_tasklet_running))
-		return -1;
+    	if ((!piperp->ps.stoppedTransmit) && (piperp->tx_tasklet_running))
+    		return -1;
 
-	if ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
-		BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
-		return -1;
+    	if ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
+    		BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
+    		return -1;
+    }
 
 	disable_irq(piperp->irq);
 
@@ -373,6 +375,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 	// reset the TX-FIFO
 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
 
+
 	// release the TX-hold and reset
 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x37720000, op_write);
 
@@ -395,7 +398,12 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
 	stats.jiffiesOff += jiffies - stats.cycleStart;
 	stats.cycleStart = jiffies;
 
-	enable_irq(piperp->irq);
+	/* TODO, this is a temporary workaround and should be better analyzed in future.
+	 * The problem is that the general power save code is not synchronized with the
+	 * dynamic PW and this is causing that, the following line, unbalances the
+	 * piper wireless irq */
+	if (piperp->ps.poweredDown != false)
+		enable_irq(piperp->irq);
 
 	piperp->ps.poweredDown = false;
 }
@@ -618,7 +626,7 @@ static void dutyCycleOff(struct piper_priv *piperp)
 {
 	if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup) {
 		piperp->ps.allowTransmits = false;
-		if (MacEnterSleepMode(piperp) == 0) {
+		if (MacEnterSleepMode(piperp, false) == 0) {
 			set_timer_event(piperp, PS_EVENT_WAKEUP_FOR_BEACON,
 					piperp->ps.next_wakeup);
 			piperp->ps.state = PS_STATE_SLEEPING;
@@ -992,7 +1000,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 {
 #define MINIMUM_PS_BEACON_INT		(100)
 	unsigned long flags;
-	unsigned int timeout = 100;
+	unsigned int timeout = 50;
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
@@ -1038,9 +1046,9 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			 * down and then back up so that we can do spike suppression.
 			 */
 			piperp->ps.mode = PS_MODE_FULL_POWER;	/* stop duty cycle timer */
-			while ((MacEnterSleepMode(piperp) != 0) && (--timeout)) {
+			while ((MacEnterSleepMode(piperp, false) != 0) && (--timeout)) {
 				spin_unlock_irqrestore(&piperp->ps.lock, flags);
-				mdelay(10);
+				mdelay(5);
 				spin_lock_irqsave(&piperp->ps.lock, flags);
 			}
 			if (timeout == 0) {
@@ -1052,8 +1060,16 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				printk(KERN_ERR "BB_GENERAL_STAT_RX_FIFO_EMPTY = %d\n",
 					piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY);
 				digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+				timeout = 50;
+				while ((--timeout != 0)
+				       && (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
+				       || ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0))) {
+			        MacEnterSleepMode(piperp, true);
+			        mdelay(100);
+			        MacEnterActiveMode(piperp, true);
+			    }
 			} else {
-				MacEnterActiveMode(piperp, true);
+			    MacEnterActiveMode(piperp, true);
 			}
 			stats.jiffiesOn += jiffies - stats.cycleStart;
 		}
