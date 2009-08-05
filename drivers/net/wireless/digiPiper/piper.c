@@ -701,7 +701,7 @@ static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr
 		    piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
 		    udelay(15);
 		    rssi = piperp->ac->rd_reg(piperp, BB_RSSI);
-		    printk(KERN_ERR "rssi = 0x8.8\n", rssi);
+		    printk(KERN_ERR "\n**rssi = 0x%8.8X\n", rssi);
 			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
 			ret = 1;
 			spin_unlock_irqrestore(&lock, flags);
