@@ -28,7 +28,7 @@
 #include "digiPs.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
-#define WANT_DEBUG_COMMANDS			(1)
+#define WANT_DEBUG_COMMANDS			(0)
 
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)

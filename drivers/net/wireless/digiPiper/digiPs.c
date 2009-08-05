@@ -1040,6 +1040,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				spin_lock_irqsave(&piperp->ps.lock, flags);
 			}
 			if (timeout == 0) {
+#if 0
 				printk(KERN_ERR "MacEnterSleepMode never succeeded.\n");
 				printk(KERN_ERR "BB_RSSI_EAS_BUSY = %d\n", piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY);
 				printk(KERN_ERR "BB_GENERAL_CTL_TX_FIFO_EMPTY = %d\n",
@@ -1048,6 +1049,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				printk(KERN_ERR "BB_GENERAL_STAT_RX_FIFO_EMPTY = %d\n",
 					piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY);
 				digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+#endif
 				timeout = 50;
 				while ((--timeout != 0)
 				       && (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
