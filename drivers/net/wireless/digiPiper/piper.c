@@ -212,7 +212,7 @@ void piper_set_macaddr(struct piper_priv *piperp)
 	u8 mac[6] = {0x00, 0x04, 0xf3, 0x11, 0x43, 0x35};
 	u8 *pmac = piperp->pdata->macaddr;
 	int i;
-    bool firstTime = true;
+    static bool firstTime = true;
 
 	for (i = 0; i < 6; i++) {
 		if (*(pmac + i) != 0xff)
@@ -222,12 +222,12 @@ void piper_set_macaddr(struct piper_priv *piperp)
 			if (firstTime) {
     			printk(KERN_INFO PIPER_DRIVER_NAME
     				": invalid mac address, using default\n");
-    			firstTime = false;
     		}
 			memcpy(piperp->pdata->macaddr, mac, sizeof(piperp->pdata->macaddr));
 		}
 	}
 
+	firstTime = false;
 	memcpy(piperp->hw->wiphy->perm_addr, piperp->pdata->macaddr,
 	       sizeof(piperp->hw->wiphy->perm_addr));
 
@@ -720,94 +720,51 @@ static DEVICE_ATTR(debug_cmd, S_IWUSR | S_IRUGO, show_debug_cmd, store_debug_cmd
 
 #ifdef CONFIG_PM
 
-u32 saved_mac_regs[][2] = {
-	/* Register, value */
-	{BB_GENERAL_CTL,	0},
-	{BB_GENERAL_STAT,	0},
-	{BB_RSSI,		0},
-	{BB_IRQ_MASK,		0},
-	{BB_SPI_CTRL,		0},
-	{BB_TRACK_CONTROL,	0},
-	{BB_CONF_2,		0},
-	{BB_OUTPUT_CONTROL,	0},
-	{MAC_CTL,		0}
-};
-
 static int piper_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct piper_priv *piperp = platform_get_drvdata(dev);
-	int i;
+	unsigned long flags;
 
-	/* wait until aes done  */
-	i = 10000;
-	while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY && i-- > 0)
-		udelay(1);
+	/* TODO, use in future the ps.lock instead of fully disabling interrupts here */
+	piperp->power_save_was_on_when_suspended = (piperp->ps.mode == PS_MODE_LOW_POWER);
+    if (piperp->power_save_was_on_when_suspended)
+	    piper_ps_set(piperp, false);
+	mdelay(10);
+    piper_sendNullDataFrame(piperp, true);
+    ssleep(1);
 
-	/* wait for tx fifo empty */
-	i = 10000;
-	while (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) &
-		BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0) && i-- > 0)
-		udelay(1);
-
-	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
-		saved_mac_regs[i][1] = piperp->ac->rd_reg(piperp, saved_mac_regs[i][0]);
-
-	/* disable receiver */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RX_EN, op_and);
-	piperp->ac->wr_reg(piperp, MAC_CTL, 0, op_write);
-	piperp->clear_irq_mask_bit(piperp, 0xffffffff);
-
-	disable_irq(piperp->irq);
-
-	/* held the transceiver in reset mode, if reset cb was defined */
-	if (piperp->pdata->reset)
-		piperp->pdata->reset(piperp, 1);
-
+	local_irq_save(flags);
+/*
+ * Save power save state and then make sure power save is turned off.
+ */
+    piper_MacEnterSleepMode(piperp, true);
+	local_irq_restore(flags);
 	return 0;
 }
 
 static int piper_resume(struct platform_device *dev)
 {
 	struct piper_priv *piperp = platform_get_drvdata(dev);
-	int i;
+	unsigned long flags;
 
- 	if (piperp->pdata->reset)
- 		piperp->pdata->reset(piperp, 0);
-	mdelay(20);
+	/* TODO, use in future the ps.lock instead of fully disabling interrupts here */
+	local_irq_save(flags);
+	piper_MacEnterActiveMode(piperp, true);
+	if (piperp->tx_tasklet_running) {
+	    tasklet_hi_schedule(&piperp->tx_tasklet);
+	} else {
+	    ieee80211_wake_queues(piperp->hw);
+	}
+	local_irq_restore(flags);
 
-	for (i = 0; i < (sizeof(saved_mac_regs)/(2*sizeof(u32))); i++)
-		piperp->ac->wr_reg(piperp, saved_mac_regs[i][0],
-				  saved_mac_regs[i][1], op_write);
-
-	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
-	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0x0, op_write);
-
-	/* Restart the processors */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-			   BB_GENERAL_CTL_MAC_ASSIST_ENABLE, op_or);
-	/* set the TX-hold bit */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-			   0x37720080, op_write);
-
-	/* clear the TX-FIFO memory */
-	for (i = 0; i < 448; i++)
-		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
-
-	/* reset the TX-FIFO */
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-			   0x377200C0, op_write);
-
-	/* release the TX-hold and reset */
- 	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-			   0x37720000, op_write);
-
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, saved_mac_regs[0][1] |
-			   0x37000000 | BB_GENERAL_CTL_RX_EN, op_write);
-
-	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0xff, op_write);
-	piperp->ac->wr_reg(piperp, BB_IRQ_STAT, 0x0, op_write);
-
-	enable_irq(piperp->irq);
+	/*
+	 * Restore power save if it was on before
+	 */
+    if (piperp->power_save_was_on_when_suspended) {
+	    piper_ps_set(piperp, true);
+	} else {
+	    piper_sendNullDataFrame(piperp, false);
+    }
 
 	return 0;
 }

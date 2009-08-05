@@ -245,6 +245,7 @@ struct piper_priv {
     struct timer_list led_timer;
     enum led_states led_state;
     struct piper_ps ps;
+    bool power_save_was_on_when_suspended;
     struct access_ops *ac;
     spinlock_t aesLock;
     struct digi_rf_ops *rf;
@@ -333,12 +334,15 @@ void piper_load_dsp_firmware(struct piper_priv *piperp);
 int piper_spike_suppression(struct piper_priv *piperp, bool retry);
 void piper_reset_mac(struct piper_priv *piperp);
 void piper_set_macaddr(struct piper_priv *piperp);
-int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn);
+int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn, bool set_header_bit);
 void piper_empty_tx_queue(struct piper_priv *piperp);
 int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb);
 struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp);
 bool piper_tx_queue_half_full(struct piper_priv *piperp);
 void piper_set_macaddr(struct piper_priv *piperp);
+void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression);
+int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force);
+void piper_sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn);
 
 /*
  * Defines for debugging function dumpRegisters

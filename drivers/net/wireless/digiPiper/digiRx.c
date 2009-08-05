@@ -208,7 +208,7 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 
 #if WANT_RECEIVE_COUNT_SCROLL
 	if (((++packetCount) & 1023) == 0) {
-		digi_dbg("\n%d recd, tx_start_count = %d, tx_complete_count = %d.\n",
+		printk(KERN_ERR "\n%d recd, tx_start_count = %d, tx_complete_count = %d.\n",
 			packetCount, piperp->pstats.tx_start_count,
 			piperp->pstats.tx_complete_count);
 	}

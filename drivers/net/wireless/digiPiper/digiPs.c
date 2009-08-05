@@ -132,7 +132,7 @@ static int getAckDuration(struct piper_priv *piperp)
  * for all frames sent, we just send a null data frame just to make
  * sure something is sent to the AP in a reasonable amount of time.
  */
-static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
+void piper_sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 {
 	struct sk_buff *skb = NULL;
 	_80211HeaderType *header;
@@ -142,7 +142,7 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	    __dev_alloc_skb(sizeof(_80211HeaderType) +
 			    piperp->hw->extra_tx_headroom, GFP_ATOMIC);
 	if (skb == NULL)
-		goto sendNullDataFrame_Exit;
+		goto piper_sendNullDataFrame_Exit;
 
 	tx_info = (struct ieee80211_tx_info *) skb->cb;
 
@@ -165,13 +165,13 @@ static void sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	tx_info->control.rates[1].idx = -1;
 	tx_info->control.rts_cts_rate_idx = -1;
 
-	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame) != 0) {
-		printk(KERN_ERR
-		       "piper_hw_tx() failed unexpectedly when sending null data frame.\n");
+	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame, false) != 0) {
+		/* printk(KERN_ERR
+		       "piper_hw_tx() failed unexpectedly when sending null data frame.\n"); */
 		ps_free_frame(piperp->hw, skb);
 	}
 
-sendNullDataFrame_Exit:
+piper_sendNullDataFrame_Exit:
 	return;
 }
 
@@ -179,7 +179,7 @@ sendNullDataFrame_Exit:
  * This routine sends a PS-Poll frame, which is used to request a buffered
  * frame from the AP.
  *
- * TODO: Share code with sendNullDataFrame.
+ * TODO: Share code with piper_sendNullDataFrame.
  */
 static void sendPSPollFrame(struct piper_priv *piperp, bool forceOfdm)
 {
@@ -219,9 +219,9 @@ static void sendPSPollFrame(struct piper_priv *piperp, bool forceOfdm)
 	tx_info->control.rates[1].idx = -1;
 	tx_info->control.rts_cts_rate_idx = -1;
 
-	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame) != 0) {
-		printk(KERN_ERR
-		       "piper_hw_tx() failed unexpectedly when sending PS-Poll frame.\n");
+	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame, false) != 0) {
+		/* printk(KERN_ERR
+		       "piper_hw_tx() failed unexpectedly when sending PS-Poll frame.\n"); */
 		ps_free_frame(piperp->hw, skb);
 	}
 
@@ -234,7 +234,7 @@ sendPSPollFrame_Exit:
 
 #define RESET_PIPER		(1)
 
-static int MacEnterSleepMode(struct piper_priv *piperp, bool force)
+int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 {
 	/*
 	 * Interrupts are already disabled when we get here.
@@ -306,7 +306,7 @@ static int MacEnterSleepMode(struct piper_priv *piperp, bool force)
 
 
 #if 1
-static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
+void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
 #if RESET_PIPER
@@ -403,7 +403,7 @@ static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppre
  * transceiver register value. This API can also be called in power save mode
  * after coming out of the sleep mode.
  */
-static void MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
+static void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
 
@@ -614,7 +614,7 @@ static void dutyCycleOff(struct piper_priv *piperp)
 {
 	if ((jiffies + MILLS_TO_JIFFIES(MINIMUM_SLEEP_PERIOD)) < piperp->ps.next_wakeup) {
 		piperp->ps.allowTransmits = false;
-		if (MacEnterSleepMode(piperp, false) == 0) {
+		if (piper_MacEnterSleepMode(piperp, false) == 0) {
 			set_timer_event(piperp, PS_EVENT_WAKEUP_FOR_BEACON,
 					piperp->ps.next_wakeup);
 			piperp->ps.state = PS_STATE_SLEEPING;
@@ -679,7 +679,7 @@ static void ps_timer(unsigned long context)
 			dutyCycleOff(piperp);
 		} else if (piperp->ps.this_event == PS_EVENT_WAKEUP_FOR_BEACON) {
 			stats.expectedBeacons++;
-			MacEnterActiveMode(piperp, false);
+			piper_MacEnterActiveMode(piperp, false);
 			resume_transmits(piperp);
 			piperp->ps.state = PS_STATE_WAITING_FOR_BEACON;
 		}
@@ -817,7 +817,7 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 	if (piperp->ps.reallyDoDutyCycling != (piperp->power_duty <= MAX_DUTY_CYCLE)) {
 		piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
 		if (!piperp->ps.transmitter_backed_up) {
-			sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+			piper_sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
 		}
 	}
 	spin_lock_irqsave(&piperp->ps.lock, flags);
@@ -839,10 +839,10 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 		 * clear this condition.
 		 */
 		piperp->ps.transmitter_backed_up = true;
-		sendNullDataFrame(piperp, false);
+		piper_sendNullDataFrame(piperp, false);
 	} else if ((piperp->tx_queue_count == 0) && (piperp->ps.transmitter_backed_up)) {
 		piperp->ps.transmitter_backed_up = false;
-		sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+		piper_sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
 	}
 
 	if ((piperp->ps.reallyDoDutyCycling) && (!piperp->ps.transmitter_backed_up)) {
@@ -1011,7 +1011,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				stats.modeStart = jiffies;
 				stats.cycleStart = jiffies;
 				piperp->ps.reallyDoDutyCycling = (piperp->power_duty <= MAX_DUTY_CYCLE);
-				sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
+				piper_sendNullDataFrame(piperp, piperp->ps.reallyDoDutyCycling);
 				/*
 				 * Will start it the next time we receive a beacon.
 				 */
@@ -1027,21 +1027,21 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			/*
 			 * If we were powered down, then power up and do the spike suppression.
 			 */
-			MacEnterActiveMode(piperp, true);
+			piper_MacEnterActiveMode(piperp, true);
 		} else if (piperp->ps.mode == PS_MODE_LOW_POWER) {
 			/*
 			 * If we were in power save mode, but powered up, then we must power
 			 * down and then back up so that we can do spike suppression.
 			 */
 			piperp->ps.mode = PS_MODE_FULL_POWER;	/* stop duty cycle timer */
-			while ((MacEnterSleepMode(piperp, false) != 0) && (--timeout)) {
+			while ((piper_MacEnterSleepMode(piperp, false) != 0) && (--timeout)) {
 				spin_unlock_irqrestore(&piperp->ps.lock, flags);
 				mdelay(5);
 				spin_lock_irqsave(&piperp->ps.lock, flags);
 			}
 			if (timeout == 0) {
 #if 0
-				printk(KERN_ERR "MacEnterSleepMode never succeeded.\n");
+				printk(KERN_ERR "piper_MacEnterSleepMode never succeeded.\n");
 				printk(KERN_ERR "BB_RSSI_EAS_BUSY = %d\n", piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY);
 				printk(KERN_ERR "BB_GENERAL_CTL_TX_FIFO_EMPTY = %d\n",
 				    piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY);
@@ -1054,12 +1054,12 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				while ((--timeout != 0)
 				       && (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
 				       || ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0))) {
-			        MacEnterSleepMode(piperp, true);
+			        piper_MacEnterSleepMode(piperp, true);
 			        mdelay(100);
-			        MacEnterActiveMode(piperp, true);
+			        piper_MacEnterActiveMode(piperp, true);
 			    }
 			} else {
-			    MacEnterActiveMode(piperp, true);
+			    piper_MacEnterActiveMode(piperp, true);
 			}
 			stats.jiffiesOn += jiffies - stats.cycleStart;
 		}
@@ -1086,7 +1086,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 		piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
 		resume_transmits(piperp);
 		piperp->ps.reallyDoDutyCycling = false;
-		sendNullDataFrame(piperp, PS_OFF);
+		piper_sendNullDataFrame(piperp, PS_OFF);
 	}
 
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);
