@@ -85,6 +85,11 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 	piperp->ac->rd_fifo(piperp, BB_DATA_FIFO, (uint8_t *) header, headerlen);
 	memcpy(fr_ctrl_field, &header->fc, sizeof(fr_ctrl_field));
 
+ 	if (((u32)(skb->tail)) & 0x3) {
+		/* align data */
+		skb_reserve(skb, 4 - ((u32)(skb->tail) & 0x3));
+ 	}
+
 	if (header->fc.protected) {
 		/*
 		 * If we branch here, then the frame is encrypted.  We need
@@ -262,12 +267,6 @@ void piper_rx_tasklet(unsigned long context)
 		unsigned int length = 0;
 		frameControlFieldType_t fr_ctrl_field;
 
-		skb = __dev_alloc_skb(RX_FIFO_SIZE + 100, GFP_ATOMIC);
-		if (skb == NULL) {
-			/* Oops.  Out of memory.  Exit the tasklet */
-			dprintk(DERROR, "__dev_alloc_skb failed\n");
-			break;
-		}
 		/*
 		 * Read and process the H/W header.  This header is created by
 		 * the hardware is is not part of the frame.
@@ -335,7 +334,6 @@ void piper_rx_tasklet(unsigned long context)
 				dev_kfree_skb(skb);
 			}
 		} else {
-			dev_kfree_skb(skb);
 			dprintk(DNORMAL, "ignoring 0 length packet\n");
 		}
 	}

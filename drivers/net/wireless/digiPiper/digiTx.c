@@ -46,7 +46,7 @@ int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_retu
 	unsigned long flags;
 	int result = -1;
 
-	spin_lock_irqsave(piperp->tx_queue_lock, flags);
+	spin_lock_irqsave(&piperp->tx_queue_lock, flags);
 	if (NEXT_TX_QUEUE_INDEX(piperp->tx_queue_head) != piperp->tx_queue_tail) {
 		piperp->tx_queue[piperp->tx_queue_head].skb = skb;
 		piperp->tx_queue[piperp->tx_queue_head].skb_return_cb = skb_return_cb;
@@ -54,7 +54,7 @@ int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_retu
 		piperp->tx_queue_count++;
 		result = 0;
 	}
-	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
+	spin_unlock_irqrestore(&piperp->tx_queue_lock, flags);
 
 	return result;
 }
@@ -90,14 +90,14 @@ static inline void piper_tx_queue_next(struct piper_priv *piperp)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(piperp->tx_queue_lock, flags);
+	spin_lock_irqsave(&piperp->tx_queue_lock, flags);
 	if (piperp->tx_queue_head != piperp->tx_queue_tail) {
 		piperp->tx_queue[piperp->tx_queue_tail].skb = NULL;
 		piperp->tx_queue[piperp->tx_queue_tail].skb_return_cb = NULL;
 		piperp->tx_queue_tail = NEXT_TX_QUEUE_INDEX(piperp->tx_queue_tail);
 		piperp->tx_queue_count--;
 	}
-	spin_unlock_irqrestore(piperp->tx_queue_lock, flags);
+	spin_unlock_irqrestore(&piperp->tx_queue_lock, flags);
 }
 
 /*
@@ -413,7 +413,9 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 		} else {
 			tasklet_hi_schedule(&piperp->tx_tasklet);
 		}
-	} else printk(KERN_ERR "packet_tx_done called with empty queue\n");
+	} else {
+		printk(KERN_ERR "packet_tx_done called with empty queue\n");
+	}
 }
 EXPORT_SYMBOL_GPL(packet_tx_done);
 
@@ -530,7 +532,7 @@ void piper_tx_tasklet(unsigned long context)
 				    ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)) {
 					piperp->pstats.ll_stats.dot11ACKFailureCount++;
 				}
-			    piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
+				piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
 				piperp->pstats.tx_total_tetries++;
 			} else {
 				packet_tx_done(piperp, OUT_OF_RETRIES, 0);
