@@ -291,10 +291,12 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 	piperp->ac->wr_reg(piperp, BB_IRQ_MASK, 0, op_write);
 
 #if RESET_PIPER
-	// held the transceiver in reset mode
+    // Power down the airoha transceiver
+	piperp->rf->power_on(piperp->hw, false);
+	udelay(10);
+	// hold the transceiver in reset mode
 	if (piperp->pdata->reset)
 		piperp->pdata->reset(piperp, 1);
-	piperp->rf->power_on(piperp->hw, false);
 #endif
 
 	stats.jiffiesOn += jiffies - stats.cycleStart;
@@ -312,6 +314,7 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 #if RESET_PIPER
 	if (piperp->pdata->reset) {
 	    piperp->pdata->reset(piperp, 0);
+	    udelay(10);
 	    piperp->rf->power_on(piperp->hw, true);
 	    mdelay(1);
 	    piper_spike_suppression(piperp, want_spike_suppression);
