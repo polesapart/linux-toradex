@@ -208,6 +208,7 @@ struct piper_ps {
     volatile bool allowTransmits;
     volatile bool rxTaskletRunning;
     bool transmitter_backed_up;
+    bool power_saving;
 };
 
 typedef void (*tx_skb_return_cb_t)(struct ieee80211_hw *hw,
