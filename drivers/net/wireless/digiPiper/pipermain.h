@@ -242,6 +242,7 @@ struct piper_priv {
     unsigned int tx_queue_head;
     unsigned int tx_queue_tail;
     unsigned int tx_queue_count;
+    bool expectingAck;
     struct timer_list tx_timer;
     struct timer_list led_timer;
     enum led_states led_state;

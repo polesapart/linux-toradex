@@ -226,7 +226,7 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
  */
 static inline void handle_ack(struct piper_priv *piperp, int signal_strength)
 {
-	if (piper_tx_getqueue(piperp)) {
+	if (piper_tx_getqueue(piperp) && piperp->expectingAck) {
 		struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
 		if ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0) {
 			piperp->clear_irq_mask_bit(piperp,

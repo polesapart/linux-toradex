@@ -378,6 +378,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	};
 #endif
 	del_timer_sync(&piperp->tx_timer);
+    piperp->expectingAck = false;
 
 #if WANT_TRANSMIT_RESULT
 	printk(KERN_ERR "Transmit result %s\n", resultText[result]);
@@ -434,6 +435,7 @@ void piper_tx_tasklet(unsigned long context)
 	frameControlFieldType_t *fc;
 	int err;
 
+    piperp->expectingAck = false;
 	del_timer_sync(&piperp->tx_timer);
 	if (piper_ps_active(piperp) != PS_STOP_TRANSMIT) {
 
@@ -499,6 +501,7 @@ void piper_tx_tasklet(unsigned long context)
 				/*
 				 * Now start the transmitter.
 				 */
+				piperp->expectingAck = ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0);
 				piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,
 						  op_and);
 

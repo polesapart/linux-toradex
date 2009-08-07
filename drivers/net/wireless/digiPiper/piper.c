@@ -297,6 +297,7 @@ static int piper_init_rx_tx(struct piper_priv *piperp)
 {
 	tasklet_init(&piperp->rx_tasklet, piper_rx_tasklet, (unsigned long)piperp);
 	tasklet_disable(&piperp->rx_tasklet);
+	piperp->expectingAck = false;
 
 	spin_lock_init(&piperp->tx_tasklet_lock);
 	spin_lock_init(&piperp->tx_queue_lock);
