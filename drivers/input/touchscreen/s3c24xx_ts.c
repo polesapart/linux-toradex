@@ -566,6 +566,7 @@ static int s3c_ts_suspend(struct platform_device *dev, pm_message_t state)
 	ts->adctsc = readl(ts->base + S3C2410_ADCTSC);
 	ts->adcdly = readl(ts->base + S3C2410_ADCDLY);
 
+	/* Don't forget to re-enable the interrupts! */
 	disable_irq(ts->irq_adc);
 	disable_irq(ts->irq_tc);
 	clk_disable(ts->clk);
@@ -583,6 +584,10 @@ static int s3c_ts_resume(struct platform_device *pdev)
 	writel(ts->adctsc, ts->base + S3C2410_ADCTSC);
 	writel(ts->adcdly, ts->base + S3C2410_ADCDLY);
 	writel(WAIT4INT(0), ts->base + S3C2410_ADCTSC);
+
+	enable_irq(ts->irq_adc);
+	enable_irq(ts->irq_tc);
+
 	return 0;
 }
 #else
