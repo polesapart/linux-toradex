@@ -29,6 +29,8 @@ obj-$(CONFIG_TWL4030_POWER)    += twl4030-power.o
 
 obj-$(CONFIG_MFD_MC13783)	+= mc13783-core.o
 
+obj-$(CONFIG_MFD_MC13783)	+= mc13783-core.o
+
 obj-$(CONFIG_MFD_CORE)		+= mfd-core.o
 
 obj-$(CONFIG_EZX_PCAP)		+= ezx-pcap.o
