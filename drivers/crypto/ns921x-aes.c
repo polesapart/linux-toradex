@@ -338,7 +338,12 @@ buff:	dev_data.v_dma_descr[0].control =
 	memset(v_expkey, 0, KEYEXP_SIZE(dev_data.keylen));
 	dma_free_coherent(&dev_data.pdev->dev, KEYEXP_SIZE(dev_data.keylen),
 			v_expkey, p_expkey);
-	dev_data.v_key = NULL;
+	
+	/*
+	 * We need the key for the next operations, or? Fixed Vantive 31365
+	 * (Luis Galdos)
+	 */
+	/* dev_data.v_key = NULL; */
 
 	return ret;
 }
