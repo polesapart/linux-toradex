@@ -649,6 +649,7 @@ static void dutyCycleOff(struct piper_priv *piperp)
 static void start_power_saving(struct piper_priv *piperp)
 {
 	piperp->ps.power_saving = true;
+	piperp->ps.state = PS_STATE_WANT_TO_SLEEP;
 	piper_sendNullDataFrame(piperp, true);
 	set_timer_event(piperp, PS_EVENT_SLEEP, jiffies + MILLS_TO_JIFFIES(NULL_DATA_TX_DELAY));
 }
