@@ -55,7 +55,7 @@
  * Set this #define to receive frames in the ISR.  This may improve
  * performance under heavy load at the expense of interrupt latency.
  */
-#define WANT_TO_RECEIVE_FRAMES_IN_ISR	(1)
+#define WANT_TO_RECEIVE_FRAMES_IN_ISR	(0)
 
 
 typedef u64 u48;
