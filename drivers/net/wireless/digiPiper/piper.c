@@ -653,6 +653,7 @@ static ssize_t store_power_duty(struct device *dev, struct device_attribute *att
 				const char *buf, size_t count)
 {
 #define MINIMUM_DUTY_CYCLE	(35)
+#define LIMIT_LINEAL_DUTY_CYCLE	(75)
 #define DEFAULT_DUTY_CYCLE	(35)
 	struct piper_priv *piperp = dev_get_drvdata(dev);
 	int pw_duty;
@@ -660,10 +661,13 @@ static ssize_t store_power_duty(struct device *dev, struct device_attribute *att
 
 	ret = sscanf(buf, "%d\n", &pw_duty);
 	if (ret > 0) {
-		if (pw_duty >= MINIMUM_DUTY_CYCLE && pw_duty <= 100) {
-			piperp->power_duty = pw_duty;
-		} else {
+		if (pw_duty < MINIMUM_DUTY_CYCLE) {
 			piperp->power_duty = DEFAULT_DUTY_CYCLE;
+		} else if (pw_duty > LIMIT_LINEAL_DUTY_CYCLE && pw_duty < 100) {
+			piperp->power_duty = LIMIT_LINEAL_DUTY_CYCLE;
+		} else if (pw_duty == 100 ||
+			(pw_duty >= MINIMUM_DUTY_CYCLE && pw_duty <= LIMIT_LINEAL_DUTY_CYCLE)) {
+			piperp->power_duty = pw_duty;
 		}
 	}
 
