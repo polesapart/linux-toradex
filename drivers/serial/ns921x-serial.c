@@ -663,8 +663,6 @@ static void ns921x_uart_rx_chars(struct uart_ns921x_port *unp,
 		ifs = ns921x_uart_read_ifs(unp);
 	}
 	spin_unlock(&unp->port.lock);
-	/* don't call tty_flip_buffer_push with low_latency set */
-	BUG_ON(tty->low_latency);
 	tty_flip_buffer_push(tty);
 	spin_lock(&unp->port.lock);
 }
