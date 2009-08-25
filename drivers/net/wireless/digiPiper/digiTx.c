@@ -435,7 +435,7 @@ void piper_tx_tasklet(unsigned long context)
 	frameControlFieldType_t *fc;
 	int err;
 
-    piperp->expectingAck = false;
+	piperp->expectingAck = false;
 	del_timer_sync(&piperp->tx_timer);
 	if (piper_ps_active(piperp) != PS_STOP_TRANSMIT) {
 
@@ -483,7 +483,7 @@ void piper_tx_tasklet(unsigned long context)
 
 				handle_rts_cts(piperp, txInfo, fc->type);
 
-				if (piperp->use_hw_aes) {
+				if (piperp->use_hw_aes == true && txInfo->control.hw_key != NULL)  {
 					err =
 					    piper_write_aes(piperp, piper_tx_getqueue(piperp)->data,
 							    piper_tx_getqueue(piperp)->len);

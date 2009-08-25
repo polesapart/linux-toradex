@@ -285,7 +285,7 @@ bool piper_prepare_aes_datablob(struct piper_priv *piperp, unsigned int keyIndex
  * up the information the trasmit tasklet will need, and then
  * schedule the tasklet.
  */
-int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb, bool set_header_bit)
+int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb)
 {
 	struct piper_priv *piperp = hw->priv;
 	struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(skb);
@@ -311,9 +311,6 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 		assign_seq_number(skb,
 				  !!(txInfo->flags & IEEE80211_TX_CTL_FIRST_FRAGMENT));
 	}
-
-	if (set_header_bit)
-	    piper_ps_set_header_flag(piperp, ((_80211HeaderType *)skb->data));
 
 	piperp->use_hw_aes = false;
 	if (txInfo->control.hw_key != NULL) {
@@ -366,7 +363,7 @@ EXPORT_SYMBOL_GPL(piper_hw_tx_private);
 
 int piper_hw_tx(struct ieee80211_hw *hw, struct sk_buff *skb)
 {
-	return piper_hw_tx_private(hw, skb, ieee80211_tx_status_irqsafe, true);
+	return piper_hw_tx_private(hw, skb, ieee80211_tx_status_irqsafe);
 }
 
 

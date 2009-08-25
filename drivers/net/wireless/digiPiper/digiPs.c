@@ -169,7 +169,7 @@ void piper_sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn)
 	tx_info->control.rates[1].idx = -1;
 	tx_info->control.rts_cts_rate_idx = -1;
 
-	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame, false) != 0) {
+	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame) != 0) {
 		/* printk(KERN_ERR
 		       "piper_hw_tx() failed unexpectedly when sending null data frame.\n"); */
 		ps_free_frame(piperp->hw, skb);
@@ -223,7 +223,7 @@ static void sendPSPollFrame(struct piper_priv *piperp, bool forceOfdm)
 	tx_info->control.rates[1].idx = -1;
 	tx_info->control.rts_cts_rate_idx = -1;
 
-	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame, false) != 0) {
+	if (piper_hw_tx_private(piperp->hw, skb, ps_free_frame) != 0) {
 		/* printk(KERN_ERR
 		       "piper_hw_tx() failed unexpectedly when sending PS-Poll frame.\n"); */
 		ps_free_frame(piperp->hw, skb);
@@ -302,7 +302,6 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 	if (piperp->pdata->reset)
 		piperp->pdata->reset(piperp, 1);
 #endif
-
 	stats.jiffiesOn += jiffies - stats.cycleStart;
 	stats.cycleStart = jiffies;
 	piperp->ps.poweredDown = true;

@@ -336,7 +336,7 @@ void piper_load_dsp_firmware(struct piper_priv *piperp);
 int piper_spike_suppression(struct piper_priv *piperp, bool retry);
 void piper_reset_mac(struct piper_priv *piperp);
 void piper_set_macaddr(struct piper_priv *piperp);
-int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn, bool set_header_bit);
+int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_return_cb_t fn);
 void piper_empty_tx_queue(struct piper_priv *piperp);
 int piper_tx_enqueue(struct piper_priv *piperp, struct sk_buff *skb, tx_skb_return_cb_t skb_return_cb);
 struct sk_buff *piper_tx_getqueue(struct piper_priv *piperp);
