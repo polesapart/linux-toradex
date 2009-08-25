@@ -522,7 +522,7 @@ static void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_
  * Minimum amount of time we will sleep.  If we will end up sleeping
  * for less than this, then don't go to sleep.
  */
-#define MINIMUM_SLEEP_PERIOD	(30)
+#define MINIMUM_SLEEP_PERIOD	(20)
 
 
 /*
