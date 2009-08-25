@@ -11,8 +11,7 @@
 
 enum piper_ps_events {
 	PS_EVENT_WAKEUP_FOR_BEACON,
-	PS_EVENT_DUTY_CYCLE_EXPIRED,
-	PS_EVENT_SLEEP
+	PS_EVENT_DUTY_CYCLE_EXPIRED
 };
 
 enum piper_ps_tx_completion_result {
@@ -34,8 +33,7 @@ enum piper_ps_active_result {
 #define piper_ps_set_header_flag(piperp, header) 	\
 			header->fc.pwrMgt = ((piperp->ps.mode == PS_MODE_LOW_POWER) \
 								&& (piperp->ps.reallyDoDutyCycling) \
-								&& (!piperp->ps.transmitter_backed_up) \
-								&& (piperp->ps.power_saving))
+								&& (!piperp->ps.transmitter_backed_up))
 
 
 int piper_ps_active(struct piper_priv *piperp);
