@@ -739,7 +739,7 @@ static void __init ns9xxx_add_device_ns921x_fim1_w1(void)
 static inline void __init ns9xxx_add_device_ns921x_fim1_w1(void) { }
 #endif
 
-#if defined(CONFIG_FIM_CORE)
+#if defined(CONFIG_FIM_CORE) || defined(CONFIG_FIM_MODULES)
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
 	/*
