@@ -137,6 +137,7 @@ endchoice # FIM_ONE
 config SERIAL_FIM_CONSOLE
         bool "Enable the FIM Serial Console"
         depends on FIM_ZERO_SERIAL_SELECTED || FIM_ONE_SERIAL_SELECTED
+	select SERIAL_CORE_CONSOLE
         help
           Enables the console functionality on the FIM serial ports.
 
@@ -164,6 +165,7 @@ config FIM_SERIAL_MODULE
 	depends on !FIM_ZERO_SERIAL_SELECTED && !FIM_ONE_SERIAL_SELECTED && (!FIM_ZERO || !FIM_ONE)
 	select FIM_ZERO_SERIAL
 	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210)
+	select SERIAL_CORE
 	help
           Enables the FIM Serial loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
@@ -191,6 +193,7 @@ config FIM_ZERO_SERIAL
 
 config FIM_ZERO_SERIAL_SELECTED
         select FIM_ZERO_SERIAL
+	select SERIAL_CORE
 	bool
 	
 config FIM_ONE_SERIAL
@@ -198,6 +201,7 @@ config FIM_ONE_SERIAL
 
 config FIM_ONE_SERIAL_SELECTED
         select FIM_ONE_SERIAL
+	select SERIAL_CORE
 	bool
 
 config FIM_ZERO_CAN
