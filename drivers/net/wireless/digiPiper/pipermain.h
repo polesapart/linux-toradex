@@ -307,6 +307,7 @@ struct piper_pdata {
     int status_led_gpio;
     int rf_transceiver;
     wcd_data_t wcd;
+    int i2c_adapter_num;
     struct piper_priv *piperp;
 
     /* Platform callbacks */

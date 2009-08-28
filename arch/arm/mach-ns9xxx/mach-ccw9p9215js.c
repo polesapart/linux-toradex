@@ -101,8 +101,9 @@ static struct spi_board_info spi_devices[] __initdata = {
 
 #if defined(CONFIG_DIGI_PIPER_WIFI)
 static struct piper_pdata ccw9p9215_piper_pdata = {
-	.rst_gpio = 92,
-	.irq_gpio = 104,
+	.rst_gpio		= 92,
+	.irq_gpio		= 104,
+	.i2c_adapter_num	= 0,
 };
 
 static void __init ccw9p9215js_fixup(struct machine_desc *desc,

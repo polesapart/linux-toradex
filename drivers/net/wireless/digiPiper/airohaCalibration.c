@@ -838,7 +838,7 @@ static int digiWifiCalibrationThreadEntry(void *data)
 
 		/* TODO, FIXME make following code dependent on platform information
 		 * allowign to initialize different adc */
-		if (adc121C027_init(&calibration) == 0) {
+		if (adc121C027_init(&calibration, digi->pdata->i2c_adapter_num) == 0) {
 			digi_dbg("ADC driver loaded...\n");
 			break;
 		}

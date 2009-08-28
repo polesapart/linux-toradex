@@ -109,7 +109,7 @@ void adc121C027_shutdown(struct airohaCalibrationData *cal)
 	i2c_del_driver(&adc121C027_driver);
 }
 
-int adc121C027_init(struct airohaCalibrationData *cal)
+int adc121C027_init(struct airohaCalibrationData *cal, int i2cadapter)
 {
 	struct i2c_board_info board_info = {
 		.type = "adc121C027",
@@ -126,7 +126,7 @@ int adc121C027_init(struct airohaCalibrationData *cal)
 		return ret;
 	}
 
-	adapter = i2c_get_adapter(0);
+	adapter = i2c_get_adapter(i2cadapter);
 	if (!adapter) {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
 			": error getting i2c adapter\n");

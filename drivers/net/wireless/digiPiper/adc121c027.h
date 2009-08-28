@@ -11,7 +11,7 @@
 #ifndef ADC121C027_H
 #define ADC121C027_H
 
-int adc121C027_init(struct airohaCalibrationData *cal);
+int adc121C027_init(struct airohaCalibrationData *cal, int i2cadapter);
 
 #endif /* ADC121C027_H */
 
