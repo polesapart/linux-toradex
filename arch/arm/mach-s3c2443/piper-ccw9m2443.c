@@ -263,7 +263,7 @@ static int piper_init_chip_hw(struct piper_priv *piperp)
 	piper_load_mac_firmware(piperp);
 	piper_load_dsp_firmware(piperp);
 
-	ret = piper_spike_suppression(piperp);
+	ret = piper_spike_suppression(piperp, true);
 	if (ret) {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
 		       ": spike suppresion error\n");
