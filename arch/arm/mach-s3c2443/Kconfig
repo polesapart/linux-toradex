@@ -58,7 +58,7 @@ config MACH_CC9M2443JS_PM
 
 config MACH_CC9M2443JS_USB
 	bool "Enable the USB overload protection"
-	depends on MACH_CC9M2443JS && USB_OHCI_HCD
+	depends on (MACH_CC9M2443JS || MACH_CCW9M2443JS) && USB_OHCI_HCD
 	default y
 	help
 	  Enable the overload protection for the ConnectCore 9M 2443 module on a
