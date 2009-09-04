@@ -333,8 +333,6 @@ void piper_rx_tasklet(unsigned long context)
 				dprintk(DWARNING, "dropping bad frame\n");
 				dev_kfree_skb(skb);
 			}
-		} else {
-			dprintk(DNORMAL, "ignoring 0 length packet\n");
 		}
 	}
 

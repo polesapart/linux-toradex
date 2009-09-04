@@ -1020,7 +1020,8 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			}
 		} else {
 			printk(KERN_ERR
-			       "\nUnable to set power save mode because the beacon \ninterval set on this access point less than 100ms.\n");
+			       "\nUnable to set power save mode because the beacon \n"
+			       "interval set on this access point less than 100ms.\n");
 		}
 	} else {
 		del_timer_sync(&piperp->ps.timer);
