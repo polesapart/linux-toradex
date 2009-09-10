@@ -20,6 +20,8 @@
 
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/mtd/plat-ram.h>
+#include <linux/mtd/physmap.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
@@ -29,6 +31,7 @@
 #include <mach/imx-uart.h>
 #include <mach/iomux.h>
 #include <mach/board-mx27lite.h>
+#include <mach/mxc_nand.h>
 
 #include "devices.h"
 
@@ -59,11 +62,60 @@ static unsigned int mx27lite_pins[] = {
 	PF23_AIN_FEC_TX_EN,
 };
 
+static struct mxc_nand_platform_data mx27lite_nand_board_info = {
+	.width = 1,
+	.hw_ecc = 1,
+};
+
+static struct mtd_partition mx27lite_nor_partitions[] = {
+	{
+	 .name = "nor.bootloader",
+	 .size = 256 * 1024,
+	 .offset = 0x00000000,
+	 .mask_flags = MTD_WRITEABLE
+	 },
+	{
+	 .name = "nor.config",
+	 .size = 64 * 1024,
+	 .offset = MTDPART_OFS_APPEND,
+	 .mask_flags = MTD_WRITEABLE
+	 },
+	{
+	 .name = "nor.extra",
+	 .size = MTDPART_SIZ_FULL,
+	 .offset = MTDPART_OFS_APPEND,
+	 .mask_flags = 0
+	 },
+};
+
+static struct physmap_flash_data mx27lite_flash_data = {
+	.width = 2,
+	.parts = mx27lite_nor_partitions,
+	.nr_parts = ARRAY_SIZE(mx27lite_nor_partitions),
+};
+
+static struct resource mx27lite_flash_resource = {
+	.start = 0xc0000000,
+	.end   = 0xc0000000 + 0x02000000 - 1,
+	.flags = IORESOURCE_MEM,
+};
+
+static struct platform_device mx27lite_nor_mtd_device = {
+	.name = "physmap-flash",
+	.id = 0,
+	.dev = {
+		.platform_data = &mx27lite_flash_data,
+	},
+	.num_resources = 1,
+	.resource = &mx27lite_flash_resource,
+};
+
 static struct imxuart_platform_data uart_pdata = {
 	.flags = IMXUART_HAVE_RTSCTS,
 };
 
 static struct platform_device *platform_devices[] __initdata = {
+	&mx27lite_nor_mtd_device,
 	&mxc_fec_device,
 };
 
@@ -72,6 +124,7 @@ static void __init mx27lite_init(void)
 	mxc_gpio_setup_multiple_pins(mx27lite_pins, ARRAY_SIZE(mx27lite_pins),
 		"imx27lite");
 	mxc_register_device(&mxc_uart_device0, &uart_pdata);
+	mxc_register_device(&mxc_nand_device, &mx27lite_nand_board_info);
 	platform_add_devices(platform_devices, ARRAY_SIZE(platform_devices));
 }
 
