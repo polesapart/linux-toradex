@@ -32,6 +32,7 @@
 #include <mach/iomux.h>
 #include <mach/board-mx27lite.h>
 #include <mach/mxc_nand.h>
+#include <mach/imxfb.h>
 
 #include "devices.h"
 
@@ -60,6 +61,34 @@ static unsigned int mx27lite_pins[] = {
 	PD15_AOUT_FEC_COL,
 	PD16_AIN_FEC_TX_ER,
 	PF23_AIN_FEC_TX_EN,
+	/* display */
+	PA5_PF_LSCLK,
+	PA6_PF_LD0,
+	PA7_PF_LD1,
+	PA8_PF_LD2,
+	PA9_PF_LD3,
+	PA10_PF_LD4,
+	PA11_PF_LD5,
+	PA12_PF_LD6,
+	PA13_PF_LD7,
+	PA14_PF_LD8,
+	PA15_PF_LD9,
+	PA16_PF_LD10,
+	PA17_PF_LD11,
+	PA18_PF_LD12,
+	PA19_PF_LD13,
+	PA20_PF_LD14,
+	PA21_PF_LD15,
+	PA22_PF_LD16,
+	PA23_PF_LD17,
+	PA24_PF_REV,
+	PA25_PF_CLS,
+	PA26_PF_PS,
+	PA27_PF_SPL_SPR,
+	PA28_PF_HSYNC,
+	PA29_PF_VSYNC,
+	PA30_PF_CONTRAST,
+	PA31_PF_OE_ACD,
 };
 
 static struct mxc_nand_platform_data mx27lite_nand_board_info = {
@@ -114,6 +143,36 @@ static struct imxuart_platform_data uart_pdata = {
 	.flags = IMXUART_HAVE_RTSCTS,
 };
 
+static struct imx_fb_videomode logic_mbimx27_modes[] = {
+	{
+		.mode = {
+			.name		= "SHARP-LQ64D343",
+			.refresh	= 60,
+			.xres		= 640,
+			.yres		= 480,
+			.pixclock	= 35285,
+			.left_margin	= 134,
+			.right_margin	= 34,
+			.upper_margin	= 35,
+			.lower_margin	= 0,
+			.hsync_len	= 21,
+			.vsync_len	= 5,
+		},
+		.pcr		= 0xFC008B80,
+		.bpp		= 16,
+	},
+};
+
+static struct imx_fb_platform_data logic_mbimx27_fb_data = {
+	.mode = logic_mbimx27_modes,
+	.num_modes = ARRAY_SIZE(logic_mbimx27_modes),
+
+        .pwmr           = 0x00A903FF,
+        .lscr1          = 0x00120300,
+	.dmacr          = 0x00020010,
+	//.dmacr = 0x00040060,
+};
+
 static struct platform_device *platform_devices[] __initdata = {
 	&mx27lite_nor_mtd_device,
 	&mxc_fec_device,
@@ -125,6 +184,7 @@ static void __init mx27lite_init(void)
 		"imx27lite");
 	mxc_register_device(&mxc_uart_device0, &uart_pdata);
 	mxc_register_device(&mxc_nand_device, &mx27lite_nand_board_info);
+	mxc_register_device(&mxc_fb_device, 	&logic_mbimx27_fb_data);
 	platform_add_devices(platform_devices, ARRAY_SIZE(platform_devices));
 }
 
