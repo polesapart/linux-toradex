@@ -1272,7 +1272,7 @@ int s3c2410_dma_getposition(dmach_t channel, dma_addr_t *src, dma_addr_t *dst)
 
 EXPORT_SYMBOL(s3c2410_dma_getposition);
 
-static struct s3c2410_dma_chan *to_dma_chan(struct sys_device *dev)
+static inline struct s3c2410_dma_chan *to_dma_chan(struct sys_device *dev)
 {
 	return container_of(dev, struct s3c2410_dma_chan, dev);
 }
