@@ -22,6 +22,7 @@
 #include <linux/gpio.h>
 #include <linux/mtd/plat-ram.h>
 #include <linux/mtd/physmap.h>
+#include <linux/fsl_devices.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
@@ -33,6 +34,7 @@
 #include <mach/board-mx27lite.h>
 #include <mach/mxc_nand.h>
 #include <mach/imxfb.h>
+#include <mach/mxc_ehci.h>
 
 #include "devices.h"
 
@@ -89,6 +91,39 @@ static unsigned int mx27lite_pins[] = {
 	PA29_PF_VSYNC,
 	PA30_PF_CONTRAST,
 	PA31_PF_OE_ACD,
+	/* USB */
+	PC9_PF_USBOTG_DATA0,
+	PC11_PF_USBOTG_DATA1,
+	PC10_PF_USBOTG_DATA2,
+	PC13_PF_USBOTG_DATA3,
+	PC12_PF_USBOTG_DATA4,
+	PC7_PF_USBOTG_DATA5,
+	PC8_PF_USBOTG_DATA6,
+	PE25_PF_USBOTG_DATA7,
+	PE24_PF_USBOTG_CLK,
+	PE2_PF_USBOTG_DIR,
+	PE0_PF_USBOTG_NXT,
+	PE1_PF_USBOTG_STP,
+	PB27_PF_USBH1_OE,
+	PB29_PF_USBH1_TXDP,
+	PB28_PF_USBH1_TXDM,
+	PB31_PF_USBH1_RXDP,
+	PB30_PF_USBH1_RXDM,
+	PB25_PF_USBH1_RCV,
+	PB22_PF_USBH1_SUSP,
+	PB26_PF_USBH1_FS,
+	PD22_AF_USBH2_DATA0,
+	PD24_AF_USBH2_DATA1,
+	PD23_AF_USBH2_DATA2,
+	PD20_AF_USBH2_DATA3,
+	PD19_AF_USBH2_DATA4,
+	PD26_AF_USBH2_DATA5,
+	PD21_AF_USBH2_DATA6,
+	PA2_PF_USBH2_DATA7,
+	PA0_PF_USBH2_CLK,
+	PA1_PF_USBH2_DIR,
+	PA3_PF_USBH2_NXT,
+	PA4_PF_USBH2_STP,
 };
 
 static struct mxc_nand_platform_data mx27lite_nand_board_info = {
@@ -170,12 +205,28 @@ static struct imx_fb_platform_data logic_mbimx27_fb_data = {
         .pwmr           = 0x00A903FF,
         .lscr1          = 0x00120300,
 	.dmacr          = 0x00020010,
-	//.dmacr = 0x00040060,
 };
 
 static struct platform_device *platform_devices[] __initdata = {
 	&mx27lite_nor_mtd_device,
 	&mxc_fec_device,
+};
+
+/*
+static struct mxc_usbh_platform_data usbotg_pdata = {
+	.portsc	= MXC_EHCI_MODE_ULPI | MXC_EHCI_UTMI_8BIT,
+	.flags	= MXC_EHCI_POWER_PINS_ENABLED,
+};
+*/
+
+static struct fsl_usb2_platform_data usbudc_pdata = {
+	.operating_mode	= FSL_USB2_DR_DEVICE,
+	.phy_mode	= FSL_USB2_PHY_ULPI,
+};
+
+static struct mxc_usbh_platform_data usbh2_pdata = {
+	.portsc	= MXC_EHCI_MODE_ULPI | MXC_EHCI_UTMI_8BIT,
+	.flags	= MXC_EHCI_POWER_PINS_ENABLED,
 };
 
 static void __init mx27lite_init(void)
@@ -185,7 +236,11 @@ static void __init mx27lite_init(void)
 	mxc_register_device(&mxc_uart_device0, &uart_pdata);
 	mxc_register_device(&mxc_nand_device, &mx27lite_nand_board_info);
 	mxc_register_device(&mxc_fb_device, 	&logic_mbimx27_fb_data);
+
 	platform_add_devices(platform_devices, ARRAY_SIZE(platform_devices));
+	//mxc_register_device(&mxc_otg_host, &usbotg_pdata);
+	mxc_register_device(&mxc_otg_udc_device, &usbudc_pdata);
+	mxc_register_device(&mxc_usbh2, &usbh2_pdata);
 }
 
 static void __init mx27lite_timer_init(void)
