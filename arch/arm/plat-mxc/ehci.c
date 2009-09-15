@@ -42,7 +42,7 @@ int mxc_set_usbcontrol(int port, unsigned int flags)
 {
 	unsigned int v;
 
-	if (cpu_is_mx31()) {
+	if (cpu_is_mx31() || cpu_is_mx27()) {
 		v = readl(IO_ADDRESS(OTG_BASE_ADDR + USBCTRL_OTGBASE_OFFSET));
 
 		switch (port) {
