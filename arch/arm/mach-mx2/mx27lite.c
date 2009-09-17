@@ -36,6 +36,7 @@
 #include <mach/imxfb.h>
 #include <mach/mxc_ehci.h>
 #include <mach/keypad.h>
+#include <mach/mmc.h>
 
 #include "devices.h"
 
@@ -125,6 +126,13 @@ static unsigned int mx27lite_pins[] = {
 	PA1_PF_USBH2_DIR,
 	PA3_PF_USBH2_NXT,
 	PA4_PF_USBH2_STP,
+	/* SDHC2*/
+	PB4_PF_SD2_D0,
+	PB5_PF_SD2_D1,
+	PB6_PF_SD2_D2,
+	PB7_PF_SD2_D3,
+	PB8_PF_SD2_CMD,
+	PB9_PF_SD2_CLK,
 };
 
 static struct mxc_nand_platform_data mx27lite_nand_board_info = {
@@ -274,6 +282,23 @@ static struct platform_device *platform_devices[] __initdata = {
 	&mxc_keypad_device,
 };
 
+static int mx27ads_sdhc2_init(struct device *dev, irq_handler_t detect_irq,
+			      void *data)
+{
+	return request_irq(IRQ_GPIOB(22), detect_irq, IRQF_TRIGGER_RISING,
+			   "sdhc2-card-detect", data);
+}
+
+static void mx27ads_sdhc2_exit(struct device *dev, void *data)
+{
+	free_irq(IRQ_GPIOB(22), data);
+}
+
+static struct imxmmc_platform_data sdhc2_pdata = {
+	.init = mx27ads_sdhc2_init,
+	.exit = mx27ads_sdhc2_exit,
+};
+
 static void __init mx27lite_init(void)
 {
 	mxc_gpio_setup_multiple_pins(mx27lite_pins, ARRAY_SIZE(mx27lite_pins),
@@ -286,6 +311,8 @@ static void __init mx27lite_init(void)
 	//mxc_register_device(&mxc_otg_host, &usbotg_pdata);
 	mxc_register_device(&mxc_otg_udc_device, &usbudc_pdata);
 	mxc_register_device(&mxc_usbh2, &usbh2_pdata);
+
+	mxc_register_device(&mxc_sdhc_device1, &sdhc2_pdata);
 }
 
 static void __init mx27lite_timer_init(void)
