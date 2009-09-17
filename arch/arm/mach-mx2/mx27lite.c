@@ -35,6 +35,7 @@
 #include <mach/mxc_nand.h>
 #include <mach/imxfb.h>
 #include <mach/mxc_ehci.h>
+#include <mach/keypad.h>
 
 #include "devices.h"
 
@@ -207,11 +208,6 @@ static struct imx_fb_platform_data logic_mbimx27_fb_data = {
 	.dmacr          = 0x00020010,
 };
 
-static struct platform_device *platform_devices[] __initdata = {
-	&mx27lite_nor_mtd_device,
-	&mxc_fec_device,
-};
-
 /*
 static struct mxc_usbh_platform_data usbotg_pdata = {
 	.portsc	= MXC_EHCI_MODE_ULPI | MXC_EHCI_UTMI_8BIT,
@@ -227,6 +223,55 @@ static struct fsl_usb2_platform_data usbudc_pdata = {
 static struct mxc_usbh_platform_data usbh2_pdata = {
 	.portsc	= MXC_EHCI_MODE_ULPI | MXC_EHCI_UTMI_8BIT,
 	.flags	= MXC_EHCI_POWER_PINS_ENABLED,
+};
+
+/*
+ * This array is used for mapping mx27 ADS keypad scancodes to input keyboard
+ * keycodes.
+ */
+static u16 mxckpd_keycodes[] = {
+	KEY_LEFT, KEY_ENTER, KEY_0, KEY_KPASTERISK,
+	KEY_DOWN, KEY_9, KEY_8, KEY_7,
+	KEY_UP, KEY_6, KEY_5, KEY_4,
+	KEY_RIGHT, KEY_3, KEY_2, KEY_1,
+};
+
+/*
+ * Even though the evb keypad is 6x6, only the first 4 row/column pins
+ * are available on the logic mx27 SOM.
+ */
+static struct keypad_data evb_4_by_4_keypad = {
+	.rowmax = 4,
+	.colmax = 4,
+	.irq = MXC_INT_KPP,
+	.learning = 0,
+	.delay = 2,
+	.matrix = mxckpd_keycodes,
+};
+
+static struct resource mxc_kpp_resources[] = {
+	[0] = {
+		.start = MXC_INT_KPP,
+		.end = MXC_INT_KPP,
+		.flags = IORESOURCE_IRQ,
+	}
+};
+
+/* mxc keypad driver */
+static struct platform_device mxc_keypad_device = {
+	.name = "mxc_keypad",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(mxc_kpp_resources),
+	.resource = mxc_kpp_resources,
+	.dev = {
+		.platform_data = &evb_4_by_4_keypad,
+	},
+};
+
+static struct platform_device *platform_devices[] __initdata = {
+	&mx27lite_nor_mtd_device,
+	&mxc_fec_device,
+	&mxc_keypad_device,
 };
 
 static void __init mx27lite_init(void)

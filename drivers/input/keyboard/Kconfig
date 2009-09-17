@@ -282,6 +282,13 @@ config KEYBOARD_MAX7359
 	  To compile this driver as a module, choose M here: the
 	  module will be called max7359_keypad.
 
+config KEYBOARD_MXC
+	tristate "MXC Keypad Driver"
+	depends on ARCH_MXC
+	help
+	  This is the Keypad driver for the Freescale MXC application
+	  processors.
+
 config KEYBOARD_NEWTON
 	tristate "Newton keyboard"
 	select SERIO
