@@ -278,12 +278,6 @@ static struct platform_device mxc_keypad_device = {
 	},
 };
 
-static struct platform_device *platform_devices[] __initdata = {
-	&mx27lite_nor_mtd_device,
-	&mxc_fec_device,
-	&mxc_keypad_device,
-};
-
 static int mx27ads_sdhc2_init(struct device *dev, irq_handler_t detect_irq,
 			      void *data)
 {
@@ -313,6 +307,31 @@ static struct imxi2c_platform_data mx27lite_i2c_data_1 = {
 };
 
 static struct i2c_board_info mx27lite_i2c_devices_1[] = {
+};
+
+static struct resource rtc_resources[] = {
+	{
+		.start = RTC_BASE_ADDR,
+		.end = RTC_BASE_ADDR + 0x30,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = MXC_INT_RTC,
+		.flags = IORESOURCE_IRQ,
+	},
+	};
+static struct platform_device mxc_rtc_device = {
+	.name = "mxc_rtc",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(rtc_resources),
+	.resource = rtc_resources,
+};
+
+static struct platform_device *platform_devices[] __initdata = {
+	&mx27lite_nor_mtd_device,
+	&mxc_fec_device,
+	&mxc_keypad_device,
+	&mxc_rtc_device,
 };
 
 static void __init mx27lite_init(void)
