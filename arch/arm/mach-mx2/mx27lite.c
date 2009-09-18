@@ -23,6 +23,7 @@
 #include <linux/mtd/plat-ram.h>
 #include <linux/mtd/physmap.h>
 #include <linux/fsl_devices.h>
+#include <linux/i2c/at24.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
@@ -37,6 +38,7 @@
 #include <mach/mxc_ehci.h>
 #include <mach/keypad.h>
 #include <mach/mmc.h>
+#include <mach/i2c.h>
 
 #include "devices.h"
 
@@ -299,6 +301,20 @@ static struct imxmmc_platform_data sdhc2_pdata = {
 	.exit = mx27ads_sdhc2_exit,
 };
 
+static struct imxi2c_platform_data mx27lite_i2c_data_0 = {
+	.bitrate = 100000,
+};
+
+static struct i2c_board_info mx27lite_i2c_devices_0[] = {
+};
+
+static struct imxi2c_platform_data mx27lite_i2c_data_1 = {
+	.bitrate = 100000,
+};
+
+static struct i2c_board_info mx27lite_i2c_devices_1[] = {
+};
+
 static void __init mx27lite_init(void)
 {
 	mxc_gpio_setup_multiple_pins(mx27lite_pins, ARRAY_SIZE(mx27lite_pins),
@@ -313,6 +329,13 @@ static void __init mx27lite_init(void)
 	mxc_register_device(&mxc_usbh2, &usbh2_pdata);
 
 	mxc_register_device(&mxc_sdhc_device1, &sdhc2_pdata);
+
+	i2c_register_board_info(0, mx27lite_i2c_devices_0,
+				ARRAY_SIZE(mx27lite_i2c_devices_0));
+	mxc_register_device(&mxc_i2c_device0, &mx27lite_i2c_data_0);
+	i2c_register_board_info(1, mx27lite_i2c_devices_1,
+				ARRAY_SIZE(mx27lite_i2c_devices_1));
+	mxc_register_device(&mxc_i2c_device1, &mx27lite_i2c_data_1);
 }
 
 static void __init mx27lite_timer_init(void)
