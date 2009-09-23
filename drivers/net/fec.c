@@ -1879,6 +1879,21 @@ fec_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ndev);
 
+	fep->clk = clk_get(&pdev->dev, "fec_clk");
+	if (IS_ERR(fep->clk)) {
+		ret = PTR_ERR(fep->clk);
+		goto failed_clk;
+	}
+	clk_enable(fep->clk);
+
+	ret = fec_enet_init(ndev, 0);
+	if (ret)
+		goto failed_init;
+
+	ret = register_netdev(ndev);
+	if (ret)
+		goto failed_register;
+
 	/* This device has up to three irqs on some platforms */
 	for (i = 0; i < 3; i++) {
 		irq = platform_get_irq(pdev, i);
@@ -1895,34 +1910,14 @@ fec_probe(struct platform_device *pdev)
 		}
 	}
 
-	fep->clk = clk_get(&pdev->dev, "fec_clk");
-	if (IS_ERR(fep->clk)) {
-		ret = PTR_ERR(fep->clk);
-		goto failed_clk;
-	}
-	clk_enable(fep->clk);
-
-	ret = fec_enet_init(ndev, 0);
-	if (ret)
-		goto failed_init;
-
-	ret = register_netdev(ndev);
-	if (ret)
-		goto failed_register;
-
 	return 0;
 
+failed_irq:
 failed_register:
 failed_init:
 	clk_disable(fep->clk);
 	clk_put(fep->clk);
 failed_clk:
-	for (i = 0; i < 3; i++) {
-		irq = platform_get_irq(pdev, i);
-		if (irq > 0)
-			free_irq(irq, ndev);
-	}
-failed_irq:
 	iounmap((void __iomem *)ndev->base_addr);
 failed_ioremap:
 	free_netdev(ndev);
