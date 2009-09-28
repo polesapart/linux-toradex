@@ -694,7 +694,7 @@ static void __init cc9m2443_machine_init(void)
 #endif
 }
 
-MACHINE_START(CC9M2443, "ConnectCore 9M 2443 on a JSCC9M2443 Devboard")
+MACHINE_START(CC9M2443JS, "ConnectCore 9M 2443 on a JSCC9M2443 Devboard")
         .phys_io	= S3C2410_PA_UART,
 	.io_pg_offst	= (((u32)S3C24XX_VA_UART) >> 18) & 0xfffc,
 	.boot_params	= S3C2410_SDRAM_PA + 0x100,
