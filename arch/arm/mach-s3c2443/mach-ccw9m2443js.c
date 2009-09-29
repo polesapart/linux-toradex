@@ -748,9 +748,11 @@ static void __init cc9m2443_machine_init(void)
         /* SPI devices */
         spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
 
+
+#if defined(CONFIG_DIGI_PIPER_WIFI)
 	/* 802.11 */
 	add_device_ccw9m2443_piper(&ccw9m2443_piper_pdata);
-
+#endif
 
 	/* Call the function for enabling the PM support */
 #if defined(CONFIG_MACH_CC9M2443JS_PM)
