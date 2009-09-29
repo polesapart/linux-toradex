@@ -20,8 +20,10 @@
 
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/mfd/mc13783.h>
 #include <linux/mtd/plat-ram.h>
 #include <linux/mtd/physmap.h>
+#include <linux/spi/spi.h>
 #include <linux/fsl_devices.h>
 #include <linux/i2c/at24.h>
 #include <asm/mach-types.h>
@@ -39,6 +41,7 @@
 #include <mach/keypad.h>
 #include <mach/mmc.h>
 #include <mach/i2c.h>
+#include <mach/spi.h>
 
 #include "devices.h"
 
@@ -135,6 +138,11 @@ static unsigned int mx27lite_pins[] = {
 	PB7_PF_SD2_D3,
 	PB8_PF_SD2_CMD,
 	PB9_PF_SD2_CLK,
+	/* SPI1 */
+	PD25_PF_CSPI1_RDY,
+	PD29_PF_CSPI1_SCLK,
+	PD30_PF_CSPI1_MISO,
+	PD31_PF_CSPI1_MOSI,
 };
 
 static struct mxc_nand_platform_data mx27lite_nand_board_info = {
@@ -327,6 +335,32 @@ static struct platform_device mxc_rtc_device = {
 	.resource = rtc_resources,
 };
 
+/* SS0 (pin D28) -> MC13783 touchscreen controller
+ * SS1 (pin D27) -> available on breakout board
+ */
+static int mx27lite_spi_cs[] = {GPIO_PORTD | 28, GPIO_PORTD | 27};
+
+static struct spi_imx_master mx27lite_spi_0_data = {
+        .chipselect     = mx27lite_spi_cs,
+        .num_chipselect = ARRAY_SIZE(mx27lite_spi_cs),
+};
+
+static struct mc13783_platform_data mc13783_data = {
+	.regulators = NULL,
+	.num_regulators = 0,
+	.flags = MC13783_USE_TOUCHSCREEN,
+};
+static struct spi_board_info mxc_spi_board_info[] __initdata = {
+	{
+		.modalias = "mc13783",
+		.platform_data = &mc13783_data,
+		.irq = IRQ_GPIOB(29),
+		.max_speed_hz = 4000000,
+		.bus_num = 0,
+		.chip_select = 0,
+	},
+};
+
 static struct platform_device *platform_devices[] __initdata = {
 	&mx27lite_nor_mtd_device,
 	&mxc_fec_device,
@@ -338,6 +372,8 @@ static void __init mx27lite_init(void)
 {
 	mxc_gpio_setup_multiple_pins(mx27lite_pins, ARRAY_SIZE(mx27lite_pins),
 		"imx27lite");
+	mxc_gpio_mode(PD28_PF_CSPI1_SS0);
+	mxc_gpio_mode(PD27_PF_CSPI1_SS1);
 	mxc_register_device(&mxc_uart_device0, &uart_pdata);
 	mxc_register_device(&mxc_nand_device, &mx27lite_nand_board_info);
 	mxc_register_device(&mxc_fb_device, 	&logic_mbimx27_fb_data);
@@ -348,6 +384,9 @@ static void __init mx27lite_init(void)
 	mxc_register_device(&mxc_usbh2, &usbh2_pdata);
 
 	mxc_register_device(&mxc_sdhc_device1, &sdhc2_pdata);
+
+	mxc_register_device(&mxc_spi_device0, &mx27lite_spi_0_data);
+	spi_register_board_info(mxc_spi_board_info, ARRAY_SIZE(mxc_spi_board_info));
 
 	i2c_register_board_info(0, mx27lite_i2c_devices_0,
 				ARRAY_SIZE(mx27lite_i2c_devices_0));

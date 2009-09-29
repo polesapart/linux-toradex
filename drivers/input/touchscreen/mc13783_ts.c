@@ -75,7 +75,9 @@ static void mc13783_ts_report_sample(struct mc13783_ts_priv *priv)
 		queue_delayed_work(priv->workq, &priv->work, HZ / 50);
 	}
 
-	input_report_key(priv->idev, BTN_TOUCH, press);
+	// XXX: must use ABS_PRESSURE instead of touch for tslib
+	//input_report_key(priv->idev, BTN_TOUCH, press);
+	input_report_abs(priv->idev, ABS_PRESSURE, press);
 	input_sync(priv->idev);
 }
 
@@ -138,7 +140,7 @@ static int __devinit mc13783_ts_probe(struct platform_device *pdev)
 	idev->name = MC13783_TS_NAME;
 	idev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	idev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
-	idev->absbit[0] = BIT_MASK(ABS_X) | BIT_MASK(ABS_Y);
+	idev->absbit[0] = BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) | BIT_MASK(ABS_PRESSURE);
 	idev->open = mc13783_ts_open;
 	idev->close = mc13783_ts_close;
 	input_set_abs_params(idev, ABS_X, TS_MIN, TS_MAX, 0, 0);
