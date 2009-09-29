@@ -110,6 +110,7 @@ obj-$(CONFIG_JS_RTC)		+= js-rtc.o
 js-rtc-y = rtc.o
 
 obj-$(CONFIG_ADC_NS9215)	+= adc-ns9215.o
+obj-$(CONFIG_ADC_S3C2443)	+= adc-s3c2443.o platadc.o
 
 # Files generated that shall be removed upon make clean
 clean-files := consolemap_deftbl.c defkeymap.c

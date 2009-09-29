@@ -563,6 +563,26 @@ struct platform_device s3c443_device_pcmcia = {
         }
 };
 
+static struct resource s3c2443_adc_resources[] = {
+	[0] = {
+		.name = "s3c2443-adc",
+		.start = S3C2410_PA_ADC,
+		.end   = S3C2410_PA_ADC + S3C24XX_SZ_ADC - 1,
+		.flags = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device s3c2443_device_adc = {
+	.name = "s3c2443-adc",
+	.id = -1,
+        .resource = s3c2443_adc_resources,
+        .num_resources = ARRAY_SIZE(s3c2443_adc_resources),
+	.dev	= {
+		.platform_data = &cc9m2443_ts_info,	/* shared between touch and adc*/
+	}
+};
+
+
 /* Platform devices for the CC9M2443 */
 static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c_device_usb,
@@ -578,6 +598,7 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&cc9m2443_device_udc,
 	&s3c443_device_ide,
 	&s3c443_device_pcmcia,
+	&s3c2443_device_adc,
 };
 
 static void __init cc9m2443_map_io(void)
