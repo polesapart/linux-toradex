@@ -5,3 +5,21 @@ config DIGI_PIPER_WIFI
 	  This driver is for the Piper 802.11 MAC by Digi.  This MAC is
 	  supported on the Digi ConnectCore Wi-9P 9215 and Digi ConnectCore Wi-9M 2443
 	  embedded modules.
+
+config PIPER_STATUS_LED
+	bool "Enable wifi status led on development board"
+	depends on DIGI_PIPER_WIFI && MACH_CCW9M2443JS
+	default y
+	help
+	  ConnectCore Wi-9M 2443 does not provide any LED in the module,
+	  so use one of the LED's in the development board.
+
+config PIPER_STATUS_LED_GPIO
+	int "gpio for wifi status led (0-144)"
+	range 0 144
+	depends on PIPER_STATUS_LED
+	default "141"
+	help
+	  Set gpio for Wifi status LED on development board.
+
+	  Default: User LED 1 (LE5)

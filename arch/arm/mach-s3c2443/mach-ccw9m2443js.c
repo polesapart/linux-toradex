@@ -653,10 +653,13 @@ static struct spi_board_info spi_devices[] __initdata = {
 };
 
 #if defined(CONFIG_DIGI_PIPER_WIFI)
+#if !defined(CONFIG_PIPER_STATUS_LED_GPIO)
+#define CONFIG_PIPER_STATUS_LED_GPIO	-1
+#endif
 static struct piper_pdata ccw9m2443_piper_pdata = {
 	.rst_gpio		= 19,
 	.irq_gpio		= 90,
-	.status_led_gpio	= 141,
+	.status_led_gpio	= CONFIG_PIPER_STATUS_LED_GPIO,
 	.i2c_adapter_num	= CONFIG_I2C_S3C2410_ADAPTER_NR,
 };
 
