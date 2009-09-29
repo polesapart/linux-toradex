@@ -7,19 +7,21 @@ config DIGI_PIPER_WIFI
 	  embedded modules.
 
 config PIPER_STATUS_LED
-	bool "Enable wifi status led on development board"
+	bool "Enable GPIO for Wifi status LED"
 	depends on DIGI_PIPER_WIFI && MACH_CCW9M2443JS
 	default y
 	help
-	  ConnectCore Wi-9M 2443 does not provide any LED in the module,
-	  so use one of the LED's in the development board.
+	  ConnectCore Wi-9M 2443 does not provide any dedicated LED 
+	  in the module for showing the Wifi status.
+	  This option lets you define one available CPU GPIO for this purpose.
+	  Default value is set to USER LED 1 on JumpStart board.
 
 config PIPER_STATUS_LED_GPIO
-	int "gpio for wifi status led (0-144)"
+	int "GPIO for Wifi status LED (0-144)"
 	range 0 144
 	depends on PIPER_STATUS_LED
 	default "141"
 	help
-	  Set gpio for Wifi status LED on development board.
+	  Set CPU GPIO for Wifi status LED.
 
-	  Default: User LED 1 (LE5)
+	  Default: User LED 1 on JumpStart board (LE5)
