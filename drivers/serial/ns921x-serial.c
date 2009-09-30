@@ -859,9 +859,26 @@ static void ns921x_uart_set_termios(struct uart_port *port,
 
 		if (!(termios->c_cflag & PARODD))
 			cval |= UART_LCR_EPAR;
+#ifdef CMSPAR
+		/* stick parity:
+		 *   - MARK parity requires flags PARENB | CMSPAR | PARODD
+		 *     and in the controller the EPS and PEN bitfields
+		 *     must be set to 0
+		 *   - SPACE parity requires flags PARENB | CMSPAR | ~PARODD
+		 *     and in the controller the EPS and PEN bitfields
+		 *     must be set to 1 (these are already set by the
+		 *     code above this, so there is nothing to do here)
+		 *   In any case SP bitfield must be set to 1
+		 */
+		if(termios->c_cflag & CMSPAR) {
+			cval |= UART_LCR_SPAR;	/* set stick parity */
+			if (termios->c_cflag & PARODD) {
+				cval &= ~UART_LCR_EPAR;
+				cval &= ~UART_LCR_PARITY;
+			}
+		}
+#endif
 	}
-
-	/* XXX: handle SPAR? */
 
 	baud = uart_get_baud_rate(port, termios, old, 0, port->uartclk / 16);
 	quot = uart_get_divisor(port, baud);
