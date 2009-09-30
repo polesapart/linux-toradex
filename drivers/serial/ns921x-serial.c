@@ -1077,6 +1077,13 @@ static void __init ns921x_uart_console_get_options(struct uart_ns921x_port *unp,
 			else
 				*parity = 'o';
 		}
+		if (cval & UART_LCR_SPAR) {
+			if( (cval & UART_LCR_PARITY) &&
+			    (cval & UART_LCR_EPAR) )
+				*parity = 'm';
+			else
+				*parity = 's';
+		}
 
 		switch (cval & UART_LCR_WLEN) {
 		case UART_LCR_WLEN_5:
