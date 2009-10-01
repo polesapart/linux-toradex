@@ -393,7 +393,8 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 
 		/* prepare statistics and pass them to the stack */
 		for (i = 0; i < IEEE80211_TX_MAX_RATES; i++)
-			info->status.rates[i].count = piperp->pstats.tx_retry_count[i];
+//			info->status.rates[i].count = piperp->pstats.tx_retry_count[i];
+			info->status.rates[i].count = 0;
 	    if ((info->status.rates[0].count) > 0)
 	        info->status.rates[0].count--;
 
