@@ -596,6 +596,7 @@ ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 		return ieee80211_rx_mesh_check(rx);
 
 	if ((rx->sdata)
+	    && !is_multicast_ether_addr(hdr->addr1)
 		&& (rx->sdata->vif.type != NL80211_IFTYPE_ADHOC)
 		&& (rx->flags & IEEE80211_RX_RA_MATCH)) {
 		unsigned class_type = frame_class_type(hdr, false);
@@ -617,11 +618,6 @@ ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 					if ((rx->sta != NULL) && (test_sta_flags(rx->sta, WLAN_STA_AUTH))) {
 						private_send_deauth_disassoc(rx->sdata,
 						   IEEE80211_STYPE_DISASSOC,
-						   WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA,
-						   hdr->addr1);
-					} else {
-						private_send_deauth_disassoc(rx->sdata,
-						   IEEE80211_STYPE_DEAUTH,
 						   WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA,
 						   hdr->addr1);
 					}
