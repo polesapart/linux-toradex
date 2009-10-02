@@ -195,6 +195,7 @@ struct fim_driver {
 	void (*fim_isr)(struct fim_driver *, int, unsigned char, unsigned int);
 	void (*dma_tx_isr)(struct fim_driver *, int, struct fim_buffer_t *);
 	void (*dma_rx_isr)(struct fim_driver *, int, struct fim_buffer_t *);
+	void (*dma_error_isr)(struct fim_driver *, ulong rx_err, ulong tx_err);
 	void *driver_data;
 	struct fim_dma_cfg_t *dma_cfg;
 };
@@ -339,7 +340,56 @@ struct fim_can_platform_data {
 		.rx_gpio_func = func, \
 		.tx_gpio_nr = tx, \
 		.tx_gpio_func = func
-	
+
+/*
+ * Structure for the FIM-devices with USB support
+ * If a GPIO should not be used, then it's required to disable it by using the
+ * above macro 'FIM_GPIO_DONT_USE'
+ *
+ * fim_nr  : Number of the FIM to use for the device
+ * gpio_nr : GPIO to use for the interface line
+ */
+struct fim_usb_platform_data {
+
+	int fim_nr;
+
+	int (*init)(struct device *);
+	int (*exit)(struct device *);
+
+	int vp_gpio_nr;
+	unsigned int vp_gpio_func;
+	int vm_gpio_nr;
+	unsigned int vm_gpio_func;
+	int rcv_gpio_nr;
+	unsigned int rcv_gpio_func;
+	int oe_l_gpio_nr;
+	unsigned int oe_l_gpio_func;
+	int enum_gpio_nr;
+	unsigned int enum_gpio_func;
+	int spnd_gpio_nr;
+	unsigned int spnd_gpio_func;
+};
+
+/*
+ * Macro for the configuration of the GPIOs for the FIM USB driver
+ * IMPORTANT: The FIM-firmware is able to control the DP, DM, OE and RCV pins, but NOT
+ * the lines for the enumeration (ENUM) and suspend (SPND). The 'func_out' defines the
+ * function for the output GPIOs
+ */
+#define NS921X_FIM_USB_GPIOS(vp, vm, rcv, oe_l, enume, spnd, func, func_out)      \
+		.vp_gpio_nr = vp, \
+		.vp_gpio_func = func, \
+		.vm_gpio_nr = vm, \
+		.vm_gpio_func = func, \
+		.rcv_gpio_nr = rcv, \
+		.rcv_gpio_func = func, \
+		.oe_l_gpio_nr = oe_l, \
+		.oe_l_gpio_func = func, \
+		.enum_gpio_nr = enume, \
+		.enum_gpio_func = func_out, \
+		.spnd_gpio_nr = spnd, \
+		.spnd_gpio_func = func_out
+
 /* Macros for building the FIM-drivers as loadable modules */
 #if defined(MODULE)
 # define NS921X_FIM_NUMBERS_PARAM(number)		\
@@ -386,14 +436,16 @@ int fim_disable_irq(struct fim_driver *driver);
 int fim_send_buffer(struct fim_driver *driver, const struct fim_buffer_t *bufdesc);
 int fim_tx_buffers_room(struct fim_driver *driver);
 int fim_tx_buffers_level(struct fim_driver *driver);
+int fim_send_reset(struct fim_driver *driver);
+int fim_send_start(struct fim_driver *driver);
 int fim_send_stop(struct fim_driver *driver);
-int fim_send_start(struct fim_driver *driver); 
 void fim_flush_rx(struct fim_driver *driver);
 void fim_flush_tx(struct fim_driver *driver);
 struct fim_buffer_t *fim_alloc_buffer(struct fim_driver *driver, int length,
 				      unsigned int gfp_flags);
 void fim_free_buffer(struct fim_driver *driver, struct fim_buffer_t *buffer);
 void fim_set_ctrl_reg(struct fim_driver *driver, int reg, unsigned int val);
+void fim_set_exp_reg(struct fim_driver *driver, int reg, unsigned int val);
 int fim_get_ctrl_reg(struct fim_driver *driver, int reg, unsigned int *val);
 int fim_get_stat_reg(struct fim_driver *driver, int reg, unsigned int *val);
 struct pic_t *fim_request_pic(int picnr);
@@ -402,6 +454,9 @@ void fim_print_fifo_status(struct fim_driver *driver);
 int fim_number_pics(void);
 int fim_download_firmware(struct fim_driver *driver);
 int fim_is_running(struct fim_driver *driver);
+
+int fim_dma_stop(struct fim_driver *fim);
+int fim_dma_start(struct fim_driver *fim, struct fim_dma_cfg_t *cfg);
 
 #endif /* ifndef _NS921X_FIM_CORE_H */
 

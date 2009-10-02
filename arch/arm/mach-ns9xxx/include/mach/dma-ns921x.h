@@ -133,6 +133,8 @@ struct iohub_dma_fifo_t {
 	struct iohub_dma_desc_t *dma_last;
 	struct iohub_dma_desc_t *dma_next;
 	struct iohub_dma_desc_t *next_free;
-};
+	unsigned long rx_error, tx_error;
+	unsigned long rx_error1, tx_error2;
+}__attribute__((__packed__));
 
 #endif /* ifndef __ASM_ARCH_NS912X_DMA_H */

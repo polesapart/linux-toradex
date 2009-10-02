@@ -273,6 +273,17 @@ static void pic_rx_tasklet_func(unsigned long data)
 
 	/* Update the buffer index for the next tasklet */
 	fifo->dma_first = desc;
+
+	/* Check for previously detected errors */
+	if (fifo->rx_error) {
+
+		if (pic->driver->dma_error_isr)
+			pic->driver->dma_error_isr(pic->driver, fifo->rx_error, 0);
+		
+		/* fim_dma_reset_fifo(fifo); */
+		fifo->rx_error = 0;
+	}
+	
 	spin_unlock(&pic->rx_lock);
 }
 
@@ -449,6 +460,7 @@ inline static void pic_reset_tx_fifo(struct pic_t *pic)
 	for(cnt=0; cnt < pic->tx_fifo.length; cnt++) {
 		desc = fim_dma_get_by_index(&pic->tx_fifo, cnt);
 		desc->control &= ~IOHUB_DMA_DESC_CTRL_FULL;
+		desc->length = 0;
 		pic_desc = pic->tx_desc + cnt;
 		atomic_set(&pic_desc->tasked, 0);
 	}
@@ -554,6 +566,7 @@ void fim_flush_rx(struct fim_driver *driver)
 	unsigned int cnt;
 	struct pic_t *pic;
 	struct iohub_dma_desc_t *desc;
+	struct iohub_dma_fifo_t *fifo;
 	
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return;
@@ -569,6 +582,10 @@ void fim_flush_rx(struct fim_driver *driver)
 	       pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 	writel(pic->rx_fifo.phys_descs, pic->iohub_addr + IOHUB_RX_DMA_BUFPTR_REG);
 	writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
+
+	/* Reset the internal fifo too */
+	fifo = &pic->rx_fifo;
+	fim_dma_reset_fifo(fifo);
 }
 
 
@@ -582,6 +599,8 @@ void fim_flush_tx(struct fim_driver *driver)
 	
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return;
+
+	pic_reset_tx_fifo(pic);
 	
 	writel(IOHUB_RX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 }
@@ -845,7 +864,7 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	unsigned int ifs;
 	struct iohub_dma_fifo_t *fifo;
 	unsigned int rxctrl, ictrl;
-	int error;
+	unsigned long error;
 
 	/* If we have an error, then always restart the DMA-channel */
 	ifs = readl(pic->iohub_addr + IOHUB_IFS_REG);
@@ -854,13 +873,16 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	if (ifs & IOHUB_IFS_RXNRIP) {
 		ictrl = readl(pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 		rxctrl = readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-		printk_err("RXNRIP: ictrl 0x%08x | rxctrl 0x%08x\n", ictrl, rxctrl);
-		error = 1;
+
+		if (printk_ratelimit())
+			printk_warn("RXNRIP: ictrl 0x%08x | rxctrl 0x%08x\n", ictrl, rxctrl);
+		
+		error |= IOHUB_IFS_RXNRIP;
 	}
 
 	if (!(ifs & IOHUB_IFS_RXNCIP)) {
-		printk_err("RXNCIP: Unexpected state (ifs: %x)\n", ifs);
-		error = 1;
+		printk_warn("RXNCIP: Unexpected state (ifs: %x)\n", ifs);
+		error |= IOHUB_IFS_RXNCIP;
 	}
 
 	/* If we have a failure, then reset the DMA-controller and -FIFO */
@@ -870,10 +892,11 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 		writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 		writel(ifs, pic->iohub_addr + IOHUB_IFS_REG);
 		writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-		fim_dma_reset_fifo(fifo);
-		return;
+
+		/* This is for the RX tasklet that will inform the FIM-driver about this failure */
+		fifo->rx_error = error;
 	}
-	
+
 	/*
 	 * @IMPORTANT: The API of Net+OS is restarting the RX-channel after each
 	 * transfer, but we don't know exactly why. Since our API is working
@@ -1348,6 +1371,10 @@ static int pic_stop_and_reset(struct pic_t *pic)
 		printk_debug("The PIC %i is running, need to stop it.\n", pic->index);
 	
 	regval = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
+
+	/* Clear the interrupt flags too! */
+	regval &= ~NS92XX_FIM_INT_MASK(0xff);
+	
 	writel(regval & NS92XX_FIM_GEN_CTRL_STOP_PIC,
 	       pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 
@@ -1367,7 +1394,7 @@ static int pic_stop_and_reset(struct pic_t *pic)
  * This function stops the FIM and check if the DMA-channel still has a buffer
  * for the FIM.
  */
-int fim_send_stop(struct fim_driver *driver)
+int fim_send_reset(struct fim_driver *driver)
 {
 	struct pic_t *pic;
 	int retval, cnt, fifo_reset;
@@ -1434,13 +1461,53 @@ int fim_send_stop(struct fim_driver *driver)
 
 int fim_send_start(struct fim_driver *driver)
 {
+	ulong reg;
+	
 	struct pic_t *pic;
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return -EINVAL;
 
+	/* Connect the clock to the FIM */
+	reg = readl(SYS_CLOCK);
+	writel(reg | (1 << (pic->index + FIM0_SHIFT)), SYS_CLOCK);
+
+	reg = readl(SYS_RESET);
+	writel(reg | (1 << (pic->index + FIM0_SHIFT)), SYS_RESET);
+	
 	return pic_start_at_zero(pic);
 }
 
+int fim_send_stop(struct fim_driver *driver)
+{
+	struct pic_t *pic;
+	int ret;
+	ulong reg;
+
+	if (!(pic = get_pic_by_index(driver->picnr)))
+		return -EINVAL;
+
+	reg = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
+
+	/* Clear the interrupt flags too! */
+	reg &= ~NS92XX_FIM_INT_MASK(0xff);
+	
+	writel(reg & ~NS92XX_FIM_GEN_CTRL_START_PIC,
+	       pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
+
+	ret = 0;
+	if (pic_is_running(pic)) {
+		printk_err("Unabled to stop the PIC %i\n", pic->index);
+		ret = -EAGAIN;
+	}
+
+	/* Disable the clock and reset the module */
+	reg = readl(SYS_CLOCK);
+	writel(reg & ~(1 << (pic->index + FIM0_SHIFT)), SYS_CLOCK);
+	reg = readl(SYS_RESET);
+	writel(reg & ~(1 << (pic->index + FIM0_SHIFT)), SYS_RESET);
+	
+	return ret;
+}
 
 int fim_send_interrupt2(struct fim_driver *driver, unsigned int code)
 {
@@ -1995,7 +2062,30 @@ static void pic_dma_stop(struct pic_t *pic)
 	}
 }
 
+int fim_dma_stop(struct fim_driver *fim)
+{
+	struct pic_t *pic;
 
+	if (!(pic = get_pic_from_driver(fim)))
+                return -ENODEV;
+	
+	pic_dma_stop(pic);
+	return 0;
+}
+
+int fim_dma_start(struct fim_driver *fim, struct fim_dma_cfg_t *cfg)
+{
+	struct pic_t *pic;
+
+	if (!(pic = get_pic_from_driver(fim)))
+                return -ENODEV;
+
+	/* Per default Use the already configured DMA configuration */
+	if (!cfg)
+		cfg = &pic->dma_cfg;
+	
+	return pic_dma_init(pic, cfg);
+}
 
 /*
  * @TODO: We wanted originally to separate the PICs and the virtual devices
@@ -2103,8 +2193,9 @@ EXPORT_SYMBOL(fim_send_buffer);
 EXPORT_SYMBOL(fim_tx_buffers_room);
 EXPORT_SYMBOL(fim_tx_buffers_level);
 EXPORT_SYMBOL(fim_number_pics);
-EXPORT_SYMBOL(fim_send_stop);
+EXPORT_SYMBOL(fim_send_reset);
 EXPORT_SYMBOL(fim_send_start);
+EXPORT_SYMBOL(fim_send_stop);
 EXPORT_SYMBOL(fim_flush_rx);
 EXPORT_SYMBOL(fim_flush_tx);
 EXPORT_SYMBOL(fim_alloc_buffer);
@@ -2116,3 +2207,5 @@ EXPORT_SYMBOL(fim_request_pic);
 EXPORT_SYMBOL(fim_free_pic);
 EXPORT_SYMBOL(fim_download_firmware);
 EXPORT_SYMBOL(fim_is_running);
+EXPORT_SYMBOL(fim_dma_stop);
+EXPORT_SYMBOL(fim_dma_start);

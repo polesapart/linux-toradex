@@ -36,7 +36,9 @@
  * Use internal board, defined to 1
  * Use newer boards, defined to 0
  */
-#define INT_FIM_BOARD	0	
+#if 0
+#define INT_FIM_BOARD
+#endif
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 static int cc9p9215_phy_endisable(struct clk *clk, int enable)
@@ -208,7 +210,7 @@ EXPORT_SYMBOL(ns921x_fim_serial1);
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
-#if INT_FIM_BOARD
+#if defined(INT_FIM_BOARD)
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
@@ -237,7 +239,7 @@ EXPORT_SYMBOL(ns921x_fim_sdio0);
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
-#if INT_FIM_BOARD
+#if defined(INT_FIM_BOARD)
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
 			      76, 77,         /* CLK + CMD */
@@ -281,7 +283,7 @@ EXPORT_SYMBOL(ns921x_fim_can0);
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr			= 1,
 	.fim_can_bitrate	= 500000,
-#if INT_FIM_BOARD
+#if defined(INT_FIM_BOARD)
 	NS921X_FIM_CAN_GPIOS(   68, 69, /* RX + TX */
 				NS921X_GPIO_FUNC_2),
 #else
@@ -326,6 +328,48 @@ struct platform_device ns921x_fim1_w1 = {
 };
 EXPORT_SYMBOL(ns921x_fim1_w1);
 #endif /* CONFIG_FIM_ONE_W1 */
+
+#if defined(CONFIG_FIM_ZERO_USB)
+static struct fim_usb_platform_data fim_usb_data0 = {
+        .fim_nr            = 0,
+
+	/* The setup of the pull-ups must be fixed in the driver, however print a warning */
+#if defined(INT_FIM_BOARD)
+#warning "Internal FIM board has a different pull-ups configuration"
+	NS921X_FIM_USB_GPIOS(68, 69, 70, 71,    /* VP + VM + RCV + OE_L */
+			     72, 73,            /* ENUM + SPND */
+                             NS921X_GPIO_FUNC_0,
+                             NS921X_GPIO_FUNC_GPIO),
+#else
+        NS921X_FIM_USB_GPIOS(68, 69, 70, 71,    /* VP + VM + RCV + OE_L */
+                             76, 77,            /* ENUM + SPND */
+                             NS921X_GPIO_FUNC_0,
+                             NS921X_GPIO_FUNC_GPIO),
+#endif
+};
+struct platform_device ns921x_fim_usb0 = {
+        .name              = "fim-usb",
+        .id                = 0,
+        .dev.platform_data = &fim_usb_data0,
+};
+EXPORT_SYMBOL(ns921x_fim_usb0);
+#endif /* CONFIG_FIM_ZERO_USB */
+
+#if defined(CONFIG_FIM_ONE_USB)
+static struct fim_usb_platform_data fim_usb_data1 = {
+	.fim_nr            = 1,
+	NS921X_FIM_USB_GPIOS(72, 73, 74, 75,    /* VP + VM + RCV + OE_L */
+			     78, 79,            /* ENUM + SPND */
+			     NS921X_GPIO_FUNC_1,
+			     NS921X_GPIO_FUNC_GPIO),
+};
+struct platform_device ns921x_fim_usb1 = {
+	.name              = "fim-usb",
+	.id                = 1,
+	.dev.platform_data = &fim_usb_data1,
+};
+EXPORT_SYMBOL(ns921x_fim_usb1);
+#endif /* CONFIG_FIM_ONE_USB */
 
 #if defined(CONFIG_CC9P9215JS_EDT_DISPLAY_QVGA)
 #ifdef CONFIG_CC9P9215JS_DISPLAY_USES_DMA

@@ -76,6 +76,13 @@ config FIM_ZERO_W1_SELECTED
 	  Enables the 1-wire GPIO driver on the FIM-board. For the selection of the
 	  connected slaves you need to enter the config menu of the 1-wire subsystem.
 
+config FIM_ZERO_USB_SELECTED
+        tristate "USB serial port driver"
+        select FIM_ZERO_USB
+	select SERIAL_CORE
+        help
+          Enables the USB serial port driver (low speed).
+
 endchoice # FIM_ZERO
 
 config FIM_ONE
@@ -130,7 +137,15 @@ config FIM_ONE_W1_SELECTED
 	help
 	  Enables the 1-wire GPIO driver on the FIM-board. For the selection of the
 	  connected slaves you need to enter the config menu of the 1-wire subsystem.
-	  
+
+config FIM_ONE_USB_SELECTED
+        tristate "USB serial port driver"
+        depends on !MACH_CME9210JS
+        select FIM_ONE_USB
+	select SERIAL_CORE
+        help
+          Enables the USB serial port driver (low speed).
+
 endchoice # FIM_ONE
 
 # -- Special configuration options for some FIM-drivers
@@ -179,6 +194,16 @@ config FIM_CAN_MODULE
           Enables the FIM CAN as loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
 
+config FIM_USB_MODULE
+        bool "USB serial port driver as loadable module"
+        depends on SERIAL_CORE && !FIM_ZERO_USB_SELECTED && !FIM_ONE_USB_SELECTED
+        select FIM_ZERO_USB
+        select FIM_ONE_USB if !(MACH_CME9210JS || MACH_CME9210)
+        help
+          Enables the FIM USB Device Controller as loadable module.
+          The number of FIMs to be handled by this driver can be passed with the
+          module parameter 'fims'
+
 endif # FIM_MODULES
 
 # -- Variables for selection the platform devices
@@ -214,6 +239,12 @@ config FIM_ZERO_W1
         bool
 
 config FIM_ONE_W1
+        bool
+
+config FIM_ZERO_USB
+        bool
+
+config FIM_ONE_USB
         bool
 
 endif # FIM_CORE
