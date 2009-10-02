@@ -683,6 +683,14 @@ static int __init ns9360_uart_console_setup(struct console *co, char *options)
 		ns9360_uart_console_get_options(unp,
 				&baud, &parity, &bits, &flow);
 
+	/* Enable UART. For some strange reason, in NS9360 the UART
+	 * must be enabled in the setup, rather than in the write
+	 * function, otherwise nothing is printed and the system
+	 * doesn't boot */
+	uartwrite32(&unp->port,
+		   uartread32(&unp->port, UART_CTRLA) | UART_CTRLA_CE,
+		   UART_CTRLA);
+
 	return uart_set_options(&unp->port, co, baud, parity, bits, flow);
 }
 
