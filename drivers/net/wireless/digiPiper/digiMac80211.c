@@ -943,7 +943,7 @@ int piper_register_hw(struct piper_priv *priv, struct device *dev,
 	hw->vif_data_size = 0;
 	hw->sta_data_size = 0;
 	hw->max_rates = IEEE80211_TX_MAX_RATES;
-	hw->max_rate_tries = 5;             /* completely arbitrary */
+	hw->max_rate_tries = 5;             /* completely arbitrary, and apparently ignored by the rate algorithm */
 	hw->max_signal = rf->maxSignal;
 	hw->max_listen_interval = 10;       /* I don't think APs will work with values larger than 4 actually */
 
