@@ -282,13 +282,21 @@ rate_control_pid_get_rate(void *priv, struct ieee80211_sta *sta,
 	int rateidx;
 	u16 fc;
 
+#define WANT_VARIABLE_RATES (1)
+#if WANT_VARIABLE_RATES
+    int max_tries, i;
+	if (txrc->rts)
+	    max_tries = txrc->hw->conf.long_frame_max_tx_count;
+	else
+	    max_tries = txrc->hw->conf.short_frame_max_tx_count;
+#else
 	if (txrc->rts)
 		info->control.rates[0].count =
 			txrc->hw->conf.long_frame_max_tx_count;
 	else
 		info->control.rates[0].count =
 			txrc->hw->conf.short_frame_max_tx_count;
-
+#endif
 	/* Send management frames and broadcast/multicast data using lowest
 	 * rate. */
 	fc = le16_to_cpu(hdr->frame_control);
@@ -304,7 +312,22 @@ rate_control_pid_get_rate(void *priv, struct ieee80211_sta *sta,
 	if (rateidx >= sband->n_bitrates)
 		rateidx = sband->n_bitrates - 1;
 
+#if WANT_VARIABLE_RATES
+    info->control.rates[0].idx = rateidx;
+    info->control.rates[0].count = 2;
+    max_tries -= 2;
+    rateidx--;
+    for (i = 1;    (i < (IEEE80211_TX_MAX_RATES - 1))
+                && (max_tries > 0) && (rateidx >= 0); i++) {
+        info->control.rates[i].idx = rateidx;
+        info->control.rates[i].count = 1;
+        rateidx--;
+        max_tries--;
+    }
+    info->control.rates[0].count += max_tries;
+#else
 	info->control.rates[0].idx = rateidx;
+#endif
 
 #ifdef CONFIG_MAC80211_DEBUGFS
 	rate_control_pid_event_tx_rate(&spinfo->events,
