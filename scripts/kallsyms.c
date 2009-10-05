@@ -71,7 +71,8 @@ static int read_symbol(FILE *in, struct sym_entry *s)
 	if (rc != 3) {
 		if (rc != EOF) {
 			/* skip line */
-			fgets(str, 500, in);
+			/* JVS: check return value to avoid compiler warning */
+			if (fgets(str, 500, in) == NULL) ;
 		}
 		return -1;
 	}
