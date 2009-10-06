@@ -21,6 +21,14 @@ config MAC80211_RC_PID
 	  mac80211 that uses a PID controller to select the TX
 	  rate.
 
+config DIGI_RC_PID
+	bool "Digi PID controller based rate control algorithm" if EMBEDDED
+	---help---
+	  This option enables a TX rate control algorithm for
+	  mac80211 that uses the Digi version of the PID controller algorithm
+	  to select the TX rate.  This algorithm is recommended for the
+	  ConnectCore Wi-9P 9215.
+
 config MAC80211_RC_MINSTREL
 	bool "Minstrel" if EMBEDDED
 	default y
@@ -41,8 +49,15 @@ config MAC80211_RC_DEFAULT_PID
 	depends on MAC80211_RC_PID
 	---help---
 	  Select the PID controller based rate control as the
-	  default rate control algorithm. You should choose
-	  this unless you know what you are doing.
+	  default rate control algorithm.
+
+config DIGI_RC_DEFAULT_PID
+	bool "Digi PID controller based rate control algorithm"
+	depends on DIGI_RC_PID
+	---help---
+	  Select the Digi PID controller based rate control as the
+	  default rate control algorithm. You should choose this
+	  unless you know what you are doing.
 
 config MAC80211_RC_DEFAULT_MINSTREL
 	bool "Minstrel"
@@ -57,6 +72,7 @@ config MAC80211_RC_DEFAULT
 	string
 	default "minstrel" if MAC80211_RC_DEFAULT_MINSTREL
 	default "pid" if MAC80211_RC_DEFAULT_PID
+	default "digipid" if DIGI_RC_DEFAULT_PID
 	default ""
 
 endmenu

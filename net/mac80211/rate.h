@@ -118,6 +118,19 @@ static inline void rc80211_pid_exit(void)
 }
 #endif
 
+#ifdef CONFIG_DIGI_RC_PID
+extern int rcdigi_pid_init(void);
+extern void rcdigi_pid_exit(void);
+#else
+static inline int rcdigi_pid_init(void)
+{
+	return 0;
+}
+static inline void rcdigi_pid_exit(void)
+{
+}
+#endif
+
 #ifdef CONFIG_MAC80211_RC_MINSTREL
 extern int rc80211_minstrel_init(void);
 extern void rc80211_minstrel_exit(void);

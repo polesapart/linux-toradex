@@ -993,6 +993,10 @@ static int __init ieee80211_init(void)
 	if (ret)
 		return ret;
 
+	ret = rcdigi_pid_init();
+	if (ret)
+		return ret;
+
 	ieee80211_debugfs_netdev_init();
 
 	return 0;

@@ -41,10 +41,14 @@ mac80211-$(CONFIG_MAC80211_MESH) += \
 rc80211_pid-y := rc80211_pid_algo.o
 rc80211_pid-$(CONFIG_MAC80211_DEBUGFS) += rc80211_pid_debugfs.o
 
+rcdigi_pid-y := rcdigi_pid_algo.o
+rcdigi_pid-$(CONFIG_MAC80211_DEBUGFS) += rcdigi_pid_debugfs.o
+
 rc80211_minstrel-y := rc80211_minstrel.o
 rc80211_minstrel-$(CONFIG_MAC80211_DEBUGFS) += rc80211_minstrel_debugfs.o
 
 mac80211-$(CONFIG_MAC80211_RC_PID) += $(rc80211_pid-y)
+mac80211-$(CONFIG_DIGI_RC_PID) += $(rcdigi_pid-y)
 mac80211-$(CONFIG_MAC80211_RC_MINSTREL) += $(rc80211_minstrel-y)
 
 ccflags-y += -D__CHECK_ENDIAN__
