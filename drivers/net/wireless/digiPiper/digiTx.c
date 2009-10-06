@@ -214,6 +214,11 @@ static struct ieee80211_rate *get_tx_rate(struct piper_priv *piperp, struct ieee
 	    info->control.rates[piperp->pstats.tx_retry_index].count) {
 		piperp->pstats.tx_retry_index++;
 	}
+
+	if (piperp->pstats.tx_retry_index >= IEEE80211_TX_MAX_RATES) {
+	    return NULL;        /* don't go beyond the end of the rates array */
+	}
+
 	if (piperp->pstats.tx_retry_index == 0) {
 		ret = ieee80211_get_tx_rate(piperp->hw, info);
 	} else {
