@@ -702,7 +702,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
-			write_rf(hw, 12, 0x000A3 );
+			write_rf(hw, 12, 0x0002B );
 
 			/* Config 8 = default value  */
 			write_rf(hw, 13, 0xFFFFF );
