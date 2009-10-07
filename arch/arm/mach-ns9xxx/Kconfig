@@ -598,10 +598,11 @@ endchoice
 
 config CME9210JS_SERIAL_PORTC
         bool "Serial port C (only modules with JTAG-header)"
-        depends on SERIAL_NS921X
+        depends on SERIAL_NS921X && !I2C_NS9XXX
         help
           Enable serial port C on Connect ME9210 module. You can only
           use this port if your module has the JTAG-header!
+	  This port shares GPIOs with I2C bus, so I2C must be disabled.
 
 choice
 	prompt "port configuration"
