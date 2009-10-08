@@ -928,6 +928,7 @@ static void ns921x_uart_set_termios(struct uart_port *port,
 	uartwrite32(port, quot & 0xff, UART_BRDL);
 	uartwrite32(port, (quot >> 8) & 0xff, UART_BRDM);
 
+	udelay(1);
 	uartwrite32(port, cval, UART_LCR);
 
 	/* flush fifos and restore state */
