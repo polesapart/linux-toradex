@@ -21,9 +21,9 @@ config ATMEL_PWM
 	  displays, motor control, and waveform generation.  If
 	  unsure, say N.
 
-config NS9XXX_PWM
-	tristate "Digi NS9XXX PWM support"
-	depends on ARCH_NS9XXX && !CC9P9215JS_SERIAL_PORTA && !CC9P9215JS_SPI && !CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX && !CC9P9215JS_SERIAL_PORTC_FULL
+config NS921X_PWM
+	tristate "Digi NS921X PWM support"
+	depends on PROCESSOR_NS9215 && !CC9P9215JS_SERIAL_PORTA && !CC9P9215JS_SPI && !CC9P9215JS_SERIAL_PORTC_CTSRTSRXTX && !CC9P9215JS_SERIAL_PORTC_FULL
 	help
 	  This option enables device driver support for the PWMC
 	  peripheral channels found on certain NetSilicon processors.
