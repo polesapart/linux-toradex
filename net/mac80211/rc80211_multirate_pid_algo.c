@@ -3,7 +3,7 @@
  * Copyright 2005, Devicescape Software, Inc.
  * Copyright 2007, Mattias Nissler <mattias.nissler@gmx.de>
  * Copyright 2007-2008, Stefano Brivio <stefano.brivio@polimi.it>
- * Copyright 2009, Digi International <support@digi.com>
+ * Copyright 2009, Digi International <support@multirate.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -17,7 +17,7 @@
 #include <net/mac80211.h>
 #include "rate.h"
 #include "mesh.h"
-#include "rcdigi_pid.h"
+#include "rc80211_multirate_pid.h"
 
 /*
  * This is a modified version of the 802.11 PID algorithm.  The standard
@@ -69,7 +69,7 @@
  *
  * Note that for the computations we use a fixed-point representation to avoid
  * floating point arithmetic. Hence, all values are shifted left by
- * RC_DIGI_PID_ARITH_SHIFT.
+ * RC80211_MULTIRATE_PID_ARITH_SHIFT.
  */
 
 
@@ -77,10 +77,17 @@
  * exhibited a worse failed frames behaviour and we'll choose the highest rate
  * whose failed frames behaviour is not worse than the one of the original rate
  * target. While at it, check that the new rate is valid. */
-static void rate_control_digi_pid_adjust_rate(struct ieee80211_supported_band *sband,
-					 struct ieee80211_sta *sta,
-					 struct rc_digi_pid_sta_info *spinfo, int adj,
-					 struct rc_digi_pid_rateinfo *rinfo)
+static void rate_control_multirate_pid_adjust_rate(struct
+						   ieee80211_supported_band
+						   *sband,
+						   struct ieee80211_sta
+						   *sta,
+						   struct
+						   rc_multirate_pid_sta_info
+						   *spinfo, int adj,
+						   struct
+						   rc_multirate_pid_rateinfo
+						   *rinfo)
 {
 	int cur_sorted, new_sorted, probe, tmp, n_bitrates, band;
 	int cur = spinfo->txrate_idx;
@@ -127,17 +134,22 @@ static void rate_control_digi_pid_adjust_rate(struct ieee80211_supported_band *s
 	} while (tmp < n_bitrates && tmp >= 0);
 
 #ifdef CONFIG_MAC80211_DEBUGFS
-	rate_control_digi_pid_event_rate_change(&spinfo->events,
-		spinfo->txrate_idx,
-		sband->bitrates[spinfo->txrate_idx].bitrate);
+	rate_control_multirate_pid_event_rate_change(&spinfo->events,
+						     spinfo->txrate_idx,
+						     sband->
+						     bitrates[spinfo->
+							      txrate_idx].
+						     bitrate);
 #endif
 }
 
 /* Normalize the failed frames per-rate differences. */
-static void rate_control_digi_pid_normalize(struct rc_digi_pid_info *pinfo, int l)
+static void rate_control_multirate_pid_normalize(struct
+						 rc_multirate_pid_info
+						 *pinfo, int l)
 {
 	int i, norm_offset = pinfo->norm_offset;
-	struct rc_digi_pid_rateinfo *r = pinfo->rinfo;
+	struct rc_multirate_pid_rateinfo *r = pinfo->rinfo;
 
 	if (r[0].diff > norm_offset)
 		r[0].diff -= norm_offset;
@@ -150,12 +162,17 @@ static void rate_control_digi_pid_normalize(struct rc_digi_pid_info *pinfo, int 
 			r[i + 1].diff += norm_offset;
 }
 
-static void rate_control_digi_pid_sample(struct rc_digi_pid_info *pinfo,
-				    struct ieee80211_supported_band *sband,
-				    struct ieee80211_sta *sta,
-				    struct rc_digi_pid_sta_info *spinfo)
+static void rate_control_multirate_pid_sample(struct rc_multirate_pid_info
+					      *pinfo,
+					      struct
+					      ieee80211_supported_band
+					      *sband,
+					      struct ieee80211_sta *sta,
+					      struct
+					      rc_multirate_pid_sta_info
+					      *spinfo)
 {
-	struct rc_digi_pid_rateinfo *rinfo = pinfo->rinfo;
+	struct rc_multirate_pid_rateinfo *rinfo = pinfo->rinfo;
 	u32 pf;
 	s32 err_avg;
 	u32 err_prop;
@@ -180,15 +197,16 @@ static void rate_control_digi_pid_sample(struct rc_digi_pid_info *pinfo,
 		pf = spinfo->last_pf;
 	else {
 		/* XXX: BAD HACK!!! */
-		struct sta_info *si = container_of(sta, struct sta_info, sta);
+		struct sta_info *si =
+		    container_of(sta, struct sta_info, sta);
 
 		pf = spinfo->tx_num_failed * 100 / spinfo->tx_num_xmit;
 
 		if (ieee80211_vif_is_mesh(&si->sdata->vif) && pf == 100)
 			mesh_plink_broken(si);
-		pf <<= RC_DIGI_PID_ARITH_SHIFT;
+		pf <<= RC80211_MULTIRATE_PID_ARITH_SHIFT;
 		si->fail_avg = ((pf + (spinfo->last_pf << 3)) / 9)
-					>> RC_DIGI_PID_ARITH_SHIFT;
+		    >> RC80211_MULTIRATE_PID_ARITH_SHIFT;
 	}
 
 	spinfo->tx_num_xmit = 0;
@@ -201,47 +219,59 @@ static void rate_control_digi_pid_sample(struct rc_digi_pid_info *pinfo,
 		j = rinfo[spinfo->txrate_idx].rev_index;
 
 		tmp = (pf - spinfo->last_pf);
-		tmp = RC_DIGI_PID_DO_ARITH_RIGHT_SHIFT(tmp, RC_DIGI_PID_ARITH_SHIFT);
+		tmp =
+		    RC80211_MULTIRATE_PID_DO_ARITH_RIGHT_SHIFT(tmp,
+							       RC80211_MULTIRATE_PID_ARITH_SHIFT);
 
 		rinfo[j].diff = rinfo[i].diff + tmp;
 		pinfo->oldrate = spinfo->txrate_idx;
 	}
-	rate_control_digi_pid_normalize(pinfo, sband->n_bitrates);
+	rate_control_multirate_pid_normalize(pinfo, sband->n_bitrates);
 
 	/* Compute the proportional, integral and derivative errors. */
-	err_prop = (pinfo->target << RC_DIGI_PID_ARITH_SHIFT) - pf;
+	err_prop =
+	    (pinfo->target << RC80211_MULTIRATE_PID_ARITH_SHIFT) - pf;
 
 	err_avg = spinfo->err_avg_sc >> pinfo->smoothing_shift;
 	spinfo->err_avg_sc = spinfo->err_avg_sc - err_avg + err_prop;
 	err_int = spinfo->err_avg_sc >> pinfo->smoothing_shift;
 
 	err_der = (pf - spinfo->last_pf) *
-		  (1 + pinfo->sharpen_factor * spinfo->sharp_cnt);
+	    (1 + pinfo->sharpen_factor * spinfo->sharp_cnt);
 	spinfo->last_pf = pf;
 	if (spinfo->sharp_cnt)
-			spinfo->sharp_cnt--;
+		spinfo->sharp_cnt--;
 
 #ifdef CONFIG_MAC80211_DEBUGFS
-	rate_control_digi_pid_event_pf_sample(&spinfo->events, pf, err_prop, err_int,
-					 err_der);
+	rate_control_multirate_pid_event_pf_sample(&spinfo->events, pf,
+						   err_prop, err_int,
+						   err_der);
 #endif
 
 	/* Compute the controller output. */
 	adj = (err_prop * pinfo->coeff_p + err_int * pinfo->coeff_i
-	      + err_der * pinfo->coeff_d);
-	adj = RC_DIGI_PID_DO_ARITH_RIGHT_SHIFT(adj, 2 * RC_DIGI_PID_ARITH_SHIFT);
+	       + err_der * pinfo->coeff_d);
+	adj =
+	    RC80211_MULTIRATE_PID_DO_ARITH_RIGHT_SHIFT(adj,
+						       2 *
+						       RC80211_MULTIRATE_PID_ARITH_SHIFT);
 
 	/* Change rate. */
 	if (adj)
-		rate_control_digi_pid_adjust_rate(sband, sta, spinfo, adj, rinfo);
+		rate_control_multirate_pid_adjust_rate(sband, sta, spinfo,
+						       adj, rinfo);
 }
 
-static void rate_control_digi_pid_tx_status(void *priv, struct ieee80211_supported_band *sband,
-				       struct ieee80211_sta *sta, void *priv_sta,
-				       struct sk_buff *skb)
+static void rate_control_multirate_pid_tx_status(void *priv,
+						 struct
+						 ieee80211_supported_band
+						 *sband,
+						 struct ieee80211_sta *sta,
+						 void *priv_sta,
+						 struct sk_buff *skb)
 {
-	struct rc_digi_pid_info *pinfo = priv;
-	struct rc_digi_pid_sta_info *spinfo = priv_sta;
+	struct rc_multirate_pid_info *pinfo = priv;
+	struct rc_multirate_pid_sta_info *spinfo = priv_sta;
 	unsigned long period;
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
@@ -256,7 +286,7 @@ static void rate_control_digi_pid_tx_status(void *priv, struct ieee80211_support
 	spinfo->tx_num_xmit++;
 
 #ifdef CONFIG_MAC80211_DEBUGFS
-	rate_control_digi_pid_event_tx_status(&spinfo->events, info);
+	rate_control_multirate_pid_event_tx_status(&spinfo->events, info);
 #endif
 
 	/* We count frames that totally failed to be transmitted as two bad
@@ -275,20 +305,21 @@ static void rate_control_digi_pid_tx_status(void *priv, struct ieee80211_support
 	if (!period)
 		period = 1;
 	if (time_after(jiffies, spinfo->last_sample + period))
-		rate_control_digi_pid_sample(pinfo, sband, sta, spinfo);
+		rate_control_multirate_pid_sample(pinfo, sband, sta,
+						  spinfo);
 }
 
 static void
-rate_control_digi_pid_get_rate(void *priv, struct ieee80211_sta *sta,
-			  void *priv_sta,
-			  struct ieee80211_tx_rate_control *txrc)
+rate_control_multirate_pid_get_rate(void *priv, struct ieee80211_sta *sta,
+				    void *priv_sta,
+				    struct ieee80211_tx_rate_control *txrc)
 {
 	struct sk_buff *skb = txrc->skb;
 	struct ieee80211_supported_band *sband = txrc->sband;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *) skb->data;
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
-	struct rc_digi_pid_sta_info *spinfo = priv_sta;
-	int rateidx;
+	struct rc_multirate_pid_sta_info *spinfo = priv_sta;
+	int rateidx, savedidx;
 	u16 fc;
 	int max_tries, i;
 
@@ -312,30 +343,41 @@ rate_control_digi_pid_get_rate(void *priv, struct ieee80211_sta *sta,
 	if (rateidx >= sband->n_bitrates)
 		rateidx = sband->n_bitrates - 1;
 
+	savedidx = rateidx;
+
+	if (max_tries >= 2) {
+		info->control.rates[0].count = 2;
+		max_tries -= 2;
+	} else {
+		info->control.rates[0].count = max_tries;
+		max_tries = 0;
+	}
 	info->control.rates[0].idx = rateidx;
-	info->control.rates[0].count = 2;
-	max_tries -= 2;
 	rateidx--;
-	for (i = 1;    (i < IEEE80211_TX_MAX_RATES)
-				&& (max_tries > 0) && (rateidx >= 0); i++) {
+	for (i = 1; (i < IEEE80211_TX_MAX_RATES)
+	     && (max_tries > 0) && (rateidx >= 0); i++) {
 		info->control.rates[i].idx = rateidx;
 		info->control.rates[i].count = 1;
 		rateidx--;
 		max_tries--;
-    }
+	}
 	info->control.rates[0].count += max_tries;
 
 #ifdef CONFIG_MAC80211_DEBUGFS
-	rate_control_digi_pid_event_tx_rate(&spinfo->events,
-		rateidx, sband->bitrates[rateidx].bitrate);
+	rate_control_multirate_pid_event_tx_rate(&spinfo->events,
+						 savedidx,
+						 sband->bitrates[savedidx].
+						 bitrate);
 #endif
 }
 
 static void
-rate_control_digi_pid_rate_init(void *priv, struct ieee80211_supported_band *sband,
-			   struct ieee80211_sta *sta, void *priv_sta)
+rate_control_multirate_pid_rate_init(void *priv,
+				     struct ieee80211_supported_band
+				     *sband, struct ieee80211_sta *sta,
+				     void *priv_sta)
 {
-	struct rc_digi_pid_sta_info *spinfo = priv_sta;
+	struct rc_multirate_pid_sta_info *spinfo = priv_sta;
 	struct sta_info *si;
 
 	/* TODO: This routine should consider using RSSI from previous packets
@@ -349,16 +391,16 @@ rate_control_digi_pid_rate_init(void *priv, struct ieee80211_supported_band *sba
 	si->fail_avg = 0;
 }
 
-static void *rate_control_digi_pid_alloc(struct ieee80211_hw *hw,
-				    struct dentry *debugfsdir)
+static void *rate_control_multirate_pid_alloc(struct ieee80211_hw *hw,
+					      struct dentry *debugfsdir)
 {
-	struct rc_digi_pid_info *pinfo;
-	struct rc_digi_pid_rateinfo *rinfo;
+	struct rc_multirate_pid_info *pinfo;
+	struct rc_multirate_pid_rateinfo *rinfo;
 	struct ieee80211_supported_band *sband;
 	int i, j, tmp;
 	bool s;
 #ifdef CONFIG_MAC80211_DEBUGFS
-	struct rc_digi_pid_debugfs_entries *de;
+	struct rc_multirate_pid_debugfs_entries *de;
 #endif
 
 	sband = hw->wiphy->bands[hw->conf.channel->band];
@@ -375,15 +417,16 @@ static void *rate_control_digi_pid_alloc(struct ieee80211_hw *hw,
 		return NULL;
 	}
 
-	pinfo->target = RC_DIGI_PID_TARGET_PF;
-	pinfo->sampling_period = RC_DIGI_PID_INTERVAL;
-	pinfo->coeff_p = RC_DIGI_PID_COEFF_P;
-	pinfo->coeff_i = RC_DIGI_PID_COEFF_I;
-	pinfo->coeff_d = RC_DIGI_PID_COEFF_D;
-	pinfo->smoothing_shift = RC_DIGI_PID_SMOOTHING_SHIFT;
-	pinfo->sharpen_factor = RC_DIGI_PID_SHARPENING_FACTOR;
-	pinfo->sharpen_duration = RC_DIGI_PID_SHARPENING_DURATION;
-	pinfo->norm_offset = RC_DIGI_PID_NORM_OFFSET;
+	pinfo->target = RC80211_MULTIRATE_PID_TARGET_PF;
+	pinfo->sampling_period = RC80211_MULTIRATE_PID_INTERVAL;
+	pinfo->coeff_p = RC80211_MULTIRATE_PID_COEFF_P;
+	pinfo->coeff_i = RC80211_MULTIRATE_PID_COEFF_I;
+	pinfo->coeff_d = RC80211_MULTIRATE_PID_COEFF_D;
+	pinfo->smoothing_shift = RC80211_MULTIRATE_PID_SMOOTHING_SHIFT;
+	pinfo->sharpen_factor = RC80211_MULTIRATE_PID_SHARPENING_FACTOR;
+	pinfo->sharpen_duration =
+	    RC80211_MULTIRATE_PID_SHARPENING_DURATION;
+	pinfo->norm_offset = RC80211_MULTIRATE_PID_NORM_OFFSET;
 	pinfo->rinfo = rinfo;
 	pinfo->oldrate = 0;
 
@@ -393,7 +436,7 @@ static void *rate_control_digi_pid_alloc(struct ieee80211_hw *hw,
 	for (i = 0; i < sband->n_bitrates; i++) {
 		rinfo[i].index = i;
 		rinfo[i].rev_index = i;
-		if (RC_DIGI_PID_FAST_START)
+		if (RC80211_MULTIRATE_PID_FAST_START)
 			rinfo[i].diff = 0;
 		else
 			rinfo[i].diff = i * pinfo->norm_offset;
@@ -401,13 +444,16 @@ static void *rate_control_digi_pid_alloc(struct ieee80211_hw *hw,
 	for (i = 1; i < sband->n_bitrates; i++) {
 		s = 0;
 		for (j = 0; j < sband->n_bitrates - i; j++)
-			if (unlikely(sband->bitrates[rinfo[j].index].bitrate >
-				     sband->bitrates[rinfo[j + 1].index].bitrate)) {
+			if (unlikely
+			    (sband->bitrates[rinfo[j].index].bitrate >
+			     sband->bitrates[rinfo[j + 1].index].
+			     bitrate)) {
 				tmp = rinfo[j].index;
 				rinfo[j].index = rinfo[j + 1].index;
 				rinfo[j + 1].index = tmp;
 				rinfo[rinfo[j].index].rev_index = j;
-				rinfo[rinfo[j + 1].index].rev_index = j + 1;
+				rinfo[rinfo[j + 1].index].rev_index =
+				    j + 1;
 				s = 1;
 			}
 		if (!s)
@@ -419,36 +465,40 @@ static void *rate_control_digi_pid_alloc(struct ieee80211_hw *hw,
 	de->target = debugfs_create_u32("target_pf", S_IRUSR | S_IWUSR,
 					debugfsdir, &pinfo->target);
 	de->sampling_period = debugfs_create_u32("sampling_period",
-						 S_IRUSR | S_IWUSR, debugfsdir,
+						 S_IRUSR | S_IWUSR,
+						 debugfsdir,
 						 &pinfo->sampling_period);
-	de->coeff_p = debugfs_create_u32("coeff_p", S_IRUSR | S_IWUSR,
-					 debugfsdir, (u32 *)&pinfo->coeff_p);
-	de->coeff_i = debugfs_create_u32("coeff_i", S_IRUSR | S_IWUSR,
-					 debugfsdir, (u32 *)&pinfo->coeff_i);
-	de->coeff_d = debugfs_create_u32("coeff_d", S_IRUSR | S_IWUSR,
-					 debugfsdir, (u32 *)&pinfo->coeff_d);
-	de->smoothing_shift = debugfs_create_u32("smoothing_shift",
-						 S_IRUSR | S_IWUSR, debugfsdir,
-						 &pinfo->smoothing_shift);
-	de->sharpen_factor = debugfs_create_u32("sharpen_factor",
-					       S_IRUSR | S_IWUSR, debugfsdir,
-					       &pinfo->sharpen_factor);
-	de->sharpen_duration = debugfs_create_u32("sharpen_duration",
-						  S_IRUSR | S_IWUSR, debugfsdir,
-						  &pinfo->sharpen_duration);
-	de->norm_offset = debugfs_create_u32("norm_offset",
-					     S_IRUSR | S_IWUSR, debugfsdir,
-					     &pinfo->norm_offset);
+	de->coeff_p =
+	    debugfs_create_u32("coeff_p", S_IRUSR | S_IWUSR, debugfsdir,
+			       (u32 *) & pinfo->coeff_p);
+	de->coeff_i =
+	    debugfs_create_u32("coeff_i", S_IRUSR | S_IWUSR, debugfsdir,
+			       (u32 *) & pinfo->coeff_i);
+	de->coeff_d =
+	    debugfs_create_u32("coeff_d", S_IRUSR | S_IWUSR, debugfsdir,
+			       (u32 *) & pinfo->coeff_d);
+	de->smoothing_shift =
+	    debugfs_create_u32("smoothing_shift", S_IRUSR | S_IWUSR,
+			       debugfsdir, &pinfo->smoothing_shift);
+	de->sharpen_factor =
+	    debugfs_create_u32("sharpen_factor", S_IRUSR | S_IWUSR,
+			       debugfsdir, &pinfo->sharpen_factor);
+	de->sharpen_duration =
+	    debugfs_create_u32("sharpen_duration", S_IRUSR | S_IWUSR,
+			       debugfsdir, &pinfo->sharpen_duration);
+	de->norm_offset =
+	    debugfs_create_u32("norm_offset", S_IRUSR | S_IWUSR,
+			       debugfsdir, &pinfo->norm_offset);
 #endif
 
 	return pinfo;
 }
 
-static void rate_control_digi_pid_free(void *priv)
+static void rate_control_multirate_pid_free(void *priv)
 {
-	struct rc_digi_pid_info *pinfo = priv;
+	struct rc_multirate_pid_info *pinfo = priv;
 #ifdef CONFIG_MAC80211_DEBUGFS
-	struct rc_digi_pid_debugfs_entries *de = &pinfo->dentries;
+	struct rc_multirate_pid_debugfs_entries *de = &pinfo->dentries;
 
 	debugfs_remove(de->norm_offset);
 	debugfs_remove(de->sharpen_duration);
@@ -465,10 +515,11 @@ static void rate_control_digi_pid_free(void *priv)
 	kfree(pinfo);
 }
 
-static void *rate_control_digi_pid_alloc_sta(void *priv, struct ieee80211_sta *sta,
-					gfp_t gfp)
+static void *rate_control_multirate_pid_alloc_sta(void *priv,
+						  struct ieee80211_sta
+						  *sta, gfp_t gfp)
 {
-	struct rc_digi_pid_sta_info *spinfo;
+	struct rc_multirate_pid_sta_info *spinfo;
 
 	spinfo = kzalloc(sizeof(*spinfo), gfp);
 	if (spinfo == NULL)
@@ -484,33 +535,35 @@ static void *rate_control_digi_pid_alloc_sta(void *priv, struct ieee80211_sta *s
 	return spinfo;
 }
 
-static void rate_control_digi_pid_free_sta(void *priv, struct ieee80211_sta *sta,
-				      void *priv_sta)
+static void rate_control_multirate_pid_free_sta(void *priv,
+						struct ieee80211_sta *sta,
+						void *priv_sta)
 {
 	kfree(priv_sta);
 }
 
 static struct rate_control_ops mac80211_rcpid = {
-	.name = "digipid",
-	.tx_status = rate_control_digi_pid_tx_status,
-	.get_rate = rate_control_digi_pid_get_rate,
-	.rate_init = rate_control_digi_pid_rate_init,
-	.alloc = rate_control_digi_pid_alloc,
-	.free = rate_control_digi_pid_free,
-	.alloc_sta = rate_control_digi_pid_alloc_sta,
-	.free_sta = rate_control_digi_pid_free_sta,
+	.name = "multirate-pid",
+	.tx_status = rate_control_multirate_pid_tx_status,
+	.get_rate = rate_control_multirate_pid_get_rate,
+	.rate_init = rate_control_multirate_pid_rate_init,
+	.alloc = rate_control_multirate_pid_alloc,
+	.free = rate_control_multirate_pid_free,
+	.alloc_sta = rate_control_multirate_pid_alloc_sta,
+	.free_sta = rate_control_multirate_pid_free_sta,
 #ifdef CONFIG_MAC80211_DEBUGFS
-	.add_sta_debugfs = rate_control_digi_pid_add_sta_debugfs,
-	.remove_sta_debugfs = rate_control_digi_pid_remove_sta_debugfs,
+	.add_sta_debugfs = rate_control_multirate_pid_add_sta_debugfs,
+	.remove_sta_debugfs =
+	    rate_control_multirate_pid_remove_sta_debugfs,
 #endif
 };
 
-int __init rcdigi_pid_init(void)
+int __init rc80211_multirate_pid_init(void)
 {
 	return ieee80211_rate_control_register(&mac80211_rcpid);
 }
 
-void rcdigi_pid_exit(void)
+void rc80211_multirate_pid_exit(void)
 {
 	ieee80211_rate_control_unregister(&mac80211_rcpid);
 }
