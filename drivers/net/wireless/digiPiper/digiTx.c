@@ -402,8 +402,6 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 			if (info->status.rates[i].count == 0)
 				info->status.rates[i].idx = -1;
 		}
-	    if ((info->status.rates[0].count) > 0)
-	        info->status.rates[0].count--;
 
 		info->status.ack_signal = singalstrength;
 		info->flags |= (result == RECEIVED_ACK) ? IEEE80211_TX_STAT_ACK : 0;
