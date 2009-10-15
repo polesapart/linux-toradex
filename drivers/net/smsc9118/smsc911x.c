@@ -1391,6 +1391,9 @@ static int smsc911x_stop(struct net_device *dev)
 	
 	napi_disable(&pdata->napi);
 
+	/* disable interrupts */
+       	smsc911x_reg_write(0, pdata, INT_EN);
+
 	pdata->stop_link_poll = 1;
 	del_timer_sync(&pdata->link_poll_timer);
 
