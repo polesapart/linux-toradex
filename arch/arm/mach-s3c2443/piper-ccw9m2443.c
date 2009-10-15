@@ -293,6 +293,7 @@ static void ccw9m2443_piper_reset(struct piper_priv *piperp, int reset)
 	gpio_set_value(piperp->pdata->rst_gpio, !reset);
 }
 
+#define LINIX_CONFIG_WIFI_CS
 #ifdef LINIX_CONFIG_WIFI_CS
 static int ccw9m2443_wifi_cs_config(void)
 {
@@ -375,7 +376,7 @@ void __init add_device_ccw9m2443_piper(struct piper_pdata *pdata)
 	if (pdata->rst_gpio >= 0) {
 		ret = gpio_request(pdata->rst_gpio, PIPER_DRIVER_NAME "-reset-gpio");
 		if (ret != 0)
-			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			printk(KERN_WARNING PIPER_DRIVER_NAME
 			       ": failed to request reset gpio %d\n", pdata->rst_gpio);
 		else {
 			/* Configure reset line and hold the chip in reset */
@@ -383,18 +384,18 @@ void __init add_device_ccw9m2443_piper(struct piper_pdata *pdata)
 			pdata->reset = ccw9m2443_piper_reset;
 		}
 	}
-	
+
 	if (pdata->irq_gpio >= 0) {
 		ret = gpio_request(pdata->irq_gpio, PIPER_DRIVER_NAME "-irq-gpio");
 		if (ret != 0)
-			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			printk(KERN_WARNING PIPER_DRIVER_NAME
 			       ": failed to request irq gpio %d\n", pdata->irq_gpio);
 	}
 
 	if (pdata->status_led_gpio >= 0) {
 		ret = gpio_request(pdata->status_led_gpio, PIPER_DRIVER_NAME "-stat-led");
 		if (ret != 0)
-			printk(KERN_WARNING PIPER_DRIVER_NAME 
+			printk(KERN_WARNING PIPER_DRIVER_NAME
 			       ": failed to request status led gpio %d\n",
 			       pdata->status_led_gpio);
 		else {
