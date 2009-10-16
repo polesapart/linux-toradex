@@ -22,6 +22,8 @@
 #include <linux/ns9xxx-eth.h>
 #include <linux/phy.h>
 #include <linux/platform_device.h>
+#include <linux/timer.h>
+#include <asm/gpio.h>
 
 #define DRIVER_NAME "ns9xxx-eth"
 
@@ -217,6 +219,13 @@
 #define DMARXDESC_EN		(1 << 13)
 #define DMADESC_FULL		(1 << 12)
 
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+ #define ACTIVITYLED_TOGGLE_TIMEOUT	2	/* in jiffies */
+ #define ACTIVITYLED_OFF_TIMEOUT	20	/* in jiffies */
+ unsigned int rxtx_activity = 0;
+ struct timer_list activityled_timer;
+#endif
+
 union ns9xxx_dma_desc {
 	struct {
 		u32 source;
@@ -237,6 +246,9 @@ struct ns9xxx_eth_priv {
 	struct clk *clk;
 	unsigned int irqtx;
 	unsigned int irqrx;
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	unsigned int activityled;
+#endif
 
 	/* phy management */
 	int lastlink;
@@ -291,6 +303,38 @@ static inline void ethupdate32(struct net_device *dev,
 	dev_vdbg(&dev->dev, "update 0x%p <- 0x%08x\n",
 		 priv->membase + offset, reg | or);
 }
+
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+static void toggle_activityled(void)
+{
+	/* set activity flag */
+	rxtx_activity = 1;
+	/* run timer if not already running */
+	if(!timer_pending(&activityled_timer))
+		mod_timer(&activityled_timer, jiffies + ACTIVITYLED_TOGGLE_TIMEOUT);
+}
+
+static void activityled_timer_fn(unsigned long gpio)
+{
+	static int cnt = 0;
+
+	if(rxtx_activity) {
+		/* toggle RX/TX Ethernet activity LED */
+		gpio_set_value(gpio, !gpio_get_value(gpio));
+		mod_timer(&activityled_timer, jiffies + ACTIVITYLED_TOGGLE_TIMEOUT);
+		cnt = 0;
+		rxtx_activity = 0;
+	} else {
+		if(cnt++ < ACTIVITYLED_OFF_TIMEOUT / ACTIVITYLED_TOGGLE_TIMEOUT)
+			mod_timer(&activityled_timer, jiffies + ACTIVITYLED_TOGGLE_TIMEOUT);
+		else {
+			gpio_set_value(gpio, 1); /* switch LED off  */
+			cnt = 0;
+		}
+	}
+
+}
+#endif
 
 static int ns9xxx_eth_miibus_pollbusy(struct mii_bus *bus)
 {
@@ -486,6 +530,9 @@ static irqreturn_t ns9xxx_eth_rx_int(int irq, void *dev_id)
 
 	spin_unlock_irqrestore(&priv->lock, flags);
 
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	toggle_activityled();
+#endif
 	return IRQ_HANDLED;
 }
 
@@ -631,6 +678,10 @@ static irqreturn_t ns9xxx_eth_tx_int(int irq, void *dev_id)
 		ns9xxx_eth_start_tx_dma(dev);
 
 	spin_unlock_irqrestore(&priv->lock, flags);
+
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	toggle_activityled();
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -1198,6 +1249,16 @@ static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 	priv->mapbase = mem->start;
 	priv->irqrx = pdata->irqrx;
 	priv->irqtx = pdata->irqtx;
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	priv->activityled = pdata->activityled;
+	/* init kernel timer for toggling
+	 * the activity LED */
+	activityled_timer.data = (unsigned long)priv->activityled;
+	activityled_timer.function = activityled_timer_fn;
+	activityled_timer.expires = jiffies + ACTIVITYLED_TOGGLE_TIMEOUT;
+	init_timer(&activityled_timer);
+	add_timer(&activityled_timer);
+#endif
 
 	priv->clk = clk_get(&pdev->dev, DRIVER_NAME);
 	if (IS_ERR(priv->clk)) {
@@ -1317,6 +1378,10 @@ static __devexit int ns9xxx_eth_pdrv_remove(struct platform_device *pdev)
 	iounmap(priv->membase);
 
 	free_netdev(dev);
+
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	del_timer(&activityled_timer);
+#endif
 
 	return 0;
 }

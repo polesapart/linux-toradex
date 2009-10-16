@@ -70,11 +70,16 @@ void __init ns9xxx_add_device_cc9p9215_eth(void)
 {
 	int gpio[] = {32, 33, 34, 35, 36, 37, 38, 39, 40,
 		      41, 42, 43, 44, 45, 46, 47, 48, 49};
+	int func[] = {0, 0, 0, 0, 0, 0, 0, 0, 0,
+		      0, 0, 0, 0, 0, 0, 0, 0, 0};
+	int dir[] = {0, 0, 0, 0, 0, 0, 0, 0, 0,
+		      0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	if (clk_register(&phyclk))
 		return;
 
-	ns9xxx_add_device_ns921x_eth(&phyclk, 0, gpio, 0);
+	ns9xxx_add_device_ns921x_eth(&phyclk, 0, gpio, func,
+				     dir, ARRAY_SIZE(gpio));
 }
 #else
 void __init ns9xxx_add_device_cc9p9215_eth(void) {}
@@ -223,7 +228,7 @@ static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.cd_gpio_func = NS921X_GPIO_FUNC_2,
 
 	.wp_gpio_nr   = 100,         /* WP as normal GPIO */
-	.wp_gpio_func = NS921X_GPIO_FUNC_3,	
+	.wp_gpio_func = NS921X_GPIO_FUNC_3,
 #endif
 };
 struct platform_device ns921x_fim_sdio0 = {
