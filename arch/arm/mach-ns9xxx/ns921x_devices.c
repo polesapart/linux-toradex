@@ -66,14 +66,14 @@ void __init ns9xxx_add_device_ns921x_wdt(void) {}
 
 /* Ethernet */
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
-int __init eth_register_gpios(int gpio[], int func)
+int __init eth_register_gpios(int gpio[], int func[], int dir[], int num)
 {
 	int i;
 
-	for (i = 0; i <= 17; i++) {
+	for (i = 0; i < num; i++) {
 		if (gpio_request(gpio[i], "ns9xxx-eth"))
 			goto err;
-		gpio_configure_ns921x(gpio[i], 0, 0, func, 0);
+		gpio_configure_ns921x(gpio[i], dir[i], 0, func[i], 0);
 	}
 
 	return 0;
@@ -97,6 +97,9 @@ static struct ns921x_sysclk eth_clk = {
 static struct plat_ns9xxx_eth ns9xxx_device_ns921x_eth_data = {
 	.irqrx = IRQ_NS9XXX_ETHRX,
 	.irqtx = IRQ_NS9XXX_ETHTX,
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	.activityled = 14,
+#endif
 };
 
 static struct resource eth_resources[] = {
@@ -118,9 +121,9 @@ static struct platform_device ns9xxx_device_ns921x_eth = {
 };
 
 void __init ns9xxx_add_device_ns921x_eth(struct clk *phyclk, u32 phy_mask,
-		int gpio[], int func)
+		int gpio[], int func[], int dir[], int num)
 {
-	if (eth_register_gpios(gpio, func))
+	if (eth_register_gpios(gpio, func, dir, num))
 		return;
 
 	eth_clk.clk.parent = phyclk;
@@ -133,7 +136,7 @@ void __init ns9xxx_add_device_ns921x_eth(struct clk *phyclk, u32 phy_mask,
 }
 #else
 void __init ns9xxx_add_device_ns921x_eth(struct clk *phyclk, u32 phy_mask,
-		int gpio[], int func) {}
+		int gpio[], int func[], int dir[], int num) {}
 #endif
 
 /* I2C controller */
@@ -317,9 +320,9 @@ static struct platform_device ns9xxx_device_ns921x_uartd = {
 	.num_resources	= ARRAY_SIZE(uartd_resources),
 };
 
-int __init uart_register_gpios(int gpio_start, 
-				int gpio_nr, 
-				int func, 
+int __init uart_register_gpios(int gpio_start,
+				int gpio_nr,
+				int func,
 				struct ns921x_uart_data *data)
 {
 	int i;
@@ -774,7 +777,7 @@ void __init ns9xxx_add_device_ns921x_fims(void)
 		(defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS))
 	gpio_direction_input_ns921x_unlocked(23);
 #endif
-	
+
 	/* FIM 0 */
 	ns9xxx_add_device_ns921x_fim_serial0();
 	ns9xxx_add_device_ns921x_fim_sdio0();
