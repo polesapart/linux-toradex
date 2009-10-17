@@ -341,11 +341,21 @@ static int ccw9m2443_piper_init(struct piper_priv *piperp)
 	return piper_init_chip_hw(piperp);
 }
 
+static void ccw9m2443_piper_early_resume(struct piper_priv *piperp)
+{
+	/*
+	 * Reconfigure the CS line and the interrupt line. This should be
+	 * done by the PM subsystem but its not done at the moment. In future
+	 * when it is solved, this lines could be removed.
+	 */
+	ccw9m2443_wifi_cs_config();
+	set_irq_type(piperp->irq, IRQ_TYPE_LEVEL_HIGH);
+}
+
 static int ccw9m2443_piper_late_init(struct piper_priv *piperp)
 {
 	return 0;
 }
-
 
 static struct resource piper_resources[] = {
 	{
@@ -407,6 +417,8 @@ void __init add_device_ccw9m2443_piper(struct piper_pdata *pdata)
 	pdata->rf_transceiver = RF_AIROHA_7230;
 	pdata->init = ccw9m2443_piper_init;
 	pdata->late_init = ccw9m2443_piper_late_init;
+	pdata->early_resume = ccw9m2443_piper_early_resume;
+
 	piper_device.dev.platform_data = pdata;
 	platform_device_register(&piper_device);
 }

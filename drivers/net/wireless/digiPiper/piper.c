@@ -165,8 +165,11 @@ int piper_spike_suppression(struct piper_priv *piperp, bool retry)
 		}
 
 		timeout2--;
-		if (!timeout2)
+		if (!timeout2) {
 			ret = -EIO;
+			break;
+		}
+
 		if (!retry) {
 			ret = -EIO;
 			break;
@@ -731,18 +734,19 @@ static int piper_suspend(struct platform_device *dev, pm_message_t state)
 
 	/* TODO, use in future the ps.lock instead of fully disabling interrupts here */
 	piperp->power_save_was_on_when_suspended = (piperp->ps.mode == PS_MODE_LOW_POWER);
-    if (piperp->power_save_was_on_when_suspended)
-	    piper_ps_set(piperp, false);
+	if (piperp->power_save_was_on_when_suspended)
+		piper_ps_set(piperp, false);
 	mdelay(10);
-    piper_sendNullDataFrame(piperp, true);
-    ssleep(1);
+	piper_sendNullDataFrame(piperp, true);
+	ssleep(1);
 
 	local_irq_save(flags);
-/*
- * Save power save state and then make sure power save is turned off.
- */
-    piper_MacEnterSleepMode(piperp, true);
+	/*
+	 * Save power save state and then make sure power save is turned off.
+	 */
+	piper_MacEnterSleepMode(piperp, true);
 	local_irq_restore(flags);
+
 	return 0;
 }
 
@@ -750,6 +754,9 @@ static int piper_resume(struct platform_device *dev)
 {
 	struct piper_priv *piperp = platform_get_drvdata(dev);
 	unsigned long flags;
+
+	if (piperp->pdata->early_resume)
+		piperp->pdata->early_resume(piperp);
 
 	/* TODO, use in future the ps.lock instead of fully disabling interrupts here */
 	local_irq_save(flags);
@@ -764,11 +771,11 @@ static int piper_resume(struct platform_device *dev)
 	/*
 	 * Restore power save if it was on before
 	 */
-    if (piperp->power_save_was_on_when_suspended) {
-	    piper_ps_set(piperp, true);
+	if (piperp->power_save_was_on_when_suspended) {
+		piper_ps_set(piperp, true);
 	} else {
-	    piper_sendNullDataFrame(piperp, false);
-    }
+		piper_sendNullDataFrame(piperp, false);
+	}
 
 	return 0;
 }

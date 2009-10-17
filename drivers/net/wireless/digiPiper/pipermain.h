@@ -315,6 +315,7 @@ struct piper_pdata {
     int (*init) (struct piper_priv *);
     int (*late_init) (struct piper_priv *);
     void (*set_led) (struct piper_priv *, enum wireless_led, int);
+    void (*early_resume) (struct piper_priv *);
 };
 
 /* main */
