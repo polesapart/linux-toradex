@@ -19,7 +19,7 @@
 
 void __init ns9xxx_add_device_ns921x_wdt(void);
 void __init ns9xxx_add_device_ns921x_eth(struct clk *phyclk, u32 phy_mask,
-		int gpio[], int func[], int dir[], int num);
+		int gpio[], int func);
 void __init ns9xxx_add_device_ns921x_i2c(struct plat_ns9xxx_i2c *);
 void __init ns9xxx_add_device_ns921x_uarta(int gpio_start,
 		int gpio_nr, int func);

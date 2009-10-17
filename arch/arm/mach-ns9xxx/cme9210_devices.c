@@ -21,27 +21,10 @@
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 void __init ns9xxx_add_device_cme9210_eth(void)
 {
-	int gpio[] = {
-#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
-			14,
-#endif
-			32, 33, 34, 35, 36, 37, 38, 39, 40,
-			41, 42, 43, 44, 45, 46, 47, 48, 49};
-	int func[] = {
-#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
-			3,
-#endif
-			0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 0};
-	int dir[] = {
-#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
-			1,
-#endif
-			0, 0, 0, 0, 0, 0, 0, 0, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 0};
+	int gpio[] = {32, 33, 34, 35, 36, 37, 38, 39, 40,
+		      41, 42, 43, 44, 45, 46, 47, 48, 49};
 
-	ns9xxx_add_device_ns921x_eth(NULL, 0, gpio,
-				     func, dir, ARRAY_SIZE(gpio));
+	ns9xxx_add_device_ns921x_eth(NULL, 0, gpio, 0);
 }
 #else
 void __init ns9xxx_add_device_cme9210_eth(void) {}
@@ -115,8 +98,8 @@ void __init ns9xxx_add_device_cme9210_spi(void)
 void __init ns9xxx_add_device_cme9210_spi(void) {}
 #endif
 
-/*
- * XXX Need testing and it might be incomplete add_device()?
+/* 
+ * XXX Need testing and it might be incomplete add_device()? 
  */
 
 #if defined(CONFIG_FIM_ZERO_SERIAL)
@@ -166,13 +149,13 @@ static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.d1_gpio_nr    = FIM_GPIO_DONT_USE,
 	.d2_gpio_nr    = FIM_GPIO_DONT_USE,
 	.d3_gpio_nr    = FIM_GPIO_DONT_USE,
-
+	
 	.clk_gpio_nr   = 1,
 	.clk_gpio_func = NS921X_GPIO_FUNC_2,
-
+	
 	.cmd_gpio_nr   = 2,
 	.cmd_gpio_func = NS921X_GPIO_FUNC_2,
-
+	
 	.cd_gpio_nr    = 9,
 	.cd_gpio_func  = NS921X_GPIO_FUNC_2,
 
@@ -201,10 +184,10 @@ static struct fim_sdio_platform_data fim_sdio_data1 = {
 
 	.clk_gpio_nr   = 27,
 	.clk_gpio_func = NS921X_GPIO_FUNC_2,
-
+	
 	.cmd_gpio_nr   = 28,
 	.cmd_gpio_func = NS921X_GPIO_FUNC_2,
-
+	
 	.cd_gpio_nr    = 9,
 	.cd_gpio_func  = NS921X_GPIO_FUNC_2,
 

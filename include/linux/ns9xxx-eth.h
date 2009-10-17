@@ -15,7 +15,6 @@ struct plat_ns9xxx_eth {
 	unsigned int irqrx;
 	unsigned int irqtx;
 	u32 phy_mask;
-	unsigned int activityled;
 };
 
 #endif /* ifndef _LINUX_NS9XXX_ETH_H */

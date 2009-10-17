@@ -618,11 +618,6 @@ config CME9210JS_SPI
 	bool "SPI port"
 	depends on !CME9210JS_SERIAL_PORTA
 
-config GPIO_ETH_ACTIVITY_LED
-	bool "Ethernet activity LED"
-	help
-	  Enables the use of GPIO14 as Ethernet RX/TX activity LED
-
 endif	## if MACH_CME9210JS
 
 source "arch/arm/mach-ns9xxx/include/mach/display/Kconfig"
