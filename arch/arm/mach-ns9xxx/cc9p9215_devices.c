@@ -595,7 +595,7 @@ static int cc9p9215_lcd_init(struct hx8347fb_par *par)
 
 	ret = request_irq(IRQ_NS921X_EXTDMA, fb_extdma, 0, "fb_extdma", NULL);
 	if (ret) {
-		pr_debug("%s: err_request_irq_extwakeirq %d -> %d\n", __func__, IRQ_NS921X_EXTDMA, ret);
+		pr_debug("%s: err_request_irq_extdmairq %d -> %d\n", __func__, IRQ_NS921X_EXTDMA, ret);
 		return ret;
 	}
 #endif
