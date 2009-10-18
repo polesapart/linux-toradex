@@ -69,6 +69,18 @@ static void ns9xxx_mask_irq(unsigned int irq)
 	__raw_writel(ic, SYS_IC(prio / 4));
 }
 
+int ns9xxx_is_enabled_irq(unsigned int irq)
+{
+	int prio = irq2prio(irq);
+	u32 ic, en_bit_mask;
+
+	en_bit_mask = 0x80 << ((3 - (prio & 3)) * 8);
+	ic = __raw_readl(SYS_IC(prio / 4));
+	
+	return ic & en_bit_mask;
+}
+EXPORT_SYMBOL(ns9xxx_is_enabled_irq);
+
 static void ns9xxx_disable_irq(unsigned int irq)
 {
 	struct irq_desc *desc = irq_desc + irq;

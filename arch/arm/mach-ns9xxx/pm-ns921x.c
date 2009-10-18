@@ -19,9 +19,21 @@
 
 #include <mach/processor.h>
 #include <mach/regs-sys-ns921x.h>
+#include <mach/irqs.h>
 
 #include "processor-ns921x.h"
 
+#define NS921X_PM_ENET		(1 << 0)
+#define NS921X_PM_UART		(0xf << 1)
+#define NS921X_PM_SPI		(1 << 5)
+#define NS921X_PM_I2C		(1 << 11)
+#define NS921X_PM_RTC		(1 << 12)
+#define NS921X_PM_I2C		(1 << 11)
+#define NS921X_PM_EXT0		(1 << 16)
+#define NS921X_PM_EXT1		(1 << 17)
+#define NS921X_PM_EXT2		(1 << 18)
+#define NS921X_PM_EXT3		(1 << 19)
+#define NS921X_PM_ALL_WK	0xf183f
 
 #if defined(DEBUG)
 #define REGMAP(reg) { .name = #reg, .addr = reg, }
@@ -71,6 +83,8 @@ static int ns921x_pm_prepare(void)
 	return ret;
 }
 
+extern int ns9xxx_is_enabled_irq(unsigned int irq);
+
 static int ns921x_pm_enter(suspend_state_t state)
 {
 	u32 power = __raw_readl(SYS_POWER) | SYS_POWER_SLFRFSH;
@@ -79,17 +93,61 @@ static int ns921x_pm_enter(suspend_state_t state)
 	__raw_writel(power | SYS_POWER_INTCLR, SYS_POWER);
 	__raw_writel(power, SYS_POWER);
 
-	if (power & 0xf183f) {
-		leds_event(led_idle_start);
-		asm volatile("mcr p15, 0, %0, c7, c0, 4" : : "r" (0));
-		leds_event(led_idle_end);
-	} else {
-		pr_warning("No wakeup source, not going to sleep (0x%08x)\n", 
-			   __raw_readl(SYS_POWER));
-		return -EDEADLK;
+	power &= NS921X_PM_ALL_WK;
+	if (!power)
+		goto pm_enter_err;
+
+	/* Verify that, if only one source is enabled that at least
+	 * that irq is enabled */
+	if (!(power & ~NS921X_PM_ENET)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9XXX_ETHRX))
+			goto pm_enter_err;
 	}
 
+	if (!(power & ~NS921X_PM_UART)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS921X_UARTA) |
+		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTB) |
+		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTC) |
+		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTD))
+			goto pm_enter_err;
+	}
+
+	if (!(power & ~NS921X_PM_RTC)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9215_RTC))
+			goto pm_enter_err;
+	}
+
+	if (!(power & ~NS921X_PM_EXT0)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9XXX_EXT0))
+			goto pm_enter_err;
+	}
+
+	if (!(power & ~NS921X_PM_EXT1)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9XXX_EXT1))
+			goto pm_enter_err;
+	}
+
+	if (!(power & ~NS921X_PM_EXT2)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9XXX_EXT2))
+			goto pm_enter_err;
+	}
+
+	if (!(power & ~NS921X_PM_EXT3)) {
+		if (!ns9xxx_is_enabled_irq(IRQ_NS9XXX_EXT3))
+			goto pm_enter_err;
+	}
+
+	leds_event(led_idle_start);
+	asm volatile("mcr p15, 0, %0, c7, c0, 4" : : "r" (0));
+	leds_event(led_idle_end);
+
 	return 0;
+
+pm_enter_err:
+	pr_warning("No wakeup source or interface disabled, not going to sleep (0x%08x)\n", 
+		   __raw_readl(SYS_POWER));
+	return -EDEADLK;
+
 }
 
 static void ns921x_pm_finish(void)
