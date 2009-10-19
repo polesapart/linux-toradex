@@ -865,7 +865,11 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	struct iohub_dma_fifo_t *fifo;
 	unsigned int rxctrl, ictrl;
 	unsigned long error;
+	int verbose;
 
+	/* Get the selected verbosity */
+	verbose = (pic->driver) ? (pic->driver->verbose) : (0);
+	
 	/* If we have an error, then always restart the DMA-channel */
 	ifs = readl(pic->iohub_addr + IOHUB_IFS_REG);
 	error = 0;
@@ -874,14 +878,15 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 		ictrl = readl(pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 		rxctrl = readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 
-		if (printk_ratelimit())
+		if (verbose && printk_ratelimit())
 			printk_warn("RXNRIP: ictrl 0x%08x | rxctrl 0x%08x\n", ictrl, rxctrl);
-		
 		error |= IOHUB_IFS_RXNRIP;
 	}
 
 	if (!(ifs & IOHUB_IFS_RXNCIP)) {
-		printk_warn("RXNCIP: Unexpected state (ifs: %x)\n", ifs);
+
+		if (verbose && printk_ratelimit())
+			printk_warn("RXNCIP: Unexpected state (ifs: %x)\n", ifs);
 		error |= IOHUB_IFS_RXNCIP;
 	}
 

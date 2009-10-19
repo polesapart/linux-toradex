@@ -92,7 +92,7 @@ struct fim_program_t {
 #ifndef FIM_FIRMWARE_BUILDER
 	unsigned short data[FIM_NS9215_MAX_INSTRUCTIONS];
 #endif
-};
+} __attribute__((packed, aligned));
 
 
 #endif /* _FIM_FIRMWARE_H */

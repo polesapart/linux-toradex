@@ -234,17 +234,18 @@ struct platform_device ns921x_fim0_w1 = {
 EXPORT_SYMBOL(ns921x_fim0_w1);
 #endif /* CONFIG_FIM_ZERO_W1 */
 
-#if defined(CONFIG_FIM_ZERO_UDC)
-static struct fim_udc_platform_data fim_udc_data0 = {
+#if defined(CONFIG_FIM_ZERO_USB)
+static struct fim_usb_platform_data fim_usb_data0 = {
 	.fim_nr                 = 0,
-	NS921X_FIM_UDC_GPIOS(0, 1, 2,          /* VP + VM + RCV */
+	NS921X_FIM_USB_GPIOS(0, 1, 2,          /* VP + VM + RCV */
 			     3, 6, 9,        /* OE_L + ENUM + SPND */
-			     NS921X_GPIO_FUNC_2),
+			     NS921X_GPIO_FUNC_2,
+			     NS921X_GPIO_FUNC_GPIO),
 };
-struct platform_device ns921x_fim_udc0 = {
-	.name              = "fim-udc",
+struct platform_device ns921x_fim_usb0 = {
+	.name              = "fim-usb",
 	.id                = 0,
-	.dev.platform_data = &fim_udc_data0,
+	.dev.platform_data = &fim_usb_data0,
 };
-EXPORT_SYMBOL(ns921x_fim_udc0);
-#endif /* CONFIG_FIM_ZERO_UDC */
+EXPORT_SYMBOL(ns921x_fim_usb0);
+#endif /* CONFIG_FIM_ZERO_USB */

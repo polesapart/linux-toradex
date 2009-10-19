@@ -117,7 +117,7 @@ struct iohub_dma_desc_t {
 	unsigned int reserved;
 	unsigned short status;
 	unsigned short control;
-}__attribute__((__packed__));
+}__attribute__((packed, aligned));
 
 
 #define IOHUB_DMA_DESC_LENGTH                   sizeof(struct iohub_dma_desc_t)

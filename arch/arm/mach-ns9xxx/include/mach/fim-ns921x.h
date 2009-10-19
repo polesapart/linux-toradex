@@ -185,6 +185,7 @@ struct fim_gpio_t {
  * dma_tx_isr  : TX-callback function. Called in interrupt context
  * dma_rx_isr  : RX-callback. Called inside the interrupt context
  * dma_cfg     : If NULL then the API will use the default config
+ * verbose     : Used by the FIM-core for printing sys messages (debug, infos, etc.)
  */
 struct fim_driver {
 	int picnr;
@@ -198,6 +199,7 @@ struct fim_driver {
 	void (*dma_error_isr)(struct fim_driver *, ulong rx_err, ulong tx_err);
 	void *driver_data;
 	struct fim_dma_cfg_t *dma_cfg;
+	int verbose;
 };
 
 

@@ -68,6 +68,13 @@ const unsigned char *fim_serial_firmware = NULL;
 /* Module parameters */
 NS921X_FIM_NUMBERS_PARAM(fims_number);
 
+/* Macros used for the USB descriptors and resources */
+#define FIM_USB_MANU				"Digi"
+#define FIM_USB_PROD_DESC			"FIM-USBx" /* @FIXME: Cant change to an odd length */
+#define FIM_USB_SERIALNR			"NS921X"
+#define FIM_USB_IN_EPNR				(USB_DIR_IN | FIM_USB_INT_EP_NR)
+#define FIM_USB_OUT_EPNR			(USB_DIR_OUT | FIM_USB_INT_EP_NR)
+
 /* MAX GPIO NUMBER */
 #define FIM_USB_MAX_GPIOS			(6)
 
@@ -248,6 +255,7 @@ struct fim_usb_ep {
 	u8 addr;
 
 	u16 bytes;
+	u16 requested;
 	u8 *data;
 	
 	u8 zlp;
@@ -329,6 +337,7 @@ static void fim_usb_regs_reset(struct fim_usb_port *port);
 static void fim_usb_uart_tx_work_func(struct work_struct *work);
 static int fim_usb_reboot_notifier_func(struct notifier_block *this, unsigned long code,
 					void *unused);
+static int fim_usb_restart_fim(struct fim_usb_port *port);
 
 static struct uart_driver fim_usb_uart_driver;
 static struct fim_usb_port **fim_usb_ports;
@@ -357,7 +366,7 @@ static inline struct fim_usb_port *port_from_uart(struct uart_port *uart)
         return dev_get_drvdata(uart->dev);
 }
 
-void fim_usb_enable_pullup(struct fim_usb_port *port)
+static void fim_usb_enable_pullup(struct fim_usb_port *port)
 {	
 	dbg_func("FIM %i\n", port->index);
 
@@ -370,7 +379,7 @@ void fim_usb_enable_pullup(struct fim_usb_port *port)
 	gpio_set_value(port->gpios[FIM_USB_GPIO_ENUM].nr, 1);
 }
 
-void fim_usb_disable_pullup(struct fim_usb_port *port)
+static void fim_usb_disable_pullup(struct fim_usb_port *port)
 {	
 	dbg_func("FIM %i\n", port->index);
 
@@ -478,20 +487,15 @@ static void fim_usb_init_eps(struct fim_usb_port *port)
 	port->ep_next_data = 0;
 }
 
+/* Be sure that you have disconnected the pull-up first */
 static void fim_usb_init_port(struct fim_usb_port *port)
 {
-	/* Disable the port */
-	fim_usb_disable_pullup(port);
-
 	/* Reset the registers */
 	fim_usb_regs_reset(port);
 
 	/* Download config to enpoint buffer */
 	fim_usb_config(port);
 	fim_usb_init_eps(port);
-	
-	/* Setup interrups */
-	fim_usb_enable_pullup(port);
 }
 
 static int fim_usb_reboot_notifier_func(struct notifier_block *this, unsigned long code,
@@ -554,6 +558,8 @@ static void fim_usb_hotplug_work_func(struct work_struct *work)
 			uart_remove_one_port(&fim_usb_uart_driver, uart);
 			port->uart_created = 0;
 		}
+
+		fim_usb_restart_fim(port);
 		
 		pk_dbg("Keep alive counter expired (init 0x%x | curr 0x%x). Port %i removed\n",
 		       cnt_init, cnt_curr, fim->picnr);
@@ -693,7 +699,8 @@ static int fim_usb_write_zlp(struct fim_usb_port *port, struct fim_usb_ep *ep, i
 
 	level = fim_tx_buffers_level(&port->fim);
 	if (level && !force) {
-		pk_dbg("ZLP: TX buffers level > 0 (%i). Aborting.\n", level);
+		pk_dbg("ZLP: TX level > 0 (%i). FIM restart.\n", level);
+		fim_usb_restart_fim(port);
 		return -ERESTART;
 	}
 
@@ -708,8 +715,7 @@ static int fim_usb_write_zlp(struct fim_usb_port *port, struct fim_usb_ep *ep, i
 	return __fim_usb_ep_send_buffer(port, &fin, FIM_USB_DATA_OVERHEAD, ep);
 }
 
-/* This function returns the number of transferred bytes! */
-static struct semaphore ep_in_sem;
+/* IMPORTANT: This function returns the number of transferred bytes! */
 static int fim_usb_write_packet(struct fim_usb_port *port, struct fim_usb_ep *ep, u8 *buf, u16 len)
 {
 	u16 crc, val;
@@ -719,24 +725,17 @@ static int fim_usb_write_packet(struct fim_usb_port *port, struct fim_usb_ep *ep
 	/* @FIXME: Use a correct sanity check! */
 	level = fim_tx_buffers_level(&port->fim);
 	if (level) {
-		pk_dbg("write packet: TX buffers level = %i\n", level);
+		pk_dbg("write packet: TX level = %i. FIM restart.\n", level);
+		fim_usb_restart_fim(port);
 		return -EINVAL;
 	}
 		
 	val = min(len, (u16)FIM_USB_MAX_PACK_SIZE);
 	ep->bytes = len - val;
 	ep->data = buf + val;
-	dbg_enum("EP%u: Sending %u bytes [%p], pending %u [%p]\n", ep->nr, val, buf, ep->bytes, ep->data);
-
-	if (val == FIM_USB_MAX_PACK_SIZE && !ep->bytes) {
-		dbg_enum("ZLP required....!\n");
-
-
-		/* @FIXME: This is required for Windows, but not for Linux. */
-#if 0
-		ep->zlp = 1;
-#endif
-	}
+	ep->requested -= val;
+	dbg_enum("EP%u: Sending %u bytes [%p], pending %u [%p], requested %u\n",
+		 ep->nr, val, buf, ep->bytes, ep->data, ep->requested);
 		
 	/*
 	 * The FIM expects that the IN-data is placed in the TX-FIFO.
@@ -751,23 +750,15 @@ static int fim_usb_write_packet(struct fim_usb_port *port, struct fim_usb_ep *ep
 	fin.epnr = ep->addr & ~USB_DIR_IN;
 	fin.bytes = val + FIM_USB_DATA_TAIL; /* Token and CRC16 */
 
-	/* Test code for avoiding a wrong IN DATA token */
-	if (ep == &port->eps[FIM_USB_NR_EP_IN])
-		down(&ep_in_sem);
-	
 	fin.token = fim_usb_ep_next_data_token(ep);
 	ep->last_data_token = fin.token;
-
-	/* Test code for avoiding a wrong IN DATA token */
-	if (ep == &port->eps[FIM_USB_NR_EP_IN])
-		up(&ep_in_sem);
 
 	fin.crc = (u16 *)(fin.data + val);
 	memcpy(fin.data, buf, val);
 
 	*fin.crc = crc;
-	ret = __fim_usb_ep_send_buffer(port, &fin, val + FIM_USB_DATA_OVERHEAD, ep);	
-	return ret ? ret : len;
+	ret = __fim_usb_ep_send_buffer(port, &fin, val + FIM_USB_DATA_OVERHEAD, ep);
+	return ret ? ret : val;
 }
 
 #define FIM_USB_VENDOR_ID			(0x0210)
@@ -821,7 +812,7 @@ static struct fim_usb_config_descriptor fim_usb_config_desc2 = {
 	.ep_out = {
 		.bLength =              USB_DT_ENDPOINT_SIZE,
 		.bDescriptorType =      USB_DT_ENDPOINT,
-		.bEndpointAddress =     USB_DIR_OUT | FIM_USB_INT_EP_NR,
+		.bEndpointAddress =     FIM_USB_OUT_EPNR,
 		.bmAttributes =         USB_ENDPOINT_XFER_INT,
 		.wMaxPacketSize =	__constant_cpu_to_le16(FIM_USB_MAX_PACK_SIZE),
 		.bInterval =		1,
@@ -829,16 +820,12 @@ static struct fim_usb_config_descriptor fim_usb_config_desc2 = {
 	.ep_in = {
 		.bLength =              USB_DT_ENDPOINT_SIZE,
 		.bDescriptorType =      USB_DT_ENDPOINT,
-		.bEndpointAddress =     USB_DIR_IN | FIM_USB_INT_EP_NR,
+		.bEndpointAddress =     FIM_USB_IN_EPNR,
 		.bmAttributes =         USB_ENDPOINT_XFER_INT,
 		.wMaxPacketSize =	__constant_cpu_to_le16(FIM_USB_MAX_PACK_SIZE),
 		.bInterval =		1,
 	}
 };
-
-#define FIM_USB_MANU          "Digi"
-#define FIM_USB_PROD_DESC     "FIM-USBx" /* @FIXME: Cant change the description to an odd length */
-#define FIM_USB_SERIALNR      "NS921X"
 
 static struct fim_usb_string fim_usb_strings [] = {
         {
@@ -883,7 +870,7 @@ static int fim_usb_send_string_descriptor(struct fim_usb_port *port, struct fim_
 		}
 
 		if (!pstr) {
-			pr_err("Unavailable string descriptor 0x%04x request!\n", value);
+			pk_dbg("Unavailable string descriptor 0x%04x request!\n", value);
 			ret = -EINVAL;
 			goto exit_str_desc;
 		}
@@ -901,20 +888,23 @@ static int fim_usb_handle_ep0_get_descriptor(struct fim_usb_port *port, struct u
 	u8 desc;
 	u16 wvalue, len, total, val;
 	struct fim_usb_ep *ep;
+	int ret;
 
 	len = le16_to_cpu(ctrl->wLength);
 	wvalue = le16_to_cpu(ctrl->wValue);
 	desc = wvalue >> 8;
 	ep = &port->eps[FIM_USB_NR_EP_CTRL];
-	
-	dbg_enum("Handling get descriptor 0x%02x\n", desc);
 
+	ep->requested = len;
+	dbg_enum("Handling get descriptor 0x%02x (len %u)\n", desc, len);
+
+	ret = 0;
 	switch (desc) {
 
 		/* Descriptor type device */
 	case USB_DT_DEVICE:
 		ep->last_data_token = USB_TOKEN_DATA0;
-		fim_usb_write_packet(port, ep, (u8 *)&fim_usb_device_desc, sizeof(fim_usb_device_desc));
+		ret = fim_usb_write_packet(port, ep, (u8 *)&fim_usb_device_desc, sizeof(fim_usb_device_desc));
 		break;
 
 		/* Descriptor type configuration */
@@ -926,8 +916,9 @@ static int fim_usb_handle_ep0_get_descriptor(struct fim_usb_port *port, struct u
 		val = min(len, total);
 		fim_usb_config_desc2.config.wTotalLength = cpu_to_le16(total);
 
-		dbg_enum("Configuration desc. size = %u\n", total);
-		fim_usb_write_packet(port, ep, (u8 *)&fim_usb_config_desc2, val);
+		ret = fim_usb_write_packet(port, ep, (u8 *)&fim_usb_config_desc2, val);
+		dbg_enum("Configuration desc. size = %u | sent %u | requested %u\n",
+			 total, ret, ep->requested);
 		break;
 
 		/* Descriptor type string */
@@ -936,7 +927,7 @@ static int fim_usb_handle_ep0_get_descriptor(struct fim_usb_port *port, struct u
 		ep->last_data_token = USB_TOKEN_DATA0;
 		
 		/* According to the spec: by index zero return the table with the supported languages */
-		fim_usb_send_string_descriptor(port, ep, ctrl);
+		ret = fim_usb_send_string_descriptor(port, ep, ctrl);
 		break;
 
 	default:
@@ -944,13 +935,7 @@ static int fim_usb_handle_ep0_get_descriptor(struct fim_usb_port *port, struct u
 		break;
 	}
 
-	/* @XXX: Correct place for this task? */
-	if (ep->zlp) {
-		/* udelay(1500); */
-		fim_usb_write_zlp(port, ep, 1);
-	}
-	
-	return 0;
+	return ret;
 }
 
 static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctrlrequest *ctrl)
@@ -958,7 +943,7 @@ static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctr
 	int ret = 0;
 	struct fim_usb_ep *ep;
 	u8 addr;
-	u16 value;
+	u16 value, idx, type;
 	int level;
 
 	ep = &port->eps[FIM_USB_NR_EP_CTRL];
@@ -1015,13 +1000,30 @@ static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctr
 		dbg_enum("Set configuration %u request\n", value);
 		break;
 
+	case USB_REQ_CLEAR_FEATURE:
+		idx = le16_to_cpu(ctrl->wIndex);
+		value = le16_to_cpu(ctrl->wValue);
+		type = le16_to_cpu(ctrl->bRequest);
+		dbg_enum("Clear feature type 0x%x | index 0x%x | value 0x%0x\n",
+			 type, idx, value);
+
+		/* Only EPs supported now */
+		if (type != 2 && (!idx || idx == FIM_USB_IN_EPNR || idx == FIM_USB_OUT_EPNR))
+			fim_usb_write_zlp(port, ep, 0);
+		else {
+			/* @FIXME: Send a STALL at this point */
+			pk_err("Invalid clear feature request (idx 0x%x | type 0x%x)\n", idx, type);
+			ret = -EINVAL;
+		}
+		
+		break;
+		
 	default:
 		pk_err("Unhandled standard request 0x%02x\n", ctrl->bRequest);
 		pk_dump_ctrl_packet(ctrl);
+		/* @FIXME: Send a STALL to the host! */
 		break;
 	}
-
-	udelay(100);
 	
 	return ret;
 }
@@ -1092,11 +1094,14 @@ static void fim_usb_error_isr(struct fim_driver *driver, ulong rx_err, ulong tx_
 
 	port = driver->driver_data;
 
-	/* pk_dbg("%s(): rx %lu | tx %lu\n", __func__, rx_err, tx_err); */
 	if ((rx_err & IOHUB_IFS_RXNRIP) || port->unplug_detected) {
-		/* pk_info("Need to restart the FIM now!\n"); */
-		schedule_work(&port->restart_work);
-	}
+
+		if (!work_pending(&port->restart_work)) {
+			/* pk_dbg("Scheduling restart worker\n"); */
+			schedule_work(&port->restart_work);
+		}
+	} else
+		pk_dbg("Unhandled FIM error (rx 0x%lx | tx 0x%lx)\n", rx_err, tx_err);
 }
 
 /*
@@ -1140,8 +1145,14 @@ static void fim_usb_tx_isr(struct fim_driver *fim, int irq,
 	/* Here we can start the next data transfer if there is something pending */
 	ep = &port->eps[FIM_USB_NR_EP_CTRL];
 	if (!ep->addr && ep->bytes) {
-		fim_usb_write_packet(port, ep, ep->data, ep->bytes);
-
+		int sent;
+		
+		sent = fim_usb_write_packet(port, ep, ep->data, ep->bytes);
+		if (sent == FIM_USB_MAX_PACK_SIZE && !ep->bytes && ep->requested) {
+			fim_usb_write_zlp(port, ep, 1);
+			dbg_enum("ZLP for big packet (request pending %u)\n", ep->requested);
+		}
+		
 		/* @XXX: Should we return at this point? */
 		/* return; */
 	}
@@ -1169,7 +1180,8 @@ static int fim_usb_restart_fim(struct fim_usb_port *port)
                 return -ENODEV;
 
 	fim = &port->fim;
-	/* pk_dbg("Going to restart the FIM%i\n", fim->picnr); */
+
+	fim_usb_disable_pullup(port);
 
 	/* Reset the main register */
 	fim_usb_regs_reset(port);
@@ -1201,6 +1213,8 @@ static int fim_usb_restart_fim(struct fim_usb_port *port)
 	fim_set_ctrl_reg(&port->fim, FIM_USB_MAIN_REG,
 			 FIM_USB_MAIN_START |  FIM_USB_MAIN_NOKEEPALIVE | FIM_USB_MAIN_NOINIRQ);
 
+	fim_usb_enable_pullup(port);
+	
 	return ret;
 }
 
@@ -1352,7 +1366,7 @@ static int fim_usb_unregister_port(struct fim_usb_port *port)
 	pk_dbg("Going to unregister the FIM USB port %i\n", fim->picnr);
 
 	flush_work(&port->uart_work);
-	flush_work(&port->restart_work);
+	cancel_work_sync(&port->restart_work);
 	cancel_delayed_work_sync(&port->hotplug_work);
 
 	/* Disable the FIM from the connected host */
@@ -1766,6 +1780,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 	}
 
 	/* First do it at this point! */
+	fim_usb_disable_pullup(port);
 	fim_usb_init_port(port);
 
 	/* Print the firmware version */
@@ -1777,6 +1792,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 	/* This will enable the start of the FIM in the firmware */
 	fim_set_ctrl_reg(&port->fim, FIM_USB_MAIN_REG,
 			 FIM_USB_MAIN_START |  FIM_USB_MAIN_NOKEEPALIVE | FIM_USB_MAIN_NOINIRQ);
+	fim_usb_enable_pullup(port);	
 	return 0;
 
  err_unreg_fim:
@@ -1980,8 +1996,6 @@ static int __init fim_usb_init(void)
 	if (ret)
 		goto err_unreg_uart;
 
-	init_MUTEX(&ep_in_sem);
-	
 	return 0;
 	
  err_unreg_uart:
