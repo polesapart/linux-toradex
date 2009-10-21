@@ -620,6 +620,7 @@ config CME9210JS_SPI
 
 config GPIO_ETH_ACTIVITY_LED
 	bool "Ethernet activity LED"
+	depends on NS9XXX_ETH
 	help
 	  Enables the use of GPIO14 as Ethernet RX/TX activity LED
 
