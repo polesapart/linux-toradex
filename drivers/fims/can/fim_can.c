@@ -1271,7 +1271,7 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 			continue;
 		printk_debug("Requesting the GPIO %i (Function %i)\n",
 			     gpios[cnt].nr, gpios[cnt].func);
-		retval = gpio_request(gpios[cnt].nr, gpios[cnt].name);
+		retval = gpio_request(gpios[cnt].nr, FIM_DRIVER_NAME);
 		if (!retval) {
 			func = gpios[cnt].func;
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,

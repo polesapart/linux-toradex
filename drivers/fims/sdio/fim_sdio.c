@@ -1324,7 +1324,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 		printk_debug("Requesting the GPIO %i (Function %i)\n",
 			     gpios[cnt].nr, gpios[cnt].func);
-		retval = gpio_request(gpios[cnt].nr, gpios[cnt].name);
+		retval = gpio_request(gpios[cnt].nr, FIM_SDIO_DRIVER_NAME);
 		if (!retval) {
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,
 						       NS921X_GPIO_INPUT,

@@ -1700,7 +1700,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 		
 		dbg_pr("Requesting the GPIO %i (Function %i)\n",
 		       gpios[cnt].nr, gpios[cnt].func);
-		ret = gpio_request(gpios[cnt].nr, gpios[cnt].name);
+		ret = gpio_request(gpios[cnt].nr, FIM_DRIVER_NAME);
 		if (!ret) {
 			int dir, pullup;
 			
