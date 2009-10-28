@@ -854,7 +854,7 @@ static int __init piper_probe(struct platform_device* pdev)
 	piperp->get_next_beacon_backoff = get_next_beacon_backoff;
 	piperp->set_antenna = piper_set_antenna;
 	piperp->set_tracking_constant = piper_set_tracking_constant;
-	piperp->antenna = ANTENNA_BOTH;
+	piperp->antenna = ANTENNA_1;
 	piperp->adjust_max_agc = adjust_max_agc;
 
 	/*
