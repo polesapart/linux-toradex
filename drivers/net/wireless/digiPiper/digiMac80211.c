@@ -326,6 +326,7 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 						     (u8 *)piperp->tx_aes_blob, skb->data,
 						     skb->len, true);
 	}
+	piper_ps_set_header_flag(piperp, ((_80211HeaderType *) skb->data));		/* set power management bit as appropriate*/
 
 	/*
 	 * Add space at the start of the frame for the H/W level transmit header.

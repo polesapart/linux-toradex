@@ -338,6 +338,7 @@ void piper_rx_tasklet(unsigned long context)
 
 	piperp->ps.rxTaskletRunning = false;
 	piperp->set_irq_mask_bit(piperp, BB_IRQ_MASK_RX_FIFO);
+	piper_ps_rx_task_exiting(piperp);
 }
 EXPORT_SYMBOL_GPL(piper_rx_tasklet);
 

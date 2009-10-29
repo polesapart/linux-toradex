@@ -419,7 +419,16 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 			spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
 			piperp->tx_tasklet_running = false;
 			spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
-			ieee80211_wake_queues(piperp->hw);
+			if (piperp->ps.allowTransmits) {
+				ieee80211_wake_queues(piperp->hw);
+			} else {
+				/*
+				 * Do not wake up the mac80211 Tx queue if we are trying to power
+				 * down.  Make sure we set the stopped_tx_queues flag so that we
+				 * know to restart the queues.
+				 */
+				piperp->ps.stopped_tx_queues = true;
+			}
 		} else {
 			tasklet_hi_schedule(&piperp->tx_tasklet);
 		}
@@ -446,117 +455,114 @@ void piper_tx_tasklet(unsigned long context)
 
 	piperp->expectingAck = false;
 	del_timer_sync(&piperp->tx_timer);
-	if (piper_ps_active(piperp) != PS_STOP_TRANSMIT) {
 
-		/*
-		 * Clear flags here to cover ACK case.  We do not clear the flags in the ACK
-		 * routine since it is possible to receive an ACK after we have started the
-		 * next packet.  The appropriate interrupts will be reenabled if we decide
-		 * to retransmit.
-		 */
-		piperp->clear_irq_mask_bit(piperp,
-					BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
-					BB_IRQ_MASK_TX_ABORT);
+	/*
+	 * Clear flags here to cover ACK case.  We do not clear the flags in the ACK
+	 * routine since it is possible to receive an ACK after we have started the
+	 * next packet.  The appropriate interrupts will be reenabled if we decide
+	 * to retransmit.
+	 */
+	piperp->clear_irq_mask_bit(piperp,
+				BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
+				BB_IRQ_MASK_TX_ABORT);
 
-		if (piper_tx_getqueue(piperp) != NULL) {
-			struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
-			struct ieee80211_rate *txRate = get_tx_rate(piperp, txInfo);
+	if (piper_tx_getqueue(piperp) != NULL) {
+		struct ieee80211_tx_info *txInfo = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
+		struct ieee80211_rate *txRate = get_tx_rate(piperp, txInfo);
 
-			if (txRate != NULL) {
-				fc = (frameControlFieldType_t *)
-						&piper_tx_getqueue(piperp)->data[FRAME_CONTROL_FIELD_OFFSET];
+		if (txRate != NULL) {
+			fc = (frameControlFieldType_t *)
+					&piper_tx_getqueue(piperp)->data[FRAME_CONTROL_FIELD_OFFSET];
 
-				/* set the retry bit if this is not the first try */
-				if (piperp->pstats.tx_retry_count[0] != 0)
-					fc->retry = 1;
+			/* set the retry bit if this is not the first try */
+			if (piperp->pstats.tx_retry_count[0] != 0)
+				fc->retry = 1;
 
-				piperp->ac->wr_reg(piperp, MAC_BACKOFF,
-						   piper_get_cw(piperp,
-						   (piperp->pstats.tx_retry_count[0] == 0)),
-						   op_write);
+			piperp->ac->wr_reg(piperp, MAC_BACKOFF,
+					   piper_get_cw(piperp,
+					   (piperp->pstats.tx_retry_count[0] == 0)),
+					   op_write);
 
-				/*
-				 * Build the H/W transmit header.  The transmit header is rebuilt on each
-				 * retry because it has the TX rate information which may change for
-				 * retries.
-				 */
-				phy_set_plcp(piper_tx_getqueue(piperp)->data,
-					     piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH,
-					     txRate, piperp->use_hw_aes ? 8 : 0);
+			/*
+			 * Build the H/W transmit header.  The transmit header is rebuilt on each
+			 * retry because it has the TX rate information which may change for
+			 * retries.
+			 */
+			phy_set_plcp(piper_tx_getqueue(piperp)->data,
+				     piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH,
+				     txRate, piperp->use_hw_aes ? 8 : 0);
 
-				/*
-				 * Pause the transmitter so that we don't start transmitting before we
-				 * are ready.
-				 */
-				piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_TX_HOLD, op_or);
+			/*
+			 * Pause the transmitter so that we don't start transmitting before we
+			 * are ready.
+			 */
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_TX_HOLD, op_or);
 
-				handle_rts_cts(piperp, txInfo, fc->type);
+			handle_rts_cts(piperp, txInfo, fc->type);
 
-				if (piperp->use_hw_aes == true && txInfo->control.hw_key != NULL)  {
-					err =
-					    piper_write_aes(piperp, piper_tx_getqueue(piperp)->data,
-							    piper_tx_getqueue(piperp)->len);
-				} else {
-					err =
-					    piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, piper_tx_getqueue(piperp)->data,
-							piper_tx_getqueue(piperp)->len);
-				}
-
-				/* Clear any pending TX interrupts */
-				piperp->ac->wr_reg(piperp, BB_IRQ_STAT,
-						  BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
-						  BB_IRQ_MASK_TX_ABORT, op_write);
-
-				/*
-				 * Now start the transmitter.
-				 */
-				piperp->expectingAck = ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0);
-				piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,
-						  op_and);
-
-				/*
-				 * Set interrupt flags.  Use the timeout interrupt if we expect
-				 * an ACK.  Use the FIFO empty interrupt if we do not expect an ACK.
-				 */
-				if (txInfo->flags & IEEE80211_TX_CTL_NO_ACK) {
-					piperp->set_irq_mask_bit(piperp,
-								 BB_IRQ_MASK_TX_FIFO_EMPTY |
-								 BB_IRQ_MASK_TX_ABORT);
-				} else {
-					/*
-					 * We set up a timer to fire in 1/4 second.  We should not need it, but somehow
-					 * we seem to miss a timeout interrupt occasionally.  Perhaps we encounter a receive
-					 * overrun which causes the H/W to discard the ACK packet without generating
-					 * a timeout.
-					 */
-					piperp->tx_timer.expires = jiffies + (HZ >> 2);
-					add_timer(&piperp->tx_timer);
-
-					/*
-					 * Also set the IRQ mask to listen for timeouts and TX aborts.  We will receive
-					 * an ACK (which is handled by the RX routine) if the TX is successful.
-					 */
-					piperp->set_irq_mask_bit(piperp,
-								 BB_IRQ_MASK_TIMEOUT |
-								 BB_IRQ_MASK_TX_ABORT);
-				}
-				if ((piperp->pstats.tx_total_tetries != 0) &&
-				    ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)) {
-					piperp->pstats.ll_stats.dot11ACKFailureCount++;
-				}
-				piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
-				piperp->pstats.tx_total_tetries++;
+			if (piperp->use_hw_aes == true && txInfo->control.hw_key != NULL)  {
+				err =
+				    piper_write_aes(piperp, piper_tx_getqueue(piperp)->data,
+						    piper_tx_getqueue(piperp)->len);
 			} else {
-				packet_tx_done(piperp, OUT_OF_RETRIES, 0);
+				err =
+				    piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, piper_tx_getqueue(piperp)->data,
+						piper_tx_getqueue(piperp)->len);
 			}
-		} else {
-			long unsigned int flags;
 
-			spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
-			piperp->tx_tasklet_running = false;
-			spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
-//			dprintk(DERROR, "piper_tx_getqueue(piperp) == NULL\n");
+			/* Clear any pending TX interrupts */
+			piperp->ac->wr_reg(piperp, BB_IRQ_STAT,
+					  BB_IRQ_MASK_TX_FIFO_EMPTY | BB_IRQ_MASK_TIMEOUT |
+					  BB_IRQ_MASK_TX_ABORT, op_write);
+
+			/*
+			 * Now start the transmitter.
+			 */
+			piperp->expectingAck = ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0);
+			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_TX_HOLD,
+					  op_and);
+
+			/*
+			 * Set interrupt flags.  Use the timeout interrupt if we expect
+			 * an ACK.  Use the FIFO empty interrupt if we do not expect an ACK.
+			 */
+			if (txInfo->flags & IEEE80211_TX_CTL_NO_ACK) {
+				piperp->set_irq_mask_bit(piperp,
+							 BB_IRQ_MASK_TX_FIFO_EMPTY |
+							 BB_IRQ_MASK_TX_ABORT);
+			} else {
+				/*
+				 * We set up a timer to fire in 1/4 second.  We should not need it, but somehow
+				 * we seem to miss a timeout interrupt occasionally.  Perhaps we encounter a receive
+				 * overrun which causes the H/W to discard the ACK packet without generating
+				 * a timeout.
+				 */
+				piperp->tx_timer.expires = jiffies + (HZ >> 2);
+				add_timer(&piperp->tx_timer);
+
+				/*
+				 * Also set the IRQ mask to listen for timeouts and TX aborts.  We will receive
+				 * an ACK (which is handled by the RX routine) if the TX is successful.
+				 */
+				piperp->set_irq_mask_bit(piperp,
+							 BB_IRQ_MASK_TIMEOUT |
+							 BB_IRQ_MASK_TX_ABORT);
+			}
+			if ((piperp->pstats.tx_total_tetries != 0) &&
+			    ((txInfo->flags & IEEE80211_TX_CTL_NO_ACK) == 0)) {
+				piperp->pstats.ll_stats.dot11ACKFailureCount++;
+			}
+			piperp->pstats.tx_retry_count[piperp->pstats.tx_retry_index]++;
+			piperp->pstats.tx_total_tetries++;
+		} else {
+			packet_tx_done(piperp, OUT_OF_RETRIES, 0);
 		}
+	} else {
+		long unsigned int flags;
+
+		spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
+		piperp->tx_tasklet_running = false;
+		spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
 	}
 }
 EXPORT_SYMBOL_GPL(piper_tx_tasklet);

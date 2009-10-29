@@ -32,6 +32,7 @@ enum baseband_control_regs {
 #define BB_GENERAL_CTL_FW_LOAD_ENABLE   (1 << 9)
 #define BB_GENERAL_CTL_DSP_LOAD_ENABLE  (1 << 10)
 #define BB_GENERAL_CTL_MAC_ASSIST_ENABLE (1 << 11)
+#define BB_GENERAL_CTL_TX_FIFO_FULL	 (1<<15)
 #define BB_GENERAL_CTL_TX_FIFO_EMPTY (1<<14)
 /* TODO: verify max gain value for Piper and Wi9p*/
 #define BB_GENERAL_CTL_MAX_GAIN(g)	(((g) & 0x7f)<<16)

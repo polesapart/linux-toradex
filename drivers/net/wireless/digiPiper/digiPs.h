@@ -9,9 +9,13 @@
 #include <net/mac80211.h>
 #include "pipermain.h"
 
-enum piper_ps_events {
-	PS_EVENT_WAKEUP_FOR_BEACON,
-	PS_EVENT_DUTY_CYCLE_EXPIRED
+enum piper_ps_event {
+	PS_EVENT_BEACON_RECEIVED,
+	PS_EVENT_STOP_TRANSMIT_TIMER_EXPIRED,
+	PS_EVENT_TRANSMITTER_DONE,
+    PS_EVENT_TRANSMITTER_DONE_TIMER_TICK,
+	PS_EVENT_WAKEUP,
+	PS_EVENT_MISSED_BEACON
 };
 
 enum piper_ps_tx_completion_result {
@@ -24,6 +28,7 @@ enum piper_ps_active_result {
 	PS_STOP_TRANSMIT
 };
 
+
 /*
  * Current version of mac80211 doesn't set power management bit in frame headers,
  * so I guess we have to for now.
@@ -32,8 +37,7 @@ enum piper_ps_active_result {
  */
 #define piper_ps_set_header_flag(piperp, header) 	\
 			header->fc.pwrMgt = ((piperp->ps.mode == PS_MODE_LOW_POWER) \
-								&& (piperp->ps.reallyDoDutyCycling) \
-								&& (!piperp->ps.transmitter_backed_up))
+								&& (piperp->ps.power_management))
 
 
 int piper_ps_active(struct piper_priv *piperp);

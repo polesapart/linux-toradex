@@ -179,35 +179,30 @@ enum piper_ps_mode {
 };
 
 enum piper_ps_state {
-    PS_STATE_WANT_TO_SLEEP,
-    PS_STATE_SLEEPING,
-    PS_STATE_WAITING_FOR_BEACON,
-    PS_STATE_WAITING_FOR_BUFFERED_DATA
+    PS_STATE_WAIT_FOR_BEACON,
+    PS_STATE_WAIT_FOR_STOP_TRANSMIT_EVENT,
+    PS_STATE_WAIT_FOR_TRANSMITTER_DONE,
+    PS_STATE_WAIT_FOR_WAKEUP_ALARM,
+    PS_STATE_WAIT_FOR_TRANSMITTER_DONE_EVENT
 };
 
 struct piper_priv;
 
 struct piper_ps {
     u32 beacon_int;
-    u32 next_beacon;
-    u32 next_wakeup;
-    u32 next_duty_cycle;
     u16 aid;
+    unsigned int sleep_time;
     struct timer_list timer;
     enum piper_ps_mode mode;
     enum piper_ps_state state;
     unsigned int this_event;
     spinlock_t lock;
-    bool apHasBufferedFrame;
-    bool expectingMulticastFrames;
-    bool wantToSleepThisDutyCycle;
-    bool reallyDoDutyCycling;
+    volatile bool power_management;
     volatile bool poweredDown;
-    bool forceOfdm;
-    volatile bool stoppedTransmit;
-    volatile bool allowTransmits;
     volatile bool rxTaskletRunning;
-    bool transmitter_backed_up;
+    volatile bool allowTransmits;
+    volatile bool stopped_tx_queues;
+    volatile unsigned int frames_pending;
 };
 
 typedef void (*tx_skb_return_cb_t)(struct ieee80211_hw *hw,
@@ -346,6 +341,7 @@ void piper_set_macaddr(struct piper_priv *piperp);
 void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression);
 int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force);
 void piper_sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn);
+void piper_ps_rx_task_exiting(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters
