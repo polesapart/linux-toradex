@@ -253,6 +253,9 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 	void __iomem *gpcon_reg;
 	unsigned long gpcon_offset, extint_offset;
 	unsigned long newvalue = 0, value;
+#if defined(CONFIG_CPU_S3C2443)
+	unsigned int t;
+#endif
 
 	if ((irq >= IRQ_EINT0) && (irq <= IRQ_EINT3))
 	{
@@ -325,18 +328,15 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 
         /* The below code is coming from the SMDK of Samsung */
 #if defined(CONFIG_CPU_S3C2443)
-        if (extint_reg == S3C24XX_EXTINT0) {
-                unsigned int t;             
-                t  =  (value  &  0x0000000f)  <<  28;
-                t  |=  (value  &  0x000000f0)  <<  20;
-                t  |=  (value  &  0x00000f00)  <<  12;
-                t  |=  (value  &  0x0000f000)  <<  4;
-                t  |=  (value  &  0x000f0000)  >>  4;
-                t  |=  (value  &  0x00f00000)  >>  12;
-                t  |=  (value  &  0x0f000000)  >>  20;
-                t  |=  (value  &  0xf0000000)  >>  28;
-                value  =  t;
-        }
+	t  =  (value  &  0x0000000f)  <<  28;
+	t  |=  (value  &  0x000000f0)  <<  20;
+	t  |=  (value  &  0x00000f00)  <<  12;
+	t  |=  (value  &  0x0000f000)  <<  4;
+	t  |=  (value  &  0x000f0000)  >>  4;
+	t  |=  (value  &  0x00f00000)  >>  12;
+	t  |=  (value  &  0x0f000000)  >>  20;
+	t  |=  (value  &  0xf0000000)  >>  28;
+	value  =  t;
 #endif /* CONFIG_CPU_S3C2443 */
 
 	value = (value & ~(7 << extint_offset)) | (newvalue << extint_offset);
