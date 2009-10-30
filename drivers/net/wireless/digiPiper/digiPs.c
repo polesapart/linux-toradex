@@ -249,32 +249,29 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 	if (piperp->ps.poweredDown)
 		return 0;
 
+	savedRegs[INDX_INTR_MASK] = piperp->ac->rd_reg(piperp, BB_IRQ_MASK);
+	piperp->ac->wr_reg(piperp, BB_IRQ_MASK, 0, op_write);
+
     if (!force) {
-    	if (piperp->ps.rxTaskletRunning)
-    		return -1;
+    	if (   (piperp->ps.rxTaskletRunning)
+    	    || ((piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY))
+    		|| (  (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL)
+    	     	& BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
+			|| (piperp->tx_tasklet_running)
+    		|| (  (piperp->ac->rd_reg(piperp, BB_GENERAL_STAT)
+    			& BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
+    		|| (piperp->ac->rd_reg(piperp, BB_IRQ_STAT) & savedRegs[INDX_INTR_MASK])) {
 
-    	if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY)
+			piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
     		return -1;
-
-    	if ((piperp->ac->
-    	     rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
-    		return -1;
-
-    	if (piperp->tx_tasklet_running)
-    		return -1;
-
-    	if ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) &
-    		BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0)
-    		return -1;
+		}
     }
 
 	disable_irq(piperp->irq);
 
 	savedRegs[INDX_GEN_CONTROL] = piperp->ac->rd_reg(piperp, BB_GENERAL_CTL);
 	savedRegs[INDX_GEN_STATUS] = piperp->ac->rd_reg(piperp, BB_GENERAL_STAT);
-	savedRegs[INDX_RSSI_AES] =
-	    piperp->ac->rd_reg(piperp, BB_RSSI) & ~BB_RSSI_EAS_BUSY;
-	savedRegs[INDX_INTR_MASK] = piperp->ac->rd_reg(piperp, BB_IRQ_MASK);
+	savedRegs[INDX_RSSI_AES] = piperp->ac->rd_reg(piperp, BB_RSSI) & ~BB_RSSI_EAS_BUSY;
 	savedRegs[INDX_SPI_CTRL] = piperp->ac->rd_reg(piperp, BB_SPI_CTRL);
 	savedRegs[INDX_CONF1] = piperp->ac->rd_reg(piperp, BB_TRACK_CONTROL);
 	savedRegs[INDX_CONF2] = piperp->ac->rd_reg(piperp, BB_CONF_2);
@@ -333,11 +330,25 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
+	static int run = 0;
+
 #if RESET_PIPER
 
 	if (piperp->pdata->reset) {
+		if (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_FULL) {
+			printk(KERN_ERR "**** While in reset, run = %d\n", run);
+			digiWifiDumpRegisters(piperp, MAIN_REGS);
+			while(1);
+		}
 	    piperp->pdata->reset(piperp, 0);
 	    udelay(10);
+
+		if (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_FULL) {
+			printk(KERN_ERR "**** After reset, run = %d\n", run);
+			digiWifiDumpRegisters(piperp, MAIN_REGS);
+			while(1);
+		}
+		run++;
 
 	    piperp->rf->power_on(piperp->hw, true);
 	    mdelay(1);
@@ -387,8 +398,12 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 	for (i = 0; i < 448; i++)
 		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
 
-	// reset the TX-FIFO
-	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200C0, op_write);
+	// clear RX-FIFO memory
+	for (i = 0; i < 512; i++)
+		piperp->ac->rd_reg(piperp, BB_DATA_FIFO);
+
+	// reset the TX-FIFO and RX-FIFO
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, 0x377200E0, op_write);
 
 
 	// release the TX-hold and reset
