@@ -9,7 +9,7 @@
 #include "mac.h"
 
 
-// #define WANT_DEBUG
+#define WANT_DEBUG
 #ifdef WANT_DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)

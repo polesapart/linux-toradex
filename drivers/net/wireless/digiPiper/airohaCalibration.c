@@ -205,7 +205,7 @@ static unsigned int waitForEvent(unsigned int timeout, unsigned int eventToWaitF
 }
 
 
-#ifdef WANT_DEBUG
+#ifdef WANT_CAL_DEBUG
 static void printPoint(wcd_point_t * p)
 {
 	printk("(%d, %d, %d)", p->out_power, p->adc_val, p->power_index);
@@ -466,7 +466,7 @@ static void setInitialPowerLevel(struct piper_priv *digi, int mdBm)
 	 * Let's compute and save the expected ADC value while we have all the necessary
 	 * information handy.
 	 */
-#ifdef WANT_DEBUG
+#ifdef WANT_CAL_DEBUG
 	digi_dbg("Using points ");
 	printPoint(p1);
 	printPoint(p2);
@@ -512,16 +512,16 @@ static void recalibrate(struct piper_priv *digi)
 	};
 	int needCorrection = 0;
 
-#ifdef WANT_DEBUG_1
+#ifdef WANT_CAL_DEBUG_1
 	digi_dbg("Samples: ");
 #endif
 	for (idx = 0; idx < calibration.sampleCount; idx++) {
-#ifdef WANT_DEBUG_1
+#ifdef WANT_CAL_DEBUG_1
 		printk("%d, ", calibration.sample[idx].sample);
 #endif
 		actualAdc += calibration.sample[idx].sample;
 	}
-#ifdef WANT_DEBUG_1
+#ifdef WANT_CAL_DEBUG_1
 	printk("\n");
 #endif
 	actualAdc = actualAdc / calibration.sampleCount;
@@ -543,7 +543,7 @@ static void recalibrate(struct piper_priv *digi)
 		int correction = computeY(calibration.p1,
 					  calibration.powerIndexSlopeTimes1000,
 					  actualAdc, POWER_INDEX_OVER_ADC);
-#if defined(WANT_DEBUG)
+#if defined(WANT_CAL_DEBUG)
 		int oldIndex = calibration.correctedPowerIndex;
 #endif
 		correction = (3 * (calibration.powerIndex - correction)) / 4;
@@ -567,7 +567,7 @@ static void recalibrate(struct piper_priv *digi)
 			calibration.correctedPowerIndex = MINIMUM_POWER_INDEX;
 		}
 		digi->rf->set_pwr_index(digi->hw, calibration.correctedPowerIndex);
-#ifdef WANT_DEBUG
+#ifdef WANT_CAL_DEBUG
 		digi_dbg
 		    ("actualAdc = %d, expectedAdc = %d, error mdbm = %d\n",
 		     actualAdc, calibration.expectedAdc, errorInMdbm);

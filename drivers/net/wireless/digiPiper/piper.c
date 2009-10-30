@@ -28,7 +28,7 @@
 #include "digiPs.h"
 
 #define WANT_AIROHA_CALIBRATION     (1)
-#define WANT_DEBUG_COMMANDS			(0)
+#define WANT_DEBUG_COMMANDS			(1)
 
 
 static void piper_clear_irq_mask(struct piper_priv *piperp, unsigned int bits)
@@ -697,6 +697,10 @@ static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr
 	{
 		if (strstr(buf, "dump") != NULL) {
 			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+			ret = 1;
+		} else if (strstr(buf, "ps_state") != NULL) {
+			printk(KERN_ERR "rxTaskletRunning = %d, allowTransmits = %d, stopped_tx_queues = %d\n",
+					piperp->ps.rxTaskletRunning, piperp->ps.allowTransmits, piperp->ps.stopped_tx_queues);
 			ret = 1;
 		} else if (strstr(buf, "rssi_dump") != NULL) {
 		    spinlock_t lock;
