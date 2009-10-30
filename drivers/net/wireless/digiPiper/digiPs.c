@@ -330,26 +330,31 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
-	static int run = 0;
+#ifdef WANT_DEBUG
+	static unsigned int run = 0;
+#endif
 
 #if RESET_PIPER
 
 	if (piperp->pdata->reset) {
+#ifdef WANT_DEBUG
 		if (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_FULL) {
 			printk(KERN_ERR "**** While in reset, run = %d\n", run);
 			digiWifiDumpRegisters(piperp, MAIN_REGS);
 			while(1);
 		}
+#endif
 	    piperp->pdata->reset(piperp, 0);
 	    udelay(10);
 
+#ifdef WANT_DEBUG
 		if (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_FULL) {
 			printk(KERN_ERR "**** After reset, run = %d\n", run);
 			digiWifiDumpRegisters(piperp, MAIN_REGS);
 			while(1);
 		}
 		run++;
-
+#endif
 	    piperp->rf->power_on(piperp->hw, true);
 	    mdelay(1);
 	    piper_spike_suppression(piperp, want_spike_suppression);
