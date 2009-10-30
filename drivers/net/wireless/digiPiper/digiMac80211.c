@@ -353,6 +353,7 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 		piperp->tx_tasklet_running = true;
 		tasklet_hi_schedule(&piperp->tx_tasklet);
 	}
+
 	spin_unlock_irqrestore(&piperp->tx_tasklet_lock, flags);
 
 	piperp->pstats.tx_start_count++;
@@ -401,6 +402,7 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 	piper_set_status_led(hw, led_shutdown);
 
 	/* Get the tasklets ready to roll */
+	piperp->tx_result = TX_NOT_DONE;
 	tasklet_enable(&piperp->rx_tasklet);
 	tasklet_enable(&piperp->tx_tasklet);
 

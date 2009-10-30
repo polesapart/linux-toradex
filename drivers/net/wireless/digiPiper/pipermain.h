@@ -128,7 +128,8 @@ typedef struct {
 typedef enum {
     RECEIVED_ACK,
     TX_COMPLETE,
-    OUT_OF_RETRIES
+    OUT_OF_RETRIES,
+    TX_NOT_DONE
 } tx_result_t;
 
 
@@ -247,6 +248,8 @@ struct piper_priv {
     struct digi_rf_ops *rf;
     void *__iomem vbase;
     int irq;
+    tx_result_t tx_result;
+    int tx_signal_strength;
 
     /* Function callbacks */
     int (*init_hw) (struct piper_priv *, enum ieee80211_band);

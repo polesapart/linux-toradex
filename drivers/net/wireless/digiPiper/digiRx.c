@@ -233,7 +233,9 @@ static inline void handle_ack(struct piper_priv *piperp, int signal_strength)
 						   BB_IRQ_MASK_TX_FIFO_EMPTY |
 						   BB_IRQ_MASK_TIMEOUT |
 						   BB_IRQ_MASK_TX_ABORT);
-			packet_tx_done(piperp, RECEIVED_ACK, signal_strength);
+			piperp->tx_signal_strength = signal_strength;
+			piperp->tx_result = RECEIVED_ACK;
+			tasklet_hi_schedule(&piperp->tx_tasklet);
 		}
 	}
 }

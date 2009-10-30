@@ -366,7 +366,7 @@ static void handle_rts_cts(struct piper_priv *piperp,
  * up the transmit queue.
  */
 void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
-			   int singalstrength)
+			   int signal_strength)
 {
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(piper_tx_getqueue(piperp));
 	int i;
@@ -379,7 +379,8 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 	{
 		"RECEIVED_ACK",
 		"TX_COMPLETE",
-		"OUT_OF_RETRIES"
+		"OUT_OF_RETRIES",
+		"TX_NOT_DONE"
 	};
 #endif
 	del_timer_sync(&piperp->tx_timer);
@@ -403,7 +404,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 				info->status.rates[i].idx = -1;
 		}
 
-		info->status.ack_signal = singalstrength;
+		info->status.ack_signal = signal_strength;
 		info->flags |= (result == RECEIVED_ACK) ? IEEE80211_TX_STAT_ACK : 0;
 		piperp->pstats.tx_complete_count++;
 		piperp->pstats.tx_queue.len--;
@@ -430,11 +431,20 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 				piperp->ps.stopped_tx_queues = true;
 			}
 		} else {
-			tasklet_hi_schedule(&piperp->tx_tasklet);
+			if (result == OUT_OF_RETRIES) {
+				/*
+				 * If we come here, then we are being called from the middle of the
+				 * transmit routine and we have to reschedule the transmit task to
+				 * start dequeueing the next frame.
+				 */
+				tasklet_hi_schedule(&piperp->tx_tasklet);
+			}
 		}
 	} else {
 		printk(KERN_ERR "packet_tx_done called with empty queue\n");
 	}
+
+	piperp->tx_result = TX_NOT_DONE;
 }
 EXPORT_SYMBOL_GPL(packet_tx_done);
 
@@ -455,6 +465,16 @@ void piper_tx_tasklet(unsigned long context)
 
 	piperp->expectingAck = false;
 	del_timer_sync(&piperp->tx_timer);
+	if ((piperp->tx_result == RECEIVED_ACK) || (piperp->tx_result == TX_COMPLETE)) {
+		/*
+		 * We will come here if the receiver task received an ACK, or if we got
+		 * a tx fifo empty interrupt.  In these cases the receiver thread or ISR
+		 * schedule the tx tasklet to handle the event rather than calling
+		 * packet_tx_done directly.
+		 */
+		packet_tx_done(piperp, piperp->tx_result, piperp->tx_signal_strength);
+	}
+
 
 	/*
 	 * Clear flags here to cover ACK case.  We do not clear the flags in the ACK

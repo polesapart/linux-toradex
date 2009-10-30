@@ -70,7 +70,9 @@ irqreturn_t piper_irq_handler(int irq, void *dev_id)
 		 * restart the tx queue.
 		 */
 		if (piper_tx_getqueue(piperp) != NULL) {
-			packet_tx_done(piperp, TX_COMPLETE, 0);
+			piperp->tx_signal_strength = 0;
+			piperp->tx_result = TX_COMPLETE;
+			tasklet_hi_schedule(&piperp->tx_tasklet);
 		} else {
 			dprintk(DWARNING, "BB_IRQ_MASK_TX_FIFO_EMPTY and null packet?\n");
 		}
