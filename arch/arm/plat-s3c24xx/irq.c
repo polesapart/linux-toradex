@@ -326,9 +326,22 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 
 	value = __raw_readl(extint_reg);
 
-        /* The below code is coming from the SMDK of Samsung */
+        /* According to Samsung's document 'S3C2443 guide to extra gpio'
+	 * several registers (including EXTINT0-2) must use a precompiled
+	 * function for read access. We don't have the original code but
+	 * we have seen the following behavior in U-Boot:
+	 *   EXTINT0:
+	 *	1. Read values are given in big endian (at nibble level):
+	 *	   a read value of 0x00001234 is really 0x43210000.
+	 *	2. The read value does not return the LSB:
+	 *	   after writing 0xffffffff value read is 0x7fffffff.
+	 *   EXTINT1/2:
+	 *	1. Read values are given in big endian (at nibble level)
+	 *	and bits at nibble level suffer a 1 bit rotation to the left:
+	 *	   after writing 0x12488822 value read is 0x44111842
+	 */
 #if defined(CONFIG_CPU_S3C2443)
-	t  =  (value  &  0x0000000f)  <<  28;
+	t  =   (value  &  0x0000000f)  <<  28;
 	t  |=  (value  &  0x000000f0)  <<  20;
 	t  |=  (value  &  0x00000f00)  <<  12;
 	t  |=  (value  &  0x0000f000)  <<  4;
@@ -337,8 +350,24 @@ s3c_irqext_type(unsigned int irq, unsigned int type)
 	t  |=  (value  &  0x0f000000)  >>  20;
 	t  |=  (value  &  0xf0000000)  >>  28;
 	value  =  t;
-#endif /* CONFIG_CPU_S3C2443 */
 
+	if (S3C24XX_EXTINT1 == extint_reg ||
+	    S3C24XX_EXTINT2 == extint_reg) {
+		/* Swap bits in nibbles */
+		unsigned char old_n, new_n;
+		int i;
+
+		t = 0;
+		for (i=0; i < 8; i++) {
+			old_n = (value & (0xf << (4*i))) >> (4*i);
+			new_n = ((old_n & 0xe) >> 1);
+			if (old_n & 0x1)
+				new_n |= 0x8;
+			t |= new_n << (4*i);
+		}
+		value = t;
+	}
+#endif /* CONFIG_CPU_S3C2443 */
 	value = (value & ~(7 << extint_offset)) | (newvalue << extint_offset);
 	__raw_writel(value, extint_reg);
 
