@@ -49,13 +49,13 @@
  */
 #if !defined(MODULE)
 #include "fim_usb.h"
-extern const unsigned char fim_serial_firmware[];
+extern const unsigned char fim_usb_firmware[];
 #define FIM_USB_FIRMWARE_FILE			(NULL)
 #define FIM_USB_FIRMWARE_CODE			fim_usb_firmware
 #else
-const unsigned char *fim_serial_firmware = NULL;
+const unsigned char *fim_usb_firmware = NULL;
 #define FIM_USB_FIRMWARE_FILE			"fim_usb.bin"
-#define FIM_USB_FIRMWARE_CODE			(NULL)
+#define FIM_USB_FIRMWARE_CODE			fim_usb_firmware
 #endif
 
 /* Driver informations */
