@@ -880,8 +880,8 @@ EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 {
 #define MINIMUM_PS_BEACON_INT		(100)
+#define MAX_SHUTDOWN_TIMEOUT		(100)
 	unsigned long flags;
-	unsigned int timeout = 50;
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
@@ -919,18 +919,61 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				 */
 				piper_MacEnterActiveMode(piperp, PS_WANT_SPIKE_SUPPRESSION);
 			} else {
+				unsigned int timeout = 50;
+				int result;
 				/*
-				 * If we were in power save mode, but powered up, then we must power
-				 * down and then back up so that we can do spike suppression.
+				 * If we branch here, then we were already powered up.  You would think
+				 * that we would be all set, but it's not that easy.  Piper has a bug in
+				 * it where we have to run a special spike suppression routine when we
+				 * power it up.  However, this routine takes an average of 30 ms to run,
+				 * and I've see it take as long as 300 ms.  This is not acceptable when
+				 * we are duty cycling every 100 ms.  To get around this, we do NOT do
+				 * the spike suppression while duty cycling.  Instead, we simply avoid
+				 * transmitting at those rates which would cause spikes.  Now, however,
+				 * we are ending duty cycling and returning to normal operations so we
+				 * have to do the spike suppression.  Since we are powered up, the first
+				 * thing to do is to power down.
 				 */
-				while ((piper_MacEnterSleepMode(piperp, PS_DONT_FORCE) != 0) && (--timeout)) {
-					spin_unlock_irqrestore(&piperp->ps.lock, flags);
-					mdelay(5);
-					spin_lock_irqsave(&piperp->ps.lock, flags);
+				if (piperp->ps.state != PS_STATE_WAIT_FOR_STOP_TRANSMIT_EVENT) {
+					/*
+					 * If we come here, then we did not happen to be trying to power down
+					 * just as we got the command from mac80211, so we have to start
+					 * the procedure.  This is the normal case.
+					 *
+					 * 1. Set the power save on flag.  This will cause frames to be
+					 *    transmitted with the power management bit on.  The reason
+					 *    for doing that is to tell the AP to stop sending us frames.
+					 * 2. Stop the mac80211 layer from sending us more frames by stopping
+					 *    the transmit queues.
+					 * 3. Send a null-data frame to the AP with the power management bit
+					 *    set.  This should cause it to stop sending us frames.
+					 */
+				 	piperp->ps.power_management = POWERING_DOWN;
+				 	piperp->ps.allowTransmits = false;
+				 	ieee80211_stop_queues(piperp->hw);
+				 	piperp->ps.stopped_tx_queues = true;
+				 	piper_sendNullDataFrame(piperp, POWERING_DOWN);
 				}
-				if (timeout == 0) {
-#if 1
-					printk(KERN_ERR "piper_MacEnterSleepMode never succeeded.\n");
+				/*
+				 * Now wait for that last frame to go and and then shut down.
+				 */
+				 result = -1;
+				 for (timeout = 0; (timeout < MAX_SHUTDOWN_TIMEOUT) && (result != 0); timeout++) {
+					spin_unlock_irqrestore(&piperp->ps.lock, flags);
+					mdelay(10);
+					spin_lock_irqsave(&piperp->ps.lock, flags);
+					timeout--;
+					result = piper_MacEnterSleepMode(piperp, PS_DONT_FORCE);
+				}
+				if (result != 0) {
+					/*
+					 * This is bad.  For some reason we are not able to power down.  We
+					 * will try to force it now, but this may end up putting the driver
+					 * or H/W into a bad state.  However, we can't sit in the loop above
+					 * forever either.
+					 */
+#ifdef WANT_DEBUG
+					printk(KERN_ERR "Forcing Piper to power down\n");
 					printk(KERN_ERR "BB_RSSI_EAS_BUSY = %d\n", piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY);
 					printk(KERN_ERR "BB_GENERAL_CTL_TX_FIFO_EMPTY = %d\n",
 					    piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY);
@@ -938,42 +981,42 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 						piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY);
 					digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
 #endif
-					timeout = 50;
-					while ((--timeout != 0)
-					       && (((piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0)
-					       || ((piperp->ac->rd_reg(piperp, BB_GENERAL_STAT) & BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0))) {
-				        piper_MacEnterSleepMode(piperp, PS_FORCE_POWER_DOWN);
-				        mdelay(100);
-				        piper_MacEnterActiveMode(piperp, PS_WANT_SPIKE_SUPPRESSION);
-				    }
-				} else {
-				    piper_MacEnterActiveMode(piperp, PS_WANT_SPIKE_SUPPRESSION);
+					piper_MacEnterSleepMode(piperp, PS_FORCE_POWER_DOWN);
 				}
+				/*
+				 * Wait a moment and then power the H/W back up and execute the spike suppression
+				 * routine.
+				 */
+				spin_unlock_irqrestore(&piperp->ps.lock, flags);
+				mdelay(30);
+				spin_lock_irqsave(&piperp->ps.lock, flags);
+				piper_MacEnterActiveMode(piperp, PS_WANT_SPIKE_SUPPRESSION);
+				ps_resume_transmits(piperp);
 			}
 			stats.jiffiesOn += jiffies - stats.cycleStart;
-		}
-		if ((piperp->ps.beacon_int != 0)
-		    && ((jiffies - stats.modeStart) != 0)) {
 #define WANT_STATS		(1)
 #if WANT_STATS
-			printk(KERN_ERR
-			       "jiffiesOff = %u, jiffiesOn = %u, total time = %lu\n",
-			       stats.jiffiesOff, stats.jiffiesOn,
-			       (jiffies - stats.modeStart));
-			printk(KERN_ERR
-			       "Powered down %ld percent of the time.\n",
-			       (stats.jiffiesOff * 100) / (jiffies - stats.modeStart));
-			printk(KERN_ERR
-			       "Received %u of %lu beacons while in powersave mode.\n",
-			       stats.receivedBeacons,
-			       (jiffies -
-				stats.modeStart) /
-			       MILLS_TO_JIFFIES(piperp->ps.beacon_int));
-			printk(KERN_ERR "received %d beacons, missed %d\n",
-					stats.receivedBeacons, stats.missedBeacons);
-			if ((stats.receivedBeacons + stats.missedBeacons) != 0)
-				printk(KERN_ERR "%d%% beacons were missed\n",
-					(100 * stats.missedBeacons) / (stats.receivedBeacons + stats.missedBeacons));
+			if ((piperp->ps.beacon_int != 0)
+			    && ((jiffies - stats.modeStart) != 0)) {
+				printk(KERN_ERR
+				       "jiffiesOff = %u, jiffiesOn = %u, total time = %lu\n",
+				       stats.jiffiesOff, stats.jiffiesOn,
+				       (jiffies - stats.modeStart));
+				printk(KERN_ERR
+				       "Powered down %ld percent of the time.\n",
+				       (stats.jiffiesOff * 100) / (jiffies - stats.modeStart));
+				printk(KERN_ERR
+				       "Received %u of %lu beacons while in powersave mode.\n",
+				       stats.receivedBeacons,
+				       (jiffies -
+					stats.modeStart) /
+				       MILLS_TO_JIFFIES(piperp->ps.beacon_int));
+				printk(KERN_ERR "received %d beacons, missed %d\n",
+						stats.receivedBeacons, stats.missedBeacons);
+				if ((stats.receivedBeacons + stats.missedBeacons) != 0)
+					printk(KERN_ERR "%d%% beacons were missed\n",
+						(100 * stats.missedBeacons) / (stats.receivedBeacons + stats.missedBeacons));
+			}
 #endif
 		}
 	    piperp->ps.aid = 0;
