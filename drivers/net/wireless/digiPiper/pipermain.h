@@ -192,6 +192,7 @@ struct piper_priv;
 struct piper_ps {
     u32 beacon_int;
     u16 aid;
+	volatile unsigned int scan_timer;
     unsigned int sleep_time;
     struct timer_list timer;
     enum piper_ps_mode mode;
@@ -345,6 +346,7 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force);
 void piper_sendNullDataFrame(struct piper_priv *piperp, bool isPowerSaveOn);
 void piper_ps_rx_task_exiting(struct piper_priv *piperp);
+void piper_ps_scan_event(struct piper_priv *piperp);
 
 /*
  * Defines for debugging function dumpRegisters

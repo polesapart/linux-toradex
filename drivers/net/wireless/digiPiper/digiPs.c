@@ -78,6 +78,11 @@
  */
 #define PS_MINIMUM_BEACON_INT		(100)
 
+/*
+ * Amount of time we will pause duty cycling for after receiving an event that suggests
+ * wpa_supplicant is attempting to reassociate with an AP.
+ */
+#define PS_SCAN_DELAY				(5000)
 
 
 // Powersave register index
@@ -611,11 +616,16 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 */
 			ps_cancel_timer_event(piperp);				/* cancel missed beacon timer*/
 			stats.receivedBeacons++;
-			if ((!piperp->areWeAssociated) || (piperp->ps.beacon_int <  PS_MINIMUM_BEACON_INT)) {
+			if (   (!piperp->areWeAssociated)
+			    || (piperp->ps.beacon_int <  PS_MINIMUM_BEACON_INT)
+			    || (piperp->ps.scan_timer != 0)) {
 				/*
 				 * Don't duty cyle while we are trying to associate.
 				 */
 				piperp->ps.state = PS_STATE_WAIT_FOR_BEACON;
+				if (piperp->ps.scan_timer) {
+					piperp->ps.scan_timer--;
+				}
 				break;
 			}
 			if (piperp->ps.state == PS_STATE_WAIT_FOR_BEACON) {
@@ -668,6 +678,13 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 * 	   power management bit set.
 			 */
 			 if (piperp->ps.state == PS_STATE_WAIT_FOR_STOP_TRANSMIT_EVENT) {
+			 	if (piperp->ps.scan_timer) {
+			 		/*
+			 		 * Don't shut down if we are scanning.
+			 		 */
+					piperp->ps.state = PS_STATE_WAIT_FOR_BEACON;
+					break;
+				}
 			 	piperp->ps.power_management = POWERING_DOWN;
 			 	piperp->ps.allowTransmits = false;
 			 	ieee80211_stop_queues(piperp->hw);
@@ -692,27 +709,30 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 * from the null-data frame sent by the PS_EVENT_STOP_TRANSMIT_TIMER_EXPIRED event.
 			 * We try to power down now.
 			 */
-			 if (   (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE)
-			 	 || (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE_EVENT)) {
-				ps_cancel_timer_event(piperp);				/* cancel transmitter done timeout timer*/
-			 	if (piper_MacEnterSleepMode(piperp, PS_DONT_FORCE) == 0) {
-			 		piperp->ps.state = PS_STATE_WAIT_FOR_WAKEUP_ALARM;
-			 		/*
-			 		 * Note that the value PS_EVENT_TRANSMITTER_DONE_TIMER_TICK is
-			 		 * updated as necessary by the PS_EVENT_TRANSMITTER_DONE_TIMER_TICK
-			 		 * event to take into account the amount of time it took for the
-			 		 * transmitter to finish sending the last frame.
-			 		 */
-			 		ps_set_timer_event(piperp, PS_EVENT_WAKEUP, piperp->ps.sleep_time);
-			 		break;
+			 if (piperp->ps.scan_timer == 0) {
+				 if (   (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE)
+				 	 || (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE_EVENT)) {
+					ps_cancel_timer_event(piperp);				/* cancel transmitter done timeout timer*/
+				 	if (piper_MacEnterSleepMode(piperp, PS_DONT_FORCE) == 0) {
+				 		piperp->ps.state = PS_STATE_WAIT_FOR_WAKEUP_ALARM;
+				 		/*
+				 		 * Note that the value PS_EVENT_TRANSMITTER_DONE_TIMER_TICK is
+				 		 * updated as necessary by the PS_EVENT_TRANSMITTER_DONE_TIMER_TICK
+				 		 * event to take into account the amount of time it took for the
+				 		 * transmitter to finish sending the last frame.
+				 		 */
+				 		ps_set_timer_event(piperp, PS_EVENT_WAKEUP, piperp->ps.sleep_time);
+				 		break;
+					}
+				 } else {
+				 	printk(KERN_ERR "** PS_EVENT_TRANSMITTER_DONE event, but state == %d.\n", piperp->ps.state);
 				}
-			 } else {
-			 	printk(KERN_ERR "** PS_EVENT_TRANSMITTER_DONE event, but state == %d.\n", piperp->ps.state);
 			}
 			 /*
 			  * If we fall through to here, then either we are in the wrong state, or we were
 			  * not able to power down the H/W.
 			  */
+			ps_resume_transmits(piperp);
 			piperp->ps.state = PS_STATE_WAIT_FOR_BEACON;
 			ps_set_timer_event(piperp, PS_EVENT_MISSED_BEACON,
 						 piperp->ps.beacon_int + PS_BEACON_TIMEOUT_MS);
@@ -783,7 +803,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 * our statistics.
 			 */
 		 	piperp->ps.state = PS_STATE_WAIT_FOR_BEACON;
-		 	if (piperp->areWeAssociated) {
+		 	if ((piperp->areWeAssociated)  && (piperp->ps.scan_timer == 0)) {
 				stats.missedBeacons++;
 				ps_set_timer_event(piperp, PS_EVENT_MISSED_BEACON, piperp->ps.beacon_int);
 			}
@@ -884,6 +904,22 @@ void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *s
 EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
 
 
+
+/*
+ * This routine is called when mac80211 starts doing things that might indicate it
+ * is attempting to scan or reassociate.  Things like changing the channel or
+ * disassociating.  When we receive an event like that, we stop duty cycling for
+ * a while since it may interface with attempts to reassociate with an access point.
+ */
+void piper_ps_scan_event(struct piper_priv *piperp)
+{
+	if (piperp->ps.beacon_int != 0) {
+		piperp->ps.scan_timer = PS_SCAN_DELAY / piperp->ps.beacon_int;
+	} else {
+		piperp->ps.scan_timer = PS_SCAN_DELAY / 100;
+	}
+}
+
 /*
  * This function turns power save mode on or off.
  */
@@ -894,6 +930,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
+	piper_ps_scan_event(piperp);
 	if (powerSaveOn) {
 		if (piperp->ps.beacon_int >= PS_MINIMUM_BEACON_INT) {
 			if (piperp->ps.mode != PS_MODE_LOW_POWER) {

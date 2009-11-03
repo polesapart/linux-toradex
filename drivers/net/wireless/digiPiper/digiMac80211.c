@@ -523,6 +523,7 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
 		 * Enable power save mode if bit set in flags, and if we are in station
 		 * mode.  Power save is not supported in ad-hoc/mesh mode.
 		 */
+		piper_ps_scan_event(piperp);
 		piper_ps_set(piperp, (	(conf->flags & IEEE80211_CONF_PS)
 							  && (piperp->if_type == NL80211_IFTYPE_STATION)
 							  && (piperp->areWeAssociated)));
@@ -555,6 +556,7 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
 
 	/* Set channel */
 	if (conf->channel->hw_value != piperp->channel) {
+		piper_ps_scan_event(piperp);
 		if ((err = piperp->rf->set_chan(hw, conf->channel->hw_value)) !=0) {
 			dprintk(DERROR, "unable to set ch to %d\n",
 				conf->channel->hw_value);
@@ -581,6 +583,7 @@ static int piper_hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *v
 	    !is_zero_ether_addr(conf->bssid) &&
 	    !is_multicast_ether_addr(conf->bssid)) {
 
+		piper_ps_scan_event(piperp);
 		switch (vif->type) {
 		case NL80211_IFTYPE_STATION:
 		case NL80211_IFTYPE_ADHOC:
@@ -669,6 +672,7 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 	dprintk(DVVERBOSE, " changed = 0x%08x\n", changed);
 
 	if (changed & BSS_CHANGED_ASSOC) {
+		piper_ps_scan_event(piperp);
 		/* Our association status has changed */
 		if (piperp->if_type == NL80211_IFTYPE_STATION) {
 			piper_set_status_led(hw, conf->assoc ? led_associated : led_not_associated);
