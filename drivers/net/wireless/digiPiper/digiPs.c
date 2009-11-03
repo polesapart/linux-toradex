@@ -72,6 +72,13 @@
 #define PS_BEACON_TIMEOUT_MS		(40)
 
 
+/*
+ * Minimum beacon interval we will support for duty cycling.  There is so much overhead
+ * in duty cycling that it doesn't make sense to do it for short beacon intervals.
+ */
+#define PS_MINIMUM_BEACON_INT		(100)
+
+
 
 // Powersave register index
 #define	INDX_GEN_CONTROL    0	// General control
@@ -330,6 +337,7 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
+#define WANT_DEBUG
 #ifdef WANT_DEBUG
 	static unsigned int run = 0;
 #endif
@@ -371,7 +379,8 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
       // store the registers back
 
 	piperp->ac->wr_reg(piperp, BB_GENERAL_STAT, 0x30000000, op_write);
-	piperp->ac->wr_reg(piperp, BB_RSSI, savedRegs[INDX_RSSI_AES], op_write);
+	piperp->ac->wr_reg(piperp, BB_RSSI, savedRegs[INDX_RSSI_AES] & ~BB_RSSI_EAS_BUSY, op_write);
+
 //	piperp->ac->wr_reg(piperp, BB_IRQ_MASK, savedRegs[INDX_INTR_MASK], op_write);
 	piperp->ac->wr_reg(piperp, BB_SPI_CTRL, savedRegs[INDX_SPI_CTRL], op_write);
 	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, savedRegs[INDX_CONF1], op_write);
@@ -602,7 +611,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 */
 			ps_cancel_timer_event(piperp);				/* cancel missed beacon timer*/
 			stats.receivedBeacons++;
-			if (!piperp->areWeAssociated) {
+			if ((!piperp->areWeAssociated) || (piperp->ps.beacon_int <  PS_MINIMUM_BEACON_INT)) {
 				/*
 				 * Don't duty cyle while we are trying to associate.
 				 */
@@ -696,7 +705,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			 		 */
 			 		ps_set_timer_event(piperp, PS_EVENT_WAKEUP, piperp->ps.sleep_time);
 			 		break;
-			 	}
+				}
 			 } else {
 			 	printk(KERN_ERR "** PS_EVENT_TRANSMITTER_DONE event, but state == %d.\n", piperp->ps.state);
 			}
@@ -838,23 +847,24 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 #define BEACON_INT_LSB					(8)
 #define BEACON_INT_MSB					(9)
 	u32 beacon_int;
+	_80211HeaderType *header = (_80211HeaderType *) skb->data;
+	bool fromOurAp = piperp->areWeAssociated
+					&& (memcmp(piperp->bssid, header->addr3, sizeof (header->addr3)) == 0);
 
 	/*
 	 * mac80211 does not inform us when the beacon interval changes, so we have
 	 * to read this information from the beacon ourselves.
 	 */
-	beacon_int = skb->data[sizeof(_80211HeaderType) + BEACON_INT_LSB];
-	beacon_int |= (skb->data[sizeof(_80211HeaderType) + BEACON_INT_MSB] << 8);
-	if (beacon_int != piperp->ps.beacon_int) {
+
+	if (fromOurAp) {
+		beacon_int = skb->data[sizeof(_80211HeaderType) + BEACON_INT_LSB];
+		beacon_int |= (skb->data[sizeof(_80211HeaderType) + BEACON_INT_MSB] << 8);
 		piperp->ps.beacon_int = beacon_int;
+
+		if (piperp->ps.mode == PS_MODE_LOW_POWER) {
+			ps_state_machine(piperp, PS_EVENT_BEACON_RECEIVED);
+		}
 	}
-
-	/* TODO:  Handle case where beacon interval is too small */
-
-	if (piperp->ps.mode == PS_MODE_LOW_POWER) {
-		ps_state_machine(piperp, PS_EVENT_BEACON_RECEIVED);
-	}
-
 }
 
 
@@ -879,14 +889,13 @@ EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
  */
 void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 {
-#define MINIMUM_PS_BEACON_INT		(100)
 #define MAX_SHUTDOWN_TIMEOUT		(100)
 	unsigned long flags;
 
 	spin_lock_irqsave(&piperp->ps.lock, flags);
 
 	if (powerSaveOn) {
-		if (piperp->ps.beacon_int >= MINIMUM_PS_BEACON_INT) {
+		if (piperp->ps.beacon_int >= PS_MINIMUM_BEACON_INT) {
 			if (piperp->ps.mode != PS_MODE_LOW_POWER) {
 			    piperp->ps.aid = 0;
 			    piperp->ps.mode = PS_MODE_LOW_POWER;
@@ -899,6 +908,8 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 			    stats.missedBeacons = 0;
 				stats.modeStart = jiffies;
 				stats.cycleStart = jiffies;
+				stats.jiffiesOff = 0;
+				stats.jiffiesOn = 0;
 				piper_sendNullDataFrame(piperp, POWERED_UP);
 				/*
 				 * Will start it the next time we receive a beacon.
