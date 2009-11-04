@@ -241,7 +241,7 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 				(*length)--;
 			break;
 		default:
-			WARN_ON(1);
+			/* WARN_ON(1); This happens to often for us to generate that long error message */
 			*length = 0;
 		}
 
