@@ -342,7 +342,7 @@ int piper_MacEnterSleepMode(struct piper_priv *piperp, bool force)
 void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppression)
 {
 	int i;
-#define WANT_DEBUG
+// #define WANT_DEBUG
 #ifdef WANT_DEBUG
 	static unsigned int run = 0;
 #endif
@@ -891,15 +891,28 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
  * This routine is called when mac80211 starts doing things that might indicate it
  * is attempting to scan or reassociate.  Things like changing the channel or
  * disassociating.  When we receive an event like that, we stop duty cycling for
- * a while since it may interface with attempts to reassociate with an access point.
+ * a while since it may interfere with attempts to reassociate with an access point.
  */
 void piper_ps_scan_event(struct piper_priv *piperp)
 {
+	(void) piperp;
+#if 0
+	/*
+	 * It appears that pausing duty cycling during association events may actually
+	 * worsen performance I suspect that either the AP or mac80211 is measuring
+	 * our throughput and adjusting the load accordingly, and that momentary changes
+	 * in performance caused by pausing duty cyling interfere with this.
+	 *
+	 * TODO:  Consider removing this code.  I left it in for now in case we decide
+	 *        to try it again, but if we're not going to use it, it just makes the
+	 *        driver more confusing and should be removed.
+	 */
 	if (piperp->ps.beacon_int != 0) {
 		piperp->ps.scan_timer = PS_SCAN_DELAY / piperp->ps.beacon_int;
 	} else {
 		piperp->ps.scan_timer = PS_SCAN_DELAY / 100;
 	}
+#endif
 }
 
 
@@ -1050,7 +1063,7 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				ps_resume_transmits(piperp);
 			}
 			stats.jiffiesOn += jiffies - stats.cycleStart;
-#define WANT_STATS		(1)
+#define WANT_STATS		(0)
 #if WANT_STATS
 			if ((piperp->ps.beacon_int != 0)
 			    && ((jiffies - stats.modeStart) != 0)) {
