@@ -508,11 +508,9 @@ static void ps_resume_transmits(struct piper_priv *piperp)
 {
 	piperp->ps.power_management = POWERED_UP;
  	piperp->ps.allowTransmits = true;
- 	if (piperp->ps.stopped_tx_queues) {
- 		piperp->ps.stopped_tx_queues = false;
- 		ieee80211_wake_queues(piperp->hw);
- 	}
+	piperp->ps.stopped_tx_queues = false;
  	piper_sendNullDataFrame(piperp, POWERED_UP);
+	ieee80211_wake_queues(piperp->hw);
 }
 
 
@@ -585,7 +583,6 @@ void debug_track_event(enum piper_ps_event event, enum piper_ps_state state)
 	#define debug_track_event(event, state)
 #endif
 
-
 /*
  * This is the entry point into the duty cycle state machine.  It may be called
  * by:
@@ -651,11 +648,12 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 					ps_set_timer_event(piperp, PS_EVENT_STOP_TRANSMIT_TIMER_EXPIRED, timeout);
 
 					break;
-				} else {
-					printk(KERN_ERR "*** power down skipped sleep = %d, timeout = %d.\n",
-							piperp->ps.sleep_time, timeout);
 				}
 			} else {
+				 if (   (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE)
+				 	 || (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE_EVENT)) {
+					ps_resume_transmits(piperp);
+				}
 				printk(KERN_ERR "*** Beacon event in state %d.\n", piperp->ps.state);
 			}
 			/*
@@ -888,22 +886,6 @@ static void piper_ps_handle_beacon(struct piper_priv *piperp, struct sk_buff *sk
 }
 
 
-/*
- * This routine is called so we can process incoming frames.  We do the
- * handshaking to receive buffered frames in PS mode here.
- */
-void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb)
-{
-	_80211HeaderType *header = (_80211HeaderType *) skb->data;
-
-	if (header->fc.type == TYPE_BEACON) {
-		piper_ps_handle_beacon(piperp, skb);
-	}
-}
-
-EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
-
-
 
 /*
  * This routine is called when mac80211 starts doing things that might indicate it
@@ -919,6 +901,32 @@ void piper_ps_scan_event(struct piper_priv *piperp)
 		piperp->ps.scan_timer = PS_SCAN_DELAY / 100;
 	}
 }
+
+
+
+/*
+ * This routine is called so we can process incoming frames.  We do the
+ * handshaking to receive buffered frames in PS mode here.
+ */
+void piper_ps_process_receive_frame(struct piper_priv *piperp, struct sk_buff *skb)
+{
+	_80211HeaderType *header = (_80211HeaderType *) skb->data;
+
+	if (header->fc.type == TYPE_BEACON) {
+		piper_ps_handle_beacon(piperp, skb);
+	} else if (   (header->fc.type == TYPE_ASSOC_RESP)
+			   || (header->fc.type == TYPE_REASSOC_RESP)
+			   || (header->fc.type == TYPE_PROBE_RESP)
+			   || (header->fc.type == TYPE_DISASSOC)
+			   || (header->fc.type == TYPE_DEAUTH)
+			   || (header->fc.type == TYPE_ACTION)) {
+		piper_ps_scan_event(piperp);
+	}
+}
+
+EXPORT_SYMBOL_GPL(piper_ps_process_receive_frame);
+
+
 
 /*
  * This function turns power save mode on or off.
@@ -1061,6 +1069,9 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 				       MILLS_TO_JIFFIES(piperp->ps.beacon_int));
 				printk(KERN_ERR "received %d beacons, missed %d\n",
 						stats.receivedBeacons, stats.missedBeacons);
+				printk(KERN_ERR "allowTransmits = %d, stopped_tx_queues = %d, q_count = %d\n",
+ 						 	piperp->ps.allowTransmits, piperp->ps.stopped_tx_queues,
+ 						 	piperp->tx_queue_count);
 				if ((stats.receivedBeacons + stats.missedBeacons) != 0)
 					printk(KERN_ERR "%d%% beacons were missed\n",
 						(100 * stats.missedBeacons) / (stats.receivedBeacons + stats.missedBeacons));
