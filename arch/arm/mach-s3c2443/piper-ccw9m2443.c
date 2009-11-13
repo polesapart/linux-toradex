@@ -305,10 +305,10 @@ static int ccw9m2443_wifi_cs_config(void)
 		return -EBUSY;
 
 	writel(10, ssmc + S3C2443_SSMC_SMBIDCYR4);	/* Idle cycle ctrl */
-	writel(14, ssmc + S3C2443_SSMC_SMBWSTWRR4);	/* Write Wait State ctrl */
-	writel(3, ssmc + S3C2443_SSMC_SMBWSTOENR4);	/* Output Enable Assertion Delay */
-	writel(3, ssmc + S3C2443_SSMC_SMBWSTWENR4);	/* Write Enable Assertion Delay */
-	writel(14 , ssmc + S3C2443_SSMC_SMBWSTRDR4);	/* Read Wait State control */
+	writel(15, ssmc + S3C2443_SSMC_SMBWSTWRR4);	/* Write Wait State ctrl */
+	writel(7, ssmc + S3C2443_SSMC_SMBWSTOENR4);	/* Output Enable Assertion Delay */
+	writel(7, ssmc + S3C2443_SSMC_SMBWSTWENR4);	/* Write Enable Assertion Delay */
+	writel(15 , ssmc + S3C2443_SSMC_SMBWSTRDR4);	/* Read Wait State control */
 	/* Read Byte Lane Enable and configure memory width to 16 bit */
  	reg = (readl(ssmc + S3C2443_SSMC_SMBCR4) & ~(3 << 4)) | (1 << 4) | 0x1;
 	writel(reg, ssmc + S3C2443_SSMC_SMBCR4);
