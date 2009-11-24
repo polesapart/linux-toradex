@@ -345,8 +345,10 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 	piperp->pstats.tx_queue.len++;
 	piperp->pstats.tx_queue.count++;
 
-	if (piper_tx_enqueue(piperp, skb, skb_return_cb) == -1)
+	if (piper_tx_enqueue(piperp, skb, skb_return_cb) == -1) {
+		skb_pull(skb, TX_HEADER_LENGTH);		/* undo the skb_push above */
 		return -EBUSY;
+	}
 
 	spin_lock_irqsave(&piperp->tx_tasklet_lock, flags);
 	if (!piperp->tx_tasklet_running) {
