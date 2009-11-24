@@ -356,6 +356,11 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 			digiWifiDumpRegisters(piperp, MAIN_REGS);
 			while(1);
 		}
+		if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) {
+			printk(KERN_ERR "**** While in reset AES busy set, run = %d\n", run);
+			digiWifiDumpRegisters(piperp, MAIN_REGS);
+			while(1);
+		}
 #endif
 	    piperp->pdata->reset(piperp, 0);
 	    udelay(10);
@@ -363,6 +368,11 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 #ifdef WANT_DEBUG
 		if (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL) & BB_GENERAL_CTL_TX_FIFO_FULL) {
 			printk(KERN_ERR "**** After reset, run = %d\n", run);
+			digiWifiDumpRegisters(piperp, MAIN_REGS);
+			while(1);
+		}
+		if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) {
+			printk(KERN_ERR "**** After reset AES busy set, run = %d\n", run);
 			digiWifiDumpRegisters(piperp, MAIN_REGS);
 			while(1);
 		}
@@ -378,7 +388,7 @@ void piper_MacEnterActiveMode(struct piper_priv *piperp, bool want_spike_suppres
 
 
 #if RESET_PIPER
-	piperp->rf->set_chan(piperp->hw, piperp->channel);
+	piperp->rf->set_chan_no_rx(piperp->hw, piperp->channel);
 #endif
 
       // store the registers back
@@ -654,7 +664,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 				 	 || (piperp->ps.state == PS_STATE_WAIT_FOR_TRANSMITTER_DONE_EVENT)) {
 					ps_resume_transmits(piperp);
 				}
-				printk(KERN_ERR "*** Beacon event in state %d.\n", piperp->ps.state);
+				digi_dbg("*** Beacon event in state %d.\n", piperp->ps.state);
 			}
 			/*
 			 * We will come here if we were in the wrong state when we received the
@@ -695,7 +705,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 				/*
 				 * This should never happen (famous last words)
 				 */
-				printk(KERN_ERR "** stop tx event, state = %d.\n", piperp->ps.state);
+				digi_dbg("** stop tx event, state = %d.\n", piperp->ps.state);
 				piperp->ps.state = PS_STATE_WAIT_FOR_BEACON;
 				ps_set_timer_event(piperp, PS_EVENT_MISSED_BEACON,
 							piperp->ps.beacon_int + PS_BEACON_TIMEOUT_MS);
@@ -723,7 +733,15 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 				 		break;
 					}
 				 } else {
-				 	printk(KERN_ERR "** PS_EVENT_TRANSMITTER_DONE event, but state == %d.\n", piperp->ps.state);
+#ifdef WANT_DEBUG
+		printk(KERN_ERR "couldn't sleep, rxt=%d, AES busy = %d, txfifo=%d, txt=%d, rxfifo=%d\n",
+				(piperp->ps.rxTaskletRunning),((piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) != 0),
+				(  (piperp->ac->rd_reg(piperp, BB_GENERAL_CTL)& BB_GENERAL_CTL_TX_FIFO_EMPTY) == 0),
+				(piperp->tx_tasklet_running),
+    	     	(  (piperp->ac->rd_reg(piperp, BB_GENERAL_STAT)
+    			& BB_GENERAL_STAT_RX_FIFO_EMPTY) == 0));
+#endif
+				 	digi_dbg("** PS_EVENT_TRANSMITTER_DONE event, but state == %d.\n", piperp->ps.state);
 				}
 			}
 			 /*
@@ -772,7 +790,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 				 */
 				break;
 			} else {
-				printk(KERN_ERR "** done tick in state %d.\n", piperp->ps.state);
+				digi_dbg("** done tick in state %d.\n", piperp->ps.state);
 			}
 			break;
 		case PS_EVENT_WAKEUP:
@@ -792,7 +810,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 				ps_set_timer_event(piperp, PS_EVENT_MISSED_BEACON,
 							 PS_BEACON_TIMEOUT_MS + PS_WAKE_BEFORE_BEACON_MS);
 			} else {
-				printk(KERN_ERR "** wake event in state %d.\n", piperp->ps.state);
+				digi_dbg("** wake event in state %d.\n", piperp->ps.state);
 			}
 			break;
 		case PS_EVENT_MISSED_BEACON:
@@ -807,7 +825,7 @@ static void ps_state_machine(struct piper_priv *piperp, enum piper_ps_event even
 			}
 			break;
 		default:
-			printk(KERN_ERR "**** ps_state_machine received unknown event %d.\n", event);
+			digi_dbg("**** ps_state_machine received unknown event %d.\n", event);
 			break;
 	}
 	spin_unlock_irqrestore(&piperp->ps.lock, flags);
