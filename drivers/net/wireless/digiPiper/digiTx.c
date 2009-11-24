@@ -150,7 +150,20 @@ static int piper_write_aes(struct piper_priv *piperp, unsigned char *buffer,
 	while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) {
 		timeout--;
 		if (timeout == 0) {
+			/*
+			 * If we come here, then AES busy appears to be stuck high.  It should only be
+			 * high for a maximum of about 80 us when it is encrypting a transmit frame.
+			 * Our timeout value is high enough to guarantee that the engine has had enough
+			 * time to complete the transmit.  Apparently there is data stuck in the FIFO
+			 * from either a previous transmit or receive.
+			 */
+			digi_dbg("write AES, AES busy stuck on\n");
 			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+			/*
+			 * We recover by simply continuing on.  Step 3 writes to the AES control
+			 * register.  This will reset the AES engine and clear the error condition.
+			 */
+			break;
 		}
 		udelay(1);
 	}
@@ -441,7 +454,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 			}
 		}
 	} else {
-		printk(KERN_ERR "packet_tx_done called with empty queue\n");
+		digi_dbg("packet_tx_done called with empty queue\n");
 	}
 
 	piperp->tx_result = TX_NOT_DONE;

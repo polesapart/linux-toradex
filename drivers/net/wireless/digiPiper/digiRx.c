@@ -127,8 +127,21 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 			while (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) {
 				timeout--;
 				if (timeout == 0) {
+					/*
+					 * If we come here, then AES busy appears to be stuck high.  It should only be
+					 * high for a maximum of about 80 us when it is encrypting a transmit frame.
+					 * Our timeout value is high enough to guarantee that the engine has had enough
+					 * time to complete the transmit.  Apparently there is data stuck in the FIFO
+					 * from either a previous transmit or receive.
+					 */
 					dprintk(DWARNING, "1st AES busy never became ready\n");
 					digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
+					/*
+					 * We recover by simply continuing on.  The next step is to read
+					 * from the AES control register.  This will reset the AES engine
+					 * and clear the error condition.
+					 */
+					break;
 				}
 				udelay(1);
 			}
@@ -180,6 +193,17 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 				udelay(1);
 			}
 			result = ((piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_MIC) != 0);
+			timeout = 500;
+			while ((piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_FIFO_EMPTY) == 0) {
+				timeout--;
+				piperp->ac->rd_reg(piperp, BB_AES_FIFO);
+				udelay(1);
+			}
+#ifdef WANT_DEBUG
+			if (piperp->ac->rd_reg(piperp, BB_RSSI) & BB_RSSI_EAS_BUSY) {
+				digi_dbg("AES busy set at end of rx\n");
+			}
+#endif
 			spin_unlock_irqrestore(&piperp->aesLock, flags);
 
 			/*  pad an extra 8 bytes for the MIC which the H/W strips */
@@ -187,7 +211,7 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 			if (result) {
 				status->flag |= RX_FLAG_DECRYPTED;
 			} else {
-				dprintk(DWARNING, "Error decrypting packet\n");
+				digi_dbg("Error decrypting packet\n");
 			}
 		} else {
 			/*
