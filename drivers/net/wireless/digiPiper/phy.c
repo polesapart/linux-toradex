@@ -89,7 +89,7 @@ void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *
 			}
 			break;
 		default:
-			printk(KERN_ERR "rate = %p, rate->bitrate%d\n", rate, rate->bitrate);
+			digi_dbg("rate = %p, rate->bitrate%d\n", rate, rate->bitrate);
 			WARN_ON(1);
 			us_len = 0;
 		}
@@ -259,7 +259,7 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 		status->rate_idx = i;
 	else {
 	    *length = 0;
-		printk(KERN_ERR PIPER_DRIVER_NAME
+		digi_dbg(PIPER_DRIVER_NAME
 				": couldn't find bitrate index for %d?\n",
 				rate);
 		status->flag |= RX_FLAG_FAILED_PLCP_CRC;
