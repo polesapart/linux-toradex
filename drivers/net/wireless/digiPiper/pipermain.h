@@ -148,6 +148,7 @@ struct digi_rf_ops {
     void (*init) (struct ieee80211_hw *, int);
     int (*stop) (struct ieee80211_hw *);
     int (*set_chan) (struct ieee80211_hw *, int chan);
+    int (*set_chan_no_rx) (struct ieee80211_hw *, int chan);
     int (*set_pwr) (struct ieee80211_hw *, uint8_t val);
     void (*set_pwr_index) (struct ieee80211_hw *, unsigned int val);
     void (*power_on) (struct ieee80211_hw *, bool want_power_on);
