@@ -308,7 +308,7 @@ static int write_rf(struct ieee80211_hw *hw, unsigned char reg, unsigned int val
 	return err;
 }
 
-static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
+static int al7230_rf_set_chan_private(struct ieee80211_hw *hw, int channelIndex, bool enable_rx)
 {
 	struct piper_priv *priv = hw->priv;
 	static int rf_band;
@@ -522,8 +522,8 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 		}
 
 		/*Re-enable the rx processing path */
-
-		write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
+		if (enable_rx)
+			write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_RX_EN, op_or);
 
 		/* re-enable transmitter */
         write_reg(BB_OUTPUT_CONTROL, 0xfffff33f, op_and);
@@ -542,6 +542,18 @@ static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
 
 	return 0;
 }
+
+static int al7230_rf_set_chan(struct ieee80211_hw *hw, int channelIndex)
+{
+	return al7230_rf_set_chan_private(hw, channelIndex, true);
+}
+
+static int al7230_rf_set_chan_no_rx(struct ieee80211_hw *hw, int channelIndex)
+{
+	return al7230_rf_set_chan_private(hw, channelIndex, false);
+}
+
+
 
 static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t value)
 {
@@ -885,6 +897,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.init			= InitializeRF,
 	.stop			= al7230_rf_stop,
 	.set_chan		= al7230_rf_set_chan,
+	.set_chan_no_rx	= al7230_rf_set_chan_no_rx,
 	.set_pwr		= al7230_set_txpwr,
 	.set_pwr_index		= al7230_set_power_index,
 	.channelChangeTime	= CHANNEL_CHANGE_TIME,
