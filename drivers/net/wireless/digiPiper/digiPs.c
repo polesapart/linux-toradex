@@ -1049,7 +1049,6 @@ void piper_ps_set(struct piper_priv *piperp, bool powerSaveOn)
 					spin_unlock_irqrestore(&piperp->ps.lock, flags);
 					mdelay(10);
 					spin_lock_irqsave(&piperp->ps.lock, flags);
-					timeout--;
 					result = piper_MacEnterSleepMode(piperp, PS_DONT_FORCE);
 				}
 				if (result != 0) {
