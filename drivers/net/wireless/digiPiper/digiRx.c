@@ -23,7 +23,7 @@
 #include "digiPs.h"
 
 #define WANT_RECEIVE_COUNT_SCROLL	(0)
-#define AES_TIMEOUT			(10000)
+#define AES_TIMEOUT			(200)
 #define RX_DEBUG			(1)
 
 #if RX_DEBUG
@@ -34,6 +34,29 @@ static int dlevel = DWARNING;
 #else
 #define dprintk(level, fmt, arg...)	do {} while (0)
 #endif
+
+
+/*
+ * This routine is called to flush the receive and transmit FIFOs.  It is used
+ * for error recovery when we detect corrupted data in the FIFO's.  It should be
+ * called with the AES lock set.
+ */
+static void reset_fifo(struct piper_priv *piperp)
+{
+	unsigned int i;
+
+	piperp->ac->rd_reg(piperp, BB_AES_CTL);
+	piperp->ac->wr_reg(piperp, BB_AES_CTL, 0, op_write);
+	// clear the TX-FIFO memory
+	for (i = 0; i < 448; i++)
+		piperp->ac->wr_reg(piperp, BB_DATA_FIFO, 0, op_write);
+
+	// clear RX-FIFO memory
+	for (i = 0; i < 512; i++)
+		piperp->ac->rd_reg(piperp, BB_DATA_FIFO);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST, op_or);
+	piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RXFIFORST, op_and);
+}
 
 /*
  * This routine is called to receive a frame.  The hardware header has
@@ -137,11 +160,22 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 					dprintk(DWARNING, "1st AES busy never became ready\n");
 					digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
 					/*
-					 * We recover by simply continuing on.  The next step is to read
-					 * from the AES control register.  This will reset the AES engine
-					 * and clear the error condition.
+					 * Recover by flushing the FIFO and returning in error.
 					 */
+					reset_fifo(piperp);
+#if 0
+					/*
+					 * TODO: Figure out why this code snippet doesn't work.  I would think
+					 * that if we reset the fifo, we should just return in error since we will
+					 * have discarded the frame.  However, when we do that the system hangs
+					 * (after a while).  This doesn't make sense.
+					 */
+					spin_unlock_irqrestore(&piperp->aesLock, flags);
+					result = false;
+					goto receive_packet_exit;
+#else
 					break;
+#endif
 				}
 				udelay(1);
 			}
@@ -237,6 +271,7 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 			piperp->pstats.tx_complete_count);
 	}
 #endif
+receive_packet_exit:
 	return result;
 }
 
@@ -300,10 +335,13 @@ void piper_rx_tasklet(unsigned long context)
 		piperp->ac->rd_fifo(piperp, BB_DATA_FIFO, (u8 *)&header, sizeof(header));
 		phy_process_plcp(piperp, &header, &status, &length);
 		if ((length == 0) || (length > (RX_FIFO_SIZE - 48))) {	/* 48 bytes for padding and related stuff */
+			unsigned long flags;
+
 			dprintk(DERROR, "bogus frame length (%d)\n", length);
 			dprintk(DERROR, "0x%08x 0x%08x\n", *(u32 *)&header, *(((u32 *)&header) + 1));
-			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, BB_GENERAL_CTL_RXFIFORST, op_or);
-			piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, ~BB_GENERAL_CTL_RXFIFORST, op_and);
+			spin_lock_irqsave(&piperp->aesLock, flags);
+			reset_fifo(piperp);
+			spin_unlock_irqrestore(&piperp->aesLock, flags);
 			continue;
 		}
 

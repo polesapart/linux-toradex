@@ -25,7 +25,7 @@
 #include "digiPs.h"
 
 #define FRAME_CONTROL_FIELD_OFFSET      (sizeof(struct tx_frame_hdr) + sizeof(struct psk_cck_hdr))
-#define AES_TIMEOUT			(10000)
+#define AES_TIMEOUT			(200)
 
 #define TX_DEBUG			(1)
 
