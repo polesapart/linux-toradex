@@ -271,7 +271,9 @@ static bool receive_packet(struct piper_priv *piperp, struct sk_buff *skb, int l
 			piperp->pstats.tx_complete_count);
 	}
 #endif
+#if 0
 receive_packet_exit:
+#endif
 	return result;
 }
 
