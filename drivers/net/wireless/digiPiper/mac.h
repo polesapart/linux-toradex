@@ -92,7 +92,7 @@ enum baseband_control_regs {
 #define BB_GENERAL_STAT_SPRD_DIS    (1 << 17)
 #define BB_GENERAL_STAT_DLL_DIS		(1 << 18)
 #define TRACK_TX_B_GAIN_MASK	0xff000000		// Mask word for B_TX_GAIN
-#define TRACK_TX_B_GAIN_NORMAL	0xC0000000		// normal setting for B_TX_GAIN
+#define TRACK_TX_B_GAIN_NORMAL	0xA0000000		// normal setting for B_TX_GAIN
 #define TRACK_BG_BAND           0x00430000     // Tracking constant for 802.11 b/g frequency band
 #define TRACK_CONSTANT_MASK		0x00ff0000		// mask for tracking constant
 #define TRACK_4920_4980_A_BAND  0x00210000     // Tracking constant for 802.11 a sub-frequency band
