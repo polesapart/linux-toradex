@@ -37,6 +37,9 @@
 #define write_reg(reg,val,op)	priv->ac->wr_reg(priv,reg,val,op)
 #define mac_set_tx_power(x)	al7230_set_txpwr(hw,x)
 
+static unsigned int hw_revision = WCD_HW_REV_A;
+static unsigned int hw_platform = WCD_CCW9P_PLATFORM;
+
 static void InitializeRF(struct ieee80211_hw *hw, int band_selection);
 static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t val);
 
@@ -306,6 +309,52 @@ static int write_rf(struct ieee80211_hw *hw, unsigned char reg, unsigned int val
 	err = write_reg(BB_SPI_DATA, val << 4 | reg, op_write);
 	udelay(3);		/* Mike Schaffner says to allow 2 us or more between all writes */
 	return err;
+}
+
+
+/*
+ * This function is called to set the value of Airoha register
+ * 0xc.  This register must be set to different values depending
+ * on the H/W revision of the board due to changes in the board
+ * design.
+ */
+static void set_hw_specific_parameters(struct ieee80211_hw *hw,
+											unsigned int band,
+										    unsigned int hw_revision,
+										    unsigned int hw_platform)
+{
+	switch (hw_platform) {
+		case WCD_CCW9P_PLATFORM:
+			switch (hw_revision) {
+				case WCD_HW_REV_PROTOTYPE:
+				case WCD_HW_REV_PILOT:
+				case WCD_HW_REV_A:
+				default:
+					if (band == IEEE80211_BAND_2GHZ) {
+						write_rf(hw, 0xc, 0x2b);
+					} else {
+						write_rf(hw, 0xc, 0x00143 );
+					}
+				break;
+			}
+			break;
+		case WCD_CCW9M_PLATFORM:
+			switch (hw_revision) {
+				case WCD_HW_REV_PROTOTYPE:
+				case WCD_HW_REV_PILOT:
+				case WCD_HW_REV_A:
+				default:
+					if (band == IEEE80211_BAND_2GHZ) {
+						write_rf(hw, 0xc, 0x2b);
+					} else {
+						write_rf(hw, 0xc, 0x00143 );
+					}
+				break;
+			}
+			break;
+		default:
+			break;
+	}
 }
 
 static int al7230_rf_set_chan_private(struct ieee80211_hw *hw, int channelIndex, bool enable_rx)
@@ -714,7 +763,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
-			write_rf(hw, 12, 0x0002B );
+			set_hw_specific_parameters(hw, IEEE80211_BAND_2GHZ, hw_revision, hw_platform);
 
 			/* Config 8 = default value  */
 			write_rf(hw, 13, 0xFFFFF );
@@ -791,7 +840,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
-			write_rf(hw, 12, 0x00143 );
+			set_hw_specific_parameters(hw, IEEE80211_BAND_5GHZ, hw_revision, hw_platform);
 
 			/* Config 8 = default value  */
 			write_rf(hw, 13, 0xFFFFF );
@@ -892,6 +941,15 @@ static void power_on(struct ieee80211_hw *hw, bool want_power_on)
     }
 }
 
+static void al7230_set_hw_info(struct ieee80211_hw *hw, int channel,
+							   u16 hw_platform_code)
+{
+	hw_revision = hw_platform_code & WCD_HW_REV_MASK;
+	hw_platform = (hw_platform_code & WCD_PLATFORM_MASK);
+
+	set_hw_specific_parameters(hw, getBand(channel), hw_revision, hw_platform);
+}
+
 struct digi_rf_ops al7230_rf_ops = {
 	.name			= "Airoha 7230",
 	.init			= InitializeRF,
@@ -900,6 +958,7 @@ struct digi_rf_ops al7230_rf_ops = {
 	.set_chan_no_rx	= al7230_rf_set_chan_no_rx,
 	.set_pwr		= al7230_set_txpwr,
 	.set_pwr_index		= al7230_set_power_index,
+	.set_hw_info    = al7230_set_hw_info,
 	.channelChangeTime	= CHANNEL_CHANGE_TIME,
 	.maxSignal		= MAX_SIGNAL_IN_DBM,
 	.getOfdmBrs		= getOfdmBrs,

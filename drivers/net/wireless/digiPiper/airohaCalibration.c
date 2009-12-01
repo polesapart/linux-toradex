@@ -799,6 +799,8 @@ static int getCalibrationData(struct piper_priv *digi)
 					      cal_curves_bg,
 					      calibration.nvram->header.wcd_len);
 			}
+			digi->rf->set_hw_info(digi->hw, digi->channel,
+								  calibration.nvram->header.hw_platform);
 		} else {
 			digi_dbg("Calibration data has invalid CRC.\n");
 			setDefaultCalibrationValues(digi);
