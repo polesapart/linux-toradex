@@ -335,21 +335,28 @@ static void set_hw_specific_parameters(struct ieee80211_hw *hw,
 					} else {
 						write_rf(hw, 0xc, 0x00143 );
 					}
-				break;
+					break;
 			}
 			break;
 		case WCD_CCW9M_PLATFORM:
 			switch (hw_revision) {
 				case WCD_HW_REV_PROTOTYPE:
 				case WCD_HW_REV_PILOT:
-				case WCD_HW_REV_A:
-				default:
 					if (band == IEEE80211_BAND_2GHZ) {
-						write_rf(hw, 0xc, 0x2b);
+						write_rf(hw, 0xc, 0xa3);
 					} else {
 						write_rf(hw, 0xc, 0x00143 );
 					}
 				break;
+
+				case WCD_HW_REV_A:
+				default:
+					if (band == IEEE80211_BAND_2GHZ) {
+						write_rf(hw, 0xc, 0x70);
+					} else {
+						write_rf(hw, 0xc, 0x00143 );
+					}
+					break;
 			}
 			break;
 		default:

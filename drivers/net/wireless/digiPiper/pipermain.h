@@ -76,10 +76,10 @@ enum wireless_led {
     ACTIVITY_LED,
 };
 
-#define WCD_HW_REV_MASK			0x000f
-#define WCD_HW_REV_PROTOTYPE	0x0000
-#define WCD_HW_REV_PILOT		0x0001
-#define WCD_HW_REV_A			0x0002
+#define WCD_HW_REV_MASK			0xf000
+#define WCD_HW_REV_PROTOTYPE		0x0000
+#define WCD_HW_REV_PILOT		0x1000
+#define WCD_HW_REV_A			0x2000
 #define WCD_PLATFORM_MASK		0x0ff0
 #define WCD_CCW9P_PLATFORM		0x0010
 #define WCD_CCW9M_PLATFORM		0x0020

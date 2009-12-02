@@ -355,6 +355,37 @@ static int piper_set_tracking_constant(struct piper_priv *piperp, unsigned megah
 	return 0;
 }
 
+/*
+ * This function is called to set the value of the B_TX_GAIN field of the
+ * HW_CONF1 mac register. This register must be set to different values depending
+ * on the H/W revision of the board due to changes in the board design.
+ */
+static unsigned int get_b_tx_gain(struct piper_priv *piperp)
+{
+	u16 platform = piperp->pdata->wcd.header.hw_platform & WCD_PLATFORM_MASK;
+	u16 hw_revision = piperp->pdata->wcd.header.hw_platform & WCD_HW_REV_MASK;
+	unsigned int tx_gain = 0;
+
+	switch (platform) {
+		case WCD_CCW9P_PLATFORM:
+			tx_gain = TRACK_TX_B_GAIN_NORMAL;
+			break;
+		case WCD_CCW9M_PLATFORM:
+			switch (hw_revision) {
+				case WCD_HW_REV_PROTOTYPE:
+				case WCD_HW_REV_PILOT:
+					tx_gain = 0xc0000000;
+					break;
+				case WCD_HW_REV_A:
+				default:
+					tx_gain = 0x90000000;
+					break;
+			}
+			break;
+	}
+	return tx_gain;
+}
+
 
 static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 {
@@ -424,7 +455,7 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 
 	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, 0xC043002C, op_write);
 	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, ~TRACK_TX_B_GAIN_MASK, op_and);
-	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_TX_B_GAIN_NORMAL, op_or);
+	piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, get_b_tx_gain(piperp), op_or);
 
 	/* Initialize RF transceiver */
 	piperp->rf->init(piperp->hw, band);
