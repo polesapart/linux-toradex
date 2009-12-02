@@ -125,7 +125,7 @@ static inline void s3c2443_print_err_packet_setup(int errcode,
 static inline ulong usb_read(struct s3c24xx_udc *udc, ulong port, u8 ind)
 {
 	ulong retval;
-	
+
 	spin_lock(&regs_lock);
 	writel(ind, udc->base + S3C24XX_UDC_IR_REG);
 	retval = readl(udc->base + port);
@@ -250,7 +250,7 @@ static inline int s3c24xx_udc_write_packet(struct s3c_ep *ep, struct s3c_request
 	struct s3c24xx_udc *udc;
 	int max, remaining, epnr;
 	u8 *ptr;
-	
+
 	/* @XXX: Need some sanity checks (Luis Galdos) */
 	udc = ep->dev;
 	max = ep->ep.maxpacket;
@@ -265,7 +265,7 @@ static inline int s3c24xx_udc_write_packet(struct s3c_ep *ep, struct s3c_request
 		/* Send a frame with zero length */
 		/* usb_set(udc, S3C24XX_UDC_ECR_TZLS, S3C24XX_UDC_ECR_REG, epnr); */
 		usb_write(udc, 0, S3C24XX_UDC_BWCR_REG, epnr);
-		
+
 		length = remaining;
 		goto exit_write_packet;
 	}
@@ -283,7 +283,7 @@ static inline int s3c24xx_udc_write_packet(struct s3c_ep *ep, struct s3c_request
 	usb_write(udc, length, S3C24XX_UDC_BWCR_REG, epnr);
 	for (count = 0; count < length; count += 2)
 		writel(*buf++, udc->base + fifo);
-	
+
 	/* Return the number of remaining bytes of the passed request */
 exit_write_packet:
 	return (remaining - length);
@@ -303,7 +303,7 @@ static inline int s3c24xx_udc_write_packet2(struct s3c_ep *ep, struct s3c_reques
 	struct s3c24xx_udc *udc;
 	int max, remaining, epnr;
 	u8 *ptr;
-	
+
 	udc = ep->dev;
 	max = ep->ep.maxpacket;
 	epnr = ep_index(ep);
@@ -311,7 +311,7 @@ static inline int s3c24xx_udc_write_packet2(struct s3c_ep *ep, struct s3c_reques
 	/* Get the number of remaining bytes */
 	remaining = req->req.length - req->req.actual;
 	if (!remaining) {
-		
+
 		pk_dbg("EP%i: Sending ZLP (actual: %i)\n", epnr,
 			     req->req.actual);
 
@@ -342,14 +342,14 @@ static inline int s3c24xx_udc_write_packet2(struct s3c_ep *ep, struct s3c_reques
 #if defined(DEBUG_S3C2443_UDC_QUEUE)
 	{
 		ulong esr;
-		
+
 		esr = usb_read(udc, S3C24XX_UDC_ESR_REG, ep_index(ep));
 		printk(KERN_DEBUG
 		       "%p: len=%i, act=%i, ep=%02x, bwcr=0x%04x, esr=0x%04lx\n",
 		       req, req->req.length, req->req.actual, epnr, length, esr);
 	}
 #endif
-	
+
 	/* Return the number of remaining bytes of the passed request */
  exit_write_packet:
 	return length;
@@ -391,7 +391,7 @@ static inline int s3c2443_udc_vbus_state(struct s3c24xx_udc *udc)
 static void s3c24xx_udc_disable(struct s3c24xx_udc *udc)
 {
 	ulong regval;
-	
+
 	pk_dbg("UDC disable called\n");
 
 	/* Disable the EP interrupts */
@@ -417,10 +417,10 @@ static void s3c24xx_udc_disable(struct s3c24xx_udc *udc)
 		S3C24XX_UDC_SSR_TBM | S3C24XX_UDC_INT_VBUSON |
 		S3C24XX_UDC_SSR_VBUSOFF;
 	writel(regval, udc->base + S3C24XX_UDC_SSR_REG);
-	
+
 	/* Reset the USB-function and the PHY */
 	writel(S3C2443_URSTCON_PHY | S3C2443_URSTCON_FUNC, S3C2443_URSTCON);
-	
+
 	/* PHY power disable */
 	regval = readl(S3C2443_PWRCFG);
 	regval &= ~S3C2443_PWRCFG_USBPHY_ON;
@@ -446,7 +446,7 @@ static void s3c24xx_udc_epin_tasklet_func(unsigned long data)
 		pk_err("Invalid EP pointer. Aborting %s\n", __func__);
 		return;
 	}
-	
+
 	spin_lock(&ep->lock);
 
 	udc = ep->dev;
@@ -460,7 +460,7 @@ static void s3c24xx_udc_epin_tasklet_func(unsigned long data)
 		pk_dbg("The FIFO seems to have still a packet\n");
 		goto exit_unlock;
 	}
-	
+
 	/* Check if there is a pending request for us */
 	if (list_empty(&ep->queue))
 		goto exit_unlock;
@@ -484,9 +484,9 @@ static void s3c24xx_udc_epin_tasklet_func(unsigned long data)
 		printk(KERN_DEBUG "%p: act=%i, ep=%02x, 0x%02x ... 0x%02x\n",
 		       req, act, ep_index(ep), ch1, ch2);
 	}
-#endif	
+#endif
 	retval = s3c24xx_udc_write_fifo(ep, req);
-	
+
  exit_unlock:
 	spin_unlock(&ep->lock);
 }
@@ -538,7 +538,7 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	regval &= ~S3C2443_UCLKCON_HOST_ENABLE;
 	regval |= S3C2443_UCLKCON_THOST_DISABLE;
 	__raw_writel(regval, S3C2443_UCLKCON);
-	
+
 	/* if reset by sleep wakeup, control the retention I/O cell */
 	if (__raw_readl(S3C2443_RSTSTAT) & 0x8)
 		__raw_writel(__raw_readl(S3C2443_RSTCON)|(1<<16), S3C2443_RSTCON);
@@ -558,16 +558,16 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	__raw_writel(regval, S3C2443_URSTCON);
 	udelay(20);
 	__raw_writel(0x00, S3C2443_URSTCON);
-	
+
 	/* Function reset, but DONT TOUCH THE HOST! */
 	regval = S3C2443_URSTCON_FUNC;
 	__raw_writel(regval, S3C2443_URSTCON);
 	__raw_writel(0x00, S3C2443_URSTCON);
-	
+
 	/* 48Mhz, Oscillator, External X-tal, device */
 	regval = S3C2443_PHYCTRL_EXTCLK_OSCI;
 	__raw_writel(regval, S3C2443_PHYCTRL);
-	
+
 	/*
 	 * D+ pull up disable(VBUS detect), USB2.0 Function clock Enable,
 	 * USB1.1 HOST disable, USB2.0 PHY test enable
@@ -579,7 +579,7 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	reconfig_usbd(udc);
 
 	udc->gadget.speed = USB_SPEED_UNKNOWN;
-	
+
 	/*
 	 * So, now enable the pull up, USB2.0 Function clock Enable and
 	 * USB2.0 PHY test enable
@@ -587,7 +587,7 @@ static int s3c24xx_udc_enable(struct s3c24xx_udc *udc)
 	regval = __raw_readl(S3C2443_UCLKCON);
 	regval |= S3C2443_UCLKCON_VBUS_PULLUP | S3C2443_UCLKCON_FUNC_ENABLE |
 		S3C2443_UCLKCON_TFUNC_ENABLE | S3C2443_UCLKCON_THOST_DISABLE;
-	__raw_writel(regval, S3C2443_UCLKCON);	
+	__raw_writel(regval, S3C2443_UCLKCON);
 	return 0;
 }
 
@@ -601,7 +601,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 	if (!driver)
 		return -EINVAL;
-	
+
 	pk_dbg("Starting to register '%s'\n", driver->driver.name);
 
 	if (driver->speed != USB_SPEED_FULL && driver->speed != USB_SPEED_HIGH) {
@@ -618,7 +618,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 			   driver->bind, driver->disconnect, driver->setup);
 		return -EINVAL;
 	}
-	
+
 	if (!udc) {
 		pk_err("No UDC-controller probed? Aborting.\n");
 		return -ENODEV;
@@ -677,7 +677,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
  err_del_device:
 	device_del(&udc->gadget.dev);
-	
+
  err_exit:
 	udc->driver = NULL;
 	udc->gadget.dev.driver = NULL;
@@ -706,7 +706,7 @@ int usb_gadget_unregister_driver(struct usb_gadget_driver *driver)
 	spin_unlock_irqrestore(&udc->lock, flags);
 
 	driver->unbind(&udc->gadget);
-	
+
 	device_del(&udc->gadget.dev);
 
 	disable_irq(IRQ_USBD);
@@ -751,10 +751,10 @@ static int s3c24xx_udc_write_fifo(struct s3c_ep *ep, struct s3c_request *req)
 	pk_dbg("TX EP%i: C %i | L %i - A %i | %c %c %c\n",
 		     ep_index(ep), count, req->req.length, req->req.actual,
 		     is_last ? 'L':' ', is_short ? 'S':' ', req->req.zero ? 'Z':' ');
-	
+
 	/* If this was the last packet, then call the done callback */
 	if (is_last) {
-		
+
 #if defined(DEBUG_S3C2443_UDC_QUEUE)
 		int len, act;
 		len = req->req.length;
@@ -762,7 +762,7 @@ static int s3c24xx_udc_write_fifo(struct s3c_ep *ep, struct s3c_request *req)
 		printk(KERN_DEBUG "%p: len=%i, act=%i, ep=%02x [D]\n",
 		       req, len, act, ep_index(ep));
 #endif
-		
+
 		done(ep, req, 0);
 	}
 
@@ -881,7 +881,7 @@ static void done(struct s3c_ep *ep, struct s3c_request *req, int status)
 		ecr |= S3C24XX_UDC_ECR_OUTPKTHLD;
 		usb_write(udc, ecr, S3C24XX_UDC_ECR_REG, ep_index(ep));
 	}
-	
+
 	if (likely(req->req.status == -EINPROGRESS))
 		req->req.status = status;
 	else
@@ -906,7 +906,7 @@ static void done(struct s3c_ep *ep, struct s3c_request *req, int status)
 	req->req.complete(&ep->ep, &req->req);
 /* 	spin_lock(&ep->dev->lock); */
 /* 	spin_lock(&ep->lock); */
-	
+
 	ep->stopped = stopped;
 }
 
@@ -916,7 +916,7 @@ void nuke(struct s3c_ep *ep, int status)
 	struct s3c_request *req;
 
 	pk_dbg("EP%i: Nuke function called\n", ep_index(ep));
-	
+
 	/* called with irqs blocked */
 	while (!list_empty(&ep->queue)) {
 		req = list_entry(ep->queue.next, struct s3c_request, queue);
@@ -965,7 +965,7 @@ static void s3c24xx_udc_in_epn(struct s3c24xx_udc *udc, u32 epnr)
 		usb_set(udc, S3C24XX_UDC_ESR_FOVF, S3C24XX_UDC_ESR_REG, epnr);
 		handled = 1;
 	}
-	
+
 	/* By successed transfer of a IN-packet then only schedule the tasklet */
 	if (esr & S3C24XX_UDC_ESR_TPS) {
 		usb_set(udc, S3C24XX_UDC_ESR_TPS, S3C24XX_UDC_ESR_REG, epnr);
@@ -974,7 +974,7 @@ static void s3c24xx_udc_in_epn(struct s3c24xx_udc *udc, u32 epnr)
 	}
 
 	spin_unlock(&ep->lock);
-	
+
 	if (!handled)
 		pk_info("EP%i: Unhandled IRQ (ESR 0x%04lx)\n", epnr, esr);
 }
@@ -991,7 +991,7 @@ static void s3c2443_udc_ep0_read(struct s3c24xx_udc *udc)
 	struct s3c_ep *ep;
 	struct s3c_request *req;
 	u16 *buf;
-	
+
 	ep = &udc->ep[0];
 
 	spin_lock(&ep->lock);
@@ -1003,7 +1003,7 @@ static void s3c2443_udc_ep0_read(struct s3c24xx_udc *udc)
 	 */
 	if (udc->ep0state == DATA_STATE_RECV)
 		udelay(100);
-	
+
 	/* If there is nothing to read only return at this point */
 	ep0sr = readl(udc->base + S3C24XX_UDC_EP0SR_REG);
         if (!(ep0sr & S3C24XX_UDC_EP0SR_RSR))
@@ -1016,7 +1016,7 @@ static void s3c2443_udc_ep0_read(struct s3c24xx_udc *udc)
 	}
 
 	pk_dbg("Current state of EP0 is %i\n", udc->ep0state);
-		
+
 	/* Now get the number of bytes to read from the FIFO */
         count = usb_read(udc, S3C24XX_UDC_BRCR_REG, ep_index(ep));
         if (ep0sr & S3C24XX_UDC_EP0SR_LWO)
@@ -1049,7 +1049,7 @@ static void s3c2443_udc_ep0_read(struct s3c24xx_udc *udc)
 		udc->ep0state = WAIT_FOR_SETUP;
 		done(ep, req, 0);
 	}
-	
+
  exit_ack:
 	writel(S3C24XX_UDC_EP0_RX_SUCCESS, udc->base + S3C24XX_UDC_EP0SR_REG);
 
@@ -1076,7 +1076,7 @@ static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
 	}
 
 	/* Read the status register of the EP */
-	handled = 0;	
+	handled = 0;
 	esr = usb_read(udc, S3C24XX_UDC_ESR_REG, epnr);
 	pk_dbg("EP%lu: Status reg 0x%08lx\n", epnr, esr);
 
@@ -1096,7 +1096,7 @@ static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
 		usb_set(udc, S3C24XX_UDC_ESR_FFS, S3C24XX_UDC_ESR_REG, epnr);
 		handled = 1;
 	}
-	
+
 	/* RX means we have received some data over an OUT-transaction */
 	if (esr & S3C24XX_UDC_ESR_RPS) {
 		int retval;
@@ -1120,7 +1120,7 @@ static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
 			if (unlikely(!req)) {
 				ulong count_bytes, count;
 				ulong csr;
-				
+
 				/* Read all bytes from this packet */
 				csr = usb_read(udc, S3C24XX_UDC_ESR_REG, ep_index(ep));
 				count = usb_read(udc, S3C24XX_UDC_BRCR_REG, ep_idx);
@@ -1128,12 +1128,12 @@ static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
 					count_bytes = count * 2 - 1;
 				else
 					count_bytes = count * 2;
-				
+
 				pk_dbg_out("EP%lu: No OUT req. queued (len %lu)\n",
 					   epnr, count_bytes);
 				break;
 			}
-						
+
 			retval = s3c24xx_udc_read_fifo(ep, req);
 			if (retval < 0) {
 				pk_err("EP%lu: FIFO read (%i)\n", epnr, retval);
@@ -1154,7 +1154,7 @@ static void s3c24xx_udc_out_epn(struct s3c24xx_udc *udc, u32 ep_idx)
 		pk_err("EP%lu FIFO underrun\n", epnr);
 		usb_set(udc, S3C24XX_UDC_ESR_FUDR, S3C24XX_UDC_ESR_REG, epnr);
 	}
-	
+
 	/*
 	 * Check if the function was handled, otherwise only uses a debug message
 	 * for informing about the error
@@ -1215,10 +1215,10 @@ static void reconfig_usbd(struct s3c24xx_udc *udc)
 		ep = &the_controller->ep[cnt];
 		usb_write(udc, 0, S3C24XX_UDC_ECR_REG, ep_index(ep));
 	}
-	
+
 	/* Only enable the EP0 */
 	writel(0x1, udc->base + S3C24XX_UDC_EIER_REG);
-	
+
  	writel(0x0, udc->base + S3C24XX_UDC_TR_REG);
 
 	/* error interrupt enable, 16bit bus, Little format,
@@ -1227,9 +1227,9 @@ static void reconfig_usbd(struct s3c24xx_udc *udc)
 	writel(S3C24XX_UDC_EIE_EN |
 	       S3C24XX_UDC_RRD_EN |
 	       S3C24XX_UDC_SUS_EN |
-	       S3C24XX_UDC_RST_EN,		
+	       S3C24XX_UDC_RST_EN,
 	       udc->base + S3C24XX_UDC_SCR_REG);
-	
+
 	writel(0x0000, udc->base + S3C24XX_UDC_EP0CR_REG);
 
 	writel(0, udc->base + S3C24XX_UDC_IR_REG);
@@ -1258,7 +1258,7 @@ static void s3c24xx_set_max_pktsize(struct s3c24xx_udc *udc, enum usb_device_spe
 	udc->ep[6].ep.maxpacket = ep_fifo_size;
 	udc->ep[7].ep.maxpacket = ep_fifo_size;
 	udc->ep[8].ep.maxpacket = ep_fifo_size;
-	
+
 	usb_write(udc, ep0_fifo_size, S3C24XX_UDC_MAXP_REG, 0);
 	usb_write(udc, ep_fifo_size, S3C24XX_UDC_MAXP_REG, 1);
 	usb_write(udc, ep_fifo_size, S3C24XX_UDC_MAXP_REG, 2);
@@ -1274,14 +1274,14 @@ static int s3c24xx_udc_set_pullup(struct s3c24xx_udc *udc, int is_on)
 {
 	struct s3c2410_udc_mach_info *info;
 	enum s3c2410_udc_cmd_e cmd;
-	
+
 	info = udc->mach_info;
 
 	if (is_on)
 		cmd = S3C2410_UDC_P_ENABLE;
 	else
 		cmd = S3C2410_UDC_P_DISABLE;
-	
+
 	/* Call the platform dependet function if it's available */
 	if (info && info->udc_command) {
 		info->udc_command(cmd);
@@ -1340,10 +1340,10 @@ static irqreturn_t s3c24xx_udc_vbus_irq(int irq, void *_udc)
 
 	pk_dbg("Bus detect %s: vbus %i | value %i\n",
 		     info->vbus_pin_inverted ? "inverted" : "", udc->vbus, value);
-	
+
 	if (value != udc->vbus)
 		s3c24xx_udc_vbus_session(&udc->gadget, value);
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -1369,7 +1369,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 	sys_stat = readl(udc->base + S3C24XX_UDC_SSR_REG);
 	stat = sys_stat;
 	intr_all = readl(udc->base + S3C24XX_UDC_EIR_REG);
-	
+
 	/* We have only 3 usable eps now */
 	sys_stat_chk = sys_stat & S3C2443_UDC_INT_CHECK;
 
@@ -1380,7 +1380,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		/* Skip the OUT-endpoints different than zero */
 		if (!(ep->bEndpointAddress & USB_DIR_IN) && cnt != 0)
 			continue;
-		
+
 		if (s3c24xx_ep_enabled(udc, cnt))
 			intr_in |= (1 << cnt);
 	}
@@ -1393,7 +1393,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		/* Skip the IN-endpoints */
 		if (ep->bEndpointAddress & USB_DIR_IN)
 			continue;
-		
+
 		if (s3c24xx_ep_enabled(udc, cnt))
 			intr_out |= (1 << cnt);
 	}
@@ -1404,7 +1404,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 
 	if (!intr_out && !intr_in && !sys_stat_chk)
 		goto exit_ack;
-	
+
 	if (sys_stat) {
 		if (sys_stat & S3C24XX_UDC_INT_VBUSON) {
 			pk_dbg("Vbus ON interrupt\n");
@@ -1490,15 +1490,18 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		if (sys_stat & (S3C24XX_UDC_SSR_TBM | S3C24XX_UDC_SSR_EOERR |
 			    S3C24XX_UDC_SSR_DCERR))
 			pk_err("Unexpected sys failure: 0x%08x\n", sys_stat);
-		
+
 	}
 
 	if (intr_in) {
 		unsigned long cnt, epm;
 
+		/* FIXME: Workaround for preventing FIFO under/overrun */
+		udelay(300);
+
 		if (intr_in & S3C24XX_UDC_INT_EP0) {
 			ulong ep0sr;
-			
+
 			/* First handle the arrived data, and then clear the IRQ */
 			s3c24xx_handle_ep0(udc);
 			writel(S3C24XX_UDC_INT_EP0, udc->base + S3C24XX_UDC_EIR_REG);
@@ -1511,9 +1514,9 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 			if (ep0sr & S3C24XX_UDC_EP0SR_TST)
 				writel(S3C24XX_UDC_EP0SR_TST,
 				       udc->base + S3C24XX_UDC_EP0SR_REG);
-		} 
+		}
 
-			
+
 		/* First get the EP-number that generated the interrupt */
 		for (cnt = 1; cnt < S3C_MAX_ENDPOINTS; cnt++) {
 			epm = (1 << cnt);
@@ -1529,10 +1532,13 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 	if (intr_out) {
 		unsigned long cnt, epm;
 
+		/* FIXME: Workaround for preventing FIFO under/overrun */
+		udelay(100);
+
 		/* And the EP0 can receive OUT-transfers too! */
 		if (intr_out & 0x1)
 			s3c2443_udc_ep0_read(udc);
- 		
+
 		for (cnt = 1; cnt < S3C_MAX_ENDPOINTS; cnt++) {
 			epm = (1 << cnt);
 			if (intr_out & epm) {
@@ -1542,7 +1548,7 @@ static irqreturn_t s3c24xx_udc_irq(int irq, void *_udc)
 		}
 	}
 
- exit_ack:	
+ exit_ack:
 	/* writel(stat, udc->base + S3C24XX_UDC_SSR_REG); */
 	spin_unlock_irqrestore(&udc->lock, flags);
 	return IRQ_HANDLED;
@@ -1578,7 +1584,7 @@ static int s3c24xx_udc_ep_enable(struct usb_ep *_ep,
 			   le16_to_cpu(desc->wMaxPacketSize), ep_maxpacket(ep));
 		return -EINVAL;
 	}
-	
+
 	/* xfer types must match, except that interrupt ~= bulk */
 	if (ep->bmAttributes != desc->bmAttributes
 	    && ep->bmAttributes != USB_ENDPOINT_XFER_BULK
@@ -1619,7 +1625,7 @@ static int s3c24xx_udc_ep_enable(struct usb_ep *_ep,
 	regval = usb_read(udc, S3C24XX_UDC_ECR_REG, epnr);
 	regval |= S3C24XX_UDC_ECR_DUEN;
         usb_write(udc, regval, S3C24XX_UDC_ECR_REG, epnr);
-	
+
 	/* Reset halt state */
 	s3c24xx_udc_set_halt(_ep, 0);
 
@@ -1641,7 +1647,7 @@ static int s3c24xx_udc_ep_disable(struct usb_ep *_ep)
 		pk_err("Null pointer passed! Aborting.\n");
 		return -EINVAL;
 	}
-	
+
 	ep = container_of(_ep, struct s3c_ep, ep);
 	if (!ep->desc) {
 		pk_dbg("%s has an empty descriptor\n", ep->ep.name);
@@ -1649,14 +1655,14 @@ static int s3c24xx_udc_ep_disable(struct usb_ep *_ep)
 	}
 
 	spin_lock_irqsave(&ep->dev->lock, flags);
-	
+
 	/* Disable the corresponding IRQ */
 	udc = ep->dev;
 	epnr = ep_index(ep);
 	regval = readl(udc->base + S3C24XX_UDC_EIER_REG);
 	regval &= ~(1 << epnr);
 	writel(regval, udc->base + S3C24XX_UDC_EIER_REG);
-	
+
 	/* Nuke all pending requests */
 	nuke(ep, -ESHUTDOWN);
 
@@ -1691,7 +1697,7 @@ static void s3c24xx_udc_free_request(struct usb_ep *ep, struct usb_request *_req
 }
 
 /*
- * This function is called by the Gadget-drivers when they have a request for 
+ * This function is called by the Gadget-drivers when they have a request for
  * the UDC (for us).
  */
 static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
@@ -1702,11 +1708,11 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	struct s3c24xx_udc *udc;
 	unsigned long flags;
 	int retval;
-	
+
 	spin_lock_irqsave(&udc->lock, flags);
-	
+
 	req = container_of(_req, struct s3c_request, req);
-	if (unlikely(!_req || !_req->complete || !_req->buf || 
+	if (unlikely(!_req || !_req->complete || !_req->buf ||
 		     !list_empty(&req->queue))) {
 		pk_err("Bad params for a new EP queue\n");
 		retval = -EINVAL;
@@ -1738,7 +1744,7 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 		retval = 0;
 		goto exit_queue_unlock;
 	}
-	
+
 	/*
 	 * By the IN-endpoints only add the new request to the
 	 * internal EP-queue and schedule the tasklet. The tasklet
@@ -1748,7 +1754,7 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	 */
 	if (ep_is_in(ep) && ep_index(ep) != 0) {
 		/* unsigned long flags; */
-		
+
 		/* spin_lock_irqsave(&ep->lock, flags); */
 #if defined(DEBUG_S3C2443_UDC_QUEUE)
 		{
@@ -1776,12 +1782,12 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 		 */
 		handled = 0;
 		if (list_empty(&ep->queue) && likely(!ep->stopped)) {
-		
+
 			if (unlikely(ep_index(ep) == 0)) {
 				list_add_tail(&req->queue, &ep->queue);
 				s3c24xx_udc_ep0_kick(udc, ep);
 				handled = 1;
-				
+
 			} else {
 				/*
 				 * The read-function returns zero if the request is not
@@ -1811,16 +1817,16 @@ static int s3c24xx_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 				ecr = usb_read(udc, S3C24XX_UDC_ECR_REG, ep_index(ep));
 				ecr &= ~S3C24XX_UDC_ECR_OUTPKTHLD;
 				usb_write(udc, ecr, S3C24XX_UDC_ECR_REG, ep_index(ep));
-				
+
 				pk_dbg_out("EP%i: Queued len %u\n", ep_index(ep), _req->length);
 			}
-			
+
 			list_add_tail(&req->queue, &ep->queue);
 		}
 	}
-	
+
 	retval = 0;
-	
+
  exit_queue_unlock:
 	spin_unlock_irqrestore(&udc->lock, flags);
 	return retval;
@@ -1838,7 +1844,7 @@ static int s3c24xx_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		return -EINVAL;
 
 	pk_dbg("EP%i: Dequeue called\n", ep_index(ep));
-	
+
 	spin_lock_irqsave(&ep->dev->lock, flags);
 
 	/* Make sure it's actually queued on this endpoint */
@@ -1867,11 +1873,11 @@ static int s3c24xx_udc_set_halt(struct usb_ep *_ep, int halt)
 	unsigned long flags;
 	int retval, epnr;
 	struct s3c24xx_udc *udc;
- 
+
 	ep = container_of(_ep, struct s3c_ep, ep);
 	udc = ep->dev;
 	epnr = ep_index(ep);
-	
+
 	pk_dbg("%s the EP%i\n", halt ? "Halting" : "Enabling", epnr);
 
 	if (!ep->desc) {
@@ -1879,7 +1885,7 @@ static int s3c24xx_udc_set_halt(struct usb_ep *_ep, int halt)
                 return -ENODEV;
         }
 
-	spin_lock_irqsave(&udc->lock, flags); 
+	spin_lock_irqsave(&udc->lock, flags);
 
         /*
 	 * Don't halt the EP if it's an IN and not empty
@@ -1893,9 +1899,9 @@ static int s3c24xx_udc_set_halt(struct usb_ep *_ep, int halt)
                 else
 			usb_clear(udc, S3C24XX_UDC_ECR_ESS, S3C24XX_UDC_ECR_REG, epnr);
 	}
-	
+
 	spin_unlock_irqrestore(&udc->lock, flags);
-	
+
 	return retval;
 }
 
@@ -1921,9 +1927,9 @@ static int s3c24xx_udc_fifo_status(struct usb_ep *_ep)
 	csr = usb_read(ep->dev, S3C24XX_UDC_EP_STATUS_REG, ep_index(ep));
 	if (ep->dev->gadget.speed != USB_SPEED_UNKNOWN ||
 	    csr & S3C24XX_UDC_EP_RX_SUCCESS) {
-	    
+
 		count = usb_read(ep->dev, S3C24XX_UDC_BYTE_READ_CNT_REG, ep_index(ep));
-		
+
 		if (usb_read(ep->dev, S3C24XX_UDC_EP_STATUS_REG, ep_index(ep))
 		    & S3C24XX_UDC_EP_LWO)
 			count = count * 2 -1;
@@ -1947,11 +1953,11 @@ static void s3c24xx_udc_fifo_flush(struct usb_ep *_ep)
 		pk_err("Can't flush an EP, NULL pointer passed\n");
 		return;
 	}
-	
+
 	ep = container_of(_ep, struct s3c_ep, ep);
 	epnr = ep_index(ep);
 	udc = ep->dev;
-	
+
 	if (unlikely(epnr == 0)) {
 		pk_err("EP0 can't be flushed. Aborting.\n");
 		return;
@@ -1966,7 +1972,7 @@ static void s3c24xx_udc_fifo_flush(struct usb_ep *_ep)
 #if 0
 	{
 		ulong ecr;
-		
+
 		ecr = usb_read(udc, S3C24XX_UDC_ECR_REG, epnr);
 		pk_err("EP%i: Flushing now [ecr 0x%08lx]\n", epnr, ecr);
 		usb_write(udc, ecr | S3C24XX_UDC_ECR_FLUSH, S3C24XX_UDC_ECR_REG, epnr);
@@ -2069,7 +2075,7 @@ static void s3c24xx_udc_ep0_write(struct s3c24xx_udc *udc)
 	/* The write function returns the number of remaining bytes of this request */
 	ret = s3c24xx_udc_write_packet(ep, req);
 	completed = (ret == 0) ? 1 : 0;
-	
+
 	if (completed && !need_zlp) {
 		pk_dbg("EP0: Finished, waiting for status\n");
 		udc->ep0state = WAIT_FOR_SETUP;
@@ -2133,7 +2139,7 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 
 	memset(recv_ctrls, 0x0, sizeof(recv_ctrls));
 	memset(ctrls, 0x0, sizeof(ctrls));
-	
+
 	/* Nuke all previous transfers of this control EP */
 	ep = &udc->ep[0];
 	nuke(ep, -EPROTO);
@@ -2192,7 +2198,7 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 			pk_dbg("EP0: Preparing new OUT frame (%i bytes)\n", bytes);
 			ep->bEndpointAddress &= ~USB_DIR_IN;
 		}
-		
+
 		/* Handle some SETUP packets ourselves */
 		retval = 0;
 		switch (pctrl->bRequest) {
@@ -2228,7 +2234,7 @@ static void s3c24xx_ep0_setup(struct s3c24xx_udc *udc)
 				s3c2443_print_err_packet_setup(retval, pctrl);
 		}
 	}
-	
+
 	/* By error-free setups return at this place */
 	if (!retval)
 		return;
@@ -2285,7 +2291,7 @@ static void s3c24xx_handle_ep0(struct s3c24xx_udc *udc)
 		if (udc->ep0state != DATA_STATE_NEED_ZLP)
 			writel(S3C24XX_UDC_EP0_TX_SUCCESS,
 			       udc->base + S3C24XX_UDC_EP0SR_REG);
-		
+
 		handled = 1;
 	}
 
@@ -2302,7 +2308,7 @@ static void s3c24xx_handle_ep0(struct s3c24xx_udc *udc)
 			udc->ep0state = WAIT_FOR_SETUP;
 			writel(S3C24XX_UDC_EP0SR_RSR, udc->base + S3C24XX_UDC_EP0SR_REG);
 		}
-		
+
 		handled = 1;
 	}
 
@@ -2345,7 +2351,7 @@ static int s3c_udc_get_frame(struct usb_gadget *_gadget)
 	udc = the_controller;
 	if (!udc)
 		return -ENODEV;
-	
+
 	frame = readl(udc->base + S3C24XX_UDC_FNR_REG);
 	return (frame & 0x7ff);
 }
@@ -2509,7 +2515,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 	int retval;
 	struct s3c2410_udc_mach_info *mach_info;
 	int cnt;
-	
+
 	pk_dbg("Probing a new device ID %i\n", pdev->id);
 
 	/* Get the platform data */
@@ -2534,7 +2540,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
                 retval = -ENOENT;
                 goto err_exit;
         }
-	
+
 	udc->base = ioremap(udc->mem->start, IOMEMSIZE(udc->mem));
 	if (!udc->base) {
 		pk_err("Couldn't ioremap the IO memory region\n");
@@ -2553,10 +2559,10 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 
 	/* Init the EPs */
 	s3c24xx_udc_reinit(udc);
-	
+
 	/* Disable the platform dependent UDC-hardware */
 	s3c24xx_udc_disable(udc);
-	
+
 	spin_lock_init(&udc->lock);
 	udc->dev = pdev;
 
@@ -2579,7 +2585,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 	/* Activate the driver first when is going to be used */
 	disable_irq(IRQ_USBD);
 	pk_dbg("IRQ %i for the UDC\n", IRQ_USBD);
-	
+
 	if (mach_info && mach_info->vbus_pin > 0) {
 		udc->irq_vbus = s3c2410_gpio_getirq(mach_info->vbus_pin);
 		retval = request_irq(udc->irq_vbus,
@@ -2595,7 +2601,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 		pk_dbg("IRQ %i for vbus detection\n", udc->irq_vbus);
 	} else
 		udc->vbus = 1;
-	
+
 	/*
 	 * Init the tasklet for the IN-endpoints at this place, so that we can kill
 	 * the tasklets when the module is going to be removed
@@ -2603,13 +2609,13 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 	 */
 	for (cnt = 0; cnt < S3C_MAX_ENDPOINTS; cnt++) {
 		struct s3c_ep *ep = &udc->ep[cnt];
-		
+
 		if (ep_is_in(ep)) {
 			tasklet_init(&ep->in_tasklet,
 				     s3c24xx_udc_epin_tasklet_func,
 				     (unsigned long)ep);
 		}
-		
+
 		spin_lock_init(&ep->lock);
 	}
 
@@ -2622,7 +2628,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 		device_init_wakeup(&pdev->dev, 1);
 		device_set_wakeup_enable(&pdev->dev, 0);
 	}
-	
+
 	return 0;
 
  err_free_udc_irq:
@@ -2630,10 +2636,10 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 
  err_iounmap:
 	iounmap(udc->base);
-	
+
  err_free_mem:
 	release_mem_region(udc->mem->start, IOMEMSIZE(udc->mem));
-		
+
  err_exit:
 	platform_set_drvdata(pdev, NULL);
 
@@ -2665,7 +2671,7 @@ static int s3c24xx_udc_remove(struct platform_device *pdev)
 		if (ep_is_in(ep))
 			tasklet_kill(&ep->in_tasklet);
 	}
-	
+
 	s3c24xx_udc_disable(udc);
 	usb_gadget_unregister_driver(udc->driver);
 
@@ -2675,7 +2681,7 @@ static int s3c24xx_udc_remove(struct platform_device *pdev)
 		pk_dbg("Disabling the wakeup IRQ %i\n", udc->irq_vbus);
 		device_init_wakeup(&pdev->dev, 0);
 	}
-	
+
 	/*
 	 * If an IRQ for the vbus was passed, then disable it too
 	 * (Luis Galdos)
@@ -2685,11 +2691,11 @@ static int s3c24xx_udc_remove(struct platform_device *pdev)
 		free_irq(udc->irq_vbus, udc);
 		udc->irq_vbus = 0;
 	}
-	
+
 	release_mem_region(udc->mem->start, IOMEMSIZE(udc->mem));
-	
+
 	platform_set_drvdata(pdev, NULL);
-	
+
 	the_controller = NULL;
 
 	return 0;
@@ -2721,7 +2727,7 @@ static int s3c2443_udc_suspend(struct platform_device *pdev, pm_message_t state)
 			retval = -EINVAL;
 			goto exit_suspend;
 		}
-		
+
 		retval = enable_irq_wake(udc->irq_vbus);
 		if (retval)
 			goto exit_suspend;
@@ -2740,14 +2746,14 @@ static int s3c2443_udc_resume(struct platform_device *pdev)
 
 	retval = 0;
 	if (device_may_wakeup(&pdev->dev)) {
-		
+
 		/* Paranoic sanity check */
 		if (!udc->irq_vbus) {
 			pk_err("No wakeup IRQ defined?\n");
 			retval = -EINVAL;
 			goto exit_resume;
 		}
-		
+
 		disable_irq_wake(udc->irq_vbus);
 	}
 
@@ -2756,11 +2762,11 @@ static int s3c2443_udc_resume(struct platform_device *pdev)
 	 * during the suspend-time and this will not generate an interrupt
 	 */
 	udc->vbus = s3c2443_udc_vbus_state(udc);
-	
+
 	/* Enable the UDC for starting the enumeration */
 	if (udc->vbus && udc->driver)
 		retval = s3c24xx_udc_enable(udc);
-	
+
 exit_resume:
 	return retval;
 }
