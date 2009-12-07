@@ -423,6 +423,7 @@ static int al7230_rf_set_chan_private(struct ieee80211_hw *hw, int channelIndex,
 		"A-161",
 		"A-165"
 	};
+printk(KERN_ERR "Setting channel %s\n", channelLookup[channelIndex]);
 #endif
 	if (channelIndex >= BAND_A_OFFSET)
 		rf_band = IEEE80211_BAND_5GHZ;
@@ -595,6 +596,7 @@ static int al7230_rf_set_chan_private(struct ieee80211_hw *hw, int channelIndex,
      * be corrupted when we change channels.
      */
     piper_set_macaddr(priv);
+digiWifiDumpRegisters(priv, MAIN_REGS);
 
 	return 0;
 }
@@ -799,6 +801,9 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			/* TXDCOC->disable; RCK->disable */
 			write_rf(hw, 15, 0x1ABA8 );
 			udelay(50);
+
+			write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_MAX_GAIN_MASK, op_and);
+			write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_DEFAULT_MAX_GAIN_BG, op_or);
 			break;
 
 		case IEEE80211_BAND_5GHZ:
@@ -876,6 +881,8 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			/* TXDCOC->disable; RCK->disable */
 			write_rf(hw, 15, 0x12BAC );
 			udelay(50);
+			write_reg(BB_GENERAL_CTL, ~BB_GENERAL_CTL_MAX_GAIN_MASK, op_and);
+			write_reg(BB_GENERAL_CTL, BB_GENERAL_CTL_DEFAULT_MAX_GAIN_A, op_or);
 			break;
 		}
 	} else {

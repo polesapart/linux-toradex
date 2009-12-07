@@ -406,12 +406,12 @@ static int piper_init_hw(struct piper_priv *piperp, enum ieee80211_band band)
 			piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_5150_5350_A_BAND, op_or);
 			digi_dbg("piper_init_hw Initialized for band A\n");
 		}
-		piperp->ac->wr_reg(piperp, BB_CONF_2, 0x08329AD4, op_write);
+		piperp->ac->wr_reg(piperp, BB_CONF_2, 0x09325ad4, op_write);
 		/* Initialize the SPI word length */
 		piperp->ac->wr_reg(piperp, BB_SPI_CTRL, SPI_INIT_AIROHA, op_write);
 	} else if (piperp->pdata->rf_transceiver == RF_AIROHA_2236) {
 		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL, GEN_INIT_AIROHA_24GHZ, op_write);
-		piperp->ac->wr_reg(piperp, BB_CONF_2, 0x08329AD4, op_write);
+		piperp->ac->wr_reg(piperp, BB_CONF_2, 0x09325ad4, op_write);
 		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, 0xff00ffff, op_and);
 		piperp->ac->wr_reg(piperp, BB_TRACK_CONTROL, TRACK_BG_BAND, op_or);
 		/* Initialize the SPI word length */
@@ -502,9 +502,10 @@ static void adjust_max_agc(struct piper_priv *piperp, unsigned int rssi, _80211H
 {
 #define LOWEST_MAXAGC_AL2236        0x76
 #define HIGHEST_MAXAGC_AL2236       0x7B
-#define LOWEST_MAXAGC_AL7230        0x72
-#define HIGHEST_MAXAGC_AL7230_24GHZ       0x78
-#define HIGHEST_MAXAGC_AL7230_50GHZ       0x77
+#define HIGHEST_MAXAGC_AL7230_24GHZ       0x7c
+#define LOWEST_MAXAGC_AL7230_24GHZ        0x76
+#define HIGHEST_MAXAGC_AL7230_50GHZ       0x79
+#define LOWEST_MAXAGC_AL7230_50GHZ        0x73
 #define RSSI_AVG_COUNT  8
 
     unsigned char maxgain = 0;
@@ -523,11 +524,15 @@ static void adjust_max_agc(struct piper_priv *piperp, unsigned int rssi, _80211H
 	    }
 	    else
 	    {
-	        lowest = LOWEST_MAXAGC_AL7230;
-	        if (piperp->rf->getBand(piperp->channel) == IEEE80211_BAND_5GHZ)
+
+	        if (piperp->rf->getBand(piperp->channel) == IEEE80211_BAND_5GHZ) {
 	            highest = HIGHEST_MAXAGC_AL7230_50GHZ;
-	        else
+	            lowest = LOWEST_MAXAGC_AL7230_50GHZ;
+	        }
+	        else {
 	            highest = HIGHEST_MAXAGC_AL7230_24GHZ;
+	            lowest = LOWEST_MAXAGC_AL7230_24GHZ;
+	        }
 	    }
 
 	    if (piperp->areWeAssociated)

@@ -77,7 +77,7 @@ enum wireless_led {
 };
 
 #define WCD_HW_REV_MASK			0xf000
-#define WCD_HW_REV_PROTOTYPE		0x0000
+#define WCD_HW_REV_PROTOTYPE	0x0000
 #define WCD_HW_REV_PILOT		0x1000
 #define WCD_HW_REV_A			0x2000
 #define WCD_PLATFORM_MASK		0x0ff0

@@ -43,6 +43,8 @@ enum baseband_control_regs {
 #define BB_GENERAL_CTL_SPI_RST		(1<<30)
 
 #define BB_GENERAL_CTL_MAX_GAIN_MASK (0x007F0000)
+#define BB_GENERAL_CTL_DEFAULT_MAX_GAIN_A	(0x00790000)
+#define BB_GENERAL_CTL_DEFAULT_MAX_GAIN_BG	(0x007c0000)
 
 #if defined(CONFIG_PIPER_WIFI)
 #if 0
