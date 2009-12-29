@@ -12,6 +12,7 @@ obj-y += dummy_gpio.o
 obj-$(CONFIG_CPU_V7)        += wfi.o suspend.o
 obj-$(CONFIG_MACH_MX51_3DS) += mx51_3stack.o mx51_3stack_gpio.o mx51_3stack_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX51_BABBAGE) += mx51_babbage.o mx51_babbage_gpio.o mx51_babbage_pmic_mc13892.o
+obj-$(CONFIG_MACH_CCWMX51JS) += mx51_ccwmx51js.o mx51_ccwmx51js_gpio.o mx51_ccwmx51js_pmic_mc13892.o
 
 obj-$(CONFIG_USB_EHCI_ARC_H1)   += usb_h1.o
 obj-$(CONFIG_USB_EHCI_ARC_H2)   += usb_h2.o
