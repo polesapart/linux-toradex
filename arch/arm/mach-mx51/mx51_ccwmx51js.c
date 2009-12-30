@@ -236,6 +236,130 @@ unsigned int expio_intr_fec;
 EXPORT_SYMBOL(expio_intr_fec);
 #endif
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+static int sdhc_write_protect(struct device *dev)
+{
+	unsigned short rc = 0;
+
+	if (to_platform_device(dev)->id == 0)
+		rc = 1;	/* Not supported WP on JSK board */
+	else if (to_platform_device(dev)->id == 2)
+		rc = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
+
+	return rc;
+}
+
+static unsigned int sdhc_get_card_det_status(struct device *dev)
+{
+	int ret = 0;
+
+	if (to_platform_device(dev)->id == 0)
+		ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO1_0));
+	else if (to_platform_device(dev)->id == 2)
+		ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO_NAND));
+
+	return ret;
+}
+
+static struct mxc_mmc_platform_data mmc1_data = {
+	.ocr_mask = MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 400000,
+	.max_clk = 52000000,
+	.card_inserted_state = 1,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+
+static struct mxc_mmc_platform_data mmc3_data = {
+	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30 |
+	    MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 150000,
+	.max_clk = 50000000,
+	.card_inserted_state = 0,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+
+/**
+ * Resource definition for the SDHC1
+ */
+static struct resource mxcsdhc1_resources[] = {
+	[0] = {
+		.start = MMC_SDHC1_BASE_ADDR,
+		.end   = MMC_SDHC1_BASE_ADDR + SZ_4K - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_MMC_SDHC1,
+		.end   = MXC_INT_MMC_SDHC1,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0),
+		.end   = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0),
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+/**
+ * Resource definition for the SDHC3
+ */
+static struct resource mxcsdhc3_resources[] = {
+	[0] = {
+		.start = MMC_SDHC3_BASE_ADDR,
+		.end   = MMC_SDHC3_BASE_ADDR + SZ_4K - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = MXC_INT_MMC_SDHC3,
+		.end   = MXC_INT_MMC_SDHC3,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND),
+		.end   = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND),
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+/*! Device Definition for MXC SDHC1 */
+static struct platform_device mxcsdhc1_device = {
+	.name = "mxsdhci",
+	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mmc1_data,
+	},
+	.num_resources = ARRAY_SIZE(mxcsdhc1_resources),
+	.resource = mxcsdhc1_resources,
+};
+
+/*! Device Definition for MXC SDHC3 */
+static struct platform_device mxcsdhc3_device = {
+	.name = "mxsdhci",
+	.id = 2,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &mmc3_data,
+	},
+	.num_resources = ARRAY_SIZE(mxcsdhc3_resources),
+	.resource = mxcsdhc3_resources,
+};
+
+static inline void ccwmx51_init_mmc(void)
+{
+	(void)platform_device_register(&mxcsdhc1_device);
+	(void)platform_device_register(&mxcsdhc3_device);
+}
+#else
+static inline void ccwmx51_init_mmc(void) {}
+#endif
 
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
@@ -315,6 +439,7 @@ static void __init mxc_board_init(void)
 
 	mxc_init_devices();
 
+	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
 	ccwmx51_init_ext_eth_mac();
 	ccwmx51_init_mc13892();
