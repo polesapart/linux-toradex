@@ -205,6 +205,108 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 };
 #endif
 
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
+	{	/* DISP1 DAT0 */
+		MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT1 */
+		MX51_PIN_DISP1_DAT1, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT2 */
+		MX51_PIN_DISP1_DAT2, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT3 */
+		MX51_PIN_DISP1_DAT3, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT4 */
+		MX51_PIN_DISP1_DAT4, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT5 */
+		MX51_PIN_DISP1_DAT5, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT6 */
+		MX51_PIN_DISP1_DAT6, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT7 */
+		MX51_PIN_DISP1_DAT7, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT8 */
+		MX51_PIN_DISP1_DAT8, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT9 */
+		MX51_PIN_DISP1_DAT9, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT10 */
+		MX51_PIN_DISP1_DAT10, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT11 */
+		MX51_PIN_DISP1_DAT11, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT12 */
+		MX51_PIN_DISP1_DAT12, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT13 */
+		MX51_PIN_DISP1_DAT13, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT14 */
+		MX51_PIN_DISP1_DAT14, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT15 */
+		MX51_PIN_DISP1_DAT15, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT16 */
+		MX51_PIN_DISP1_DAT16, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT17 */
+		MX51_PIN_DISP1_DAT17, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT18 */
+		MX51_PIN_DISP1_DAT18, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT19 */
+		MX51_PIN_DISP1_DAT19, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT20 */
+		MX51_PIN_DISP1_DAT20, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT21 */
+		MX51_PIN_DISP1_DAT21, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT22 */
+		MX51_PIN_DISP1_DAT22, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{	/* DISP1 DAT23 */
+		MX51_PIN_DISP1_DAT23, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+};
+#endif
+
+
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 	{	/* PMIC interrupt line */
 		MX51_PIN_GPIO1_5, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
@@ -228,6 +330,19 @@ void __init ccwmx51_io_init(void)
 		if (ccwmx51_iomux_ext_eth_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_ext_eth_pins[i].in_select,
 					ccwmx51_iomux_ext_eth_pins[i].in_mode);
+	}
+#endif
+
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video1_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,
+				  ccwmx51_iomux_video1_pins[i].mux_mode);
+		if (ccwmx51_iomux_video1_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_video1_pins[i].pin,
+					  ccwmx51_iomux_video1_pins[i].pad_cfg);
+		if (ccwmx51_iomux_video1_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
+					    ccwmx51_iomux_video1_pins[i].in_mode);
 	}
 #endif
 
