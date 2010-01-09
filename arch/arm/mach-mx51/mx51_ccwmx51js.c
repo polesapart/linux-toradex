@@ -46,7 +46,7 @@
 #include "board-mx51_babbage.h"
 #include "iomux.h"
 #include "crm_regs.h"
-#include <mach/mxc_edid.h>
+
 
 #include <linux/smc911x.h>
 
@@ -361,6 +361,87 @@ static inline void ccwmx51_init_mmc(void)
 static inline void ccwmx51_init_mmc(void) {}
 #endif
 
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
+	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+
+static struct mxc_fb_platform_data fb_data_vga = {
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	.mode_str = "1024x768M-16@60",	/* Default */
+};
+
+static struct platform_device mxc_fb_device[] = {
+	{
+		.name = "mxc_sdc_fb",
+		.id = 0,
+		.dev = {
+			.release = mxc_nop_release,
+			.coherent_dma_mask = 0xFFFFFFFF,
+			.platform_data = &fb_data_vga,
+		},
+	 }, {
+		.name = "mxc_sdc_fb",
+		.id = 1,
+		.dev = {
+			.release = mxc_nop_release,
+			.coherent_dma_mask = 0xFFFFFFFF,
+			.platform_data = NULL,
+		},
+	}, {
+		.name = "mxc_sdc_fb",
+		.id = 2,
+		.dev = {
+			.release = mxc_nop_release,
+			.coherent_dma_mask = 0xFFFFFFFF,
+		},
+	},
+};
+
+static int __init ccwmx51_init_fb(void)
+{
+	char *options = NULL, *p;
+
+	if (fb_get_options("displayfb", &options))
+		pr_warning("no display information available in commnad line\n");
+
+	if (!options)
+		return -ENODEV;
+
+	if (!strncasecmp(options, "VGA", 3)) {
+		pr_info("VGA interface is primary\n");
+
+		/* Get the desired configuration provided by the bootloader */
+		if (options[3] != '@') {
+			pr_info("Video resolution for VGA interface not provided, using default\n");
+			/* TODO set defualt video here */
+		} else {
+			options = &options[4];
+			if (((p = strsep (&options, "@")) != NULL) && *p) {
+				if (strcmp(p, "640x480x16")) {
+					strcpy(fb_data_vga.mode_str, "640x480M-16@60");
+				} else if (strcmp(p, "800x600x16")) {
+					strcpy(fb_data_vga.mode_str, "800x600M-16@60");
+				} else if (strcmp(p, "1024x768x16")) {
+					strcpy(fb_data_vga.mode_str, "1024x768M-16@60");
+				} else if (strcmp(p, "1280x1024x16")) {
+					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
+				} else if (strcmp(p, "1280x1024x16")) {
+					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
+				} else
+					pr_warning("Unsuported video resolution: %s, using default\n", p);
+			}
+		}
+		(void)platform_device_register(&mxc_fb_device[0]); /* VGA */
+	}
+
+	return 0;
+}
+device_initcall(ccwmx51_init_fb);
+#else
+static inline void ccwmx51_init_fb(void) { }
+#endif
+
+
+
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -402,11 +483,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			continue;
 
 		t->u.mem.size = size;
-#if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
-	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-		mxcfb_resources[0].start = t->u.mem.start + size;
-		mxcfb_resources[0].end = t->u.mem.start + SZ_512M - 1;
-#endif
 	}
 }
 
@@ -438,7 +514,6 @@ static void __init mxc_board_init(void)
 	early_console_setup(saved_command_line);
 
 	mxc_init_devices();
-
 	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
 	ccwmx51_init_ext_eth_mac();
