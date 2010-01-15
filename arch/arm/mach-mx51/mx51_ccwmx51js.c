@@ -226,7 +226,7 @@ static void ccwmx51_init_ext_eth_mac(void)
 	(void)platform_device_register(&smsc911x_device);
 }
 #else
-static void mxc_init_ext_eth_mac(void) { }
+static void ccwmx51_init_ext_eth_mac(void) { }
 #endif
 
 
