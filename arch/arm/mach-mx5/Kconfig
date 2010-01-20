@@ -129,4 +129,27 @@ config SDMA_IRAM
 	help
 	  Support Internal RAM as SDMA buffer or control structures
 
+menu "Serial Port Options"
+config UART1_ENABLED
+	bool "Enable UART1"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART1 interface
+
+config UART2_ENABLED
+	bool "Enable UART2"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART2 interface
+
+config UART3_ENABLED
+	bool "Enable UART3"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART3 interface
+endmenu
+
 endif

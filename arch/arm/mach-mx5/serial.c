@@ -148,6 +148,7 @@ static struct resource mxc_uart_resources1[] = {
 	},
 };
 
+#if defined CONFIG_UART1_ENABLED
 static struct platform_device mxc_uart_device1 = {
 	.name = "mxcintuart",
 	.id = 0,
@@ -157,7 +158,9 @@ static struct platform_device mxc_uart_device1 = {
 		.platform_data = &mxc_ports[0],
 		},
 };
+#endif
 
+#if defined CONFIG_UART2_ENABLED
 static struct resource mxc_uart_resources2[] = {
 	{
 		.start = UART2_BASE_ADDR,
@@ -169,7 +172,9 @@ static struct resource mxc_uart_resources2[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+#endif
 
+#if defined CONFIG_UART3_ENABLED
 static struct platform_device mxc_uart_device2 = {
 	.name = "mxcintuart",
 	.id = 1,
@@ -179,6 +184,7 @@ static struct platform_device mxc_uart_device2 = {
 		.platform_data = &mxc_ports[1],
 		},
 };
+#endif
 
 static struct resource mxc_uart_resources3[] = {
 	{
@@ -262,9 +268,15 @@ static int __init mxc_init_uart(void)
 	}
 
 	/* Register all the MXC UART platform device structures */
+#if defined CONFIG_UART1_ENABLED
 	platform_device_register(&mxc_uart_device1);
+#endif
+#if defined CONFIG_UART2_ENABLED
 	platform_device_register(&mxc_uart_device2);
+#endif
+#if defined CONFIG_UART3_ENABLED
 	platform_device_register(&mxc_uart_device3);
+#endif
 	if (cpu_is_mx53()) {
 		platform_device_register(&mxc_uart_device4);
 		platform_device_register(&mxc_uart_device5);

@@ -43,7 +43,7 @@
 #include <mach/memory.h>
 #include <mach/gpio.h>
 #include <mach/mmc.h>
-#include "board-mx51_babbage.h"
+#include "board.h"
 #include "iomux.h"
 #include "crm_regs.h"
 

@@ -393,3 +393,60 @@ void __init ccwmx51_io_init(void)
 	}
 #endif
 }
+
+#if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
+#define SERIAL_PORT_PAD		(PAD_CTL_HYS_ENABLE | PAD_CTL_PKE_ENABLE | \
+				 PAD_CTL_PUE_PULL | PAD_CTL_DRV_HIGH | \
+				 PAD_CTL_SRE_FAST)
+
+void gpio_uart_active(int port, int no_irda)
+{
+	/* Configure the IOMUX control registers for the UART signals */
+	switch (port) {
+
+	case 0:		/* UART 1 IOMUX Configs */
+#ifdef CONFIG_UART1_ENABLED
+		mxc_request_iomux(MX51_PIN_UART1_RXD, IOMUX_CONFIG_ALT0);
+		mxc_request_iomux(MX51_PIN_UART1_TXD, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX51_PIN_UART1_RXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_UART1_TXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_input(MUX_IN_UART1_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH0);
+
+		/* TODO enable CTS/RTS if selected */
+#endif
+		break;
+
+	case 1:		/* UART 2 IOMUX Configs */
+#ifdef CONFIG_UART2_ENABLED
+		mxc_request_iomux(MX51_PIN_UART2_RXD, IOMUX_CONFIG_ALT0);
+		mxc_request_iomux(MX51_PIN_UART2_TXD, IOMUX_CONFIG_ALT0);
+		mxc_iomux_set_pad(MX51_PIN_UART2_RXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_UART2_TXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_input(MUX_IN_UART2_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH2);
+
+		/*  TODO enable CTS/RTS if selected */
+#endif
+		break;
+	case 2:		/* UART 3 IOMUX Configs */
+#ifdef CONFIG_UART3_ENABLED
+		mxc_request_iomux(MX51_PIN_UART3_RXD, IOMUX_CONFIG_ALT1);
+		mxc_request_iomux(MX51_PIN_UART3_TXD, IOMUX_CONFIG_ALT1);
+		mxc_iomux_set_pad(MX51_PIN_UART3_RXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_UART3_TXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_input(MUX_IN_UART3_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH4);
+
+		/* TODO enable CTS/RTS if selected */
+#endif
+		break;
+	default:
+		break;
+	}
+
+}
+
+#else
+void gpio_uart_active(int port, int no_irda) {}
+#endif
+void gpio_uart_inactive(int port, int no_irda) {}
+EXPORT_SYMBOL(gpio_uart_active);
+EXPORT_SYMBOL(gpio_uart_inactive);

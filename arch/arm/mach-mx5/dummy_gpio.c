@@ -14,12 +14,6 @@
 #include <linux/errno.h>
 #include <linux/module.h>
 
-void gpio_uart_active(int port, int no_irda) {}
-EXPORT_SYMBOL(gpio_uart_active);
-
-void gpio_uart_inactive(int port, int no_irda) {}
-EXPORT_SYMBOL(gpio_uart_inactive);
-
 void gpio_gps_active(void) {}
 EXPORT_SYMBOL(gpio_gps_active);
 
