@@ -94,7 +94,7 @@ config SDMA_IRAM_SIZE
            Set the size of IRAM for SDMA. It must be a multiple of 512bytes.
 endmenu
 
-menu "Device options"
+menu "I2C Options"
 
 config I2C_MXC_SELECT1
 	bool "Enable I2C1 module"
@@ -117,6 +117,29 @@ config I2C_MXC_SELECT3
 	help
 	  Enable MX51 I2C3 module.
 
+endmenu
+
+menu "Serial Port Options"
+config UART1_ENABLED
+	bool "Enable UART1"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART1 interface
+
+config UART2_ENABLED
+	bool "Enable UART2"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART2 interface
+
+config UART3_ENABLED
+	bool "Enable UART3"
+	default y
+	depends on SERIAL_MXC
+	help
+	  Enable the MX51 UART3 interface
 endmenu
 
 endmenu

@@ -24,7 +24,7 @@
 #include <mach/mxc_uart.h>
 #include <mach/spba.h>
 #include "serial.h"
-#include "board-mx51_3stack.h"
+#include "board.h"
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 
@@ -116,6 +116,7 @@ static uart_mxc_port mxc_ports[] = {
 	       },
 };
 
+#if defined CONFIG_UART1_ENABLED
 static struct platform_device mxc_uart_device1 = {
 	.name = "mxcintuart",
 	.id = 0,
@@ -123,7 +124,9 @@ static struct platform_device mxc_uart_device1 = {
 		.platform_data = &mxc_ports[0],
 		},
 };
+#endif
 
+#if defined CONFIG_UART2_ENABLED
 static struct platform_device mxc_uart_device2 = {
 	.name = "mxcintuart",
 	.id = 1,
@@ -131,7 +134,9 @@ static struct platform_device mxc_uart_device2 = {
 		.platform_data = &mxc_ports[1],
 		},
 };
+#endif
 
+#if defined CONFIG_UART3_ENABLED
 static struct platform_device mxc_uart_device3 = {
 	.name = "mxcintuart",
 	.id = 2,
@@ -139,15 +144,20 @@ static struct platform_device mxc_uart_device3 = {
 		.platform_data = &mxc_ports[2],
 		},
 };
+#endif
 
 static int __init mxc_init_uart(void)
 {
 	/* Register all the MXC UART platform device structures */
+#if defined CONFIG_UART1_ENABLED
 	platform_device_register(&mxc_uart_device1);
+#endif
+#if defined CONFIG_UART2_ENABLED
 	platform_device_register(&mxc_uart_device2);
+#endif
 
 	/* Grab ownership of shared UARTs 3 and 4, only when enabled */
-#if UART3_ENABLED == 1
+#if defined CONFIG_UART3_ENABLED
 #if UART3_DMA_ENABLE == 1
 	spba_take_ownership(UART3_SHARED_PERI, (SPBA_MASTER_A | SPBA_MASTER_C));
 #else
@@ -155,7 +165,6 @@ static int __init mxc_init_uart(void)
 #endif				/* UART3_DMA_ENABLE */
 	platform_device_register(&mxc_uart_device3);
 #endif				/* UART3_ENABLED */
-
 	return 0;
 }
 
