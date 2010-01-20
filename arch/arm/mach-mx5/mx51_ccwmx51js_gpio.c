@@ -306,6 +306,34 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
 };
 #endif
 
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mma7455l_pins[] = {
+
+#ifdef CONFIG_I2C_MXC_SELECT1
+
+#endif
+
+#ifdef CONFIG_I2C_MXC_SELECT2
+		{
+		 MX51_PIN_GPIO1_2, IOMUX_CONFIG_ALT2 | IOMUX_CONFIG_SION,
+		 (PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_DRV_HIGH |
+		  PAD_CTL_100K_PU | PAD_CTL_HYS_ENABLE),
+		 MUX_IN_I2C2_IPP_SCL_IN_SELECT_INPUT, INPUT_CTL_PATH3,
+		 },
+		{
+		 MX51_PIN_GPIO1_3, IOMUX_CONFIG_ALT2 | IOMUX_CONFIG_SION,
+		 (PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_DRV_HIGH |
+		  PAD_CTL_100K_PU | PAD_CTL_HYS_ENABLE),
+		 MUX_IN_I2C2_IPP_SDA_IN_SELECT_INPUT, INPUT_CTL_PATH3,
+		 },
+#endif
+
+#ifdef CONFIG_I2C_MXC_SELECT3
+
+#endif
+};
+#endif //defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 	{	/* PMIC interrupt line */
@@ -313,6 +341,15 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 		(PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM | PAD_CTL_100K_PU |
 		PAD_CTL_HYS_ENABLE | PAD_CTL_DRV_VOT_HIGH),
 	},
+//	{  /* MMA7455L interrupt line */
+//	 MX51_PIN_GPIO1_6, IOMUX_CONFIG_GPIO,
+//	},
+//	{
+//	 MX51_PIN_GPIO1_7, IOMUX_CONFIG_ALT2,
+//	 (PAD_CTL_DRV_HIGH | PAD_CTL_PUE_PULL |
+//			 PAD_CTL_100K_PU | PAD_CTL_PKE_ENABLE |
+//			 PAD_CTL_SRE_FAST),
+//	},
 };
 
 
@@ -343,6 +380,19 @@ void __init ccwmx51_io_init(void)
 		if (ccwmx51_iomux_video1_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
 					    ccwmx51_iomux_video1_pins[i].in_mode);
+	}
+#endif
+
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mma7455l_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_mma7455l_pins[i].pin,
+				ccwmx51_iomux_mma7455l_pins[i].mux_mode);
+		if (ccwmx51_iomux_mma7455l_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_mma7455l_pins[i].pin,
+					ccwmx51_iomux_mma7455l_pins[i].pad_cfg);
+		if (ccwmx51_iomux_mma7455l_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_mma7455l_pins[i].in_select,
+					ccwmx51_iomux_mma7455l_pins[i].in_mode);
 	}
 #endif
 

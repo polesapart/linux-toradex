@@ -361,6 +361,15 @@ config INPUT_DM355EVM
 	  To compile this driver as a module, choose M here: the
 	  module will be called dm355evm_keys.
 
+config INPUT_MMA7455L
+	tristate "Freescale MMA7455L 3-axis accelerometer"
+	depends on I2C
+	help
+	  I2C driver for the Freescale MMA7455L 3-axis accelerometer.
+
+	  The userspace interface is a 3-axis (X/Y/Z) relative movement
+	  Linux input device, reporting REL_[XYZ] events.
+
 config INPUT_BFIN_ROTARY
 	tristate "Blackfin Rotary support"
 	depends on BF54x || BF52x
