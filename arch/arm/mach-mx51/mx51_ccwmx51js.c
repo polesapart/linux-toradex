@@ -412,19 +412,19 @@ static int __init ccwmx51_init_fb(void)
 		/* Get the desired configuration provided by the bootloader */
 		if (options[3] != '@') {
 			pr_info("Video resolution for VGA interface not provided, using default\n");
-			/* TODO set defualt video here */
+			/* TODO set default video here */
 		} else {
 			options = &options[4];
 			if (((p = strsep (&options, "@")) != NULL) && *p) {
-				if (strcmp(p, "640x480x16")) {
+				if (!strcmp(p, "640x480x16")) {
 					strcpy(fb_data_vga.mode_str, "640x480M-16@60");
-				} else if (strcmp(p, "800x600x16")) {
+				} else if (!strcmp(p, "800x600x16")) {
 					strcpy(fb_data_vga.mode_str, "800x600M-16@60");
-				} else if (strcmp(p, "1024x768x16")) {
+				} else if (!strcmp(p, "1024x768x16")) {
 					strcpy(fb_data_vga.mode_str, "1024x768M-16@60");
-				} else if (strcmp(p, "1280x1024x16")) {
+				} else if (!strcmp(p, "1280x1024x16")) {
 					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
-				} else if (strcmp(p, "1280x1024x16")) {
+				} else if (!strcmp(p, "1280x1024x16")) {
 					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
 				} else
 					pr_warning("Unsuported video resolution: %s, using default\n", p);
