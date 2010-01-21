@@ -737,7 +737,7 @@ static struct resource mxci2c1_resources[] = {
 
 /*! Platform Data for MXC I2C */
 static struct mxc_i2c_platform_data mxci2c1_data = {
-	.i2c_clk = 100000,
+	.i2c_clk = 400000,
 };
 #endif
 
@@ -760,7 +760,7 @@ static struct resource mxci2c2_resources[] = {
 
 /*! Platform Data for MXC I2C */
 static struct mxc_i2c_platform_data mxci2c2_data = {
-	.i2c_clk = 100000,
+	.i2c_clk = 400000,
 };
 #endif
 
@@ -770,13 +770,13 @@ static struct mxc_i2c_platform_data mxci2c2_data = {
  */
 static struct resource mxci2c3_resources[] = {
 	[0] = {
-	       .start = I2C3_BASE_ADDR,
-	       .end = I2C3_BASE_ADDR + SZ_4K - 1,
+	       .start = HSI2C_DMA_BASE_ADDR,
+	       .end = HSI2C_DMA_BASE_ADDR + SZ_4K - 1,
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = MXC_INT_I2C3,
-	       .end = MXC_INT_I2C3,
+	       .start = MXC_INT_HS_I2C,
+	       .end = MXC_INT_HS_I2C,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
