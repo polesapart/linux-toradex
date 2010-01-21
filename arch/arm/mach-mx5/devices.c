@@ -662,6 +662,11 @@ static struct resource mxci2c1_resources[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c1_data = {
+	.i2c_clk = 400000,
+};
 #endif
 
 #ifdef CONFIG_I2C_MXC_SELECT2
@@ -677,20 +682,29 @@ static struct resource mxci2c2_resources[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c2_data = {
+	.i2c_clk = 400000,
+};
 #endif
 
 #ifdef CONFIG_I2C_MXC_SELECT3
 static struct resource mxci2c3_resources[] = {
 	{
-	       .start = I2C3_BASE_ADDR,
-	       .end = I2C3_BASE_ADDR + SZ_4K - 1,
+	       .start = HSI2C_DMA_BASE_ADDR,
+	       .end = HSI2C_DMA_BASE_ADDR + SZ_4K - 1,
 	       .flags = IORESOURCE_MEM,
 	       },
 	{
-	       .start = MXC_INT_I2C3,
-	       .end = MXC_INT_I2C3,
+	       .start = MXC_INT_HS_I2C,
+	       .end = MXC_INT_HS_I2C,
 	       .flags = IORESOURCE_IRQ,
 	       },
+};
+
+/*! Platform Data for MXC I2C */
+static struct mxc_i2c_platform_data mxci2c3_data = {
+	.i2c_clk = 400000,
 };
 #endif
 
@@ -699,6 +713,10 @@ struct platform_device mxci2c_devices[] = {
 	{
 		.name = "imx-i2c",
 		.id = 0,
+		.dev = {
+		    .release = mxc_nop_release,
+		    .platform_data = &mxci2c1_data,
+		 },
 		.num_resources = ARRAY_SIZE(mxci2c1_resources),
 		.resource = mxci2c1_resources,
 	},
@@ -707,6 +725,10 @@ struct platform_device mxci2c_devices[] = {
 	{
 		.name = "imx-i2c",
 		.id = 1,
+		.dev = {
+		    .release = mxc_nop_release,
+		    .platform_data = &mxci2c2_data,
+		 },
 		.num_resources = ARRAY_SIZE(mxci2c2_resources),
 		.resource = mxci2c2_resources,
 	},
@@ -715,6 +737,10 @@ struct platform_device mxci2c_devices[] = {
 	{
 		.name = "imx-i2c",
 		.id = 2,
+		.dev = {
+		    .release = mxc_nop_release,
+		    .platform_data = &mxci2c3_data,
+		 },
 		.num_resources = ARRAY_SIZE(mxci2c3_resources),
 		.resource = mxci2c3_resources,
 	},
