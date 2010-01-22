@@ -311,7 +311,18 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mma7455l_pins[] = {
 
 #ifdef CONFIG_I2C_MXC_SELECT1
-
+		 {
+				 MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT1 | IOMUX_CONFIG_SION,
+				 (PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_HYS_ENABLE |
+				 PAD_CTL_100K_PU | PAD_CTL_DRV_HIGH),
+				 MUX_IN_I2C1_IPP_SDA_IN_SELECT_INPUT, INPUT_CTL_PATH2,
+		 },
+		 {
+				 MX51_PIN_SD2_CLK, IOMUX_CONFIG_ALT1 | IOMUX_CONFIG_SION,
+				 (PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_HYS_ENABLE |
+				 PAD_CTL_100K_PU | PAD_CTL_DRV_HIGH),
+				 MUX_IN_I2C1_IPP_SCL_IN_SELECT_INPUT, INPUT_CTL_PATH2,
+		 },
 #endif
 
 #ifdef CONFIG_I2C_MXC_SELECT2
@@ -330,9 +341,19 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mma7455l_pins[] = {
 #endif
 
 #ifdef CONFIG_I2C_MXC_SELECT3
-
+		{
+		 MX51_PIN_I2C1_CLK, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		 ( PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_HYS_ENABLE |
+				 PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU | PAD_CTL_SRE_SLOW),
+		 },
+		{
+		 MX51_PIN_I2C1_DAT, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		 ( PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_HYS_ENABLE |
+				 PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU | PAD_CTL_SRE_SLOW),
+		}
 #endif
 };
+
 #endif //defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {

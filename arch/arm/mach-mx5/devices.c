@@ -691,13 +691,13 @@ static struct mxc_i2c_platform_data mxci2c2_data = {
 #ifdef CONFIG_I2C_MXC_SELECT3
 static struct resource mxci2c3_resources[] = {
 	{
-	       .start = HSI2C_DMA_BASE_ADDR,
-	       .end = HSI2C_DMA_BASE_ADDR + SZ_4K - 1,
+	       .start = I2C3_BASE_ADDR,
+	       .end = I2C3_BASE_ADDR + SZ_4K - 1,
 	       .flags = IORESOURCE_MEM,
 	       },
 	{
-	       .start = MXC_INT_HS_I2C,
-	       .end = MXC_INT_HS_I2C,
+	       .start = MXC_INT_I2C3,
+	       .end = MXC_INT_I2C3,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -883,12 +883,53 @@ static struct resource dvfs_core_resources[] = {
 	},
 };
 
+/*! Platform Data for DVFS CORE */
+struct mxc_dvfs_platform_data dvfs_core_data = {
+	.reg_id = "SW1",
+	.clk1_id = "cpu_clk",
+	.clk2_id = "gpc_dvfs_clk",
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.ccm_cdcr_reg_addr = (unsigned int)MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = (unsigned int)MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = (unsigned int)MXC_CCM_CDHIPR,
+	.dvfs_thrs_reg_addr = MXC_DVFSTHRS,
+	.dvfs_coun_reg_addr = MXC_DVFSCOUN,
+	.dvfs_emac_reg_addr = MXC_DVFSEMAC,
+	.dvfs_cntr_reg_addr = MXC_DVFSCNTR,
+	.prediv_mask = 0x1F800,
+	.prediv_offset = 11,
+	.prediv_val = 3,
+	.div3ck_mask = 0xE0000000,
+	.div3ck_offset = 29,
+	.div3ck_val = 2,
+	.emac_val = 0x08,
+	.upthr_val = 25,
+	.dnthr_val = 9,
+	.pncthr_val = 33,
+	.upcnt_val = 10,
+	.dncnt_val = 10,
+	.delay_time = 30,
+	.num_wp = 3,
+};
+
 struct platform_device mxc_dvfs_core_device = {
 	.name = "mxc_dvfs_core",
 	.id = 0,
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &dvfs_core_data,
+	},
 	.num_resources = ARRAY_SIZE(dvfs_core_resources),
 	.resource = dvfs_core_resources,
 };
+
+static inline void mxc_init_dvfs_core(void)
+{
+	if (platform_device_register(&mxc_dvfs_core_device) < 0)
+		dev_err(&mxc_dvfs_core_device.dev,
+			"Unable to register DVFS core device\n");
+}
 
 static struct resource dvfs_per_resources[] = {
 	{
@@ -903,12 +944,45 @@ static struct resource dvfs_per_resources[] = {
 	},
 };
 
+/*! Platform Data for MXC DVFS PER*/
+struct mxc_dvfsper_data dvfs_per_data = {
+	.reg_id = "SW2",
+	.clk_id = "gpc_dvfs_clk",
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.gpc_adu = 0x0,
+	.vai_mask = MXC_DVFSPMCR0_FSVAI_MASK,
+	.vai_offset = MXC_DVFSPMCR0_FSVAI_OFFSET,
+	.dvfs_enable_bit = MXC_DVFSPMCR0_DVFEN,
+	.irq_mask = MXC_DVFSPMCR0_FSVAIM,
+	.div3_offset = 0,
+	.div3_mask = 0x7,
+	.div3_div = 2,
+	.lp_high = 1200000,
+	.lp_low = 1200000,
+};
+
 struct platform_device mxc_dvfs_per_device = {
 	 .name = "mxc_dvfsper",
 	 .id = 0,
+	 .dev = {
+		 .release = mxc_nop_release,
+		 .platform_data = &dvfs_per_data,
+		 },
 	 .num_resources = ARRAY_SIZE(dvfs_per_resources),
 	 .resource = dvfs_per_resources,
 };
+
+static inline void mxc_init_dvfs_per(void)
+{
+	if (platform_device_register(&mxc_dvfs_per_device) < 0) {
+		dev_err(&mxc_dvfs_per_device.dev,
+				"Unable to register DVFS device\n");
+	} else {
+		printk(KERN_INFO "mxc_init_dvfs_per initialised\n");
+	}
+	return;
+}
 
 struct mxc_gpio_port mxc_gpio_ports[] = {
 	{
