@@ -770,13 +770,13 @@ static struct mxc_i2c_platform_data mxci2c2_data = {
  */
 static struct resource mxci2c3_resources[] = {
 	[0] = {
-	       .start = HSI2C_DMA_BASE_ADDR,
-	       .end = HSI2C_DMA_BASE_ADDR + SZ_4K - 1,
+	       .start = I2C3_BASE_ADDR,
+	       .end = I2C3_BASE_ADDR + SZ_4K - 1,
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = MXC_INT_HS_I2C,
-	       .end = MXC_INT_HS_I2C,
+	       .start = MXC_INT_I2C3,
+	       .end = MXC_INT_I2C3,
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
@@ -811,6 +811,7 @@ static struct platform_device mxci2c_devices[] = {
 	 .num_resources = ARRAY_SIZE(mxci2c2_resources),
 	 .resource = mxci2c2_resources,},
 #endif
+// Note: AG: The CCWMX51 has not got a third standard I2C port.
 #ifdef CONFIG_I2C_MXC_SELECT3
 	{
 	 .name = "mxc_i2c",
@@ -942,9 +943,9 @@ struct mxc_dvfs_platform_data dvfs_core_data = {
 	.clk2_id = "gpc_dvfs_clk",
 	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
 	.gpc_vcr_reg_addr = MXC_GPC_VCR,
-	.ccm_cdcr_reg_addr = MXC_CCM_CDCR,
-	.ccm_cacrr_reg_addr = MXC_CCM_CACRR,
-	.ccm_cdhipr_reg_addr = MXC_CCM_CDHIPR,
+	.ccm_cdcr_reg_addr = (unsigned int)MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = (unsigned int)MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = (unsigned int)MXC_CCM_CDHIPR,
 	.dvfs_thrs_reg_addr = MXC_DVFSTHRS,
 	.dvfs_coun_reg_addr = MXC_DVFSCOUN,
 	.dvfs_emac_reg_addr = MXC_DVFSEMAC,
