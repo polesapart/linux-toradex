@@ -731,7 +731,10 @@ static ssize_t store_debug_cmd(struct device *dev, struct device_attribute *attr
 
 	if (strlen(buf) < sizeof(piperp->debug_cmd))
 	{
-		if (strstr(buf, "dump") != NULL) {
+		if (strstr(buf, "cal_dump") != NULL) {
+		    digiWifiCalibrationDumpNvram(piperp);
+		    ret = 1;
+		} else if (strstr(buf, "dump") != NULL) {
 			digiWifiDumpRegisters(piperp, MAIN_REGS | MAC_REGS);
 			ret = 1;
 		} else if (strstr(buf, "ps_state") != NULL) {

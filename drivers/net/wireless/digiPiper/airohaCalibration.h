@@ -71,6 +71,14 @@ typedef struct {
 	unsigned int sample;	/* measured sample */
 } sampleInfo_t;
 
+enum NvramDataState {
+    NV_NOT_READ,
+    NV_OKAY,
+    NV_CRC_FAILED,
+    NV_INVALID_SIGNATURE,
+    NV_CONVERTED_10
+};
+
 struct airohaCalibrationData {
 	struct task_struct *threadCB;
 	spinlock_t lock;
@@ -86,10 +94,9 @@ struct airohaCalibrationData {
 	int expectedAdc;
 	int powerIndex, correctedPowerIndex;
 	wcd_point_t *p1;
-
-
 	void *priv;
 	struct calibration_ops *cops;
+	enum NvramDataState nvramDataState;
 	bool initialized;
 };
 
@@ -104,5 +111,6 @@ struct calibration_ops {
 void digiWifiInitCalibration(struct piper_priv *digi);
 void digiWifiDeInitCalibration(struct piper_priv *digi);
 int digiWifiCalibrationPowerIndex(struct piper_priv *piperp);
+void digiWifiCalibrationDumpNvram(struct piper_priv *piperp);
 
 #endif				/* AIROHA_CALIBRATION_H */

@@ -798,21 +798,80 @@ static int getCalibrationData(struct piper_priv *digi)
 					      calibration.nvram->
 					      cal_curves_bg,
 					      calibration.nvram->header.wcd_len);
+			    calibration.nvramDataState = NV_CONVERTED_10;
+			} else {
+			    calibration.nvramDataState = NV_OKAY;
 			}
 			digi->rf->set_hw_info(digi->hw, digi->channel,
 								  calibration.nvram->header.hw_platform);
 		} else {
 			digi_dbg("Calibration data has invalid CRC.\n");
 			setDefaultCalibrationValues(digi);
+			calibration.nvramDataState = NV_CRC_FAILED;
 		}
 	} else {
 		digi_dbg("Calibration data has invalid signature.\n");
 		setDefaultCalibrationValues(digi);
+		calibration.nvramDataState = NV_INVALID_SIGNATURE;
 	}
 
 	return result;
 }
 
+/*
+ * This routine dumps the calibration data read from NVRAM.
+ */
+void digiWifiCalibrationDumpNvram(struct piper_priv *piperp)
+{
+    switch (calibration.nvramDataState) {
+        case NV_NOT_READ:
+            printk(KERN_ERR "\nWARNING: Calibration data has not been read and processed by the driver.\n");
+            break;
+        case NV_OKAY:
+            printk(KERN_ERR "\nCalibration data is okay\n");
+            break;
+        case NV_CRC_FAILED:
+            printk(KERN_ERR "\nERROR: Calibration data failed CRC check.\n");
+            break;
+        case NV_INVALID_SIGNATURE:
+            printk(KERN_ERR "\nERROR: Calibration has an invalid signature.\n");
+            break;
+        case NV_CONVERTED_10:
+            printk(KERN_ERR "\nCalibration data was converted from 1.0 format.\n");
+            break;
+        default:
+            printk(KERN_ERR "\nERROR: Unsupported calibration data state %d.\n", calibration.nvramDataState);
+            break;
+    }
+    
+    if (calibration.nvramDataState != NV_NOT_READ) {
+        unsigned int i, column = 0;
+        unsigned int *p = (unsigned int *) calibration.nvram;
+        
+        for (i = 0; i < (sizeof(wcd_data_t) / sizeof(unsigned int)); i++) {
+            if (column == 0) {
+                printk(KERN_ERR);
+            }
+            printk("%8.8X ", *p);
+            p++;
+            column++;
+            if (column == 4) {
+                printk("- ");
+            }
+            else if (column == 8) {
+                printk("\n");
+                column = 0;
+            }
+        }
+
+        if (column != 0) {
+            printk("\n\n");
+        }
+        else {
+            printk(KERN_ERR "\n");
+        }
+    }
+}
 
 
 /*
@@ -946,7 +1005,8 @@ void digiWifiInitCalibration(struct piper_priv *digi)
 	calibration.events = 0;
 	calibration.sampleCount = 0;
 	calibration.initialized = false;
-
+    calibration.nvramDataState = NV_NOT_READ;
+    
 	spin_lock_init(&calibration.lock);
 
 	calibration.threadCB =
