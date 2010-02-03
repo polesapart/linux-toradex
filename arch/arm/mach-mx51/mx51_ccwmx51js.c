@@ -1,6 +1,7 @@
 /*
  * Copyright 2009 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2009 Digi International, Inc. All Rights Reserved.
+ * Copyright 2010 Timesys Corporation. All Rights Reserved.
  */
 
 /*
@@ -111,53 +112,6 @@ static void mxc_nop_release(struct device *dev)
 	/* Nothing */
 }
 
-/* MTD NAND flash */
-#if defined(CONFIG_MTD_NAND_MXC) \
-	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \
-	|| defined(CONFIG_MTD_NAND_MXC_V2) \
-	|| defined(CONFIG_MTD_NAND_MXC_V2_MODULE) \
-	|| defined(CONFIG_MTD_NAND_MXC_V3) \
-	|| defined(CONFIG_MTD_NAND_MXC_V3_MODULE)
-
-extern void gpio_nand_active(void);
-extern void gpio_nand_inactive(void);
-
-static int nand_init(void)
-{
-	/* Configure the pins */
-	gpio_nand_active();
-	return 0;
-}
-
-static void nand_exit(void)
-{
-	/* Free the pins */
-	gpio_nand_inactive();
-}
-
-static struct flash_platform_data mxc_nand_data = {
-	.width = 1,
-	.init = nand_init,
-	.exit = nand_exit,
-};
-
-static struct platform_device mxc_nandv2_mtd_device = {
-	.name = "mxc_nandv2_flash",
-	.id = 0,
-	.dev = {
-		.release = mxc_nop_release,
-		.platform_data = &mxc_nand_data,
-	},
-};
-
-static void ccwmx51_init_nand_mtd(void)
-{
-	(void)platform_device_register(&mxc_nandv2_mtd_device);
-}
-#else
-static inline void ccwmx51_init_nand_mtd(void) { }
-#endif
-
 #if defined(CONFIG_SMSC9118)
 static struct resource smsc911x_device_resources[] = {
 	[0] = {
@@ -226,7 +180,7 @@ static void ccwmx51_init_ext_eth_mac(void)
 	(void)platform_device_register(&smsc911x_device);
 }
 #else
-static void ccwmx51_init_ext_eth_mac(void) { }
+//static void ccwmx51_init_ext_eth_mac(void) { }
 #endif
 
 
@@ -364,10 +318,32 @@ static inline void ccwmx51_init_mmc(void) {}
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 
+static struct fb_videomode wvga_video_mode =
+{
+	.name = "Digi LCD",
+	.xres = 800,
+	.yres = 480,
+	.refresh = 60,
+	.pixclock = 30062,
+	.left_margin    = 64,
+	.right_margin   = 64,
+	.lower_margin   = 10,
+	.upper_margin   = 30,
+	.hsync_len      = 128,
+	.vsync_len      = 5,
+	.vmode          = FB_VMODE_NONINTERLACED,
+	.flag           = FB_MODE_IS_DETAILED,
+// Digi says that inverting the clock is necessary
+// to avoid problems with video.
+//	.sync		= FB_SYNC_CLK_LAT_FALL,
+
+};
+
+
 static struct mxc_fb_platform_data fb_data_vga = {
 	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-	.mode_str = "1024x768M-16@60",	/* Default */
 };
+
 
 static struct platform_device mxc_fb_device[] = {
 	{
@@ -376,7 +352,7 @@ static struct platform_device mxc_fb_device[] = {
 		.dev = {
 			.release = mxc_nop_release,
 			.coherent_dma_mask = 0xFFFFFFFF,
-			.platform_data = &fb_data_vga,
+			.platform_data = &fb_data_vga
 		},
 	 }, {
 		.name = "mxc_sdc_fb",
@@ -384,7 +360,6 @@ static struct platform_device mxc_fb_device[] = {
 		.dev = {
 			.release = mxc_nop_release,
 			.coherent_dma_mask = 0xFFFFFFFF,
-			.platform_data = NULL,
 		},
 	}, {
 		.name = "mxc_sdc_fb",
@@ -396,41 +371,64 @@ static struct platform_device mxc_fb_device[] = {
 	},
 };
 
+extern void gpio_lcd_active(void);
+
+
+// We let the user specify e.g. 800x600x24, but pay attention
+// only to the 800x600 part, and use 24-bit color regardless.
+static int video_matches(char *user, char *template)
+{
+	return !strncasecmp(user, template, strlen(template));
+}
+
 static int __init ccwmx51_init_fb(void)
 {
 	char *options = NULL, *p;
 
 	if (fb_get_options("displayfb", &options))
-		pr_warning("no display information available in commnad line\n");
+		pr_warning("no display information available in command line\n");
 
 	if (!options)
 		return -ENODEV;
 
 	if (!strncasecmp(options, "VGA", 3)) {
 		pr_info("VGA interface is primary\n");
+		
+		fb_data_vga.mode = 0; // Do not use LCD timings.
+		fb_data_vga.mode_str = "1024x768M-16@60";	/* Default */
 
 		/* Get the desired configuration provided by the bootloader */
 		if (options[3] != '@') {
-			pr_info("Video resolution for VGA interface not provided, using default\n");
-			/* TODO set default video here */
+			pr_info("Video resolution for VGA interface not provided, using '%s'\n",
+			       fb_data_vga.mode_str);
 		} else {
 			options = &options[4];
 			if (((p = strsep (&options, "@")) != NULL) && *p) {
-				if (!strcmp(p, "640x480x16")) {
-					strcpy(fb_data_vga.mode_str, "640x480M-16@60");
-				} else if (!strcmp(p, "800x600x16")) {
-					strcpy(fb_data_vga.mode_str, "800x600M-16@60");
-				} else if (!strcmp(p, "1024x768x16")) {
-					strcpy(fb_data_vga.mode_str, "1024x768M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
+				if (video_matches(p, "640x480") ){
+					fb_data_vga.mode_str = "640x480M-16@60";
+				} else if (video_matches(p, "800x600")) {
+					fb_data_vga.mode_str = "800x600M-16@60";
+				} else if (video_matches(p, "1024x768")) {
+					fb_data_vga.mode_str = "1024x768M-16@60";
+				} else if (video_matches(p, "1280x1024")) {
+					fb_data_vga.mode_str = "1280x1024M-16@60";
+				} else if (video_matches(p, "1280x1024")) {
+					fb_data_vga.mode_str = "1280x1024M-16@60";
+				} else if (video_matches(p, "1280x768")) {
+					fb_data_vga.mode_str = "1280x768M-16@60";
 				} else
-					pr_warning("Unsuported video resolution: %s, using default\n", p);
+					pr_warning("Unsupported video resolution: %s, using default '%s'\n",
+						p, fb_data_vga.mode_str);
 			}
 		}
-		(void)platform_device_register(&mxc_fb_device[0]); /* VGA */
+		platform_device_register(&mxc_fb_device[0]); /* VGA */
+
+	} else if (!strncasecmp(options, "LCD", 3)){
+		gpio_lcd_active();
+		fb_data_vga.mode = &wvga_video_mode;  // Use timings for Digi LCD.
+		fb_data_vga.mode_str = "800x480-16@60", // 16-bit color more compatible with Factory apps
+		pr_info("Using LDC wvga video timings and mode %s\n", fb_data_vga.mode_str);
+		platform_device_register(&mxc_fb_device[0]); /* LCD */
 	}
 
 	return 0;
@@ -503,18 +501,46 @@ static void mxc_power_off(void)
 
 static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
 #if defined(CONFIG_INPUT_MMA7455L)
+	// accelerometer, unsupported at present.
 	{
         I2C_BOARD_INFO("mma7455l", 0x1d),
 		.irq = IOMUX_TO_IRQ(MX51_PIN_GPIO1_7),
 	},
 #endif
+
+
+
+
 };
 
-int __init ccwmx51_init_mma7455l(void)
+
+int __init ccwmx51_i2c_setup(void)
 {
 
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
+
+static struct mxc_audio_platform_data wm8753_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 3,
+	.sysclk = 11289600,  // So we can do 44.1 kHz
+};
+
+static struct platform_device mxc_wm8753_device = {
+	.name = "imx-ccwmx51js-wm8753",
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &wm8753_data,
+	},
+};
+
+
+static void mxc_init_wm8753(void)
+{
+	platform_device_register(&mxc_wm8753_device);
+}
+
 
 /*!
  * Board specific initialization.
@@ -528,10 +554,11 @@ static void __init mxc_board_init(void)
 
 	mxc_init_devices();
 	ccwmx51_init_mmc();
-	ccwmx51_init_nand_mtd();
-//	ccwmx51_init_ext_eth_mac();
-	ccwmx51_init_mma7455l();
+
+	ccwmx51_i2c_setup();
 	ccwmx51_init_mc13892();
+	mxc_init_wm8753();
+
 
 	pm_power_off = mxc_power_off;
 }

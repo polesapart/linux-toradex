@@ -705,12 +705,8 @@ static int mxci2c_probe(struct platform_device *pdev)
 		}
 	}
 	if (mxc_i2c->clkdiv == -1) {
-		i--;
 		mxc_i2c->clkdiv = 0x1F;	/* Use max divider */
 	}
-	dev_dbg(&pdev->dev, "i2c speed is %d/%d = %d bps, reg val = 0x%02X\n",
-		clk_freq, i2c_clk_table[i].div,
-		clk_freq / i2c_clk_table[i].div, mxc_i2c->clkdiv);
 
 	/*
 	 * Set the adapter information

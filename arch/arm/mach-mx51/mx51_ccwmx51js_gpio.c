@@ -207,6 +207,12 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
+	// This pin is necessary to enable the Digi LCD panel on the P1
+	// connector.
+	{
+		MX51_PIN_DI1_PIN11, IOMUX_CONFIG_ALT4,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
 	{	/* DISP1 DAT0 */
 		MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
 		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
@@ -359,6 +365,32 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mma7455l_pins[] = {
 #endif //defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
+	{
+		MX51_PIN_AUD3_BB_TXD, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_ODE_OPENDRAIN_NONE |
+		 PAD_CTL_100K_PU | PAD_CTL_HYS_NONE | PAD_CTL_DDR_INPUT_CMOS |
+		 PAD_CTL_DRV_VOT_LOW),
+	},
+	{
+		MX51_PIN_AUD3_BB_RXD, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_ODE_OPENDRAIN_NONE |
+		PAD_CTL_100K_PU | PAD_CTL_HYS_NONE | PAD_CTL_DDR_INPUT_CMOS |
+		PAD_CTL_DRV_VOT_LOW),
+	},
+	{
+		MX51_PIN_AUD3_BB_CK, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_ODE_OPENDRAIN_NONE |
+		PAD_CTL_100K_PU | PAD_CTL_HYS_NONE | PAD_CTL_DDR_INPUT_CMOS |
+		PAD_CTL_DRV_VOT_LOW),
+	},
+	{
+		MX51_PIN_AUD3_BB_FS, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_ODE_OPENDRAIN_NONE |
+		PAD_CTL_100K_PU | PAD_CTL_HYS_NONE | PAD_CTL_DDR_INPUT_CMOS |
+		PAD_CTL_DRV_VOT_LOW),
+	},
+
+
 	{	/* PMIC interrupt line */
 		MX51_PIN_GPIO1_5, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
 		(PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM | PAD_CTL_100K_PU |
@@ -422,13 +454,15 @@ void __init ccwmx51_io_init(void)
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video1_pins); i++) {
 		mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,
-				  ccwmx51_iomux_video1_pins[i].mux_mode);
+					  ccwmx51_iomux_video1_pins[i].mux_mode);
 		if (ccwmx51_iomux_video1_pins[i].pad_cfg)
 			mxc_iomux_set_pad(ccwmx51_iomux_video1_pins[i].pin,
 					  ccwmx51_iomux_video1_pins[i].pad_cfg);
+
 		if (ccwmx51_iomux_video1_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
 					    ccwmx51_iomux_video1_pins[i].in_mode);
+
 	}
 #endif
 
@@ -468,6 +502,15 @@ void __init ccwmx51_io_init(void)
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_RS), 1);
 #endif
 }
+
+
+void gpio_lcd_active(void)
+{
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
+}
+
+
+EXPORT_SYMBOL(gpio_lcd_active);
 
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
@@ -526,3 +569,161 @@ void gpio_uart_active(int port, int no_irda) {}
 void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
+
+
+
+/*!
+ * Setup GPIO for a CSPI device to be active
+ *
+ * @param  cspi_mod         an CSPI device
+ */
+
+void gpio_spi_active(int cspi_mod)
+{
+	switch (cspi_mod) {
+		case 0:
+		/* SPI1 */
+			mxc_request_iomux(MX51_PIN_CSPI1_MOSI, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_MISO, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_SCLK, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0);
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_MOSI,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_MISO,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_SCLK,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_SS0,
+					  PAD_CTL_SRE_FAST
+					 );
+
+			break;
+		case 1:
+		/* SPI2 */
+			break;
+		default:
+			break;
+	}
+}
+
+
+EXPORT_SYMBOL(gpio_spi_active);
+
+/*!
+ * Setup GPIO for a CSPI device to be inactive
+ *
+ * @param  cspi_mod         a CSPI device
+ */
+void gpio_spi_inactive(int cspi_mod)
+{
+}
+
+EXPORT_SYMBOL(gpio_spi_inactive);
+
+
+/*
+ *
+ * Investigating ecSPI issue.
+ *
+ */
+
+// copied from babbage code. 
+/* workaround for ecspi chipselect pin may not keep correct level when idle */
+void mx51_babbage_gpio_spi_chipselect_active(int cspi_mode, int status,
+					     int chipselect)
+{
+	u32 gpio;
+	int r = 0;
+
+	switch (cspi_mode) {
+		case 1:
+			switch (chipselect) {
+				case 0x1:
+					r = mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_ALT0);
+					if (r){
+						printk("mxc_request_iomux could not get ss0\n");
+					}
+					mxc_iomux_set_pad(MX51_PIN_CSPI1_SS0,
+						PAD_CTL_HYS_ENABLE |
+						PAD_CTL_PKE_ENABLE |
+						PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+
+					break;
+				case 0x2:
+					gpio = IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0);
+					r = mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_GPIO);
+					if (r){
+						printk("mxc_request_iomux could not get ss0 in case 2\n");
+					}
+					r = gpio_request(gpio, "cspi1_ss0");
+					if (r){
+						printk("gpio_request(cspi1_ss0) failed\n");
+					}
+					r = gpio_direction_output(gpio, 0);
+					if (r){
+						printk("gpio_set_direction_output(cspi1_ss0) failed\n");
+					}
+					gpio_set_value(gpio, 1 & (~status));
+					break;
+				default:
+					break;
+			}
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		default:
+			break;
+	}
+}
+EXPORT_SYMBOL(mx51_babbage_gpio_spi_chipselect_active);
+
+void mx51_babbage_gpio_spi_chipselect_inactive(int cspi_mode, int status,
+					       int chipselect)
+{
+	switch (cspi_mode) {
+		case 1:
+			switch (chipselect) {
+				case 0x1:
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0);
+					mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_GPIO);
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
+					break;
+				case 0x2:
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
+					break;
+				default:
+					break;
+			}
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		default:
+			break;
+	}
+}
+EXPORT_SYMBOL(mx51_babbage_gpio_spi_chipselect_inactive);
+

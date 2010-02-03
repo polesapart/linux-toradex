@@ -23,12 +23,6 @@ EXPORT_SYMBOL(gpio_gps_inactive);
 void config_uartdma_event(int port) {}
 EXPORT_SYMBOL(config_uartdma_event);
 
-void gpio_spi_active(int cspi_mod) {}
-EXPORT_SYMBOL(gpio_spi_active);
-
-void gpio_spi_inactive(int cspi_mod) {}
-EXPORT_SYMBOL(gpio_spi_inactive);
-
 void gpio_owire_active(void) {}
 EXPORT_SYMBOL(gpio_owire_active);
 
@@ -72,12 +66,6 @@ EXPORT_SYMBOL(gpio_ata_active);
 
 void gpio_ata_inactive(void) {}
 EXPORT_SYMBOL(gpio_ata_inactive);
-
-void gpio_nand_active(void) {}
-EXPORT_SYMBOL(gpio_nand_active);
-
-void gpio_nand_inactive(void) {}
-EXPORT_SYMBOL(gpio_nand_inactive);
 
 void gpio_keypad_active(void) {}
 EXPORT_SYMBOL(gpio_keypad_active);
