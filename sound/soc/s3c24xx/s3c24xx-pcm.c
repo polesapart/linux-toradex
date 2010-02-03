@@ -71,6 +71,8 @@ struct s3c24xx_runtime_data {
 	dma_addr_t dma_pos;
 	dma_addr_t dma_end;
 	struct s3c24xx_pcm_dma_params *params;
+
+	int resumed;
 };
 
 /* s3c24xx_pcm_enqueue
@@ -457,11 +459,77 @@ static int s3c24xx_pcm_new(struct snd_card *card,
 	return ret;
 }
 
+/* Enables the support of the Power Management */
+#if defined(CONFIG_PM)
+static int s3c24xx_pcm_suspend(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	struct snd_pcm_runtime *runtime;
+	struct s3c24xx_runtime_data *prtd;
+	int retval;
+
+	retval = 0;
+	runtime = dai->runtime;
+        if (!runtime)
+		goto exit_suspend;
+
+	prtd = runtime->private_data;
+        if (!prtd)
+		goto exit_suspend;
+
+	prtd->resumed = 0;
+
+exit_suspend:
+	return retval;
+}
+
+/* We need to reenable the DMA-channel when coming out from the suspend */
+static int s3c24xx_pcm_resume(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	struct snd_pcm_runtime *runtime;
+	struct s3c24xx_runtime_data *prtd;
+	int retval;
+
+	retval = 0;
+	runtime = dai->runtime;
+        if (!runtime)
+		goto exit_resume;
+        
+	prtd = runtime->private_data;
+        if (!prtd)
+		goto exit_resume;
+
+	/* Check if a DMA-channel is available and was not already resumed */
+	if (prtd->params != NULL && !prtd->resumed) {
+
+		/*
+		 * We must reenable the DMA-channels otherwise they will not work
+		 * after the wakeup-reset
+		 */
+		s3c2410_dma_free(prtd->params->channel, prtd->params->client);
+		retval = s3c2410_dma_request(prtd->params->channel,
+					     prtd->params->client, NULL);
+		if (retval < 0)
+			printk(KERN_ERR "s3c24xx-pcm: DMA %u request failed (%i)\n",
+			       prtd->params->channel, retval);
+		else
+			prtd->resumed = 1;
+	}
+
+exit_resume:
+	return retval;
+}
+#else
+#define s3c24xx_pcm_suspend		NULL
+#define s3c24xx_pcm_resume		NULL
+#endif /* defined(CONFIG_PM) */
+
 struct snd_soc_platform s3c24xx_soc_platform = {
 	.name		= "s3c24xx-audio",
 	.pcm_ops 	= &s3c24xx_pcm_ops,
 	.pcm_new	= s3c24xx_pcm_new,
 	.pcm_free	= s3c24xx_pcm_free_dma_buffers,
+	.suspend	= s3c24xx_pcm_suspend,
+	.resume		= s3c24xx_pcm_resume,
 };
 EXPORT_SYMBOL_GPL(s3c24xx_soc_platform);
 

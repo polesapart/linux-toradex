@@ -63,7 +63,11 @@
 #ifdef CONFIG_CPU_S3C2400
 #define NR_PORTS (2)
 #else
+#if defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)
+#define NR_PORTS (4)
+#else
 #define NR_PORTS (3)
+#endif
 #endif
 
 /* port irq numbers */
@@ -827,7 +831,7 @@ static struct uart_ops s3c24xx_serial_ops = {
 static struct uart_driver s3c24xx_uart_drv = {
 	.owner		= THIS_MODULE,
 	.dev_name	= "s3c2410_serial",
-	.nr		= 3,
+	.nr		= NR_PORTS,
 	.cons		= S3C24XX_SERIAL_CONSOLE,
 	.driver_name	= S3C24XX_SERIAL_NAME,
 	.major		= S3C24XX_SERIAL_MAJOR,
@@ -872,7 +876,20 @@ static struct s3c24xx_uart_port s3c24xx_serial_ports[NR_PORTS] = {
 			.flags		= UPF_BOOT_AUTOCONF,
 			.line		= 2,
 		}
-	}
+	},
+	[3] = {
+                .port = {
+                        .lock           = __SPIN_LOCK_UNLOCKED(s3c24xx_serial_ports[3].port.lock),
+                        .iotype         = UPIO_MEM,
+                        .irq            = IRQ_S3C2443_RX3,
+                        .uartclk        = 0,
+                        .fifosize       = 16,
+                        .ops            = &s3c24xx_serial_ops,
+                        .flags          = UPF_BOOT_AUTOCONF,
+                        .line           = 3,
+                }
+        }
+
 #endif
 };
 
@@ -945,6 +962,10 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 
 	port->mapbase	= res->start;
 	port->membase	= S3C24XX_VA_UART + (res->start - S3C24XX_PA_UART);
+
+	/* Use the number of the HW port as line number (Luis Galdos) */
+	port->line      = cfg->hwport;
+	
 	ret = platform_get_irq(platdev, 0);
 	if (ret < 0)
 		port->irq = 0;

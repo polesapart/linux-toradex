@@ -25,12 +25,68 @@
 #include <mach/hardware.h>
 #include <mach/usb-control.h>
 
+/* For enabling the second root hub port of the S3C2443 */
+#if defined(CONFIG_S3C2443_USB_PHY_PORT)
+#include <mach/regs-s3c2443-clock.h>
+#endif
+
 #define valid_port(idx) ((idx) == 1 || (idx) == 2)
 
 /* clock device associated with the hcd */
 
 static struct clk *clk;
 static struct clk *usb_clk;
+
+
+/*
+ * If the second port is enabled, then only connect the USB PHY to the
+ * host controller path
+ */
+#if defined(CONFIG_S3C2443_USB_PHY_PORT)
+static void usb_hcd_s3c2443_enable_second_port(void)
+{
+	ulong regval;
+		
+	/* PHY power enable */
+	regval = __raw_readl(S3C2443_PWRCFG);
+	regval |= S3C2443_PWRCFG_USBPHY_ON;
+	__raw_writel(regval, S3C2443_PWRCFG);
+	
+	/*
+	 * USB device 2.0 must reset like bellow,
+	 * 1st phy reset and after at least 10us, func_reset & host reset
+	 * phy reset can reset bellow registers.
+	 */
+	regval = S3C2443_URSTCON_PHY;
+	__raw_writel(regval, S3C2443_URSTCON);
+	udelay(20);
+	__raw_writel(0x00, S3C2443_URSTCON);
+	
+	/* Function reset, but DONT TOUCH THE HOST! */
+	regval = S3C2443_URSTCON_FUNC;
+	__raw_writel(regval, S3C2443_URSTCON);
+	__raw_writel(0x00, S3C2443_URSTCON);
+	
+	/* 48Mhz, Oscillator, External X-tal, device */
+	regval = S3C2443_PHYCTRL_EXTCLK_OSCI | S3C2443_PHYCTRL_DOWN_DEV;
+	__raw_writel(regval, S3C2443_PHYCTRL);
+}
+static inline void usb_hcd_s3c2443_disable_second_port(void)
+{
+	ulong regval;
+	
+	/* Reset the USB-function and the PHY */
+	writel(S3C2443_URSTCON_PHY, S3C2443_URSTCON);
+	
+	/* PHY power disable */
+	regval = readl(S3C2443_PWRCFG);
+	regval &= ~S3C2443_PWRCFG_USBPHY_ON;
+	writel(regval, S3C2443_PWRCFG);
+}
+#else
+static inline void usb_hcd_s3c2443_enable_second_port(void) { }
+static inline void usb_hcd_s3c2443_disable_second_port(void) { }
+#endif
 
 /* forward definitions */
 
@@ -136,7 +192,7 @@ static void s3c2410_usb_set_power(struct s3c2410_hcd_info *info,
 
 	if (info->power_control != NULL) {
 		info->port[port-1].power = to;
-		(info->power_control)(port-1, to);
+		(info->power_control)(info, port-1, to);
 	}
 }
 
@@ -285,6 +341,8 @@ static void s3c2410_hcd_oc(struct s3c2410_hcd_info *info, int port_oc)
 	unsigned long flags;
 	int portno;
 
+	//printk(KERN_ERR "s3c2410-ohci: Over current (%i)\n", port_oc);
+	
 	if (info == NULL)
 		return;
 
@@ -301,8 +359,9 @@ static void s3c2410_hcd_oc(struct s3c2410_hcd_info *info, int port_oc)
 
 			/* ok, once over-current is detected,
 			   the port needs to be powered down */
-			s3c2410_usb_set_power(info, portno+1, 0);
-		}
+			s3c2410_usb_set_power(info, portno + 1, 0);
+		} else
+			s3c2410_usb_set_power(info, portno + 1, 1);
 	}
 
 	local_irq_restore(flags);
@@ -350,6 +409,9 @@ static int usb_hcd_s3c2410_probe (const struct hc_driver *driver,
 	s3c2410_usb_set_power(dev->dev.platform_data, 1, 1);
 	s3c2410_usb_set_power(dev->dev.platform_data, 2, 1);
 
+	/* Enable the second port for the S3C2443 */
+	usb_hcd_s3c2443_enable_second_port();
+	
 	hcd = usb_create_hcd(driver, &dev->dev, "s3c24xx");
 	if (hcd == NULL)
 		return -ENOMEM;
@@ -473,6 +535,37 @@ static const struct hc_driver ohci_s3c2410_hc_driver = {
 	.start_port_reset =	ohci_start_port_reset,
 };
 
+#if defined(CONFIG_PM)
+static int ohci_hcd_s3c2410_drv_suspend(struct platform_device *pdev, pm_message_t mesg)
+{
+	/* Disable the clocks before entering the suspend mode */
+	clk_disable(clk);
+	clk_disable(usb_clk);
+
+	usb_hcd_s3c2443_disable_second_port();
+
+	return 0;
+}
+
+static int ohci_hcd_s3c2410_drv_resume(struct platform_device *pdev)
+{
+	struct usb_hcd  *hcd;
+
+	usb_hcd_s3c2443_enable_second_port();
+	
+	/* Restart the clocks */
+	clk_enable(clk);
+	clk_enable(usb_clk);
+
+	hcd = platform_get_drvdata(pdev);
+	ohci_finish_controller_resume(hcd);
+	return 0;
+}
+#else
+#define ohci_hcd_s3c2410_drv_suspend NULL
+#define ohci_hcd_s3c2410_drv_resume  NULL
+#endif /* defined(CONFIG_PM) */
+
 /* device driver */
 
 static int ohci_hcd_s3c2410_drv_probe(struct platform_device *pdev)
@@ -492,8 +585,8 @@ static struct platform_driver ohci_hcd_s3c2410_driver = {
 	.probe		= ohci_hcd_s3c2410_drv_probe,
 	.remove		= ohci_hcd_s3c2410_drv_remove,
 	.shutdown	= usb_hcd_platform_shutdown,
-	/*.suspend	= ohci_hcd_s3c2410_drv_suspend, */
-	/*.resume	= ohci_hcd_s3c2410_drv_resume, */
+	.suspend	= ohci_hcd_s3c2410_drv_suspend,
+	.resume	        = ohci_hcd_s3c2410_drv_resume,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "s3c2410-ohci",

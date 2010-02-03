@@ -27,7 +27,7 @@ INITRD_PHYS := $(initrd_phys-y)
 
 export ZRELADDR INITRD_PHYS PARAMS_PHYS
 
-targets := Image zImage xipImage bootpImage uImage
+targets := Image zImage xipImage bootpImage uImage Image.gz uImagegz
 
 ifeq ($(CONFIG_XIP_KERNEL),y)
 
@@ -72,6 +72,18 @@ endif
 
 $(obj)/uImage:	$(obj)/zImage FORCE
 	$(call if_changed,uimage)
+	@echo '  Image $@ is ready'
+
+quiet_cmd_uimagegz = UIMAGE  $@
+      cmd_uimagegz = $(CONFIG_SHELL) $(MKIMAGE) -A arm -O linux -T kernel \
+		     -C gzip -a $(ZRELADDR) -e $(ZRELADDR) \
+		     -n 'Linux-$(KERNELRELEASE)' -d $< $@
+
+$(obj)/Image.gz: $(obj)/Image FORCE
+	$(call if_changed,gzip)
+
+$(obj)/uImagegz: $(obj)/Image.gz FORCE
+	$(call if_changed,uimagegz)
 	@echo '  Image $@ is ready'
 
 $(obj)/bootp/bootp: $(obj)/zImage initrd FORCE

@@ -5,12 +5,14 @@ config SND_SOC_ALL_CODECS
 	select SPI_MASTER
 	select SND_SOC_AD73311
 	select SND_SOC_AK4535
+	select SND_SOC_AK5702
 	select SND_SOC_CS4270
 	select SND_SOC_SSM2602
 	select SND_SOC_TLV320AIC23
 	select SND_SOC_TLV320AIC26
 	select SND_SOC_TLV320AIC3X
 	select SND_SOC_UDA1380
+	select SND_SOC_WM8350
 	select SND_SOC_WM8510
 	select SND_SOC_WM8580
 	select SND_SOC_WM8731
@@ -41,6 +43,10 @@ config SND_SOC_AD73311
 
 config SND_SOC_AK4535
 	tristate
+
+config SND_SOC_AK5702
+	tristate
+	depends on I2C
 
 # Cirrus Logic CS4270 Codec
 config SND_SOC_CS4270
@@ -78,6 +84,9 @@ config SND_SOC_TLV320AIC3X
 config SND_SOC_UDA1380
         tristate
 
+config SND_SOC_WM8350
+	tristate
+
 config SND_SOC_WM8510
 	tristate
 
@@ -110,3 +119,22 @@ config SND_SOC_WM9712
 
 config SND_SOC_WM9713
 	tristate
+
+config SND_SOC_SGTL5000
+	tristate
+	depends on I2C
+
+config SND_SOC_AK4647
+        tristate
+        depends on I2C
+
+config SND_SOC_STMP378X_CODEC
+	tristate
+	depends on SND_SOC
+
+config SND_SOC_STMP3XXX_SPDIF
+	tristate
+	depends on SND_SOC
+
+config SND_SOC_BLUETOOTH
+        tristate

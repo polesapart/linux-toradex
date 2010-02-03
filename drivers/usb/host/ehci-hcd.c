@@ -253,8 +253,13 @@ static void end_unlink_async(struct ehci_hcd *ehci);
 static void ehci_work(struct ehci_hcd *ehci);
 
 #include "ehci-hub.c"
+#ifdef CONFIG_USB_STATIC_IRAM
+#include "ehci-mem-iram.c"
+#include "ehci-q-iram.c"
+#else
 #include "ehci-mem.c"
 #include "ehci-q.c"
+#endif
 #include "ehci-sched.c"
 
 /*-------------------------------------------------------------------------*/
@@ -589,6 +594,14 @@ static int ehci_run (struct usb_hcd *hcd)
 #endif
 	}
 
+	/* For those designs that contain both host & device capability,
+	 * the controller will default to an idle state and will need to
+	 * be initialized to the desired operating mode after reset.
+	 * For combination host/device controllers of FSL, SW need program
+	 * For combination host/device controllers of FSL, SW need program
+	 */
+	temp = readl(hcd->regs + 0x1a8);
+	writel(temp | (3 << 0), hcd->regs + 0x1a8);
 
 	// Philips, Intel, and maybe others need CMD_RUN before the
 	// root hub will detect new devices (why?); NEC doesn't
@@ -1012,6 +1025,11 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_SOC_AU1200
 #include "ehci-au1xxx.c"
 #define	PLATFORM_DRIVER		ehci_hcd_au1xxx_driver
+#endif
+
+#ifdef CONFIG_USB_EHCI_ARC
+#include "ehci-arc.c"
+#define	PLATFORM_DRIVER		ehci_fsl_driver
 #endif
 
 #ifdef CONFIG_PPC_PS3

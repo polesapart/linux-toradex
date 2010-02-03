@@ -31,9 +31,8 @@ struct rate_control_ref {
 struct rate_control_ref *rate_control_alloc(const char *name,
 					    struct ieee80211_local *local);
 void rate_control_get_rate(struct ieee80211_sub_if_data *sdata,
-			   struct ieee80211_supported_band *sband,
-			   struct sta_info *sta, struct sk_buff *skb,
-			   struct rate_selection *sel);
+			   struct sta_info *sta,
+			   struct ieee80211_tx_rate_control *txrc);
 struct rate_control_ref *rate_control_get(struct rate_control_ref *ref);
 void rate_control_put(struct rate_control_ref *ref);
 
@@ -63,12 +62,6 @@ static inline void rate_control_rate_init(struct sta_info *sta)
 	ref->ops->rate_init(ref->priv, sband, ista, priv_sta);
 }
 
-
-static inline void rate_control_clear(struct ieee80211_local *local)
-{
-	struct rate_control_ref *ref = local->rate_ctrl;
-	ref->ops->clear(ref->priv);
-}
 
 static inline void *rate_control_alloc_sta(struct rate_control_ref *ref,
 					   struct ieee80211_sta *sta,
@@ -121,6 +114,19 @@ static inline int rc80211_pid_init(void)
 	return 0;
 }
 static inline void rc80211_pid_exit(void)
+{
+}
+#endif
+
+#ifdef CONFIG_MAC80211_RC_MULTIRATE_PID
+extern int rc80211_multirate_pid_init(void);
+extern void rc80211_multirate_pid_exit(void);
+#else
+static inline int rc80211_multirate_pid_init(void)
+{
+	return 0;
+}
+static inline void rc80211_multirate_pid_exit(void)
 {
 }
 #endif

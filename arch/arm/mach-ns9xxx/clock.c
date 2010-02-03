@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-ns9xxx/clock.c
  *
- * Copyright (C) 2007 by Digi International Inc.
+ * Copyright (C) 2007-2008 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -61,22 +61,77 @@ EXPORT_SYMBOL(clk_get);
 
 void clk_put(struct clk *clk)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&clk_lock, flags);
+
 	module_put(clk->owner);
 	--clk->refcount;
+
+	spin_unlock_irqrestore(&clk_lock, flags);
 }
 EXPORT_SYMBOL(clk_put);
 
-static int clk_enable_unlocked(struct clk *clk)
+static int clk_enable_haslock(struct clk *clk);
+static int clk_disable_haslock(struct clk *clk);
+
+static void clk_disable_parent_haslock(struct clk *clk)
+{
+	struct clk *parent = clk->parent;
+	int ret = 0;
+
+	if (parent)
+		ret = clk_disable_haslock(parent);
+
+	if (unlikely(ret))
+		pr_warning("failed to disable %s.%d clk -> %d\n",
+				parent->name, parent->id, ret);
+}
+
+static int clk_enable_haslocknchange(struct clk *clk)
 {
 	int ret = 0;
-	if (clk->parent) {
-		ret = clk_enable_unlocked(clk->parent);
-		if (ret)
-			return ret;
+
+	assert_spin_locked(&clk_lock);
+	BUG_ON(!test_bit(CLK_FLAG_CHANGESTATE, &clk->flags));
+
+	if (clk->usage++ == 0) {
+		if (clk->parent) {
+			ret = clk_enable_haslock(clk->parent);
+			if (ret)
+				goto err_enable_parent;
+		}
+
+		spin_unlock(&clk_lock);
+
+		if (clk->endisable)
+			ret = clk->endisable(clk, 1);
+
+		spin_lock(&clk_lock);
+
+		if (ret) {
+			clk_disable_parent_haslock(clk);
+err_enable_parent:
+
+			clk->usage = 0;
+		}
+
 	}
 
-	if (clk->usage++ == 0 && clk->endisable)
-		ret = clk->endisable(clk, 1);
+	return ret;
+}
+
+static int clk_enable_haslock(struct clk *clk)
+{
+	int ret;
+
+	assert_spin_locked(&clk_lock);
+	if (__test_and_set_bit(CLK_FLAG_CHANGESTATE, &clk->flags))
+		return -EBUSY;
+
+	ret = clk_enable_haslocknchange(clk);
+
+	clear_bit(CLK_FLAG_CHANGESTATE, &clk->flags);
 
 	return ret;
 }
@@ -88,7 +143,7 @@ int clk_enable(struct clk *clk)
 
 	spin_lock_irqsave(&clk_lock, flags);
 
-	ret = clk_enable_unlocked(clk);
+	ret = clk_enable_haslock(clk);
 
 	spin_unlock_irqrestore(&clk_lock, flags);
 
@@ -96,24 +151,60 @@ int clk_enable(struct clk *clk)
 }
 EXPORT_SYMBOL(clk_enable);
 
-static void clk_disable_unlocked(struct clk *clk)
+static int clk_disable_haslocknchange(struct clk *clk)
 {
-	if (--clk->usage == 0 && clk->endisable)
-		clk->endisable(clk, 0);
+	int ret = 0;
 
-	if (clk->parent)
-		clk_disable_unlocked(clk->parent);
+	assert_spin_locked(&clk_lock);
+	BUG_ON(!test_bit(CLK_FLAG_CHANGESTATE, &clk->flags));
+
+	BUG_ON(clk->usage == 0);
+
+	if (--clk->usage == 0) {
+		spin_unlock(&clk_lock);
+
+		if (clk->endisable)
+			ret = clk->endisable(clk, 0);
+
+		spin_lock(&clk_lock);
+
+		if (ret == 0)
+			clk_disable_parent_haslock(clk);
+		else
+			clk->usage = 1;
+	}
+
+	return ret;
+}
+
+static int clk_disable_haslock(struct clk *clk)
+{
+	int ret;
+
+	if (__test_and_set_bit(CLK_FLAG_CHANGESTATE, &clk->flags))
+		return -EBUSY;
+
+	ret = clk_disable_haslocknchange(clk);
+
+	clear_bit(CLK_FLAG_CHANGESTATE, &clk->flags);
+
+	return ret;
 }
 
 void clk_disable(struct clk *clk)
 {
+	int ret;
 	unsigned long flags;
 
 	spin_lock_irqsave(&clk_lock, flags);
 
-	clk_disable_unlocked(clk);
+	ret = clk_disable_haslock(clk);
 
 	spin_unlock_irqrestore(&clk_lock, flags);
+
+	if (unlikely(ret))
+		pr_warning("failed to disable %s.%d clk -> %d\n",
+				clk->name, clk->id, ret);
 }
 EXPORT_SYMBOL(clk_disable);
 
@@ -137,6 +228,8 @@ int clk_register(struct clk *clk)
 	unsigned long flags;
 
 	spin_lock_irqsave(&clk_lock, flags);
+
+	BUG_ON(clk->flags);
 
 	list_add(&clk->node, &clocks);
 
@@ -181,9 +274,10 @@ static int clk_debugfs_show(struct seq_file *s, void *null)
 	spin_lock_irqsave(&clk_lock, flags);
 
 	list_for_each_entry(p, &clocks, node)
-		seq_printf(s, "%s.%d: usage=%lu refcount=%lu rate=%lu\n",
+		seq_printf(s, "%s.%d: usage=%lu refcount=%lu rate=%lu parent=%s\n",
 				p->name, p->id, p->usage, p->refcount,
-				p->usage ? clk_get_rate(p) : 0);
+				p->usage ? clk_get_rate(p) : 0,
+				p->parent ? p->parent->name : "<nil>");
 
 	spin_unlock_irqrestore(&clk_lock, flags);
 

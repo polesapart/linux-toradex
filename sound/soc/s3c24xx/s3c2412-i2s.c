@@ -83,6 +83,9 @@ struct s3c2412_i2s_info {
 	u32		 suspend_iismod;
 	u32		 suspend_iiscon;
 	u32		 suspend_iispsr;
+
+	u32              cpu_is_s3c2443;
+	int		counts;
 };
 
 static struct s3c2412_i2s_info s3c2412_i2s;
@@ -540,6 +543,13 @@ static int s3c2412_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 	case S3C2412_DIV_BCLK:
 		reg = readl(i2s->regs + S3C2412_IISMOD);
 		reg &= ~S3C2412_IISMOD_BCLK_MASK;
+
+                /*
+		 * The bitfield for the S3C2443 has another offset
+		 * (Luis Galdos)
+		 */
+                div = (i2s->cpu_is_s3c2443) ? (div << 1) : (div);
+		
 		writel(reg | div, i2s->regs + S3C2412_IISMOD);
 
 		DBG("%s: MOD=%08x\n", __func__, readl(i2s->regs + S3C2412_IISMOD));
@@ -579,8 +589,9 @@ static int s3c2412_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 
 	case S3C2412_DIV_PRESCALER:
 		if (div >= 0) {
-			writel((div << 8) | S3C2412_IISPSR_PSREN,
-			       i2s->regs + S3C2412_IISPSR);
+			/* The S3C2443 has different bit fields (Luis Galdos) */
+			div = (i2s->cpu_is_s3c2443) ? (div - 1) : (div << 8);
+			writel(div | S3C2412_IISPSR_PSREN, i2s->regs + S3C2412_IISPSR);
 		} else {
 			writel(0x0, i2s->regs + S3C2412_IISPSR);
 		}
@@ -604,26 +615,36 @@ EXPORT_SYMBOL_GPL(s3c2412_get_iisclk);
 static int s3c2412_i2s_probe(struct platform_device *pdev,
 			     struct snd_soc_dai *dai)
 {
+	unsigned long regval;
+	int retval;
+	
 	DBG("Entered %s\n", __func__);
 
+	/* Check if we have already probed the interface */
+	s3c2412_i2s.counts++;
+	if (s3c2412_i2s.counts > 1)
+		return 0;
+	
 	s3c2412_i2s.dev = &pdev->dev;
 
 	s3c2412_i2s.regs = ioremap(S3C2410_PA_IIS, 0x100);
-	if (s3c2412_i2s.regs == NULL)
-		return -ENXIO;
+	if (s3c2412_i2s.regs == NULL) {
+		retval = -ENXIO;
+		goto exit_err;
+	}
 
 	s3c2412_i2s.iis_pclk = clk_get(&pdev->dev, "iis");
 	if (s3c2412_i2s.iis_pclk == NULL) {
 		DBG("failed to get iis_clock\n");
-		iounmap(s3c2412_i2s.regs);
-		return -ENODEV;
+		retval = -ENODEV;
+		goto exit_iounmap;
 	}
 
 	s3c2412_i2s.iis_cclk = clk_get(&pdev->dev, "i2sclk");
 	if (s3c2412_i2s.iis_cclk == NULL) {
 		DBG("failed to get i2sclk clock\n");
-		iounmap(s3c2412_i2s.regs);
-		return -ENODEV;
+		retval = -ENODEV;
+		goto exit_put_pclk;
 	}
 
 	clk_set_parent(s3c2412_i2s.iis_cclk, clk_get(NULL, "mpll"));
@@ -640,10 +661,67 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 	s3c2410_gpio_cfgpin(S3C2410_GPE3, S3C2410_GPE3_I2SSDI);
 	s3c2410_gpio_cfgpin(S3C2410_GPE4, S3C2410_GPE4_I2SSDO);
 
+	/* Stop the DMA-channel if it's already running! */
+	regval = readl(s3c2412_i2s.regs + S3C2412_IISCON);
+	if (regval & S3C2412_IISCON_IIS_ACTIVE) {
+		printk(KERN_ERR "DMA channel seems to be already active.\n");
+		regval &= ~S3C2412_IISCON_IIS_ACTIVE;
+		writel(regval, s3c2412_i2s.regs + S3C2412_IISCON);
+	}
+	
+	/*
+	 * Set the mode to transmit and receive, otherwise the below commands
+	 * for stopping the RX and TX will fail
+	 */
+	regval = readl(s3c2412_i2s.regs + S3C2412_IISMOD);
+	regval &= ~S3C2412_IISMOD_MODE_MASK;
+	regval |= (S3C2412_IISMOD_MODE_TXRX);
+	writel(regval, s3c2412_i2s.regs + S3C2412_IISMOD);
+
 	s3c2412_snd_txctrl(0);
 	s3c2412_snd_rxctrl(0);
 
+	printk("I2S %s successfully probed\n",
+	       s3c2412_i2s.cpu_is_s3c2443 ? "S3C2443" : "S3C2412");
+	
 	return 0;
+
+exit_put_pclk:
+	clk_put(s3c2412_i2s.iis_pclk);
+	
+exit_iounmap:
+	iounmap(s3c2412_i2s.regs);
+
+exit_err:
+	s3c2412_i2s.counts -= 1;
+	return retval;
+}
+
+static int s3c2443_i2s_probe(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	s3c2412_i2s.cpu_is_s3c2443 = 1;
+	return s3c2412_i2s_probe(pdev, dai);
+}
+
+static void s3c2443_i2s_remove(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	/*
+	 * If there is still one device using the interface, skip the complete
+	 * remove of the driver
+	 */
+	s3c2412_i2s.counts -= 1;	
+	if (s3c2412_i2s.counts)
+		return;
+
+        clk_disable(s3c2412_i2s.iis_cclk);
+	clk_disable(s3c2412_i2s.iis_pclk);
+
+	/* @FIXME: We can't put the clock at this place! (Luis Galdos) */
+	/* clk_put(s3c2412_i2s.iis_cclk); */
+	clk_put(s3c2412_i2s.iis_pclk);
+ 
+        iounmap(s3c2412_i2s.regs);
+	s3c2412_i2s.regs = NULL;
 }
 
 #ifdef CONFIG_PM
@@ -738,6 +816,41 @@ struct snd_soc_dai s3c2412_i2s_dai = {
 	},
 };
 EXPORT_SYMBOL_GPL(s3c2412_i2s_dai);
+
+/* This is the DAI for the S3C2443 */
+#define S3C2443_I2S_RATES			(SNDRV_PCM_RATE_44100)
+
+struct snd_soc_dai s3c2443_i2s_dai = {
+	.name	= "s3c2443-i2s",
+	.id	= 0,
+	.type	= SND_SOC_DAI_I2S,
+	.probe	= s3c2443_i2s_probe,
+	.remove = s3c2443_i2s_remove,
+	.suspend = s3c2412_i2s_suspend,
+	.resume = s3c2412_i2s_resume,
+	.playback = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2443_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2443_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.ops = {
+		.trigger	= s3c2412_i2s_trigger,
+		.hw_params	= s3c2412_i2s_hw_params,
+	},
+	.dai_ops = {
+		.set_fmt	= s3c2412_i2s_set_fmt,
+		.set_clkdiv	= s3c2412_i2s_set_clkdiv,
+		.set_sysclk	= s3c2412_i2s_set_sysclk,
+	},
+};
+EXPORT_SYMBOL_GPL(s3c2443_i2s_dai);
 
 /* Module information */
 MODULE_AUTHOR("Ben Dooks, <ben@simtec.co.uk>");

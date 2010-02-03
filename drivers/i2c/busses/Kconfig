@@ -160,6 +160,16 @@ config I2C_NFORCE2_S4985
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-nforce2-s4985.
 
+config I2C_NS9XXX
+	tristate "Digi ns9360, ns921x"
+	depends on PROCESSOR_NS9360 || PROCESSOR_NS921X
+	help
+	  If you say yes to this option, support will be included for the
+	  I2C interface included in Digi ns9360 and ns921x CPUs.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-ns9xxx.
+
 config I2C_SIS5595
 	tristate "SiS 5595"
 	depends on PCI
@@ -328,6 +338,10 @@ config I2C_DAVINCI
 config I2C_GPIO
 	tristate "GPIO-based bitbanging I2C"
 	depends on GENERIC_GPIO
+
+config I2C_PARPORT
+	tristate "Parallel port adapter"
+	depends on PARPORT
 	select I2C_ALGOBIT
 	help
 	  This is a very simple bitbanging I2C driver utilizing the
@@ -391,9 +405,34 @@ config I2C_MPC
 	  This driver can also be built as a module.  If so, the module
 	  will be called i2c-mpc.
 
+config I2C_MXC
+	tristate "MXC I2C support"
+	depends on I2C && ARCH_MXC
+	help
+	  If you say yes to this option, support will be included for Freescale
+	  MXC I2C modules.
+
+	  This driver can also be built as a module.
+
+config I2C_MXC_HS
+	tristate "MXC HIGH SPEED I2C support"
+	depends on I2C && ARCH_MXC
+	help
+	  If you say yes to this option, support will be included for Freescale
+	  MXC HIGH SPEED I2C modules.
+
+	  This driver can also be built as a module.
+
+config I2C_STMP378X
+	tristate "STMP378x I2C adapter"
+	depends on MACH_STMP378X
+	help
+	  TBD
+
 config I2C_MV64XXX
 	tristate "Marvell mv64xxx I2C Controller"
 	depends on (MV64X60 || PLAT_ORION) && EXPERIMENTAL
+
 	help
 	  If you say yes to this option, support will be included for the
 	  built-in I2C interface on the Marvell 64xxx line of host bridges.
@@ -460,6 +499,19 @@ config I2C_S3C2410
 	help
 	  Say Y here to include support for I2C controller in the
 	  Samsung S3C2410 based System-on-Chip devices.
+
+config I2C_S3C2410_ADAPTER_NR
+        int "S3C bus number for the I2C-adapter"
+        depends on I2C_S3C2410
+        default 1
+        help
+          This is the adapter/bus number for the I2C-adapter. This number can
+          be used by pre-been declared I2C-devices that will be probed
+          first when the I2C-bus driver is loaded.
+          For declaring this kind of static I2C-devices use the function
+          i2c_register_board_info (see drivers/i2c/i2c-core.c).
+
+
 
 config I2C_SH7760
 	tristate "Renesas SH7760 I2C Controller"

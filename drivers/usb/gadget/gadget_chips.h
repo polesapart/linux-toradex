@@ -92,6 +92,12 @@
 #define	gadget_is_pxa27x(g)	0
 #endif
 
+#ifdef CONFIG_USB_GADGET_ARC
+#define	gadget_is_arcotg(g)	!strcmp("fsl-usb2-udc", (g)->name)
+#else
+#define	gadget_is_arcotg(g)	0
+#endif
+
 #ifdef CONFIG_USB_GADGET_ATMEL_USBA
 #define gadget_is_atmel_usba(g)	!strcmp("atmel_usba_udc", (g)->name)
 #else
@@ -158,6 +164,12 @@
 #define gadget_is_fsl_qe(g)	0
 #endif
 
+/* Samsung S3C2443 UDC */
+#ifdef CONFIG_USB_GADGET_S3C2443
+#define gadget_is_s3c2443(g)    !strcmp("s3c2443_udc", (g)->name)
+#else
+#define gadget_is_s3c2443(g)    0
+#endif
 
 // CONFIG_USB_GADGET_SX2
 // CONFIG_USB_GADGET_AU1X00
@@ -225,6 +237,10 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x21;
 	else if (gadget_is_fsl_qe(gadget))
 		return 0x22;
+        else if (gadget_is_s3c2443(gadget))
+                return 0x23;
+	else if (gadget_is_arcotg(gadget))
+		return 0x24;
 	return -ENOENT;
 }
 

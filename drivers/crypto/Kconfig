@@ -83,6 +83,14 @@ config ZCRYPT_MONOLITHIC
 	  that contains all parts of the crypto device driver (ap bus,
 	  request router and all the card drivers).
 
+config CRYPTO_DEV_NS921X_AES
+	tristate "Driver for Digi ns921x AES algorithm"
+	depends on PROCESSOR_NS921X
+	select CRYPTO_BLKCIPHER
+	help
+	  Use Digi hardware acceleration for AES algorithm
+	  available in Digi ns921x CPUs.
+
 config CRYPTO_SHA1_S390
 	tristate "SHA1 digest algorithm"
 	depends on S390
@@ -199,5 +207,17 @@ config CRYPTO_DEV_IXP4XX
 	select CRYPTO_BLKCIPHER
 	help
 	  Driver for the IXP4xx NPE crypto engine.
+
+config CRYPTO_DEV_STMP3XXX_DCP
+	tristate "Support for the STMP3xxx DCP engine"
+	depends on ARCH_STMP3XXX
+	select CRYPTO_ALGAPI
+	select CRYPTO_BLKCIPHER
+	help
+	  Say 'Y' here to use the STMP3XXX DCP AES
+	  engine for the CryptoAPI AES algorithm.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called geode-aes.
 
 endif # CRYPTO_HW

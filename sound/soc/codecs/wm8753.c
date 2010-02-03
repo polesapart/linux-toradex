@@ -1277,7 +1277,13 @@ static int wm8753_set_bias_level(struct snd_soc_codec *codec,
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		/* set vmid to 50k and unmute dac */
-		wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0);
+		/* wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0); */
+		/*
+		 * Force the enable of the MICBIAS, otherwise the microphone will not
+		 * work.
+		 * (Luis Galdos)
+		 */
+		wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00e0);
 		break;
 	case SND_SOC_BIAS_PREPARE:
 		/* set vmid to 5k for quick power up */
@@ -1783,7 +1789,7 @@ static int wm8753_probe(struct platform_device *pdev)
 	struct wm8753_priv *wm8753;
 	int ret = 0;
 
-	pr_info("WM8753 Audio Codec %s", WM8753_VERSION);
+	pr_info("WM8753 Audio Codec %s\n", WM8753_VERSION);
 
 	setup = socdev->codec_data;
 	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
@@ -1850,19 +1856,30 @@ static int wm8753_remove(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->codec;
+	struct wm8753_setup_data *setup;
 
 	if (codec->control_data)
 		wm8753_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	run_delayed_work(&codec->delayed_work);
 	snd_soc_free_pcms(socdev);
 	snd_soc_dapm_free(socdev);
+
+	/*
+	 * Unregister the devices depending on the passed setup configuration
+	 * (Luis Galdos)
+	 */
+	setup = socdev->codec_data;
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
-	i2c_unregister_device(codec->control_data);
-	i2c_del_driver(&wm8753_i2c_driver);
+	if (setup->i2c_address) {
+		i2c_unregister_device(codec->control_data);
+		i2c_del_driver(&wm8753_i2c_driver);
+	}
 #endif
 #if defined(CONFIG_SPI_MASTER)
-	spi_unregister_driver(&wm8753_spi_driver);
+	if (setup->spi)
+		spi_unregister_driver(&wm8753_spi_driver);
 #endif
+	
 	kfree(codec->private_data);
 	kfree(codec);
 

@@ -45,7 +45,7 @@
                                  S3C2400_BASEA2B(pin)+S3C24XX_VA_GPIO : \
                                  S3C2400_BASEC2H(pin)+S3C24XX_VA_GPIO)
 
-
+#define S3C2410_BANKBASE(pin)     ((pin) & ~31)
 #define S3C2410_GPIO_BASE(pin)   ((((pin) & ~31) >> 1) + S3C24XX_VA_GPIO)
 #define S3C2410_GPIO_OFFSET(pin) ((pin) & 31)
 
@@ -77,6 +77,10 @@
 
 #define S3C2400_GPACON	   S3C2410_GPIOREG(0x00)
 #define S3C2400_GPADAT	   S3C2410_GPIOREG(0x04)
+
+/* Special registers for the S3C2443 */
+#define S3C2443_GPACDL     S3C2410_GPIOREG(0x00)
+#define S3C2443_GPACDH     S3C2410_GPIOREG(0x04)
 
 #define S3C2410_GPA0         S3C2410_GPIONO(S3C2410_GPIO_BANKA, 0)
 #define S3C2410_GPA0_OUT     (0<<0)
@@ -920,59 +924,92 @@
 #define S3C2410_GPH0_INP    (0x00 << 0)
 #define S3C2410_GPH0_OUTP   (0x01 << 0)
 #define S3C2410_GPH0_nCTS0  (0x02 << 0)
+#define S3C2443_GPH0_TXD0   (0x02 << 0)
 
 #define S3C2410_GPH1        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 1)
 #define S3C2410_GPH1_INP    (0x00 << 2)
 #define S3C2410_GPH1_OUTP   (0x01 << 2)
 #define S3C2410_GPH1_nRTS0  (0x02 << 2)
+#define S3C2443_GPH1_RXD0   (0x02 << 2)
 
 #define S3C2410_GPH2        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 2)
 #define S3C2410_GPH2_INP    (0x00 << 4)
 #define S3C2410_GPH2_OUTP   (0x01 << 4)
 #define S3C2410_GPH2_TXD0   (0x02 << 4)
+#define S3C2443_GPH2_TXD1   (0x02 << 4)
 
 #define S3C2410_GPH3        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 3)
 #define S3C2410_GPH3_INP    (0x00 << 6)
 #define S3C2410_GPH3_OUTP   (0x01 << 6)
 #define S3C2410_GPH3_RXD0   (0x02 << 6)
+#define S3C2443_GPH3_RXD1   (0x02 << 6)
 
 #define S3C2410_GPH4        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 4)
 #define S3C2410_GPH4_INP    (0x00 << 8)
 #define S3C2410_GPH4_OUTP   (0x01 << 8)
 #define S3C2410_GPH4_TXD1   (0x02 << 8)
+#define S3C2443_GPH4_TXD2   (0x02 << 8)
 
 #define S3C2410_GPH5        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 5)
 #define S3C2410_GPH5_INP    (0x00 << 10)
 #define S3C2410_GPH5_OUTP   (0x01 << 10)
 #define S3C2410_GPH5_RXD1   (0x02 << 10)
+#define S3C2443_GPH5_RXD2   (0x02 << 10)
 
 #define S3C2410_GPH6        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 6)
 #define S3C2410_GPH6_INP    (0x00 << 12)
 #define S3C2410_GPH6_OUTP   (0x01 << 12)
 #define S3C2410_GPH6_TXD2   (0x02 << 12)
 #define S3C2410_GPH6_nRTS1  (0x03 << 12)
+#define S3C2443_GPH6_TXD3   (0x02 << 12)
+#define S3C2443_GPH6_nRTS2  (0x03 << 12)
 
 #define S3C2410_GPH7        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 7)
 #define S3C2410_GPH7_INP    (0x00 << 14)
 #define S3C2410_GPH7_OUTP   (0x01 << 14)
 #define S3C2410_GPH7_RXD2   (0x02 << 14)
 #define S3C2410_GPH7_nCTS1  (0x03 << 14)
+#define S3C2443_GPH7_RXD3   (0x02 << 14)
+#define S3C2443_GPH7_nCTS2  (0x03 << 14)
 
 #define S3C2410_GPH8        S3C2410_GPIONO(S3C2410_GPIO_BANKH, 8)
 #define S3C2410_GPH8_INP    (0x00 << 16)
 #define S3C2410_GPH8_OUTP   (0x01 << 16)
 #define S3C2410_GPH8_UCLK   (0x02 << 16)
+#define S3C2443_GPH8_nCTS0  (0x02 << 16)
 
 #define S3C2410_GPH9          S3C2410_GPIONO(S3C2410_GPIO_BANKH, 9)
 #define S3C2410_GPH9_INP      (0x00 << 18)
 #define S3C2410_GPH9_OUTP     (0x01 << 18)
 #define S3C2410_GPH9_CLKOUT0  (0x02 << 18)
 #define S3C2442_GPH9_nSPICS0  (0x03 << 18)
+#define S3C2443_GPH9_nRTS0    (0x02 << 18)
 
 #define S3C2410_GPH10         S3C2410_GPIONO(S3C2410_GPIO_BANKH, 10)
 #define S3C2410_GPH10_INP     (0x00 << 20)
 #define S3C2410_GPH10_OUTP    (0x01 << 20)
 #define S3C2410_GPH10_CLKOUT1 (0x02 << 20)
+#define S3C2443_GPH10_nCTS1   (0x02 << 20)
+
+#define S3C2443_GPH11           S3C2410_GPIONO(S3C2410_GPIO_BANKH, 11)
+#define S3C2443_GPH11_INP       (0x00 << 22)
+#define S3C2443_GPH11_OUTP      (0x01 << 22)
+#define S3C2443_GPH11_nRTS1     (0x02 << 22)
+
+#define S3C2443_GPH12           S3C2410_GPIONO(S3C2410_GPIO_BANKH, 12)
+#define S3C2443_GPH12_INP       (0x00 << 24)
+#define S3C2443_GPH12_OUTP      (0x01 << 24)
+#define S3C2443_GPH12_EXTUARCLK (0x02 << 24)
+
+#define S3C2443_GPH13           S3C2410_GPIONO(S3C2410_GPIO_BANKH, 13)
+#define S3C2443_GPH13_INP       (0x00 << 26)
+#define S3C2443_GPH13_OUTP      (0x01 << 26)
+#define S3C2443_GPH13_CLKOUT0   (0x02 << 26)
+
+#define S3C2443_GPH14           S3C2410_GPIONO(S3C2410_GPIO_BANKH, 14)
+#define S3C2443_GPH14_INP       (0x00 << 28)
+#define S3C2443_GPH14_OUTP      (0x01 << 28)
+#define S3C2443_GPH14_CLKOUT1   (0x02 << 28)
 
 /* The S3C2412 and S3C2413 move the GPJ register set to after
  * GPH, which means all registers after 0x80 are now offset by 0x10
@@ -1034,6 +1071,8 @@
 #define S3C2410_MISCCR_nEN_SCLK1    (1<<18)
 #define S3C2410_MISCCR_nEN_SCLKE    (1<<19)	/* not 2412 */
 #define S3C2410_MISCCR_SDSLEEP	    (7<<17)
+
+#define S3C2443_MISCCR_nCD_CF       (1<<30)
 
 /* external interrupt control... */
 /* S3C2410_EXTINT0 -> irq sense control for EINT0..EINT7

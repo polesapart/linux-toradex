@@ -418,6 +418,29 @@ config SGI_MBCS
          If you have an SGI Altix with an attached SABrick
          say Y or M here, otherwise say N.
 
+config FM_SI4702
+	tristate "SI4702 FM device driver"
+	depends on (MACH_MX31_3DS || MACH_MX35_3DS || MACH_MX37_3DS || MACH_MX51_3DS)
+	default n
+
+config MXC_IIM
+	tristate "MXC IIM device driver"
+	depends on ARCH_MXC
+	help
+	  Support for access to MXC IIM device, most people should say N here.
+
+config MXS_VIIM
+	tristate "MXS Virtual IIM device driver"
+	depends on ARCH_STMP3XXX
+	help
+	  Support for access to MXS Virtual IIM device, most people should say N here.
+
+config IMX_SIM
+	tristate "IMX SIM support"
+	depends on (ARCH_MX51 || MACH_MX25_3DS)
+	---help---
+         Say Y to enable the SIM driver support.
+
 source "drivers/serial/Kconfig"
 
 config UNIX98_PTYS
@@ -1072,6 +1095,26 @@ config DEVPORT
 	default y
 
 source "drivers/s390/char/Kconfig"
+
+config ADC_NS9215
+	tristate "Digi ns9215 On-Chip ADC"
+	depends on PROCESSOR_NS9215
+	help
+	  Driver for the internal ADC (Analog Digital Converter) module
+	  found on Digi ns9215 CPUs.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adc-ns9215.
+
+config ADC_S3C2443
+	tristate "ADC driver for S3C2443 SoC, internal ADC"
+	depends on CPU_S3C2443
+	help
+	  Driver for the internal ADC (Analog Digital Converter) module
+	  found on S3C2443 CPU.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adc-s3c2443.
 
 endmenu
 

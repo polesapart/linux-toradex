@@ -800,6 +800,12 @@ static int noinline init_post(void)
 	system_state = SYSTEM_RUNNING;
 	numa_default_policy();
 
+#ifdef CONFIG_TMPFSDEV
+	sys_mount("tmpfsdev", "/dev", "tmpfs", 0, "size=64k");
+	sys_mknod("/dev/console", S_IFCHR | 0600, new_encode_dev(MKDEV(5, 1)));
+	sys_mknod("/dev/null", S_IFCHR | 0600, new_encode_dev(MKDEV(1, 3)));
+#endif
+
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
 		printk(KERN_WARNING "Warning: unable to open an initial console.\n");
 

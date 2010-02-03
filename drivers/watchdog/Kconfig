@@ -196,6 +196,27 @@ config PNX4008_WATCHDOG
 
 	  Say N if you are unsure.
 
+config MXC_WATCHDOG
+	tristate "MXC watchdog"
+	depends on WATCHDOG && WATCHDOG_NOWAYOUT
+	depends on ARCH_MXC
+	help
+	  Watchdog timer embedded into MXC chips. This will
+	  reboot your system when timeout is reached.
+
+	  NOTE: once enabled, this timer cannot be disabled.
+	  To compile this driver as a module, choose M here: the
+	  module will be called mxc_wdt.
+
+config STMP3XXX_WATCHDOG
+	tristate "Sigmatel STMP3XXX watchdog"
+	depends on ARCH_STMP3XXX
+	help
+	  Say Y here if to include support for the watchdog timer
+	  for the Sigmatel STMP37XX/378X SoC.
+	  To compile this driver as a module, choose M here: the
+	  module will be called stmp3xxx_wdt.
+
 config IOP_WATCHDOG
 	tristate "IOP Watchdog"
 	depends on PLAT_IOP
@@ -232,6 +253,15 @@ config ORION5X_WATCHDOG
 	  in the Orion5x ARM SoCs.
 	  To compile this driver as a module, choose M here: the
 	  module will be called orion5x_wdt.
+
+config NS9XXX_WATCHDOG
+	tristate "ns9xxx watchdog"
+	depends on PROCESSOR_NS921X || PROCESSOR_NS9360
+	help
+	  Say Y here if to include support for the watchdog timer
+	  in the ns9xxx processor.
+	  This driver can be built as a module by choosing M. The module
+	  will be called ns9xxx_wdt.
 
 # ARM26 Architecture
 

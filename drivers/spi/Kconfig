@@ -181,6 +181,12 @@ config SPI_S3C24XX_GPIO
 	  the inbuilt hardware cannot provide the transfer mode, or
 	  where the board is using non hardware connected pins.
 
+config SPI_S3C2443
+        tristate "Samsung S3C2443 High Speed SPI"
+        depends on SPI_MASTER && CPU_S3C2443
+        help
+          High Speed SPI driver for Samsung S3C2443
+	  
 config SPI_SH_SCI
 	tristate "SuperH SCI SPI controller"
 	depends on SUPERH
@@ -203,6 +209,58 @@ config SPI_XILINX
 
 	  See the "OPB Serial Peripheral Interface (SPI) (v1.00e)"
 	  Product Specification document (DS464) for hardware details.
+
+config SPI_NS921X
+	tristate "Digi ns921x SPI controller"
+	depends on PROCESSOR_NS921X
+	help
+	  Driver for SPI controller in Digi ns921x CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns921x.
+
+config SPI_NS9360
+	tristate "Digi ns9360 SPI controller"
+	depends on PROCESSOR_NS9360
+	help
+	  Driver for SPI controller in Digi ns9360 CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns9360.
+
+config SPI_MXC
+	tristate "MXC CSPI controller as SPI Master"
+	depends on ARCH_MXC && SPI_MASTER
+	select SPI_BITBANG
+	help
+	  This implements the SPI master mode using MXC CSPI.
+
+config SPI_MXC_TEST_LOOPBACK
+	bool "LOOPBACK Testing of CSPIs"
+	depends on SPI_MXC
+	select SPI_SPIDEV
+	default n
+
+config SPI_MXC_SELECT1
+	bool "CSPI1"
+	depends on SPI_MXC
+	default y
+
+config SPI_MXC_SELECT2
+	bool "CSPI2"
+	depends on SPI_MXC && (!ARCH_MXC91221)
+	default n
+
+config SPI_MXC_SELECT3
+	bool "CSPI3"
+	depends on SPI_MXC && (ARCH_MX3 || ARCH_MX27 || ARCH_MX25 || ARCH_MX37 || ARCH_MX51)
+	default n
+
+config SPI_STMP3XXX
+	tristate "Freescale STMP37xx/378x SPI/SSP controller"
+	depends on ARCH_STMP3XXX && SPI_MASTER
+	help
+	  SPI driver for Freescale STMP37xx/378x SoC SSP interface
 
 #
 # Add new SPI master controllers in alphabetical order above this line

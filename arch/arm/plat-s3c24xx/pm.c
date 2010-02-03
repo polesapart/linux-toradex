@@ -43,12 +43,18 @@
 #include <plat/regs-serial.h>
 #include <mach/regs-clock.h>
 #include <mach/regs-gpio.h>
+#include <mach/regs-gpioj.h>
 #include <mach/regs-mem.h>
 #include <mach/regs-irq.h>
-
+#include <mach/gpio.h>
 #include <asm/mach/time.h>
+#include <asm/mach/irq.h>
 
 #include <plat/pm.h>
+
+/* For the S3C2443 (Luis Galdos) */
+#include <mach/regs-s3c2443-clock.h>
+#include <mach/regs-s3c2443-mem.h>
 
 /* for external use */
 
@@ -117,6 +123,55 @@ static struct gpio_sleep {
 
 static struct sleep_save misc_save[] = {
 	SAVE_ITEM(S3C2410_DCLKCON),
+};
+
+/* Registers for the S3C2443 machines */
+static struct sleep_save s3c2443_core_regs[] = {
+       SAVE_ITEM(S3C2443_LOCKCON0),
+       SAVE_ITEM(S3C2443_LOCKCON1),
+       SAVE_ITEM(S3C2443_OSCSET),
+       SAVE_ITEM(S3C2443_MPLLCON),
+       SAVE_ITEM(S3C2443_EPLLCON),
+       SAVE_ITEM(S3C2443_CLKSRC),
+       SAVE_ITEM(S3C2443_CLKDIV0),
+       SAVE_ITEM(S3C2443_CLKDIV1),
+       SAVE_ITEM(S3C2443_HCLKCON),
+       SAVE_ITEM(S3C2443_PCLKCON),
+       SAVE_ITEM(S3C2443_SCLKCON),
+       SAVE_ITEM(S3C2443_BANKCFG),
+       SAVE_ITEM(S3C2443_BANKCON1),
+       SAVE_ITEM(S3C2443_BANKCON2),
+       SAVE_ITEM(S3C2443_BANKCON3),
+       SAVE_ITEM(S3C2443_REFRESH),
+       SAVE_ITEM(S3C2443_TIMEOUT),
+};
+
+static struct gpio_sleep s3c2443_main_gpios[] = {
+       {
+	       .base   = S3C2443_GPACDL,
+       }, {
+               .base   = S3C2443_GPACDH,
+       }, {
+               .base   = S3C2410_GPBCON,
+       }, {
+               .base   = S3C2410_GPCCON,
+       }, {
+               .base   = S3C2410_GPDCON,
+       }, {
+               .base   = S3C2410_GPECON,
+       }, {
+               .base   = S3C2410_GPFCON,
+       }, {
+               .base   = S3C2410_GPGCON,
+       }, {
+               .base   = S3C2410_GPHCON,
+       }, {
+               .base   = S3C2440_GPJCON,
+       }, {
+               .base   = S3C2443_GPLCON,
+       }, {
+               .base   = S3C2443_GPMCON,
+       }
 };
 
 #ifdef CONFIG_S3C2410_PM_DEBUG
@@ -493,25 +548,39 @@ static void s3c2410_pm_configure_extint(void)
 #define OFFS_DAT	(S3C2410_GPADAT - S3C2410_GPACON)
 #define OFFS_UP		(S3C2410_GPBUP  - S3C2410_GPBCON)
 
-/* s3c2410_pm_save_gpios()
+/* s3c24xx_pm_save_gpios()
  *
  * Save the state of the GPIOs
  */
-
-static void s3c2410_pm_save_gpios(void)
+static void s3c24xx_pm_save_gpios(struct gpio_sleep *gps, int count)
 {
-	struct gpio_sleep *gps = gpio_save;
-	unsigned int gpio;
+	int gpio;
 
-	for (gpio = 0; gpio < ARRAY_SIZE(gpio_save); gpio++, gps++) {
+	for (gpio = 0; gpio < count; gpio++, gps++) {
 		void __iomem *base = gps->base;
 
+		/*
+		 * By the S3C2443 the GPIOs of the port A only have a configuration
+		 * register and a special read function
+		 */
+		if (base == S3C2443_GPACDL || base == S3C2443_GPACDH) {
+			unsigned int pin;
+			
+			if (base == S3C2443_GPACDL)
+				pin = S3C2410_GPA1;
+			else
+				pin = S3C2410_GPA8;
+
+			gps->gpcon = s3c2443_gpio_read_porta(pin);
+			continue;
+		}
+			
 		gps->gpcon = __raw_readl(base + OFFS_CON);
 		gps->gpdat = __raw_readl(base + OFFS_DAT);
 
-		if (gpio > 0)
+		/* The port GPACON doesn't have a up register */
+		if (gps->base != S3C2410_GPACON)
 			gps->gpup = __raw_readl(base + OFFS_UP);
-
 	}
 }
 
@@ -563,7 +632,7 @@ static inline int is_out(unsigned long con)
  *     state for when it is next output.
  */
 
-static void s3c2410_pm_restore_gpio(int index, struct gpio_sleep *gps)
+static void s3c24xx_pm_restore_gpio(int index, struct gpio_sleep *gps)
 {
 	void __iomem *base = gps->base;
 	unsigned long gps_gpcon = gps->gpcon;
@@ -577,6 +646,17 @@ static void s3c2410_pm_restore_gpio(int index, struct gpio_sleep *gps)
 	old_gpcon = __raw_readl(base + OFFS_CON);
 	old_gpdat = __raw_readl(base + OFFS_DAT);
 
+	/* The GPIOs of the port A need a different handling */
+	if (base == S3C2443_GPACDL || base == S3C2443_GPACDH) {
+		gpcon = gps->gpcon;
+		__raw_writel(gpcon, base + OFFS_CON);
+
+		DBG("GPACD%c  CON %08lx => %08lx\n",
+		    (base == S3C2443_GPACDH) ? 'H' : 'L',
+		    old_gpcon, gpcon);
+		return;
+	}
+	
 	if (base == S3C2410_GPACON) {
 		/* GPACON only has one bit per control / data and no PULLUPs.
 		 * GPACON[x] = 0 => Output, 1 => SFN */
@@ -645,23 +725,21 @@ static void s3c2410_pm_restore_gpio(int index, struct gpio_sleep *gps)
 		__raw_writel(gps->gpup, base + OFFS_UP);
 	}
 
-	DBG("GPIO[%d] CON %08lx => %08lx, DAT %08lx => %08lx\n",
+	DBG("GPIO[%02d] CON %08lx => %08lx, DAT %08lx => %08lx\n",
 	    index, old_gpcon, gps_gpcon, old_gpdat, gps_gpdat);
 }
 
 
-/** s3c2410_pm_restore_gpios()
+/** s3c24xx_pm_restore_gpios()
  *
  * Restore the state of the GPIOs
  */
-
-static void s3c2410_pm_restore_gpios(void)
+static void s3c24xx_pm_restore_gpios(struct gpio_sleep *gps, int count)
 {
-	struct gpio_sleep *gps = gpio_save;
 	int gpio;
 
-	for (gpio = 0; gpio < ARRAY_SIZE(gpio_save); gpio++, gps++) {
-		s3c2410_pm_restore_gpio(gpio, gps);
+	for (gpio = 0; gpio < count; gpio++, gps++) {
+		s3c24xx_pm_restore_gpio(gpio, gps);
 	}
 }
 
@@ -714,7 +792,7 @@ static int s3c2410_pm_enter(suspend_state_t state)
 
 	/* save all necessary core registers not covered by the drivers */
 
-	s3c2410_pm_save_gpios();
+	s3c24xx_pm_save_gpios(gpio_save, ARRAY_SIZE(gpio_save));
 	s3c2410_pm_do_save(misc_save, ARRAY_SIZE(misc_save));
 	s3c2410_pm_do_save(core_save, ARRAY_SIZE(core_save));
 	s3c2410_pm_do_save(uart_save, ARRAY_SIZE(uart_save));
@@ -767,7 +845,7 @@ static int s3c2410_pm_enter(suspend_state_t state)
 	s3c2410_pm_do_restore_core(core_save, ARRAY_SIZE(core_save));
 	s3c2410_pm_do_restore(misc_save, ARRAY_SIZE(misc_save));
 	s3c2410_pm_do_restore(uart_save, ARRAY_SIZE(uart_save));
-	s3c2410_pm_restore_gpios();
+	s3c24xx_pm_restore_gpios(gpio_save, ARRAY_SIZE(gpio_save));
 
 	s3c2410_pm_debug_init();
 
@@ -793,8 +871,220 @@ static int s3c2410_pm_enter(suspend_state_t state)
 	return 0;
 }
 
-static struct platform_suspend_ops s3c2410_pm_ops = {
-	.enter		= s3c2410_pm_enter,
+
+/* Set all the GPIOS as INPUT, but not the configured as wakeup */
+static void s3c2443_pm_input_gpios(struct gpio_sleep *gps, int count)
+{
+	int gpio;
+	
+	for (gpio = 0; gpio < count; gpio++, gps++) {
+		void __iomem *base = gps->base;
+		ulong new_con;
+		
+		/* The IOs of the port A are only outputs */
+		if (base == S3C2443_GPACDL || base == S3C2443_GPACDH)
+			continue;
+
+		/* Let the IRQ as they as */
+		if (base ==  S3C2410_GPFCON || base == S3C2410_GPGCON)
+			continue;
+		
+		/* @FIXME: This is really ugly. Need to have a list with the IOs */
+		new_con = 0x00;
+		__raw_writel(new_con, OFFS_CON + base);
+	}
+}
+
+/*
+ * PM enter function for the S3C2443
+ * (Luis Galdos)
+ */
+static int s3c2443_pm_enter(suspend_state_t state)
+{
+	unsigned long regs_save[16];
+	unsigned long intmsk, tomask, eintmsk;
+	unsigned long regval;
+
+	/* ensure the debug is initialised (if enabled) */
+
+	s3c2410_pm_debug_init();
+
+	DBG("s3c2410_pm_enter(%d)\n", state);
+
+	if (pm_cpu_prep == NULL || pm_cpu_sleep == NULL) {
+		printk(KERN_ERR PFX "error: no cpu sleep functions set\n");
+		return -EINVAL;
+	}
+
+	/* check if we have anything to wake-up with... bad things seem
+	 * to happen if you suspend with no wakeup (system will often
+	 * require a full power-cycle)
+	*/
+	if (!any_allowed(s3c_irqwake_intmask, s3c_irqwake_intallow) &&
+	    !any_allowed(s3c_irqwake_eintmask, s3c_irqwake_eintallow)) {
+		printk(KERN_ERR PFX "No sources enabled for wake-up! Sleep abort.\n");
+		return -EINVAL;
+	}
+	
+	/* prepare check area if configured */
+
+	s3c2410_pm_check_prepare();
+	
+	/* store the physical address of the register recovery block */
+
+	s3c2410_sleep_save_phys = virt_to_phys(regs_save);
+
+	DBG("s3c2410_sleep_save_phys=0x%08lx\n", s3c2410_sleep_save_phys);
+
+	/* Save all necessary core registers not covered by the drivers */
+	s3c24xx_pm_save_gpios(s3c2443_main_gpios,
+			      ARRAY_SIZE(s3c2443_main_gpios));
+
+	s3c2410_pm_do_save(s3c2443_core_regs, ARRAY_SIZE(s3c2443_core_regs));
+	s3c2410_pm_do_save(misc_save, ARRAY_SIZE(misc_save));
+	s3c2410_pm_do_save(uart_save, ARRAY_SIZE(uart_save));
+
+	/* set the irq configuration for wake */
+	s3c2410_pm_configure_extint();
+	/* Set the IO as input */
+	s3c2443_pm_input_gpios(s3c2443_main_gpios,
+			      ARRAY_SIZE(s3c2443_main_gpios));
+
+
+	/* Save the configuration of the interrupt mask */
+	intmsk = __raw_readl(S3C2410_INTMSK);
+	tomask = s3c_irqwake_intmask;
+	DBG("INTMSK  : 0x%08lx -> 0x%08lx\n", intmsk, tomask);
+	__raw_writel(tomask, S3C2410_INTMSK);
+
+	eintmsk = __raw_readl(S3C24XX_EINTMASK);
+	tomask = s3c_irqwake_eintmask;
+	DBG("EINTMSK : 0x%08lx -> 0x%08lx\n", eintmsk, tomask);
+	__raw_writel(tomask, S3C24XX_EINTMASK);
+	
+	regval = __raw_readl(S3C2410_SRCPND);
+	DBG("SRCPND  : 0x%08lx\n", regval);
+	__raw_writel(regval, S3C2410_SRCPND);
+
+	regval = __raw_readl(S3C2410_INTPND);
+	DBG("INTPND  : 0x%08lx\n", regval);
+	__raw_writel(regval, S3C2410_INTPND);
+
+	regval = __raw_readl(S3C24XX_EINTPEND);
+	DBG("EINTPDN : 0x%08lx\n", regval);
+	regval = __raw_writel(regval, S3C24XX_EINTPEND);
+
+	
+	/* Call the CPU dependent prepare function */
+	pm_cpu_prep();
+
+	/* flush cache back to ram */
+	flush_cache_all();
+
+	/* s3c2410_cpu_save will also act as our return point from when
+	 * we resume as it saves its own register state, so use the return
+	 * code to differentiate return from save and return from sleep */
+
+	if (s3c2410_cpu_save(regs_save) == 0) {
+		
+		flush_cache_all();
+
+#if 0
+/*
+ * When enabled skip the entering of the suspend mode and wait by using
+ * the function mdelay().
+ */
+#define S3C2443_PM_SKIP_SLEEP
+#define S3C2443_PM_SKIP_SLEEP_SECS		(10)
+#endif
+
+		/* This is the suspend function of the core */
+#if !defined(S3C2443_PM_SKIP_SLEEP)
+		pm_cpu_sleep();
+#else
+		{
+			int cnt;
+			int secs = S3C2443_PM_SKIP_SLEEP_SECS;
+			
+			printk(KERN_INFO "[ SUSPEND ] Skipping the sleep mode\n");
+
+			for (cnt = 0; cnt < secs * 10; cnt++)
+				mdelay(100);
+		}
+#endif
+	} else
+		printk(KERN_ERR "[ ERROR ] Save of CPU registers failed\n");
+
+	
+	/* Reinit the CPU */
+	cpu_init();
+
+#ifdef CONFIG_S3C2443_PCMCIA
+	/*
+	 * When PCMCIA is enabled, there is a problem when wakeing up from
+	 * sleep. this is becasue the register EXTINT(0,1,2) should be saved
+	 * before going to sleep and restored after the wake up interrupt.
+	 * On the S3C2443 there is a problem to read that register being
+	 * necessary to use a special access sequence.
+	 * That sequence is unknown at the moment and, for that reason, we
+	 * just reconfigure here the card detect gpio line.
+	 * This hack should be removed in the near future and some additional
+	 * code should be added here to save/restore some of the external
+	 * interrupt registers.
+	 */
+	set_irq_type(62, IRQ_TYPE_EDGE_BOTH);
+#endif
+
+	/* These functions are normally called below */
+	s3c2410_pm_do_restore_core(s3c2443_core_regs,
+				   ARRAY_SIZE(s3c2443_core_regs));
+	s3c2410_pm_do_restore(misc_save, ARRAY_SIZE(misc_save));
+	s3c2410_pm_do_restore(uart_save, ARRAY_SIZE(uart_save));
+
+	/* Restore the configuration of the GPIOs */
+	s3c24xx_pm_restore_gpios(s3c2443_main_gpios,
+				 ARRAY_SIZE(s3c2443_main_gpios));
+		
+	s3c2410_pm_debug_init();
+
+	/* Inform which source generates the interrupt */
+	printk("[ WAKEUP ] INTPND : 0x%08x | EINTPND 0x%08x\n",
+	       __raw_readl(S3C2410_SRCPND),
+	       __raw_readl(S3C24XX_EINTPEND));
+		
+	/* Restore the interrupts mask register */
+	__raw_writel(intmsk, S3C2410_INTMSK);
+	__raw_writel(eintmsk, S3C24XX_EINTMASK);
+
+	return 0;
+}
+
+/*
+ * This function will call the corresponding PM enter-function by checking the
+ * processor type
+ * (Luis Galdos)
+ */
+static int s3c24xx_pm_enter(suspend_state_t state)
+{
+	int retval, is2443;
+
+	/* @FIXME: This is really ugly (Luis Galdos) */
+#if defined(CONFIG_CPU_S3C2443)
+	is2443 = 1;
+#else
+	is2443 = 0;
+#endif
+	
+	if (is2443)
+		retval = s3c2443_pm_enter(state);
+	else
+		retval = s3c2410_pm_enter(state);
+
+	return retval;
+}
+
+static struct platform_suspend_ops s3c24xx_pm_ops = {
+	.enter		= s3c24xx_pm_enter,
 	.valid		= suspend_valid_only_mem,
 };
 
@@ -807,8 +1097,8 @@ static struct platform_suspend_ops s3c2410_pm_ops = {
 
 int __init s3c2410_pm_init(void)
 {
-	printk("S3C2410 Power Management, (c) 2004 Simtec Electronics\n");
+	printk("S3C24XX Power Management, (c) 2004 Simtec Electronics\n");
 
-	suspend_set_ops(&s3c2410_pm_ops);
+	suspend_set_ops(&s3c24xx_pm_ops);
 	return 0;
 }

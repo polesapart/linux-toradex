@@ -1,0 +1,20 @@
+#
+#
+
+ifeq ($(KERNELRELEASE),)
+
+KERNELDIR := /lib/modules/$(shell uname -r)/build
+PWD       := $(shell pwd)
+TOPDIR    := $(PWD)/../../../..
+
+modules modules_install clean:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) $@ TOPDIR=$(TOPDIR)
+
+else
+
+-include $(TOPDIR)/Makefile.common
+
+obj-$(CONFIG_CAN_CCAN)		+= ccan.o
+obj-$(CONFIG_CAN_H7202)		+= h7202_can.o
+
+endif

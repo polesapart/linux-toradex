@@ -37,6 +37,15 @@
 #endif
 #endif
 
+#ifdef CONFIG_ARCH_STMP3XXX
+#define STMP3XXX_USB_HOST_HACK
+#endif
+
+#ifdef STMP3XXX_USB_HOST_HACK
+#include <linux/fsl_devices.h>
+#include <mach/regs-usbphy.h>
+#endif
+
 struct usb_hub {
 	struct device		*intfdev;	/* the "interface" device */
 	struct usb_device	*hdev;
@@ -884,6 +893,17 @@ static int hub_configure(struct usb_hub *hub,
 		goto fail;
 	}
 
+	/*
+	 * The second USB-port of the S3C2443 is generating interrupts, although
+	 * it's configured for the USB-device controller, and not for the USB-host.
+	 * This seems to be a hardware BUG.
+	 * (Luis Galdos)
+	 */
+#if (defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)) && defined(CONFIG_USB_GADGET_S3C2443)
+	/* Only use one port by the internal Root-Hub (devnum = 1) */
+	if (hdev->devnum == 1)
+		hub->descriptor->bNbrPorts = 1;
+#endif
 	hdev->maxchild = hub->descriptor->bNbrPorts;
 	dev_info (hub_dev, "%d port%s detected\n", hdev->maxchild,
 		(hdev->maxchild == 1) ? "" : "s");
@@ -1140,6 +1160,14 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 				"hub nested too deep\n");
 		return -E2BIG;
 	}
+	
+	/* With OTG enabled, suspending root hub results in gadget not
+	 * working because gadget uses the same root hub. We disable
+	 * this feature when OTG is selected.
+	 */
+#if defined(CONFIG_PM) && defined(CONFIG_USB_EHCI_ARC_OTG)
+	hdev->autosuspend_disabled = 1;
+#endif
 
 #ifdef	CONFIG_USB_OTG_BLACKLIST_HUB
 	if (hdev->parent) {
@@ -2631,6 +2659,19 @@ hub_port_init (struct usb_hub *hub, struct usb_device *udev, int port1,
 			break;
 		}
 	}
+
+#ifdef STMP3XXX_USB_HOST_HACK
+	{	/*Must enable HOSTDISCONDETECT after second reset*/
+		if (port1 == 1) {
+			if (udev->speed == USB_SPEED_HIGH) {
+				HW_USBPHY_CTRL_SET(
+					BM_USBPHY_CTRL_ENHOSTDISCONDETECT
+				);
+			}
+		}
+	}
+#endif
+
 	if (retval)
 		goto fail;
 
@@ -2755,6 +2796,34 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		"port %d, status %04x, change %04x, %s\n",
 		port1, portstatus, portchange, portspeed (portstatus));
 
+#ifdef STMP3XXX_USB_HOST_HACK
+	{
+	/*
+	 * FIXME: the USBPHY of STMP3xxx SoC has bug. The usb port power
+	 * is never enabled during standard ehci reset procedure if the
+	 * external device once passed plug/unplug procedure. This work-
+	 * around resets and reinitiates USBPHY before the ehci port reset
+	 * sequence started.
+	 */
+		struct device *dev = hcd->self.controller;
+		struct fsl_usb2_platform_data *pdata;
+
+		pdata = (struct fsl_usb2_platform_data *)dev->platform_data;
+		if (dev->parent && dev->type) {
+			if (port1 == 1 && pdata->platform_init)
+				pdata->platform_init(NULL);
+		}
+		if (port1 == 1) {
+			if (!(portstatus&USB_PORT_STAT_CONNECTION)) {
+				/* Must clear HOSTDISCONDETECT when disconnect*/
+				HW_USBPHY_CTRL_CLR(
+					BM_USBPHY_CTRL_ENHOSTDISCONDETECT);
+			}
+		}
+	}
+#endif
+
+
 	if (hub->has_indicators) {
 		set_port_led(hub, port1, HUB_LED_AUTO);
 		hub->indicator[port1-1] = INDICATOR_AUTO;
@@ -2832,6 +2901,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
   			goto done;
 		return;
 	}
+
 
 	for (i = 0; i < SET_CONFIG_TRIES; i++) {
 

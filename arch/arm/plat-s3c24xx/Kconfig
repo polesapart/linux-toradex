@@ -8,7 +8,6 @@ config PLAT_S3C24XX
 	bool
 	depends on ARCH_S3C2410
 	default y if ARCH_S3C2410
-	select NO_IOPORT
 	select ARCH_REQUIRE_GPIOLIB
 	help
 	  Base platform code for any Samsung S3C24XX device
@@ -48,6 +47,13 @@ config S3C2410_DMA_DEBUG
 	help
 	  Enable debugging output for the DMA code. This option sends info
 	  to the kernel log, at priority KERN_DEBUG.
+
+config DEFAULT_GPIOLIB
+	bool "Default GPIOLIB support"
+	depends on ARCH_S3C2410
+	default n
+	help
+	  Provides the default GPIOLIB support instead of a machine specific one.
 
 config MACH_SMDK
 	bool

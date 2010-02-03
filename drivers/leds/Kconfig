@@ -17,12 +17,23 @@ config LEDS_CLASS
 
 comment "LED drivers"
 
+config LEDS_STMP378X
+	tristate "Support for PWM LEDs on STMP378X"
+	depends on LEDS_CLASS && MACH_STMP378X
+	help
+	  This option enables support for the LEDs connected to PWM
+	  outputs on the Freescale STMP378X.
+
 config LEDS_ATMEL_PWM
 	tristate "LED Support using Atmel PWM outputs"
 	depends on LEDS_CLASS && ATMEL_PWM
 	help
 	  This option enables support for LEDs driven using outputs
 	  of the dedicated PWM controller found on newer Atmel SOCs.
+
+config LEDS_MC13892
+	tristate "LED Support for mc13892 pmic"
+	depends on LEDS_CLASS && MXC_MC13892_LIGHT
 
 config LEDS_LOCOMO
 	tristate "LED Support for Locomo device"
@@ -113,6 +124,12 @@ config LEDS_GPIO
 	  outputs. To be useful the particular board must have LEDs
 	  and they must be connected to the GPIO lines.
 
+config LEDS_PWM
+       tristate "LED Support for PWM connected LEDs"
+       depends on LEDS_CLASS && GENERIC_PWM
+       help
+         Enables support for LEDs connected to PWM outputs.
+
 config LEDS_HP_DISK
 	tristate "LED Support for disk protection LED on HP notebooks"
 	depends on LEDS_CLASS && ACPI
@@ -190,6 +207,14 @@ config LEDS_TRIGGER_IDE_DISK
 	depends on LEDS_TRIGGERS && IDE_GD_ATA
 	help
 	  This allows LEDs to be controlled by IDE disk activity.
+	  If unsure, say Y.
+
+config LEDS_TRIGGER_DIM
+	tristate "LED Dimmer Trigger"
+	depends on LEDS_TRIGGERS
+	help
+	  Regulates the brightness of an LED based on the 1-minute CPU
+	  load average.  Ideal for PWM-driven LEDs.
 	  If unsure, say Y.
 
 config LEDS_TRIGGER_HEARTBEAT

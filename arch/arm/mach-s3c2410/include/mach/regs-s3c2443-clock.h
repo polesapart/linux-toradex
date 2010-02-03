@@ -23,6 +23,11 @@
 #define S3C2443_PLLCON_PDIVMASK		((1<<(1+(9-8)))-1)
 #define S3C2443_PLLCON_SDIVMASK		(3)
 
+#define S3C2443_LOCKTIME0               S3C2443_CLKREG(0x00)
+#define S3C2443_LOCKTIME1               S3C2443_CLKREG(0x04)
+#define S3C2443_LOCKCON0                S3C2443_CLKREG(0x00)
+#define S3C2443_LOCKCON1                S3C2443_CLKREG(0x04)
+#define S3C2443_OSCSET                  S3C2443_CLKREG(0x08)
 #define S3C2443_MPLLCON			S3C2443_CLKREG(0x10)
 #define S3C2443_EPLLCON			S3C2443_CLKREG(0x18)
 #define S3C2443_CLKSRC			S3C2443_CLKREG(0x20)
@@ -37,6 +42,55 @@
 #define S3C2443_SYSID			S3C2443_CLKREG(0x5C)
 #define S3C2443_PWRCFG			S3C2443_CLKREG(0x60)
 #define S3C2443_RSTCON			S3C2443_CLKREG(0x64)
+#define S3C2443_RSTSTAT 		S3C2443_CLKREG(0x68)
+#define S3C2443_PHYCTRL                 S3C2443_CLKREG(0x80)
+#define S3C2443_PHYPWR                  S3C2443_CLKREG(0x84)
+#define S3C2443_URSTCON                 S3C2443_CLKREG(0x88)
+#define S3C2443_UCLKCON                 S3C2443_CLKREG(0x8C)
+
+/* Control bits of the power management configuration register */
+#define S3C2443_PWRCFG_USBPHY_ON        (1 << 4)
+
+/* Control bits for the USB reset control register */
+#define S3C2443_URSTCON_PHY             (1 << 0)
+#define S3C2443_URSTCON_HOST            (1 << 1)
+#define S3C2443_URSTCON_FUNC            (1 << 2)
+
+/* Control bits for the USB clock configuration register */
+#define S3C2443_UCLKCON_VBUS_PULLUP     (1 << 31)
+#define S3C2443_UCLKCON_THOST_ENABLE    (0 << 4)
+#define S3C2443_UCLKCON_THOST_DISABLE   (1 << 4)
+#define S3C2443_UCLKCON_FUNC_ENABLE     (1 << 2)
+#define S3C2443_UCLKCON_FUNC_DISABLE    (0 << 2)
+#define S3C2443_UCLKCON_HOST_ENABLE     (1 << 1)
+#define S3C2443_UCLKCON_HOST_DISABLE    (0 << 1)
+#define S3C2443_UCLKCON_TFUNC_ENABLE    (1 << 0)
+#define S3C2443_UCLKCON_TFUNC_DISABLE   (0 << 0)
+
+/* Control bits for the USB phy control */
+#define S3C2443_PHYCTRL_CLKSEL(x)       (((x) & 0x3) << 3)
+#define S3C2443_PHYCTRL_CLKSEL_24MHZ    (0x3 << 3)
+#define S3C2443_PHYCTRL_CLKSEL_12MHZ    (0x2 << 3)
+#define S3C2443_PHYCTRL_CLKSEL_48MHZ    (0x0 << 3)
+#define S3C2443_PHYCTRL_EXTCLK_OSCI     (1 << 2)
+#define S3C2443_PHYCTRL_EXTCLK_CRYSTAL  (0 << 2)
+#define S3C2443_PHYCTRL_INTPLL_SYS      (0 << 1)
+#define S3C2443_PHYCTRL_INTPLL_USB      (1 << 1)
+#define S3C2443_PHYCTRL_DOWN_DEV        (1 << 0)
+#define S3C2443_PHYCTRL_DOWN_HOST       (0 << 0)
+
+/* Control bits for the USB phy power control */
+#define S3C2443_PHYPWR_COMMON_ON        (1 << 31)
+#define S3C2443_PHYPWR_ANALOG_DOWN      (1 << 4)
+#define S3C2443_PHYPWR_ANALOG_UP        (0 << 4)
+#define S3C2443_PHYPWR_PLLREF_EXT       (0 << 3)
+#define S3C2443_PHYPWR_PLLREF_INT       (1 << 3)
+#define S3C2443_PHYPWR_XO_UP            (1 << 2)
+#define S3C2443_PHYPWR_XO_DOWN          (0 << 2)
+#define S3C2443_PHYPWR_PLL_UP           (0 << 1)
+#define S3C2443_PHYPWR_PLL_DOWN         (1 << 1)
+#define S3C2443_PHYPWR_SUSP_ENABLE      (1 << 0)
+#define S3C2443_PHYPWR_SUSP_DISABLE     (0 << 0)
 
 #define S3C2443_SWRST_RESET		(0x533c2443)
 
@@ -128,6 +182,7 @@
 #define S3C2443_PCLKCON_UART3		(1<<3)
 #define S3C2443_PCLKCON_IIC		(1<<4)
 #define S3C2443_PCLKCON_SDI		(1<<5)
+#define S3C2443_PCLKCON_HSSPI		(1<<6)
 #define S3C2443_PCLKCON_ADC		(1<<7)
 #define S3C2443_PCLKCON_AC97		(1<<8)
 #define S3C2443_PCLKCON_IIS		(1<<9)

@@ -145,6 +145,14 @@ config IP_PNP
 	  on NFS" as well), because all other machines configure the network
 	  in their startup scripts.
 
+config IP_PNP_DELAY
+	bool "Insert delay for initialization of network"
+	depends on IP_PNP
+	default y
+	help
+	  Some network devices need a delay before setting the IP address for
+	  them. On embedded systems that might not be necessary.
+
 config IP_PNP_DHCP
 	bool "IP: DHCP support"
 	depends on IP_PNP

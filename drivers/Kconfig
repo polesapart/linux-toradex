@@ -106,5 +106,7 @@ source "drivers/uio/Kconfig"
 
 source "drivers/xen/Kconfig"
 
+source "drivers/fims/Kconfig"
+
 source "drivers/staging/Kconfig"
 endmenu

@@ -304,6 +304,31 @@ config SERIAL_AMBA_PL010_CONSOLE
 	  your boot loader (lilo or loadlin) about how to pass options to the
 	  kernel at boot time.)
 
+config SERIAL_MXC
+    tristate "MXC Internal serial port support"
+    depends on ARCH_MXC
+    select SERIAL_CORE
+    help
+      This selects the Freescale Semiconductor MXC Internal UART driver.
+      If unsure, say N.
+
+config SERIAL_MXC_CONSOLE
+    bool "Support for console on a MXC/MX27/MX21 Internal serial port"
+    depends on SERIAL_MXC=y
+    select SERIAL_CORE_CONSOLE
+    help
+	  Say Y here if you wish to use an MXC Internal UART as the system
+	  console (the system console is the device which receives all kernel
+	  messages and warnings and which allows logins in single user mode).
+
+	  Even if you say Y here, the currently visible framebuffer console
+	  (/dev/tty0) will still be used as the system console by default, but
+	  you can alter that using a kernel command line option such as
+	  "console=ttymxc". (Try "man bootparam" or see the documentation of
+	  your boot loader (lilo or loadlin) about how to pass options to the
+	  kernel at boot time.)
+
+
 config SERIAL_AMBA_PL011
 	tristate "ARM AMBA PL011 serial port support"
 	depends on ARM_AMBA
@@ -508,6 +533,62 @@ config SERIAL_S3C2440
 	help
 	  Serial port support for the Samsung S3C2440 and S3C2442 SoC
 
+config SERIAL_S3C2410_ENABLE_PORTA
+	bool "Enable the port A support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port A of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTB
+       	bool "Enable the port B support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port B of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTC
+	bool "Enable the port C support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port C of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTD
+	bool "Enable the port D support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+          Enable the serial port D of the S3C24XX. Enabling this option will
+	  disable the HW flow control of the port C.
+	
+config SERIAL_S3C2410_HWCTRL
+        bool "Enable the HW flow control on the S3C24XX ports"
+        depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        help
+          Enables the support for the hardware handshake on the S3C24XX
+
+config SERIAL_S3C2410_PORTA_HWCTRL
+	bool "Enable HW flow control of the port A"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTA
+        default n
+	help
+          Enable the HW flow control on the port A of the S3C24XX
+
+config SERIAL_S3C2410_PORTB_HWCTRL
+	bool "Enable HW flow control of the port B"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTB
+        default n
+	help
+          Enable the HW flow control on the port B of the S3C24XX
+
+config SERIAL_S3C2410_PORTC_HWCTRL
+	bool "Enable HW flow control of the port C"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && \
+	SERIAL_S3C2410_ENABLE_PORTC && !SERIAL_S3C2410_ENABLE_PORTD
+        default n
+	help
+          Enable the HW flow control on the port C of the S3C24XX
 
 
 config SERIAL_DZ
@@ -1371,5 +1452,78 @@ config SPORT_BAUD_RATE
 	default 38400 if (SERIAL_SPORT_BAUD_RATE_38400)
 	default 19200 if (SERIAL_SPORT_BAUD_RATE_19200)
 	default 9600 if (SERIAL_SPORT_BAUD_RATE_9600)
+
+config SERIAL_NS921X
+	tristate "Digi NS921x serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS921X
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS921x based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS921X_CONSOLE
+	bool "Console on Digi NS921x serial"
+	depends on SERIAL_NS921X=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS921x based systems
+
+config SERIAL_NS9360
+	tristate "Digi NS9360 serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS9360
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS9360 based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS9360_CONSOLE
+	bool "Console on Digi NS9360 serial"
+	depends on SERIAL_NS9360=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS9360 based systems
+
+config SERIAL_NS9360_COMPAT
+	bool "Keep backward compatility"
+	depends on SERIAL_NS9360
+	default y
+	help
+	  The serial driver for ns9360 used ttyS device node in the past
+	  which leads to problems, if there are also 8215 compatible serial
+	  ports in the system. In newer versions this changed to ttyNS.
+	  Keep this config enabled to still get the old device names.
+	  If you are sure your bootloader can handle this feel free
+	  to dectivate this.
+
+config SERIAL_STMP_DBG
+        tristate "STMP debug serial port support"
+        depends on ARCH_STMP3XXX
+        select SERIAL_CORE
+        help
+          Driver for Sigmatel 36XX/37XX internal debug serial port
+
+config SERIAL_STMP_DBG_CONSOLE
+        bool "Support for console on STMP37XX DBG serial port"
+        depends on SERIAL_STMP_DBG=y
+        select SERIAL_CORE_CONSOLE
+        ---help---
+          Say Y here if you wish to use the STMP36XX/37XX debug serial port as the
+          system console (the system console is the device which receives all
+          kernel messages and warnings and which allows logins in single user
+          mode).
+
+          Even if you say Y here, the currently visible framebuffer console
+          (/dev/tty0) will still be used as the system console by default, but
+          you can alter that using a kernel command line option such as
+          "console=ttyAM0". (Try "man bootparam" or see the documentation of
+          your boot loader (lilo or loadlin) about how to pass options to the
+          kernel at boot time.)
+
+config SERIAL_STMP_APP
+        tristate "STMP app serial port support"
+        depends on ARCH_STMP3XXX
+        select SERIAL_CORE
+        help
+          Driver for Sigmatel 36XX/37XX internal application serial port
 
 endmenu

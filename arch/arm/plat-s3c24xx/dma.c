@@ -26,15 +26,15 @@
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
-#include <linux/io.h>
 
 #include <asm/system.h>
 #include <asm/irq.h>
 #include <mach/hardware.h>
+#include <asm/io.h>
 #include <asm/dma.h>
 
 #include <asm/mach/dma.h>
-#include <mach/map.h>
+#include <asm/mach/map.h>
 
 #include <plat/dma.h>
 
@@ -75,6 +75,8 @@ dma_wrreg(struct s3c2410_dma_chan *chan, int reg, unsigned long val)
 struct s3c2410_dma_regstate {
 	unsigned long         dcsrc;
 	unsigned long         disrc;
+        unsigned long         dcdst;
+        unsigned long         didst;
 	unsigned long         dstat;
 	unsigned long         dcon;
 	unsigned long         dmsktrig;
@@ -92,6 +94,8 @@ dmadbg_capture(struct s3c2410_dma_chan *chan, struct s3c2410_dma_regstate *regs)
 {
 	regs->dcsrc    = dma_rdreg(chan, S3C2410_DMA_DCSRC);
 	regs->disrc    = dma_rdreg(chan, S3C2410_DMA_DISRC);
+	regs->dcdst    = dma_rdreg(chan, S3C2410_DMA_DCDST);
+        regs->didst    = dma_rdreg(chan, S3C2410_DMA_DIDST);
 	regs->dstat    = dma_rdreg(chan, S3C2410_DMA_DSTAT);
 	regs->dcon     = dma_rdreg(chan, S3C2410_DMA_DCON);
 	regs->dmsktrig = dma_rdreg(chan, S3C2410_DMA_DMASKTRIG);
@@ -101,10 +105,11 @@ static void
 dmadbg_dumpregs(const char *fname, int line, struct s3c2410_dma_chan *chan,
 		 struct s3c2410_dma_regstate *regs)
 {
-	printk(KERN_DEBUG "dma%d: %s:%d: DCSRC=%08lx, DISRC=%08lx, DSTAT=%08lx DMT=%02lx, DCON=%08lx\n",
-	       chan->number, fname, line,
-	       regs->dcsrc, regs->disrc, regs->dstat, regs->dmsktrig,
-	       regs->dcon);
+
+        printk(KERN_DEBUG "dma%d: %s:%d: DCSRC=%08lx, DISRC=%08lx, DCDST=%08lx, DIDST=%08lx, DSTAT=%08lx DMT=%02lx, DCON=%08lx\n",
+               chan->number, fname, line,
+               regs->dcsrc, regs->disrc, regs->dcdst, regs->didst, regs->dstat, regs->dmsktrig,
+               regs->dcon);
 }
 
 static void
@@ -266,6 +271,15 @@ s3c2410_dma_loadbuffer(struct s3c2410_dma_chan *chan,
 
 	writel(buf->data, chan->addr_reg);
 
+
+	/*
+	 * DONT use the reload feature cause when we have more than one buffer in the
+	 * queue, we can't update the initial data pointer for the next transfer. This
+	 * causes that the DMA-controller writes two times into the same DMA-buffer
+	 * and we get corrupted data
+	 * (Luis Galdos)
+	 */
+	reload = S3C2410_DCON_NORELOAD;
 	dma_wrreg(chan, S3C2410_DMA_DCON,
 		  chan->dcon | reload | (buf->size/chan->xfer_unit));
 
@@ -398,6 +412,7 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
 	 * the first buffer is finished, the new one will be loaded onto
 	 * the channel */
 
+#if 0
 	if (chan->next != NULL) {
 		if (chan->load_state == S3C2410_DMALOAD_1LOADED) {
 
@@ -413,7 +428,7 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
 			s3c2410_dma_loadbuffer(chan, chan->next);
 		}
 	}
-
+#endif
 
 	local_irq_restore(flags);
 
@@ -424,7 +439,12 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
  *
  * work out if we can queue another buffer into the DMA engine
 */
-
+/*
+ * The auto reload feature was giving some problems when sending different
+ * DMA-buffers.
+ * (Luis Galdos)
+ */
+#if 0
 static int
 s3c2410_dma_canload(struct s3c2410_dma_chan *chan)
 {
@@ -434,6 +454,7 @@ s3c2410_dma_canload(struct s3c2410_dma_chan *chan)
 
 	return 0;
 }
+#endif
 
 /* s3c2410_dma_enqueue
  *
@@ -508,27 +529,27 @@ int s3c2410_dma_enqueue(unsigned int channel, void *id,
 		chan->next = buf;
 
 	/* check to see if we can load a buffer */
-	if (chan->state == S3C2410_DMA_RUNNING) {
-		if (chan->load_state == S3C2410_DMALOAD_1LOADED && 1) {
-			if (s3c2410_dma_waitforload(chan, __LINE__) == 0) {
-				printk(KERN_ERR "dma%d: loadbuffer:"
-				       "timeout loading buffer\n",
-				       chan->number);
-				dbg_showchan(chan);
-				local_irq_restore(flags);
-				return -EINVAL;
-			}
-		}
+/* 	if (chan->state == S3C2410_DMA_RUNNING) { */
+/* 		if (chan->load_state == S3C2410_DMALOAD_1LOADED && 1) { */
+/* 			if (s3c2410_dma_waitforload(chan, __LINE__) == 0) { */
+/* 				printk(KERN_ERR "dma%d: loadbuffer:" */
+/* 				       "timeout loading buffer\n", */
+/* 				       chan->number); */
+/* 				dbg_showchan(chan); */
+/* 				local_irq_restore(flags); */
+/* 				return -EINVAL; */
+/* 			} */
+/* 		} */
 
-		while (s3c2410_dma_canload(chan) && chan->next != NULL) {
-			s3c2410_dma_loadbuffer(chan, chan->next);
-		}
-	} else if (chan->state == S3C2410_DMA_IDLE) {
+/* 		while (s3c2410_dma_canload(chan) && chan->next != NULL) { */
+/* 			s3c2410_dma_loadbuffer(chan, chan->next); */
+/* 		} */
+/* 	} else if (chan->state == S3C2410_DMA_IDLE) { */
 		if (chan->flags & S3C2410_DMAF_AUTOSTART) {
 			s3c2410_dma_ctrl(chan->number | DMACH_LOW_LEVEL,
 					 S3C2410_DMAOP_START);
 		}
-	}
+/* 	} */
 
 	local_irq_restore(flags);
 	return 0;
@@ -569,12 +590,12 @@ s3c2410_dma_lastxfer(struct s3c2410_dma_chan *chan)
 		break;
 
 	case S3C2410_DMALOAD_1LOADED:
-		if (s3c2410_dma_waitforload(chan, __LINE__) == 0) {
-				/* flag error? */
-			printk(KERN_ERR "dma%d: timeout waiting for load (%s)\n",
-			       chan->number, __func__);
-			return;
-		}
+		//if (s3c2410_dma_waitforload(chan, __LINE__) == 0) {
+		//		/* flag error? */
+		//	printk(KERN_ERR "dma%d: timeout waiting for load (%s)\n",
+		//	       chan->number, __func__);
+		//	return;
+		//}
 		break;
 
 	case S3C2410_DMALOAD_1LOADED_1RUNNING:
@@ -678,6 +699,7 @@ s3c2410_dma_irq(int irq, void *devpw)
 
 	if (chan->next != NULL && chan->state != S3C2410_DMA_IDLE) {
 		unsigned long flags;
+		unsigned long tmp;
 
 		switch (chan->load_state) {
 		case S3C2410_DMALOAD_1RUNNING:
@@ -689,12 +711,13 @@ s3c2410_dma_irq(int irq, void *devpw)
 			break;
 
 		case S3C2410_DMALOAD_1LOADED:
-			if (s3c2410_dma_waitforload(chan, __LINE__) == 0) {
-				/* flag error? */
-				printk(KERN_ERR "dma%d: timeout waiting for load (%s)\n",
-				       chan->number, __func__);
-				return IRQ_HANDLED;
-			}
+                        /* printk(KERN_INFO "DMA: 1 LOADED\n"); */
+			//if (s3c2410_dma_waitforload(chan, __LINE__) == 0) {
+			//	/* flag error? */
+			//	printk(KERN_ERR "dma%d: timeout waiting for load (%s)\n",
+			//	       chan->number, __func__);
+			//	return IRQ_HANDLED;
+			//}
 
 			break;
 
@@ -707,9 +730,21 @@ s3c2410_dma_irq(int irq, void *devpw)
 			return IRQ_HANDLED;
 		}
 
+		/*
+		 * Since we are not using the auto-reload feature, we must restart
+		 * the DMA-channel at this point
+		 * (Luis Galdos)
+		 */
 		local_irq_save(flags);
+		chan->load_state = S3C2410_DMALOAD_NONE;
 		s3c2410_dma_loadbuffer(chan, chan->next);
+		tmp = dma_rdreg(chan, S3C2410_DMA_DMASKTRIG);
+		tmp &= ~S3C2410_DMASKTRIG_STOP;
+		tmp |= S3C2410_DMASKTRIG_ON;
+		dma_wrreg(chan, S3C2410_DMA_DMASKTRIG, tmp);
+		s3c2410_dma_call_op(chan, S3C2410_DMAOP_START);
 		local_irq_restore(flags);
+
 	} else {
 		s3c2410_dma_lastxfer(chan);
 
@@ -1237,7 +1272,7 @@ int s3c2410_dma_getposition(dmach_t channel, dma_addr_t *src, dma_addr_t *dst)
 
 EXPORT_SYMBOL(s3c2410_dma_getposition);
 
-static struct s3c2410_dma_chan *to_dma_chan(struct sys_device *dev)
+static inline struct s3c2410_dma_chan *to_dma_chan(struct sys_device *dev)
 {
 	return container_of(dev, struct s3c2410_dma_chan, dev);
 }

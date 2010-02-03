@@ -1,5 +1,5 @@
 /*
- * Copyright 2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2009 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2008 Juergen Beisert, kernel@pengutronix.de
  *
  * This program is free software; you can redistribute it and/or
@@ -27,14 +27,18 @@
 #define gpio_set_value		__gpio_set_value
 #define gpio_cansleep		__gpio_cansleep
 
-#define gpio_to_irq(gpio)	(MXC_MAX_INT_LINES + (gpio))
-#define irq_to_gpio(irq)	((irq) - MXC_MAX_INT_LINES)
+#define gpio_to_irq(gpio)	(MXC_GPIO_IRQ_START + (gpio))
+#define irq_to_gpio(irq)	((irq) - MXC_GPIO_IRQ_START)
 
 struct mxc_gpio_port {
 	void __iomem *base;
 	int irq;
+	int irq_high;
 	int virtual_irq_start;
 	struct gpio_chip chip;
+	u32 both_edges;
+	u32 suspend_wakeup;
+	u32 saved_wakeup;
 };
 
 int mxc_gpio_init(struct mxc_gpio_port*, int);

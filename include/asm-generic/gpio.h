@@ -88,6 +88,12 @@ struct gpio_chip {
 	int			(*to_irq)(struct gpio_chip *chip,
 						unsigned offset);
 
+	void		(*pullupdown)(struct gpio_chip *chip,
+						unsigned offset, int value);
+
+	int			(*wakeup_configure)(struct gpio_chip *chip,
+						unsigned offset, int value);
+
 	void			(*dbg_show)(struct seq_file *s,
 						struct gpio_chip *chip);
 	int			base;
@@ -113,6 +119,7 @@ extern void gpio_free(unsigned gpio);
 
 extern int gpio_direction_input(unsigned gpio);
 extern int gpio_direction_output(unsigned gpio, int value);
+extern int gpio_wakeup_configure(unsigned gpio, int value);
 
 extern int gpio_get_value_cansleep(unsigned gpio);
 extern void gpio_set_value_cansleep(unsigned gpio, int value);
@@ -128,6 +135,7 @@ extern void __gpio_set_value(unsigned gpio, int value);
 extern int __gpio_cansleep(unsigned gpio);
 
 extern int __gpio_to_irq(unsigned gpio);
+extern void __gpio_set_pullupdown(unsigned gpio, int value);
 
 #ifdef CONFIG_GPIO_SYSFS
 

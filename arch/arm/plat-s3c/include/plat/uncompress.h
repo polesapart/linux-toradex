@@ -64,26 +64,28 @@ uart_rd(unsigned int reg)
 
 static void putc(int ch)
 {
-	if (uart_rd(S3C2410_UFCON) & S3C2410_UFCON_FIFOMODE) {
-		int level;
+	if (uart_rd(S3C2410_UCON) & S3C2443_UCON_TXMODEMASK) {
+		if (uart_rd(S3C2410_UFCON) & S3C2410_UFCON_FIFOMODE) {
+			int level;
 
-		while (1) {
-			level = uart_rd(S3C2410_UFSTAT);
-			level &= fifo_mask;
+			while (1) {
+				level = uart_rd(S3C2410_UFSTAT);
+				level &= fifo_mask;
 
-			if (level < fifo_max)
-				break;
+				if (level < fifo_max)
+					break;
+			}
+
+		} else {
+			/* not using fifos */
+
+			while ((uart_rd(S3C2410_UTRSTAT) & S3C2410_UTRSTAT_TXE) != S3C2410_UTRSTAT_TXE)
+				barrier();
 		}
 
-	} else {
-		/* not using fifos */
-
-		while ((uart_rd(S3C2410_UTRSTAT) & S3C2410_UTRSTAT_TXE) != S3C2410_UTRSTAT_TXE)
-			barrier();
+		/* write byte to transmission register */
+		uart_wr(S3C2410_UTXH, ch);
 	}
-
-	/* write byte to transmission register */
-	uart_wr(S3C2410_UTXH, ch);
 }
 
 static inline void flush(void)

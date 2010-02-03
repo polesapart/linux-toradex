@@ -19,6 +19,8 @@ menuconfig CRYPTO
 
 if CRYPTO
 
+source "crypto/ocf/Kconfig"
+
 comment "Crypto core or helper"
 
 config CRYPTO_FIPS
@@ -131,6 +133,14 @@ config CRYPTO_TEST
 	select CRYPTO_MANAGER
 	help
 	  Quick & dirty crypto test module.
+
+config CRYPTO_CRYPTODEV
+	tristate "Cryptodev (/dev/crypto) interface"
+	depends on CRYPTO
+	select CRYPTO_ALGAPI
+	help
+	  Device /dev/crypto gives userspace programs access to
+	  kernel crypto algorithms.
 
 comment "Authenticated Encryption with Associated Data"
 

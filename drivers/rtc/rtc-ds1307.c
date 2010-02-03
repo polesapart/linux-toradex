@@ -16,7 +16,7 @@
 #include <linux/string.h>
 #include <linux/rtc.h>
 #include <linux/bcd.h>
-
+#include <linux/platform_device.h>
 
 
 /* We can't determine type by probing, but if we expect pre-Linux code
@@ -748,6 +748,17 @@ read_rtc:
 				bin2bcd(tmp));
 	}
 
+	/*
+	 * Assume that with an IRQ-line, we can wakeup the system by using it.
+	 * But for this purpose it's required to enable the wakeup-support before
+	 * registering the RTC (otherwise it will fail)
+	 * (Luis Galdos)
+	 */
+	if (want_irq) {
+		device_init_wakeup(&client->dev, 1);
+		device_set_wakeup_enable(&client->dev, 0);
+	}
+	
 	ds1307->rtc = rtc_device_register(client->name, &client->dev,
 				&ds13xx_rtc_ops, THIS_MODULE);
 	if (IS_ERR(ds1307->rtc)) {
@@ -811,6 +822,37 @@ static int __devexit ds1307_remove(struct i2c_client *client)
 	return 0;
 }
 
+#if defined(CONFIG_PM)
+static int ds1307_suspend(struct i2c_client *client, pm_message_t state)
+{
+	if (device_may_wakeup(&client->dev)) {
+		enable_irq_wake(client->irq);
+	}
+	
+	return 0;
+}
+
+static int ds1307_resume(struct i2c_client *client)
+{
+	if (device_may_wakeup(&client->dev)) {
+		struct ds1307 *ds1307;
+
+		ds1307 = i2c_get_clientdata(client);
+		
+		disable_irq_wake(client->irq);
+
+		/* Disable the IRQ, then the work function will enable it */
+		disable_irq_nosync(client->irq);
+		schedule_work(&ds1307->work);
+	}
+	
+	return 0;
+}
+#else
+#define ds1307_suspend				NULL
+#define ds1307_resume				NULL
+#endif /* defined(CONFIG_PM) */
+
 static struct i2c_driver ds1307_driver = {
 	.driver = {
 		.name	= "rtc-ds1307",
@@ -818,6 +860,8 @@ static struct i2c_driver ds1307_driver = {
 	},
 	.probe		= ds1307_probe,
 	.remove		= __devexit_p(ds1307_remove),
+	.resume		= ds1307_resume,
+	.suspend        = ds1307_suspend,
 	.id_table	= ds1307_id,
 };
 

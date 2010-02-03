@@ -10,6 +10,9 @@ struct s3c24xx_mci_pdata {
 	unsigned long	ocr_avail;
 	void		(*set_power)(unsigned char power_mode,
 				     unsigned short vdd);
+
+        /* Enable/Disable the DMA-support (Luis Galdos) */
+        int             dma_enable;
 };
 
 #endif /* _ARCH_NCI_H */

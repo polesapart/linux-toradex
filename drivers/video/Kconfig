@@ -381,6 +381,10 @@ config FB_CLPS711X
 	  Say Y to enable the Framebuffer driver for the CLPS7111 and
 	  EP7212 processors.
 
+if ARCH_MXC
+source "drivers/video/mxc/Kconfig"
+endif
+
 config FB_SA1100
 	bool "SA-1100 LCD support"
 	depends on (FB = y) && ARM && ARCH_SA1100
@@ -1940,6 +1944,16 @@ config FB_S3C2410_DEBUG
 	help
 	  Turn on debugging messages. Note that you can set/unset at run time
 	  through sysfs
+	  
+config FB_S3C2443_TFT
+        tristate "S3C2443 TFT LCD framebuffer support"
+        depends on FB && CPU_S3C2443
+        select FB_CFB_FILLRECT
+        select FB_CFB_COPYAREA
+        select FB_CFB_IMAGEBLIT	
+        default y
+        ---help---
+          Add the support for TFT-LCD displays on the Samsung S3C2443 platforms
 
 config FB_SM501
 	tristate "Silicon Motion SM501 framebuffer support"
@@ -1973,6 +1987,16 @@ config FB_PNX4008_DUM_RGB
 	select FB_CFB_IMAGEBLIT
 	---help---
 	  Say Y here to enable support for PNX4008 RGB Framebuffer
+
+config FB_STMP37XX
+	tristate "STMP 37XX LCD Framebuffer driver"
+	depends on FB && (ARCH_STMP37XX || ARCH_STMP378X)
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	---help---
+	  Say Y here to enable support for the framebuffer driver for the
+	  Sigmatel STMP37XX board.
 
 config FB_IBM_GXT4500
 	tristate "Framebuffer support for IBM GXT4500P adaptor"
@@ -2032,6 +2056,29 @@ config FB_SH7760
          color operation, with depths ranging from 1 bpp to 8 bpp monochrome
          and 8, 15 or 16 bpp color; 90 degrees clockwise display rotation for
          panels <= 320 pixel horizontal resolution.
+
+config FB_NS9360
+	tristate "NS9360 LCD framebuffer support"
+	depends on FB && PROCESSOR_NS9360
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  This enables support for the display controller inside the
+	  Digi ns9360 CPUs.
+
+config FB_HX8347
+	tristate "HX8347 LCD framebuffer support"
+	depends on FB
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
+
+	help
+	  This enables support for the HX8347 display controller.
+	  Only the register interface mode is supported.
 
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"

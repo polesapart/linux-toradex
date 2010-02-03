@@ -16,20 +16,30 @@ menu "Rate control algorithm selection"
 
 config MAC80211_RC_PID
 	bool "PID controller based rate control algorithm" if EMBEDDED
-	default y
 	---help---
 	  This option enables a TX rate control algorithm for
 	  mac80211 that uses a PID controller to select the TX
 	  rate.
 
+config MAC80211_RC_MULTIRATE_PID
+	bool "Multirate PID controller based rate control algorithm" if EMBEDDED
+	---help---
+	  This option enables a TX rate control algorithm for
+	  mac80211 that uses a PID controller to select the TX
+	  rate.  This version of the PID algorithm has been enhanced
+	  to perform retries of packets at different rates.
+	  This algorithm is recommended for the
+	  ConnectCore Wi-9P 9215.
+
 config MAC80211_RC_MINSTREL
-	bool "Minstrel"
+	bool "Minstrel" if EMBEDDED
+	default y
 	---help---
 	  This option enables the 'minstrel' TX rate control algorithm
 
 choice
 	prompt "Default rate control algorithm"
-	default MAC80211_RC_DEFAULT_PID
+	default MAC80211_RC_MULTIRATE_DEFAULT_PID
 	---help---
 	  This option selects the default rate control algorithm
 	  mac80211 will use. Note that this default can still be
@@ -41,8 +51,15 @@ config MAC80211_RC_DEFAULT_PID
 	depends on MAC80211_RC_PID
 	---help---
 	  Select the PID controller based rate control as the
-	  default rate control algorithm. You should choose
-	  this unless you know what you are doing.
+	  default rate control algorithm.
+
+config MAC80211_RC_MULTIRATE_DEFAULT_PID
+	bool "Multirate PID controller based rate control algorithm"
+	depends on MAC80211_RC_MULTIRATE_PID
+	---help---
+	  Select the multirate PID controller based rate control as the
+	  default rate control algorithm. You should choose this
+	  unless you know what you are doing.
 
 config MAC80211_RC_DEFAULT_MINSTREL
 	bool "Minstrel"
@@ -55,8 +72,9 @@ endchoice
 
 config MAC80211_RC_DEFAULT
 	string
-	default "pid" if MAC80211_RC_DEFAULT_PID
 	default "minstrel" if MAC80211_RC_DEFAULT_MINSTREL
+	default "pid" if MAC80211_RC_DEFAULT_PID
+	default "multirate-pid" if MAC80211_RC_MULTIRATE_DEFAULT_PID
 	default ""
 
 endmenu

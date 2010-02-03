@@ -717,5 +717,44 @@ source "drivers/net/wireless/b43/Kconfig"
 source "drivers/net/wireless/b43legacy/Kconfig"
 source "drivers/net/wireless/zd1211rw/Kconfig"
 source "drivers/net/wireless/rt2x00/Kconfig"
+source "drivers/net/wireless/digiPiper/Kconfig"
+
+config DIGI_WI_G
+	tristate "Digi Wireless Module 802.11ab/g"
+	depends on WLAN_80211 && MACH_CCW9C
+	select IEEE80211
+	select IEEE80211_SOFTMAC
+	---help---
+	  A 802.11ab/g wireless driver for Digi ConnectCore Wi-9C modules.
+
+config DIGI_WI_G_HW_ENCRYPTION
+	bool "Use HW encryption"
+	depends on DIGI_WI_G
+	default y
+	help
+	  AES/CCMP decoding is performed by using hardware logic instead of
+	  software emulation. This can also be adjusted at run time with the
+	  kernel command line option dw_sw_aes=0
+
+config DIGI_WI_G_DEBUG
+	bool "Debugging support"
+	depends on DIGI_WI_G
+	default n
+	help
+	  The digi_wi_g driver is compiled with debugging support.
+	  Only the driver maintainer may need to enable it.
+
+choice
+	prompt "UBEC Transceiver Revision"
+	depends on DIGI_WI_G
+	default DIGI_WI_G_UBEC_JD
+
+config DIGI_WI_G_UBEC_JD
+	bool "UBEC Revision JD"
+
+config DIGI_WI_G_UBEC_HC
+	bool "UBEC Revision HC"
+
+endchoice
 
 endmenu

@@ -19,6 +19,18 @@ if head=`git rev-parse --verify --short HEAD 2>/dev/null`; then
 		fi
 	fi
 
+	# Do we have a DEL-tag?
+	if git name-rev --tags HEAD | grep -i "del-" > /dev/null; then
+
+		# -- The option 'exact-match' is available first by v1.5.5.1
+                ver=$(git --version | cut -d " " -f 3 | sed 's#\.##g')
+                if [ $ver -gt 1551 ]; then
+			printf '%s' - $(git describe --tags --exact-match HEAD)
+                else
+			printf '%s' - $(git describe --tags)
+		fi
+	fi
+
 	# Are there uncommitted changes?
 	git update-index --refresh --unmerged > /dev/null
 	if git diff-index --name-only HEAD | grep -v "^scripts/package" \

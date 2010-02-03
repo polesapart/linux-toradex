@@ -452,5 +452,26 @@
  */
 #define __IGNORE_fadvise64_64		1
 
+/*
+ * > #warning syscall fadvise64 not implemented
+ * ... and probably never will be.
+ * see http://www.mail-archive.com/linux-arch@vger.kernel.org/msg02432.html
+ */
+#define __IGNORE_fadvise64		1
+
+/*
+ * Does it make sense for ARM?  I have no idea.
+ * see http://www.mail-archive.com/linux-arch@vger.kernel.org/msg02432.html
+ */
+#define __IGNORE_migrate_pages		1
+
+/*
+ * Maybe sometime in the future
+ * see http://www.mail-archive.com/linux-arch@vger.kernel.org/msg02432.html
+ */
+#define __IGNORE_pselect6		1
+#define __IGNORE_ppoll			1
+#define __IGNORE_epoll_pwait		1
+
 #endif /* __KERNEL__ */
 #endif /* __ASM_ARM_UNISTD_H */

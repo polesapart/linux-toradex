@@ -139,6 +139,15 @@ endif
     plat-$(CONFIG_ARCH_MXC)	   := mxc
  machine-$(CONFIG_ARCH_MX2)	   := mx2
  machine-$(CONFIG_ARCH_MX3)	   := mx3
+ machine-$(CONFIG_ARCH_MX35)	   := mx35
+ machine-$(CONFIG_ARCH_MX37)	   := mx37
+ machine-$(CONFIG_ARCH_MX51)	   := mx51
+ machine-$(CONFIG_ARCH_MX27)	   := mx27
+ machine-$(CONFIG_ARCH_MX25)	   := mx25
+ machine-$(CONFIG_ARCH_MX21)	   := mx21
+ machine-$(CONFIG_ARCH_STMP3XXX)   := stmp3xxx
+  incdir-$(CONFIG_ARCH_STMP37XX)   := stmp37xx
+  incdir-$(CONFIG_ARCH_STMP378X)   := stmp378x
  machine-$(CONFIG_ARCH_ORION5X)	   := orion5x
     plat-$(CONFIG_PLAT_ORION)	   := orion
  machine-$(CONFIG_ARCH_MSM)	   := msm
@@ -214,7 +223,7 @@ maketools: include/linux/version.h FORCE
 # Convert bzImage to zImage
 bzImage: zImage
 
-zImage Image xipImage bootpImage uImage: vmlinux
+zImage Image xipImage bootpImage uImage uImagegz: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
 
 zinstall install: vmlinux
@@ -237,6 +246,7 @@ define archhelp
   echo  '  Image         - Uncompressed kernel image (arch/$(ARCH)/boot/Image)'
   echo  '* xipImage      - XIP kernel image, if configured (arch/$(ARCH)/boot/xipImage)'
   echo  '  uImage        - U-Boot wrapped zImage'
+  echo  "  uImagegz      - U-Boot wrapped gzip'ed Image (without decompressor)"
   echo  '  bootpImage    - Combined zImage and initial RAM disk' 
   echo  '                  (supply initrd image via make variable INITRD=<path>)'
   echo  '  install       - Install uncompressed kernel'

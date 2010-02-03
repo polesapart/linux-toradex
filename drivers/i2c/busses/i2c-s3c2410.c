@@ -666,7 +666,7 @@ static int s3c24xx_i2c_clockrate(struct s3c24xx_i2c *i2c, unsigned int *got)
 
 	pdata = s3c24xx_i2c_get_platformdata(i2c->adap.dev.parent);
 	clkin /= 1000;		/* clkin now in KHz */
-     
+
 	dev_dbg(i2c->dev, "pdata %p, freq %lu %lu..%lu\n",
 		 pdata, pdata->bus_freq, pdata->min_freq, pdata->max_freq);
 
@@ -689,6 +689,13 @@ static int s3c24xx_i2c_clockrate(struct s3c24xx_i2c *i2c, unsigned int *got)
 
 	for (; start > end; start--) {
 		freq = s3c24xx_i2c_calcdivisor(clkin, start, &div1, &divs);
+		/*
+		 * If the clock is higher than the requested, continue searching
+		 * (Luis Galdos)
+		 */
+		if (pdata->bus_freq && (freq * 1000 > pdata->bus_freq))
+			continue;
+
 		if (freq_acceptable(freq, start))
 			goto found;
 	}
