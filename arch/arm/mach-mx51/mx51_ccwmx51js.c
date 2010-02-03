@@ -364,10 +364,36 @@ static inline void ccwmx51_init_mmc(void) {}
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 
-static struct mxc_fb_platform_data fb_data_vga = {
-	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-	.mode_str = "1024x768M-16@60",	/* Default */
+static struct fb_videomode wvga_video_mode =
+{
+	.name = "Digi LCD",
+	.xres = 800,
+	.yres = 480,
+	.refresh = 60,
+	.pixclock = 30062,
+	.left_margin    = 64,
+	.right_margin   = 64,
+	.lower_margin   = 10,
+	.upper_margin   = 30,
+	.hsync_len      = 128,
+	.vsync_len      = 5,
+	.vmode          = FB_VMODE_NONINTERLACED,
+	.flag           = FB_MODE_IS_DETAILED
+
 };
+
+// ttd: todo: support both video=displayfb:VGA and video=displayfb:LCD
+// on the kernel boot line.
+static struct mxc_fb_platform_data fb_data_vga = {
+// ttd: test for LCD
+	.mode = &wvga_video_mode,
+	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+
+// works best on lcd panel, avoids resampling
+	.mode_str = "800x480-24@60",
+
+};
+
 
 static struct platform_device mxc_fb_device[] = {
 	{
@@ -376,7 +402,7 @@ static struct platform_device mxc_fb_device[] = {
 		.dev = {
 			.release = mxc_nop_release,
 			.coherent_dma_mask = 0xFFFFFFFF,
-			.platform_data = &fb_data_vga,
+			.platform_data = &fb_data_vga
 		},
 	 }, {
 		.name = "mxc_sdc_fb",
@@ -384,7 +410,6 @@ static struct platform_device mxc_fb_device[] = {
 		.dev = {
 			.release = mxc_nop_release,
 			.coherent_dma_mask = 0xFFFFFFFF,
-			.platform_data = NULL,
 		},
 	}, {
 		.name = "mxc_sdc_fb",
@@ -396,12 +421,19 @@ static struct platform_device mxc_fb_device[] = {
 	},
 };
 
+extern void gpio_lcd_active(void);
+
 static int __init ccwmx51_init_fb(void)
 {
 	char *options = NULL, *p;
 
+// ttd: hack for testing
+// ttd: todo: clean this up and also do blanking properly on lcd when
+// it is being used.
+	gpio_lcd_active();
+
 	if (fb_get_options("displayfb", &options))
-		pr_warning("no display information available in commnad line\n");
+		pr_warning("no display information available in command line\n");
 
 	if (!options)
 		return -ENODEV;
@@ -413,6 +445,7 @@ static int __init ccwmx51_init_fb(void)
 		if (options[3] != '@') {
 			pr_info("Video resolution for VGA interface not provided, using default\n");
 			/* TODO set default video here */
+
 		} else {
 			options = &options[4];
 			if (((p = strsep (&options, "@")) != NULL) && *p) {
@@ -431,6 +464,8 @@ static int __init ccwmx51_init_fb(void)
 			}
 		}
 		(void)platform_device_register(&mxc_fb_device[0]); /* VGA */
+
+
 	}
 
 	return 0;

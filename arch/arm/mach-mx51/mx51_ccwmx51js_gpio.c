@@ -207,6 +207,13 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
+	// ttd: setting up pins for our lcd panel
+	{
+		MX51_PIN_DI1_PIN11, IOMUX_CONFIG_ALT4,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	// ttd: end of experimental sections
+
 	{	/* DISP1 DAT0 */
 		MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
 		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
@@ -420,15 +427,24 @@ void __init ccwmx51_io_init(void)
 #endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+	printk("ttd: setting up video gpio mappings\n");
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video1_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,
-				  ccwmx51_iomux_video1_pins[i].mux_mode);
+// ttd: debug
+		int r = mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,
+					  ccwmx51_iomux_video1_pins[i].mux_mode);
+// ttd: debug
+		if (r){
+			printk("ttd: mxc_request_iomux() for video failed, pin %d\n",
+			       ccwmx51_iomux_video1_pins[i].pin);
+		}
 		if (ccwmx51_iomux_video1_pins[i].pad_cfg)
 			mxc_iomux_set_pad(ccwmx51_iomux_video1_pins[i].pin,
 					  ccwmx51_iomux_video1_pins[i].pad_cfg);
+
 		if (ccwmx51_iomux_video1_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
 					    ccwmx51_iomux_video1_pins[i].in_mode);
+
 	}
 #endif
 
@@ -468,6 +484,33 @@ void __init ccwmx51_io_init(void)
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_RS), 1);
 #endif
 }
+
+// ttd: experimental for lcd
+
+
+void gpio_lcd_active(void)
+{
+// ttd: testing...
+#if 1
+	int r;
+	printk("ttd: gpio_lcd_active\n");
+//	r =  gpio_request(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), "di1_pin11");
+//	printk("  ttd: gpio_request() returns %d\n", r);
+
+
+
+// The last one that is required.  I don't quite understand the
+// inter-related semantics of the gpio_direction_output and the
+// underlying chip->direction method, and the chip->request.
+	r = gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
+
+	printk("  ttd: gpio_set_direction_output() returns %d\n", r);
+//	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
+#endif
+}
+
+
+EXPORT_SYMBOL(gpio_lcd_active);
 
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
@@ -526,3 +569,4 @@ void gpio_uart_active(int port, int no_irda) {}
 void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
+
