@@ -382,16 +382,9 @@ static struct fb_videomode wvga_video_mode =
 
 };
 
-// ttd: todo: support both video=displayfb:VGA and video=displayfb:LCD
-// on the kernel boot line.
+
 static struct mxc_fb_platform_data fb_data_vga = {
-// ttd: test for LCD
-	.mode = &wvga_video_mode,
 	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-
-// works best on lcd panel, avoids resampling
-	.mode_str = "800x480-24@60",
-
 };
 
 
@@ -423,14 +416,17 @@ static struct platform_device mxc_fb_device[] = {
 
 extern void gpio_lcd_active(void);
 
+
+// We let the user specify e.g. 800x600x24, but pay attention
+// only to the 800x600 part, and use 24-bit color regardless.
+static int video_matches(char *user, char *template)
+{
+	return !strncasecmp(user, template, strlen(template));
+}
+
 static int __init ccwmx51_init_fb(void)
 {
 	char *options = NULL, *p;
-
-// ttd: hack for testing
-// ttd: todo: clean this up and also do blanking properly on lcd when
-// it is being used.
-	gpio_lcd_active();
 
 	if (fb_get_options("displayfb", &options))
 		pr_warning("no display information available in command line\n");
@@ -440,32 +436,40 @@ static int __init ccwmx51_init_fb(void)
 
 	if (!strncasecmp(options, "VGA", 3)) {
 		pr_info("VGA interface is primary\n");
+		
+		fb_data_vga.mode = 0; // Do not use LCD timings.
+		fb_data_vga.mode_str = "1024x768M-24@60";	/* Default */
 
 		/* Get the desired configuration provided by the bootloader */
 		if (options[3] != '@') {
-			pr_info("Video resolution for VGA interface not provided, using default\n");
-			/* TODO set default video here */
-
+			pr_info("Video resolution for VGA interface not provided, using '%s'\n",
+			       fb_data_vga.mode_str);
 		} else {
 			options = &options[4];
 			if (((p = strsep (&options, "@")) != NULL) && *p) {
-				if (!strcmp(p, "640x480x16")) {
-					strcpy(fb_data_vga.mode_str, "640x480M-16@60");
-				} else if (!strcmp(p, "800x600x16")) {
-					strcpy(fb_data_vga.mode_str, "800x600M-16@60");
-				} else if (!strcmp(p, "1024x768x16")) {
-					strcpy(fb_data_vga.mode_str, "1024x768M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
+				if (video_matches(p, "640x480") ){
+					fb_data_vga.mode_str = "640x480M-24@60";
+				} else if (video_matches(p, "800x600")) {
+					fb_data_vga.mode_str = "800x600M-24@60";
+				} else if (video_matches(p, "1024x768")) {
+					fb_data_vga.mode_str = "1024x768M-24@60";
+				} else if (video_matches(p, "1280x1024")) {
+					fb_data_vga.mode_str = "1280x1024M-24@60";
+				} else if (video_matches(p, "1280x1024")) {
+					fb_data_vga.mode_str = "1280x1024M-24@60";
 				} else
-					pr_warning("Unsuported video resolution: %s, using default\n", p);
+					pr_warning("Unsupported video resolution: %s, using default '%s'\n",
+						p, fb_data_vga.mode_str);
 			}
 		}
 		(void)platform_device_register(&mxc_fb_device[0]); /* VGA */
 
-
+	} else if (!strncasecmp(options, "LCD", 3)){
+		gpio_lcd_active();
+		fb_data_vga.mode = &wvga_video_mode;  // Use timings for Digi LCD.
+		fb_data_vga.mode_str = "800x480-24@60",
+		pr_info("Using LDC wvga video timings and mode %s\n", fb_data_vga.mode_str);
+		(void)platform_device_register(&mxc_fb_device[0]); /* LCD */
 	}
 
 	return 0;
