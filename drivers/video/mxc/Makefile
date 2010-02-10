@@ -7,6 +7,7 @@ ifeq ($(CONFIG_MXC_IPU_V1),y)
 	obj-$(CONFIG_FB_MXC_SYNC_PANEL)         += mxcfb.o mxcfb_modedb.o
 else
 	obj-$(CONFIG_FB_MXC_SYNC_PANEL)         += mxc_ipuv3_fb.o
+	obj-$(CONFIG_FB_MXC_SYNC_PANEL)		+= ccwmx51_display.o
 endif
 	obj-$(CONFIG_FB_MXC_EPSON_PANEL)        += mxcfb_epson.o
 	obj-$(CONFIG_FB_MXC_EPSON_QVGA_PANEL)   += mxcfb_epson_qvga.o
