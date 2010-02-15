@@ -177,4 +177,6 @@ config UART3_ENABLED
 	  Enable the MX51 UART3 interface
 endmenu
 
+source "arch/arm/mach-mx5/displays/Kconfig"
+
 endif

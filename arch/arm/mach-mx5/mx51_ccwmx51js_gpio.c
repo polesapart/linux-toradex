@@ -303,6 +303,11 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
 		MX51_PIN_DISP1_DAT23, IOMUX_CONFIG_ALT0,
 		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
 	},
+	{	/*  LCD1 Power Enable, as gpio */
+		MX51_PIN_DI1_PIN11, IOMUX_CONFIG_GPIO,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_47K_PU |
+		PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_HYS_ENABLE),
+	},
 };
 #endif
 
@@ -530,6 +535,9 @@ void __init ccwmx51_io_init(void)
 			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
 					    ccwmx51_iomux_video1_pins[i].in_mode);
 	}
+	/*  LCD Power Enable */
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), "gpio3_0");
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
 #endif
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)

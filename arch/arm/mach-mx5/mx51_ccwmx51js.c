@@ -46,7 +46,7 @@
 #include "board.h"
 #include "iomux.h"
 #include "crm_regs.h"
-
+#include "displays/displays.h"
 
 #include <linux/smc911x.h>
 
@@ -396,9 +396,29 @@ static struct platform_device mxc_fb_device[] = {
 	},
 };
 
+static struct platform_device lcd_pdev = {
+	.name = "ccwmx51_display",
+	.dev = {
+		.release = mxc_nop_release,
+		.coherent_dma_mask = 0xFFFFFFFF,
+	},
+};
+
+struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(lcd_display_list); i++)
+		if (!strcmp(lcd_display_list[i].fb_pdata.mode->name, name))
+			return &lcd_display_list[i];
+	return NULL;
+}
+
 static int __init ccwmx51_init_fb(void)
 {
 	char *options = NULL, *p;
+	struct ccwmx51_lcd_pdata *lcd_pdata;
+
 
 	if (fb_get_options("displayfb", &options))
 		pr_warning("no display information available in commnad line\n");
@@ -431,6 +451,14 @@ static int __init ccwmx51_init_fb(void)
 			}
 		}
 		(void)platform_device_register(&mxc_fb_device[0]); /* VGA */
+	} else {
+		if ((lcd_pdata = ccwmx51_get_display(options)) != NULL) {
+			memcpy(&fb_data_vga, &lcd_pdata->fb_pdata, sizeof(struct mxc_fb_platform_data));
+			lcd_pdata->vif = 0;	/* Select video interface 0 */
+			lcd_pdev.dev.platform_data = lcd_pdata,
+			(void)platform_device_register(&lcd_pdev);
+			(void)platform_device_register(&mxc_fb_device[0]); /*  VGA */
+		}
 	}
 
 	return 0;

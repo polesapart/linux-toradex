@@ -646,6 +646,13 @@ struct platform_device mxcspi3_device = {
 	.resource = mxcspi3_resources,
 };
 
+struct ccwmx51_lcd_pdata {
+	int vif;
+	struct mxc_fb_platform_data fb_pdata;
+	void (*reset) (void);
+	void (*bl_enable) (int);
+};
+
 /* I2C controller and device data */
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
