@@ -19,6 +19,8 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/mxcfb.h>
+#include <mach/hardware.h>
+#include <mach/mxc.h>
 
 static void lcd_poweron(struct ccwmx51_lcd_pdata *plat);
 static void lcd_poweroff(struct ccwmx51_lcd_pdata *plat);

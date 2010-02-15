@@ -925,8 +925,8 @@ static inline void mxc_init_tve(void)
  */
 static struct resource dvfs_core_resources[] = {
 	[0] = {
-	       .start = MXC_DVFS_CORE_BASE,
-	       .end = MXC_DVFS_CORE_BASE + 4 * SZ_16 - 1,
+	       .start = (resource_size_t)MXC_DVFS_CORE_BASE,
+	       .end = (resource_size_t) MXC_DVFS_CORE_BASE + 4 * SZ_16 - 1,
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
@@ -943,9 +943,9 @@ struct mxc_dvfs_platform_data dvfs_core_data = {
 	.clk2_id = "gpc_dvfs_clk",
 	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
 	.gpc_vcr_reg_addr = MXC_GPC_VCR,
-	.ccm_cdcr_reg_addr = (unsigned int)MXC_CCM_CDCR,
-	.ccm_cacrr_reg_addr = (unsigned int)MXC_CCM_CACRR,
-	.ccm_cdhipr_reg_addr = (unsigned int)MXC_CCM_CDHIPR,
+	.ccm_cdcr_reg_addr = (void __iomem *)MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = (void __iomem *)MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = (void __iomem *)MXC_CCM_CDHIPR,
 	.dvfs_thrs_reg_addr = MXC_DVFSTHRS,
 	.dvfs_coun_reg_addr = MXC_DVFSCOUN,
 	.dvfs_emac_reg_addr = MXC_DVFSEMAC,

@@ -205,10 +205,10 @@ static void ccwmx51_init_ext_eth_mac(void)
 		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", WEIM_BASE_ADDR, __func__);
 		return;
 	}
-	
-	/** Configure the CS timming, bus width, etc. 
-	 * 16 bit on DATA[31..16], not multiplexed, async 
-	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0 
+
+	/** Configure the CS timming, bus width, etc.
+	 * 16 bit on DATA[31..16], not multiplexed, async
+	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
 	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
 	 */
 	__raw_writel(0x00420081, weim_vbaddr + 0x78 + CSGCR1);
@@ -231,9 +231,34 @@ static void ccwmx51_init_ext_eth_mac(void) { }
 
 
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
-unsigned int expio_intr_fec;
+static struct resource mxc_fec_resources[] = {
+	{
+		.start	= FEC_BASE_ADDR,
+		.end	= FEC_BASE_ADDR + 0xfff,
+		.flags	= IORESOURCE_MEM
+	}, {
+		.start	= MXC_INT_FEC,
+		.end	= MXC_INT_FEC,
+		.flags	= IORESOURCE_IRQ
+	},
+};
 
-EXPORT_SYMBOL(expio_intr_fec);
+struct platform_device mxc_fec_device = {
+	.name = "fec",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(mxc_fec_resources),
+	.resource = mxc_fec_resources,
+};
+
+static __init int mxc_init_fec(void)
+{
+	return platform_device_register(&mxc_fec_device);
+}
+#else
+static inline int mxc_init_fec(void)
+{
+	return 0;
+}
 #endif
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
@@ -557,10 +582,10 @@ static void __init mxc_board_init(void)
 	mxc_init_devices();
 	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
+	mxc_init_fec();
 //	ccwmx51_init_ext_eth_mac();
 	ccwmx51_init_mma7455l();
 	ccwmx51_init_mc13892();
-
 	pm_power_off = mxc_power_off;
 }
 
@@ -573,8 +598,7 @@ static void __init ccwmx51_timer_init(void)
 		cpu_wp_auto[2].cpu_voltage = 1000000;
 	}
 
-	mxc_clocks_init(32768, 24000000, 22579200, 24576000);
-	mxc_timer_init("gpt_clk.0");
+	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
 }
 
 static struct sys_timer mxc_timer = {
@@ -587,7 +611,7 @@ MACHINE_START(CCWMX51JS, "ConnectCore Wi-MX51 on a JSK board")
 	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 	.boot_params = PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
-	.map_io = mxc_map_io,
+	.map_io = mx51_map_io,
 	.init_irq = mxc_init_irq,
 	.init_machine = mxc_board_init,
 	.timer = &mxc_timer,

@@ -298,66 +298,6 @@ struct ccwmx51_lcd_pdata {
 	void (*bl_enable) (int);
 };
 
-struct mxc_dvfs_platform_data {
-	/** Supply voltage regulator name string */
-	char *reg_id;
-	/* CPU clock name string */
-	char *clk1_id;
-	/* DVFS clock name string */
-	char *clk2_id;
-	/* GPC control reg address */
-	unsigned int gpc_cntr_reg_addr;
-	/* GPC voltage counter reg address */
-	unsigned int gpc_vcr_reg_addr;
-	/* CCM DVFS control reg address */
-	unsigned int ccm_cdcr_reg_addr;
-	/* CCM ARM clock root reg address */
-	unsigned int ccm_cacrr_reg_addr;
-	/* CCM divider handshake in-progree reg address */
-	unsigned int ccm_cdhipr_reg_addr;
-	/* DVFS threshold reg address */
-	unsigned int dvfs_thrs_reg_addr;
-	/* DVFS counters reg address */
-	unsigned int dvfs_coun_reg_addr;
-	/* DVFS EMAC reg address */
-	unsigned int dvfs_emac_reg_addr;
-	/* DVFS control reg address */
-	unsigned int dvfs_cntr_reg_addr;
-	/* PREDIV mask */
-	u32 prediv_mask;
-	/* PREDIV offset */
-	int prediv_offset;
-	/* PREDIV value */
-	int prediv_val;
-	/* DIV3CK mask */
-	u32 div3ck_mask;
-	/* DIV3CK offset */
-	int div3ck_offset;
-	/* DIV3CK value */
-	int div3ck_val;
-	/* EMAC value */
-	int emac_val;
-	/* Frequency increase threshold. Increase frequency change request
-	   will be sent if DVFS counter value will be more than this value */
-	int upthr_val;
-	/* Frequency decrease threshold. Decrease frequency change request
-	   will be sent if DVFS counter value will be less than this value */
-	int dnthr_val;
-	/* Panic threshold. Panic frequency change request
-	   will be sent if DVFS counter value will be more than this value */
-	int pncthr_val;
-	/* The amount of times the up threshold should be exceeded
-	   before DVFS will trigger frequency increase request */
-	int upcnt_val;
-	/* The amount of times the down threshold should be exceeded
-	   before DVFS will trigger frequency decrease request */
-	int dncnt_val;
-	/* Delay time in us */
-	int delay_time;
-	/* Number of woking points supported */
-	int num_wp;
-};
-
 struct mxc_tsc_platform_data {
 	char *vdd_reg;
 	int penup_threshold;
