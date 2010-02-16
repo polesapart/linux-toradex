@@ -545,7 +545,10 @@ static void spi_put_tx_data(void *base, unsigned int count,
 
 	/* Perform Tx transaction */
 	for (i = 0; i < count; i++) {
-		data = master_drv_data->transfer.tx_get(master_drv_data);
+		if (master_drv_data->transfer.tx_buf)
+			data = master_drv_data->transfer.tx_get(master_drv_data);
+		else
+			data = 0x0;
 		__raw_writel(data, base + MXC_CSPITXDATA);
 	}
 
