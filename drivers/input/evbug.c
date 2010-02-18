@@ -64,11 +64,13 @@ static int evbug_connect(struct input_handler *handler, struct input_dev *dev,
 	if (error)
 		goto err_unregister_handle;
 
+/*
+// Messing up debugging by interfering with init scripts , so I'm temporarily removing this.
 	printk(KERN_DEBUG "evbug.c: Connected device: %s (%s at %s)\n",
 		dev->dev.bus_id,
 		dev->name ?: "unknown",
 		dev->phys ?: "unknown");
-
+*/
 	return 0;
 
  err_unregister_handle:

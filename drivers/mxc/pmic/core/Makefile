@@ -1,3 +1,6 @@
+CFLAGS_mc13892.o := -DDEBUG
+
+
 #
 # Makefile for the PMIC core drivers.
 #

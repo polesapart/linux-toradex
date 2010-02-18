@@ -110,7 +110,6 @@ int pmic_read(int reg_num, unsigned int *reg_val)
 			return PMIC_ERROR;
 
 		frame |= reg_num << MXC_PMIC_REG_NUM_SHIFT;
-
 		ret = spi_rw(pmic_drv_data.spi, (u8 *) &frame, 1);
 
 		*reg_val = frame & MXC_PMIC_FRAME_MASK;

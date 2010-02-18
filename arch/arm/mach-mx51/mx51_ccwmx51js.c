@@ -385,6 +385,7 @@ static struct fb_videomode wvga_video_mode =
 
 static struct mxc_fb_platform_data fb_data_vga = {
 	.interface_pix_fmt = IPU_PIX_FMT_RGB24,
+//	.interface_pix_fmt = IPU_PIX_FMT_RGB565,  // ttd: testing...
 };
 
 
@@ -438,7 +439,7 @@ static int __init ccwmx51_init_fb(void)
 		pr_info("VGA interface is primary\n");
 		
 		fb_data_vga.mode = 0; // Do not use LCD timings.
-		fb_data_vga.mode_str = "1024x768M-24@60";	/* Default */
+		fb_data_vga.mode_str = "1024x768M-16@60";	/* Default */
 
 		/* Get the desired configuration provided by the bootloader */
 		if (options[3] != '@') {
@@ -448,15 +449,15 @@ static int __init ccwmx51_init_fb(void)
 			options = &options[4];
 			if (((p = strsep (&options, "@")) != NULL) && *p) {
 				if (video_matches(p, "640x480") ){
-					fb_data_vga.mode_str = "640x480M-24@60";
+					fb_data_vga.mode_str = "640x480M-16@60";
 				} else if (video_matches(p, "800x600")) {
-					fb_data_vga.mode_str = "800x600M-24@60";
+					fb_data_vga.mode_str = "800x600M-16@60";
 				} else if (video_matches(p, "1024x768")) {
-					fb_data_vga.mode_str = "1024x768M-24@60";
+					fb_data_vga.mode_str = "1024x768M-16@60";
 				} else if (video_matches(p, "1280x1024")) {
-					fb_data_vga.mode_str = "1280x1024M-24@60";
+					fb_data_vga.mode_str = "1280x1024M-16@60";
 				} else if (video_matches(p, "1280x1024")) {
-					fb_data_vga.mode_str = "1280x1024M-24@60";
+					fb_data_vga.mode_str = "1280x1024M-16@60";
 				} else
 					pr_warning("Unsupported video resolution: %s, using default '%s'\n",
 						p, fb_data_vga.mode_str);
@@ -467,7 +468,8 @@ static int __init ccwmx51_init_fb(void)
 	} else if (!strncasecmp(options, "LCD", 3)){
 		gpio_lcd_active();
 		fb_data_vga.mode = &wvga_video_mode;  // Use timings for Digi LCD.
-		fb_data_vga.mode_str = "800x480-24@60",
+//		fb_data_vga.mode_str = "800x480-24@60",
+		fb_data_vga.mode_str = "800x480-16@60", // ttd: testing...
 		pr_info("Using LDC wvga video timings and mode %s\n", fb_data_vga.mode_str);
 		(void)platform_device_register(&mxc_fb_device[0]); /* LCD */
 	}

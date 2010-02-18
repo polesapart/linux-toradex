@@ -1,3 +1,4 @@
+CFLAGS_evbug.o := -DDEBUG
 #
 # Makefile for the input core drivers.
 #

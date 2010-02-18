@@ -43,6 +43,7 @@ static u32 input_ts_installed;
 
 static int ts_thread(void *arg)
 {
+	int j1=0, j2=0, j3=0, j4=0;
 	t_touch_screen ts_sample;
 	s32 wait = 0;
 
@@ -50,19 +51,36 @@ static int ts_thread(void *arg)
 	while (input_ts_installed) {
 		try_to_freeze();
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
-		if (0 != pmic_adc_get_touch_sample(&ts_sample, !wait))
+		j3 = jiffies;
+		if (0 != pmic_adc_get_touch_sample(&ts_sample, !wait)){
+			printk("ttd: pmic_adc_get_touch_sample() RETURNS NONZERO\n");
 			continue;
-		if (!(ts_sample.contact_resistance || wait))
-			continue;
+		}
+		j4 = jiffies;
+//		printk("ts_thread: pmic_adc_get_touch_sample() took %d jiffies\n", j4 - j3);
 
+		if (!(ts_sample.contact_resistance || wait)){
+			printk("ttd: continue: res=%d, wait=%d\n", ts_sample.contact_resistance, wait);
+			continue;
+		}
+
+		printk("ttd: ts_thread sending event: abs x=%d, abx y = %d, resistance = %d\n",
+		       ts_sample.x_position,
+		       ts_sample.y_position,
+		       ts_sample.contact_resistance
+		      );
+		j1 = jiffies;
 		input_report_abs(mxc_inputdev, ABS_X, ts_sample.x_position);
 		input_report_abs(mxc_inputdev, ABS_Y, ts_sample.y_position);
 		input_report_abs(mxc_inputdev, ABS_PRESSURE,
 				 ts_sample.contact_resistance);
 		input_sync(mxc_inputdev);
+		j2 = jiffies;
 
 		wait = ts_sample.contact_resistance;
+		j1 = jiffies;
 		msleep(20);
+		j2 = jiffies;
 	}
 
 	return 0;

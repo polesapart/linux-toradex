@@ -325,8 +325,9 @@ int pmic_adc_init(void)
 {
 	unsigned int reg_value = 0, i = 0;
 
-	if (suspend_flag == 1)
+	if (suspend_flag == 1){
 		return -EBUSY;
+	}
 
 	for (i = 0; i < ADC_NB_AVAILABLE; i++)
 		adc_dev[i] = ADC_FREE;
@@ -399,17 +400,23 @@ int mc13892_adc_init_param(t_adc_param * adc_param)
 
 PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 {
+	int j1=0, j2=0, j3=0;
+	int jj1=0, jj2=0;
+
 	bool use_bis = false;
 	unsigned int adc_0_reg = 0, adc_1_reg = 0, reg_1 = 0, result_reg =
 	    0, i = 0;
 	unsigned int result = 0, temp = 0;
 	pmic_version_t mc13892_ver;
 	pr_debug("mc13892 ADC - mc13892_adc_convert ....\n");
-	if (suspend_flag == 1)
+	if (suspend_flag == 1){
+		printk("ttd: mc13892_adc_convert returns -EBUSY\n");
 		return -EBUSY;
+	}
 
 	if (adc_param->wait_tsi) {
 		/* configure adc to wait tsi interrupt */
+//		printk("ttd: INIT_COMPLETION(adc_tsi)\n");
 		INIT_COMPLETION(adc_tsi);
 
 		/*for ts don't use bis */
@@ -425,9 +432,14 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 		wait_ts = true;
 		wait_for_completion_interruptible(&adc_tsi);
 		wait_ts = false;
+	} else {
+//		printk("ttd: mc13892_adc_convert(): is not in wait mode\n");
 	}
+
 	down(&convert_mutex);
+
 	use_bis = mc13892_adc_request(adc_param->read_ts);
+
 	if (use_bis < 0) {
 		pr_debug("process has received a signal and got interrupted\n");
 		return -EINTR;
@@ -465,6 +477,8 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 	} else {
 		adc_0_reg = 0x002400 | (ADC_BIS * use_bis) | ADC_INC;
 	}
+j1 = jiffies;
+
 	pr_debug("Write Reg %i = %x\n", REG_ADC0, adc_0_reg);
 	/*Change has been made here */
 	CHECK_ERROR(pmic_write_reg(REG_ADC0, adc_0_reg,
@@ -487,6 +501,9 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 	}
 	reg_1 = adc_1_reg;
 	if (use_bis == 0) {
+		int jj1 = 0, jj2 = 0;
+
+		jj1 = jiffies;
 		data_ready_adc_1 = false;
 		adc_1_reg |= ASC_ADC;
 		data_ready_adc_1 = true;
@@ -499,8 +516,11 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 					   ADC_DELAY_MASK | ASC_ADC | ADC_BIS));
 		pr_debug("wait adc done \n");
 		wait_for_completion_interruptible(&adcdone_it);
+		jj2 = jiffies;
+//		printk("ttd: use_bis == 0, jiffies=%d\n", jj2-jj1);
 		data_ready_adc_1 = false;
 	} else {
+//		printk("ttd: USE_BIS != 0\n");
 		data_ready_adc_2 = false;
 		adc_1_reg |= ASC_ADC;
 		data_ready_adc_2 = true;
@@ -512,6 +532,9 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 		wait_for_completion_interruptible(&adcbisdone_it);
 		data_ready_adc_2 = false;
 	}
+	j2 = jiffies;
+//	printk("ttd: partial adc_convert: %d j\n", j2 - j1);
+
 	/* read result and store in adc_param */
 	result = 0;
 	if (use_bis == 0)
@@ -519,17 +542,28 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 	else
 		result_reg = REG_ADC4;
 
+	j2 = jiffies;
 	CHECK_ERROR(pmic_write_reg(REG_ADC1, 4 << ADC_CH_1_POS,
 				   ADC_CH_0_MASK | ADC_CH_1_MASK));
 
+	j3 = jiffies;
+//	printk("  ttd: then %d jiffies\n", j3-j2);
+	
+	jj1 = jiffies;
 	for (i = 0; i <= 3; i++) {
+		j2 = jiffies;
 		CHECK_ERROR(pmic_read_reg(result_reg, &result, PMIC_ALL_BITS));
+		j3 = jiffies;
+//		printk("  ttd: then again %d jiffies\n", j3-j2);
+
 		adc_param->value[i] = ((result & ADD1_RESULT_MASK) >> 2);
 		adc_param->value[i + 4] = ((result & ADD2_RESULT_MASK) >> 14);
 		pr_debug("value[%d] = %d, value[%d] = %d\n",
 			 i, adc_param->value[i],
 			 i + 4, adc_param->value[i + 4]);
 	}
+	jj2 = jiffies;
+//	printk("ttd: double-check: %d jiffies\n", jj2 - jj1);
 	if (adc_param->read_ts) {
 		adc_param->ts_value.x_position = adc_param->value[0];
 		adc_param->ts_value.x_position1 = adc_param->value[0];
@@ -549,7 +583,6 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param * adc_param)
 	   } */
 	mc13892_adc_release(use_bis);
 	up(&convert_mutex);
-
 	return PMIC_SUCCESS;
 }
 
@@ -636,8 +669,10 @@ PMIC_STATUS pmic_adc_convert_8x(t_channel channel, unsigned short *result)
 
 PMIC_STATUS pmic_adc_set_touch_mode(t_touch_mode touch_mode)
 {
-	if (suspend_flag == 1)
+	if (suspend_flag == 1){
+		printk("pmic_adc: busy!!\n");
 		return -EBUSY;
+	}
 
 	CHECK_ERROR(pmic_write_reg(REG_ADC0,
 				   BITFVAL(MC13892_ADC0_TS_M, touch_mode),
@@ -648,42 +683,69 @@ PMIC_STATUS pmic_adc_set_touch_mode(t_touch_mode touch_mode)
 PMIC_STATUS pmic_adc_get_touch_mode(t_touch_mode * touch_mode)
 {
 	unsigned int value;
-	if (suspend_flag == 1)
+
+	if (suspend_flag == 1){
+		printk("pmic_adc: busy in get!!\n");
 		return -EBUSY;
+	}
 
 	CHECK_ERROR(pmic_read_reg(REG_ADC0, &value, PMIC_ALL_BITS));
 
 	*touch_mode = BITFEXT(value, MC13892_ADC0_TS_M);
+	printk("pmic_adc_get_touch_mode(): 0x%x\n", *touch_mode);
 
 	return PMIC_SUCCESS;
 }
 
 PMIC_STATUS pmic_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
 {
-	if (mc13892_adc_read_ts(touch_sample, wait) != 0)
+	int j1 = 0, j2 = 0, j3 = 0, j4 = 0;
+
+	j1 = jiffies;
+	if (mc13892_adc_read_ts(touch_sample, wait) != 0){
+		printk("ttd: pmic_adc_get_touch_sample PMIC_ERROR 1!!\n");
 		return PMIC_ERROR;
-	if (0 == pmic_adc_filter(touch_sample))
+	}
+	j2 = jiffies;
+	if (0 == pmic_adc_filter(touch_sample)){
+		j3 = jiffies;
+		printk("pmic_adc_get_touch_sample(): read(w=%d): %d jf, filter: %d jf\n", wait, j2 - j1, j3 - j2);
 		return PMIC_SUCCESS;
-	else
+	}
+	else {
+		printk("ttd: pmic_adc_get_touch_sample PMIC_ERROR 2!!\n");
 		return PMIC_ERROR;
+	}
 }
 
 PMIC_STATUS mc13892_adc_read_ts(t_touch_screen *ts_value, int wait_tsi)
 {
+	int j1=0, j2=0, j3=0, j4=0;
+
 	t_adc_param param;
 	pr_debug("mc13892_adc : mc13892_adc_read_ts\n");
-	if (suspend_flag == 1)
+	if (suspend_flag == 1){
+		printk("ttd: mc13892_adc_read_ts() returns -EBUSY\n");
 		return -EBUSY;
+	}
 
 	if (wait_ts) {
+		printk("ttd: mc13892_adc_read_ts() returns PMIC_ERROR\n");
 		pr_debug("mc13892_adc : error TS busy \n");
 		return PMIC_ERROR;
 	}
+	j1 = jiffies;
 	mc13892_adc_init_param(&param);
+	j2 = jiffies;
 	param.wait_tsi = wait_tsi;
 	param.read_ts = true;
-	if (mc13892_adc_convert(&param) != 0)
+	j3 = jiffies;
+	if (mc13892_adc_convert(&param) != 0){
+		printk("ttd: mc13892_adc_read_ts() returns PMIC_ERROR after adc_convert\n");
 		return PMIC_ERROR;
+	}
+	j4 = jiffies;
+//	printk("  mc13892_adc_read_ts(): init= %d j, convert = %d j\n", j2-j1, j4-j3);
 	/* check if x-y is ok */
 	if (param.ts_value.contact_resistance < 1000) {
 		ts_value->x_position = param.ts_value.x_position;
@@ -698,6 +760,7 @@ PMIC_STATUS mc13892_adc_read_ts(t_touch_screen *ts_value, int wait_tsi)
 		    param.ts_value.contact_resistance + 1;
 
 	} else {
+		printk("ttd: bad contact resistance value: %d\n", param.ts_value.contact_resistance);
 		ts_value->x_position = 0;
 		ts_value->y_position = 0;
 		ts_value->contact_resistance = 0;
@@ -748,7 +811,8 @@ int mc13892_adc_release(int adc_index)
 	return -1;
 }
 
-#ifdef DEBUG
+//#ifdef DEBUG
+#if 1
 static t_adc_param adc_param_db;
 
 static ssize_t adc_info(struct device *dev, struct device_attribute *attr,
@@ -963,6 +1027,7 @@ static struct platform_driver pmic_adc_driver_ldm = {
 	.probe = pmic_adc_module_probe,
 	.remove = pmic_adc_module_remove,
 };
+
 
 static int __init pmic_adc_module_init(void)
 {

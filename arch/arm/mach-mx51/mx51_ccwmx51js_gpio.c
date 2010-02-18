@@ -544,3 +544,205 @@ void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
 
+
+
+/*!
+ * Setup GPIO for a CSPI device to be active
+ *
+ * @param  cspi_mod         an CSPI device
+ */
+
+// ttd: in process: lots of duplication....
+
+void gpio_spi_active(int cspi_mod)
+{
+return;
+	printk("ttd: gpio_spi_active(%d) called\n", cspi_mod);
+//	printk("RETURN EARLY\n");
+
+//	return;
+
+	switch (cspi_mod) {
+		case 0:
+		/* SPI1 */
+			mxc_request_iomux(MX51_PIN_CSPI1_MOSI, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_MISO, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0);
+			mxc_request_iomux(MX51_PIN_CSPI1_SCLK, IOMUX_CONFIG_ALT0);
+//			mxc_request_iomux(MX51_PIN_CSPI1_RDY, IOMUX_CONFIG_ALT0);
+
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_MOSI,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_MISO,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_SCLK,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+
+
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_SS0,
+					  PAD_CTL_SRE_FAST
+					 );
+
+
+
+/*
+			mxc_iomux_set_pad(MX51_PIN_CSPI1_RDY,
+					  PAD_CTL_HYS_ENABLE |
+					  PAD_CTL_PKE_ENABLE |
+					  PAD_CTL_DRV_HIGH |
+					  PAD_CTL_SRE_FAST
+					 );
+*/
+			break;
+		case 1:
+		/* SPI2 */
+			break;
+		default:
+			break;
+	}
+}
+
+
+EXPORT_SYMBOL(gpio_spi_active);
+
+/*!
+ * Setup GPIO for a CSPI device to be inactive
+ *
+ * @param  cspi_mod         a CSPI device
+ */
+void gpio_spi_inactive(int cspi_mod)
+{
+return;
+	printk("ttd: gpio_spi_inactive(%d)) called\n", cspi_mod);
+	switch (cspi_mod) {
+		case 0:
+		/* SPI1 */
+			gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_MOSI), NULL);
+			gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_MISO), NULL);
+			gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), NULL);
+			gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SCLK), NULL);
+//			gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_RDY), NULL);
+
+			mxc_free_iomux(MX51_PIN_CSPI1_MOSI, IOMUX_CONFIG_GPIO);
+			mxc_free_iomux(MX51_PIN_CSPI1_MISO, IOMUX_CONFIG_GPIO);
+			mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
+			mxc_free_iomux(MX51_PIN_CSPI1_SCLK, IOMUX_CONFIG_GPIO);
+//			mxc_free_iomux(MX51_PIN_CSPI1_RDY, MUX_CONFIG_GPIO);
+
+			// ttd: todo: assert chip select to lower overhead of
+			// subsequent spi messaging.
+
+
+
+			break;
+		case 1:
+		/* SPI2 */
+			break;
+		default:
+			break;
+	}
+
+}
+
+
+EXPORT_SYMBOL(gpio_spi_inactive);
+
+// ttd: trying the babbage hack.  Currently, this code is gross.
+
+/* workaround for cspi chipselect pin may not keep correct level when idle */
+void mx51_ccwmx51js_gpio_spi_chipselect_active(int cspi_mode, int status,
+					       int chipselect)
+{
+	u32 gpio;
+
+// testing!!!
+//	return;
+//	printk("mx51_ccwmx51js_gpio_spi_chipselect_active(mode=%d, status=%d, chipselect=%d)\n",
+//	       cspi_mode, status, chipselect);
+
+	switch (cspi_mode) {
+		case 1:
+			switch (chipselect) {
+				case 0x1:
+					mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_ALT0);
+					mxc_iomux_set_pad(MX51_PIN_CSPI1_SS0,
+						PAD_CTL_HYS_ENABLE |
+						PAD_CTL_PKE_ENABLE |
+						PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+
+					gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 0);
+
+					break;
+				case 0x2:
+					gpio = IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0);
+					mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_GPIO);
+					gpio_request(gpio, "cspi1_ss0");
+					gpio_direction_output(gpio, 0);
+					gpio_set_value(gpio, 1 & (~status));
+					break;
+				default:
+					break;
+			}
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		default:
+			break;
+	}
+}
+EXPORT_SYMBOL(mx51_ccwmx51js_gpio_spi_chipselect_active);
+
+void mx51_ccwmx51js_gpio_spi_chipselect_inactive(int cspi_mode, int status,
+	int chipselect)
+{
+//	printk("mx51_ccwmx51js_gpio_spi_chipselect_inactive(mode=%d, status=%d, chipselect=%d)\n",
+//	       cspi_mode, status, chipselect);
+
+
+// testing!!!
+return;
+
+	switch (cspi_mode) {
+		case 1:
+			switch (chipselect) {
+				case 0x1:
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0);
+					mxc_request_iomux(MX51_PIN_CSPI1_SS0,
+						IOMUX_CONFIG_GPIO);
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
+					break;
+				case 0x2:
+					mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
+					break;
+				default:
+					break;
+			}
+			break;
+		case 2:
+			break;
+		case 3:
+			break;
+		default:
+			break;
+	}
+}
+EXPORT_SYMBOL(mx51_ccwmx51js_gpio_spi_chipselect_inactive);
