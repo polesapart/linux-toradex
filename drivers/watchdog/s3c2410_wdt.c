@@ -531,7 +531,7 @@ static char banner[] __initdata =
 
 static int __init watchdog_init(void)
 {
-	printk(banner);
+	printk("%s", banner);
 	return platform_driver_register(&s3c2410wdt_driver);
 }
 

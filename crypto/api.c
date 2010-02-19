@@ -216,7 +216,7 @@ struct crypto_alg *crypto_larval_lookup(const char *name, u32 type, u32 mask)
 	type &= mask;
 
 	alg = try_then_request_module(crypto_alg_lookup(name, type, mask),
-				      name);
+				      "%s", name);
 	if (alg)
 		return crypto_is_larval(alg) ? crypto_larval_wait(alg) : alg;
 

@@ -610,7 +610,7 @@ static char banner[] __initdata = KERN_INFO "S3C Touchscreen driver, (c) 2006 Sa
 
 static int __init s3c_ts_init(void)
 {
-	printk(banner);
+	printk("%s", banner);
 	return platform_driver_register(&s3c_ts_driver);
 }
 

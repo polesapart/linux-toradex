@@ -1774,7 +1774,7 @@ static int uart_line_info(char *buf, struct uart_driver *drv, int i)
 			stat_buf[0] = ' ';
 		strcat(stat_buf, "\n");
 
-		ret += sprintf(buf + ret, stat_buf);
+		ret += sprintf(buf + ret, "%s", stat_buf);
 	} else {
 		strcat(buf, "\n");
 		ret++;

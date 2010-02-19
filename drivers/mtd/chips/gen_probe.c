@@ -212,7 +212,7 @@ static inline struct mtd_info *cfi_cmdset_unknown(struct map_info *map,
 
 	probe_function = __symbol_get(probename);
 	if (!probe_function) {
-		request_module(probename + sizeof(MODULE_SYMBOL_PREFIX) - 1);
+		request_module("%s", probename + sizeof(MODULE_SYMBOL_PREFIX) - 1);
 		probe_function = __symbol_get(probename);
 	}
 

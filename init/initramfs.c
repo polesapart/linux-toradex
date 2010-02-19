@@ -578,7 +578,7 @@ static int __init populate_rootfs(void)
 	char *err = unpack_to_rootfs(__initramfs_start,
 			 __initramfs_end - __initramfs_start, 0);
 	if (err)
-		panic(err);
+		panic("%s", err);
 	if (initrd_start) {
 #ifdef CONFIG_BLK_DEV_RAM
 		int fd;
