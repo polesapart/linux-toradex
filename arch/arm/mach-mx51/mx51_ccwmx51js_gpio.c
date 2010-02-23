@@ -21,6 +21,9 @@
 
 #include "iomux.h"
 
+void ccwmx51_mmc2_gpio_active(void);
+
+
 /**
  * iomux settings for the external ethernet mac
  */
@@ -603,8 +606,73 @@ void __init ccwmx51_io_init(void)
 	msleep(1);
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_RS), 1);
 #endif
+
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+	/* For the wireless module */
+	ccwmx51_mmc2_gpio_active();
+#endif
 }
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+/* IOMUX settings, for the wireless interface */
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc2_pins[] = {
+	/* SDHC2*/
+	{
+		MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_CLK, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA0, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA1, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA2, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA3, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_GPIO1_1, IOMUX_CONFIG_GPIO,
+		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
+	},
+};
+
+static void ccwmx51_mmc2_gpio_active(void)
+{
+	int i;
+	
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc2_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_mmc2_pins[i].pin,
+				  ccwmx51_iomux_mmc2_pins[i].mux_mode);
+		if (ccwmx51_iomux_mmc2_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_mmc2_pins[i].pin,
+					  ccwmx51_iomux_mmc2_pins[i].pad_cfg);
+		if (ccwmx51_iomux_mmc2_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_mmc2_pins[i].in_select,
+					    ccwmx51_iomux_mmc2_pins[i].in_mode);
+	}
+}
+
+void ccwmx51_mmc2_gpio_inactive(void)
+{
+}
+#endif
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 #define SERIAL_PORT_PAD		(PAD_CTL_HYS_ENABLE | PAD_CTL_PKE_ENABLE | \
