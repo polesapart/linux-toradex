@@ -46,6 +46,7 @@ struct mxc_mmc_platform_data {
 	unsigned int reserved:16;
 	unsigned int card_fixed:1;
 	unsigned int card_inserted_state:1;
+	unsigned int quirks;	/* Device quirks */
 /* u32 (*translate_vdd)(struct device *, unsigned int);*/
 	unsigned int (*status) (struct device *);
 	int (*wp_status) (struct device *);
