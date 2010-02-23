@@ -21,7 +21,7 @@
 
 #include "iomux.h"
 
-void ccwmx51_mmc2_gpio_active(void);
+static void ccwmx51_mmc2_gpio_active(void);
 
 
 /**
