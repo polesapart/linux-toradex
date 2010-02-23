@@ -3,7 +3,7 @@
 # see Documentation/kbuild/kconfig-language.txt.
 #
 
-mainmenu "Linux Kernel Configuration"
+#mainmenu "Linux Kernel Configuration"
 
 config ARM
 	bool
