@@ -265,10 +265,20 @@ static int piper_set_antenna(struct piper_priv *piperp, enum antenna_select sel)
 
 	/* select which antenna to transmit on */
 	piperp->ac->wr_reg(piperp, BB_RSSI, ~BB_RSSI_ANT_MASK, op_and);
-	if (sel == ANTENNA_BOTH)
-		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
-	else
-		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
+	if (piperp->rf->hw_platform == WCD_CCW9P_PLATFORM) {
+	    /*
+	     * Wi9p has antenna connectors reversed, so use special map for it.
+	     */
+    	if (sel == ANTENNA_BOTH)
+    		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_WI9P_ANT_DIV_MAP, op_or);
+    	else
+    		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_WI9P_ANT_NO_DIV_MAP, op_or);
+	} else {
+    	if (sel == ANTENNA_BOTH)
+    		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_DIV_MAP, op_or);
+    	else
+    		piperp->ac->wr_reg(piperp, BB_RSSI, BB_RSSI_ANT_NO_DIV_MAP, op_or);
+	}
 
 	return 0;
 }
