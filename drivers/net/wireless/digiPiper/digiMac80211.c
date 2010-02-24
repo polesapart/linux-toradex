@@ -625,7 +625,9 @@ static int piper_hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *v
 
 		rate.bitrate = 10;	/* beacons always sent at 1 Megabit*/
 		skb_push(beacon, TX_HEADER_LENGTH);
-		phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate, 0);
+		phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate,
+		            piperp->rf->getMaxRate(piperp->rf->hw_platform,
+		                piperp->rf->hw_revision, piperp->channel), 0);
 		piperp->ac->wr_reg(piperp, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
 		piperp->load_beacon(piperp, beacon->data, beacon->len);
 

@@ -329,8 +329,9 @@ static void handle_rts_cts(struct piper_priv *piperp,
 			 * If we come here, then we need to send an RTS frame ahead of the
 			 * current data frame.
 			 */
-			phy_set_plcp((unsigned char *)header, sizeof(struct ieee80211_rts),
-				     rate, 0);
+			phy_set_plcp((unsigned char *)header, sizeof(struct ieee80211_rts), rate,
+				     piperp->rf->getMaxRate(piperp->rf->hw_platform,
+				                piperp->rf->hw_revision, piperp->channel), 0);
 			piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, (unsigned char *)header,
 				      TX_HEADER_LENGTH);
 			piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, (unsigned char *)&rtsFrame,
@@ -361,8 +362,9 @@ static void handle_rts_cts(struct piper_priv *piperp,
 			 * If we come here, then we need to send a CTS to self frame ahead of the
 			 * current data frame.
 			 */
-			phy_set_plcp((unsigned char *)header, sizeof(struct ieee80211_cts),
-				     rate, 0);
+			phy_set_plcp((unsigned char *)header, sizeof(struct ieee80211_cts), rate,
+				     piperp->rf->getMaxRate(piperp->rf->hw_platform,
+				                piperp->rf->hw_revision, piperp->channel), 0);
 			piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, (unsigned char *)header,
 				      TX_HEADER_LENGTH);
 			piperp->ac->wr_fifo(piperp, BB_DATA_FIFO, (unsigned char *)&ctsFrame,
@@ -523,7 +525,9 @@ void piper_tx_tasklet(unsigned long context)
 			 */
 			phy_set_plcp(piper_tx_getqueue(piperp)->data,
 				     piper_tx_getqueue(piperp)->len - TX_HEADER_LENGTH,
-				     txRate, piperp->use_hw_aes ? 8 : 0);
+				     txRate, piperp->rf->getMaxRate(piperp->rf->hw_platform,
+				                piperp->rf->hw_revision, piperp->channel),
+				     piperp->use_hw_aes ? 8 : 0);
 
 			/*
 			 * Pause the transmitter so that we don't start transmitting before we

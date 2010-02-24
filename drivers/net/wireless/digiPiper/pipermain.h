@@ -9,7 +9,7 @@
 #include "mac.h"
 
 
-// #define WANT_DEBUG
+/* #define WANT_DEBUG */
 #ifdef WANT_DEBUG
 #define digi_dbg(fmt, arg...) \
     printk(KERN_ERR PIPER_DRIVER_NAME ": %s - " fmt, __func__, ##arg)
@@ -171,6 +171,11 @@ struct digi_rf_ops {
     s8 maxSignal;
     struct ieee80211_supported_band *bands;
     u8 n_bands;
+    unsigned int hw_revision;
+    unsigned int hw_platform;
+    const struct ieee80211_rate *(*getMaxRate)(unsigned int hw_platform,
+                                         unsigned int hw_revision,
+                                         unsigned int channel_index);
 };
 
 struct piper_stats {

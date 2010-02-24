@@ -37,8 +37,6 @@
 #define write_reg(reg,val,op)	priv->ac->wr_reg(priv,reg,val,op)
 #define mac_set_tx_power(x)	al7230_set_txpwr(hw,x)
 
-static unsigned int hw_revision = WCD_HW_REV_A;
-static unsigned int hw_platform = WCD_CCW9P_PLATFORM;
 
 static void InitializeRF(struct ieee80211_hw *hw, int band_selection);
 static int al7230_set_txpwr(struct ieee80211_hw *hw, uint8_t val);
@@ -190,6 +188,9 @@ static const struct ieee80211_rate al7230_bg_rates[] = {
 	},
 };
 
+#define MAX_BG_RATE_INDEX       ((sizeof(al7230_bg_rates) / sizeof(struct ieee80211_rate)) - 1)
+
+
 #define CHAN5G(idx, frequency)					\
 	.band			= IEEE80211_BAND_5GHZ,		\
 	.center_freq		= frequency,			\
@@ -274,6 +275,10 @@ static const struct ieee80211_rate al7230_a_rates[] = {
 		.hw_value = 0xc,
 	},
 };
+
+#define _54MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 1)
+#define _48MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 2)
+#define _36MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 3)
 
 static enum ieee80211_band getBand(int channelIndex)
 {
@@ -596,7 +601,6 @@ printk(KERN_ERR "Setting channel %s\n", channelLookup[channelIndex]);
      * be corrupted when we change channels.
      */
     piper_set_macaddr(priv);
-digiWifiDumpRegisters(priv, MAIN_REGS);
 
 	return 0;
 }
@@ -772,7 +776,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
-			set_hw_specific_parameters(hw, IEEE80211_BAND_2GHZ, hw_revision, hw_platform);
+			set_hw_specific_parameters(hw, IEEE80211_BAND_2GHZ, priv->rf->hw_revision, priv->rf->hw_platform);
 
 			/* Config 8 = default value  */
 			write_rf(hw, 13, 0xFFFFF );
@@ -852,7 +856,7 @@ static void InitializeRF(struct ieee80211_hw *hw, int band_selection)
 			mac_set_tx_power (priv->tx_power);  //Digi value
 
 			/* PA current = default value */
-			set_hw_specific_parameters(hw, IEEE80211_BAND_5GHZ, hw_revision, hw_platform);
+			set_hw_specific_parameters(hw, IEEE80211_BAND_5GHZ, priv->rf->hw_revision, priv->rf->hw_platform);
 
 			/* Config 8 = default value  */
 			write_rf(hw, 13, 0xFFFFF );
@@ -958,11 +962,103 @@ static void power_on(struct ieee80211_hw *hw, bool want_power_on)
 static void al7230_set_hw_info(struct ieee80211_hw *hw, int channel,
 							   u16 hw_platform_code)
 {
-	hw_revision = hw_platform_code & WCD_HW_REV_MASK;
-	hw_platform = (hw_platform_code & WCD_PLATFORM_MASK);
+    struct piper_priv *priv = hw->priv;
 
-	set_hw_specific_parameters(hw, getBand(channel), hw_revision, hw_platform);
+	priv->rf->hw_revision = hw_platform_code & WCD_HW_REV_MASK;
+	priv->rf->hw_platform = (hw_platform_code & WCD_PLATFORM_MASK);
+
+	set_hw_specific_parameters(hw, getBand(channel), priv->rf->hw_revision, priv->rf->hw_platform);
 }
+
+/*
+ * This routine returns the highest transmit rate that the hardware
+ * can support and still generate a high quality signal.
+ */
+const struct ieee80211_rate *al7230_rf_get_max_rate(unsigned int hw_platform, unsigned int hw_revision, unsigned int channel_index)
+{
+    const struct ieee80211_rate *result = NULL;
+    const unsigned int max_rate_index[] = {
+        0,                         // not used
+        MAX_BG_RATE_INDEX,         // B-1   (2412 MHz)   1
+        MAX_BG_RATE_INDEX,         // B-2   (2417 MHz)   2
+        MAX_BG_RATE_INDEX,         // B-3   (2422 MHz)   3
+        MAX_BG_RATE_INDEX,         // B-4   (2427 MHz)   4
+        MAX_BG_RATE_INDEX,         // B-5   (2432 MHz)   5
+        MAX_BG_RATE_INDEX,         // B-6   (2437 MHz)   6
+        MAX_BG_RATE_INDEX,         // B-7   (2442 MHz)   7
+        MAX_BG_RATE_INDEX,         // B-8   (2447 MHz)   8
+        MAX_BG_RATE_INDEX,         // B-9   (2452 MHz)   9
+        MAX_BG_RATE_INDEX,         // B-10  (2457 MHz)  10
+        MAX_BG_RATE_INDEX,         // B-11  (2462 MHz)  11
+        MAX_BG_RATE_INDEX,         // B-12  (2467 MHz)  12
+        MAX_BG_RATE_INDEX,         // B-13  (2472 MHz)  13
+        MAX_BG_RATE_INDEX,         // B-14  (2484 MHz)  14
+        0,                         // reserved for future b/g expansion 15
+        0,                         // reserved for future b/g expansion 16
+        _36MBPS_A_RATE_INDEX,      // L-184 (4920 MHz)  17
+        _36MBPS_A_RATE_INDEX,      // L-188 (4940 MHz)  18
+        _36MBPS_A_RATE_INDEX,      // L-192 (4960 MHz)  19
+        _36MBPS_A_RATE_INDEX,      // L-196 (4980 MHz)  20
+        _36MBPS_A_RATE_INDEX,      // A-8   (5040 MHz)  21
+        _36MBPS_A_RATE_INDEX,      // A-12  (5060 MHz)  22
+        _36MBPS_A_RATE_INDEX,      // A-16  (5080 MHz)  23
+        _36MBPS_A_RATE_INDEX,      // A-34  (5170 MHz)  24
+        _48MBPS_A_RATE_INDEX,      // A-36  (5180 MHz)  25
+        _48MBPS_A_RATE_INDEX,      // A-38  (5190 MHz)  26
+        _48MBPS_A_RATE_INDEX,      // A-40  (5200 MHz)  27
+        _48MBPS_A_RATE_INDEX,      // A-42  (5210 MHz)  28
+        _48MBPS_A_RATE_INDEX,      // A-44  (5220 MHz)  29
+        _48MBPS_A_RATE_INDEX,      // A-46  (5230 MHz)  30
+        _48MBPS_A_RATE_INDEX,      // A-48  (5240 MHz)  31
+        _48MBPS_A_RATE_INDEX,      // A-52  (5260 MHz)  32
+        _48MBPS_A_RATE_INDEX,      // A-56  (5280 MHz)  33
+        _48MBPS_A_RATE_INDEX,      // A-60  (5300 MHz)  34
+        _48MBPS_A_RATE_INDEX,      // A-64  (5320 MHz)  35
+        _54MBPS_A_RATE_INDEX,      // A-100 (5500 MHz)  36
+        _54MBPS_A_RATE_INDEX,      // A-104 (5520 MHz)  37
+        _54MBPS_A_RATE_INDEX,      // A-108 (5540 MHz)  38
+        _54MBPS_A_RATE_INDEX,      // A-112 (5560 MHz)  39
+        _54MBPS_A_RATE_INDEX,      // A-116 (5580 MHz)  40
+        _54MBPS_A_RATE_INDEX,      // A-120 (5600 MHz)  41
+        _54MBPS_A_RATE_INDEX,      // A-124 (5620 MHz)  42
+        _54MBPS_A_RATE_INDEX,      // A-128 (5640 MHz)  43
+        _54MBPS_A_RATE_INDEX,      // A-132 (5660 MHz)  44
+        _54MBPS_A_RATE_INDEX,      // A-136 (5680 MHz)  45
+        _54MBPS_A_RATE_INDEX,      // A-140 (5700 MHz)  46
+        _54MBPS_A_RATE_INDEX,      // A-149 (5745 MHz)  47
+        _54MBPS_A_RATE_INDEX,      // A-153 (5765 MHz)  48
+        _54MBPS_A_RATE_INDEX,      // A-157 (5785 MHz)  49
+        _54MBPS_A_RATE_INDEX,      // A-161 (5805 MHz)  50
+        _54MBPS_A_RATE_INDEX,      // A-165 (5825 MHz)  51
+    };
+
+    (void) hw_revision;
+
+    if (hw_platform == WCD_CCW9P_PLATFORM) {
+        /*
+         * If a Wi9p, then look up the maximum rate from the table
+         * above.
+         */
+		if (getBand(channel_index) == IEEE80211_BAND_2GHZ) {
+		    result = &al7230_bg_rates[max_rate_index[channel_index]];
+		} else {
+		    result = &al7230_a_rates[max_rate_index[channel_index]];
+		}
+    } else {
+        /*
+         * For any other platform, use the maximum rate advertised
+         * for the channel.
+         */
+		if (getBand(channel_index) == IEEE80211_BAND_2GHZ) {
+		    result = &al7230_bg_rates[MAX_BG_RATE_INDEX];
+		} else {
+		    result = &al7230_a_rates[_54MBPS_A_RATE_INDEX];
+		}
+	}
+
+    return result;
+}
+
 
 struct digi_rf_ops al7230_rf_ops = {
 	.name			= "Airoha 7230",
@@ -982,5 +1078,8 @@ struct digi_rf_ops al7230_rf_ops = {
 	.bands			= al7230_bands,
 	.power_on       = power_on,
 	.n_bands		= ARRAY_SIZE(al7230_bands),
+    .hw_revision    = WCD_HW_REV_A,
+    .hw_platform    = WCD_CCW9P_PLATFORM,
+    .getMaxRate     = al7230_rf_get_max_rate,
 };
 EXPORT_SYMBOL_GPL(al7230_rf_ops);

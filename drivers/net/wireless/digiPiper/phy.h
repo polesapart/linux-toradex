@@ -20,7 +20,8 @@
 #include "pipermain.h"
 #include "mac.h"
 
-void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *rate, int aes_len);
+void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *rate,
+                  const struct ieee80211_rate *max_rate, int aes_len);
 void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 		struct ieee80211_rx_status *status, unsigned int *length);
 unsigned int phy_determine_rssi(struct rx_frame_hdr *hdr);

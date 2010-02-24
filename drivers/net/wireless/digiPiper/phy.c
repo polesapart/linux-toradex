@@ -37,7 +37,8 @@ static int is_ofdm_rate(int rate)
 	return (rate % 3) == 0;
 }
 
-void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *rate, int aes_len)
+void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *rate,
+                  const struct ieee80211_rate *max_rate, int aes_len)
 {
 	int ofdm = is_ofdm_rate(rate->bitrate);
 	int plcp_len = length + FCS_LEN + aes_len;
@@ -49,7 +50,15 @@ void phy_set_plcp(unsigned char *frame, unsigned length, struct ieee80211_rate *
 
 		ofdm = (struct ofdm_hdr *) &frame[sizeof(struct tx_frame_hdr)];
 		memset(ofdm, 0, sizeof(*ofdm));
-		ofdm->rate = rate->hw_value;
+		if (rate->bitrate > max_rate->bitrate) {
+		    /*
+		     * If the hardware cannot support the selected rate, then
+		     * set the highest rate that it can support.
+		     */
+		    ofdm->rate = max_rate->hw_value;
+		} else {
+		    ofdm->rate = rate ->hw_value;
+		}
 		ofdm->length = cpu_to_le16(plcp_len);
 	} else {
 		/* PSK/CCK header */
