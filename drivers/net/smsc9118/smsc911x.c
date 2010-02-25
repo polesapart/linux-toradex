@@ -844,7 +844,7 @@ static void smsc911x_phy_update_linkmode(struct net_device *dev, int init)
 	if (mii_check_media(&pdata->mii, netif_msg_link(pdata), init))
 		smsc911x_phy_update_duplex(dev);
 	/* mii_check_media() exists if the media is forced... */
-	if (pdata->mii.force_media) { 
+	if (pdata->mii.force_media) {
 		int cur_link = mii_link_ok(&pdata->mii);
 		int prev_link = netif_carrier_ok(dev);
 
@@ -923,7 +923,7 @@ static int smsc911x_phy_initialise(struct net_device *dev)
 	unsigned int temp;
 
 	printk_debug("Calling phy_initialise()\n");
-	
+
 	pdata->using_extphy = 0;
 
 	switch (pdata->idrev & 0xFFFF0000) {
@@ -1117,7 +1117,7 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 			printk_debug("Stopping the RX poll\n");
 			break;
 		}
-		
+
 		pktlength = ((rxstat & 0x3FFF0000) >> 16);
 		pktwords = (pktlength + NET_IP_ALIGN + 3) >> 2;
 		printk_debug("Going to read %i words (pktlen %i)\n",
@@ -1166,7 +1166,7 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 		unsigned int temp;
 		/* We processed all packets available.  Tell NAPI it can
 		 * stop polling then re-enable rx interrupts */
-		netif_rx_complete(dev, napi);
+		napi_complete(napi);
 		temp = smsc911x_reg_read(pdata, INT_EN);
 		temp |= INT_EN_RSFL_EN_;
 		smsc911x_reg_write(temp, pdata, INT_EN);
@@ -1251,7 +1251,7 @@ static int smsc911x_open(struct net_device *dev)
 	unsigned int temp;
 	unsigned int intcfg = 0;
 	struct sockaddr addr;
-  
+
 	/* Reset the LAN911x */
 	smsc911x_reg_write(HW_CFG_SRST_, pdata, HW_CFG);
 	timeout = 10;
@@ -1334,7 +1334,7 @@ static int smsc911x_open(struct net_device *dev)
 
 	printk_debug("IRQ handler passed test using IRQ %d\n", dev->irq);
 	netif_carrier_off(dev);
-	
+
 	if (!smsc911x_phy_initialise(dev)) {
 		printk_err("Failed to initialize the PHY");
 		return -ENODEV;
@@ -1377,7 +1377,7 @@ static int smsc911x_open(struct net_device *dev)
 	memcpy(addr.sa_data, dev->dev_addr, dev->addr_len);
 	if(smsc911x_set_mac(dev, &addr))
 		printk_err("Couldn't set the MAC address.\n");
-	
+
 	netif_start_queue(dev);
 	return 0;
 }
@@ -1388,7 +1388,7 @@ static int smsc911x_stop(struct net_device *dev)
 	struct smsc911x_data *pdata = netdev_priv(dev);
 
 	printk_info("Stopping the interface\n");
-	
+
 	napi_disable(&pdata->napi);
 
 	/* disable interrupts */
@@ -1405,7 +1405,7 @@ static int smsc911x_stop(struct net_device *dev)
 
 	/* Stop sending data after the last transmission */
 	smsc911x_reg_write(TX_CFG_STOP_TX_, pdata, TX_CFG);
-	
+
 	SMSC_TRACE("Interface stopped");
 	return 0;
 }
@@ -1579,8 +1579,8 @@ static irqreturn_t smsc911x_irqhandler(int irq, void *dev_id)
 	if ((intcfg & (INT_CFG_IRQ_INT_ | INT_CFG_IRQ_EN_)) != (INT_CFG_IRQ_INT_ |
 								INT_CFG_IRQ_EN_))
 		return serviced;
-	
-	
+
+
 	if (unlikely(intsts & inten & INT_STS_SW_INT_)) {
 		temp = smsc911x_reg_read(pdata, INT_EN);
 		temp &= (~INT_EN_SW_INT_EN_);
@@ -1618,12 +1618,12 @@ static irqreturn_t smsc911x_irqhandler(int irq, void *dev_id)
 	}
 
 	if (likely(intsts & inten & INT_STS_RSFL_)) {
-		if (likely(netif_rx_schedule_prep(dev, &pdata->napi))) {
+		if (likely(napi_schedule_prep(&pdata->napi))) {
 			/* Disable Rx interrupts and schedule NAPI poll */
 			temp = smsc911x_reg_read(pdata, INT_EN);
 			temp &= (~INT_EN_RSFL_EN_);
 			smsc911x_reg_write(temp, pdata, INT_EN);
-			__netif_rx_schedule(dev, &pdata->napi);
+			__napi_schedule(&pdata->napi);
 		}
 
 		serviced = IRQ_HANDLED;
@@ -1687,9 +1687,10 @@ smsc911x_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
 static void smsc911x_ethtool_getdrvinfo(struct net_device *dev,
 					struct ethtool_drvinfo *info)
 {
-	strncpy(info->driver, SMSC_CHIPNAME, sizeof(info->driver));
-	strncpy(info->version, SMSC_DRV_VERSION, sizeof(info->version));
-	strncpy(info->bus_info, dev->dev.bus_id, sizeof(info->bus_info));
+	strlcpy(info->driver, SMSC_CHIPNAME, sizeof(info->driver));
+	strlcpy(info->version, SMSC_DRV_VERSION, sizeof(info->version));
+	strlcpy(info->bus_info, dev_name(dev->dev.parent),
+		sizeof(info->bus_info));
 }
 
 static int smsc911x_ethtool_nwayreset(struct net_device *dev)
@@ -1862,14 +1863,14 @@ static int smsc911x_ethtool_set_wol(struct net_device *dev,
 				    struct ethtool_wolinfo *wol)
 {
 	struct smsc911x_data *pdata;
-	
+
 	/* Check for unsupported options */
         if (wol->wolopts & (WAKE_MAGICSECURE | WAKE_UCAST | WAKE_MCAST
 			    | WAKE_BCAST | WAKE_ARP))
                 return -EINVAL;
 
 	pdata = netdev_priv(dev);
-		
+
 	/* When disable the WOL options need to disable the PHY-interrupts too */
 	if (!wol->wolopts) {
 		printk_pmdbg("[ WOL  ] Disabling all sources\n");
@@ -1934,7 +1935,7 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 	struct smsc911x_data *pdata;
 	unsigned int low, high;
 	struct sockaddr *paddr = addr;
-	
+
 	printk_debug("Set mac called\n");
 
 	pdata = netdev_priv(dev);
@@ -1958,7 +1959,7 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 	/* Now set the high address */
 	smsc911x_reg_write(high, pdata, MAC_CSR_DATA);
 	smsc911x_reg_write(ADDRH | MAC_CSR_CMD_CSR_BUSY_, pdata, MAC_CSR_CMD);
-	reg = smsc911x_reg_read(pdata, BYTE_TEST);	
+	reg = smsc911x_reg_read(pdata, BYTE_TEST);
 	if (!smsc911x_mac_notbusy(pdata)) {
 		retval = -EBUSY;
 		goto exit_unlock;
@@ -1967,7 +1968,7 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 	/* First set the low address */
 	smsc911x_reg_write(low, pdata, MAC_CSR_DATA);
 	smsc911x_reg_write(ADDRL | MAC_CSR_CMD_CSR_BUSY_, pdata, MAC_CSR_CMD);
-	reg = smsc911x_reg_read(pdata, BYTE_TEST);	
+	reg = smsc911x_reg_read(pdata, BYTE_TEST);
 	if (!smsc911x_mac_notbusy(pdata)) {
 		retval = -EBUSY;
 		goto exit_unlock;
@@ -1975,19 +1976,31 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 
 	/* And save the IP inside the driver structure */
 	memcpy(dev->dev_addr, paddr->sa_data, dev->addr_len);
-	
+
 	printk_debug("MAC successful changed to %02X%08X\n",
 		     smsc911x_mac_read(pdata, ADDRH),
 		     smsc911x_mac_read(pdata, ADDRL));
-	
+
 	retval = 0;
-	
+
  exit_unlock:
 	spin_unlock_irqrestore(&pdata->phy_lock, flags);
-	
+
 	return retval;
 }
 
+static const struct net_device_ops smsc911x_netdev_ops = {
+	.ndo_open		= smsc911x_open,
+	.ndo_stop		= smsc911x_stop,
+	.ndo_start_xmit		= smsc911x_hard_start_xmit,
+	.ndo_get_stats		= smsc911x_get_stats,
+	.ndo_set_multicast_list	= smsc911x_set_multicast_list,
+	.ndo_do_ioctl		= smsc911x_do_ioctl,
+	.ndo_set_mac_address 	= smsc911x_set_mac,
+#ifdef CONFIG_NET_POLL_CONTROLLER
+	.ndo_poll_controller	= smsc911x_poll_controller,
+#endif
+};
 /* Initializing private device structures */
 static int smsc911x_init(struct net_device *dev)
 {
@@ -2212,20 +2225,10 @@ static int smsc911x_init(struct net_device *dev)
 			     "for this chip revision");
 
 	ether_setup(dev);
-	dev->open = smsc911x_open;
-	dev->stop = smsc911x_stop;
-	dev->hard_start_xmit = smsc911x_hard_start_xmit;
-	dev->get_stats = smsc911x_get_stats;
-	dev->set_multicast_list = smsc911x_set_multicast_list;
 	dev->flags |= IFF_MULTICAST;
-	dev->do_ioctl = smsc911x_do_ioctl;
-	dev->set_mac_address = smsc911x_set_mac;
-	netif_napi_add(dev, &pdata->napi, smsc911x_poll, 64);
+	netif_napi_add(dev, &pdata->napi, smsc911x_poll, 64);//SMSC_NAPI_WEIGHT
+	dev->netdev_ops = &smsc911x_netdev_ops;
 	dev->ethtool_ops = &smsc911x_ethtool_ops;
-
-#ifdef CONFIG_NET_POLL_CONTROLLER
-	dev->poll_controller = smsc911x_poll_controller;
-#endif				/* CONFIG_NET_POLL_CONTROLLER */
 
 	pdata->mii.phy_id_mask = 0x1f;
 	pdata->mii.reg_num_mask = 0x1f;
@@ -2321,6 +2324,7 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 		struct smc911x_platdata *config = pdev->dev.platform_data;
 		pdata->irq_polarity = config->irq_polarity;
 		pdata->irq_flags  = config->irq_flags;
+		pdata->irq_type = config->irq_type;
 	}
 
 	if (pdata->ioaddr == NULL) {
@@ -2337,11 +2341,6 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 	if (pdata->irq_polarity)
 		intcfg |= INT_CFG_IRQ_POL_;
 
-	/*
-	 * @XXX: The "irq_type" is not used at this moment, because we are using
-	 * the same platform-data as the driver from the Vanilla-kernel.
-	 * (Luis Galdos)
-	 */
 	if (pdata->irq_type)
 		intcfg |= INT_CFG_IRQ_TYPE_;
 
@@ -2403,7 +2402,7 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 		    dev->dev_addr[3], dev->dev_addr[4], dev->dev_addr[5]);
 
         /* Enable the wakeup over this device (Luis Galdos) */
-        device_init_wakeup(&pdev->dev, 1); 
+        device_init_wakeup(&pdev->dev, 1);
         device_set_wakeup_enable(&pdev->dev, 0);
 	return 0;
 
@@ -2435,7 +2434,7 @@ static int smsc911x_drv_state_wakeup(struct smsc911x_data *pdata, int mode)
 
 	if (mode != 1 && mode != 2)
 		return -EINVAL;
-	
+
 	/* Clear already received WUs */
 	regval = smsc911x_mac_read(pdata, WUCSR);
 	regval &= ~(WUCSR_MPR_ | WUCSR_WUFR_);
@@ -2451,12 +2450,12 @@ static int smsc911x_drv_state_wakeup(struct smsc911x_data *pdata, int mode)
 
 	if (mode /* @FIXME: Enabled only for D2 */) {
 		u16 phy_mode;
-		
+
 		phy_mode = smsc911x_phy_read(pdata, MII_INTMSK);
                 phy_mode |= PHY_INTMSK_ENERGYON_;
                 smsc911x_phy_write(pdata, MII_INTMSK, phy_mode);
 	}
-	
+
         /* Clear the PM mode and clear the current wakeup status */
 	regval = smsc911x_reg_read(pdata, PMT_CTRL);
 	regval &= ~PMT_CTRL_PM_MODE_;
@@ -2484,7 +2483,7 @@ static int smsc911x_drv_state_wakeup(struct smsc911x_data *pdata, int mode)
 static int smsc911x_drv_state_d2(struct smsc911x_data *pdata)
 {
 	unsigned long regval;
-	
+
 	/* Disable the interrupts of the controller */
 	regval = smsc911x_reg_read(pdata, INT_CFG);
 	regval &= ~INT_CFG_IRQ_EN_;
@@ -2518,11 +2517,11 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
 
        if (!ndev)
                return -ENODEV;
-       
+
        /* @FIXME: Implement the other supported power modes of the smsc911x */
         if (state.event != PM_EVENT_SUSPEND)
                 return -ENOTSUPP;
-       
+
        if (netif_running(ndev)) {
 
                /* The below code is coming from the WinCE guys */
@@ -2533,7 +2532,7 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
 		* detection using the standard IRQ-line
 		*/
 	       if (device_may_wakeup(&pdev->dev)) {
-		       
+
 		       /*
 			* Sanity check for verifying that a wakeup-source was
 			* configured from the user space. If the energy-detect
@@ -2545,7 +2544,7 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
 			       retval = -EINVAL;
 			       goto err_attach;
 		       }
-		       
+
 		       /*
 			* By the WOL (magic packet, etc.) we can ONLY use the D1, but
 			* for the energy detect over the PHY we can change into D2
@@ -2558,7 +2557,7 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
 			       printk_pmdbg("[ SUSP ] Preparing D2 with wakeup\n");
 			       smsc911x_drv_state_wakeup(pdata, 2);
 		       }
-		       
+
 		       enable_irq_wake(ndev->irq);
 
 	       } else {
@@ -2569,7 +2568,7 @@ static int smsc911x_drv_suspend(struct platform_device *pdev, pm_message_t state
 		       smsc911x_drv_state_d2(pdata);
 	       }
        }
-       
+
        return 0;
 
 err_attach:
@@ -2592,7 +2591,7 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
                 if (netif_running(ndev)) {
                        unsigned long timeout;
                        unsigned long regval, pmt_ctrl;
-                       
+
                        /* Assert the byte test register for waking up */
                        smsc911x_reg_write(0x0, pdata, BYTE_TEST);
 
@@ -2627,12 +2626,12 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
 			       regval &= ~(PMT_CTRL_WOL_EN_ | PMT_CTRL_PME_EN_ |
 					   PMT_CTRL_ED_EN_);
 			       smsc911x_reg_write(regval, pdata, PMT_CTRL);
-			       
+
 			       /* Disable the PM interrupts */
 			       regval =  smsc911x_reg_read(pdata, INT_EN);
 			       regval &= ~(INT_EN_PME_INT_EN_ | INT_EN_PHY_INT_EN_);
 			       smsc911x_reg_write(regval, pdata, INT_EN);
-			       
+
 			       /* Disable the wakeup-events on the MAC */
 			       regval = smsc911x_mac_read(pdata, WUCSR);
 			       regval &= ~(WUCSR_MPEN_);
@@ -2642,13 +2641,13 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
 		       /* @XXX: Clear only the interrupts that were generated */
 		       regval = (INT_STS_PME_INT_ | INT_STS_PHY_INT_);
 		       smsc911x_reg_write(regval, pdata, INT_STS);
-		       
+
 		       /* Set the controller into the state D0 */
                        regval = smsc911x_reg_read(pdata, PMT_CTRL);
                        regval &= ~PMT_CTRL_PM_MODE_;
 		       regval |= PMT_CTRL_PM_MODE_D0_;
                        smsc911x_reg_write(regval, pdata, PMT_CTRL);
-		       
+
                        /* Paranoic sanity checks */
                        regval = smsc911x_reg_read(pdata, PMT_CTRL);
                        if (regval & PMT_CTRL_PM_MODE_)
@@ -2659,7 +2658,7 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
                                printk_err("Device is still NOT ready.\n");
 			       goto exit_resume;
 		       }
-                       
+
                        regval = smsc911x_phy_read(pdata, MII_BMCR);
                        regval &= ~BMCR_PDOWN;
                        smsc911x_phy_write(pdata, MII_BMCR, regval);
@@ -2671,7 +2670,7 @@ static int smsc911x_drv_resume(struct platform_device *pdev)
 
 		       /* Reset the wakeup control and status register */
 		       smsc911x_mac_write(pdata, WUCSR, 0x00);
-		       
+
 		       netif_device_attach(ndev);
                 }
         }
