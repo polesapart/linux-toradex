@@ -2595,9 +2595,9 @@ static int __init regulator_init_complete(void)
 			 * so warn even if we aren't going to do
 			 * anything here.
 			 */
-			printk(KERN_WARNING
-			       "%s: incomplete constraints, leaving %s on\n",
-			       __func__, name);
+//			printk(KERN_WARNING
+//			       "%s: incomplete constraints, leaving %s on\n",
+//			       __func__, name);
 		}
 
 unlock:
