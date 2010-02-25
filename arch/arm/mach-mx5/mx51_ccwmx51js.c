@@ -174,9 +174,10 @@ static struct resource smsc911x_device_resources[] = {
 };
 
 static struct smc911x_platdata ccwmx51_smsc9118 = {
-	.flags          = SMC911X_USE_16BIT,
+	.flags          = 0,
 	.irq_flags      = IRQF_DISABLED | IRQF_TRIGGER_FALLING,
 	.irq_polarity   = 0,
+	.irq_type	= 1,	/* push-pull irq */
 };
 
 static struct platform_device smsc911x_device = {
@@ -557,7 +558,7 @@ static void __init mxc_board_init(void)
 	mxc_init_devices();
 	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
-//	ccwmx51_init_ext_eth_mac();
+	ccwmx51_init_ext_eth_mac();
 	ccwmx51_init_mma7455l();
 	ccwmx51_init_mc13892();
 

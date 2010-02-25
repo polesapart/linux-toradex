@@ -1166,7 +1166,7 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 		unsigned int temp;
 		/* We processed all packets available.  Tell NAPI it can
 		 * stop polling then re-enable rx interrupts */
-		netif_rx_complete(dev, napi);
+		napi_complete(napi);
 		temp = smsc911x_reg_read(pdata, INT_EN);
 		temp |= INT_EN_RSFL_EN_;
 		smsc911x_reg_write(temp, pdata, INT_EN);
@@ -1618,12 +1618,12 @@ static irqreturn_t smsc911x_irqhandler(int irq, void *dev_id)
 	}
 
 	if (likely(intsts & inten & INT_STS_RSFL_)) {
-		if (likely(netif_rx_schedule_prep(dev, &pdata->napi))) {
+		if (likely(napi_schedule_prep(&pdata->napi))) {
 			/* Disable Rx interrupts and schedule NAPI poll */
 			temp = smsc911x_reg_read(pdata, INT_EN);
 			temp &= (~INT_EN_RSFL_EN_);
 			smsc911x_reg_write(temp, pdata, INT_EN);
-			__netif_rx_schedule(dev, &pdata->napi);
+			__napi_schedule(&pdata->napi);
 		}
 
 		serviced = IRQ_HANDLED;
@@ -1687,9 +1687,10 @@ smsc911x_ethtool_setsettings(struct net_device *dev, struct ethtool_cmd *cmd)
 static void smsc911x_ethtool_getdrvinfo(struct net_device *dev,
 					struct ethtool_drvinfo *info)
 {
-	strncpy(info->driver, SMSC_CHIPNAME, sizeof(info->driver));
-	strncpy(info->version, SMSC_DRV_VERSION, sizeof(info->version));
-	strncpy(info->bus_info, dev->dev.bus_id, sizeof(info->bus_info));
+	strlcpy(info->driver, SMSC_CHIPNAME, sizeof(info->driver));
+	strlcpy(info->version, SMSC_DRV_VERSION, sizeof(info->version));
+	strlcpy(info->bus_info, dev_name(dev->dev.parent),
+		sizeof(info->bus_info));
 }
 
 static int smsc911x_ethtool_nwayreset(struct net_device *dev)
@@ -1988,6 +1989,19 @@ static int smsc911x_set_mac(struct net_device *dev, void *addr)
 	return retval;
 }
 
+static const struct net_device_ops smsc911x_netdev_ops = {
+	.ndo_open		= smsc911x_open,
+	.ndo_stop		= smsc911x_stop,
+	.ndo_start_xmit		= smsc911x_hard_start_xmit,
+	.ndo_get_stats		= smsc911x_get_stats,
+	.ndo_set_multicast_list	= smsc911x_set_multicast_list,
+	.ndo_do_ioctl		= smsc911x_do_ioctl,
+	.ndo_set_mac_address 	= smsc911x_set_mac,
+#ifdef CONFIG_NET_POLL_CONTROLLER
+	.ndo_poll_controller	= smsc911x_poll_controller,
+#endif
+};
+
 /* Initializing private device structures */
 static int smsc911x_init(struct net_device *dev)
 {
@@ -2212,20 +2226,10 @@ static int smsc911x_init(struct net_device *dev)
 			     "for this chip revision");
 
 	ether_setup(dev);
-	dev->open = smsc911x_open;
-	dev->stop = smsc911x_stop;
-	dev->hard_start_xmit = smsc911x_hard_start_xmit;
-	dev->get_stats = smsc911x_get_stats;
-	dev->set_multicast_list = smsc911x_set_multicast_list;
 	dev->flags |= IFF_MULTICAST;
-	dev->do_ioctl = smsc911x_do_ioctl;
-	dev->set_mac_address = smsc911x_set_mac;
-	netif_napi_add(dev, &pdata->napi, smsc911x_poll, 64);
+	netif_napi_add(dev, &pdata->napi, smsc911x_poll, 64);//SMSC_NAPI_WEIGHT
+	dev->netdev_ops = &smsc911x_netdev_ops;
 	dev->ethtool_ops = &smsc911x_ethtool_ops;
-
-#ifdef CONFIG_NET_POLL_CONTROLLER
-	dev->poll_controller = smsc911x_poll_controller;
-#endif				/* CONFIG_NET_POLL_CONTROLLER */
 
 	pdata->mii.phy_id_mask = 0x1f;
 	pdata->mii.reg_num_mask = 0x1f;
@@ -2321,6 +2325,7 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 		struct smc911x_platdata *config = pdev->dev.platform_data;
 		pdata->irq_polarity = config->irq_polarity;
 		pdata->irq_flags  = config->irq_flags;
+		pdata->irq_type = config->irq_type;
 	}
 
 	if (pdata->ioaddr == NULL) {
@@ -2337,11 +2342,6 @@ static int smsc911x_drv_probe(struct platform_device *pdev)
 	if (pdata->irq_polarity)
 		intcfg |= INT_CFG_IRQ_POL_;
 
-	/*
-	 * @XXX: The "irq_type" is not used at this moment, because we are using
-	 * the same platform-data as the driver from the Vanilla-kernel.
-	 * (Luis Galdos)
-	 */
 	if (pdata->irq_type)
 		intcfg |= INT_CFG_IRQ_TYPE_;
 
