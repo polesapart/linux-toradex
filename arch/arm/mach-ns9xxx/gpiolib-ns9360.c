@@ -46,7 +46,7 @@ static struct gpio_chip ns9360_gpio_chip = {
 	.get = ns9360_gpio_chip_get,
 	.set = ns9360_gpio_chip_set,
 	.base = 0,
-	.ngpio = 72,
+	.ngpio = 73,
 };
 
 int __init ns9360_gpio_init(void)
