@@ -6,7 +6,7 @@
  *  GK 2/5/95  -  Changed to support mounting root fs via NFS
  *  Added initrd & change_root: Werner Almesberger & Hans Lermen, Feb '96
  *  Moan early if gcc is old, avoiding bogus kernels - Paul Gortmaker, May '96
- *  Simplified starting of init:  Michael A. Griffith <grif@acm.org> 
+ *  Simplified starting of init:  Michael A. Griffith <grif@acm.org>
  */
 
 #include <linux/types.h>
@@ -834,6 +834,11 @@ static noinline int init_post(void)
 	system_state = SYSTEM_RUNNING;
 	numa_default_policy();
 
+#ifdef CONFIG_TMPFSDEV
+	sys_mount("tmpfsdev", "/dev", "tmpfs", 0, "size=64k");
+	sys_mknod("/dev/console", S_IFCHR | 0600, new_encode_dev(MKDEV(5, 1)));
+	sys_mknod("/dev/null", S_IFCHR | 0600, new_encode_dev(MKDEV(1, 3)));
+#endif
 
 	current->signal->flags |= SIGNAL_UNKILLABLE;
 
