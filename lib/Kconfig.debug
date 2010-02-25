@@ -1006,6 +1006,19 @@ config DMA_API_DEBUG
 	  This option causes a performance degredation.  Use only if you want
 	  to debug device drivers. If unsure, say N.
 
+config TMPFSDEV
+	bool "Create some device nodes in tmpfs"
+	depends on TMPFS
+	default n
+	help
+	  This hack allows the kernel to create some needed device nodes itself
+	  on booting. It mounts a tmpfs in /dev and creates the nodes inside.
+
+	  This supports customization of root filesystems without root
+	  privileges.
+
+	  Currently created nodes: console, null.
+
 source "samples/Kconfig"
 
 source "lib/Kconfig.kgdb"
