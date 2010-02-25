@@ -15,7 +15,7 @@
 #if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
 #include "LQ070Y3DG3B.h"
 #endif
-#if defined(CONFIG_CC9M2443_CUSTOM)
+#if defined(CONFIG_CCWMX51_CUSTOM)
 #include "CUSTOM.h"
 #endif
 
@@ -23,7 +23,7 @@ struct ccwmx51_lcd_pdata lcd_display_list[] = {
 #if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
 	LQ070Y3DG3B_DISPLAY,
 #endif
-#if defined(CONFIG_CC9M2443_CUSTOM)
+#if defined(CONFIG_CCWMX51_CUSTOM)
 	CUSTOM_DISPLAY,
 #endif
 };

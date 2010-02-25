@@ -12,7 +12,7 @@ config CCWMX51_LQ070Y3DG3B
 	help
 	  This enables the support for the LQ070Y3DG3B TFT display.
 
-config CC9M2443_CUSTOM
+config CCWMX51_CUSTOM
 	bool "Custom display support"
 	help
 	  This enables the support for a customer specific display.
