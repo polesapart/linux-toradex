@@ -14,6 +14,8 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 #include <linux/gpio.h>
+#include <linux/spi/mmc_spi.h>
+#include <linux/mmc/host.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
@@ -80,8 +82,80 @@ void __init ccx9c_add_device_touch(void)
 void __init ccx9c_add_device_touch(void) {}
 #endif
 
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+/* Define here the GPIO that will be used for Card Detection */
+//#define	MMC_SPI_CD_GPIO		72
+/* Define here the GPIO that will be used for Read Only switch */
+//#define MMC_SPI_RO_GPIO		26
+
+#ifdef MMC_SPI_CD_GPIO
+static int mmc_spi_get_cd(struct device *dev)
+{
+	return !gpio_get_value(MMC_SPI_CD_GPIO);
+}
+#endif
+
+#ifdef MMC_SPI_RO_GPIO
+static int mmc_spi_get_ro(struct device *dev)
+{
+	return gpio_get_value(MMC_SPI_RO_GPIO);
+}
+#endif
+
+void __init ns9360_add_device_mmc_spi(void)
+{
+#ifdef MMC_SPI_CD_GPIO
+	if (gpio_request(MMC_SPI_CD_GPIO, "mmc_spi"))
+		return;
+
+	gpio_configure_ns9360(MMC_SPI_CD_GPIO, NS9360_GPIO_INPUT,
+			      NS9360_GPIO_DONT_INVERT,
+			      NS9360_GPIO_FUNC_GPIO);
+#endif
+#ifdef MMC_SPI_RO_GPIO
+	if (gpio_request(MMC_SPI_RO_GPIO, "mmc_spi"))
+		return;
+
+	gpio_configure_ns9360(MMC_SPI_RO_GPIO, NS9360_GPIO_INPUT,
+			      NS9360_GPIO_DONT_INVERT,
+			      NS9360_GPIO_FUNC_GPIO);
+#endif
+}
+
+static struct mmc_spi_platform_data mmc_spi_info = {
+#ifdef MMC_SPI_RO_GPIO
+	.get_ro = mmc_spi_get_ro,
+#endif
+#ifdef MMC_SPI_CD_GPIO
+	.get_cd = mmc_spi_get_cd,
+	.caps = MMC_CAP_NEEDS_POLL,
+#endif
+	.ocr_mask = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3.3V only */
+};
+#endif
+
+/* Array of SPI devices */
 static struct spi_board_info spi_devices[] __initdata = {
 	CCX9C_SPI_TOUCH
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+	/* MMC over SPI: mmc_spi */
+	/* Set 'bus_num' to the SPI master index where the MMC
+	 * socket will be connected:
+	 *   PortA = 1
+	 *   PortB = 0 (SPI connector on JSK board)
+	 *   PortC = 2
+	 *   PortD = 3
+	 * If PortB (bus_num=0) is to be used, the touch screen
+	 * device must be disabled in the kernel configuration.
+	 */
+	{
+		.modalias	= "mmc_spi",
+		.max_speed_hz	= 5000000,
+		.bus_num        = 0,
+		.chip_select    = 0,
+		.platform_data	= &mmc_spi_info,
+	},
+#endif
 	/* Add here other SPI devices, if any... */
 };
 
@@ -159,6 +233,11 @@ static void __init mach_cc9cjs_init_machine(void)
 
 	/* Touchscreen */
 	ccx9c_add_device_touch();
+
+	/* MMC over SPI */
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+	ns9360_add_device_mmc_spi();
+#endif
 
 	/* SPI devices */
 	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));

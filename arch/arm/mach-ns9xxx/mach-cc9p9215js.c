@@ -14,9 +14,12 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
 #include <linux/gpio.h>
+#include <linux/spi/mmc_spi.h>
+#include <linux/mmc/host.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
+#include <mach/gpio.h>
 
 #include "irq.h"
 #include "processor-ns921x.h"
@@ -80,10 +83,65 @@ void __init cc9p9215js_add_device_touch(void)
 void __init cc9p9215js_add_device_touch(void) {}
 #endif
 
-/* SPI devices */
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+/* Define here the GPIO that will be used for Card Detection */
+//#define	MMC_SPI_CD_GPIO		72
+/* Define here the GPIO that will be used for Read Only switch */
+//#define MMC_SPI_RO_GPIO		26
+
+#ifdef MMC_SPI_CD_GPIO
+static int mmc_spi_get_cd(struct device *dev)
+{
+	return !gpio_get_value(MMC_SPI_CD_GPIO);
+}
+#endif
+
+#ifdef MMC_SPI_RO_GPIO
+static int mmc_spi_get_ro(struct device *dev)
+{
+	return gpio_get_value(MMC_SPI_RO_GPIO);
+}
+#endif
+
+void __init ns921x_add_device_mmc_spi(void)
+{
+#ifdef MMC_SPI_CD_GPIO
+	if (gpio_request(MMC_SPI_CD_GPIO, "mmc_spi"))
+		return;
+
+	gpio_configure_ns921x(MMC_SPI_CD_GPIO, NS921X_GPIO_INPUT,
+			      NS921X_GPIO_DONT_INVERT,
+			      NS921X_GPIO_FUNC_GPIO,
+			      NS921X_GPIO_ENABLE_PULLUP);
+#endif
+#ifdef MMC_SPI_RO_GPIO
+	if (gpio_request(MMC_SPI_RO_GPIO, "mmc_spi"))
+		return;
+
+	gpio_configure_ns921x(MMC_SPI_RO_GPIO, NS921X_GPIO_INPUT,
+			      NS921X_GPIO_DONT_INVERT,
+			      NS921X_GPIO_FUNC_GPIO,
+			      NS921X_GPIO_ENABLE_PULLUP);
+#endif
+}
+
+static struct mmc_spi_platform_data mmc_spi_info = {
+#ifdef MMC_SPI_RO_GPIO
+	.get_ro = mmc_spi_get_ro,
+#endif
+#ifdef MMC_SPI_CD_GPIO
+	.get_cd = mmc_spi_get_cd,
+	.caps = MMC_CAP_NEEDS_POLL,
+#endif
+	.ocr_mask = MMC_VDD_32_33 | MMC_VDD_33_34, /* 3.3V only */
+};
+#endif
+
+/* Array of SPI devices (only one device should be enabled at a time) */
 static struct spi_board_info spi_devices[] __initdata = {
 	CC9P9215JS_TOUCH
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
+	/* SPIDEV */
 	{
 		.modalias	= "spidev",
 		.max_speed_hz	= 10000000,
@@ -91,6 +149,17 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.chip_select	= 0,
 	},
 #endif
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+	/* MMC over SPI: mmc_spi */
+	{
+		.modalias	= "mmc_spi",
+		.max_speed_hz	= 5000000,
+		.bus_num        = 1,
+		.chip_select    = 0,
+		.platform_data	= &mmc_spi_info,
+	},
+#endif
+	/* Add here other SPI devices, if any... */
 };
 
 static void __init mach_cc9p9215js_init_machine(void)
@@ -140,6 +209,14 @@ static void __init mach_cc9p9215js_init_machine(void)
 	ns9xxx_add_device_cc9p9215_spi();
 #endif
 
+	/* Touchscreen */
+	cc9p9215js_add_device_touch();
+
+	/* MMC over SPI */
+#if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
+	ns921x_add_device_mmc_spi();
+#endif
+
 	/* SPI devices */
 	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
 
@@ -178,9 +255,6 @@ static void __init mach_cc9p9215js_init_machine(void)
 
 	/* Video */
 	ns9xxx_add_device_cc9p9215_edt_diplay();
-
-	/* Touchscreen */
-	cc9p9215js_add_device_touch();
 }
 
 MACHINE_START(CC9P9215JS, "ConnectCore 9P 9215 on a JSCC9P9215 Devboard")

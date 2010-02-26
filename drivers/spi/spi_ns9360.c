@@ -368,6 +368,9 @@ static void spi_ns9360_next_xfer(struct spi_master *master,
 	 *
 	 * - mwl
 	 */
+
+	/* Remove the warnings if using mmc_spi */
+#if !(defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE))
 	if (rx_dma & 0x3) {
 		dev_err(&master->dev, "unaligned rx_dma (=0x%08x, len=%u)\n",
 			rx_dma, len);
@@ -376,7 +379,7 @@ static void spi_ns9360_next_xfer(struct spi_master *master,
 		dev_err(&master->dev, "unaligned tx_dma (=0x%08x, len=%u)\n",
 			tx_dma, len);
 	}
-
+#endif
 	/* setup the DMA channels */
 	iowrite32(BBUS_DMA_CTRL_RESET, info->ioaddr_bbus + BBUS_DMA_RXCTRL);
 	iowrite32(BBUS_DMA_CTRL_RESET, info->ioaddr_bbus + BBUS_DMA_TXCTRL);
