@@ -91,6 +91,9 @@ static inline void piper_tx_queue_next(struct piper_priv *piperp)
 	unsigned long flags;
 
 	spin_lock_irqsave(&piperp->tx_queue_lock, flags);
+	piperp->pstats.tx_retry_index = 0;
+	piperp->pstats.tx_total_tetries = 0;
+	memset(piperp->pstats.tx_retry_count, 0, sizeof(piperp->pstats.tx_retry_count));
 	if (piperp->tx_queue_head != piperp->tx_queue_tail) {
 		piperp->tx_queue[piperp->tx_queue_tail].skb = NULL;
 		piperp->tx_queue[piperp->tx_queue_tail].skb_return_cb = NULL;

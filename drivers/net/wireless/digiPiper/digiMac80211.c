@@ -335,9 +335,6 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 	 */
 	skb_push(skb, TX_HEADER_LENGTH);
 
-	piperp->pstats.tx_retry_index = 0;
-	piperp->pstats.tx_total_tetries = 0;
-	memset(piperp->pstats.tx_retry_count, 0, sizeof(piperp->pstats.tx_retry_count));
 	txInfo->flags &= ~(IEEE80211_TX_STAT_TX_FILTERED |
 			   IEEE80211_TX_STAT_ACK |
 			   IEEE80211_TX_STAT_AMPDU |
