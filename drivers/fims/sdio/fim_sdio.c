@@ -11,7 +11,7 @@
  *
  *  !Revision:   $Revision: 1.20 $
  *  !Author:     Luis Galdos
- *  !Descr:      
+ *  !Descr:
  *  !References:
  */
 
@@ -352,13 +352,13 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 	struct fim_sdio_t *port;
 	struct fim_driver *fim;
 	int ret;
-       
+
 	port = container_of(work, struct fim_sdio_t, restart_work);
 	fim = &port->fim;
 
 	printk_dbg("Going to restart the FIM%i\n", fim->picnr);
 	fim_disable_irq(&port->fim);
-       
+
 	ret = fim_send_stop(&port->fim);
 	if (ret) {
 		printk_err("Couldn't stop the FIM%i\n", fim->picnr);
@@ -390,7 +390,7 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 {
 	struct fim_sdio_t *port;
 	int val;
-	
+
 	port = (struct fim_sdio_t *)_port;
 	val = gpio_get_value_ns921x(port->cd_gpio);
 
@@ -414,7 +414,7 @@ static inline int fim_sd_prepare_cd_irq(struct fim_sdio_t *port)
 {
 	int val;
 	unsigned int type;
- 
+
 	val = gpio_get_value_ns921x(port->cd_gpio);
 	printk_debug("CD interrupt received (val %i)\n", val);
 
@@ -422,7 +422,7 @@ static inline int fim_sd_prepare_cd_irq(struct fim_sdio_t *port)
 		type = IRQF_TRIGGER_RISING;
 	else
 		type = IRQF_TRIGGER_FALLING;
-	
+
 	return set_irq_type(port->cd_irq, type);
 }
 
@@ -447,7 +447,7 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 		schedule_work(&port->restart_work);
 	else
 		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -455,7 +455,7 @@ inline static int fim_sd_card_plugged(struct fim_sdio_t *port)
 {
 	struct fim_driver *fim;
 	unsigned int val;
-	
+
 	fim = &port->fim;
 	fim_get_stat_reg(fim, FIM_SDIO_CARD_STATREG, &val);
 	return !val;
@@ -470,13 +470,13 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		       unsigned int rx_fifo)
 {
 	struct fim_sdio_t *port;
-	
+
 	port = driver->driver_data;
 	if (!port || !port->mmc) {
 		printk_dbg("Null pointer by unexpected IRQ 0x%02x\n", code);
 		return;
 	}
-	
+
 	switch (code) {
 
 	case FIM_SDIO_INTARM_CARD_DETECTED:
@@ -568,18 +568,18 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 					 int length)
 {
 	int crc_len;
-	unsigned char *pic_crc;	
-	
+	unsigned char *pic_crc;
+
 	/*
 	 * The CRC length depends on the bus width (see sd.asm)
 	 * No CRC enabled : One byte (0x00)
 	 * One bit bus    : Four bytes
-	 * Four bit bus   : Eight bytes 
+	 * Four bit bus   : Eight bytes
 	 */
 	if (!(port->mmc_cmd->flags & MMC_RSP_CRC)) {
 		crc_len = 1;
 		pic_crc = data;
-	} else if (port->mmc->ios.bus_width == MMC_BUS_WIDTH_1) {		
+	} else if (port->mmc->ios.bus_width == MMC_BUS_WIDTH_1) {
 		crc_len = 4;
 		pic_crc = data + 2;
 	} else {
@@ -615,13 +615,13 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 #define FIM_SDIO_CRC_PATTERN                   "%02x %02x %02x %02x %02x %02x %02x %02x"
 	{
 		int retval, len;
-		
+
 		len = crc_len >> 1;
 		retval = memcmp(data, pic_crc, len);
 		if (retval) {
 
 			printk_dbg("Data len %i | CRC len %i\n", length, len);
-			
+
 			printk_dbg("CRC FIM : " FIM_SDIO_CRC_PATTERN "\n",
 				   *pic_crc, *(pic_crc + 1),
 				   *(pic_crc + 2), *(pic_crc + 3),
@@ -642,7 +642,7 @@ inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char 
 }
 
 inline static void fim_sd_print_crc(int length, unsigned char *crc)
-{	
+{
 	/* Only four and six as length supported */
 	if (length == 4)
 		printk_info("CRC: %u\n", *((unsigned int *)crc));
@@ -666,7 +666,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	int len, crc_len;
 	unsigned char *crc_ptr;
 	int is_ack;
-	
+
 	/* Get the correct port from the FIM-driver structure */
 	len = pdata->length;
 	port = (struct fim_sdio_t *)driver->driver_data;
@@ -679,7 +679,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		printk_err("Timeouted command response?\n");
 		goto exit_unlock;
 	}
-		
+
 	/*
 	 * Check the current state of the command and update it if required
 	 * IMPORTANT: The buffer can contain response data or the data from a block
@@ -687,7 +687,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	 */
 	resp = (struct fim_sd_rx_resp_t *)pdata->data;
 	is_ack = (pdata->length == 1) ? 1 : 0;
-	
+
 	printk_debug("CMD%i | RESP stat %x | CMD stat %i | BLKRD stat %i | Len %i\n",
 		     mmc_cmd->opcode, resp->stat, port->cmd_state,
 		     port->blkrd_state, pdata->length);
@@ -705,7 +705,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	} else if (port->blkrd_state == BLKRD_STATE_WAIT_ACK && is_ack &&
 		   resp->stat & FIM_SDIO_RX_BLKRD) {
 		port->blkrd_state = BLKRD_STATE_WAIT_DATA;
-		
+
 		/* Check if the block read data has arrived */
 	} else if (port->blkrd_state == BLKRD_STATE_WAIT_DATA && !is_ack) {
 		crc_len = len - mmc_cmd->data->blksz;
@@ -743,7 +743,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 			printk_debug("Wait for next block %i\n", port->trans_blocks);
 			port->blkrd_state = BLKRD_STATE_WAIT_ACK;
 		}
-		
+
 		/* Check the conditions for the COMMAND state machine */
 	} else if (is_ack && port->cmd_state == CMD_STATE_WAIT_ACK &&
 		   resp->stat & FIM_SDIO_RX_RSP) {
@@ -754,7 +754,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 
 		/* Check for unexpected acks or opcodes */
 	} else {
-		
+
 		/* @FIXME: Need a correct errror handling for this condition */
 		if (mmc_cmd->data && mmc_cmd->data->flags & MMC_DATA_READ)
 			printk_err("Failed multi RX (CMD%u | PIC stat %x | State %x)\n",
@@ -772,7 +772,7 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		port->cmd_state = CMD_STATE_HAVE_RSP;
 		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 	}
-	
+
 	/*
 	 * Now evaluate if need to wait for another RX-interrupt or
 	 * can send the request done to the MMC-layer
@@ -783,13 +783,13 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 #if defined(FIM_SDIO_MULTI_BLOCK)
 		if (mmc_cmd->data) {
 			uint blocks;
-			
+
 			fim_get_ctrl_reg(&port->fim, FIM_SDIO_BLOCKS_REG, &blocks);
 			printk_debug("CMD%u: End code %i | Blocks %u\n",
 				   mmc_cmd->opcode, mmc_cmd->error, blocks);
 		}
 #endif /* FIM_SDIO_MULTI_BLOCK */
-		
+
 		fim_sd_process_next(port);
 	}
 
@@ -804,7 +804,7 @@ static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 
 	if (!buf || !port)
 		return -EINVAL;
-	
+
 	fim = &port->fim;
 	buf->private = buf;
 	return fim_send_buffer(fim, buf);
@@ -818,10 +818,10 @@ static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port)
 
 	if(!port)
 		return NULL;
-	
+
 	fim = &port->fim;
 	length = sizeof(struct fim_sd_tx_cmd_t);
-	
+
 	return fim_alloc_buffer(fim, length, GFP_KERNEL);
 }
 
@@ -832,7 +832,7 @@ static struct fim_buffer_t *fim_sd_alloc_buffer(struct fim_sdio_t *port, int len
 
 	if (!port || length <= 0)
 		return NULL;
-	
+
 	fim = &port->fim;
 	return fim_alloc_buffer(fim, length, GFP_KERNEL);
 }
@@ -843,7 +843,7 @@ static void fim_sd_free_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf
 
 	if (!port || !buf)
 		return;
-	
+
 	fim = &port->fim;
 	fim_free_buffer(fim, buf);
 }
@@ -861,7 +861,7 @@ inline static void fim_sd_sg_to_dma(struct fim_sdio_t *port, struct mmc_data *da
 	unsigned char *sg_buf;
 	unsigned char *dma_buf;
 	int process;
-	
+
 	sg = data->sg;
 	len = data->sg_len;
 	dma_buf = buf->data;
@@ -872,7 +872,7 @@ inline static void fim_sd_sg_to_dma(struct fim_sdio_t *port, struct mmc_data *da
 		printk_err("The FIM-SD host only supports single block\n");
 		len = 1;
 	}
-	
+
 	/* @XXX: Check the correctness of the memcpy operation */
 	for (cnt = 0; cnt < len && dma_len <= buf->length; cnt++) {
                 sg_buf = sg_virt(&sg[cnt]);
@@ -893,7 +893,7 @@ inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *d
 				     unsigned char *dma_buf, int dma_len)
 {
 	char *sg_buf;
-	
+
 	/* This loop was tested only with single block transfers */
 	sg_buf = port->sg_virt;
 	printk_debug("RX: %i bytes from %p to %p\n", dma_len, dma_buf, sg_buf);
@@ -902,7 +902,7 @@ inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *d
 
 	/* Update the pointer inside the SG buffer for the next transfer */
 	port->sg_virt += dma_len;
-	
+
 #if 0
 	for (cnt = port->trans_sg; cnt < len && dma_len > 0; cnt++) {
 
@@ -921,7 +921,7 @@ inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *d
 
 	port->sg = &sg[cnt];
 #endif
-	
+
 	return sg_buf;
 }
 
@@ -933,7 +933,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	struct fim_sd_tx_cmd_t *txcmd;
 	unsigned int block_length, blocks;
 	int retval, length;
-	
+
 	/* @TODO: Send an error response to the MMC-core */
 	if (!(buf = fim_sd_alloc_cmd(port))) {
 		printk_err("No memory available for a new CMD?\n");
@@ -943,7 +943,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	/* Use the buffer data for the TX-command */
 	txcmd = (struct fim_sd_tx_cmd_t *)buf->data;
 	txcmd->opctl = 0;
-	
+
 	/*
 	 * Set the internal flags for the next response sequences
 	 * Assume that we will wait for a command response (not block read).
@@ -1003,7 +1003,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	/* Set the correct CRC configuration */
 	if (!(cmd->flags & MMC_RSP_CRC)) {
 		printk_debug("CRC is disabled\n");
-		txcmd->opctl |= SDIO_FIFO_TX_DISCRC;		
+		txcmd->opctl |= SDIO_FIFO_TX_DISCRC;
 	}
 
 	/* Set the correct bus width */
@@ -1058,7 +1058,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 			fim_sd_free_buffer(port, buf);
 		}
 	}
-	
+
  exit_ok:
 	return 0;
 }
@@ -1103,12 +1103,12 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		mmc_request_done(mmc, mrq);
 		return;
 	}
-	
+
 	/*
 	 * Wait if the timeout function is running or the RX-callback is active
 	 */
 	port->mmc_req = mrq;
-	port->flags = FIM_SDIO_REQUEST_NEW;	
+	port->flags = FIM_SDIO_REQUEST_NEW;
 	fim_sd_process_next(port);
 }
 
@@ -1147,13 +1147,13 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 
 /*
  * Called by the core system for setting the available modes and clock speed
- * 
+ *
  */
 static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct fim_sdio_t *port;
 	unsigned long ireg;
-	
+
 	if (!(port = get_port_from_mmc(mmc)))
 		return;
 
@@ -1171,7 +1171,7 @@ static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	}
 
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
-	
+
 	fim_sd_set_clock(port, ios->clock);
 }
 
@@ -1196,19 +1196,19 @@ static void fim_sd_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct fim_sdio_t *port;
 	unsigned int ireg;
-	
+
 	printk_debug("%s the SDIO IRQ\n", enable ? "Enabling" : "Disabling");
 	if (!(port = get_port_from_mmc(mmc))) {
 		printk_err("NULL port pointer found!\n");
 		return;
 	}
 
-	fim_get_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, &ireg);		
+	fim_get_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, &ireg);
 	if (enable)
 		ireg |= FIM_SDIO_INTCFG_SDIO;
 	else
 		ireg &= ~FIM_SDIO_INTCFG_SDIO;
-		
+
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
 }
 
@@ -1226,7 +1226,7 @@ static const struct mmc_host_ops fim_sd_ops = {
 static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 {
 	int cnt;
-	
+
 	if (!port || !port->reg)
 		return -ENODEV;
 
@@ -1238,13 +1238,13 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 
 	/* Reset the main control register */
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, 0);
-	
+
 	fim_unregister_driver(&port->fim);
 
 	for (cnt=0; cnt < FIM_SDIO_MAX_GPIOS; cnt++) {
 		printk_debug("Freeing GPIO %i\n", port->gpios[cnt].nr);
 		if (port->gpios[cnt].nr == FIM_LAST_GPIO)
-			break;		
+			break;
 		else if (port->gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
 		else
@@ -1260,7 +1260,7 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 		free_irq(port->cd_irq, port);
 		port->cd_irq = -1;
 	}
-	
+
 	port->reg = 0;
 	return 0;
 }
@@ -1287,7 +1287,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	char *fwname = NULL;
 	const char *fwcode = (picnr == 0) ? FIM_SDIO_FW_CODE0 : FIM_SDIO_FW_CODE1;
 #endif
-	
+
 	/* Specific DMA configuration for the SD-host driver */
 	dma_cfg.rxnr = FIM_SDIO_DMA_RX_BUFFERS;
 	dma_cfg.txnr = FIM_SDIO_DMA_TX_BUFFERS;
@@ -1318,7 +1318,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 		if (gpios[cnt].nr == FIM_LAST_GPIO)
 			break;
-		
+
 		if (gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
 
@@ -1336,11 +1336,11 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 			printk_err("Couldn't request the GPIO %i\n", gpios[cnt].nr);
 			while (cnt)
 				gpio_free(gpios[--cnt].nr);
-			
+
 			goto exit_unreg_fim;
 		}
 	}
-	
+
 	/* Configure and init the timer for the command timeouts */
 	init_timer(&port->mmc_timer);
 	port->mmc_timer.function = fim_sd_cmd_timeout;
@@ -1350,7 +1350,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	init_timer(&port->cd_timer);
 	port->cd_timer.function = fim_sd_cd_timer_func;
 	port->cd_timer.data = (unsigned long)port;
-	
+
 	port->mmc = mmc_alloc_host(sizeof(struct fim_sdio_t *), port->fim.dev);
 	if (!port->mmc) {
 		printk_err("Alloc MMC host by the FIM %i failed.\n", picnr);
@@ -1363,7 +1363,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
                 printk_err("Couldn't get the SYS clock.\n");
                 goto exit_free_host;
         }
-	
+
 	/* These are the default values for this SD-host */
 	port->mmc->ops = &fim_sd_ops;
 
@@ -1383,7 +1383,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->mmc->max_seg_size       = port->mmc->max_req_size;
 	port->mmc->max_phys_segs      = FIM_SDIO_MAX_BLOCKS;
 	port->mmc->max_hw_segs        = FIM_SDIO_MAX_BLOCKS;
-	
+
 	/* Save our port structure into the private pointer */
 	port->mmc->private[0] = (unsigned long)port;
 	retval = mmc_add_host(port->mmc);
@@ -1398,7 +1398,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 	/* Fist disable the SDIO-IRQ */
 	fim_sd_enable_sdio_irq(port->mmc, 0);
-	
+
 	/*
 	 * If no interrupt line is available for the card detection, then use the timer
 	 * for the polling.
@@ -1408,10 +1408,10 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 #if defined(FIM_SDIO_FORCE_CD_POLLING)
 	port->cd_irq = -1;
 #endif
-	
+
 	if (port->cd_irq > 0) {
 		int iret;
-		
+
 		/* First check if we have an IRQ at this line */
 		printk_info("Got IRQ %i for GPIO %i\n", port->cd_irq,
 			    port->cd_gpio);
@@ -1458,10 +1458,10 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
  exit_free_cdirq:
 	free_irq(port->cd_irq, port);
-	
+
  exit_put_clk:
 	clk_put(port->sys_clk);
-	
+
  exit_free_host:
 	mmc_free_host(port->mmc);
 
@@ -1472,7 +1472,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 		if (gpios[cnt].nr != FIM_GPIO_DONT_USE)
 			gpio_free(gpios[cnt].nr);
 	}
-	
+
  exit_unreg_fim:
 	fim_unregister_driver(&port->fim);
 
@@ -1489,7 +1489,7 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	int retval;
 
 	printk_debug("Probing a new device with ID %i\n", pdev->id);
-	
+
 	pdata = pdev->dev.platform_data;
 	if (!pdata)
 		return -ENXIO;
@@ -1502,7 +1502,7 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 #endif
 		return -ENODEV;
 	}
-	
+
 	port = fim_sdios->ports + pdata->fim_nr;
 
 	/* Get the GPIOs-table from the platform data structure */
@@ -1524,7 +1524,7 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	gpios[FIM_SDIO_CMD_GPIO].func = pdata->cmd_gpio_func;
 	port->wp_gpio = pdata->wp_gpio_nr;
 	port->cd_gpio = pdata->cd_gpio_nr;
-	
+
 	retval = fim_sdio_register_port(&pdev->dev, port, pdata, gpios);
 
 	return retval;
@@ -1534,7 +1534,7 @@ static int __devexit fim_sdio_remove(struct platform_device *pdev)
 {
 	struct fim_sdio_t *port;
 	int retval;
-	
+
 	port = dev_get_drvdata(&pdev->dev);
 
 	retval = fim_sdio_unregister_port(port);
@@ -1561,8 +1561,8 @@ static int __init fim_sdio_init(void)
 {
 	int retval;
 	int nrpics;
-	
-	printk_debug("Starting the FIM SDIO driver.\n");	
+
+	printk_debug("Starting the FIM SDIO driver.\n");
 
 	/* Get the number of available FIMs */
 	nrpics = fim_number_pics();
@@ -1572,19 +1572,19 @@ static int __init fim_sdio_init(void)
 		printk_err("Invalid number '%i' of FIMs to handle\n", fims_number);
 		return -EINVAL;
 	}
-	
+
 	fim_sdios = kzalloc(sizeof(struct fim_sdios_t) +
 			    (nrpics * sizeof(struct fim_sdio_t)), GFP_KERNEL);
 	if (!fim_sdios)
 		return -ENOMEM;
 
 	fim_sdios->fims = nrpics;
-	fim_sdios->ports = (void *)fim_sdios + sizeof(struct fim_sdios_t);	
+	fim_sdios->ports = (void *)fim_sdios + sizeof(struct fim_sdios_t);
 
 	retval = platform_driver_register(&fim_sdio_platform_driver);
 	if (retval)
 		goto exit_free_ports;
-	
+
 	printk_info(DRIVER_DESC " v" DRIVER_VERSION "\n");
 	return 0;
 
@@ -1606,7 +1606,7 @@ static int __init fim_sdio_init(void)
 static void __exit fim_sdio_exit(void)
 {
 	printk_info("Removing the FIM SDIO driver\n");
-	platform_driver_unregister(&fim_sdio_platform_driver);		
+	platform_driver_unregister(&fim_sdio_platform_driver);
 	kfree(fim_sdios);
 }
 

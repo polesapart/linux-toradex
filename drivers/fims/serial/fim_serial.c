@@ -11,7 +11,7 @@
  *
  *  !Revision:   $Revision: 1.1.1.1 $
  *  !Author:     Luis Galdos
- *  !Descr:      
+ *  !Descr:
  *  !References:
  */
 
@@ -99,7 +99,7 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
  * IMPORTANT: The number of chars per DMA-transfer must be low, otherwise
  * the latency times by user-interrupts (CTRL-C) will be too high (some seconds!)
  * The problem is that we can't stop the DMA-transfer in an easy way and the
- * FIM-firmware can't be stopped on the fly. 
+ * FIM-firmware can't be stopped on the fly.
  */
 #define FIM_SERIAL_TX_CHARS_PER_DMA		32
 #define FIM_SERIAL_TX_DMA_BUFFER_SIZE		(FIM_SERIAL_TX_CHARS_PER_DMA * 2)
@@ -224,7 +224,7 @@ inline static struct fim_serial_t *get_port_by_index(int index)
 {
 	if (index < 0 || index > fim_serials->fims)
 		return NULL;
-	
+
 	return fim_serials->ports + index;
 }
 
@@ -242,7 +242,7 @@ inline static int fim_serial_reset_matchs(struct fim_driver *fim)
 inline static int fim_serial_reset_all(struct fim_driver *fim)
 {
 	int retval;
-	
+
 	fim_set_ctrl_reg(fim, 0, 0);
 	fim_set_ctrl_reg(fim, 1, 0);
 	fim_set_ctrl_reg(fim, 2, 0);
@@ -255,8 +255,8 @@ inline static int fim_serial_reset_all(struct fim_driver *fim)
 }
 
 
-static unsigned char get_parity(unsigned char data, unsigned char mask, int odd) 
-{ 
+static unsigned char get_parity(unsigned char data, unsigned char mask, int odd)
+{
 	unsigned char ones = 0;
 	mask = (mask >> 1) + 1;
 	do {
@@ -288,22 +288,22 @@ static int fim_serial_send_char(struct fim_serial_t *port, unsigned char ch)
 		printk_err("No TTY-port found for the FIM %i\n", fim->picnr);
 		return -ENODEV;
 	}
-	
+
 	/* First check if the FIM is tasked with another send-char request */
 	timeout = 0xFFFF;
 	do {
 		timeout--;
 		fim_get_exp_reg(fim, 0, &status);
 	} while (timeout && (status & FIM_SERIAL_INT_INSERT_CHAR));
-	
+
 	if (!timeout) {
 		printk_err("Timeout by sending a char over the FIM %i\n", fim->picnr);
 		return -EAGAIN;
 	}
-	
+
 	if (C_CSTOPB(tty))
 		data = (data << 1) | 0x01;
-	
+
 	if (C_PARENB(tty))
 		data = (data << 1) | get_parity(ch, port->bitsmask, C_PARODD(tty));
 
@@ -385,7 +385,7 @@ static int fim_serial_parse_data(struct tty_struct *tty,
 		src++;
 		dest++;
 		copied++;
-	}	
+	}
 
 	return copied;
 }
@@ -408,8 +408,8 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 	fim = &port->fim;
 	cflag = termios->c_cflag;
 	baud = tty_termios_baud_rate(termios);
-	
-	/* Check if really need to change something */	
+
+	/* Check if really need to change something */
 	if (port->baud == baud) {
 		if (port->last_totalbits != port->totalbits) {
 			printk_debug("Setting only the gap timer (%iBps | %i | %i)\n",
@@ -419,7 +419,7 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 		}
 		return 0;
 	}
-	
+
 	clock = clk_get_rate(port->sys_clk);
 	printk_debug("Obtained SYS clock is %luHz\n", clock);
 	clock = clock / baud;
@@ -442,7 +442,7 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 
 	/* The Net+OS driver has another calculation of the bit time */
 	bit_time = (clock / div) - 1;
-	
+
 	printk_debug("%iB | Pre %i | Btime %u | Tbits %i | Dbits %i | S %i | Pa %i\n",
 		     baud, prescale, bit_time, port->totalbits, port->numbits,
 		     cflag & CSTOPB, cflag & PARENB);
@@ -463,7 +463,7 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 			   fim->picnr);
 		return retval;
 	}
-	
+
  set_char_gap:
 	gap = (2 * clock * port->totalbits)/30;
 	fim_set_ctrl_reg(fim, 0, (gap & 0xFF) + 1);
@@ -474,7 +474,7 @@ static int fim_serial_baudrate(struct fim_serial_t *port, struct ktermios *termi
 			   fim->picnr, port->totalbits);
 		return retval;
 	}
-	
+
 	port->baud = baud;
 	port->last_totalbits = port->totalbits;
 	return 0;
@@ -484,19 +484,19 @@ static int fim_sw_flowctrl(struct fim_serial_t *port, struct ktermios *termios)
 {
 	struct fim_driver *fim;
 	int retval;
-	unsigned short start_match, stop_match;	
+	unsigned short start_match, stop_match;
 	unsigned short mask;
 	unsigned int cflag, iflag;
-	
+
 	cflag = termios->c_cflag;
 	iflag = termios->c_iflag;
-	
+
 	fim = &port->fim;
 	start_match = 1;
 	stop_match = 1;
 
 	printk_debug("Calling %s\n", __func__);
-	
+
 	/* Check if need to set the SW flow control, otherwise reset it */
 	if (iflag & IXON || iflag & IXOFF) {
 		printk_debug("Active SW flow control? @XXX: Test it first.\n");
@@ -504,20 +504,20 @@ static int fim_sw_flowctrl(struct fim_serial_t *port, struct ktermios *termios)
 			start_match = (start_match << 1) | 1;
 			stop_match = (stop_match << 1) | 1;
 		}
-			
+
 		if (cflag & PARENB) {
 
 			start_match = (start_match << 1) |
 				get_parity(termios->c_cc[VSTART],
 					   port->bitsmask,
 					   cflag & PARENB & PARODD);
-			
+
 			stop_match = (stop_match << 1) |
 				get_parity(termios->c_cc[VSTOP],
 					   port->bitsmask,
 					   cflag & PARENB & PARODD);
 		}
-		
+
 		mask = start_match | port->bitsmask;
 
 		if (port->totalbits < 8) {
@@ -536,14 +536,14 @@ static int fim_sw_flowctrl(struct fim_serial_t *port, struct ktermios *termios)
 	} else {
 		fim_serial_reset_matchs(fim);
 	}
-	
+
 	/* Now send the interrupt for the SW flow control */
 	retval = fim_send_interrupt2(fim, FIM_SERIAL_INT_MATCH_CHAR);
 	if (retval) {
 		printk_err("Couldn't set the bits match\n");
 		return retval;
 	}
-	
+
 	return 0;
 }
 
@@ -571,10 +571,10 @@ static int fim_serial_setup_bitpos(struct fim_serial_t *port, ulong hwflow)
 		     gpios[FIM_SERIAL_GPIO_TX].nr, gpios[FIM_SERIAL_GPIO_RX].nr,
 		     gpios[FIM_SERIAL_GPIO_RTS].nr, gpios[FIM_SERIAL_GPIO_CTS].nr,
 		     offset);
-		
+
 	fim_set_ctrl_reg(fim, FIM_SERIAL_TXIO_REG,
 			 1 << (gpios[FIM_SERIAL_GPIO_TX].nr - offset));
-	
+
 	fim_set_ctrl_reg(fim, FIM_SERIAL_RXIO_REG,
 			 1 << (gpios[FIM_SERIAL_GPIO_RX].nr - offset));
 
@@ -584,7 +584,7 @@ static int fim_serial_setup_bitpos(struct fim_serial_t *port, ulong hwflow)
 		printk_dbg("HW flow control not supported (GPIOs not defined)\n");
 		return -EOPNOTSUPP;
 	}
-	
+
 	/* Setup the CTS and RTS if HW flow controls is requested */
 	cts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_CTS].nr - offset) : 0;
 	rts = hwflow ? 1 << (gpios[FIM_SERIAL_GPIO_RTS].nr - offset) : 0;
@@ -612,7 +612,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	/* That's really bad but it can happen */
 	if (!termios)
 		return -EINVAL;
-	
+
 	/* @BUG: The info pointer is NULL when the console is started! */
 	fim = &port->fim;
 	cflag = termios->c_cflag;
@@ -643,7 +643,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	stopbits = 1;
 	if (cflag & CSTOPB)
 		stopbits = 2;
-	
+
 	parbit = 0;
 	if (cflag & PARENB)
 		parbit = 1;
@@ -664,7 +664,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 		retval = -ETIME;
 		goto exit_unlock;
 	}
-	
+
 	/* Ok, we are save, we can try to configure the FIM with the valid byte length */
 	if (port->totalbits != databits + stopbits + parbit) {
 		fim_set_ctrl_reg(fim, 0, databits + stopbits + parbit);
@@ -675,7 +675,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 			goto exit_unlock;
 		}
 	}
-	
+
 	/* Save the number of bits for the future operations */
 	port->numbits = databits;
 	port->totalbits = databits + stopbits + parbit;
@@ -701,7 +701,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 	 * the bits position and then enable the HW-flow control in the config register
 	 */
 	if ((cflag & CRTSCTS) != (old_cflag & CRTSCTS)) {
-				
+
 		retval = fim_serial_setup_bitpos(port, cflag & CRTSCTS);
 		if (retval) {
 
@@ -713,7 +713,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 			 */
 			if (retval == -EOPNOTSUPP)
 				termios->c_cflag &= ~CRTSCTS;
-			
+
 			printk_err("Couldn't setup the FIM port %i\n",
 				   fim->picnr);
 			goto exit_unlock;
@@ -735,7 +735,7 @@ static int fim_serial_configure_port(struct fim_serial_t *port,
 
 	retval = 0;
 	port->termios = termios;
-	
+
  exit_unlock:
 	spin_unlock_irqrestore(&port->tx_lock, flags);
 	return retval;
@@ -766,14 +766,14 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 	}
 
 	spin_lock(&port->tx_lock);
-	
+
 	xmit  = &uart->info->xmit;
 	len = uart_circ_chars_pending(xmit);
 	data = 1;
 	if (port->cflag & CSTOPB)
 		data = (data << 1) | 0x01;
 	stop_bits = data;
-	
+
 	if (port->cflag & PARENB)
 		data = (data << 1);
 	data = (data << port->numbits);
@@ -781,7 +781,7 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 	bytes_per_char = 1;
 	if (data & 0xFF00)
 		bytes_per_char = 2;
-	
+
 	fim = &port->fim;
 	len = (len > FIM_SERIAL_TX_CHARS_PER_DMA) ? FIM_SERIAL_TX_CHARS_PER_DMA : len;
 
@@ -807,7 +807,7 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 		chars_to_send += 1;
 	}
 
-	
+
         /* Check a last time if we need to send the data */
 	if (uart_tx_stopped(uart) || !chars_to_send) {
 		printk_debug("Aborting TX due a stopped queue!\n");
@@ -826,11 +826,11 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 		printk_err("FIM send buffer request failed (len %i)\n", buf.length);
 		retval = -ENOMEM;
 	}
-	
+
 
  exit_unlock:
 	spin_unlock(&port->tx_lock);
-	
+
 	return retval;
 }
 
@@ -854,7 +854,7 @@ static int fim_serial_transmit(struct uart_port *uart)
 			     uart_circ_chars_pending(xmit));
 		return 0;
 	}
-	
+
 	printk_debug("Request to send %lu chars | stopped %i | empty %i\n",
 		     uart_circ_chars_pending(xmit),
 		     uart_tx_stopped(uart), uart_circ_empty(xmit));
@@ -880,7 +880,7 @@ static int fim_serial_transmit(struct uart_port *uart)
 	/* Tell the higher layer that we can "probably" send more data */
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(uart);
-	
+
 	return 0;
 }
 
@@ -897,13 +897,13 @@ static unsigned int fim_serial_tx_empty(struct uart_port *uart)
 	struct fim_driver *fim;
 	unsigned int level;
 	struct fim_serial_t *port;
-	
+
 	port = get_port_from_uart(uart);
 	fim = &port->fim;
 	level = fim_tx_buffers_level(fim);
 
 	printk_debug("TX empty called (Level %i)\n", level);
-	
+
 	return (level) ? 0 : TIOCSER_TEMT;
 }
 
@@ -913,13 +913,13 @@ static void fim_serial_isr(struct fim_driver *driver, int irq, unsigned char cod
 {
 	struct uart_port *uart;
 	struct fim_serial_t *port;
-	
+
 	if(!code)
 		return;
 
 	port = (struct fim_serial_t *)driver->driver_data;
 	uart = get_uart_from_port(port);
-	
+
 	switch (code) {
 	case FIM_INT_FROM_MATCH_CHAR1:
 		printk_err("@TODO: Match char1 interrupt received.\n");
@@ -946,10 +946,10 @@ static void fim_serial_tasklet_func(unsigned long data)
 
 	port = (struct fim_serial_t *)data;
 	printk_debug("Tasklet for port %p\n", port);
-	
+
 	if (!port)
 		return;
-	
+
 	uart = get_uart_from_port(port);
 	if (!uart)
 		return;
@@ -965,10 +965,10 @@ static void fim_serial_tasklet_func(unsigned long data)
  */
 static void fim_serial_tx_isr(struct fim_driver *driver, int irq,
 			      struct fim_buffer_t *pdata)
-{	
+{
 	struct fim_buffer_t *buf;
 	struct fim_serial_t *port;
-	
+
 	port = (struct fim_serial_t *)driver->driver_data;
 	buf = (struct fim_buffer_t *)pdata->private;
 	printk_debug("TX-callback | FIM %i\n", driver->picnr);
@@ -981,7 +981,7 @@ static void fim_serial_tx_isr(struct fim_driver *driver, int irq,
 
 	/* Schedule the tasklet for continuing with the data transmission */
 	tasklet_schedule(&port->tasklet);
-	
+
 	return;
 }
 
@@ -993,7 +993,7 @@ static void fim_serial_rx_isr(struct fim_driver *driver, int irq,
 	struct uart_port *uart;
 	struct tty_struct *tty;
 	int length;
-	
+
 	/* Get the correct port from the FIM-driver structure */
 	port = (struct fim_serial_t *)driver->driver_data;
 	uart = &port->uart;
@@ -1057,17 +1057,17 @@ static int fim_serial_startup(struct uart_port *uart)
 {
 	struct fim_serial_t *port;
 	unsigned int regval;
-	
+
 	printk_debug("Calling %s\n", __func__);
 	port = get_port_from_uart(uart);
 
 	fim_enable_irq(&port->fim);
-	
+
         fim_get_ctrl_reg(&port->fim, FIM_SERIAL_CTRL_REG, &regval);
         fim_set_ctrl_reg(&port->fim,
                          FIM_SERIAL_CTRL_REG,
                          regval | FIM_SERIAL_STAT_TX_ENABLE | FIM_SERIAL_STAT_COMPLETE);
-	
+
 	return 0;
 }
 
@@ -1083,17 +1083,17 @@ static void fim_serial_set_termios(struct uart_port *uart, struct ktermios *term
 {
 	struct fim_serial_t *port;
 	unsigned int cflag;
-	
+
 	printk_debug("Calling %s | termios %p | old %p\n", __func__, termios, old);
 
 	cflag = (old) ? old->c_cflag : 0;
 	if (cflag == termios->c_cflag) {
 		printk_debug("Skipping the termios configuration\n");
 		return;
-	}	
-	
+	}
+
 	port = get_port_from_uart(uart);
-	fim_serial_configure_port(port, termios, old);	
+	fim_serial_configure_port(port, termios, old);
 }
 
 /* Return a string describing the type of the port */
@@ -1150,7 +1150,7 @@ static void fim_serial_wait_tx(struct fim_driver *fim)
 {
 	unsigned int timeout;
 	unsigned int status;
-	
+
 	/* First check if the FIM is tasked with another send-char request */
 	timeout = 0xFFFF;
 	do {
@@ -1176,7 +1176,7 @@ static void fim_serial_console_putchar(struct uart_port *uart, int ch)
 
 	if (cflag & CSTOPB)
 		data = (data << 1) | 0x01;
-	
+
 	if (cflag & PARENB)
 		data = (data << 1) | get_parity(ch, port->bitsmask,
 						cflag & PARENB & PARODD);
@@ -1198,7 +1198,7 @@ static void fim_serial_console_write(struct console *co, const char *str,
 
 	port = get_port_by_index(co->index);
 	uart = get_uart_from_port(port);
-	
+
 /* 	if (oops_in_progress) @TODO? */
 	spin_lock_irqsave(&port->tx_lock, flags);
 
@@ -1207,7 +1207,7 @@ static void fim_serial_console_write(struct console *co, const char *str,
 	uart_console_write(uart, str, count, fim_serial_console_putchar);
 
 	fim_serial_wait_tx(&port->fim);
-	
+
 	spin_unlock_irqrestore(&port->tx_lock, flags);
 }
 
@@ -1255,27 +1255,27 @@ static int fim_serial_unregister_port(struct fim_serial_t *port)
 	int cnt;
 	struct fim_driver *fim;
 	struct uart_port *uart;
-	
+
 	if (!port || !port->reg)
 		return -ENODEV;
 
 	tasklet_kill(&port->tasklet);
-	
+
 	uart = &port->uart;
 	fim = &port->fim;
 	fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, 0x00);
-		
+
 	/* Reset all the control register */
 	fim_serial_reset_all(fim);
-	
+
 	fim_unregister_driver(fim);
 	uart_remove_one_port(&fim_serials->driver, uart);
-		
+
 	/* Free all the requested GPIOs */
 	for (cnt=0; cnt < FIM_SERIAL_MAX_GPIOS; cnt++) {
 		printk_debug("Freeing GPIO %i\n", port->gpios[cnt].nr);
 		if (port->gpios[cnt].nr == FIM_LAST_GPIO)
-			break;		
+			break;
 		else if (port->gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
 		else
@@ -1301,7 +1301,7 @@ static int fim_serial_register_port(struct device *dev,
 
 	fim = &port->fim;
 	uart = &port->uart;
-	
+
 	port->index = minor;
 	fim->picnr = picnr;
 	fim->driver.name = FIM_DRIVER_NAME;
@@ -1316,7 +1316,7 @@ static int fim_serial_register_port(struct device *dev,
 	dma_cfg.rxsz = FIM_SERIAL_RX_DMA_BUFFER_SIZE;
 	dma_cfg.txsz = FIM_SERIAL_TX_DMA_BUFFER_SIZE;
 	fim->dma_cfg = &dma_cfg;
-	
+
 	/* Check if have a firmware code for using to */
 	fim->fw_name = FIM_SERIAL_FIRMWARE_FILE;
 	fim->fw_code = FIM_SERIAL_FIRMWARE_CODE;
@@ -1336,7 +1336,7 @@ static int fim_serial_register_port(struct device *dev,
 		printk_err("Setting the default GPIOs\n");
 		goto err_unreg_fim;
 	}
-	
+
 	retval = fim_serial_reset_matchs(fim);
 	if (retval) {
 		printk_err("Resetting the match registers\n");
@@ -1349,13 +1349,13 @@ static int fim_serial_register_port(struct device *dev,
 
 		if (gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
-		
+
 		printk_debug("Going to request the GPIO %i\n", gpios[cnt].nr);
 		retval = gpio_request(gpios[cnt].nr, FIM_DRIVER_NAME);
 		if (!retval) {
-		  
+
 			func = gpios[cnt].func;
-			
+
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,
 						       NS921X_GPIO_INPUT,
 						       NS921X_GPIO_DONT_INVERT,
@@ -1407,7 +1407,7 @@ static int fim_serial_register_port(struct device *dev,
 
  err_put_clk:
 	clk_put(port->sys_clk);
-	
+
  err_free_gpios:
 	for (cnt=0; gpios[cnt].nr < FIM_SERIAL_MAX_GPIOS; cnt++) {
 		if (gpios[cnt].nr == FIM_LAST_GPIO)
@@ -1416,7 +1416,7 @@ static int fim_serial_register_port(struct device *dev,
 		if (gpios[cnt].nr != FIM_GPIO_DONT_USE)
 			gpio_free(gpios[cnt].nr);
 	}
-	
+
  err_unreg_fim:
 	fim_unregister_driver(&port->fim);
 
@@ -1432,7 +1432,7 @@ static int __devinit fim_serial_probe(struct platform_device *pdev)
 	struct fim_gpio_t gpios[FIM_SERIAL_MAX_GPIOS];
 	int retval;
 	struct fim_serial_platform_data *pdata;
-	
+
 	printk_info("Probe function called for device ID %i\n", pdev->id);
 
 	pdata = pdev->dev.platform_data;
@@ -1447,7 +1447,7 @@ static int __devinit fim_serial_probe(struct platform_device *pdev)
 #endif
 		return -ENODEV;
         }
-	
+
 	port = fim_serials->ports + pdata->fim_nr;
 
 	/* @XXX: The below code is really ugly, remove it! */
@@ -1474,7 +1474,7 @@ static int __devexit fim_serial_remove(struct platform_device *pdev)
 {
 	struct fim_serial_t *port;
 	int retval;
-	
+
 	port = dev_get_drvdata(&pdev->dev);
 
 	retval = fim_serial_unregister_port(port);
@@ -1518,7 +1518,7 @@ static int fim_serial_resume(struct platform_device *pdev)
 	port->numbits = 0;
 	port->last_totalbits = 0;
 	port->baud = 0;
-	
+
 	retval = fim_download_firmware(&port->fim);
 	if (retval) {
 		printk_err("FIM download failed\n");
@@ -1527,7 +1527,7 @@ static int fim_serial_resume(struct platform_device *pdev)
 
 	/* This is required for the FIM-firmware */
         fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, 0xff);
-	
+
 	retval = fim_send_start(&port->fim);
 	if (retval) {
 		printk_err("FIM start failed\n");
@@ -1535,7 +1535,7 @@ static int fim_serial_resume(struct platform_device *pdev)
 	}
 
         fim_set_ctrl_reg(fim, FIM_SERIAL_CTRL_REG, 0x00);
-	
+
         retval = fim_serial_setup_bitpos(port, 0);
         if (retval) {
                 printk_err("Setting the default GPIOs\n");
@@ -1557,7 +1557,7 @@ static int fim_serial_resume(struct platform_device *pdev)
 		if (retval)
 			printk_err("Port configuration failed\n");
 	}
-	
+
  exit_resume:
 	return retval;
 }
@@ -1614,9 +1614,9 @@ static int __init fim_serial_init(void)
 #if defined(CONFIG_SERIAL_FIM_CONSOLE)
 	fim_console_ptr->data = &fim_serials->driver;
 #endif
-	
+
 	fim_serials->driver.cons = fim_console_ptr;
-	
+
 	printk_debug("Going to register the driver\n");
 	retval = uart_register_driver(&fim_serials->driver);
 	if (retval)
@@ -1632,10 +1632,10 @@ static int __init fim_serial_init(void)
 
  err_unreg_uart:
 	uart_unregister_driver(&fim_serials->driver);
-	
+
  err_free_mem:
 	kfree(fim_serials);
-	
+
 	return retval;
 }
 

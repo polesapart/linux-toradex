@@ -10,7 +10,7 @@
  *
  *  !Revision:   $Revision: 1.8 $
  *  !Author:     Silvano Najera, Luis Galdos
- *  !Descr:      
+ *  !Descr:
  *  !References:
  */
 
@@ -45,7 +45,7 @@
 
 /* FIM register offsets */
 #define NS92XX_FIM_GEN_CTRL_REG			(0x00)
-	
+
 #define NS92XX_FIM_CTRL0_REG			(0x10)
 #define NS92XX_FIM_CTRL1_REG			(0x14)
 #define NS92XX_FIM_CTRL2_REG			(0x18)

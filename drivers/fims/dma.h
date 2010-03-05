@@ -11,7 +11,7 @@
  *
  *  !Revision:   $Revision: 1.3 $
  *  !Author:     Luis Galdos
- *  !Descr:      
+ *  !Descr:
  *  !References:
  */
 
@@ -36,7 +36,7 @@ inline static void fim_dma_reset_fifo(struct iohub_dma_fifo_t *fifo)
 {
 	if (!fifo)
 		return;
-	
+
 	fifo->next_free = fifo->first;
 	fifo->dma_first = fifo->first;
 	fifo->dma_last = fifo->dma_next = NULL;
@@ -53,7 +53,7 @@ inline int fim_dma_init_fifo(struct iohub_dma_fifo_t *fifo, int length,
 	fifo->length = length;
 	fifo->first = (struct iohub_dma_desc_t *)descs;
 	fifo->last = fifo->first + fifo->length - 1;
-	
+
 	fifo->next_free = fifo->first;
 	fifo->dma_first = fifo->first;
 	fifo->dma_last = fifo->dma_next = NULL;
@@ -61,7 +61,7 @@ inline int fim_dma_init_fifo(struct iohub_dma_fifo_t *fifo, int length,
 }
 
 
-inline static struct iohub_dma_desc_t *fim_dma_get_next(struct iohub_dma_fifo_t *fifo, 
+inline static struct iohub_dma_desc_t *fim_dma_get_next(struct iohub_dma_fifo_t *fifo,
 							struct iohub_dma_desc_t *ptr)
 {
 	if (ptr == fifo->last)
@@ -107,7 +107,7 @@ inline static int fim_dma_frees(struct iohub_dma_fifo_t *fifo)
 	else if (!fifo->dma_last)
 		retval = fifo->last - fifo->dma_next;
 	else if (fifo->dma_next == fifo->dma_first)
-		retval = (fifo->last - fifo->first);    
+		retval = (fifo->last - fifo->first);
 	else if (fifo->dma_next > fifo->dma_first)
 		retval = (fifo->last - fifo->dma_next) +
 			(fifo->dma_first - fifo->first);

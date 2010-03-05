@@ -235,7 +235,7 @@ struct fim_usb_in_frame {
 
 /*
  * Let's use this structure for handling the received FIM-buffers
- * 
+ *
  */
 struct fim_usb_token {
 	unsigned long type:8;
@@ -247,7 +247,7 @@ struct fim_usb_token {
 struct fim_usb_data {
 	u8 sync;     /* Sync token 0x80 */
 	u8 token;    /* DATA0 or DATA1 */
-	u8 data[32]; /* @XXX: Quick and dirty! Need a macro for this value */ 
+	u8 data[32]; /* @XXX: Quick and dirty! Need a macro for this value */
 } __attribute__((packed));
 
 struct fim_usb_ep {
@@ -257,12 +257,12 @@ struct fim_usb_ep {
 	u16 bytes;
 	u16 requested;
 	u8 *data;
-	
+
 	u8 zlp;
 	u8 last_data_token;
 
 	struct fim_usb_port *port;
-	
+
 	struct work_struct tx_work; /* Worker for the IN transfers */
 	struct uart_port *tx_uart;
 	struct semaphore tx_sem;
@@ -367,7 +367,7 @@ static inline struct fim_usb_port *port_from_uart(struct uart_port *uart)
 }
 
 static void fim_usb_enable_pullup(struct fim_usb_port *port)
-{	
+{
 	dbg_func("FIM %i\n", port->index);
 
 	/*
@@ -380,7 +380,7 @@ static void fim_usb_enable_pullup(struct fim_usb_port *port)
 }
 
 static void fim_usb_disable_pullup(struct fim_usb_port *port)
-{	
+{
 	dbg_func("FIM %i\n", port->index);
 
 	/* Disable the pulldown and set the PHY in the suspend mode */
@@ -414,10 +414,10 @@ static int fim_usb_config(struct fim_usb_port *port)
 	struct fim_driver *fim;
 	int offset;
 	struct fim_gpio_t *gpios;
-	
+
 	fim = &port->fim;
 	gpios = port->gpios;
- 
+
         /* Depending on the processor we have different offset */
         if (processor_is_ns9215())
                 offset = 68;
@@ -425,23 +425,23 @@ static int fim_usb_config(struct fim_usb_port *port)
                 offset = 0;
         else
                 return -EINVAL;
-	
+
         /* FIM control registers configuration */
 	fim_set_ctrl_reg(fim, 3, 1 << (gpios[FIM_USB_GPIO_DP].nr - offset));
 	fim_set_ctrl_reg(fim, 4, 1 << (gpios[FIM_USB_GPIO_DM].nr - offset));
 	fim_set_ctrl_reg(fim, 5, 1 << (gpios[FIM_USB_GPIO_RCV].nr - offset));
 	fim_set_ctrl_reg(fim, 6, 1 << (gpios[FIM_USB_GPIO_OE].nr - offset));
-	
+
         /* Calculate timer setting */
         /* FIM init Configuration. XXX port->clk must be MHz */
         clks_per_bit = clk_get_rate(port->clk) / 1000000;
         clks_per_bit = (clks_per_bit * 2) / 3;
         dbg_pr("Clocks Per Bit: 0x%lx [Sysclock %lu]\n", clks_per_bit,
-	       clk_get_rate(port->clk)); 
+	       clk_get_rate(port->clk));
 
         /* Sanity check for clock */
         if ((clks_per_bit > 270) || (clks_per_bit < 0)) {
-                pk_err("Invalid calculated clocks per bit %lu\n", clks_per_bit); 
+                pk_err("Invalid calculated clocks per bit %lu\n", clks_per_bit);
 		return -EINVAL;
         }
 
@@ -463,19 +463,19 @@ static void fim_usb_init_eps(struct fim_usb_port *port)
 	struct fim_usb_ep *ep;
 
 	memset(&port->eps, 0, sizeof(port->eps));
-	
+
 	/* Setup the control EP0 */
 	ep = &port->eps[FIM_USB_NR_EP_CTRL];
 	ep->addr = 0;
 	ep->port = port;
 	ep->nr = FIM_USB_NR_EP_CTRL;
-	
+
 	/* Setup the OUT EP1 */
 	ep = &port->eps[FIM_USB_NR_EP_OUT];
 	ep->addr = FIM_USB_INT_EP_NR;
 	ep->port = port;
 	ep->nr = FIM_USB_NR_EP_OUT;
-	
+
 	/* Setup the IN EP1. Init the worker for the IN transfers too! */
 	ep = &port->eps[FIM_USB_NR_EP_IN];
 	ep->addr = FIM_USB_INT_EP_NR;
@@ -508,7 +508,7 @@ static int fim_usb_reboot_notifier_func(struct notifier_block *this, unsigned lo
 		port = fim_usb_ports[cnt];
 		if (!port)
 			continue;
-		
+
 		fim_usb_disable_pullup(port);
 	}
 
@@ -528,7 +528,7 @@ static void fim_usb_hotplug_work_func(struct work_struct *work)
 	/* Get the status of the main register and the current countdown value */
 	fim_get_ctrl_reg(fim, FIM_USB_MAIN_REG, &reg);
 	fim_get_stat_reg(fim, FIM_USB_ALIVE_COUNT_STAT, &cnt_init);
-	
+
 	/* Set the initial value for the countdown register */
 	fim_set_ctrl_reg(fim, FIM_USB_ALIVE_COUNT_REG, FIM_USB_HOTPLUG_ALIVE_COUNTER);
 
@@ -541,7 +541,7 @@ static void fim_usb_hotplug_work_func(struct work_struct *work)
 
 	/* Reset the flag of the control register */
 	fim_set_ctrl_reg(fim, FIM_USB_MAIN_REG, reg);
-	
+
 	/* Re-trigger the timer function if all looks OK */
 	if (cnt_init != cnt_curr) {
 		port->unplug_detected = 0;
@@ -553,14 +553,14 @@ static void fim_usb_hotplug_work_func(struct work_struct *work)
 		/* Remove the serial port for canceling the UART operations */
 		if (port->uart_created) {
 			struct uart_port *uart;
-			
+
 			uart = &port->uart;
 			uart_remove_one_port(&fim_usb_uart_driver, uart);
 			port->uart_created = 0;
 		}
 
 		fim_usb_restart_fim(port);
-		
+
 		pk_dbg("Keep alive counter expired (init 0x%x | curr 0x%x). Port %i removed\n",
 		       cnt_init, cnt_curr, fim->picnr);
 	}
@@ -614,7 +614,7 @@ static void fim_usb_uart_work_func(struct work_struct *work)
  exit_sched:
 	/* @FIXME: Is this the correct place for our FIM timer loader? */
 	schedule_delayed_work(&port->hotplug_work, 0);
-	
+
  err_add:
 	return;
 }
@@ -635,7 +635,7 @@ static int __fim_usb_ep_send_buffer(struct fim_usb_port *port, void *buffer, int
                 return -EINVAL;
 
         fim = &port->fim;
-	
+
         buf.private = priv;
 	buf.data = buffer;
 	buf.length = len;
@@ -643,13 +643,13 @@ static int __fim_usb_ep_send_buffer(struct fim_usb_port *port, void *buffer, int
 	retval = fim_send_buffer(fim, &buf);
         if (retval) {
 		int level;
-		
+
 		level = fim_tx_buffers_level(&port->fim);
 		pk_dbg("FIM%i send %i bytes failed (err %i, level %i)\n",
 		       fim->picnr, buf.length, retval, level);
 		schedule_work(&port->restart_work);
 	}
-	
+
         return retval;
 }
 
@@ -667,7 +667,7 @@ static inline u16 fim_usb_calc_buffer_crc(const u8 *buffer, unsigned long length
 			crc16 = retval >> (15 - i);
 			bx = crc16 ^ buffer[cnt];
 			retval <<= 1;
-			
+
 			if (bx & (0x1 << i))
 				retval ^= 0x8005;
 		}
@@ -678,7 +678,7 @@ static inline u16 fim_usb_calc_buffer_crc(const u8 *buffer, unsigned long length
 	for (i=0; i < 8; i++)
 		retval |= ((bx & (0x1 << i)) << (15 - (i * 2)) |
 			   (bx & (0x100 << i)) >> (1 + (i * 2)));
-	
+
 	return retval;
 }
 
@@ -694,7 +694,7 @@ static int fim_usb_write_zlp(struct fim_usb_port *port, struct fim_usb_ep *ep, i
 {
 	struct fim_usb_in_frame fin;
 	int level;
-	
+
 	dbg_write("EP%u: Sending ZLP\n", ep->nr);
 
 	level = fim_tx_buffers_level(&port->fim);
@@ -711,7 +711,7 @@ static int fim_usb_write_zlp(struct fim_usb_port *port, struct fim_usb_ep *ep, i
 
 	/* @XXX: Reset this flag depending on the return value of the send buffer function */
 	ep->zlp = 0;
-	
+
 	return __fim_usb_ep_send_buffer(port, &fin, FIM_USB_DATA_OVERHEAD, ep);
 }
 
@@ -729,14 +729,14 @@ static int fim_usb_write_packet(struct fim_usb_port *port, struct fim_usb_ep *ep
 		fim_usb_restart_fim(port);
 		return -EINVAL;
 	}
-		
+
 	val = min(len, (u16)FIM_USB_MAX_PACK_SIZE);
 	ep->bytes = len - val;
 	ep->data = buf + val;
 	ep->requested -= val;
 	dbg_enum("EP%u: Sending %u bytes [%p], pending %u [%p], requested %u\n",
 		 ep->nr, val, buf, ep->bytes, ep->data, ep->requested);
-		
+
 	/*
 	 * The FIM expects that the IN-data is placed in the TX-FIFO.
 	 *
@@ -791,7 +791,7 @@ static struct fim_usb_config_descriptor fim_usb_config_desc2 = {
 	.config = {
 		.bLength =              USB_DT_CONFIG_SIZE,
 		.bDescriptorType =      USB_DT_CONFIG,
-		
+
 		/* compute wTotalLength on the fly */
 		.bNumInterfaces =       1,
 		.bConfigurationValue =  DEV_CONFIG_VALUE,
@@ -849,10 +849,10 @@ static int fim_usb_send_string_descriptor(struct fim_usb_port *port, struct fim_
 
 	ret = -EINVAL;
 	value = le16_to_cpu(ctrl->wValue);
-	
+
 	if (value == 0) {
 		struct usb_string_descriptor desc;
-		
+
 		desc.bLength = sizeof(desc);
 		desc.bDescriptorType = USB_DT_STRING;
 		desc.wData[0] = __constant_cpu_to_le16(0x0409);
@@ -925,7 +925,7 @@ static int fim_usb_handle_ep0_get_descriptor(struct fim_usb_port *port, struct u
 	case USB_DT_STRING:
 
 		ep->last_data_token = USB_TOKEN_DATA0;
-		
+
 		/* According to the spec: by index zero return the table with the supported languages */
 		ret = fim_usb_send_string_descriptor(port, ep, ctrl);
 		break;
@@ -965,7 +965,7 @@ static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctr
 
 		/* @FIXME: Arrgghhh...! Give the FIM some time for sending the ZLP */
 		udelay(1500);
-		
+
 		fim_set_ctrl_reg(&port->fim, FIM_USB_ADDR_REG, addr);
 		dbg_enum("Set address request (%d)\n", addr);
 		break;
@@ -994,7 +994,7 @@ static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctr
 			schedule_work(&port->restart_work);
 			return -ERESTART;
 		}
-		
+
 		value = le16_to_cpu(ctrl->wValue);
 		fim_usb_write_zlp(port, ep, 0);
 		dbg_enum("Set configuration %u request\n", value);
@@ -1015,16 +1015,16 @@ static int fim_usb_handle_ep0_standard(struct fim_usb_port *port, struct usb_ctr
 			pk_err("Invalid clear feature request (idx 0x%x | type 0x%x)\n", idx, type);
 			ret = -EINVAL;
 		}
-		
+
 		break;
-		
+
 	default:
 		pk_err("Unhandled standard request 0x%02x\n", ctrl->bRequest);
 		pk_dump_ctrl_packet(ctrl);
 		/* @FIXME: Send a STALL to the host! */
 		break;
 	}
-	
+
 	return ret;
 }
 
@@ -1034,7 +1034,7 @@ static int fim_usb_handle_ep1_out(struct fim_usb_port *port, u8 *data, int len)
 	int count;
 
 	dbg_uart("FIM%i: Writing %i bytes into UART fifo\n", port->index, len);
-	
+
 	tty = tty_from_port(port);
 	if (!port->uart_created || !tty) {
 
@@ -1052,7 +1052,7 @@ static int fim_usb_handle_ep1_out(struct fim_usb_port *port, u8 *data, int len)
 		if (len == 0xfffe)
 			return 0;
 	}
-	
+
 	tty_insert_flip_string(tty, data, len);
         tty_flip_buffer_push(tty);
 
@@ -1070,7 +1070,7 @@ static int fim_usb_handle_ep0(struct fim_usb_port *port,
 		return -ENODEV;
 
 	windex = le16_to_cpu(pctrl->wIndex);
-	
+
 	switch (pctrl->bRequestType & USB_TYPE_MASK) {
 
 	case USB_TYPE_STANDARD:
@@ -1084,7 +1084,7 @@ static int fim_usb_handle_ep0(struct fim_usb_port *port,
 		       pctrl->wValue, pctrl->wIndex, pctrl->wLength);
 		break;
 	}
-	
+
 	return ret;
 }
 
@@ -1112,7 +1112,7 @@ static void fim_usb_isr(struct fim_driver *driver, int irq, unsigned char code,
 		       unsigned int rx_fifo)
 {
 	struct fim_usb_port *port;
-	
+
         dbg_func("FIM IRQ %i\n", irq);
 	port = port_from_fim(driver);
 
@@ -1146,13 +1146,13 @@ static void fim_usb_tx_isr(struct fim_driver *fim, int irq,
 	ep = &port->eps[FIM_USB_NR_EP_CTRL];
 	if (!ep->addr && ep->bytes) {
 		int sent;
-		
+
 		sent = fim_usb_write_packet(port, ep, ep->data, ep->bytes);
 		if (sent == FIM_USB_MAX_PACK_SIZE && !ep->bytes && ep->requested) {
 			fim_usb_write_zlp(port, ep, 1);
 			dbg_enum("ZLP for big packet (request pending %u)\n", ep->requested);
 		}
-		
+
 		/* @XXX: Should we return at this point? */
 		/* return; */
 	}
@@ -1185,7 +1185,7 @@ static int fim_usb_restart_fim(struct fim_usb_port *port)
 
 	/* Reset the main register */
 	fim_usb_regs_reset(port);
-	
+
 	/* First try to stop the FIM */
 	fim_disable_irq(fim);
 	ret = fim_send_stop(fim);
@@ -1196,16 +1196,16 @@ static int fim_usb_restart_fim(struct fim_usb_port *port)
 
 	fim_dma_stop(&port->fim);
 	fim_dma_start(&port->fim, NULL);
-	
+
         ret = fim_send_start(fim);
         if (ret) {
 		pk_err("Couldn't start the FIM%i\n", fim->picnr);
                 return -EAGAIN;
 	}
-	
+
 	/* Restart the DMA channel when we know that we are safe! */
         fim_enable_irq(fim);
-	
+
 	/* This function resets the address number to zero */
 	fim_usb_init_port(port);
 
@@ -1214,7 +1214,7 @@ static int fim_usb_restart_fim(struct fim_usb_port *port)
 			 FIM_USB_MAIN_START |  FIM_USB_MAIN_NOKEEPALIVE | FIM_USB_MAIN_NOINIRQ);
 
 	fim_usb_enable_pullup(port);
-	
+
 	return ret;
 }
 
@@ -1269,7 +1269,7 @@ static void fim_usb_rx_isr(struct fim_driver *fim, int irq,
 	if (pdata->length == 1) {
 
 		switch (status) {
-		
+
 		case FIM_USB_BUS_RESET:
 			dbg_pr("Bus reset received!\n");
 			fim_usb_bus_reset(port);
@@ -1287,9 +1287,9 @@ static void fim_usb_rx_isr(struct fim_driver *fim, int irq,
 			dbg_pr("Unexpected status 0x%x\n", status);
 			break;
 		}
-		
+
 	} else {
-		
+
 		switch (token->type) {
 
 		case USB_TOKEN_DATA0:
@@ -1297,16 +1297,16 @@ static void fim_usb_rx_isr(struct fim_driver *fim, int irq,
 			dbg_token("DATA%c %u bytes for EP%u\n",
 			       (token->type == USB_TOKEN_DATA0) ? '0' : '1',
 			       pdata->length, port->ep_next_data);
-			
+
 			/* The complete frame contains the sync byte, the CRC and the error */
 			if (port->ep_next_data == 0) {
 
 				/* @XXX: Stupid sanity check for let it be for now */
-				if (pdata->length != FIM_USB_DATA_OVERHEAD && pdata->length != FIM_USB_DATA_TAIL) { 
+				if (pdata->length != FIM_USB_DATA_OVERHEAD && pdata->length != FIM_USB_DATA_TAIL) {
 					pctrl = (struct usb_ctrlrequest *)(pdata->data + 2);
 					fim_usb_handle_ep0(port, pctrl);
 				}
-				
+
 			} else {
 				struct fim_usb_data *fdata;
 				u16 bytes;
@@ -1342,7 +1342,7 @@ static void fim_usb_rx_isr(struct fim_driver *fim, int irq,
 
 			/* Reset the data token of the IN EP81 */
 			ep = &port->eps[FIM_USB_NR_EP_IN];
-			ep->last_data_token = USB_TOKEN_DATA1;			
+			ep->last_data_token = USB_TOKEN_DATA1;
 			break;
 
 			/* Here the tokens that only generate noise */
@@ -1358,7 +1358,7 @@ static int fim_usb_unregister_port(struct fim_usb_port *port)
 	int cnt, ret;
 	struct fim_driver *fim;
 	struct uart_port *uart;
-	
+
 	if (!port || !port->reg)
 		return -ENODEV;
 
@@ -1371,7 +1371,7 @@ static int fim_usb_unregister_port(struct fim_usb_port *port)
 
 	/* Disable the FIM from the connected host */
 	fim_usb_disable_pullup(port);
-	
+
 	ret = fim_unregister_driver(fim);
 	if (ret)
 		goto exit_unreg;
@@ -1383,7 +1383,7 @@ static int fim_usb_unregister_port(struct fim_usb_port *port)
 		uart_remove_one_port(&fim_usb_uart_driver, uart);
 		port->uart_created = 0;
 	}
-	
+
 	/* Free the requested GPIO */
 	for (cnt = 0; cnt < FIM_USB_MAX_GPIOS; cnt++) {
 		dbg_pr("Freeing GPIO %i\n", port->gpios[cnt].nr);
@@ -1402,7 +1402,7 @@ static int fim_usb_unregister_port(struct fim_usb_port *port)
 	fim_usb_ports[fim->picnr] = NULL;
 	kfree(port);
 	ret = 0;
-	
+
  exit_unreg:
 	return ret;
 }
@@ -1512,14 +1512,14 @@ static void fim_usb_uart_tx_work_func(struct work_struct *work)
 	uart = ep->tx_uart;
 	xmit  = &uart->info->xmit;
 	tail = xmit->tail;
-	tx = uart->icount.tx;	
+	tx = uart->icount.tx;
 	pending = uart_circ_chars_pending(xmit);
 	pos = ret = 0;
 
 	while (pending--) {
 
 		buf[pos++] = xmit->buf[tail];
-		
+
 		if (pos == FIM_USB_MAX_PACK_SIZE || pending == 0) {
 
 			/*
@@ -1530,9 +1530,9 @@ static void fim_usb_uart_tx_work_func(struct work_struct *work)
 			while (fim_tx_buffers_level(&port->fim)) {
 				schedule_timeout_interruptible(HZ / 1000);
 				if (signal_pending(current))
-					goto exit_tx_worker;				
+					goto exit_tx_worker;
 			}
-			
+
 			/* Send the data to the FIM */
 			dbg_uart("EP%02x Sending %lu bytes | remaining %lu\n", ep->addr, pos, pending);
 			ret = fim_usb_write_packet(port, ep, buf, pos);
@@ -1541,7 +1541,7 @@ static void fim_usb_uart_tx_work_func(struct work_struct *work)
 				goto exit_tx_worker;
 			}
 		}
-		
+
 		tail = (tail + 1) & (UART_XMIT_SIZE - 1);
 		tx++;
 
@@ -1563,12 +1563,12 @@ static void fim_usb_uart_tx_work_func(struct work_struct *work)
 		while (fim_tx_buffers_level(&port->fim)) {
 			schedule_timeout_interruptible(HZ / 1000);
 			if (signal_pending(current))
-				goto exit_tx_worker;			
+				goto exit_tx_worker;
 		}
-		
+
 		fim_usb_write_zlp(port, ep, 0);
 	}
-	
+
 	/*
 	 * Tell the higher layer that we can send more data
 	 * IMPORTANT: We need to check if TX was stopped before calling the wakeup cause
@@ -1599,10 +1599,10 @@ static void fim_usb_uart_start_tx(struct uart_port *uart)
 	 */
 	ep = &port->eps[FIM_USB_NR_EP_IN];
 	ep->tx_uart = uart;
-	
+
 	xmit  = &uart->info->xmit;
 	pending = uart_circ_chars_pending(xmit);
-	
+
 	dbg_uart("Scheduling TX worker | %lu bytes\n", pending);
 	schedule_work(&ep->tx_work);
 }
@@ -1645,7 +1645,7 @@ static void fim_usb_uart_shutdown(struct uart_port *uart)
 {
 	struct fim_usb_port *port;
 	struct fim_usb_ep *ep;
-	
+
 	port = port_from_uart(uart);
 	ep = &port->eps[FIM_USB_NR_EP_IN];
 
@@ -1682,7 +1682,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 	port = kzalloc(sizeof(* port), GFP_KERNEL);
 	if (!port)
 		return -ENOMEM;
-	
+
 	/* Get a reference to the SYS clock for setting CLK rate */
 	ret = IS_ERR(port->clk = clk_get(port->fim.dev, "systemclock"));
 	if (ret) {
@@ -1697,13 +1697,13 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 			break;
 		if (gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
-		
+
 		dbg_pr("Requesting the GPIO %i (Function %i)\n",
 		       gpios[cnt].nr, gpios[cnt].func);
 		ret = gpio_request(gpios[cnt].nr, FIM_DRIVER_NAME);
 		if (!ret) {
 			int dir, pullup;
-			
+
 			/*
 			 * According to the documentation, the pins ENUM and SUSPEND
 			 * must be controlled by the driver (they are not by the
@@ -1716,7 +1716,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 				dir = NS921X_GPIO_INPUT;
 				pullup = NS921X_GPIO_ENABLE_PULLUP;
 			}
-			
+
 			gpio_configure_ns921x_unlocked(gpios[cnt].nr,
 						       dir,
 						       NS921X_GPIO_DONT_INVERT,
@@ -1760,7 +1760,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 
 	port->dev = dev;
 	memcpy(port->gpios, gpios, sizeof(port->gpios));
-	
+
 	port->reg = 1;
 	dev_set_drvdata(dev, port);
 
@@ -1788,16 +1788,16 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
         pk_dbg("FIM%d running [fw rev 0x%02x]\n", picnr, fwver);
 
 	fim_usb_ports[picnr] = port;
-	
+
 	/* This will enable the start of the FIM in the firmware */
 	fim_set_ctrl_reg(&port->fim, FIM_USB_MAIN_REG,
 			 FIM_USB_MAIN_START |  FIM_USB_MAIN_NOKEEPALIVE | FIM_USB_MAIN_NOINIRQ);
-	fim_usb_enable_pullup(port);	
+	fim_usb_enable_pullup(port);
 	return 0;
 
  err_unreg_fim:
 	fim_unregister_driver(&port->fim);
-	
+
  err_free_gpios:
 	for (cnt = 0; cnt < FIM_USB_MAX_GPIOS; cnt++) {
 
@@ -1806,7 +1806,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 
 		if (gpios[cnt].nr == FIM_LAST_GPIO)
 			break;
-		
+
 		gpio_free(gpios[cnt].nr);
 	}
 
@@ -1826,7 +1826,7 @@ static int __init fim_usb_probe(struct platform_device *pdev)
 	struct fim_gpio_t gpios[FIM_USB_MAX_GPIOS];
 
 	dbg_func("New device with ID %i\n", pdev->id);
-	
+
 	pdata = pdev->dev.platform_data;
 	if (!pdata)
 		return -ENXIO;
@@ -1840,7 +1840,7 @@ static int __init fim_usb_probe(struct platform_device *pdev)
 #else
                 pk_err("Invalid FIM number '%i' in platform data\n", pdata->fim_nr);
 #endif
-		
+
                 return -ENODEV;
         }
 
@@ -1861,7 +1861,7 @@ static int __init fim_usb_probe(struct platform_device *pdev)
 	gpios[FIM_USB_GPIO_SPND].func	= pdata->spnd_gpio_func;
 
 	dbg_pr("Pins: DP %d | DM %d | RCV %d | OE %d | ENUM %d | SPND %d\n",
-	       gpios[0].nr, gpios[1].nr, gpios[2].nr, 
+	       gpios[0].nr, gpios[1].nr, gpios[2].nr,
 	       gpios[3].nr, gpios[4].nr, gpios[5].nr );
 
 	return fim_usb_register_port(&pdev->dev, pdata->fim_nr, gpios);
@@ -1880,7 +1880,7 @@ static int __exit fim_usb_remove(struct platform_device *pdev)
 	port = dev_get_drvdata(&pdev->dev);
 	if (!port)
 		return -ENXIO;
-	
+
 	retval = fim_usb_unregister_port(port);
 	if (retval)
 		goto exit_remove;
@@ -1904,7 +1904,7 @@ static int fim_usb_suspend(struct platform_device *pdev, pm_message_t state)
 		return -ENXIO;
 
 	cancel_delayed_work_sync(&port->hotplug_work);
-	
+
 	/* Disable the device and stop the FIM */
 	fim_usb_disable_pullup(port);
 
@@ -1913,7 +1913,7 @@ static int fim_usb_suspend(struct platform_device *pdev, pm_message_t state)
 	ret = fim_send_stop(fim);
 	if (ret)
 		pk_err("Couldn't stop the FIM %i\n", fim->picnr);
-	
+
 	return ret;
 }
 
@@ -1948,7 +1948,7 @@ static int __init fim_usb_init(void)
 	int cnt, pos, ret, pics;
 	struct fim_usb_string *pstr;
 	u16 *pdata;
-	
+
         /* Check for the passed number parameter */
         if (fim_check_numbers_param(fims_number)) {
                 pk_err("Invalid number '%i' of FIMs to handle\n", fims_number);
@@ -1981,7 +1981,7 @@ static int __init fim_usb_init(void)
 		pk_err("Reboot notifier register failed, %i\n", ret);
 		goto err_exit_init;
 	}
-		
+
 	/* Register the internal UART driver */
         /* Get the number of maximal available FIMs */
         fim_usb_uart_driver.owner = THIS_MODULE;
@@ -1997,13 +1997,13 @@ static int __init fim_usb_init(void)
 		goto err_unreg_uart;
 
 	return 0;
-	
+
  err_unreg_uart:
 	uart_unregister_driver(&fim_usb_uart_driver);
 
  err_unreg_noti:
 	unregister_reboot_notifier(&fim_usb_reboot_notifier);
-	
+
  err_exit_init:
 	kfree(fim_usb_ports);
 	return ret;

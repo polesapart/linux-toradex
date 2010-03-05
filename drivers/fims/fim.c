@@ -11,7 +11,7 @@
  *
  *  !Revision:   $Revision: 1.45 $
  *  !Author:     Silvano Najera, Luis Galdos
- *  !Descr:      
+ *  !Descr:
  *  !References:
  */
 
@@ -162,7 +162,7 @@ static ssize_t fim_sysfs_attr_read(struct kobject *kobj, struct bin_attribute *a
 
 	else if (pic->driver && !strcmp(bin->name, "module"))
 		size = snprintf(buffer, PAGE_SIZE, "%s", pic->driver->driver.name);
-	
+
 	else if (!strcmp(bin->name, "running"))
 		size = snprintf(buffer, PAGE_SIZE, "%i", pic_is_running(pic));
 
@@ -202,7 +202,7 @@ static ssize_t fim_sysfs_attr_read(struct kobject *kobj, struct bin_attribute *a
 
 	else
 		size = 0;
-	
+
 	/* Only allows a single read for this binary attributes */
 	if (off || count < size)
 		return 0;
@@ -241,7 +241,7 @@ static void pic_rx_tasklet_func(unsigned long data)
 	pic = (struct pic_t *)data;
 	if (!pic || !pic->driver)
 		return;
-		
+
 	driver = pic->driver;
 	fifo = &pic->rx_fifo;
 
@@ -263,7 +263,7 @@ static void pic_rx_tasklet_func(unsigned long data)
 			buffer.length = desc->length;
 			pic->driver->dma_rx_isr(driver, pic->irq, &buffer);
 		}
-		
+
 		/* And free the DMA-descriptor for a next transfer */
 		desc->length = pic->dma_cfg.rxsz;
 		desc->control &= ~(IOHUB_DMA_DESC_CTRL_FULL |
@@ -279,11 +279,11 @@ static void pic_rx_tasklet_func(unsigned long data)
 
 		if (pic->driver->dma_error_isr)
 			pic->driver->dma_error_isr(pic->driver, fifo->rx_error, 0);
-		
+
 		/* fim_dma_reset_fifo(fifo); */
 		fifo->rx_error = 0;
 	}
-	
+
 	spin_unlock(&pic->rx_lock);
 }
 
@@ -294,7 +294,7 @@ inline static struct pic_t *get_pic_by_index(int index)
 	if (index < FIM_MIN_PIC_INDEX || index > FIM_MAX_PIC_INDEX)
 		return NULL;
 
-	
+
 	return &the_fims->pics[index];
 }
 
@@ -312,7 +312,7 @@ static int pic_get_ctrl_reg(struct pic_t *pic, int reg, unsigned int *val)
 {
 	if (NS92XX_FIM_CTRL_REG_CHECK(reg))
 		return -EINVAL;
-	
+
 	*val = readl(pic->reg_addr + NS92XX_FIM_CTRL_REG(reg));
 	return 0;
 }
@@ -322,7 +322,7 @@ static void pic_set_ctrl_reg(struct pic_t *pic, int reg, unsigned int val)
 {
 	if (NS92XX_FIM_CTRL_REG_CHECK(reg))
 		return;
-	
+
 	writel(val, pic->reg_addr + NS92XX_FIM_CTRL_REG(reg));
 }
 
@@ -330,7 +330,7 @@ static void pic_set_ctrl_reg(struct pic_t *pic, int reg, unsigned int val)
 static int pic_is_running(struct pic_t *pic)
 {
 	unsigned int regval;
-	
+
 	regval = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 	if (regval & NS92XX_FIM_GEN_CTRL_PROGMEM)
 		return 1;
@@ -341,7 +341,7 @@ static int pic_is_running(struct pic_t *pic)
 int fim_is_running(struct fim_driver *driver)
 {
 	struct pic_t *pic;
-	
+
 	if (!(pic = get_pic_from_driver(driver)))
 		return -ENODEV;
 
@@ -364,7 +364,7 @@ int fim_tx_buffers_room(struct fim_driver *driver)
 	int retval, cnt;
 	struct pic_dma_desc_t *pic_desc;
 	struct pic_t *pic;
-	
+
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return -ENODEV;
 
@@ -421,7 +421,7 @@ struct fim_buffer_t *fim_alloc_buffer(struct fim_driver *driver, int length,
 
 	if (!driver || length < 0)
 		return NULL;
-	
+
 	if (!(retval = kmalloc(sizeof(struct fim_buffer_t) + length , gfp_flags)))
 		return NULL;
 
@@ -441,8 +441,8 @@ void fim_free_buffer(struct fim_driver *driver, struct fim_buffer_t *buffer)
 {
 	if (!driver || !buffer)
 		return;
-	
-	kfree(buffer);	
+
+	kfree(buffer);
 }
 
 
@@ -483,7 +483,7 @@ int fim_send_buffer(struct fim_driver *driver, const struct fim_buffer_t *bufdes
 	int backup_len;
 	int count, retval;
 	unsigned char *buffer;
-	
+
 	if (!bufdesc || !driver || (bufdesc->length <= 0) || !bufdesc->data ||
 	    !bufdesc->private)
 		return -EINVAL;
@@ -511,7 +511,7 @@ int fim_send_buffer(struct fim_driver *driver, const struct fim_buffer_t *bufdes
 
 		atomic_set(&pic_desc->tasked, 1);
 		pic_descs[pos++] = pic_desc;
-		
+
 		last_len = len;
 		len -= (int)pic_desc->length;
 		if (len <= 0) {
@@ -553,7 +553,7 @@ int fim_send_buffer(struct fim_driver *driver, const struct fim_buffer_t *bufdes
 	for (cnt=0; pic_descs[cnt] && cnt < pic->tx_fifo.length; cnt++)
 		atomic_dec(&pic_descs[cnt]->tasked);
 	retval = -ENOMEM;
-	
+
  exit_ret:
 	spin_unlock(&pic->tx_lock);
 	return retval;
@@ -567,10 +567,10 @@ void fim_flush_rx(struct fim_driver *driver)
 	struct pic_t *pic;
 	struct iohub_dma_desc_t *desc;
 	struct iohub_dma_fifo_t *fifo;
-	
+
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return;
-	
+
 	writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 	writel(IOHUB_RX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 	for (cnt=0; cnt < pic->rx_fifo.length; cnt++) {
@@ -596,12 +596,12 @@ void fim_flush_rx(struct fim_driver *driver)
 void fim_flush_tx(struct fim_driver *driver)
 {
 	struct pic_t *pic;
-	
+
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return;
 
 	pic_reset_tx_fifo(pic);
-	
+
 	writel(IOHUB_RX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 }
 
@@ -619,12 +619,12 @@ static int fim_start_tx_dma(struct pic_t *pic)
 	struct iohub_dma_fifo_t *fifo;
 	int retval = 0;
 	unsigned int channel_index, fifo_index;
-	
+
 	if (fim_dma_is_empty(&pic->tx_fifo)) {
 		printk(KERN_DEBUG "Nothing to do, the TX-FIFO is empty.\n");
 		return 0;
 	}
-		
+
 	/* @XXX: Need to protect this section */
 	if (atomic_read(&pic->tx_tasked)) {
 		printk_debug("The DMA-Controller seems to be tasked.\n");
@@ -633,7 +633,7 @@ static int fim_start_tx_dma(struct pic_t *pic)
 
 	/* Lock the next DMA-transfer and get the internal data */
 	atomic_set(&pic->tx_tasked, 1);
-	
+
 	spin_lock(&pic->tx_lock);
 	fifo = &pic->tx_fifo;
 	fifo->dma_last = fifo->dma_next;
@@ -653,14 +653,14 @@ static int fim_start_tx_dma(struct pic_t *pic)
 		/* IMPORTANT: Enable the interrupt only for the last buffer! */
 		desc->control = IOHUB_DMA_DESC_CTRL_FULL;
 		if (desc == fifo->last)
-			desc->control |= IOHUB_DMA_DESC_CTRL_WRAP;		
+			desc->control |= IOHUB_DMA_DESC_CTRL_WRAP;
 		if (desc == fifo->dma_last) {
 			desc->control |= (IOHUB_DMA_DESC_CTRL_INT |
 					  IOHUB_DMA_DESC_CTRL_LAST);
 			break;
 		}
 	}
-		
+
 	/* Get the index of the first FIFO descriptor for the DMA-controller */
 	fifo_index = fim_dma_get_index(&pic->tx_fifo, fifo->dma_first);
 	txctrl = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
@@ -672,7 +672,7 @@ static int fim_start_tx_dma(struct pic_t *pic)
 	 * an error, then normally they must have the same value.
 	 * @FIXME: Workaround for this problem, or remove the paranoic sanity check
 	 */
-	channel_index = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG) & 0x3FF; 
+	channel_index = readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG) & 0x3FF;
 	if (fifo_index && (fifo_index != channel_index)) {
 		printk_warn("FIFO index 0x%X mismatch DMA index 0x%X\n",
 		       fifo_index, channel_index);
@@ -693,7 +693,7 @@ static int fim_start_tx_dma(struct pic_t *pic)
 		atomic_set(&pic->tx_tasked, 0);
 
  exit_unlock:
-	spin_unlock(&pic->tx_lock);	
+	spin_unlock(&pic->tx_lock);
 	return retval;
 }
 
@@ -712,7 +712,7 @@ int fim_get_exp_reg(struct fim_driver *driver, int nr, unsigned int *value)
 		return -EINVAL;
 
 	*value = readl(pic->reg_addr + NS92XX_FIM_EXP_REG(nr));
-	
+
 	return 0;
 }
 
@@ -723,12 +723,12 @@ static void isr_from_pic(struct pic_t *pic, int irqnr)
 {
 	unsigned int status;
 	struct fim_driver *driver;
-	unsigned int rx_fifo;	
+	unsigned int rx_fifo;
 	unsigned int timeout;
-	
+
 	status = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 	rx_fifo = readl(pic->iohub_addr + IOHUB_RX_DIR_FIFO_REG);
-	
+
 	driver = pic->driver;
 	if (driver && driver->fim_isr)
 		driver->fim_isr(driver, pic->irq, status & 0xFF, rx_fifo);
@@ -750,7 +750,7 @@ static void isr_from_pic(struct pic_t *pic, int irqnr)
 		printk_err("FIM %i interrupt handshake timeout.\n", pic->index);
 		return;
 	}
-	
+
 	writel(status & ~NS92XX_FIM_GEN_CTRL_INTACKWR, pic->reg_addr +
 	       NS92XX_FIM_GEN_CTRL_REG);
 }
@@ -766,7 +766,7 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 	struct pic_dma_desc_t *pic_desc;
 	struct fim_driver *driver;
 	struct fim_buffer_t buffer= { 0, NULL, NULL };
-	
+
 	fifo = &pic->tx_fifo;
 	ifs = readl(pic->iohub_addr + IOHUB_IFS_REG);
 	if (ifs & IOHUB_IFS_TXNRIP) {
@@ -798,24 +798,24 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 
 		/* Reset the index of the TX-channel to zero */
 		writel(IOHUB_RX_DMA_CTRL_CA | IOHUB_TX_DMA_CTRL_INDEXEN,
-		       pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);		
+		       pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 		writel(0x00, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 
 		/* Reset the atomic variables for enabling the TX-requests */
 		atomic_set(&pic->tx_aborted, 0);
 		atomic_set(&pic->tx_tasked, 0);
-		spin_unlock(&pic->tx_lock);		
+		spin_unlock(&pic->tx_lock);
 		return;
 	}
 
-	
+
 	/*
 	 * If no NC interrupt pending then return immediately.
 	 * @FIXME: Is possible that a driver is waiting for the TXNCIP on this case?
 	 */
 	if(!(ifs & IOHUB_IFS_TXNCIP))
 		return;
-	
+
 	/* Now free the allocated PIC-DMA descriptors */
 	desc = fifo->dma_first;
 	driver = pic->driver;
@@ -845,7 +845,7 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 	/* Now give the control to the driver's callback function */
 	if (driver->dma_tx_isr)
 		driver->dma_tx_isr(driver, pic->irq, &buffer);
-	
+
 	/* Free the DMA-controller */
 	fifo->dma_first = fim_dma_get_next(fifo, fifo->dma_last);
 	atomic_set(&pic->tx_tasked, 0);
@@ -853,7 +853,7 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 	/* Check if another descriptors are waiting in the FIFO */
 	if (fifo->dma_next != fifo->dma_last)
 		fim_start_tx_dma(pic);
-	
+
 }
 
 
@@ -869,11 +869,11 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 
 	/* Get the selected verbosity */
 	verbose = (pic->driver) ? (pic->driver->verbose) : (0);
-	
+
 	/* If we have an error, then always restart the DMA-channel */
 	ifs = readl(pic->iohub_addr + IOHUB_IFS_REG);
 	error = 0;
-	
+
 	if (ifs & IOHUB_IFS_RXNRIP) {
 		ictrl = readl(pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 		rxctrl = readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
@@ -913,7 +913,7 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	writel(rxctrl, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 	writel(rxctrl | IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 #endif
-	
+
 	/* Schedule the task which will free the RX-DMA buffer descriptors */
 	tasklet_hi_schedule(&pic->rx_tasklet);
 }
@@ -935,7 +935,7 @@ static irqreturn_t pic_irq(int irq, void *tpic)
 		isr_dma_tx(pic, irq);
 	if (ifs & IOHUB_IFS_DMA_RX)
 		isr_dma_rx(pic, irq);
-	
+
 	writel(ifs, pic->iohub_addr + IOHUB_IFS_REG);
 	spin_unlock_irqrestore(&pic->lock, flags);
 	return IRQ_HANDLED;
@@ -946,7 +946,7 @@ static irqreturn_t pic_irq(int irq, void *tpic)
 int fim_enable_irq(struct fim_driver *driver)
 {
 	struct pic_t *pic;
-	
+
 	if (!driver)
 		return -EINVAL;
 
@@ -966,7 +966,7 @@ int fim_enable_irq(struct fim_driver *driver)
 int fim_disable_irq(struct fim_driver *driver)
 {
 	struct pic_t *pic;
-	
+
 	if (!driver)
 		return -EINVAL;
 
@@ -994,7 +994,7 @@ int fim_download_firmware(struct fim_driver *driver)
 	const struct firmware *fw;
 	const unsigned char *fwbuf;
 	unsigned int txctrl, rxctrl;
-	
+
 	if (!(pic = get_pic_from_driver(driver)))
 		return -EINVAL;
 
@@ -1043,7 +1043,7 @@ int fim_download_firmware(struct fim_driver *driver)
 	writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 	writel(rxctrl, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 	spin_unlock(&pic->tx_lock);
-	
+
 	/* Release the obtained data from the firmware-subsystem */
 	if (driver->fw_name)
 		release_firmware(fw);
@@ -1074,7 +1074,7 @@ int fim_register_driver(struct fim_driver *driver)
 		printk_err("PIC %i already requested.\n", pic->index);
 		return -EBUSY;
 	}
-	
+
         /* Lock the PIC request */
 	PIC_LOCK_REQUEST(pic);
 
@@ -1134,7 +1134,7 @@ int fim_register_driver(struct fim_driver *driver)
 			   driver->driver.name, pic->index);
 		goto goto_stop_pic;
 	}
-	
+
 	/*
 	 * Enable the tasklet before requesting the IRQ, then in some cases the
 	 * FIM sends an interrupt before its initialization through the FIM-driver.
@@ -1156,18 +1156,18 @@ int fim_register_driver(struct fim_driver *driver)
 	atomic_set(&pic->irq_enabled, 0);
 	printk_info("FIM%i registered for driver '%s' [IRQ %i]\n",
 		    pic->index, driver->driver.name, pic->irq);
-	
+
 	return 0;
 
  exit_kill_tasklet:
 	tasklet_kill(&pic->rx_tasklet);
-	
+
  goto_stop_pic:
 	pic_stop_and_reset(pic);
 
  exit_free_pic:
 	PIC_FREE_REQUEST(pic);
-	
+
 	return retval;
 }
 
@@ -1176,7 +1176,7 @@ int fim_unregister_driver(struct fim_driver *driver)
 {
 	int ret;
 	struct pic_t *pic;
-	
+
 	if (!driver)
 		return -EINVAL;
 
@@ -1191,7 +1191,7 @@ int fim_unregister_driver(struct fim_driver *driver)
 	ret = pic_stop_and_reset(pic);
 	if (ret)
 		printk_err("Couldn't stop the PIC %i\n", pic->index);
-	
+
 	fim_disable_irq(pic->driver);
 
 	/* Free the requested IRQ */
@@ -1201,7 +1201,7 @@ int fim_unregister_driver(struct fim_driver *driver)
 	/* Free the DMA-resources */
 	tasklet_kill(&pic->rx_tasklet);
 	pic_dma_stop(pic);
-	
+
 	/* And free the driver field */
 	pic->driver = NULL;
 	PIC_FREE_REQUEST(pic);
@@ -1244,7 +1244,7 @@ void fim_free_pic(struct pic_t *pic)
 
 	PIC_FREE_REQUEST(pic);
 }
-	
+
 
 /*
  * This function can be used for downloading a firmware to the PIC.
@@ -1259,15 +1259,15 @@ static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer)
 	unsigned int status;
 	struct fim_program_t *program = (struct fim_program_t *)buffer;
 	int offset;
-	
+
 	if (!program || !pic)
 		return -EINVAL;
-	
+
 	if (!(FORMAT_TYPE_VALID(program->format)))
 		return -EINVAL;
 
 	printk_debug("Starting the download of the PIC firmware.\n");
-	
+
 	/* Check if the PIC is running, before starting the firmware update */
 	if (pic_is_running(pic)) {
 		printk_err("The PIC %i is running. Aborting the download.\n",
@@ -1312,7 +1312,7 @@ static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer)
 
 	status = readl(pic->hwa_addr + NS92XX_FIM_HWA_GEN_CONF_REG);
 	writel(mode | status, pic->hwa_addr + NS92XX_FIM_HWA_GEN_CONF_REG);
-	
+
 	/* Update the HW assist config registers */
 	for (offset = 0; offset < FIM_NUM_HWA_CONF_REGS; offset++) {
 		status = program->hwa_cfg[offset];
@@ -1342,14 +1342,14 @@ static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer)
 static int pic_start_at_zero(struct pic_t *pic)
 {
 	unsigned int regval;
-	
+
 	if (!pic)
 		return -EINVAL;
 	if (pic->index < 0)
 		return -ENODEV;
 
 	printk_debug("Starting the PIC %i at zero.\n", pic->index);
-	
+
 	regval = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 	writel(regval | NS92XX_FIM_GEN_CTRL_START_PIC, pic->reg_addr +
 	       NS92XX_FIM_GEN_CTRL_REG);
@@ -1359,7 +1359,7 @@ static int pic_start_at_zero(struct pic_t *pic)
 		printk_err("Unable to start the PIC %i\n", pic->index);
 		return -EAGAIN;
 	}
-	
+
 	return 0;
 }
 
@@ -1368,18 +1368,18 @@ static int pic_stop_and_reset(struct pic_t *pic)
 {
 	unsigned int regval;
 	int retval;
-	
+
 	if (!pic)
 		return -EINVAL;
 
 	if (pic_is_running(pic))
 		printk_debug("The PIC %i is running, need to stop it.\n", pic->index);
-	
+
 	regval = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 
 	/* Clear the interrupt flags too! */
 	regval &= ~NS92XX_FIM_INT_MASK(0xff);
-	
+
 	writel(regval & NS92XX_FIM_GEN_CTRL_STOP_PIC,
 	       pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 
@@ -1391,7 +1391,7 @@ static int pic_stop_and_reset(struct pic_t *pic)
 
 	/* Reset the HWA generial register too */
 	writel(0x00, pic->hwa_addr + NS92XX_FIM_HWA_GEN_CONF_REG);
-	
+
 	return retval;
 }
 
@@ -1438,7 +1438,7 @@ int fim_send_reset(struct fim_driver *driver)
 
 		printk_warn("Stopping FIM %i with a full DMA buffer!\n",
 			    pic->index);
-		fim_dma_reset_fifo(fifo);			
+		fim_dma_reset_fifo(fifo);
 		txctrl = IOHUB_TX_DMA_CTRL_INDEXEN | IOHUB_TX_DMA_CTRL_INDEX(0);
 		writel(txctrl, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 	}
@@ -1459,7 +1459,7 @@ int fim_send_reset(struct fim_driver *driver)
 	/* Free the internal resources */
 	atomic_set(&pic->tx_tasked, 0);
 	atomic_set(&pic->tx_aborted, 0);
-	
+
 	fim_send_stop(driver);
 	fim_send_start(driver);
 
@@ -1470,7 +1470,7 @@ int fim_send_reset(struct fim_driver *driver)
 int fim_send_start(struct fim_driver *driver)
 {
 	ulong reg;
-	
+
 	struct pic_t *pic;
 	if (!(pic = get_pic_by_index(driver->picnr)))
 		return -EINVAL;
@@ -1481,7 +1481,7 @@ int fim_send_start(struct fim_driver *driver)
 
 	reg = readl(SYS_RESET);
 	writel(reg | (1 << (pic->index + FIM0_SHIFT)), SYS_RESET);
-	
+
 	return pic_start_at_zero(pic);
 }
 
@@ -1498,7 +1498,7 @@ int fim_send_stop(struct fim_driver *driver)
 
 	/* Clear the interrupt flags too! */
 	reg &= ~NS92XX_FIM_INT_MASK(0xff);
-	
+
 	writel(reg & ~NS92XX_FIM_GEN_CTRL_START_PIC,
 	       pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 
@@ -1513,7 +1513,7 @@ int fim_send_stop(struct fim_driver *driver)
 	writel(reg & ~(1 << (pic->index + FIM0_SHIFT)), SYS_CLOCK);
 	reg = readl(SYS_RESET);
 	writel(reg & ~(1 << (pic->index + FIM0_SHIFT)), SYS_RESET);
-	
+
 	return ret;
 }
 
@@ -1547,13 +1547,13 @@ void fim_set_ctrl_reg(struct fim_driver *driver, int reg, unsigned int val)
 int fim_get_ctrl_reg(struct fim_driver *driver, int reg, unsigned int *val)
 {
 	struct pic_t *pic;
-	
+
 	if (!(pic = get_pic_from_driver(driver)) || !val)
 		return -EINVAL;
 
 	if (NS92XX_FIM_CTRL_REG_CHECK(reg))
 		return -EINVAL;
-	
+
 	*val = readl(pic->reg_addr + NS92XX_FIM_CTRL_REG(reg));
 	return 0;
 }
@@ -1563,13 +1563,13 @@ int fim_get_ctrl_reg(struct fim_driver *driver, int reg, unsigned int *val)
 int fim_get_stat_reg(struct fim_driver *driver, int reg, unsigned int *val)
 {
 	struct pic_t *pic;
-	
+
 	if (!(pic = get_pic_from_driver(driver)) || !val)
 		return -EINVAL;
 
 	if (NS92XX_FIM_STAT_REG_CHECK(reg))
 		return -EINVAL;
-	
+
 	*val = readl(pic->reg_addr + NS92XX_FIM_STAT_REG(reg));
 	return 0;
 }
@@ -1581,7 +1581,7 @@ static int pic_send_interrupt(struct pic_t *pic, u32 code)
 {
 	unsigned int stopcnt;
 	u32 status;
-	
+
 	if (!pic || !code || (code & ~0x7f))
 		return -EINVAL;
 
@@ -1594,7 +1594,7 @@ static int pic_send_interrupt(struct pic_t *pic, u32 code)
 	code = NS92XX_FIM_INT_MASK(code);
 	status = readl(pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
 	writel(status | code, pic->reg_addr + NS92XX_FIM_GEN_CTRL_REG);
-	
+
 	/* This loop is perhaps problematic, exit with a timeout */
 	stopcnt = 0xFFFF;
 	do {
@@ -1621,7 +1621,7 @@ static int pic_send_interrupt(struct pic_t *pic, u32 code)
 		printk_err("Timeout by the second RDACK from the PIC %i\n", pic->index);
 		return -EINVAL;
 	}
-	
+
 	return 0;
 }
 
@@ -1633,9 +1633,9 @@ static int pic_config_output_clock_divisor(struct pic_t *pic,
 	int div;
 	int clkd;
 	unsigned int val;
-	
+
 	if (!pic || !program) return -EINVAL;
-	
+
 	div = program->clkdiv;
 	switch (div) {
 	case FIM_CLK_DIV_2:
@@ -1684,7 +1684,7 @@ static int fim_probe(struct device *dev)
 {
 	int i, cnt, retval;
 	struct pic_t *pic;
-	
+
 	if (!dev)
 		return -EINVAL;
 
@@ -1699,7 +1699,7 @@ static int fim_probe(struct device *dev)
 	}
 
 	i = pic->index;
-	pic->dev = dev;	
+	pic->dev = dev;
 	pic->reg_addr = ioremap(NS92XX_FIM_REG_BASE_PA + i*NS92XX_FIM_REG_OFFSET,
 				NS92XX_FIM_REG_SIZE);
 	pic->instr_addr = ioremap(NS92XX_FIM_INSTR_BASE_PA + i*NS92XX_FIM_INSTR_OFFSET,
@@ -1715,9 +1715,9 @@ static int fim_probe(struct device *dev)
 		retval = -EAGAIN;
 		goto exit_unmap;
 	}
-	
+
 	spin_lock_init(&pic->lock);
-	
+
 	/* Create the file attributes under the sysfs */
 	retval = 0;
 	for (cnt=0; cnt < ARRAY_SIZE(fim_sysfs_attrs); cnt++) {
@@ -1740,15 +1740,15 @@ static int fim_probe(struct device *dev)
 	pic->send_interrupt = pic_send_interrupt;
 	pic->ack_interrupt = isr_from_pic;
 	return 0;
-	
+
  exit_unmap:
 	if (pic->reg_addr) iounmap(pic->reg_addr);
 	if (pic->instr_addr) iounmap(pic->instr_addr);
 	if (pic->hwa_addr) iounmap(pic->hwa_addr);
 	if (pic->iohub_addr) iounmap(pic->iohub_addr);
 	pic->reg_addr = pic->instr_addr = pic->hwa_addr = pic->iohub_addr = NULL;
-	
-	
+
+
 	return retval;
 }
 
@@ -1762,7 +1762,7 @@ static int fim_remove(struct device *dev)
 		return -EINVAL;
 
 	printk_info("Starting to remove the PIC %s\n", dev->bus_id);
-	
+
 	if (pic->driver) {
 		retval = fim_unregister_driver(pic->driver);
 		if (retval) {
@@ -1775,12 +1775,12 @@ static int fim_remove(struct device *dev)
 	/* Remove the created sysfs attributes */
 	for (cnt=0; cnt < ARRAY_SIZE(fim_sysfs_attrs); cnt++)
 		sysfs_remove_bin_file(&dev->kobj, &fim_sysfs_attrs[cnt]);
-	
+
 	/* Free the mapped pages of the IO memory */
 	if (pic->reg_addr) iounmap(pic->reg_addr);
 	if (pic->instr_addr) iounmap(pic->instr_addr);
 	if (pic->hwa_addr) iounmap(pic->hwa_addr);
-	if (pic->iohub_addr) iounmap(pic->iohub_addr);		
+	if (pic->iohub_addr) iounmap(pic->iohub_addr);
 	pic->dev = NULL;
 	return 0;
 }
@@ -1887,14 +1887,14 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 	struct pic_dma_desc_t *pic_desc;
 	int cnt;
 	dma_addr_t phys_buffers;
-	
+
 	if (!pic || !pic->dev)
 		return -EINVAL;
 
 	/* Sanity checks for the passed DMA-descriptors configuration */
  	if ((retval = pic_dma_check_config(pic, cfg)))
 		return retval;
-	
+
 	/* Get the DMA-memory for the RX- and TX-buffers */
 	cfg = &pic->dma_cfg;
 	pic->dma_size = (cfg->rxnr * cfg->rxsz) + (cfg->txnr * cfg->txsz);
@@ -1914,7 +1914,7 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 		retval = -ENOMEM;
 		goto free_dma_bufs;
 	}
-	
+
 	fim_dma_init_fifo(&pic->rx_fifo, cfg->rxnr, pic->rx_fifo.descs);
 	printk_debug("RX FIFO descriptors range is 0x%p to 0x%p [0x%08x]\n",
 		     pic->rx_fifo.first, pic->rx_fifo.last, pic->rx_fifo.phys_descs);
@@ -1945,7 +1945,7 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 		retval = -ENOMEM;
 		goto free_dma_rxfifo;
 	}
-	
+
 	fim_dma_init_fifo(&pic->tx_fifo, cfg->txnr, pic->tx_fifo.descs);
 	printk_debug("TX FIFO descriptors range is 0x%p to 0x%p [0x%08x]\n",
 		     pic->tx_fifo.first, pic->tx_fifo.last, pic->tx_fifo.phys_descs);
@@ -1955,7 +1955,7 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 		retval = -ENOMEM;
 		goto free_dma_rxfifo;
 	}
-	
+
 	/* Setup the TX-buffers and -descriptors */
 	desc = pic->tx_fifo.first;
 	cnt = 0;
@@ -1988,7 +1988,7 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 	writel(IOHUB_ICTRL_TXNCIE | IOHUB_ICTRL_TXNRIE | IOHUB_ICTRL_TXECIE |
 	       IOHUB_IFS_TXCAIP, pic->iohub_addr + IOHUB_TX_ICTRL_REG);
 	writel(pic->tx_fifo.phys_descs, pic->iohub_addr + IOHUB_TX_DMA_BUFPTR_REG);
-	
+
 	/* Enable the interrupts for the RX-DMA channel */
 	spin_lock_init(&pic->rx_lock);
 	writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
@@ -1997,7 +1997,7 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 	       pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 	writel(pic->rx_fifo.phys_descs, pic->iohub_addr + IOHUB_RX_DMA_BUFPTR_REG);
 	writel(IOHUB_RX_DMA_CTRL_CE, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-	
+
 	return 0;
 
  free_dma_rxfifo:
@@ -2005,12 +2005,12 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 			  pic->rx_fifo.phys_descs);
 	pic->rx_fifo.descs = NULL;
 	pic->rx_fifo.phys_descs = 0;
-	
+
  free_dma_bufs:
 	dma_free_coherent(NULL, pic->dma_size, pic->dma_virt, pic->dma_phys);
 	pic->dma_virt = NULL;
 	pic->dma_phys = 0;
-	
+
 	return retval;
 }
 
@@ -2019,12 +2019,12 @@ static void pic_dma_stop(struct pic_t *pic)
 {
 	int cnt;
 	struct pic_dma_desc_t *pic_desc;
-	
+
 	if (!pic || !pic->dev)
 		return;
 
 	printk_debug("Freeing the DMA resources of the PIC %i\n", pic->index);
-	
+
 	/* Disable all the interrupts and abort all the DMA-transfers */
 	writel(0x00, pic->iohub_addr + IOHUB_TX_ICTRL_REG);
 	writel(IOHUB_TX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
@@ -2033,7 +2033,7 @@ static void pic_dma_stop(struct pic_t *pic)
 	writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG);
 	writel(IOHUB_RX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
 	writel(0x00, pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG);
-	
+
 	/* Reset the DMA-channel data */
 	atomic_set(&pic->tx_tasked, 0);
 	for (cnt=0; cnt < pic->tx_fifo.length; cnt++) {
@@ -2046,7 +2046,7 @@ static void pic_dma_stop(struct pic_t *pic)
 		kfree(pic->tx_desc);
 		pic->tx_desc = NULL;
 	}
-	
+
 	/* Free the FIFOs */
 	if (pic->tx_fifo.descs && pic->tx_fifo.phys_descs) {
 		dma_free_coherent(NULL, pic->tx_fifo.length, pic->tx_fifo.descs,
@@ -2061,7 +2061,7 @@ static void pic_dma_stop(struct pic_t *pic)
 		pic->rx_fifo.descs = NULL;
 		pic->rx_fifo.phys_descs = 0;
 	}
-	
+
 	/* Free the DMA-buffers */
 	if (pic->dma_virt && pic->dma_phys) {
 		dma_free_coherent(NULL, pic->dma_size, pic->dma_virt, pic->dma_phys);
@@ -2076,7 +2076,7 @@ int fim_dma_stop(struct fim_driver *fim)
 
 	if (!(pic = get_pic_from_driver(fim)))
                 return -ENODEV;
-	
+
 	pic_dma_stop(pic);
 	return 0;
 }
@@ -2091,7 +2091,7 @@ int fim_dma_start(struct fim_driver *fim, struct fim_dma_cfg_t *cfg)
 	/* Per default Use the already configured DMA configuration */
 	if (!cfg)
 		cfg = &pic->dma_cfg;
-	
+
 	return pic_dma_init(pic, cfg);
 }
 
@@ -2102,10 +2102,10 @@ int fim_dma_start(struct fim_driver *fim, struct fim_dma_cfg_t *cfg)
 static int __devinit fim_init_module(void)
 {
 	int ret, i;
-	struct pic_t *pic;	
+	struct pic_t *pic;
 
 	printk_info("Starting to register the FIMs module.\n");
-	
+
 	if (the_fims)
 		return -EINVAL;
 	if (!(the_fims = kzalloc(sizeof(struct fims_t), GFP_KERNEL))) {
@@ -2155,16 +2155,16 @@ static int __devinit fim_init_module(void)
 
  goto_parent_unreg:
 	device_unregister(&fim_bus_dev);
-	
+
  goto_driver_unreg:
 	driver_unregister(&fims_driver);
-	
+
  goto_bus_unreg:
 	bus_unregister(&fim_bus_type);
-	
+
  goto_free_mem:
 	if(the_fims) kfree(the_fims);
-	
+
 	return ret;
 }
 
