@@ -1460,6 +1460,9 @@ int fim_send_reset(struct fim_driver *driver)
 	atomic_set(&pic->tx_tasked, 0);
 	atomic_set(&pic->tx_aborted, 0);
 	
+	fim_send_stop(driver);
+	fim_send_start(driver);
+
 	return retval;
 }
 

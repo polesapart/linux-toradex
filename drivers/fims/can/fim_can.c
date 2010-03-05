@@ -873,7 +873,7 @@ static int fim_can_check_error(struct net_device *dev)
 	if (fim_is_running(fim)) {
 		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
-		fim_send_stop(fim);
+		fim_send_reset(fim);
 	}
 
 	skb = dev_alloc_skb(sizeof(struct can_frame));
