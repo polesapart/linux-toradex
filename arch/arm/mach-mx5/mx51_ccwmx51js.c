@@ -243,7 +243,7 @@ static int sdhc_write_protect(struct device *dev)
 	unsigned short rc = 0;
 
 	if (to_platform_device(dev)->id == 0)
-		rc = 1;	/* Not supported WP on JSK board */
+		rc = 0;	/* Not supported WP on JSK board, therefore write is enabled */
 	else if (to_platform_device(dev)->id == 2)
 		rc = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
 
