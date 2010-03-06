@@ -410,7 +410,8 @@ struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(lcd_display_list); i++)
-		if (!strcmp(lcd_display_list[i].fb_pdata.mode->name, name))
+		if (!strncmp(lcd_display_list[i].fb_pdata.mode->name,
+			     name, strlen(lcd_display_list[i].fb_pdata.mode->name)))
 			return &lcd_display_list[i];
 	return NULL;
 }
