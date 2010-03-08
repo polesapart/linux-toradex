@@ -75,11 +75,13 @@ enum baseband_control_regs {
 #define BB_RSSI_EAS_BUSY        (1 << 18)
 #define BB_RSSI_EAS_MIC         (1 << 19)
 #define BB_RSSI_ANT_MASK		(0xff<<24)
+#ifdef CONFIG_MACH_CCW9P9215JS
+#define BB_RSSI_ANT_NO_DIV_MAP	    (0x96000000)
+#define BB_RSSI_ANT_DIV_MAP         (0x1E000000)
+#else
 #define BB_RSSI_ANT_NO_DIV_MAP	    (0x69000000)
 #define BB_RSSI_ANT_DIV_MAP         (0xE1000000)
-#define BB_RSSI_WI9P_ANT_NO_DIV_MAP	(0x96000000)
-#define BB_RSSI_WI9P_ANT_DIV_MAP    (0x1E000000)
-
+#endif
 #define BB_GENERAL_STAT_RESET		(1<<30)
 /*
  * STAT_B_EN is a constant that defines a bit in the Wireless Controller FPGA Baseband Control Register
