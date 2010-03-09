@@ -4390,10 +4390,10 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 		__raw_writel(1 << MXC_CCM_CCGRx_CG0_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG1_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG2_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG3_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG3_OFFSET |
 			      3 << MXC_CCM_CCGRx_CG4_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG8_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG9_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG8_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG9_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG12_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG13_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG14_OFFSET, MXC_CCM_CCGR0);
