@@ -673,8 +673,6 @@ static void determineMaxAdcValues(wcd_data_t * cdata)
  */
 static void setDefaultCalibrationValues(struct piper_priv *piperp)
 {
-#define MIN_MDBM			(-2905)
-#define MAX_BG_MDBM			(6000)
 #define DEFAULT_NUM_POINTS	(DEFAULT_NUM_POINTS)
 #define BAND_A_1_START		(0)
 #define BAND_A_2_START		(4)
@@ -687,6 +685,9 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 
 	calibration.nvram->header.numcalpoints = 2;
 
+#ifdef CONFIG_MACH_CCW9P9215JS
+#define MIN_MDBM			(-2905)
+#define MAX_BG_MDBM			(6000)
 	for (i = 0; i < WCD_CHANNELS_BG; i++) {
 		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 52;
 		calibration.nvram->cal_curves_bg[i][0].points[0].out_power = MIN_MDBM;
@@ -696,7 +697,7 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 		calibration.nvram->cal_curves_bg[i][0].points[1].adc_val = 52;
 		calibration.nvram->cal_curves_bg[i][0].points[1].power_index = 16;
 
-		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 48;
+		calibration.nvram->cal_curves_bg[i][1].max_adc_value = 48;
 		calibration.nvram->cal_curves_bg[i][1].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_bg[i][1].points[0].adc_val = 12;
 		calibration.nvram->cal_curves_bg[i][1].points[0].power_index = 0;
@@ -759,6 +760,83 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 31;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 30;
 	}
+#else
+#define MIN_MDBM			(-1000)
+#define MIN_OFDM_MDBM		(-5000)
+#define MAX_BG_MDBM			(6000)
+	for (i = 0; i < WCD_CHANNELS_BG; i++) {
+		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 52;
+		calibration.nvram->cal_curves_bg[i][0].points[0].out_power = MIN_MDBM;
+		calibration.nvram->cal_curves_bg[i][0].points[0].adc_val = 19;
+		calibration.nvram->cal_curves_bg[i][0].points[0].power_index = 0;
+		calibration.nvram->cal_curves_bg[i][0].points[1].out_power = 6000;
+		calibration.nvram->cal_curves_bg[i][0].points[1].adc_val = 52;
+		calibration.nvram->cal_curves_bg[i][0].points[1].power_index = 16;
+
+		calibration.nvram->cal_curves_bg[i][1].max_adc_value = 48;
+		calibration.nvram->cal_curves_bg[i][1].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_bg[i][1].points[0].adc_val = 12;
+		calibration.nvram->cal_curves_bg[i][1].points[0].power_index = 0;
+		calibration.nvram->cal_curves_bg[i][1].points[1].out_power = 6000;
+		calibration.nvram->cal_curves_bg[i][1].points[1].adc_val = 48;
+		calibration.nvram->cal_curves_bg[i][1].points[1].power_index = 24;
+	}
+
+	for (i = BAND_A_1_START; i < BAND_A_2_START; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 22;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 0;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 22;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 19;
+	}
+	for (i = BAND_A_2_START; i < BAND_A_3_START; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 29;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 29;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 20;
+	}
+	for (i = BAND_A_3_START; i < BAND_A_4_START; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 42;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 15;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 4000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 42;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 22;
+	}
+	for (i = BAND_A_4_START; i < BAND_A_5_START; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 54;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 21;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 54;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 18;
+	}
+	for (i = BAND_A_5_START; i < BAND_A_6_START; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 39;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 26;
+	}
+	for (i = BAND_A_6_START; i < WCD_CHANNELS_A; i++) {
+		calibration.nvram->cal_curves_a[i].max_adc_value = 31;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 0;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
+		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[0].adc_val = 31;
+		calibration.nvram->cal_curves_a[i].points[0].power_index = 30;
+	}
+#endif
 }
 
 
