@@ -645,3 +645,4 @@ MODULE_AUTHOR("Gregoire Gentil <gregoire@gentil.com>");
 MODULE_LICENSE("GPL");
 
 module_init(mma7455l_init);
+module_exit(mma7455l_exit);
