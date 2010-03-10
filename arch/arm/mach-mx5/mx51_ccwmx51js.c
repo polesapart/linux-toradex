@@ -532,20 +532,16 @@ static void mxc_power_off(void)
 }
 
 static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
-#if defined(CONFIG_INPUT_MMA7455L)
 	{
         I2C_BOARD_INFO("mma7455l", 0x1d),
 		.irq = IOMUX_TO_IRQ(MX51_PIN_GPIO1_7),
 	},
-#endif
 };
 
 int __init ccwmx51_init_mma7455l(void)
 {
-
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
-
 /*!
  * Board specific initialization.
  */
@@ -560,7 +556,9 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
 	ccwmx51_init_ext_eth_mac();
+#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
 	ccwmx51_init_mma7455l();
+#endif
 	ccwmx51_init_mc13892();
 
 	pm_power_off = mxc_power_off;
