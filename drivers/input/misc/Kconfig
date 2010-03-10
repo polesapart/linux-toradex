@@ -363,7 +363,7 @@ config INPUT_DM355EVM
 
 config INPUT_MMA7455L
 	tristate "Freescale MMA7455L 3-axis accelerometer"
-	depends on I2C
+	depends on I2C && I2C_MXC_SELECT2
 	help
 	  I2C driver for the Freescale MMA7455L 3-axis accelerometer.
 
