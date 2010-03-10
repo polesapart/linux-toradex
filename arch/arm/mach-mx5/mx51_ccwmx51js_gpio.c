@@ -370,15 +370,15 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 		(PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM | PAD_CTL_100K_PU |
 		PAD_CTL_HYS_ENABLE | PAD_CTL_DRV_VOT_HIGH),
 	},
-//	{  /* MMA7455L interrupt line */
-//	 MX51_PIN_GPIO1_6, IOMUX_CONFIG_GPIO,
-//	},
-//	{
-//	 MX51_PIN_GPIO1_7, IOMUX_CONFIG_ALT2,
-//	 (PAD_CTL_DRV_HIGH | PAD_CTL_PUE_PULL |
-//			 PAD_CTL_100K_PU | PAD_CTL_PKE_ENABLE |
-//			 PAD_CTL_SRE_FAST),
-//	},
+	{  /* MMA7455L interrupt line */
+	 MX51_PIN_GPIO1_6, IOMUX_CONFIG_GPIO,
+	},
+	{
+	 MX51_PIN_GPIO1_7, IOMUX_CONFIG_ALT2,
+	 (PAD_CTL_DRV_HIGH | PAD_CTL_PUE_PULL |
+			 PAD_CTL_100K_PU | PAD_CTL_PKE_ENABLE |
+			 PAD_CTL_SRE_FAST),
+	},
 };
 
 
