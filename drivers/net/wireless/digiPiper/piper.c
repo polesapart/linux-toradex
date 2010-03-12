@@ -362,27 +362,25 @@ static int piper_set_tracking_constant(struct piper_priv *piperp, unsigned megah
  */
 static unsigned int get_b_tx_gain(struct piper_priv *piperp)
 {
-	u16 platform = piperp->pdata->wcd.header.hw_platform & WCD_PLATFORM_MASK;
-	u16 hw_revision = piperp->pdata->wcd.header.hw_platform & WCD_HW_REV_MASK;
 	unsigned int tx_gain = 0;
 
-	switch (platform) {
-		case WCD_CCW9P_PLATFORM:
-			tx_gain = TRACK_TX_B_GAIN_NORMAL;
+#ifdef CONFIG_MACH_CCW9P9215JS
+	tx_gain = TRACK_TX_B_GAIN_NORMAL;
+#else
+	u16 hw_revision = piperp->pdata->wcd.header.hw_platform & WCD_HW_REV_MASK;
+
+	switch (hw_revision) {
+		case WCD_HW_REV_PROTOTYPE:
+		case WCD_HW_REV_PILOT:
+			tx_gain = 0xc0000000;
 			break;
-		case WCD_CCW9M_PLATFORM:
-			switch (hw_revision) {
-				case WCD_HW_REV_PROTOTYPE:
-				case WCD_HW_REV_PILOT:
-					tx_gain = 0xc0000000;
-					break;
-				case WCD_HW_REV_A:
-				default:
-					tx_gain = 0x90000000;
-					break;
-			}
+		case WCD_HW_REV_A:
+		default:
+			tx_gain = 0x90000000;
 			break;
 	}
+#endif
+
 	return tx_gain;
 }
 

@@ -22,6 +22,7 @@
 #include "airohaCalibration.h"
 #include "adc121c027.h"
 
+
 #define POWER_INDEX_STEP                (1)	/* TODO: come up with a rational value for this */
 
 #define SAMPLE_TIMEOUT              (HZ * 10)	/* TODO: What is a good sample timeout?  Do we need one? */
@@ -604,7 +605,14 @@ static int setNewPowerLevel(struct ieee80211_hw *hw, uint8_t newPowerLevel)
 	return 0;
 }
 
-
+void digiWifiCalibrationRestartCalibration(struct piper_priv *digi)
+{
+	/*
+	 * Kick the calibration thread.
+	 */
+	stopSampler(digi);
+	kickCalibrationThread(digi, RESTART_AUTOCALIBRATION_EVENT);
+}
 
 
 /*
@@ -688,6 +696,7 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 #ifdef CONFIG_MACH_CCW9P9215JS
 #define MIN_MDBM			(-2905)
 #define MAX_BG_MDBM			(6000)
+    piperp->pdata->wcd.header.hw_platform = WCD_HW_REV_A | WCD_CCW9P_PLATFORM;
 	for (i = 0; i < WCD_CHANNELS_BG; i++) {
 		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 52;
 		calibration.nvram->cal_curves_bg[i][0].points[0].out_power = MIN_MDBM;
@@ -711,59 +720,60 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 0;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 22;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 19;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 0;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 22;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 19;
 	}
 	for (i = BAND_A_2_START; i < BAND_A_3_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 29;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 29;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 20;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 29;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 20;
 	}
 	for (i = BAND_A_3_START; i < BAND_A_4_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 42;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 15;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 4000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 42;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 22;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 4000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 42;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 22;
 	}
 	for (i = BAND_A_4_START; i < BAND_A_5_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 54;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 21;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 54;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 18;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 54;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 18;
 	}
 	for (i = BAND_A_5_START; i < BAND_A_6_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 39;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 39;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 26;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 39;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 26;
 	}
 	for (i = BAND_A_6_START; i < WCD_CHANNELS_A; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 31;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 31;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 30;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 31;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 30;
 	}
 #else
 #define MIN_MDBM			(-1000)
 #define MIN_OFDM_MDBM		(-5000)
 #define MAX_BG_MDBM			(6000)
+    piperp->pdata->wcd.header.hw_platform = WCD_HW_REV_A | WCD_CCW9M_PLATFORM;
 	for (i = 0; i < WCD_CHANNELS_BG; i++) {
 		calibration.nvram->cal_curves_bg[i][0].max_adc_value = 52;
 		calibration.nvram->cal_curves_bg[i][0].points[0].out_power = MIN_MDBM;
@@ -787,54 +797,54 @@ static void setDefaultCalibrationValues(struct piper_priv *piperp)
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 0;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 22;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 19;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 0;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 22;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 19;
 	}
 	for (i = BAND_A_2_START; i < BAND_A_3_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 29;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 29;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 20;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 29;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 20;
 	}
 	for (i = BAND_A_3_START; i < BAND_A_4_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 42;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 15;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 4000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 42;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 22;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 4000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 42;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 22;
 	}
 	for (i = BAND_A_4_START; i < BAND_A_5_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 54;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 21;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 54;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 18;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 54;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 18;
 	}
 	for (i = BAND_A_5_START; i < BAND_A_6_START; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 39;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 13;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 11;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 26;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 11;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 26;
 	}
 	for (i = BAND_A_6_START; i < WCD_CHANNELS_A; i++) {
 		calibration.nvram->cal_curves_a[i].max_adc_value = 31;
 		calibration.nvram->cal_curves_a[i].points[0].out_power = MIN_OFDM_MDBM;
 		calibration.nvram->cal_curves_a[i].points[0].adc_val = 0;
 		calibration.nvram->cal_curves_a[i].points[0].power_index = 0;
-		calibration.nvram->cal_curves_a[i].points[0].out_power = 2000;
-		calibration.nvram->cal_curves_a[i].points[0].adc_val = 31;
-		calibration.nvram->cal_curves_a[i].points[0].power_index = 30;
+		calibration.nvram->cal_curves_a[i].points[1].out_power = 2000;
+		calibration.nvram->cal_curves_a[i].points[1].adc_val = 31;
+		calibration.nvram->cal_curves_a[i].points[1].power_index = 30;
 	}
 #endif
 }
@@ -921,11 +931,11 @@ void digiWifiCalibrationDumpNvram(struct piper_priv *piperp)
             printk(KERN_ERR "\nERROR: Unsupported calibration data state %d.\n", calibration.nvramDataState);
             break;
     }
-    
+
     if (calibration.nvramDataState != NV_NOT_READ) {
         unsigned int i, column = 0;
         unsigned int *p = (unsigned int *) calibration.nvram;
-        
+
         for (i = 0; i < (sizeof(wcd_data_t) / sizeof(unsigned int)); i++) {
             if (column == 0) {
                 printk(KERN_ERR);
@@ -1084,7 +1094,7 @@ void digiWifiInitCalibration(struct piper_priv *digi)
 	calibration.sampleCount = 0;
 	calibration.initialized = false;
     calibration.nvramDataState = NV_NOT_READ;
-    
+
 	spin_lock_init(&calibration.lock);
 
 	calibration.threadCB =

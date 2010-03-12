@@ -112,5 +112,6 @@ void digiWifiInitCalibration(struct piper_priv *digi);
 void digiWifiDeInitCalibration(struct piper_priv *digi);
 int digiWifiCalibrationPowerIndex(struct piper_priv *piperp);
 void digiWifiCalibrationDumpNvram(struct piper_priv *piperp);
+void digiWifiCalibrationRestartCalibration(struct piper_priv *digi);
 
 #endif				/* AIROHA_CALIBRATION_H */

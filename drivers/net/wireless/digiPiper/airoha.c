@@ -590,6 +590,7 @@ printk(KERN_ERR "Setting channel %s\n", channelLookup[channelIndex]);
 		return -EINVAL;
 	}
 
+    digiWifiCalibrationRestartCalibration(priv);
     /*
      * This is a patch for a problem which should be corrected in
      * hardware on new units.  We are rewriting the MAC address
