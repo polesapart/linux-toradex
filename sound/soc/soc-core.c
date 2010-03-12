@@ -125,7 +125,7 @@ static int soc_pcm_apply_symmetry(struct snd_pcm_substream *substream)
 
 	if (codec_dai->symmetric_rates || cpu_dai->symmetric_rates ||
 	    machine->symmetric_rates) {
-		dev_dbg(card->dev, "Symmetry forces %dHz rate\n", 
+		dev_dbg(card->dev, "Symmetry forces %dHz rate\n",
 			machine->rate);
 
 		ret = snd_pcm_hw_constraint_minmax(substream->runtime,
@@ -2245,8 +2245,10 @@ int snd_soc_register_dai(struct snd_soc_dai *dai)
 		return -EINVAL;
 
 	/* The device should become mandatory over time */
+#ifdef DEBUG
 	if (!dai->dev)
 		printk(KERN_WARNING "No device for DAI %s\n", dai->name);
+#endif
 
 	if (!dai->ops)
 		dai->ops = &null_dai_ops;
