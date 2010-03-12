@@ -73,6 +73,14 @@ config SND_SOC_IMX_3STACK_WM8580
 	  Say Y if you want to add support for Soc audio on IMX 3STACK
 	  with the WM8580
 
+config SND_SOC_IMX_CCWMX51_WM8753
+ tristate "SoC Audio support for IMX - WM8753"
+ select SND_MXC_SOC_SSI
+ select SND_SOC_WM8753
+ help
+   Say Y if you want to add support for Soc audio on IMX CCWMX51
+   with the WM8753
+
 config SND_SOC_IMX_3STACK_AK5702
 	tristate "SoC Audio support for IMX - AK5702"
 	select SND_MXC_SOC_ESAI

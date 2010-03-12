@@ -150,6 +150,21 @@ static struct platform_device mxc_nandv2_mtd_device = {
 	},
 };
 
+static struct mxc_audio_platform_data wm8753_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 3,
+	.sysclk = 12000000,
+};
+
+static struct platform_device mxc_wm8753_device = {
+	.name = "imx-ccwmx51",
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &wm8753_data,
+		},
+};
+
 static void ccwmx51_init_nand_mtd(void)
 {
 	(void)platform_device_register(&mxc_nandv2_mtd_device);
@@ -532,16 +547,29 @@ static void mxc_power_off(void)
 }
 
 static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
+#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
 	{
         I2C_BOARD_INFO("mma7455l", 0x1d),
 		.irq = IOMUX_TO_IRQ(MX51_PIN_GPIO1_7),
 	},
+#endif
+#if defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753) || defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753_MODULE)
+	{
+        I2C_BOARD_INFO("wm8753", 0x1A),
+	},
+#endif
 };
 
-int __init ccwmx51_init_mma7455l(void)
+int __init ccwmx51_init_i2c2(void)
 {
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
+
+static void ccwmx51_initwm8753(void)
+{
+	platform_device_register(&mxc_wm8753_device);
+}
+
 /*!
  * Board specific initialization.
  */
@@ -556,8 +584,9 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_mmc();
 	ccwmx51_init_nand_mtd();
 	ccwmx51_init_ext_eth_mac();
-#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
-	ccwmx51_init_mma7455l();
+	ccwmx51_init_i2c2();
+#if defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753) || defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753_MODULE)
+	ccwmx51_initwm8753();
 #endif
 	ccwmx51_init_mc13892();
 

@@ -1832,6 +1832,7 @@ static struct spi_driver wm8753_spi_driver = {
 static int __init wm8753_modinit(void)
 {
 	int ret;
+
 #if defined(CONFIG_I2C) || defined(CONFIG_I2C_MODULE)
 	ret = i2c_add_driver(&wm8753_i2c_driver);
 	if (ret != 0)

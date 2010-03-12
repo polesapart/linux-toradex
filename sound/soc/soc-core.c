@@ -2564,8 +2564,10 @@ int snd_soc_register_dai(struct snd_soc_dai *dai)
 		return -EINVAL;
 
 	/* The device should become mandatory over time */
+#ifdef DEBUG
 	if (!dai->dev)
 		printk(KERN_WARNING "No device for DAI %s\n", dai->name);
+#endif
 
 	if (!dai->ops)
 		dai->ops = &null_dai_ops;

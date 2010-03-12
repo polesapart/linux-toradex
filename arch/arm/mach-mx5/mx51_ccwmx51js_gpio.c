@@ -316,7 +316,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
-static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mma7455l_pins[] = {
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_i2c_pins[] = {
 
 #ifdef CONFIG_I2C_MXC_SELECT1
 		 {
@@ -370,6 +370,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 		(PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM | PAD_CTL_100K_PU |
 		PAD_CTL_HYS_ENABLE | PAD_CTL_DRV_VOT_HIGH),
 	},
+#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
 	{  /* MMA7455L interrupt line */
 	 MX51_PIN_GPIO1_6, IOMUX_CONFIG_GPIO,
 	},
@@ -379,8 +380,32 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 			 PAD_CTL_100K_PU | PAD_CTL_PKE_ENABLE |
 			 PAD_CTL_SRE_FAST),
 	},
+#endif
+#if defined(CONFIG_SND_SOC_WM8753) || defined(CONFIG_SND_SOC_WM8753_MODULE)
+	{	/* AUD3_BB_CK */
+		MX51_PIN_AUD3_BB_CK, IOMUX_CONFIG_ALT0 ,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU |
+			PAD_CTL_HYS_NONE | PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_PKE_ENABLE |
+			PAD_CTL_PUE_KEEPER ),
+	},
+	{	/* AUD3_BB_FS */
+		MX51_PIN_AUD3_BB_FS, IOMUX_CONFIG_ALT0 ,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_HYS_NONE |
+			PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE),
+	},
+	{	/* AUD3_BB_RXD */
+		MX51_PIN_AUD3_BB_RXD, IOMUX_CONFIG_ALT0 ,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_HYS_NONE |
+			PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE),
+	},
+	{	/* AUD3_BB_TXD */
+		MX51_PIN_AUD3_BB_TXD, IOMUX_CONFIG_ALT0 ,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU |
+			PAD_CTL_HYS_NONE | PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_PKE_ENABLE |
+			PAD_CTL_PUE_KEEPER ),
+	},
+#endif
 };
-
 
 #if defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE)
 
@@ -544,15 +569,15 @@ void __init ccwmx51_io_init(void)
 #endif
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
-	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mma7455l_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_mma7455l_pins[i].pin,
-				ccwmx51_iomux_mma7455l_pins[i].mux_mode);
-		if (ccwmx51_iomux_mma7455l_pins[i].pad_cfg)
-			mxc_iomux_set_pad(ccwmx51_iomux_mma7455l_pins[i].pin,
-					ccwmx51_iomux_mma7455l_pins[i].pad_cfg);
-		if (ccwmx51_iomux_mma7455l_pins[i].in_select)
-			mxc_iomux_set_input(ccwmx51_iomux_mma7455l_pins[i].in_select,
-					ccwmx51_iomux_mma7455l_pins[i].in_mode);
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_i2c_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_i2c_pins[i].pin,
+				ccwmx51_iomux_i2c_pins[i].mux_mode);
+		if (ccwmx51_iomux_i2c_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_i2c_pins[i].pin,
+					ccwmx51_iomux_i2c_pins[i].pad_cfg);
+		if (ccwmx51_iomux_i2c_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_i2c_pins[i].in_select,
+					ccwmx51_iomux_i2c_pins[i].in_mode);
 	}
 #endif
 
