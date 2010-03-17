@@ -196,7 +196,7 @@ static int imx_ccwmx51_card_remove(struct platform_device *pdev)
 }
 
 static struct snd_soc_card snd_soc_card_imx_ccwmx51 = {
-	.name = "imx-ccwmx51",
+	.name = "ccwmx51js",
 	.platform = &imx_soc_platform,
 	.dai_link = &imx_ccwmx51_dai,
 	.num_links = 1,
@@ -251,7 +251,7 @@ static struct platform_driver imx_ccwmx51_wm8753_audio_driver = {
 	.probe = imx_ccwmx51_wm8753_probe,
 	.remove = imx_ccwmx51_wm8753_remove,
 	.driver = {
-		   .name = "imx-ccwmx51",
+		   .name = "ccwmx51js",
 		   },
 };
 

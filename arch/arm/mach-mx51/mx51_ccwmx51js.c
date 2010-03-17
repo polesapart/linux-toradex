@@ -158,7 +158,7 @@ static struct mxc_audio_platform_data wm8753_data = {
 };
 
 static struct platform_device mxc_wm8753_device = {
-	.name = "imx-ccwmx51",
+	.name = "ccwmx51js",
 	.dev = {
 		.release = mxc_nop_release,
 		.platform_data = &wm8753_data,
