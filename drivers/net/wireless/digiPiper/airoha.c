@@ -279,6 +279,8 @@ static const struct ieee80211_rate al7230_a_rates[] = {
 #define _54MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 1)
 #define _48MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 2)
 #define _36MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 3)
+#define _24MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 4)
+#define _18MBPS_A_RATE_INDEX        ((sizeof(al7230_a_rates) / sizeof(struct ieee80211_rate)) - 5)
 
 static enum ieee80211_band getBand(int channelIndex)
 {
@@ -992,15 +994,15 @@ const struct ieee80211_rate *al7230_rf_get_max_rate(unsigned int hw_platform, un
         MAX_BG_RATE_INDEX,         // B-14  (2484 MHz)  14
         0,                         // reserved for future b/g expansion 15
         0,                         // reserved for future b/g expansion 16
-        _36MBPS_A_RATE_INDEX,      // L-184 (4920 MHz)  17
-        _36MBPS_A_RATE_INDEX,      // L-188 (4940 MHz)  18
-        _36MBPS_A_RATE_INDEX,      // L-192 (4960 MHz)  19
-        _36MBPS_A_RATE_INDEX,      // L-196 (4980 MHz)  20
-        _36MBPS_A_RATE_INDEX,      // A-8   (5040 MHz)  21
-        _36MBPS_A_RATE_INDEX,      // A-12  (5060 MHz)  22
-        _36MBPS_A_RATE_INDEX,      // A-16  (5080 MHz)  23
-        _36MBPS_A_RATE_INDEX,      // A-34  (5170 MHz)  24
-        _48MBPS_A_RATE_INDEX,      // A-36  (5180 MHz)  25
+        _18MBPS_A_RATE_INDEX,      // L-184 (4920 MHz)  17
+        _18MBPS_A_RATE_INDEX,      // L-188 (4940 MHz)  18
+        _18MBPS_A_RATE_INDEX,      // L-192 (4960 MHz)  19
+        _18MBPS_A_RATE_INDEX,      // L-196 (4980 MHz)  20
+        _24MBPS_A_RATE_INDEX,      // A-8   (5040 MHz)  21
+        _24MBPS_A_RATE_INDEX,      // A-12  (5060 MHz)  22
+        _24MBPS_A_RATE_INDEX,      // A-16  (5080 MHz)  23
+        _24MBPS_A_RATE_INDEX,      // A-34  (5170 MHz)  24
+        _24MBPS_A_RATE_INDEX,      // A-36  (5180 MHz)  25
         _48MBPS_A_RATE_INDEX,      // A-38  (5190 MHz)  26
         _48MBPS_A_RATE_INDEX,      // A-40  (5200 MHz)  27
         _48MBPS_A_RATE_INDEX,      // A-42  (5210 MHz)  28
@@ -1011,13 +1013,13 @@ const struct ieee80211_rate *al7230_rf_get_max_rate(unsigned int hw_platform, un
         _48MBPS_A_RATE_INDEX,      // A-56  (5280 MHz)  33
         _48MBPS_A_RATE_INDEX,      // A-60  (5300 MHz)  34
         _48MBPS_A_RATE_INDEX,      // A-64  (5320 MHz)  35
-        _54MBPS_A_RATE_INDEX,      // A-100 (5500 MHz)  36
-        _54MBPS_A_RATE_INDEX,      // A-104 (5520 MHz)  37
-        _54MBPS_A_RATE_INDEX,      // A-108 (5540 MHz)  38
-        _54MBPS_A_RATE_INDEX,      // A-112 (5560 MHz)  39
-        _54MBPS_A_RATE_INDEX,      // A-116 (5580 MHz)  40
-        _54MBPS_A_RATE_INDEX,      // A-120 (5600 MHz)  41
-        _54MBPS_A_RATE_INDEX,      // A-124 (5620 MHz)  42
+        _48MBPS_A_RATE_INDEX,      // A-100 (5500 MHz)  36
+        _48MBPS_A_RATE_INDEX,      // A-104 (5520 MHz)  37
+        _48MBPS_A_RATE_INDEX,      // A-108 (5540 MHz)  38
+        _48MBPS_A_RATE_INDEX,      // A-112 (5560 MHz)  39
+        _48MBPS_A_RATE_INDEX,      // A-116 (5580 MHz)  40
+        _48MBPS_A_RATE_INDEX,      // A-120 (5600 MHz)  41
+        _48MBPS_A_RATE_INDEX,      // A-124 (5620 MHz)  42
         _54MBPS_A_RATE_INDEX,      // A-128 (5640 MHz)  43
         _54MBPS_A_RATE_INDEX,      // A-132 (5660 MHz)  44
         _54MBPS_A_RATE_INDEX,      // A-136 (5680 MHz)  45
