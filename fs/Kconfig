@@ -931,6 +931,8 @@ config CRAMFS
 
 	  If unsure, say N.
 
+source "fs/squashfs/Kconfig"
+
 config VXFS_FS
 	tristate "FreeVxFS file system support (VERITAS VxFS(TM) compatible)"
 	depends on BLOCK
