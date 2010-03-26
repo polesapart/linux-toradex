@@ -125,7 +125,7 @@ struct clk *clk_get(struct device *dev, const char *id)
 		}
 	}
 
-	printk(KERN_WARNING "clk: Unable to get requested clock: %s\n", id);
+	printk(KERN_DEBUG "clk: Unable to get requested clock: %s\n", id);
 
 found:
 	mutex_unlock(&clocks_mutex);

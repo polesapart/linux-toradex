@@ -270,7 +270,8 @@ static int __init mxc_wdt_probe(struct platform_device *pdev)
 	mxc_wdt_miscdev.this_device = &pdev->dev;
 
 	mxc_wdt_clk = clk_get(NULL, "wdog_clk");
-	clk_enable(mxc_wdt_clk);
+	if( !IS_ERR(mxc_wdt_clk) )
+		clk_enable(mxc_wdt_clk);
 
 	ret = misc_register(&mxc_wdt_miscdev);
 	if (ret)
