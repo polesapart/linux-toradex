@@ -899,6 +899,62 @@ static int al7230_rf_stop(struct ieee80211_hw *hw)
 	return 0;
 }
 
+static const unsigned int max_rate_index[] = {
+        0,                         // not used
+        MAX_BG_RATE_INDEX,         // B-1   (2412 MHz)   1
+        MAX_BG_RATE_INDEX,         // B-2   (2417 MHz)   2
+        MAX_BG_RATE_INDEX,         // B-3   (2422 MHz)   3
+        MAX_BG_RATE_INDEX,         // B-4   (2427 MHz)   4
+        MAX_BG_RATE_INDEX,         // B-5   (2432 MHz)   5
+        MAX_BG_RATE_INDEX,         // B-6   (2437 MHz)   6
+        MAX_BG_RATE_INDEX,         // B-7   (2442 MHz)   7
+        MAX_BG_RATE_INDEX,         // B-8   (2447 MHz)   8
+        MAX_BG_RATE_INDEX,         // B-9   (2452 MHz)   9
+        MAX_BG_RATE_INDEX,         // B-10  (2457 MHz)  10
+        MAX_BG_RATE_INDEX,         // B-11  (2462 MHz)  11
+        MAX_BG_RATE_INDEX,         // B-12  (2467 MHz)  12
+        MAX_BG_RATE_INDEX,         // B-13  (2472 MHz)  13
+        MAX_BG_RATE_INDEX,         // B-14  (2484 MHz)  14
+        0,                         // reserved for future b/g expansion 15
+        0,                         // reserved for future b/g expansion 16
+        _18MBPS_A_RATE_INDEX,      // L-184 (4920 MHz)  17
+        _18MBPS_A_RATE_INDEX,      // L-188 (4940 MHz)  18
+        _18MBPS_A_RATE_INDEX,      // L-192 (4960 MHz)  19
+        _18MBPS_A_RATE_INDEX,      // L-196 (4980 MHz)  20
+        _24MBPS_A_RATE_INDEX,      // A-8   (5040 MHz)  21
+        _24MBPS_A_RATE_INDEX,      // A-12  (5060 MHz)  22
+        _24MBPS_A_RATE_INDEX,      // A-16  (5080 MHz)  23
+        _24MBPS_A_RATE_INDEX,      // A-34  (5170 MHz)  24
+        _24MBPS_A_RATE_INDEX,      // A-36  (5180 MHz)  25
+        _48MBPS_A_RATE_INDEX,      // A-38  (5190 MHz)  26
+        _48MBPS_A_RATE_INDEX,      // A-40  (5200 MHz)  27
+        _48MBPS_A_RATE_INDEX,      // A-42  (5210 MHz)  28
+        _48MBPS_A_RATE_INDEX,      // A-44  (5220 MHz)  29
+        _48MBPS_A_RATE_INDEX,      // A-46  (5230 MHz)  30
+        _48MBPS_A_RATE_INDEX,      // A-48  (5240 MHz)  31
+        _48MBPS_A_RATE_INDEX,      // A-52  (5260 MHz)  32
+        _48MBPS_A_RATE_INDEX,      // A-56  (5280 MHz)  33
+        _48MBPS_A_RATE_INDEX,      // A-60  (5300 MHz)  34
+        _48MBPS_A_RATE_INDEX,      // A-64  (5320 MHz)  35
+        _48MBPS_A_RATE_INDEX,      // A-100 (5500 MHz)  36
+        _48MBPS_A_RATE_INDEX,      // A-104 (5520 MHz)  37
+        _48MBPS_A_RATE_INDEX,      // A-108 (5540 MHz)  38
+        _48MBPS_A_RATE_INDEX,      // A-112 (5560 MHz)  39
+        _48MBPS_A_RATE_INDEX,      // A-116 (5580 MHz)  40
+        _48MBPS_A_RATE_INDEX,      // A-120 (5600 MHz)  41
+        _48MBPS_A_RATE_INDEX,      // A-124 (5620 MHz)  42
+        _54MBPS_A_RATE_INDEX,      // A-128 (5640 MHz)  43
+        _54MBPS_A_RATE_INDEX,      // A-132 (5660 MHz)  44
+        _54MBPS_A_RATE_INDEX,      // A-136 (5680 MHz)  45
+        _54MBPS_A_RATE_INDEX,      // A-140 (5700 MHz)  46
+        _54MBPS_A_RATE_INDEX,      // A-149 (5745 MHz)  47
+        _54MBPS_A_RATE_INDEX,      // A-153 (5765 MHz)  48
+        _54MBPS_A_RATE_INDEX,      // A-157 (5785 MHz)  49
+        _54MBPS_A_RATE_INDEX,      // A-161 (5805 MHz)  50
+        _54MBPS_A_RATE_INDEX,      // A-165 (5825 MHz)  51
+};
+
+
 static void getOfdmBrs(int channelIndex, u64 brsBitMask, unsigned int *ofdm, unsigned int *psk)
 {
 	/*
@@ -916,8 +972,16 @@ static void getOfdmBrs(int channelIndex, u64 brsBitMask, unsigned int *ofdm, uns
 	}
 	else
 	{
+	    unsigned int max_rate_mask = 0xff;
+
+#ifdef CONFIG_MACH_CCW9P9215JS
+        /*
+         * Set BRS mask on wi9p to limit rates that we will send ACK's at.
+         */
+	    max_rate_mask = max_rate_mask >> (7 - max_rate_index[channelIndex]);
+#endif
 		*psk = 0;
-		*ofdm = (brsBitMask & 0xff);
+		*ofdm = (brsBitMask & max_rate_mask);
 	}
 }
 
@@ -976,60 +1040,6 @@ static void al7230_set_hw_info(struct ieee80211_hw *hw, int channel,
 const struct ieee80211_rate *al7230_rf_get_max_rate(unsigned int hw_platform, unsigned int hw_revision, unsigned int channel_index)
 {
     const struct ieee80211_rate *result = NULL;
-    const unsigned int max_rate_index[] = {
-        0,                         // not used
-        MAX_BG_RATE_INDEX,         // B-1   (2412 MHz)   1
-        MAX_BG_RATE_INDEX,         // B-2   (2417 MHz)   2
-        MAX_BG_RATE_INDEX,         // B-3   (2422 MHz)   3
-        MAX_BG_RATE_INDEX,         // B-4   (2427 MHz)   4
-        MAX_BG_RATE_INDEX,         // B-5   (2432 MHz)   5
-        MAX_BG_RATE_INDEX,         // B-6   (2437 MHz)   6
-        MAX_BG_RATE_INDEX,         // B-7   (2442 MHz)   7
-        MAX_BG_RATE_INDEX,         // B-8   (2447 MHz)   8
-        MAX_BG_RATE_INDEX,         // B-9   (2452 MHz)   9
-        MAX_BG_RATE_INDEX,         // B-10  (2457 MHz)  10
-        MAX_BG_RATE_INDEX,         // B-11  (2462 MHz)  11
-        MAX_BG_RATE_INDEX,         // B-12  (2467 MHz)  12
-        MAX_BG_RATE_INDEX,         // B-13  (2472 MHz)  13
-        MAX_BG_RATE_INDEX,         // B-14  (2484 MHz)  14
-        0,                         // reserved for future b/g expansion 15
-        0,                         // reserved for future b/g expansion 16
-        _18MBPS_A_RATE_INDEX,      // L-184 (4920 MHz)  17
-        _18MBPS_A_RATE_INDEX,      // L-188 (4940 MHz)  18
-        _18MBPS_A_RATE_INDEX,      // L-192 (4960 MHz)  19
-        _18MBPS_A_RATE_INDEX,      // L-196 (4980 MHz)  20
-        _24MBPS_A_RATE_INDEX,      // A-8   (5040 MHz)  21
-        _24MBPS_A_RATE_INDEX,      // A-12  (5060 MHz)  22
-        _24MBPS_A_RATE_INDEX,      // A-16  (5080 MHz)  23
-        _24MBPS_A_RATE_INDEX,      // A-34  (5170 MHz)  24
-        _24MBPS_A_RATE_INDEX,      // A-36  (5180 MHz)  25
-        _48MBPS_A_RATE_INDEX,      // A-38  (5190 MHz)  26
-        _48MBPS_A_RATE_INDEX,      // A-40  (5200 MHz)  27
-        _48MBPS_A_RATE_INDEX,      // A-42  (5210 MHz)  28
-        _48MBPS_A_RATE_INDEX,      // A-44  (5220 MHz)  29
-        _48MBPS_A_RATE_INDEX,      // A-46  (5230 MHz)  30
-        _48MBPS_A_RATE_INDEX,      // A-48  (5240 MHz)  31
-        _48MBPS_A_RATE_INDEX,      // A-52  (5260 MHz)  32
-        _48MBPS_A_RATE_INDEX,      // A-56  (5280 MHz)  33
-        _48MBPS_A_RATE_INDEX,      // A-60  (5300 MHz)  34
-        _48MBPS_A_RATE_INDEX,      // A-64  (5320 MHz)  35
-        _48MBPS_A_RATE_INDEX,      // A-100 (5500 MHz)  36
-        _48MBPS_A_RATE_INDEX,      // A-104 (5520 MHz)  37
-        _48MBPS_A_RATE_INDEX,      // A-108 (5540 MHz)  38
-        _48MBPS_A_RATE_INDEX,      // A-112 (5560 MHz)  39
-        _48MBPS_A_RATE_INDEX,      // A-116 (5580 MHz)  40
-        _48MBPS_A_RATE_INDEX,      // A-120 (5600 MHz)  41
-        _48MBPS_A_RATE_INDEX,      // A-124 (5620 MHz)  42
-        _54MBPS_A_RATE_INDEX,      // A-128 (5640 MHz)  43
-        _54MBPS_A_RATE_INDEX,      // A-132 (5660 MHz)  44
-        _54MBPS_A_RATE_INDEX,      // A-136 (5680 MHz)  45
-        _54MBPS_A_RATE_INDEX,      // A-140 (5700 MHz)  46
-        _54MBPS_A_RATE_INDEX,      // A-149 (5745 MHz)  47
-        _54MBPS_A_RATE_INDEX,      // A-153 (5765 MHz)  48
-        _54MBPS_A_RATE_INDEX,      // A-157 (5785 MHz)  49
-        _54MBPS_A_RATE_INDEX,      // A-161 (5805 MHz)  50
-        _54MBPS_A_RATE_INDEX,      // A-165 (5825 MHz)  51
-    };
 
     (void) hw_revision;
 
