@@ -26,6 +26,7 @@
 #include <linux/irq.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/err.h>
 #include <mach/hardware.h>
 
 #define WDOG_WT                 0x8	/* WDOG WT starting bit inside WCR */
@@ -60,7 +61,8 @@ void mxc_wd_reset(void)
 	struct clk *clk;
 
 	clk = clk_get(NULL, "wdog_clk");
-	clk_enable(clk);
+	if( !IS_ERR(clk) )
+		clk_enable(clk);
 
 	reg = __raw_readw(wdog_base[0] + WDOG_WCR) & ~WCR_SRS_BIT;
 	reg |= WCR_WDE_BIT;
