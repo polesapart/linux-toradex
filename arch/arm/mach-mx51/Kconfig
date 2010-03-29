@@ -25,6 +25,13 @@ config MACH_MX51_BABBAGE
 	  Include support for MX51 Babbage platform. This includes specific
 	  configurations for the board and its peripherals.
 
+config MACH_MX51_CCWMX51JS
+	bool "Support ConnectCore Wi-MX51 module on the JSK base board"
+	help
+	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on the
+	  JumpStart Kit base board. This includes specific configurations for the
+	  peripherals on that base board.
+
 config MXC_SDMA_API
         bool "Use SDMA API"
         default y
@@ -71,7 +78,7 @@ menu "Device options"
 config I2C_MXC_SELECT1
 	bool "Enable I2C1 module"
 	default y
-	depends on I2C_MXC
+	depends on I2C_MXC && !(MACH_MX51_CCWMX51JS)
 	help
 	  Enable MX51 I2C1 module.
 
@@ -85,9 +92,30 @@ config I2C_MXC_SELECT2
 config I2C_MXC_SELECT3
 	bool "Enable I2C3 module"
 	default n
-	depends on I2C_MXC
+	depends on I2C_MXC && !(MACH_MX51_CCWMX51JS)
 	help
 	  Enable MX51 I2C3 module.
+
+config UART1_ENABLED
+	bool "Enable UART1"
+	default y
+	depends on SERIAL_MXC && MACH_MX51_CCWMX51JS
+	help
+	  Enable the MX51 UART1 interface
+
+config UART2_ENABLED
+	bool "Enable UART2"
+	default y
+	depends on SERIAL_MXC && MACH_MX51_CCWMX51JS
+	help
+	  Enable the MX51 UART2 interface
+
+config UART3_ENABLED
+	bool "Enable UART3"
+	default y
+	depends on SERIAL_MXC && MACH_MX51_CCWMX51JS
+	help
+	  Enable the MX51 UART3 interface
 
 endmenu
 
