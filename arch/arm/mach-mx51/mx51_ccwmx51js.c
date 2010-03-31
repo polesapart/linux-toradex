@@ -26,9 +26,6 @@
 #include <linux/spi/spi.h>
 #include <linux/i2c.h>
 #include <linux/ata.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/partitions.h>
-#include <linux/spi/flash.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pmic_external.h>
 #include <linux/pmic_status.h>
@@ -51,6 +48,15 @@
 #include "crm_regs.h"
 #include <mach/mxc_edid.h>
 #include <linux/smc911x.h>
+
+#if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/map.h>
+#include <linux/mtd/partitions.h>
+
+#include <asm/mach/flash.h>
+#endif
+
 
 /*!
  * @file mach-mx51/mx51_ccwmx51js.c
