@@ -55,6 +55,10 @@ static struct mxc_iomux_pin_cfg __initdata mxc_iomux_pins[] = {
 	 },
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 	{
+		MX51_PIN_DI1_PIN11, IOMUX_CONFIG_ALT4,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	},
+	{
 	 MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
 	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
 	 },
@@ -382,3 +386,11 @@ void __init mx51_ccwmx51js_io_init(void)
 					  mxc_iomux_pins[i].in_mode);
 	}
 }
+
+void gpio_lcd_active(void)
+{
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
+}
+
+
+EXPORT_SYMBOL(gpio_lcd_active);
