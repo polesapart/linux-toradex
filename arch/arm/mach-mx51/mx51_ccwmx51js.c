@@ -1,5 +1,7 @@
 /*
  * Copyright 2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2009 Digi International, Inc. All Rights Reserved.
+ * Copyright 2010 Timesys Corporation. All Rights Reserved.
  */
 
 /*
@@ -491,6 +493,76 @@ static inline int mxc_init_fec(void)
 }
 #endif
 
+#if defined(CONFIG_SMSC911X)
+static struct resource smsc911x_device_resources[] = {
+	[0] = {
+		.name	= "smsc911x-memory",
+		.start	= CS5_BASE_ADDR,
+		.end	= CS5_BASE_ADDR + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
+		.end	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct smc911x_platdata ccwmx51_smsc911x = {
+	.flags          = SMC911X_USE_16BIT,
+	.irq_flags      = IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+	.irq_polarity   = 0,
+};
+
+static struct platform_device smsc911x_device = {
+	.name             = "smsc911x",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(smsc911x_device_resources),
+	.resource         = smsc911x_device_resources,
+	.dev            = {
+		.platform_data = &ccwmx51_smsc911x,
+	}
+};
+
+/* WEIM registers */
+#define CSGCR1	0x00
+#define CSGCR2	0x04
+#define CSRCR1	0x08
+#define CSRCR2	0x0C
+#define CSWCR1	0x10
+
+static void ccwmx51_init_ext_eth_mac(void)
+{
+	__iomem u32 *weim_vbaddr;
+
+	weim_vbaddr = ioremap(WEIM_BASE_ADDR, SZ_4K);
+	if (weim_vbaddr == 0) {
+		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", WEIM_BASE_ADDR, __func__);
+		return;
+	}
+
+	/** Configure the CS timming, bus width, etc.
+	 * 16 bit on DATA[31..16], not multiplexed, async
+	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
+	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
+	 */
+	__raw_writel(0x00420081, weim_vbaddr + 0x78 + CSGCR1);
+	__raw_writel(0, weim_vbaddr + 0x78 + CSGCR2);
+	__raw_writel(0x32260000, weim_vbaddr + 0x78 + CSRCR1);
+	__raw_writel(0, weim_vbaddr + 0x78 + CSRCR2);
+	__raw_writel(0x72080f00, weim_vbaddr + 0x78 + CSWCR1);
+
+	iounmap(weim_vbaddr);
+
+	/* Configure interrupt line as GPIO input, the iomux should be already setup */
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9), "LAN2-irq");
+	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9));
+
+	(void)platform_device_register(&smsc911x_device);
+}
+#else
+static void ccwmx51_init_ext_eth_mac(void) { }
+#endif
 
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
@@ -596,6 +668,8 @@ static void __init mxc_board_init(void)
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 	ccwmx51_init_nand_mtd();
 #endif
+
+	ccwmx51_init_ext_eth_mac();
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
