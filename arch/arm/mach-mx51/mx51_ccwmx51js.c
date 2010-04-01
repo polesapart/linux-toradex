@@ -250,6 +250,7 @@ static inline void mxc_init_fb(void)
 
 #ifdef CONFIG_I2C_MXC_SELECT2
 static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
+	{I2C_BOARD_INFO("wm8753",0x1a)},
 };
 #endif
 
@@ -555,6 +556,27 @@ static void mxc_power_off(void)
 		(PWGT1SPIEN|PWGT2SPIEN));
 }
 
+static struct mxc_audio_platform_data wm8753_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 3,
+	.sysclk = 11289600,  // So we can do 44.1 kHz
+};
+
+static struct platform_device mxc_wm8753_device = {
+	.name = "imx-ccwmx51js-wm8753",
+	.dev = {
+		.release = mxc_nop_release,
+		.platform_data = &wm8753_data,
+	},
+};
+
+static void mxc_init_wm8753(void)
+{
+	platform_device_register(&mxc_wm8753_device);
+}
+
+
 /*!
  * Board specific initialization.
  */
@@ -569,6 +591,7 @@ static void __init mxc_board_init(void)
 
 	mxc_init_mmc();
 	mx51_ccwmx51js_init_mc13892();
+	mxc_init_wm8753();
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 	ccwmx51_init_nand_mtd();
