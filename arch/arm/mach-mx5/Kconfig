@@ -42,15 +42,12 @@ config MACH_MX51_BABBAGE
 	  u-boot. This includes specific configurations for the board and its
 	  peripherals.
 
-config MACH_CCWMX51JS
-	bool "Support for the ConnectCore Wi-MX51 module, on the JSK base board"
-	help
-	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on the
-	  JumpStart Kit base board. This includes specific configurations for the
-	  peripherals on that base board.
+config MODULE_CCXMX51
+	bool
 
 config MACH_CCMX51JS
 	bool "Support for the ConnectCore MX51 module, on the JSK base board"
+	select MODULE_CCXMX51
 	help
 	  Include support for the Digi ConnectCore MX51 Embedded Module, on the
 	  JumpStart Kit base board. This includes specific configurations for the
@@ -58,6 +55,7 @@ config MACH_CCMX51JS
 
 config MACH_CCWMX51
 	bool "Support for the ConnectCore Wi-MX51 module"
+	select MODULE_CCXMX51
 	help
 	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
@@ -65,6 +63,7 @@ config MACH_CCWMX51
 
 config MACH_CCMX51
 	bool "Support for the ConnectCore MX51 module"
+	select MODULE_CCXMX51
 	help
 	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
