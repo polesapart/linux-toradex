@@ -181,6 +181,28 @@ static struct mxc_iomux_pin_cfg __initdata mxc_iomux_pins[] = {
 	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
 	 },
 #endif
+	/* Push Buttons */
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+	{ /* Button 1 */
+	 MX51_PIN_GPIO1_8, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	 },
+	{ /* Button 2 */
+	 MX51_PIN_GPIO1_1, IOMUX_CONFIG_ALT1 | IOMUX_CONFIG_SION,
+	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	 },
+#endif
+	/* LEDs */
+#if defined(CONFIG_NEW_LEDS)
+	{ /* LED1 */
+	 MX51_PIN_NANDF_RB2, IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION,
+	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	 },
+	{ /* LED2 */
+	 MX51_PIN_NANDF_RB1, IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION,
+	 (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+	 },
+#endif
 	/* I2C2 */
 #ifdef CONFIG_I2C_MXC_SELECT2
 	{ /* SCL */
