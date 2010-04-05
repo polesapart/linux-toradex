@@ -37,8 +37,16 @@
  * Maximun allowed variation in the three X/Y co-ordinates acquired from
  * touch-screen
  */
-#define DELTA_Y_MAX             50
+#ifdef CONFIG_TOUCH_MXC_DELTA_X
+#define DELTA_X_MAX		CONFIG_TOUCH_MXC_DELTA_X
+#else
 #define DELTA_X_MAX             50
+#endif
+#ifdef CONFIG_TOUCH_MXC_DELTA_Y
+#define DELTA_Y_MAX		CONFIG_TOUCH_MXC_DELTA_Y
+#else
+#define DELTA_Y_MAX             50
+#endif
 
 /*
  * ADC 0

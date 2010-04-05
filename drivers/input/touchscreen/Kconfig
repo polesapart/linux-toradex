@@ -280,6 +280,24 @@ config TOUCHSCREEN_MXC
 	  To compile this driver as a module, choose M here: the
 	  module will be called mxc_ts.
 
+config TOUCH_MXC_DELTA_X
+	int "Maximum Delta between 3 consecutive samples for the X axis"
+	depends on TOUCHSCREEN_MXC
+	default "10"
+	help
+	  Maximum allowed Delta between 3 consecutive samples (that will be
+	  averaged) for the X axis.
+	  Small values reduce the jitter, slowing down the driver responsiveness.
+
+config TOUCH_MXC_DELTA_Y
+	int "Maximum Delta between 3 consecutive samples for the Y axis"
+	depends on TOUCHSCREEN_MXC
+	default "10"
+	help
+	  Maximum allowed Delta between 3 consecutive samples (that will be
+	  averaged) for the Y axis.
+	  Small values reduce the jitter, slowing down the driver responsiveness.
+
 config TOUCHSCREEN_IMX_ADC
 	tristate "Freescale i.MX ADC touchscreen input driver"
 	depends on IMX_ADC
