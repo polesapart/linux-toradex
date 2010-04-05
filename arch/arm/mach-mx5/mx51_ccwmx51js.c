@@ -542,8 +542,10 @@ static void mxc_power_off(void)
 	   Set USEROFFSPI */
 
 	/* Set the power gate bits to power down */
+#ifdef CONFIG_MXC_PMIC_MC13892
 	pmic_write_reg(REG_POWER_MISC, (PWGT1SPIEN|PWGT2SPIEN),
 		(PWGT1SPIEN|PWGT2SPIEN));
+#endif
 }
 
 static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
@@ -567,7 +569,9 @@ int __init ccwmx51_init_i2c2(void)
 
 static void ccwmx51_initwm8753(void)
 {
+#if defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753) || defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753_MODULE)
 	platform_device_register(&mxc_wm8753_device);
+#endif
 }
 
 /*!
@@ -585,11 +589,10 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_nand_mtd();
 	ccwmx51_init_ext_eth_mac();
 	ccwmx51_init_i2c2();
-#if defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753) || defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753_MODULE)
-	ccwmx51_initwm8753();
-#endif
+#ifdef CONFIG_MXC_PMIC_MC13892
 	ccwmx51_init_mc13892();
-
+#endif
+	ccwmx51_initwm8753();
 	pm_power_off = mxc_power_off;
 }
 
