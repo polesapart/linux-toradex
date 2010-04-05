@@ -447,6 +447,15 @@ static struct mxc_iomux_pin_cfg __initdata mxc_iomux_pins[] = {
 	{MX51_PIN_EIM_D31, IOMUX_CONFIG_ALT0,},
 	{MX51_PIN_GPIO1_9, IOMUX_CONFIG_ALT0, (PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU), },
 #endif
+	/* One Wire Interface */
+#if defined(CONFIG_W1_MASTER_MXC) || defined(CONFIG_W1_MASTER_MXC_MODULE)
+	{
+	 MX51_PIN_OWIRE_LINE, IOMUX_CONFIG_ALT0,
+	 (PAD_CTL_HYS_ENABLE | PAD_CTL_PKE_ENABLE |
+	  PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_DRV_HIGH |
+	  PAD_CTL_SRE_FAST | PAD_CTL_100K_PU | PAD_CTL_PUE_PULL),
+	},
+#endif
 };
 
 void __init mx51_ccwmx51js_io_init(void)
