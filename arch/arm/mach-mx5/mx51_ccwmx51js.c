@@ -591,6 +591,8 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_i2c2();
 #ifdef CONFIG_MXC_PMIC_MC13892
 	ccwmx51_init_mc13892();
+	/* Configure PMIC irq line */
+	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
 	ccwmx51_initwm8753();
 	pm_power_off = mxc_power_off;
