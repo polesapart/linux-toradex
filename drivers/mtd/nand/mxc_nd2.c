@@ -113,7 +113,12 @@ static struct nand_ecclayout nand_hw_eccoob_4k = {
  */
 
 #ifdef CONFIG_MTD_PARTITIONS
-static const char *part_probes[] = { "RedBoot", "cmdlinepart", NULL };
+static const char *part_probes[] = {
+#ifndef CONFIG_MODULE_CCXMX51
+	"RedBoot",
+#endif
+	"cmdlinepart", NULL
+};
 #endif
 
 static wait_queue_head_t irq_waitq;
@@ -1603,8 +1608,7 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 
 	/* Register the partitions */
 #ifdef CONFIG_MTD_PARTITIONS
-#if defined(CONFIG_MACH_CCWMX51JS) || defined(CONFIG_MACH_CCMX51JS) || \
-    defined(CONFIG_MACH_CCWMX51) || defined(CONFIG_MACH_CCMX51)
+#ifdef CONFIG_MODULE_CCXMX51
 	mtd->name= "onboard_boot";
 #endif
 	nr_parts =
