@@ -209,7 +209,7 @@ static int __init ccwmx51_init_fb(void)
 		pr_info("VGA interface is primary\n");
 
 		fb_data_vga.mode = 0; // Do not use LCD timings.
-		strcpy(fb_data_vga.mode_str, "1024x768M-16@60");	/* Default */
+		fb_data_vga.mode_str = "1024x768M-16@60";
 
 		/* Get the desired configuration provided by the bootloader */
 		if (options[3] != '@') {
