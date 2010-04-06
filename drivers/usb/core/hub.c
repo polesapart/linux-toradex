@@ -1173,7 +1173,9 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	/* Defaultly disable autosuspend for hub and reley on sys
 	 * to enable it.
 	 */
+#ifdef	CONFIG_PM
 	hdev->autosuspend_disabled = 1;
+#endif
 
 #ifdef	CONFIG_USB_OTG_BLACKLIST_HUB
 	if (hdev->parent) {
