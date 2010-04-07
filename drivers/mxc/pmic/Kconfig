@@ -17,7 +17,7 @@ config MXC_PMIC_MC13783
 
 config MXC_PMIC_MC13892
 	tristate "MC13892 PMIC"
-	depends on ARCH_MXC && (I2C || SPI)
+	depends on ARCH_MXC && I2C && SPI
 	select MXC_PMIC
 	---help---
 	  This is the MXC MC13892(PMIC) support. It include
