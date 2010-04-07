@@ -83,8 +83,8 @@ const unsigned char *fim_sdio_firmware = NULL;
 #endif
 
 /* Driver informations */
-#define DRIVER_VERSION				"0.2"
-#define DRIVER_AUTHOR				"Luis Galdos"
+#define DRIVER_VERSION				"0.3"
+#define DRIVER_AUTHOR				"Digi International"
 #define DRIVER_DESC				"FIM SDIO driver"
 #define FIM_SDIO_DRIVER_NAME			"fim-sdio"
 MODULE_AUTHOR(DRIVER_AUTHOR);
@@ -94,6 +94,30 @@ MODULE_VERSION(DRIVER_VERSION);
 
 /* Module parameter for selection the FIMs */
 NS921X_FIM_NUMBERS_PARAM(fims_number);
+/* Other module parameters */
+#if defined(MODULE)
+#if defined(CONFIG_FIM_APPKIT_BOARD)
+static int cd0_gpio = 101;
+static int cd0_gpio_func = NS921X_GPIO_FUNC_2;
+static int wp0_gpio = 100;
+static int cd1_gpio = 101;
+static int cd1_gpio_func = NS921X_GPIO_FUNC_2;
+static int wp1_gpio = 100;
+#else
+static int cd0_gpio = FIM_GPIO_DONT_USE;
+static unsigned int cd0_gpio_func = NS921X_GPIO_FUNC_GPIO;
+static int wp0_gpio = FIM_GPIO_DONT_USE;
+static int cd1_gpio = FIM_GPIO_DONT_USE;
+static unsigned int cd1_gpio_func = NS921X_GPIO_FUNC_GPIO;
+static int wp1_gpio = FIM_GPIO_DONT_USE;
+#endif
+module_param_named(cd0, cd0_gpio, int, 0644);
+module_param_named(cd0_func, cd0_gpio_func, int, 0644);
+module_param_named(wp0, wp0_gpio, int, 0644);
+module_param_named(cd1, cd1_gpio, int, 0644);
+module_param_named(cd1_func, cd1_gpio_func, int, 0644);
+module_param_named(wp1, wp1_gpio, int, 0644);
+#endif
 
 /* Registers with status information */
 #define FIM_SDIO_GPIOS_REG			0x02
@@ -316,6 +340,7 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate);
 static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port);
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd);
 
+static cdtimer_disabled = 0;
 
 /* Return the corresponding port structure */
 inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc)
@@ -391,19 +416,29 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 	struct fim_sdio_t *port;
 	int val;
 
-	port = (struct fim_sdio_t *)_port;
-	val = gpio_get_value_ns921x(port->cd_gpio);
+	/*
+	 * The timer might still be running for a while even though the
+	 * module has been unloaded. It looks like del_timer_sync() does
+	 * not really guarantee that the timer is not running, because
+	 * the timeout function reloads the timer every time.
+	 * The function must be protected against this by using a boolean
+	 * variable 'cdtimer_disabled' that is set upon timer deletion.
+	 */
+	if (!cdtimer_disabled) {
+		port = (struct fim_sdio_t *)_port;
+		val = gpio_get_value_ns921x(port->cd_gpio);
 
-	if (val != port->cd_value) {
-		port->cd_value = val;
+		if (val != port->cd_value) {
+			port->cd_value = val;
 
-		if (atomic_read(&port->fim_is_down))
-			schedule_work(&port->restart_work);
-		else
-			mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+			if (atomic_read(&port->fim_is_down))
+				schedule_work(&port->restart_work);
+			else
+				mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+		}
+
+		mod_timer(&port->cd_timer, jiffies + FIM_SDIO_CD_POLLING_TIMER);
 	}
-
-	mod_timer(&port->cd_timer, jiffies + FIM_SDIO_CD_POLLING_TIMER);
 }
 
 /*
@@ -1188,9 +1223,16 @@ static int fim_sd_get_ro(struct mmc_host *mmc)
 		return -ENODEV;
 	}
 
-	return gpio_get_value_ns921x(port->wp_gpio);
+	if (FIM_GPIO_DONT_USE != port->wp_gpio)
+		return gpio_get_value_ns921x(port->wp_gpio);
+	else {
+		/*
+		 * There is no GPIO for the Write Protect functionality:
+		 * Assume Write Protect is off.
+		 */
+		return 0;
+	}
 }
-
 
 static void fim_sd_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
@@ -1235,6 +1277,7 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	mmc_free_host(port->mmc);
 
 	del_timer_sync(&port->mmc_timer);
+	cdtimer_disabled = 1;
 
 	/* Reset the main control register */
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, 0);
@@ -1242,13 +1285,14 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	fim_unregister_driver(&port->fim);
 
 	for (cnt=0; cnt < FIM_SDIO_MAX_GPIOS; cnt++) {
-		printk_debug("Freeing GPIO %i\n", port->gpios[cnt].nr);
 		if (port->gpios[cnt].nr == FIM_LAST_GPIO)
 			break;
 		else if (port->gpios[cnt].nr == FIM_GPIO_DONT_USE)
 			continue;
-		else
+		else {
 			gpio_free(port->gpios[cnt].nr);
+			printk_debug("Freeing GPIO %i\n", port->gpios[cnt].nr);
+		}
 	}
 
 	if (port->sys_clk && !IS_ERR(port->sys_clk)) {
@@ -1403,46 +1447,56 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	 * If no interrupt line is available for the card detection, then use the timer
 	 * for the polling.
 	 */
-	port->cd_irq = gpio_to_irq(port->cd_gpio);
+	if (FIM_GPIO_DONT_USE != port->cd_gpio) {
+		/* First check if we have an IRQ at this line */
+		port->cd_irq = gpio_to_irq(port->cd_gpio);
 
 #if defined(FIM_SDIO_FORCE_CD_POLLING)
-	port->cd_irq = -1;
+		port->cd_irq = -1;
 #endif
 
-	if (port->cd_irq > 0) {
-		int iret;
+		if (port->cd_irq > 0) {
+			int iret;
 
-		/* First check if we have an IRQ at this line */
-		printk_info("Got IRQ %i for GPIO %i\n", port->cd_irq,
-			    port->cd_gpio);
+			iret = request_irq(port->cd_irq, fim_sd_cd_irq,
+					IRQF_DISABLED | IRQF_TRIGGER_FALLING,
+					"fim-sdio-cd", port);
+			if (iret) {
+				printk_err("Failed IRQ %i request (%i)\n", port->cd_irq, iret);
+				port->cd_irq = -1;
+			}
+			else
+				printk_info("Got IRQ %i for GPIO %i\n", port->cd_irq,
+					port->cd_gpio);
+		}
 
-		iret = request_irq(port->cd_irq, fim_sd_cd_irq,
-				   IRQF_DISABLED | IRQF_TRIGGER_FALLING,
-				   "fim-sdio-cd", port);
-		if (iret) {
-			printk_err("Failed IRQ %i request (%i)\n", port->cd_irq, iret);
-			port->cd_irq = -1;
+		/*
+		* By errors (e.g. in the case that we couldn't request the IRQ) use the
+		* polling function
+		*/
+		if (port->cd_irq < 0) {
+			printk_dbg(KERN_DEBUG "Polling the Card Detect line (no IRQ)\n");
+			port->cd_value = 1; /* @XXX: Use an invert value for this purpose */
+			mod_timer(&port->cd_timer, jiffies + HZ / 2);
+		} else {
+			/*
+			* Setup the card detect interrupt at this point, otherwise the first
+			* event detection will not work when the system is booted with a
+			* plugged card.
+			*/
+			if ((retval = fim_sd_prepare_cd_irq(port))) {
+				printk_err("Failed card detect IRQ setup\n");
+				goto exit_free_cdirq;
+			}
 		}
 	}
-
-	/*
-	 * By errors (e.g. in the case that we couldn't request the IRQ) use the
-	 * polling function
-	 */
-	if (port->cd_irq < 0) {
-		printk(KERN_DEBUG "Polling the Card Detect line (no IRQ)\n");
-		port->cd_value = 1; /* @XXX: Use an invert value for this purpose */
-		mod_timer(&port->cd_timer, jiffies + HZ / 2);
-	} else {
+	else {
 		/*
-		 * Setup the card detect interrupt at this point, otherwise the first
-		 * event detection will not work when the system is booted with a
-		 * plugged card.
+		 * There is no GPIO for the Card Detect functionality:
+		 * Assume the card is always plugged.
 		 */
-		if ((retval = fim_sd_prepare_cd_irq(port))) {
-			printk_err("Failed card detect IRQ setup\n");
-			goto exit_free_cdirq;
-		}
+		port->cd_irq = -1;
+		port->cd_value = 1;
 	}
 
 	INIT_WORK(&port->restart_work, fim_sd_restart_work_func);
@@ -1505,6 +1559,62 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 
 	port = fim_sdios->ports + pdata->fim_nr;
 
+#if defined(MODULE)
+	/* Check CD and WP parameters */
+	if (0 == pdata->fim_nr) {
+		if (cd0_gpio != FIM_GPIO_DONT_USE) {
+			if (!gpio_issocgpio(cd0_gpio)) {
+				cd0_gpio = FIM_GPIO_DONT_USE;
+				printk_err("Invalid argument 'cd0'\n");
+			}
+			else {
+				if (cd0_gpio_func < NS921X_GPIO_FUNC_0 ||
+				cd0_gpio_func > NS921X_GPIO_FUNC_4 ) {
+					printk_err("Invalid argument 'cd0_func'\n");
+					return -EINVAL;
+				}
+			}
+		}
+		if (cd0_gpio == FIM_GPIO_DONT_USE)
+			printk("Card Detect functionality disabled for FIM 0\n");
+
+		if (wp0_gpio != FIM_GPIO_DONT_USE) {
+			if (!gpio_issocgpio(wp0_gpio)) {
+				wp0_gpio = FIM_GPIO_DONT_USE;
+				printk_err("Invalid argument 'wp0'\n");
+			}
+		}
+		if (wp0_gpio == FIM_GPIO_DONT_USE)
+			printk("Write Protect functionality disabled for FIM 0\n");
+	}
+	if (1 == pdata->fim_nr) {
+		if (cd1_gpio != FIM_GPIO_DONT_USE) {
+			if (!gpio_issocgpio(cd1_gpio)) {
+				cd1_gpio = FIM_GPIO_DONT_USE;
+				printk_err("Invalid argument 'cd1'\n");
+			}
+			else {
+				if (cd1_gpio_func < NS921X_GPIO_FUNC_0 ||
+				cd1_gpio_func > NS921X_GPIO_FUNC_4 ) {
+					printk_err("Invalid argument 'cd1_func'\n");
+					return -EINVAL;
+				}
+			}
+		}
+		if (cd1_gpio == FIM_GPIO_DONT_USE)
+			printk("Card Detect functionality disabled for FIM 1\n");
+
+		if (wp1_gpio != FIM_GPIO_DONT_USE) {
+			if (!gpio_issocgpio(wp1_gpio)) {
+				wp1_gpio = FIM_GPIO_DONT_USE;
+				printk_err("Invalid argument 'wp1'\n");
+			}
+		}
+		if (wp1_gpio == FIM_GPIO_DONT_USE)
+			printk("Write Protect functionality disabled for FIM 1\n");
+	}
+#endif
+
 	/* Get the GPIOs-table from the platform data structure */
 	gpios[FIM_SDIO_D0_GPIO].nr   = pdata->d0_gpio_nr;
 	gpios[FIM_SDIO_D0_GPIO].func = pdata->d0_gpio_func;
@@ -1514,17 +1624,33 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 	gpios[FIM_SDIO_D2_GPIO].func = pdata->d2_gpio_func;
 	gpios[FIM_SDIO_D3_GPIO].nr   = pdata->d3_gpio_nr;
 	gpios[FIM_SDIO_D3_GPIO].func = pdata->d3_gpio_func;
-	gpios[FIM_SDIO_WP_GPIO].nr   = pdata->wp_gpio_nr;
-	gpios[FIM_SDIO_WP_GPIO].func = pdata->wp_gpio_func;
-	gpios[FIM_SDIO_CD_GPIO].nr   = pdata->cd_gpio_nr;
-	gpios[FIM_SDIO_CD_GPIO].func = pdata->cd_gpio_func;
 	gpios[FIM_SDIO_CLK_GPIO].nr   = pdata->clk_gpio_nr;
 	gpios[FIM_SDIO_CLK_GPIO].func = pdata->clk_gpio_func;
 	gpios[FIM_SDIO_CMD_GPIO].nr   = pdata->cmd_gpio_nr;
 	gpios[FIM_SDIO_CMD_GPIO].func = pdata->cmd_gpio_func;
-	port->wp_gpio = pdata->wp_gpio_nr;
-	port->cd_gpio = pdata->cd_gpio_nr;
-
+#if defined(MODULE)
+	/* Use GPIOs provided as arguments */
+	if (0 == pdata->fim_nr) {
+		gpios[FIM_SDIO_WP_GPIO].nr   = wp0_gpio;
+		gpios[FIM_SDIO_WP_GPIO].func = NS921X_GPIO_FUNC_GPIO;
+		gpios[FIM_SDIO_CD_GPIO].nr   = cd0_gpio;
+		gpios[FIM_SDIO_CD_GPIO].func = cd0_gpio_func;
+	}
+	else if (1 == pdata->fim_nr) {
+		gpios[FIM_SDIO_WP_GPIO].nr   = wp1_gpio;
+		gpios[FIM_SDIO_WP_GPIO].func = NS921X_GPIO_FUNC_GPIO;
+		gpios[FIM_SDIO_CD_GPIO].nr   = cd1_gpio;
+		gpios[FIM_SDIO_CD_GPIO].func = cd1_gpio_func;
+	}
+#else
+	/* Use platform data */
+	gpios[FIM_SDIO_WP_GPIO].nr   = pdata->wp_gpio_nr;
+	gpios[FIM_SDIO_WP_GPIO].func = pdata->wp_gpio_func;
+	gpios[FIM_SDIO_CD_GPIO].nr   = pdata->cd_gpio_nr;
+	gpios[FIM_SDIO_CD_GPIO].func = pdata->cd_gpio_func;
+#endif
+	port->wp_gpio = gpios[FIM_SDIO_WP_GPIO].nr;
+	port->cd_gpio = gpios[FIM_SDIO_CD_GPIO].nr;
 	retval = fim_sdio_register_port(&pdev->dev, port, pdata, gpios);
 
 	return retval;

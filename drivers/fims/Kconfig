@@ -22,6 +22,17 @@ menuconfig FIM_CORE
 
 if FIM_CORE
 
+config FIM_APPKIT_BOARD
+	bool "Use FIM Application Kit hardware board"
+	default y
+	help
+	  Enable this if you are going to use the FIM Application Kit hardware
+	  board. This will configure the correct GPIOs to use with each FIM
+	  and prevents you from selecting combinations of FIMs which are not
+	  allowed in this hardware board (for example SDIO on both FIMs).
+
+	  If using a custom board, you can disable this option.
+
 config FIM_ZERO
 	bool "FIM 0"
 	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
@@ -36,13 +47,55 @@ choice
 
 config FIM_ZERO_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK && !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
+	depends on MMC && MMC_BLOCK
+	depends on !(CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_SDIO
 	help
 	  Enables the FIM-SDIO driver.
 
           For testing the SDIO functionality is required to choose an additional
           SDIO-driver (GPS/UART) from the MMC-core.
+
+config FIM_ZERO_SDIO_CD
+	bool "Card Detect for SDIO on FIM 0"
+	depends on FIM_ZERO && FIM_ZERO_SDIO_SELECTED && !FIM_APPKIT_BOARD
+	help
+	  If using a custom hardware board for using the FIM as SDIO function,
+	  this item lets you specify whether the inteface will support the
+	  Card Detect (CD) functionality using a GPIO.
+
+config FIM_ZERO_SDIO_CD_GPIO
+	int "GPIO to use for Card Detect on FIM 0"
+	default 101
+	depends on FIM_ZERO_SDIO_CD
+	help
+	  Specify the GPIO number to use for the SDIO Card Detect signal.
+
+config FIM_ZERO_SDIO_CD_GPIO_FUNC
+	int "Card Detect GPIO function"
+	default 2
+	depends on FIM_ZERO_SDIO_CD
+	help
+	  Specify the GPIO function to configure for the Card Detect GPIO.
+	  If the GPIO is interrupt capable, write here the GPIO's interrupt
+	  function number. Otherwise use 3 for standard GPIO function.
+	  Please refer to the processor's Hardware Reference Manual for
+	  the available GPIOs and functions.
+
+config FIM_ZERO_SDIO_WP
+	bool "Write Protect for SDIO on FIM 0"
+	depends on FIM_ZERO && FIM_ZERO_SDIO_SELECTED && !FIM_APPKIT_BOARD
+	help
+	  If using a custom hardware board for using the FIM as SDIO function,
+	  this item lets you specify whether the inteface will support the
+	  Write Protect (WP) functionality using a GPIO.
+
+config FIM_ZERO_SDIO_WP_GPIO
+	int "GPIO to use for Write Protect on FIM 0"
+	default 100
+	depends on FIM_ZERO_SDIO_WP
+	help
+	  Specify the GPIO number to use for the SDIO Write Protect signal.
 
 config FIM_ZERO_SERIAL_RXTX
 	bool "Serial driver 2-wires (RX/TX)"
@@ -99,13 +152,56 @@ choice
 
 config FIM_ONE_SDIO_SELECTED
 	bool "SDIO driver"
-	depends on MMC && MMC_BLOCK && (!MACH_CME9210 && !MACH_CME9210JS) && !FIM_ZERO_SDIO_SELECTED
+	depends on MMC && MMC_BLOCK
+	depends on (!MACH_CME9210 && !MACH_CME9210JS)
+	depends on !(FIM_ZERO_SDIO_SELECTED && FIM_APPKIT_BOARD)
 	select FIM_ONE_SDIO
 	help
 	  Enables the FIM-SDIO serial driver.
 
           For testing the SDIO functionality is required to choose an additional
           SDIO-driver (GPS/UART) from the MMC-core.
+
+config FIM_ONE_SDIO_CD
+	bool "Card Detect for SDIO on FIM 1"
+	depends on FIM_ONE && FIM_ONE_SDIO_SELECTED && !FIM_APPKIT_BOARD
+	help
+	  If using a custom hardware board for using the FIM as SDIO function,
+	  this item lets you specify whether the inteface will support the
+	  Card Detect (CD) functionality using a GPIO.
+
+config FIM_ONE_SDIO_CD_GPIO
+	int "GPIO to use for Card Detect on FIM 1"
+	default 101
+	depends on FIM_ONE_SDIO_CD
+	help
+	  Specify the GPIO number to use for the SDIO Card Detect signal.
+
+config FIM_ONE_SDIO_CD_GPIO_FUNC
+	int "Card Detect GPIO function"
+	default 2
+	depends on FIM_ONE_SDIO_CD
+	help
+	  Specify the GPIO function to configure for the Card Detect GPIO.
+	  If the GPIO is interrupt capable, write here the GPIO's interrupt
+	  function number. Otherwise use 3 for standard GPIO function.
+	  Please refer to the processor's Hardware Reference Manual for
+	  the available GPIOs and functions.
+
+config FIM_ONE_SDIO_WP
+	bool "Write Protect for SDIO on FIM 1"
+	depends on FIM_ONE && FIM_ONE_SDIO_SELECTED && !FIM_APPKIT_BOARD
+	help
+	  If using a custom hardware board for using the FIM as SDIO function,
+	  this item lets you specify whether the inteface will support the
+	  Write Protect (WP) functionality using a GPIO.
+
+config FIM_ONE_SDIO_WP_GPIO
+	int "GPIO to use for Write Protect on FIM 1"
+	default 100
+	depends on FIM_ONE_SDIO_WP
+	help
+	  Specify the GPIO number to use for the SDIO Write Protect signal.
 
 config FIM_ONE_SERIAL_RXTX
 	bool "Serial driver 2-wires (RX/TX)"
@@ -172,8 +268,37 @@ config FIM_SDIO_MODULE
 	select FIM_ZERO_SDIO
 	select FIM_ONE_SDIO if !(MACH_CME9210JS || MACH_CME9210)
 	help
-          Enables the FIM SDIO as loadable module. The number of FIMs to be
-	  handled by this driver can be passed with the module parameter 'fims'
+	  Enables the FIM SDIO as loadable module. The number of FIMs to be
+	  handled by this driver can be passed with the module parameter 'fims',
+	  where:
+	  - fims=0 (FIM0)
+	  - fims=1 (FIM1)
+	  - fims=2 (FIM0 and FIM1)
+
+	  If the FIM Application Kit hardware board is selected, SDIO can only
+	  work with one of the FIMs, and the following GPIOs will be used:
+	  - On cc9p9215js platform:
+	  -- GPIO 101 for Card Detect
+	  -- GPIO 100 for Write Protect
+	  - On cme9210js platform:
+	  -- GPIO 9 for Card Detect
+	  -- GPIO 6 for Write Protect
+
+	  If the FIM Application Kit hardware board is disabled because a custom
+	  hardware board is to be used instead, then six new module parameters
+	  are allowed to specify GPIOs for Card Detect and Write Protect
+	  functionality for each FIM:
+	  - 'cd0' for Card Detect on FIM0
+	  - 'cd0_func' for Card Detect GPIO function on FIM0
+	  - 'wp0' for Write Protect on FIM0
+	  - 'cd1' for Card Detect on FIM1
+	  - 'cd1_func' for Card Detect GPIO function on FIM1
+	  - 'wp1' for Write Protect on FIM1
+	  If a parameter is not specified, the corresponding functionality
+	  won't be available for that FIM.
+	  If Card Detect functionality is not available, it is assumed the card is
+	  always plugged. If Write Protect functionality is not available, it is
+	  assumed Write Protect is off.
 
 config FIM_SERIAL_MODULE
 	bool "Serial as loadable module"

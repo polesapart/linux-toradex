@@ -224,12 +224,29 @@ static struct fim_sdio_platform_data fim_sdio_data0 = {
 	NS921X_FIM_SDIO_GPIOS_FIM(68, 69, 70, 71, /* D0 to D3 */
 				  76, 77,         /* CLK + CMD */
 				  NS921X_GPIO_FUNC_0),
-	.cd_gpio_nr   = 101,         /* CD as external intrrupt */
+#if defined(CONFIG_FIM_APPKIT_BOARD)
+	.cd_gpio_nr   = 101,         /* CD as external interrupt */
 	.cd_gpio_func = NS921X_GPIO_FUNC_2,
 
 	.wp_gpio_nr   = 100,         /* WP as normal GPIO */
-	.wp_gpio_func = NS921X_GPIO_FUNC_3,
+	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
+#else
+#if defined(CONFIG_FIM_ZERO_SDIO_CD)
+	/* CD GPIO and function provided by config */
+	.cd_gpio_nr   = CONFIG_FIM_ZERO_SDIO_CD_GPIO,
+	.cd_gpio_func = CONFIG_FIM_ZERO_SDIO_CD_GPIO_FUNC,
+#else
+	.cd_gpio_nr   = FIM_GPIO_DONT_USE,
 #endif
+#if defined(CONFIG_FIM_ZERO_SDIO_WP)
+	/* WP GPIO provided by config. Assume standard GPIO function */
+	.wp_gpio_nr   = CONFIG_FIM_ZERO_SDIO_WP_GPIO,
+	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
+#else
+	.wp_gpio_nr   = FIM_GPIO_DONT_USE,
+#endif
+#endif /* CONFIG_FIM_APPKIT_BOARD */
+#endif /* CONFIG_FIM_ZERO_SDIO */
 };
 struct platform_device ns921x_fim_sdio0 = {
 	.name              = "fim-sdio",
@@ -253,12 +270,29 @@ static struct fim_sdio_platform_data fim_sdio_data1 = {
 	NS921X_FIM_SDIO_GPIOS_FIM(72, 73, 74, 75, /* D0 to D3 */
 				  78, 79,         /* CLK + CMD */
 				  NS921X_GPIO_FUNC_1),
-	.cd_gpio_nr   = 101,         /* CD as external intrrupt */
+#if defined(CONFIG_FIM_APPKIT_BOARD)
+	.cd_gpio_nr   = 101,         /* CD as external interrupt */
 	.cd_gpio_func = NS921X_GPIO_FUNC_2,
 
 	.wp_gpio_nr   = 100,         /* WP as normal GPIO */
-	.wp_gpio_func = NS921X_GPIO_FUNC_3,
+	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
+#else
+#if defined(CONFIG_FIM_ZERO_SDIO_CD)
+	/* CD GPIO and function provided by config */
+	.cd_gpio_nr   = CONFIG_FIM_ONE_SDIO_CD_GPIO,
+	.cd_gpio_func = CONFIG_FIM_ONE_SDIO_CD_GPIO_FUNC,
+#else
+	.cd_gpio_nr   = FIM_GPIO_DONT_USE,
 #endif
+#if defined(CONFIG_FIM_ZERO_SDIO_WP)
+	/* WP GPIO provided by config. Assume standard GPIO function */
+	.wp_gpio_nr   = CONFIG_FIM_ONE_SDIO_WP_GPIO,
+	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
+#else
+	.wp_gpio_nr   = FIM_GPIO_DONT_USE,
+#endif
+#endif /* CONFIG_FIM_APPKIT_BOARD */
+#endif /* CONFIG_FIM_ONE_SDIO */
 };
 struct platform_device ns921x_fim_sdio1 = {
 	.name              = "fim-sdio",
