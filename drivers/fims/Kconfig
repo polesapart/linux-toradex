@@ -23,10 +23,10 @@ menuconfig FIM_CORE
 if FIM_CORE
 
 config FIM_APPKIT_BOARD
-	bool "Use FIM Application Kit hardware board"
+	bool "Use Digi's FIM Application Kit hardware board"
 	default y
 	help
-	  Enable this if you are going to use the FIM Application Kit hardware
+	  Enable this if you are going to use Digi's FIM Application Kit hardware
 	  board. This will configure the correct GPIOs to use with each FIM
 	  and prevents you from selecting combinations of FIMs which are not
 	  allowed in this hardware board (for example SDIO on both FIMs).
@@ -78,9 +78,9 @@ config FIM_ZERO_SDIO_CD_GPIO_FUNC
 	help
 	  Specify the GPIO function to configure for the Card Detect GPIO.
 	  If the GPIO is interrupt capable, write here the GPIO's interrupt
-	  function number. Otherwise use 3 for standard GPIO function.
-	  Please refer to the processor's Hardware Reference Manual for
-	  the available GPIOs and functions.
+	  function number. Otherwise use the value that corresponds to the
+	  standard GPIO function. Please refer to the processor's Hardware
+	  Reference Manual for the available GPIOs and their functions.
 
 config FIM_ZERO_SDIO_WP
 	bool "Write Protect for SDIO on FIM 0"
@@ -275,7 +275,7 @@ config FIM_SDIO_MODULE
 	  - fims=1 (FIM1)
 	  - fims=2 (FIM0 and FIM1)
 
-	  If the FIM Application Kit hardware board is selected, SDIO can only
+	  If Digi's FIM Application Kit hardware board is selected, SDIO can only
 	  work with one of the FIMs, and the following GPIOs will be used:
 	  - On cc9p9215js platform:
 	  -- GPIO 101 for Card Detect
@@ -284,7 +284,7 @@ config FIM_SDIO_MODULE
 	  -- GPIO 9 for Card Detect
 	  -- GPIO 6 for Write Protect
 
-	  If the FIM Application Kit hardware board is disabled because a custom
+	  If Digi's FIM Application Kit hardware board is disabled because a custom
 	  hardware board is to be used instead, then six new module parameters
 	  are allowed to specify GPIOs for Card Detect and Write Protect
 	  functionality for each FIM:
