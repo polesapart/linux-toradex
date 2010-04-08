@@ -194,6 +194,7 @@ static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
 #else
 	.wp_gpio_nr   = FIM_GPIO_DONT_USE,
+#endif
 #endif /* CONFIG_FIM_APPKIT_BOARD */
 };
 struct platform_device ns921x_fim_sdio0 = {
@@ -242,6 +243,7 @@ static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
 #else
 	.wp_gpio_nr   = FIM_GPIO_DONT_USE,
+#endif
 #endif /* CONFIG_FIM_APPKIT_BOARD */
 };
 struct platform_device ns921x_fim_sdio1 = {
