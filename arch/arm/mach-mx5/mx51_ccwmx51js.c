@@ -1,6 +1,6 @@
 /*
  * Copyright 2009 Freescale Semiconductor, Inc. All Rights Reserved.
- * Copyright 2009 Digi International, Inc. All Rights Reserved.
+ * Copyright 2009 - 2010 Digi International, Inc. All Rights Reserved.
  */
 
 /*
@@ -574,6 +574,28 @@ static void ccwmx51_initwm8753(void)
 #endif
 }
 
+#if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
+static struct spi_board_info spi_devices[] __initdata = {
+#if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
+	{	/* SPIDEV */
+		.modalias       = "spidev",
+		.max_speed_hz   = 6000000,
+		.bus_num        = 1,
+		.chip_select    = 1,
+	},
+	/* Add here other SPI devices, if any... */
+#endif
+};
+
+static void ccwmx51_init_spidevices(void)
+{
+	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
+}
+#else
+static void ccwmx51_init_spidevices(void) { }
+#endif
+
+
 /*!
  * Board specific initialization.
  */
@@ -594,6 +616,7 @@ static void __init mxc_board_init(void)
 	/* Configure PMIC irq line */
 	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
+	ccwmx51_init_spidevices();
 	ccwmx51_initwm8753();
 	pm_power_off = mxc_power_off;
 }

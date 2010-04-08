@@ -176,6 +176,36 @@ config UART3_ENABLED
 	  Enable the MX51 UART3 interface
 endmenu
 
+menu "SPI Interface Options"
+config SPI_MXC_SELECT1
+	bool "Enable CSPI1"
+	depends on SPI_MXC
+	default y
+	help
+	  Enable the CSPI1 interface
+
+config SPI_MXC_SELECT1_SS1
+	bool "Enable SS1 line for CSPI1"
+	depends on SPI_MXC_SELECT1
+	default y
+	help
+          Enable SS1 (slave select 1) line, used on ConnectCore Wi-i.MX51 base board SPI connector
+
+config SPI_MXC_SELECT2
+	bool "Enable CSPI2"
+	depends on SPI_MXC
+	default n
+	help
+	  Enable the CSPI2 interface
+
+config SPI_MXC_SELECT3
+	bool "Enable CSPI3"
+	depends on SPI_MXC
+	default n
+	help
+	  Enable the CSPI3 interface
+endmenu
+
 source "arch/arm/mach-mx5/displays/Kconfig"
 
 endif
