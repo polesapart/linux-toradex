@@ -117,13 +117,6 @@ config I2C_MXC_SELECT2
 	help
 	  Enable MX51 I2C2 module.
 
-config I2C_MXC_SELECT3
-	bool "Enable I2C3 module"
-	default n
-	depends on I2C_MXC
-	help
-	  Enable MX51 I2C3 module.
-
 endmenu
 
 menu "Serial Port Options"
