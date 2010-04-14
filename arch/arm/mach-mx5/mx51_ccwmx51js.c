@@ -50,7 +50,6 @@
 
 #include <linux/smc911x.h>
 
-
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -227,11 +226,11 @@ static void ccwmx51_init_ext_eth_mac(void)
 	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
 	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
 	 */
-	__raw_writel(0x00420081, weim_vbaddr + 0x78 + CSGCR1);
-	__raw_writel(0, weim_vbaddr + 0x78 + CSGCR2);
-	__raw_writel(0x32260000, weim_vbaddr + 0x78 + CSRCR1);
-	__raw_writel(0, weim_vbaddr + 0x78 + CSRCR2);
-	__raw_writel(0x72080f00, weim_vbaddr + 0x78 + CSWCR1);
+	writel(0x00420081, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR1);
+	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR2);
+	writel(0x32260000, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR1);
+	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR2);
+	writel(0x72080f00, (unsigned int)(weim_vbaddr) + 0x78 + CSWCR1);
 
 	iounmap(weim_vbaddr);
 
