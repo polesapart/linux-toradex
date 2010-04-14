@@ -43,7 +43,7 @@ static struct cpu_wp *cpu_wp_tbl;
 static struct clk *cpu_clk;
 static struct mxc_pm_platform_data *pm_data;
 
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 static int org_freq;
 extern int cpufreq_suspended;
 extern int set_cpu_freq(int wp);
@@ -114,7 +114,7 @@ static int mx5_suspend_enter(suspend_state_t state)
  */
 static int mx5_suspend_prepare(void)
 {
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	struct cpufreq_freqs freqs;
 	org_freq = clk_get_rate(cpu_clk);
 	freqs.old = org_freq / 1000;
@@ -137,7 +137,7 @@ static int mx5_suspend_prepare(void)
  */
 static void mx5_suspend_finish(void)
 {
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	struct cpufreq_freqs freqs;
 
 	freqs.old = clk_get_rate(cpu_clk) / 1000;

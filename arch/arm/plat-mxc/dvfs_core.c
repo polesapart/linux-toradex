@@ -324,7 +324,7 @@ static int set_cpu_freq(int wp)
 		reg &= 0xFFFFFFFB;
 		__raw_writel(reg, ccm_base + dvfs_data->ccm_cdcr_offset);
 	}
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 		cpufreq_trig_needed = 1;
 #endif
 	old_wp = wp;
@@ -538,7 +538,7 @@ END:	/* Set MAXF, MINF */
 	reg &= ~MXC_GPCCNTR_GPCIRQM;
 	__raw_writel(reg, gpc_base + dvfs_data->gpc_cntr_offset);
 
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	if (cpufreq_trig_needed == 1) {
 		cpufreq_trig_needed = 0;
 		cpufreq_update_policy(0);
@@ -573,7 +573,7 @@ void stop_dvfs(void)
 		curr_cpu = clk_get_rate(cpu_clk);
 		if (curr_cpu != cpu_wp_tbl[curr_wp].cpu_rate) {
 			set_cpu_freq(curr_wp);
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 			if (cpufreq_trig_needed == 1) {
 				cpufreq_trig_needed = 0;
 				cpufreq_update_policy(0);

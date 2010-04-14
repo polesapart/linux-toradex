@@ -5067,7 +5067,7 @@ static int cpu_clk_set_wp(int wp)
 		cpu_curr_wp = wp;
 	}
 
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	cpufreq_trig_needed = 1;
 #endif
 	return 0;
