@@ -458,7 +458,7 @@ static int _clk_pll1_sw_set_parent(struct clk *clk, struct clk *parent)
 		}
 	}
 	__raw_writel(reg, MXC_CCM_CCSR);
-	
+
 	return 0;
 }
 
@@ -3951,7 +3951,7 @@ static int cpu_clk_set_wp(int wp)
 		cpu_clk.rate = pll1_sw_clk.rate;
 	}
 
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	cpufreq_trig_needed = 1;
 #endif
 	return 0;

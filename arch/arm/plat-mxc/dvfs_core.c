@@ -317,7 +317,7 @@ static int set_cpu_freq(int wp)
 
 		propagate_rate(pll1_sw_clk);
 	}
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 		cpufreq_trig_needed = 1;
 #endif
 	old_wp = wp;
@@ -534,7 +534,7 @@ END:	/* Set MAXF, MINF */
 	reg &= ~MXC_GPCCNTR_GPCIRQM;
 	__raw_writel(reg, dvfs_data->gpc_cntr_reg_addr);
 
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 	if (cpufreq_trig_needed == 1) {
 		cpufreq_trig_needed = 0;
 		cpufreq_update_policy(0);
@@ -567,7 +567,7 @@ static void stop_dvfs(void)
 		curr_cpu = clk_get_rate(cpu_clk);
 		if (curr_cpu != cpu_wp_tbl[curr_wp].cpu_rate) {
 			set_cpu_freq(curr_wp);
-#if defined(CONFIG_CPU_FREQ)
+#if defined(CONFIG_CPU_FREQ_IMX)
 			if (cpufreq_trig_needed == 1) {
 				cpufreq_trig_needed = 0;
 				cpufreq_update_policy(0);
@@ -835,7 +835,9 @@ static int __devinit mxc_dvfs_core_probe(struct platform_device *pdev)
 	old_wp = 0;
 	curr_wp = 0;
 	dvfs_core_resume = 0;
+#ifdef CONFIG_CPU_FREQ_IMX
 	cpufreq_trig_needed = 0;
+#endif
 
 	return err;
 
