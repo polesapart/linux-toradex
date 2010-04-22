@@ -368,7 +368,7 @@ static unsigned int ns921x_uart_check_msr(struct uart_port *port, u32 irqstat)
 	u32 status, cts_gpio;
 
 	/* We can read the status of the modem lines through the
-	 * modem status register, but we need to add the value of 
+	 * modem status register, but we need to add the value of
 	 * CTS line from the gpio value */
 	status = uartread32(port, UART_MSR);
 	cts_gpio = unp->data->gpios[2];
@@ -377,7 +377,7 @@ static unsigned int ns921x_uart_check_msr(struct uart_port *port, u32 irqstat)
 	/* For event detection on the modem lines, we use the interrupt status
 	 * register instead of the delta section of the modem status register.
 	 * The interrupt flags are valid in all the cases */
-	if ((irqstat & (UART_IS_DSR|UART_IS_DCD|UART_IS_CTS|UART_IS_RI)) && 
+	if ((irqstat & (UART_IS_DSR|UART_IS_DCD|UART_IS_CTS|UART_IS_RI)) &&
 	     port->info != NULL) {
 		if (irqstat & UART_IS_RI)
 			port->icount.rng++;
@@ -407,7 +407,7 @@ static unsigned int ns921x_uart_get_mctrl(struct uart_port *port)
 		ret |= TIOCM_RNG;
 	if (status & UART_MSR_DSR)
 		ret |= TIOCM_DSR;
-	if (status & UART_MSR_CTS) 
+	if (status & UART_MSR_CTS)
 		ret |= TIOCM_CTS;
 
 	return ret;
@@ -467,7 +467,7 @@ static void ns921x_uart_tx_chars(struct uart_ns921x_port *unp,
 	ifs = ns921x_uart_read_ifs(unp);
 	if (!(ifs & HUB_IFS_TXFE))
 		return;
-	
+
 	if (unp->port.x_char) {
 		uartwrite8(&unp->port, unp->port.x_char, HUB_DMTXDF);
 		unp->port.icount.tx++;
@@ -940,7 +940,23 @@ static void ns921x_uart_set_termios(struct uart_port *port,
 
 static const char *ns921x_uart_type(struct uart_port *port)
 {
-	return port->type == PORT_NS921X ? "NS921X" : NULL;
+	struct platform_device *pdev;
+
+	if (PORT_NS921X == port->type) {
+		pdev = to_platform_device(port->dev);
+		if (0 == pdev->id)
+			return "NS921X PORT A";
+		else if (1 == pdev->id)
+			return "NS921X PORT B";
+		else if (2 == pdev->id)
+			return "NS921X PORT C";
+		else if (3 == pdev->id)
+			return "NS921X PORT D";
+		else
+			return NULL;
+	}
+	else
+		return NULL;
 }
 
 static void ns921x_uart_release_port(struct uart_port *port)

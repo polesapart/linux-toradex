@@ -749,11 +749,31 @@ static void s3c24xx_serial_set_termios(struct uart_port *port,
 
 static const char *s3c24xx_serial_type(struct uart_port *port)
 {
+#if defined(CONFIG_MACH_CC9M2443JS)
+	struct platform_device *pdev;
+	struct s3c2410_uartcfg *cfg;
+#endif
+
 	switch (port->type) {
 	case PORT_S3C2410:
 		return "S3C2410";
 	case PORT_S3C2440:
+#if defined(CONFIG_MACH_CC9M2443JS)
+		pdev = to_platform_device(port->dev);
+		cfg = s3c24xx_dev_to_cfg(&pdev->dev);
+		if (0 == cfg->hwport)
+			return "S3C2410 PORT A";
+		else if (1 == cfg->hwport)
+			return "S3C2410 PORT B";
+		else if (2 == cfg->hwport)
+			return "S3C2410 PORT C";
+		else if (3 == cfg->hwport)
+			return "S3C2410 PORT D";
+		else
+			return NULL;
+#else
 		return "S3C2440";
+#endif
 	case PORT_S3C2412:
 		return "S3C2412";
 	default:
@@ -965,7 +985,7 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 
 	/* Use the number of the HW port as line number (Luis Galdos) */
 	port->line      = cfg->hwport;
-	
+
 	ret = platform_get_irq(platdev, 0);
 	if (ret < 0)
 		port->irq = 0;

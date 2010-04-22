@@ -531,7 +531,23 @@ static void ns9360_uart_config_port(struct uart_port *port, int flags)
 
 static const char *ns9360_uart_type(struct uart_port *port)
 {
-	return port->type == PORT_NS9360 ? "NS9360" : NULL;
+	struct platform_device *pdev;
+
+	if (port->type == PORT_NS9360) {
+		pdev = to_platform_device(port->dev);
+		if (0 == pdev->id)
+			return "NS9360 PORT B";
+		else if (1 == pdev->id)
+			return "NS9360 PORT A";
+		else if (2 == pdev->id)
+			return "NS9360 PORT C";
+		else if (3 == pdev->id)
+			return "NS9360 PORT D";
+		else
+			return NULL;
+	}
+	else
+		return NULL;
 }
 
 static void ns9360_uart_break_ctl(struct uart_port *port, int break_state)
