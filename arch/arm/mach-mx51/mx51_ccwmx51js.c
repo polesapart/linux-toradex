@@ -172,7 +172,7 @@ static void ccwmx51_init_nand_mtd(void)
 static inline void ccwmx51_init_nand_mtd(void) { }
 #endif
 
-#if defined(CONFIG_SMSC9118)
+#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
 static struct resource smsc911x_device_resources[] = {
 	[0] = {
 		.name	= "smsc911x-memory",

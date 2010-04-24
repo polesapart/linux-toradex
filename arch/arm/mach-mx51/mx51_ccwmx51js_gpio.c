@@ -27,7 +27,7 @@ static void ccwmx51_mmc2_gpio_active(void);
 /**
  * iomux settings for the external ethernet mac
  */
-#if defined(CONFIG_SMSC9118)
+#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_ext_eth_pins[] = {
 	{MX51_PIN_EIM_CS5, IOMUX_CONFIG_ALT0,
 			(PAD_CTL_HYS_ENABLE | PAD_CTL_PUE_KEEPER | PAD_CTL_DRV_MEDIUM), },
@@ -512,7 +512,7 @@ void __init ccwmx51_io_init(void)
 {
 	int i;
 
-#if defined(CONFIG_SMSC9118)
+#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_ext_eth_pins); i++) {
 		mxc_request_iomux(ccwmx51_iomux_ext_eth_pins[i].pin,
 				ccwmx51_iomux_ext_eth_pins[i].mux_mode);
