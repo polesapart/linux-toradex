@@ -44,14 +44,17 @@ static u32 input_ts_installed;
 static int ts_thread(void *arg)
 {
 	t_touch_screen ts_sample;
-	s32 wait = 0;
+	s32 wait = 0, wait2 = 0;
 
 	daemonize("mxc_ts");
 	while (input_ts_installed) {
 		try_to_freeze();
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
-		if (0 != pmic_adc_get_touch_sample(&ts_sample, !wait))
+		
+		/* After 2 consecutive samples with the pen up, enable irq waiting */
+		if (0 != pmic_adc_get_touch_sample(&ts_sample, !(wait + wait2))) {
 			continue;
+		}
 		if (!(ts_sample.contact_resistance || wait))
 			continue;
 
@@ -60,7 +63,7 @@ static int ts_thread(void *arg)
 		input_report_abs(mxc_inputdev, ABS_PRESSURE,
 				 ts_sample.contact_resistance);
 		input_sync(mxc_inputdev);
-
+		wait2 = wait;
 		wait = ts_sample.contact_resistance;
 		msleep(20);
 	}
