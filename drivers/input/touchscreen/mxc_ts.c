@@ -63,15 +63,17 @@ module_param_array(calibration, int, NULL, S_IRUGO | S_IWUSR);
 static int ts_thread(void *arg)
 {
 	t_touch_screen ts_sample;
-	s32 wait = 0;
+	s32 wait = 0, wait2 = 0;
 
 	do {
 		int x, y;
 		static int last_x = -1, last_y = -1, last_press = -1;
 
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
-		if (0 != pmic_adc_get_touch_sample(&ts_sample, !wait))
-			continue;
+		/* After 2 consecutive samples with the pen up, enable irq waiting */
+		if (0 != pmic_adc_get_touch_sample(&ts_sample, !(wait + wait2))) {
+ 			continue;
+		}
 		if (!(ts_sample.contact_resistance || wait))
 			continue;
 
@@ -124,6 +126,7 @@ static int ts_thread(void *arg)
 		input_sync(mxc_inputdev);
 		last_press = ts_sample.contact_resistance;
 
+		wait2 = wait;
 		wait = ts_sample.contact_resistance;
 		msleep(20);
 
