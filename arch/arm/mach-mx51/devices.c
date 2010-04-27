@@ -348,8 +348,8 @@ static struct resource vpu_resources[] = {
 	       .flags = IORESOURCE_MEM,
 	       },
 	[1] = {
-	       .start = IO_ADDRESS(SRC_BASE_ADDR),
-	       .end = IO_ADDRESS(SRC_BASE_ADDR),
+	       .start = (resource_size_t)IO_ADDRESS(SRC_BASE_ADDR),
+	       .end = (resource_size_t)IO_ADDRESS(SRC_BASE_ADDR),
 	       .flags = IORESOURCE_MEM,
 	       },
 };
@@ -1224,6 +1224,9 @@ static void __init mxc_init_gpu(void)
 	platform_device_register(&gpu_device);
 }
 
+#if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
+static struct clk *gpu_clk;
+
 static struct resource mxc_gpu2d_resources[] = {
 	{
 	 .start = GPU2D_BASE_ADDR,
@@ -1237,9 +1240,6 @@ static struct resource mxc_gpu2d_resources[] = {
 	 .flags = IORESOURCE_MEM,
 	 },
 };
-
-#if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
-static struct clk *gpu_clk;
 
 int gpu2d_open(struct uio_info *info, struct inode *inode)
 {
