@@ -662,7 +662,7 @@ static struct sys_timer mxc_timer = {
 	.init	= ccwmx51_timer_init,
 };
 
-MACHINE_START(CCWMX51JS, "ConnectCore Wi-MX51 on a JSK board")
+MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
 	/* Maintainer: Digi International, Inc. */
 	.phys_io = AIPS1_BASE_ADDR,
 	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
