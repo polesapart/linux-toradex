@@ -1124,6 +1124,20 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	/* update flash based bbt */
 	this->options |= NAND_USE_FLASH_BBT;
 
+/**
+ * We need to revisit in future the way used to handle bad blocks,
+ * using Bad Block Tables or just the informatino on the spare area.
+ * With the current linux driver, when writing the BBT into flash, causes
+ * that the bootlaoder missunderstands the 2 sectors where the BBT is stored,
+ * considering them as bad blocks. So, at the moment we skip the writing of
+ * the BBT into the flash.
+ */
+#define	MXC_NAND_DONT_WRITE_BBT
+#if defined(MXC_NAND_DONT_WRITE_BBT)
+	this->bbt_td->options &= ~NAND_BBT_WRITE;
+	this->bbt_md->options &= ~NAND_BBT_WRITE;
+#endif
+
 	if (!this->badblock_pattern) {
 		this->badblock_pattern = (mtd->writesize > 512) ?
 		    &largepage_memorybased : &smallpage_memorybased;
