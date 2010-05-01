@@ -1184,6 +1184,16 @@ static void sdhci_tasklet_finish(unsigned long param)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	/* Stop the clock when the req is done */
+	if (machine_is_ccwmx51js() || machine_is_ccwmx51()) {
+		/**
+		 * On the ConnectCore Wi-i.MX51 this, disabling there clock
+		 * causes that we lose interrupts on the wireless SDIO cards
+		 * For that reason, we dont disable the clock on this platform
+		 */
+		mmc_request_done(host->mmc, mrq);
+		return;
+	}
+
 	flags = SDHCI_DATA_ACTIVE | SDHCI_DOING_WRITE | SDHCI_DOING_READ;
 	if (machine_is_mx35_3ds()) {
 		/* Do not disable the eSDHC clk on MX35 3DS board,
@@ -1203,7 +1213,6 @@ static void sdhci_tasklet_finish(unsigned long param)
 
 		mmc_request_done(host->mmc, mrq);
 	}
-
 }
 
 static void sdhci_timeout_timer(unsigned long data)
