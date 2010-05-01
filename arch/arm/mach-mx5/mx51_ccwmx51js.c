@@ -484,7 +484,20 @@ device_initcall(ccwmx51_init_fb);
 static inline void ccwmx51_init_fb(void) { }
 #endif
 
+static struct mxc_spi_master mxcspi1_data = {
+	.maxchipselect = 4,
+	.spi_version = 23,
+	.chipselect_active = ccwmx51_gpio_spi_chipselect_active,
+	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
+};
 
+static struct imxi2c_platform_data mxci2c_data = {
+	.bitrate = 100000,
+};
+
+static struct mxc_i2c_platform_data mxci2c_hs_data = {
+	.i2c_clk = 400000,
+};
 
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
