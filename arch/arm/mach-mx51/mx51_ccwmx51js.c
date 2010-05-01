@@ -485,8 +485,6 @@ static int __init ccwmx51_init_fb(void)
 					strcpy(fb_data_vga.mode_str, "1024x768M-16@60");
 				} else if (!strcmp(p, "1280x1024x16")) {
 					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(fb_data_vga.mode_str, "1280x1024M-16@60");
 				} else
 					pr_warning("Unsuported video resolution: %s, using default\n", p);
 			}
