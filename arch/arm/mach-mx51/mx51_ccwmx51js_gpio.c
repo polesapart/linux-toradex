@@ -1,6 +1,6 @@
 /*
  * Copyright 2009 Freescale Semiconductor, Inc. All Rights Reserved.
- * Copyright 2009 Digi International, Inc. All Rights Reserved.
+ * Copyright 2009-2010 Digi International, Inc. All Rights Reserved.
  */
 
 /*
@@ -426,15 +426,15 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_cspi_pins[] = {
 		PAD_CTL_SRE_FAST),
 	},
 	{	/* SS0 */
-		MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_PUE_KEEPER | PAD_CTL_DRV_HIGH |
-		PAD_CTL_SRE_FAST),
+		MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_47K_PU |
+		PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE),
 	},
 #ifdef CONFIG_SPI_MXC_SELECT1_SS1
 	{	/* SS1 */
-		MX51_PIN_CSPI1_SS1, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_PUE_KEEPER | PAD_CTL_DRV_HIGH |
-		PAD_CTL_SRE_FAST),
+		MX51_PIN_CSPI1_SS1, IOMUX_CONFIG_GPIO,
+		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_47K_PU |
+		PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE),
 	},
 #endif
 #endif
@@ -505,6 +505,63 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_cspi_pins[] = {
 	},
 #endif
 };
+
+/* workaround for ecspi chipselect pin may not keep correct level when idle */
+void ccwmx51_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
+{
+	u8 mask = 0x1 << (chipselect - 1);
+
+	switch (busnum) {
+	case 1:
+		switch (chipselect) {
+		case 0x1:
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
+				       (ssb_pol & mask) ?  1 : 0);
+			break;
+		case 0x2:
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
+				       (ssb_pol & mask) ?  1 : 0);
+			break;
+		default:
+			break;
+		}
+		break;
+	case 2:
+	case 3:
+	default:
+		break;
+	}
+}
+EXPORT_SYMBOL(ccwmx51_gpio_spi_chipselect_active);
+
+void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
+					  int chipselect)
+{
+	u8 mask = 0x1 << (chipselect - 1);
+
+	switch (busnum) {
+	case 1:
+		switch (chipselect) {
+		case 0x1:
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 
+				       (ssb_pol & mask) ?  0 : 1);
+			break;
+		case 0x2:
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), 
+				       (ssb_pol & mask) ?  0 : 1);
+			break;
+		default:
+			break;
+		}
+		break;
+	case 2:
+	case 3:
+	default:
+		break;
+	}
+}
+EXPORT_SYMBOL(ccwmx51_gpio_spi_chipselect_inactive);
+
 #endif /* defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE) */
 
 void __init ccwmx51_io_init(void)
@@ -603,6 +660,17 @@ void __init ccwmx51_io_init(void)
 			mxc_iomux_set_input(ccwmx51_cspi_pins[i].in_select,
 					    ccwmx51_cspi_pins[i].in_mode);
 	}
+#ifdef CONFIG_SPI_MXC_SELECT1
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), "cspi1_ss0");
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 0);
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 0);
+#ifdef CONFIG_SPI_MXC_SELECT1_SS1
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), "cspi1_ss1");
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), 0);
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), 0);
+#endif
+#endif
+
 #endif
 
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_devices_pins); i++) {
@@ -747,3 +815,6 @@ void gpio_uart_active(int port, int no_irda) {}
 void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
+
+
+
