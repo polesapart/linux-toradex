@@ -962,6 +962,18 @@ static int pmic_adc_module_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void pmic_adc_module_shutdown(struct platform_device *pdev)
+{
+	/**
+	 * Stop the ADC by calling the deinit function. Without this
+	 * call, we have problems to 'shutdown' the system through a
+	 * shell reboot call when the touch screen is enabled.
+	 * The the system doesnt reboot.
+	 */
+	pmic_adc_deinit();
+	pmic_adc_ready = 0;
+}
+
 static struct platform_driver pmic_adc_driver_ldm = {
 	.driver = {
 		   .name = "pmic_adc",
@@ -970,6 +982,7 @@ static struct platform_driver pmic_adc_driver_ldm = {
 	.resume = pmic_adc_resume,
 	.probe = pmic_adc_module_probe,
 	.remove = pmic_adc_module_remove,
+	.shutdown = pmic_adc_module_shutdown,
 };
 
 static int __init pmic_adc_module_init(void)
