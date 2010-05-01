@@ -1294,6 +1294,16 @@ static void sdhci_finish_worker(struct work_struct *work)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	/* Stop the clock when the req is done */
+	if (machine_is_ccwmx51js() || machine_is_ccwmx51()) {
+		/**
+		 * On the ConnectCore Wi-i.MX51 this, disabling there clock
+		 * causes that we lose interrupts on the wireless SDIO cards
+		 * For that reason, we dont disable the clock on this platform
+		 */
+		mmc_request_done(host->mmc, mrq);
+		return;
+	}
+
 	req_done = !(readl(host->ioaddr + SDHCI_PRESENT_STATE) &
 		(SDHCI_DATA_ACTIVE | SDHCI_DOING_WRITE | SDHCI_DOING_READ));
 	if (req_done && host->plat_data->clk_flg &&
@@ -2202,7 +2212,7 @@ static int sdhci_probe(struct platform_device *pdev)
 	 * FIXME
 	 * PPH This should be revisited and implemented a bit different.
 	 * We pass quirks per device through the platform_data variable to allow
-	 * different settings on each interface (DMA vs PIO, etc. 
+	 * different settings on each interface (DMA vs PIO, etc.
 	 */
 	if (mmc_plat->quirks != 0)
 		chip->quirks = mmc_plat->quirks;
