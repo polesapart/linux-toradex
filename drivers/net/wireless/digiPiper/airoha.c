@@ -68,12 +68,6 @@ static const struct {
 	{ 0, 0, 0, 0 },					// reserved for future b/g expansion 15
 	{ 0, 0, 0, 0 },					// reserved for future b/g expansion 16
 
-	// Extended 4 GHz bands (802.11a) - Lower Band
-	{ 0x0FF52, 0x00000, 0x67F78, TRACK_4920_4980_A_BAND }, // L-184 (4920 MHz)  17
-	{ 0x0FF52, 0x0AAAA, 0x77F78, TRACK_4920_4980_A_BAND }, // L-188 (4940 MHz)  18
-	{ 0x0FF53, 0x15555, 0x77F78, TRACK_4920_4980_A_BAND }, // L-192 (4960 MHz)  19
-	{ 0x0FF53, 0x00000, 0x67F78, TRACK_4920_4980_A_BAND }, // L-196 (4980 MHz)  20
-
 	// Extended 5 GHz bands (802.11a)
 	{ 0x0FF54, 0x00000, 0x67F78, TRACK_5150_5350_A_BAND }, // A-8   (5040 MHz)  21 tracking?
 	{ 0x0FF54, 0x0AAAA, 0x77F78, TRACK_5150_5350_A_BAND }, // A-12  (5060 MHz)  22 tracking?
@@ -199,45 +193,37 @@ static const struct ieee80211_rate al7230_bg_rates[] = {
 	.hw_value		= idx
 
 static struct ieee80211_channel al7230_a_channels[] = {
-	{ CHAN5G(17, 4920) },
-	{ CHAN5G(18, 4940) },
-	{ CHAN5G(19, 4960) },
-	{ CHAN5G(20, 4980) },
-
-	{ CHAN5G(21, 5040) },
-	{ CHAN5G(22, 5060) },
-	{ CHAN5G(23, 5080) },
-	{ CHAN5G(24, 5170) },
-	{ CHAN5G(25, 5180) },
-	{ CHAN5G(26, 5190) },
-	{ CHAN5G(27, 5200) },
-	{ CHAN5G(28, 5210) },
-	{ CHAN5G(29, 5220) },
-	{ CHAN5G(30, 5230) },
-	{ CHAN5G(31, 5240) },
-
-	{ CHAN5G(32, 5260) },
-	{ CHAN5G(33, 5280) },
-	{ CHAN5G(34, 5300) },
-	{ CHAN5G(35, 5320) },
-
-	{ CHAN5G(36, 5500) },
-	{ CHAN5G(37, 5520) },
-	{ CHAN5G(38, 5540) },
-	{ CHAN5G(39, 5560) },
-	{ CHAN5G(40, 5580) },
-	{ CHAN5G(41, 5600) },
-	{ CHAN5G(42, 5620) },
-	{ CHAN5G(43, 5640) },
-	{ CHAN5G(44, 5660) },
-	{ CHAN5G(45, 5680) },
-	{ CHAN5G(46, 5700) },
-
-	{ CHAN5G(47, 5745) },
-	{ CHAN5G(48, 5765) },
-	{ CHAN5G(49, 5785) },
-	{ CHAN5G(50, 5805) },
-	{ CHAN5G(51, 5825) }
+	{ CHAN5G(17, 5040) },
+	{ CHAN5G(18, 5060) },
+	{ CHAN5G(19, 5080) },
+	{ CHAN5G(20, 5170) },
+	{ CHAN5G(21, 5180) },
+	{ CHAN5G(22, 5190) },
+	{ CHAN5G(23, 5200) },
+	{ CHAN5G(24, 5210) },
+	{ CHAN5G(25, 5220) },
+	{ CHAN5G(26, 5230) },
+	{ CHAN5G(27, 5240) },
+	{ CHAN5G(28, 5260) },
+	{ CHAN5G(29, 5280) },
+	{ CHAN5G(30, 5300) },
+	{ CHAN5G(31, 5320) },
+	{ CHAN5G(32, 5500) },
+	{ CHAN5G(33, 5520) },
+	{ CHAN5G(34, 5540) },
+	{ CHAN5G(35, 5560) },
+	{ CHAN5G(36, 5580) },
+	{ CHAN5G(37, 5600) },
+	{ CHAN5G(38, 5620) },
+	{ CHAN5G(39, 5640) },
+	{ CHAN5G(40, 5660) },
+	{ CHAN5G(41, 5680) },
+	{ CHAN5G(42, 5700) },
+	{ CHAN5G(43, 5745) },
+	{ CHAN5G(44, 5765) },
+	{ CHAN5G(45, 5785) },
+	{ CHAN5G(46, 5805) },
+	{ CHAN5G(47, 5825) }
 };
 
 static const struct ieee80211_rate al7230_a_rates[] = {
