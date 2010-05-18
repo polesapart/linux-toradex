@@ -1184,6 +1184,16 @@ static void sdhci_tasklet_finish(unsigned long param)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	/* Stop the clock when the req is done */
+	if (machine_is_mx51_ccwmx51js()) {
+		/**
+		 * On the ConnectCore Wi-i.MX51 this, disabling there clock
+		 * causes that we lose interrupts on the wireless SDIO cards
+		 * For that reason, we dont disable the clock on this platform
+		 */
+		mmc_request_done(host->mmc, mrq);
+		return;
+	}
+
 	flags = SDHCI_DATA_ACTIVE | SDHCI_DOING_WRITE | SDHCI_DOING_READ;
 	if (machine_is_mx35_3ds()) {
 		/* Do not disable the eSDHC clk on MX35 3DS board,
@@ -1203,7 +1213,6 @@ static void sdhci_tasklet_finish(unsigned long param)
 
 		mmc_request_done(host->mmc, mrq);
 	}
-
 }
 
 static void sdhci_timeout_timer(unsigned long data)
@@ -1784,13 +1793,13 @@ static int __devinit sdhci_probe_slot(struct platform_device
 			set_irq_type(host->detect_irq, IRQF_TRIGGER_RISING);
 	} while (ret != host->plat_data->status(host->mmc->parent));
 
+      no_detect_irq:
 	ret = host->plat_data->status(host->mmc->parent);
 	if (ret)
 		host->flags &= ~SDHCI_CD_PRESENT;
 	else
 		host->flags |= SDHCI_CD_PRESENT;
 
-      no_detect_irq:
 	DBG("slot %d at 0x%x, irq %d \n", slot, host->res->start, host->irq);
 	if (!request_mem_region(host->res->start,
 				host->res->end -
@@ -2064,6 +2073,7 @@ static int sdhci_probe(struct platform_device *pdev)
 	int ret = 0, i;
 	u8 slots = 1;
 	struct sdhci_chip *chip;
+	struct mxc_mmc_platform_data *mmc_plat = pdev->dev.platform_data;
 
 	printk(KERN_INFO DRIVER_NAME ": MXC SDHCI Controller Driver. \n");
 	BUG_ON(pdev == NULL);
@@ -2084,6 +2094,15 @@ static int sdhci_probe(struct platform_device *pdev)
 	}
 	chip->pdev = pdev;
 	chip->quirks = mxc_quirks;
+
+	/**
+	 * FIXME
+	 * PPH This should be revisited and implemented a bit different.
+	 * We pass quirks per device through the platform_data variable to allow
+	 * different settings on each interface (DMA vs PIO, etc. 
+	 */
+	if (mmc_plat->quirks != 0)
+		chip->quirks = mmc_plat->quirks;
 
 	if (debug_quirks)
 		chip->quirks = debug_quirks;
