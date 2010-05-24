@@ -723,36 +723,31 @@ static irqreturn_t mxc_spi_isr(int irq, void *dev_id)
 	/* Read the interrupt status register to determine the source */
 	status = __raw_readl(master_drv_data->stat_addr);
 	do {
-		u32 rx_tmp =
-		    __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
-
+		u32 rx_tmp = __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
 		if (master_drv_data->transfer.rx_buf)
-			master_drv_data->transfer.rx_get(master_drv_data,
-							 rx_tmp);
+			master_drv_data->transfer.rx_get(master_drv_data,rx_tmp);
+
 		(master_drv_data->transfer.count)--;
 		(master_drv_data->transfer.rx_count)--;
+
 		ret = IRQ_HANDLED;
+
 		if (pass_counter-- == 0) {
 			break;
 		}
+
 		status = __raw_readl(master_drv_data->stat_addr);
-	} while (status &
-		 (1 <<
-		  (MXC_CSPISTAT_RR +
-		   master_drv_data->spi_ver_def->int_status_dif)));
+	} while (status & (1 << (MXC_CSPISTAT_RR +
+			master_drv_data->spi_ver_def->int_status_dif)));
 
 	if (master_drv_data->transfer.rx_count)
 		return ret;
 
-	if (master_drv_data->transfer.count) {
-		if (master_drv_data->transfer.tx_buf) {
-			u32 count = (master_drv_data->transfer.count >
-				     fifo_size) ? fifo_size :
-			    master_drv_data->transfer.count;
-			master_drv_data->transfer.rx_count = count;
-			spi_put_tx_data(master_drv_data->base, count,
-					master_drv_data);
-		}
+	if (master_drv_data->transfer.count ) {
+		u32 count = (master_drv_data->transfer.count > fifo_size) ?
+				fifo_size : master_drv_data->transfer.count;
+		master_drv_data->transfer.rx_count = count;
+		spi_put_tx_data(master_drv_data->base, count, master_drv_data);
 	} else {
 		complete(&master_drv_data->xfer_done);
 	}
