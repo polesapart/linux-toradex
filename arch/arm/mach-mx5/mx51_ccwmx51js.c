@@ -34,7 +34,6 @@
 #include <linux/mxcfb.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
-#include <mach/spba.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -655,7 +654,7 @@ MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
 	.boot_params = PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
 	.map_io = mxc_map_io,
-	.init_irq = mxc_init_irq,
+	.init_irq = mx51_init_irq,
 	.init_machine = mxc_board_init,
 	.timer = &mxc_timer,
 MACHINE_END

@@ -31,7 +31,6 @@
 #include <sound/initval.h>
 
 #include <mach/dma.h>
-#include <mach/spba.h>
 #include <mach/clock.h>
 
 #include "../codecs/wm8753.h"
@@ -221,9 +220,9 @@ static int __devinit imx_ccwmx51_wm8753_probe(struct platform_device *pdev)
 	imx_ccwmx51_init_dam(plat->src_port, plat->ext_port);
 
 	if (plat->src_port == 2)
-		wm8753_cpu_dai = &imx_ssi_dai[2];
+		wm8753_cpu_dai = imx_ssi_dai[2];
 	else
-		wm8753_cpu_dai = &imx_ssi_dai[0];
+		wm8753_cpu_dai = imx_ssi_dai[0];
 
 	imx_ccwmx51_dai.cpu_dai = wm8753_cpu_dai;
 
