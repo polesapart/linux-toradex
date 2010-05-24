@@ -163,4 +163,3 @@ endmenu
 
 source "arch/arm/mach-mx51/displays/Kconfig"
 
-endmenu
