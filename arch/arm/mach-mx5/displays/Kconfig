@@ -3,7 +3,7 @@
 # Copyright 2010 Digi International, Inc
 #
 
-if FB_MXC_SYNC_PANEL
+if FB_MXC_SYNC_PANEL && MACH_CCWMX51JS
 
 comment "Display selection"
 

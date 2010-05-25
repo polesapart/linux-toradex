@@ -41,7 +41,7 @@
  * For V3 NFC registers Definition
  */
 /* AXI Bus Mapped */
-#define NFC_AXI_BASE_ADDR		NFC_BASE_ADDR_AXI
+#define NFC_AXI_BASE_ADDR		MX51_NFC_BASE_ADDR_AXI
 
 #if defined(CONFIG_ARCH_MXC_HAS_NFC_V3_1)	/* mx37 */
 #define MXC_INT_NANDFC			MXC_INT_EMI

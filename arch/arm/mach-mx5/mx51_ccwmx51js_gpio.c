@@ -20,6 +20,7 @@
 #include <mach/gpio.h>
 
 #include "iomux.h"
+#include "mx51_pins.h"
 
 static void ccwmx51_mmc2_gpio_active(void);
 
@@ -380,7 +381,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 #if defined(CONFIG_SND_SOC_WM8753) || defined(CONFIG_SND_SOC_WM8753_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_audio_pins[] = {
 
-	/* TODO: the SSI interface should be selectable through configuration */  
+	/* TODO: the SSI interface should be selectable through configuration */
 	{	/* AUD3_BB_CK */
 		MX51_PIN_AUD3_BB_CK, IOMUX_CONFIG_ALT0 ,
 		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU |
@@ -543,11 +544,11 @@ void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 	case 1:
 		switch (chipselect) {
 		case 0x1:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
 		case 0x2:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), 
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
 		default:

@@ -59,4 +59,5 @@ extern struct platform_device mxc_usbdr_otg_device;
 extern struct platform_device mxc_usbdr_host_device;
 extern struct platform_device mxc_usbh1_device;
 extern struct platform_device mxc_usbh2_device;
-
+extern struct platform_device lcd_pdev;
+extern struct platform_device mxc_wm8753_device;

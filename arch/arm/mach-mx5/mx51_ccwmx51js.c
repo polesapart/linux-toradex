@@ -44,11 +44,12 @@
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
-#include "board.h"
+#include "board-ccwmx51.h"
 #include "iomux.h"
 #include "crm_regs.h"
 #include "devices.h"
-
+#include "mx51_pins.h"
+#include "displays/displays.h"
 #include <linux/smc911x.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
@@ -195,6 +196,14 @@ static struct mxc_mmc_platform_data mmc3_data = {
 };
 #endif
 
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+static struct resource mxcfb_resources[] = {
+	[0] = {
+	       .flags = IORESOURCE_MEM,
+	       },
+};
+#endif
+
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -210,32 +219,73 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				   char **cmdline, struct meminfo *mi)
 {
 	char *str;
-	int size = SZ_512M - SZ_32M;
 	struct tag *t;
+	struct tag *mem_tag = 0;
+	int total_mem = SZ_512M;
+	int left_mem = 0;
+	int gpu_mem = SZ_64M;
+	int fb_mem = SZ_32M;
 
-	mxc_cpu_init();
+	mxc_set_cpu_type(MXC_CPU_MX51);
 
 	get_cpu_wp = mx51_get_cpu_wp;
 	set_num_cpu_wp = mx51_set_num_cpu_wp;
 
-	for_each_tag(t, tags) {
-		if (t->hdr.tag != ATAG_CMDLINE)
-			continue;
-		str = t->u.cmdline.cmdline;
-		str = strstr(str, "mem=");
-		if (str != NULL) {
-			str += 4;
-			size = memparse(str, &str);
-			if (size == 0 || size == SZ_512M)
-				return;
+	for_each_tag(mem_tag, tags) {
+		if (mem_tag->hdr.tag == ATAG_MEM) {
+			total_mem = mem_tag->u.mem.size;
+			left_mem = total_mem - gpu_mem - fb_mem;
+			break;
 		}
 	}
 
 	for_each_tag(t, tags) {
-		if (t->hdr.tag != ATAG_MEM)
-			continue;
+		if (t->hdr.tag == ATAG_CMDLINE) {
+			str = t->u.cmdline.cmdline;
+			str = strstr(str, "mem=");
+			if (str != NULL) {
+				str += 4;
+				left_mem = memparse(str, &str);
+				if (left_mem == 0 || left_mem > total_mem)
+					left_mem = total_mem - gpu_mem - fb_mem;
+			}
 
-		t->u.mem.size = size;
+			str = t->u.cmdline.cmdline;
+			str = strstr(str, "gpu_memory=");
+			if (str != NULL) {
+				str += 11;
+				gpu_mem = memparse(str, &str);
+			}
+
+			break;
+		}
+	}
+
+	if (mem_tag) {
+		fb_mem = total_mem - left_mem - gpu_mem;
+		if (fb_mem < 0) {
+			gpu_mem = total_mem - left_mem;
+			fb_mem = 0;
+		}
+		mem_tag->u.mem.size = left_mem;
+
+		/*reserve memory for gpu*/
+		gpu_device.resource[5].start =
+				mem_tag->u.mem.start + left_mem;
+		gpu_device.resource[5].end =
+				gpu_device.resource[5].start + gpu_mem - 1;
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
+	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+		if (fb_mem) {
+			mxcfb_resources[0].start =
+				gpu_device.resource[5].end + 1;
+			mxcfb_resources[0].end =
+				mxcfb_resources[0].start + fb_mem - 1;
+		} else {
+			mxcfb_resources[0].start = 0;
+			mxcfb_resources[0].end = 0;
+		}
+#endif
 	}
 }
 
@@ -424,7 +474,64 @@ static struct uio_info gpu2d_platform_data = {
 };
 #endif
 
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata * plcd_platform_data;
+
+struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
+{
+#if defined(CONFIG_CCWMX51_LQ070Y3DG3B) || defined(CONFIG_CCWMX51_CUSTOM)
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(lcd_display_list); i++)
+		if (!strncmp(lcd_display_list[i].fb_pdata.mode->name,
+			     name, strlen(lcd_display_list[i].fb_pdata.mode->name)))
+			return &lcd_display_list[i];
+#endif
+	return NULL;
+}
+
+static int __init ccwmx51_init_fb(void)
+{
+	char *options = NULL, *p;
+
+	if (fb_get_options("displayfb", &options))
+		pr_warning("no display information available in command line\n");
+
+	if (!options)
+		return -ENODEV;
+
+	if (!strncasecmp(options, "VGA", 3)) {
+		pr_info("VGA interface is primary\n");
+
+		/* Get the desired configuration provided by the bootloader */
+		if (options[3] != '@') {
+			pr_info("Video resolution for VGA interface not provided, using default\n");
+			/* TODO set default video here */
+		} else {
+			options = &options[4];
+			if (((p = strsep (&options, "@")) != NULL) && *p) {
+				if (!strcmp(p, "640x480x16")) {
+					strcpy(mx51_fb_data[0].mode_str, "640x480M-16@60");
+				} else if (!strcmp(p, "800x600x16")) {
+					strcpy(mx51_fb_data[0].mode_str, "800x600M-16@60");
+				} else if (!strcmp(p, "1024x768x16")) {
+					strcpy(mx51_fb_data[0].mode_str, "1024x768M-16@60");
+				} else if (!strcmp(p, "1280x1024x16")) {
+					strcpy(mx51_fb_data[0].mode_str, "1280x1024M-16@60");
+				} else
+					pr_warning("Unsuported video resolution: %s, using default\n", p);
+			}
+		}
+	} else {
+		if ((plcd_platform_data = ccwmx51_get_display(options)) != NULL) {
+			memcpy(&mx51_fb_data[0], &plcd_platform_data->fb_pdata, sizeof(struct mxc_fb_platform_data));
+			plcd_platform_data->vif = 0;	/* Select video interface 0 */
+		}
+	}
+	return 0;
+}
+device_initcall(ccwmx51_init_fb);
+#endif
 
 /*!
  * Board specific initialization.
@@ -441,7 +548,6 @@ static void __init mxc_board_init(void)
 	mxc_cpu_common_init();
 	mxc_register_gpios();
 	ccwmx51_io_init();
-	early_console_setup(saved_command_line);
 
 	mxc_register_device(&mxc_wdt_device, NULL);
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
@@ -504,6 +610,8 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_i2c2();
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 	mxc_register_device(&lcd_pdev, plcd_platform_data);
+	mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
+	mxc_fb_devices[0].resource = mxcfb_resources;
 	mxc_register_device(&mxc_fb_devices[0], &mx51_fb_data[0]);
 //	mxc_register_device(&mxc_fb_devices[1], &mx51_fb_data[1]);
 //	mxc_register_device(&mxc_fb_devices[2], NULL);
@@ -520,6 +628,8 @@ static void __init mxc_board_init(void)
 
 static void __init ccwmx51_timer_init(void)
 {
+	struct clk *uart_clk;
+
 	/* Change the CPU voltages for TO2*/
 	if (cpu_is_mx51_rev(CHIP_REV_2_0) <= 1) {
 		cpu_wp_auto[0].cpu_voltage = 1175000;
@@ -528,6 +638,9 @@ static void __init ccwmx51_timer_init(void)
 	}
 
 	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
+
+	uart_clk = clk_get(NULL, "uart_clk.1");
+	early_console_setup(UART2_BASE_ADDR, uart_clk);
 }
 
 static struct sys_timer mxc_timer = {
@@ -540,8 +653,8 @@ MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
 	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
 	.boot_params = PHYS_OFFSET + 0x100,
 	.fixup = fixup_mxc_board,
-	.map_io = mx51_map_io,
-	.init_irq = mx51_init_irq,
+	.map_io = mx5_map_io,
+	.init_irq = mx5_init_irq,
 	.init_machine = mxc_board_init,
 	.timer = &mxc_timer,
 MACHINE_END

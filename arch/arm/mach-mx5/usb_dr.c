@@ -20,6 +20,7 @@
 #include <mach/hardware.h>
 #include "usb.h"
 
+#if defined(CONFIG_USB_OTG) || defined(CONFIG_USB_EHCI_ARC_OTG) || defined(CONFIG_USB_GADGET_ARC)
 static int usbotg_init_ext(struct platform_device *pdev);
 static void usbotg_uninit_ext(struct fsl_usb2_platform_data *pdata);
 static void _wake_up_enable(struct fsl_usb2_platform_data *pdata, bool enable);
@@ -137,6 +138,7 @@ static void usbotg_clock_gate(bool on)
 		clk_put(usb_clk);
 	}
 }
+#endif
 
 void __init mx5_usb_dr_init(void)
 {

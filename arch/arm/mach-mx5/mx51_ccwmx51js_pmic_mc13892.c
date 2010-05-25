@@ -22,6 +22,7 @@
 #include <linux/mfd/mc13892/core.h>
 #include "iomux.h"
 #include <mach/irqs.h>
+#include "mx51_pins.h"
 
 /*
  * Convenience conversion.
