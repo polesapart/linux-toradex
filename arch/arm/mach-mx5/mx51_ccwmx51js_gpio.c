@@ -20,6 +20,7 @@
 #include <mach/gpio.h>
 
 #include "iomux.h"
+#include "mx51_pins.h"
 
 static void ccwmx51_mmc2_gpio_active(void);
 
@@ -380,7 +381,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 #if defined(CONFIG_SND_SOC_WM8753) || defined(CONFIG_SND_SOC_WM8753_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_audio_pins[] = {
 
-	/* TODO: the SSI interface should be selectable through configuration */  
+	/* TODO: the SSI interface should be selectable through configuration */
 	{	/* AUD3_BB_CK */
 		MX51_PIN_AUD3_BB_CK, IOMUX_CONFIG_ALT0 ,
 		(PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH | PAD_CTL_100K_PU |
@@ -543,11 +544,11 @@ void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 	case 1:
 		switch (chipselect) {
 		case 0x1:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0), 
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
 		case 0x2:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1), 
+			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
 		default:
@@ -578,6 +579,32 @@ void __init ccwmx51_io_init(void)
 		if (ccwmx51_iomux_ext_eth_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_ext_eth_pins[i].in_select,
 					ccwmx51_iomux_ext_eth_pins[i].in_mode);
+	}
+#endif
+
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_mmc_pins[i].pin,
+				  ccwmx51_iomux_mmc_pins[i].mux_mode);
+		if (ccwmx51_iomux_mmc_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_mmc_pins[i].pin,
+					  ccwmx51_iomux_mmc_pins[i].pad_cfg);
+		if (ccwmx51_iomux_mmc_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_mmc_pins[i].in_select,
+					    ccwmx51_iomux_mmc_pins[i].in_mode);
+	}
+#endif
+
+#if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_usbh1_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_usbh1_pins[i].pin,
+				  ccwmx51_iomux_usbh1_pins[i].mux_mode);
+		if (ccwmx51_iomux_usbh1_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_usbh1_pins[i].pin,
+					  ccwmx51_iomux_usbh1_pins[i].pad_cfg);
+		if (ccwmx51_iomux_usbh1_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_usbh1_pins[i].in_select,
+					    ccwmx51_iomux_usbh1_pins[i].in_mode);
 	}
 #endif
 
@@ -663,17 +690,6 @@ void __init ccwmx51_io_init(void)
 	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5));
 
 #if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
-	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_usbh1_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_usbh1_pins[i].pin,
-				  ccwmx51_iomux_usbh1_pins[i].mux_mode);
-		if (ccwmx51_iomux_usbh1_pins[i].pad_cfg)
-			mxc_iomux_set_pad(ccwmx51_iomux_usbh1_pins[i].pin,
-					  ccwmx51_iomux_usbh1_pins[i].pad_cfg);
-		if (ccwmx51_iomux_usbh1_pins[i].in_select)
-			mxc_iomux_set_input(ccwmx51_iomux_usbh1_pins[i].in_select,
-					    ccwmx51_iomux_usbh1_pins[i].in_mode);
-	}
-
 	/* USB PHY/HUB reset*/
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_RS), "gpio3_8");
 	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_RS), 0);
@@ -684,19 +700,65 @@ void __init ccwmx51_io_init(void)
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 	/* For the wireless module */
 	ccwmx51_mmc2_gpio_active();
-
-	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_mmc_pins[i].pin,
-				  ccwmx51_iomux_mmc_pins[i].mux_mode);
-		if (ccwmx51_iomux_mmc_pins[i].pad_cfg)
-			mxc_iomux_set_pad(ccwmx51_iomux_mmc_pins[i].pin,
-					  ccwmx51_iomux_mmc_pins[i].pad_cfg);
-		if (ccwmx51_iomux_mmc_pins[i].in_select)
-			mxc_iomux_set_input(ccwmx51_iomux_mmc_pins[i].in_select,
-					    ccwmx51_iomux_mmc_pins[i].in_mode);
-	}
 #endif
 }
+
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+/* IOMUX settings, for the wireless interface */
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc2_pins[] = {
+	/* SDHC2*/
+	{
+		MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_CLK, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA0, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA1, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA2, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD2_DATA3, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+};
+
+static void ccwmx51_mmc2_gpio_active(void)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc2_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_mmc2_pins[i].pin,
+				  ccwmx51_iomux_mmc2_pins[i].mux_mode);
+		if (ccwmx51_iomux_mmc2_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_mmc2_pins[i].pin,
+					  ccwmx51_iomux_mmc2_pins[i].pad_cfg);
+		if (ccwmx51_iomux_mmc2_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_mmc2_pins[i].in_select,
+					    ccwmx51_iomux_mmc2_pins[i].in_mode);
+	}
+}
+
+void ccwmx51_mmc2_gpio_inactive(void)
+{
+}
+#endif
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 #define SERIAL_PORT_PAD		(PAD_CTL_HYS_ENABLE | PAD_CTL_PKE_ENABLE | \
@@ -755,59 +817,5 @@ void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
 
-#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
-/* IOMUX settings, for the wireless interface */
-static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc2_pins[] = {
-	/* SDHC2*/
-	{
-		MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-	{
-		MX51_PIN_SD2_CLK, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-	{
-		MX51_PIN_SD2_DATA0, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-	{
-		MX51_PIN_SD2_DATA1, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-	{
-		MX51_PIN_SD2_DATA2, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-	{
-		MX51_PIN_SD2_DATA3, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
-		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
-	},
-};
 
-static void ccwmx51_mmc2_gpio_active(void)
-{
-	int i;
 
-	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc2_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_mmc2_pins[i].pin,
-				  ccwmx51_iomux_mmc2_pins[i].mux_mode);
-		if (ccwmx51_iomux_mmc2_pins[i].pad_cfg)
-			mxc_iomux_set_pad(ccwmx51_iomux_mmc2_pins[i].pin,
-					  ccwmx51_iomux_mmc2_pins[i].pad_cfg);
-		if (ccwmx51_iomux_mmc2_pins[i].in_select)
-			mxc_iomux_set_input(ccwmx51_iomux_mmc2_pins[i].in_select,
-					    ccwmx51_iomux_mmc2_pins[i].in_mode);
-	}
-}
-
-void ccwmx51_mmc2_gpio_inactive(void)
-{
-}
-#endif

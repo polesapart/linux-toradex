@@ -22,6 +22,7 @@
 #include <linux/mfd/mc13892/core.h>
 #include "iomux.h"
 #include <mach/irqs.h>
+#include "mx51_pins.h"
 
 /*
  * Convenience conversion.
@@ -359,3 +360,4 @@ int __init ccwmx51_init_mc13892(void)
 {
 	return spi_register_board_info(&mc13892_spi_device, 1);
 }
+

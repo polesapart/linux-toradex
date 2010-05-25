@@ -20,6 +20,9 @@
 #include <mach/hardware.h>
 #include <asm/delay.h>
 #include "usb.h"
+
+#if defined(CONFIG_USB_OTG) || defined(CONFIG_USB_EHCI_ARC_OTG) || defined(CONFIG_USB_GADGET_ARC)
+
 static int usbotg_init_ext(struct platform_device *pdev);
 static void usbotg_uninit_ext(struct fsl_usb2_platform_data *pdata);
 static void usbotg_clock_gate(bool on);
@@ -222,6 +225,7 @@ void mx5_set_otghost_vbus_func(driver_vbus_func driver_vbus)
 {
 	dr_utmi_config.platform_driver_vbus = driver_vbus;
 }
+#endif //defined(CONFIG_USB_OTG) || defined(CONFIG_USB_EHCI_ARC_OTG) || defined(CONFIG_USB_GADGET_ARC)
 
 void __init mx5_usb_dr_init(void)
 {

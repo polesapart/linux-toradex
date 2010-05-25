@@ -1,13 +1,13 @@
 if ARCH_MX5
 
 config ARCH_MX51
-	bool
+	bool "MX51"
 	select USB_ARCH_HAS_EHCI
 	select MXC_TZIC
 	select ARCH_MXC_IOMUX_V3
 
 config ARCH_MX53
-	bool
+	bool "MX53"
 	select USB_ARCH_HAS_EHCI
 	select MXC_TZIC
 	select ARCH_MXC_IOMUX_V3
