@@ -40,6 +40,11 @@ static struct map_desc mx5_io_desc[] __initdata = {
 	 .pfn = __phys_to_pfn(AIPS2_BASE_ADDR),
 	 .length = AIPS2_SIZE,
 	 .type = MT_DEVICE},
+	 {
+     .virtual = NFC_BASE_ADDR_AXI_VIRT,
+     .pfn = __phys_to_pfn(NFC_BASE_ADDR_AXI),
+     .length = NFC_AXI_SIZE,
+     .type = MT_DEVICE},
 };
 
 /*!
