@@ -262,7 +262,7 @@ static int mxc_i2c_repstart(mxc_i2c_device *dev, struct i2c_msg *msg)
 	}
 	if (retry <= 0) {
 		dev_err(&dev->adap.dev, "Could not grab Bus ownership\n");
-		return -1;
+		return -EBUSY;
 	}
 	writew(addr_trans, dev->membase + MXC_I2DR);
 	return 0;
