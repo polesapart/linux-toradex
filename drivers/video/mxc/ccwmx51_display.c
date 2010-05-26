@@ -75,10 +75,11 @@ static int __devinit lcd_sync_probe(struct platform_device *pdev)
 {
 	struct ccwmx51_lcd_pdata *plat = pdev->dev.platform_data;
 
- 	if (plat) {
- 		if (plat->reset)
- 			plat->reset();
- 	}
+ 	if (!plat)
+ 		return -ENODEV;
+
+	if (plat->reset)
+		plat->reset();
 
 	plcd_dev = pdev;
 	lcd_init_fb(registered_fb[plat->vif]);
