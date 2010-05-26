@@ -240,20 +240,20 @@ config SPI_MXC_TEST_LOOPBACK
 	select SPI_SPIDEV
 	default n
 
-#config SPI_MXC_SELECT1
-#	bool "CSPI1"
-#	depends on SPI_MXC
-#	default y
+config SPI_MXC_SELECT1
+	bool "CSPI1"
+	depends on SPI_MXC
+	default y
 
-#config SPI_MXC_SELECT2
-#	bool "CSPI2"
-#	depends on SPI_MXC && (!ARCH_MXC91221)
-#	default n
+config SPI_MXC_SELECT2
+	bool "CSPI2"
+	depends on SPI_MXC && (!ARCH_MXC91221)
+	default n
 
-#config SPI_MXC_SELECT3
-#	bool "CSPI3"
-#	depends on SPI_MXC && (ARCH_MX3 || ARCH_MX27 || ARCH_MX25 || ARCH_MX37 || ARCH_MX51)
-#	default n
+config SPI_MXC_SELECT3
+	bool "CSPI3"
+	depends on SPI_MXC && (ARCH_MX3 || ARCH_MX27 || ARCH_MX25 || ARCH_MX37 || ARCH_MX51)
+	default n
 
 config SPI_STMP3XXX
 	tristate "Freescale STMP37xx/378x SPI/SSP controller"
