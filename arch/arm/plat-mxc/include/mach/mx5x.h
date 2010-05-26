@@ -110,6 +110,8 @@
  */
 #define MX53_NFC_BASE_ADDR_AXI		0xF7FF0000	/* NAND flash AXI */
 #define MX51_NFC_BASE_ADDR_AXI		0xCFFF0000	/* NAND flash AXI */
+//#define NFC_BASE_ADDR_AXI (cpu_is_mx53() ? MX53_NFC_BASE_ADDR_AXI:MX51_NFC_BASE_ADDR_AXI)
+#define NFC_BASE_ADDR_AXI (MX51_NFC_BASE_ADDR_AXI)
 #define NFC_BASE_ADDR_AXI_VIRT	0xF9000000
 #define NFC_AXI_SIZE		SZ_64K
 
@@ -349,6 +351,9 @@
 	(((x) >= (unsigned long)AIPS2_BASE_ADDR) && \
 	  ((x) < (unsigned long)AIPS2_BASE_ADDR + AIPS2_SIZE)) ? \
 	   AIPS2_IO_ADDRESS(x) : \
+	(((x) >= (unsigned long)NFC_BASE_ADDR_AXI) && \
+	  ((x) < (unsigned long)NFC_BASE_ADDR_AXI + NFC_AXI_SIZE)) ? \
+	   NFC_AXI_IO_ADDRESS(x) : \
 	0xDEADBEEF)
 
 /*
@@ -362,6 +367,9 @@
 
 #define AIPS2_IO_ADDRESS(x)  \
 	(((x) - AIPS2_BASE_ADDR) + AIPS2_BASE_ADDR_VIRT)
+
+#define NFC_AXI_IO_ADDRESS(x)  \
+	(((x) - NFC_BASE_ADDR_AXI) + NFC_BASE_ADDR_AXI_VIRT)
 
 #define MX53_BASE_ADDR(x) (cpu_is_mx53() ? (x) - 0x20000000 : (x))
 
