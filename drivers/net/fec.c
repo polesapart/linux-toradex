@@ -203,7 +203,7 @@ struct fec_enet_private {
 	struct bufdesc	*rx_bd_base;
 	struct bufdesc	*tx_bd_base;
 	/* The next free ring entry */
-	struct bufdesc	*cur_rx, *cur_tx; 
+	struct bufdesc	*cur_rx, *cur_tx;
 	/* The ring entries to be free()ed */
 	struct bufdesc	*dirty_tx;
 
@@ -1669,7 +1669,7 @@ fec_enet_open(struct net_device *dev)
 			schedule();
 
 		mii_do_cmd(dev, fep->phy->startup);
-		wait_for_completion_timeout(&fep->anc_done, 10 * HZ);
+//		wait_for_completion_timeout(&fep->anc_done, 10 * HZ);
 	}
 	fec_restart(dev, fep->full_duplex);
 
