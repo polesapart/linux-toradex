@@ -96,3 +96,4 @@ extern struct platform_device mxc_zq_calib_device;
 extern int z160_revision;
 extern struct platform_device lcd_pdev;
 extern struct platform_device mxc_wm8753_device;
+extern void __init ccwmx51_init_devices ( void );

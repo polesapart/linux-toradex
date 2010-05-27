@@ -39,5 +39,6 @@ extern void ccwmx51_init_spidevices(void);
 extern int __init ccwmx51_init_fb(void);
 extern void __init ccwmx51_io_init(void);
 extern int __init ccwmx51_init_mc13892(void);
+extern struct platform_device smsc911x_device;
 
 #endif /* DEVICES_CCWMX51_H_ */

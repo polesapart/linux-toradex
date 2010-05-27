@@ -1050,70 +1050,6 @@ struct mxc_gpio_port mxc_gpio_ports[] = {
 	},
 };
 
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
-static struct resource smsc911x_device_resources[] = {
-	{
-		.name	= "smsc911x-memory",
-		.start	= CS5_BASE_ADDR,
-		.end	= CS5_BASE_ADDR + SZ_4K - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
-		.end	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device smsc911x_device = {
-        .name             = "smsc911x",
-        .id               = -1,
-        .num_resources    = ARRAY_SIZE(smsc911x_device_resources),
-        .resource         = smsc911x_device_resources,
-};
-
-/* WEIM registers */
-#define CSGCR1	0x00
-#define CSGCR2	0x04
-#define CSRCR1	0x08
-#define CSRCR2	0x0C
-#define CSWCR1	0x10
-
-static void ccwmx51_init_ext_eth_mac(void)
-{
-	__iomem u32 *weim_vbaddr;
-
-	weim_vbaddr = ioremap(WEIM_BASE_ADDR, SZ_4K);
-	if (weim_vbaddr == 0) {
-		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", WEIM_BASE_ADDR, __func__);
-		return;
-	}
-
-	/** Configure the CS timming, bus width, etc.
-	 * 16 bit on DATA[31..16], not multiplexed, async
-	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
-	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
-	 */
-	writel(0x00420081, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR1);
-	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR2);
-	writel(0x32260000, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR1);
-	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR2);
-	writel(0x72080f00, (unsigned int)(weim_vbaddr) + 0x78 + CSWCR1);
-
-	iounmap(weim_vbaddr);
-
-	/* Configure interrupt line as GPIO input, the iomux should be already setup */
-	gpio_request(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9), "LAN2-irq");
-	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9));
-}
-#endif
-
-#if defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753) || defined(CONFIG_SND_SOC_IMX_CCWMX51_WM8753_MODULE)
-struct platform_device mxc_wm8753_device = {
-	.name = "ccwmx51js",
-};
-#endif
-
 int __init mxc_register_gpios(void)
 {
 	if (cpu_is_mx51())
@@ -2033,8 +1969,8 @@ int __init mxc_init_devices(void)
 	if (cpu_is_mx51() || cpu_is_mx53())
 		mxc_init_scc_iram();
 
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
-	ccwmx51_init_ext_eth_mac();
+#if defined (CONFIG_MACH_CCWMX51JS)
+	ccwmx51_init_devices();
 #endif
 	return 0;
 }
