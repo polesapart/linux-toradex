@@ -61,3 +61,4 @@ extern struct platform_device mxc_usbh1_device;
 extern struct platform_device mxc_usbh2_device;
 extern struct platform_device lcd_pdev;
 extern struct platform_device mxc_wm8753_device;
+extern void __init ccwmx51_init_devices ( void );
