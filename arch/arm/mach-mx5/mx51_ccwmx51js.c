@@ -50,6 +50,7 @@
 #include "devices.h"
 #include "mx51_pins.h"
 #include "devices_ccwmx51.h"
+#include "usb.h"
 
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
@@ -275,6 +276,8 @@ static void __init mxc_board_init(void)
 #endif
 	ccwmx51_init_spidevices();
 	ccwmx51_init_i2c2();
+	mx5_usbh1_init();
+	mx5_usb_dr_init();
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 	mxc_register_device(&lcd_pdev, plcd_platform_data);
 	mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
