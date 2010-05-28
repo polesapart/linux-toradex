@@ -700,7 +700,7 @@ static void dump_msg(const char *label, const u8 * buf, unsigned int length)
 #if defined(CONFIG_ARCH_MXC) || defined(CONFIG_ARCH_STMP3XXX) || \
 	defined(CONFIG_ARCH_MXS)
 #include <mach/fsl_usb_gadget.h>
-#elif CONFIG_PPC32
+#elif defined(CONFIG_PPC32)
 #include <asm/fsl_usb_gadget.h>
 #endif
 
