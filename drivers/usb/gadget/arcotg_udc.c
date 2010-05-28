@@ -2176,7 +2176,9 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 {
 	int retval = -ENODEV;
 	unsigned long flags = 0;
+#ifndef CONFIG_USB_OTG
 	u32 portsc;
+#endif
 
 	if (!udc_controller)
 		return -ENODEV;
@@ -2702,7 +2704,10 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
 	int ret = -ENODEV;
 	unsigned int i;
-	u32 dccparams, portsc;
+	u32 dccparams;
+#ifndef CONFIG_USB_OTG
+	u32 portsc;
+#endif
 
 	if (strcmp(pdev->name, driver_name)) {
 		VDBG("Wrong device\n");
@@ -2909,7 +2914,9 @@ err1a:
  */
 static int __exit fsl_udc_remove(struct platform_device *pdev)
 {
+#ifndef CONFIG_USB_OTG
 	struct resource *res;
+#endif
 	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
 
 	DECLARE_COMPLETION(done);
