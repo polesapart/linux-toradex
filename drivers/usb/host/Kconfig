@@ -72,7 +72,7 @@ config USB_EHCI_ARC
 
 config USB_EHCI_ARC_H1
 	bool "Support for Host1 port on Freescale controller"
-	depends on USB_EHCI_ARC	&& (ARCH_MX27 || ARCH_MX3 || ARCH_MX28)
+	depends on USB_EHCI_ARC	&& (ARCH_MX27 || ARCH_MX3 || ARCH_MX28 || ARCH_MX51)
 	---help---
 	  Enable support for the USB Host1 port.
 
