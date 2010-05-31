@@ -1419,7 +1419,21 @@ static void mxcuart_set_termios(struct uart_port *port,
  */
 static const char *mxcuart_type(struct uart_port *port)
 {
-	return port->type == PORT_IMX ? "Freescale i.MX" : NULL;
+	struct platform_device *pdev;
+
+    if (port->type == PORT_IMX) {
+        pdev = to_platform_device(port->dev);
+        if (0 == pdev->id)
+            return "Freescale i.MX UART1";
+        else if (1 == pdev->id)
+            return "Freescale i.MX UART2";
+        else if (2 == pdev->id)
+            return "Freescale i.MX UART3)";
+        else
+            return NULL;
+        }
+        else
+            return NULL;
 }
 
 /*!
