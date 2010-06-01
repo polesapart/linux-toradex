@@ -131,19 +131,15 @@ static struct fb_videomode wvga_video_mode =
 	.xres = 800,
 	.yres = 480,
 	.refresh = 60,
-	.pixclock = 30062,
-	.left_margin    = 64,
-	.right_margin   = 64,
+	.pixclock = 33000,
+	.left_margin    = 0,
+	.right_margin   = 50,
 	.lower_margin   = 10,
-	.upper_margin   = 30,
+	.upper_margin   = 25,
 	.hsync_len      = 128,
-	.vsync_len      = 5,
+	.vsync_len      = 10,
 	.vmode          = FB_VMODE_NONINTERLACED,
-	.flag           = FB_MODE_IS_DETAILED,
-// Digi says that inverting the clock is necessary
-// to avoid problems with video.
-//	.sync		= FB_SYNC_CLK_LAT_FALL,
-
+	.flag           = 0,
 };
 
 static struct mxc_fb_platform_data fb_data_vga = {
