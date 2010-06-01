@@ -72,10 +72,13 @@ static int ts_thread(void *arg)
 		memset(&ts_sample, 0, sizeof(t_touch_screen));
 		/* After 2 consecutive samples with the pen up, enable irq waiting */
 		if (0 != pmic_adc_get_touch_sample(&ts_sample, !(wait + wait2))) {
+			msleep(20);
  			continue;
 		}
-		if (!(ts_sample.contact_resistance || wait))
-			continue;
+		if (!(ts_sample.contact_resistance || wait)) {
+			msleep(20);
+ 			continue;
+		}
 
 		if (ts_sample.x_position == 0 && ts_sample.y_position == 0 &&
 			ts_sample.contact_resistance == 0) {
