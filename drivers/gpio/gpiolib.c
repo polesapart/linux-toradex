@@ -8,6 +8,7 @@
 #include <linux/seq_file.h>
 #include <linux/gpio.h>
 
+#include <asm/mach-types.h>
 
 /* Optional implementation infrastructure for GPIO interfaces.
  *
@@ -474,6 +475,11 @@ int gpio_export(unsigned gpio, bool direction_may_change)
 
 		dev = device_create(&gpio_class, desc->chip->dev, MKDEV(0, 0),
 				    desc, ioname ? ioname : "gpio%d", gpio);
+
+		if ( machine_is_ccwmx51js() || machine_is_ccmx51js() )
+			// Allow this device to be used as wake up source
+			device_set_wakeup_capable(dev,1);
+
 		if (dev) {
 			if (direction_may_change)
 				status = sysfs_create_group(&dev->kobj,
