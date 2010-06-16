@@ -7,6 +7,9 @@
 #include <linux/pm_runtime.h>
 #include <asm/atomic.h>
 #include "power.h"
+#include <asm/mach-types.h>
+#include <linux/interrupt.h>
+#include <mach/gpio.h>
 
 /*
  *	control - Report/change current runtime PM setting of the device
@@ -139,6 +142,19 @@ wake_store(struct device * dev, struct device_attribute *attr,
 		device_set_wakeup_enable(dev, 0);
 	else
 		return -EINVAL;
+
+	if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ) {
+		char *name = NULL;
+		char *ep;
+		unsigned int gpio;
+
+		/*  Check whether this is a GPIO and if so configure it as wake up source */
+		if( (name = strstr(dev->kobj.name , "gpio")) ) {
+			gpio = simple_strtol(name+strlen("gpio"), &ep, 0);
+			set_irq_wake(gpio_to_irq(gpio),1);
+		}
+	}
+
 	return n;
 }
 

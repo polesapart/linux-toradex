@@ -10,7 +10,7 @@
 #include <linux/gpio.h>
 #include <linux/idr.h>
 #include <linux/slab.h>
-
+#include <asm/mach-types.h>
 
 /* Optional implementation infrastructure for GPIO interfaces.
  *
@@ -754,6 +754,11 @@ int gpio_export(unsigned gpio, bool direction_may_change)
 
 		dev = device_create(&gpio_class, desc->chip->dev, MKDEV(0, 0),
 				desc, ioname ? ioname : "gpio%u", gpio);
+
+		if ( machine_is_ccwmx51js() || machine_is_ccmx51js() )
+			// Allow this device to be used as wake up source
+			device_set_wakeup_capable(dev,1);
+
 		if (!IS_ERR(dev)) {
 			status = sysfs_create_group(&dev->kobj,
 						&gpio_attr_group);
