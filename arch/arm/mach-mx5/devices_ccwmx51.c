@@ -33,6 +33,7 @@
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
+#include <linux/smsc911x.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -89,12 +90,11 @@ struct flash_platform_data mxc_nand_data = {
 };
 #endif
 
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
-struct smc911x_platdata ccwmx51_smsc9118 = {
-	.flags          = 0,
-	.irq_flags      = IRQF_DISABLED | IRQF_TRIGGER_FALLING,
-	.irq_polarity   = 0,
-	.irq_type	= 1,	/* push-pull irq */
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+struct smsc911x_platform_config ccwmx51_smsc9118 = {
+	.flags          = SMSC911X_USE_32BIT,
+	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+	.irq_type	= SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,	/* push-pull irq */
 };
 #endif
 
@@ -231,7 +231,7 @@ struct mxc_w1_config mxc_w1_data = {
 };
 #endif
 
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 
 static struct resource smsc911x_device_resources[] = {
 	{
@@ -449,7 +449,7 @@ device_initcall(ccwmx51_init_fb);
 
 void __init ccwmx51_init_devices ( void )
 {
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	ccwmx51_init_ext_eth_mac();
 #endif
 }
