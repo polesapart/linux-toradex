@@ -1657,6 +1657,9 @@ static int sdhci_suspend(struct platform_device *pdev, pm_message_t state)
 
 	DBG("Suspending...\n");
 
+	if( device_may_wakeup( &pdev->dev ) )
+		enable_irq_wake(platform_get_irq(pdev, 1));
+
 	for (i = 0; i < chip->num_slots; i++) {
 		if (!chip->hosts[i])
 			continue;
@@ -2006,6 +2009,10 @@ static int __devinit sdhci_probe_slot(struct platform_device
 		       mmc_hostname(mmc), host->detect_irq, host->irq,
 		       (host->flags & SDHCI_USE_DMA) ? "INTERNAL DMA" : "PIO");
 
+	/* Mark the SD/MMC as capable of being a wake up source */
+	if ( mmc_plat->card_inserted_state )
+		device_set_wakeup_capable(&pdev->dev,1);
+
 	return 0;
 
       out6:
@@ -2113,7 +2120,7 @@ static int sdhci_probe(struct platform_device *pdev)
 	 * FIXME
 	 * PPH This should be revisited and implemented a bit different.
 	 * We pass quirks per device through the platform_data variable to allow
-	 * different settings on each interface (DMA vs PIO, etc. 
+	 * different settings on each interface (DMA vs PIO, etc.
 	 */
 	if (mmc_plat->quirks != 0)
 		chip->quirks = mmc_plat->quirks;
