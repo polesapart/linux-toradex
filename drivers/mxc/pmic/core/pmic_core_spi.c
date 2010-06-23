@@ -41,7 +41,7 @@
 /*
  * Static functions
  */
-static void pmic_pdev_register(void);
+static void pmic_pdev_register(struct spi_device *spi);
 static void pmic_pdev_unregister(void);
 
 /*
@@ -59,9 +59,17 @@ static struct platform_device power_ldm = {
 	.name = "pmic_power",
 	.id = 1,
 };
+static struct resource pmic_rtc_resources[] = {
+	{
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static struct platform_device rtc_ldm = {
 	.name = "pmic_rtc",
 	.id = 1,
+	.num_resources = ARRAY_SIZE(pmic_rtc_resources),
+	.resource = pmic_rtc_resources,
 };
 static struct platform_device light_ldm = {
 	.name = "pmic_light",
@@ -93,10 +101,12 @@ extern pmic_version_t mxc_pmic_version;
  * This function registers platform device structures for
  * PMIC client drivers.
  */
-static void pmic_pdev_register(void)
+static void pmic_pdev_register(struct spi_device *spi)
 {
 	platform_device_register(&adc_ldm);
 	platform_device_register(&battery_ldm);
+	rtc_ldm.resource->start = spi->irq;
+	rtc_ldm.resource->end = spi->irq;
 	platform_device_register(&rtc_ldm);
 	platform_device_register(&power_ldm);
 	platform_device_register(&light_ldm);
@@ -210,8 +220,6 @@ static int __devinit pmic_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	enable_irq_wake(spi->irq);
-
 	if (plat_data && plat_data->init) {
 		ret = plat_data->init(spi_get_drvdata(spi));
 		if (ret != 0) {
@@ -223,7 +231,7 @@ static int __devinit pmic_probe(struct spi_device *spi)
 
 	power_ldm.dev.platform_data = spi->dev.platform_data;
 
-	pmic_pdev_register();
+	pmic_pdev_register(spi);
 
 	printk(KERN_INFO "Device %s probed\n", dev_name(&spi->dev));
 

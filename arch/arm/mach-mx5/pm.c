@@ -26,6 +26,7 @@
 #include <asm/mach/map.h>
 #include <mach/hardware.h>
 #include "crm_regs.h"
+#include "mach/irqs.h"
 
 static struct cpu_wp *cpu_wp_tbl;
 static struct clk *cpu_clk;
@@ -50,6 +51,14 @@ void (*suspend_in_iram)(void *sdclk_iomux_addr) = NULL;
 static int mx51_suspend_enter(suspend_state_t state)
 {
 	void __iomem *sdclk_iomux_addr = IO_ADDRESS(IOMUXC_BASE_ADDR + 0x4b8);
+	u32 * wake_src;
+
+	/* Check that we have a wake up source. We don't want to suspend if not.*/
+	mxc_get_wake_irq(&wake_src);
+	if ( !wake_src[0] && !wake_src[1] && !wake_src[2] && !wake_src[3] ) {
+		printk(KERN_ERR "No sources enabled for wake-up! Sleep abort.\n");
+		return -EINVAL;
+	}
 
 	if (gpc_dvfs_clk == NULL)
 		gpc_dvfs_clk = clk_get(NULL, "gpc_dvfs_clk");
