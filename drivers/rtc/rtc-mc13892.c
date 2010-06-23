@@ -208,7 +208,8 @@ static int mxc_rtc_probe(struct platform_device *pdev)
 	pdata->event.param = pdata;
 	CHECK_ERROR(pmic_event_subscribe(EVENT_TODAI, pdata->event));
 
-	device_init_wakeup(&pdev->dev, 1);
+	device_init_wakeup(&pdev->dev, 0);
+	device_set_wakeup_capable(&pdev->dev, 1);
 	pdata->rtc = rtc_device_register(pdev->name, &pdev->dev,
 					 &mxc_rtc_ops, THIS_MODULE);
 
@@ -230,12 +231,20 @@ static int __exit mxc_rtc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int mxc_rtc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	if (device_may_wakeup(&pdev->dev))
+		enable_irq_wake(platform_get_irq(pdev, 0));
+	return 0;
+}
+
 static struct platform_driver mxc_rtc_driver = {
 	.driver = {
 		   .name = "pmic_rtc",
 		   },
 	.probe = mxc_rtc_probe,
 	.remove = __exit_p(mxc_rtc_remove),
+	.suspend = mxc_rtc_suspend,
 };
 
 static int __init mxc_rtc_init(void)

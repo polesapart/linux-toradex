@@ -104,6 +104,10 @@ static int mxc_set_wake_irq(unsigned int irq, unsigned int enable)
 
 	return 0;
 }
+void mxc_get_wake_irq(u32 * wake_src[])
+{
+	*wake_src = wakeup_intr;
+}
 
 static struct irq_chip mxc_tzic_chip = {
 	.name = "MXC_TZIC",

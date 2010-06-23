@@ -70,6 +70,13 @@ static struct platform_device power_ldm = {
 	.name = "pmic_power",
 	.id = 1,
 };
+
+static struct resource pmic_rtc_resources[] = {
+	{
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
 static struct platform_device rtc_ldm = {
 	.name = "pmic_rtc",
 	.id = 1,
@@ -91,13 +98,17 @@ static struct platform_device bleds_ldm = {
 	.id = 'b',
 };
 
-static void pmic_pdev_register(struct device *dev)
+static void pmic_pdev_register(struct i2c_client *client)
 {
+	struct device *dev = client->dev;
+
 	platform_device_register(&adc_ldm);
 
 	if (!cpu_is_mx53())
 		platform_device_register(&battery_ldm);
 
+	rtc_ldm.resource->start = client->irq;
+	rtc_ldm.resource->end = client->irq;
 	platform_device_register(&rtc_ldm);
 	platform_device_register(&power_ldm);
 	platform_device_register(&light_ldm);
@@ -269,7 +280,6 @@ static int __devinit pmic_probe(struct i2c_client *client,
 		dev_err(&client->dev, "request irq %d error!\n", pmic_irq);
 		return ret;
 	}
-	enable_irq_wake(pmic_irq);
 
 	if (plat_data && plat_data->init) {
 		ret = plat_data->init(mc13892);
@@ -281,7 +291,7 @@ static int __devinit pmic_probe(struct i2c_client *client,
 	if (ret)
 		dev_err(&client->dev, "create device file failed!\n");
 
-	pmic_pdev_register(&client->dev);
+	pmic_pdev_register(&client);
 
 	dev_info(&client->dev, "Loaded\n");
 

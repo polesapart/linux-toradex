@@ -31,6 +31,7 @@
 #ifdef CONFIG_ARCH_MX50
 #include <mach/iomux-mx50.h>
 #endif
+#include "mach/irqs.h"
 
 #define MXC_SRPG_EMPGC0_SRPGCR	(IO_ADDRESS(GPC_BASE_ADDR) + 0x2C0)
 #define MXC_SRPG_EMPGC1_SRPGCR	(IO_ADDRESS(GPC_BASE_ADDR) + 0x2D0)
@@ -64,6 +65,15 @@ void __iomem *suspend_param1;
 
 static int mx5_suspend_enter(suspend_state_t state)
 {
+	u32 * wake_src;
+
+	/* Check that we have a wake up source. We don't want to suspend if not.*/
+	mxc_get_wake_irq(&wake_src);
+	if ( !wake_src[0] && !wake_src[1] && !wake_src[2] && !wake_src[3] ) {
+		printk(KERN_ERR "No sources enabled for wake-up! Sleep abort.\n");
+		return -EINVAL;
+	}
+
 	if (gpc_dvfs_clk == NULL)
 		gpc_dvfs_clk = clk_get(NULL, "gpc_dvfs_clk");
 	/* gpc clock is needed for SRPG */
