@@ -184,6 +184,21 @@ int mxc_request_iomux(iomux_pin_name_t pin, iomux_pin_cfg_t config)
 EXPORT_SYMBOL(mxc_request_iomux);
 
 /*!
+ * Configure an IO pin without requesting ownership. The pin needs to be
+ * requested afterwards using gpio_request or through the sysfs.
+ *
+ * @param  pin		a name defined by \b iomux_pin_name_t
+ * @param  config	a configuration as defined in \b #iomux_pin_cfg_t
+ *
+ * @return		0 if successful; Non-zero otherwise
+ */
+int mxc_config_iomux(iomux_pin_name_t pin, iomux_pin_cfg_t config)
+{
+	return( iomux_config_mux(pin, config) );
+}
+EXPORT_SYMBOL(mxc_config_iomux);
+
+/*!
  * Release ownership for an IO pin
  *
  * @param  pin		a name defined by \b iomux_pin_name_t

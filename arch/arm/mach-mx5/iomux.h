@@ -174,6 +174,17 @@ int mxc_request_iomux(iomux_pin_name_t pin, iomux_pin_cfg_t config);
 void mxc_free_iomux(iomux_pin_name_t pin, iomux_pin_cfg_t config);
 
 /*!
+ * Configure an IO pin without requesting ownership. The pin needs to be
+ * requested afterwards using gpio_request or through the sysfs.
+ *
+ * @param  pin		a name defined by \b iomux_pin_name_t
+ * @param  config	a configuration as defined in \b #iomux_pin_cfg_t
+ *
+ * @return		0 if successful; Non-zero otherwise
+ */
+int mxc_config_iomux(iomux_pin_name_t pin, iomux_pin_cfg_t config);
+
+/*!
  * This function configures the pad value for a IOMUX pin.
  *
  * @param  pin          a pin number as defined in \b #iomux_pin_name_t
