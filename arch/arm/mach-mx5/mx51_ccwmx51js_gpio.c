@@ -672,6 +672,14 @@ void __init ccwmx51_io_init(void)
 #endif
 #endif
 
+#ifndef CONFIG_SPI_MXC_SELECT2
+	/* Configure as GPIO to be used to read LED status */
+	mxc_config_iomux(MX51_PIN_NANDF_RB2,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
+	mxc_iomux_set_pad(MX51_PIN_NANDF_RB2,PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU);
+	mxc_config_iomux(MX51_PIN_NANDF_RB1,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
+	mxc_iomux_set_pad(MX51_PIN_NANDF_RB1,PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU);
+#endif
+
 #endif
 
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_devices_pins); i++) {
