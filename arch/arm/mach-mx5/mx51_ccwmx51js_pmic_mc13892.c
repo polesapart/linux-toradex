@@ -20,6 +20,8 @@
 #include <linux/pmic_external.h>
 #include <linux/regulator/machine.h>
 #include <linux/mfd/mc13892/core.h>
+#include <linux/delay.h>
+#include <asm/mach-types.h>
 #include "iomux.h"
 #include <mach/irqs.h>
 #include "mx51_pins.h"
@@ -262,30 +264,6 @@ static struct regulator_init_data vgen3_init = {
 	}
 };
 
-static struct regulator_init_data gpo1_init = {
-	.constraints = {
-		.name = "GPO1",
-	}
-};
-
-static struct regulator_init_data gpo2_init = {
-	.constraints = {
-		.name = "GPO2",
-	}
-};
-
-static struct regulator_init_data gpo3_init = {
-	.constraints = {
-		.name = "GPO3",
-	}
-};
-
-static struct regulator_init_data gpo4_init = {
-	.constraints = {
-		.name = "GPO4",
-	}
-};
-
 static int mc13892_regulator_init(struct mc13892 *mc13892)
 {
 	unsigned int value, register_mask;
@@ -334,10 +312,25 @@ static int mc13892_regulator_init(struct mc13892 *mc13892)
 	mc13892_register_regulator(mc13892, MC13892_VGEN2, &vgen2_init);
 	mc13892_register_regulator(mc13892, MC13892_VGEN3, &vgen3_init);
 	mc13892_register_regulator(mc13892, MC13892_VUSB, &vusb_init);
-	mc13892_register_regulator(mc13892, MC13892_GPO1, &gpo1_init);
-	mc13892_register_regulator(mc13892, MC13892_GPO2, &gpo2_init);
-	mc13892_register_regulator(mc13892, MC13892_GPO3, &gpo3_init);
-	mc13892_register_regulator(mc13892, MC13892_GPO4, &gpo4_init);
+
+	/* FIXME  Move the code below to the corresponding initialization functions */
+	pmic_read_reg(REG_POWER_MISC, &value, 0xffffff);
+	value &= ~((3 << 8) | (3 << 10) | (3 << 12));
+	pmic_write_reg(REG_POWER_MISC, value, (3 << 8) | (3 << 10) | (3 << 12));
+	udelay(250);
+#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
+	/* Set to high external mac reset line */
+	value |= (1 << 8);
+#endif
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+	/* Set to high fec phy reset line */
+	value |= (1 << 10);
+#endif
+	if (machine_is_ccwmx51js() || machine_is_ccwmx51())
+		/* Set to high wireless module reset line */
+		value |= (1 << 12);
+
+	pmic_write_reg(REG_POWER_MISC, value, (3 << 8) | (3 << 10) | (3 << 12));
 
 	return 0;
 }
