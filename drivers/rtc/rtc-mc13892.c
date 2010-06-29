@@ -19,6 +19,8 @@
 #include <linux/pmic_status.h>
 #include <linux/pmic_external.h>
 
+#include <linux/irq.h>
+
 #define RTC_TIME_LSH		0
 #define RTC_DAY_LSH		0
 #define RTCALARM_TIME_LSH	0
@@ -233,8 +235,22 @@ static int __exit mxc_rtc_remove(struct platform_device *pdev)
 
 static int mxc_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	if (device_may_wakeup(&pdev->dev))
-		enable_irq_wake(platform_get_irq(pdev, 0));
+	int irq;
+	struct irq_desc *desc;
+
+	if(!pdev)
+		return -1;
+
+	irq = platform_get_irq(pdev, 0);
+
+	if (device_may_wakeup(&pdev->dev)) {
+		enable_irq_wake(irq);
+	}
+	else {
+		desc = irq_to_desc(irq);
+		if(desc->status & IRQ_WAKEUP)
+			disable_irq_wake(irq);
+	}
 	return 0;
 }
 

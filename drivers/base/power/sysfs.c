@@ -10,6 +10,7 @@
 #include <asm/mach-types.h>
 #include <linux/interrupt.h>
 #include <mach/gpio.h>
+#include <linux/irq.h>
 
 /*
  *	control - Report/change current runtime PM setting of the device
@@ -127,33 +128,49 @@ wake_store(struct device * dev, struct device_attribute *attr,
 {
 	char *cp;
 	int len = n;
+	char *name = NULL;
+	char *ep;
+	unsigned int gpio;
+	int irq;
+	int is_gpio = 0;
+	struct irq_desc *desc;
 
 	if (!device_can_wakeup(dev))
 		return -EINVAL;
+
+	if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ) {
+		/*  Check whether this is a GPIO */
+		if( (name = strstr(dev->kobj.name , "gpio")) ) {
+			is_gpio = 1;
+			gpio = simple_strtol(name+strlen("gpio"), &ep, 0);
+			irq = gpio_to_irq(gpio);
+		}
+	}
 
 	cp = memchr(buf, '\n', n);
 	if (cp)
 		len = cp - buf;
 	if (len == sizeof enabled - 1
-			&& strncmp(buf, enabled, sizeof enabled - 1) == 0)
+			&& strncmp(buf, enabled, sizeof enabled - 1) == 0) {
 		device_set_wakeup_enable(dev, 1);
-	else if (len == sizeof disabled - 1
-			&& strncmp(buf, disabled, sizeof disabled - 1) == 0)
-		device_set_wakeup_enable(dev, 0);
-	else
-		return -EINVAL;
-
-	if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ) {
-		char *name = NULL;
-		char *ep;
-		unsigned int gpio;
-
-		/*  Check whether this is a GPIO and if so configure it as wake up source */
-		if( (name = strstr(dev->kobj.name , "gpio")) ) {
-			gpio = simple_strtol(name+strlen("gpio"), &ep, 0);
-			set_irq_wake(gpio_to_irq(gpio),1);
+		if ( is_gpio ) {
+			/*  Configure it as wake up source */
+			set_irq_wake(irq,1);
 		}
 	}
+	else if (len == sizeof disabled - 1
+			&& strncmp(buf, disabled, sizeof disabled - 1) == 0) {
+		device_set_wakeup_enable(dev, 0);
+		if ( is_gpio ) {
+				desc = irq_to_desc(irq);
+				if(desc->status & IRQ_WAKEUP){
+					/*  Deconfigure it as wake up source */
+					disable_irq_wake(irq);
+				}
+		}
+	}
+	else
+		return -EINVAL;
 
 	return n;
 }
