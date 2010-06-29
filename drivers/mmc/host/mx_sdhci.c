@@ -37,6 +37,7 @@
 #include <linux/mmc/card.h>
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
+#include <linux/irq.h>
 #include <linux/slab.h>
 
 #include <asm/dma.h>
@@ -1749,6 +1750,8 @@ static int sdhci_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct sdhci_chip *chip;
 	int i, ret;
+	struct irq_desc *desc;
+	int irq;
 
 	chip = dev_get_drvdata(&pdev->dev);
 	if (!chip)
@@ -1756,8 +1759,14 @@ static int sdhci_suspend(struct platform_device *pdev, pm_message_t state)
 
 	DBG("Suspending...\n");
 
+	irq = platform_get_irq(pdev, 1);
 	if( device_may_wakeup( &pdev->dev ) )
-		enable_irq_wake(platform_get_irq(pdev, 1));
+		enable_irq_wake(irq);
+	else {
+		desc = irq_to_desc(irq);
+		if(desc->status & IRQ_WAKEUP)
+			disable_irq_wake(irq);
+	}
 
 	for (i = 0; i < chip->num_slots; i++) {
 		if (!chip->hosts[i])
