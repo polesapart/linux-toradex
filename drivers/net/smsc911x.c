@@ -2349,6 +2349,7 @@ static int smsc911x_suspend(struct platform_device *pdev, pm_message_t state) {
 	struct net_device *ndev;
 	struct smsc911x_data *pdata;
 	int retval;
+	struct irq_desc *desc;
 
 	ndev = platform_get_drvdata(pdev);
 	pdata = netdev_priv(ndev);
@@ -2398,6 +2399,9 @@ static int smsc911x_suspend(struct platform_device *pdev, pm_message_t state) {
 			enable_irq_wake(ndev->irq);
 
 		} else {
+			desc = irq_to_desc(ndev->irq);
+			if(desc->status & IRQ_WAKEUP)
+				disable_irq_wake(ndev->irq);
 			/*
 			 * Enter into the power mode D2 (the controller doesn't
 			 * support the mode D3)
