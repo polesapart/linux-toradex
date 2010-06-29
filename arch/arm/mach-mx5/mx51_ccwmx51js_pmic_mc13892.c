@@ -318,7 +318,7 @@ static int mc13892_regulator_init(struct mc13892 *mc13892)
 	value &= ~((3 << 8) | (3 << 10) | (3 << 12));
 	pmic_write_reg(REG_POWER_MISC, value, (3 << 8) | (3 << 10) | (3 << 12));
 	udelay(250);
-#if defined(CONFIG_SMSC9118) || defined(CONFIG_SMSC9118_MODULE)
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	/* Set to high external mac reset line */
 	value |= (1 << 8);
 #endif
