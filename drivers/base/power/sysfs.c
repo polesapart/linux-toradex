@@ -131,7 +131,7 @@ wake_store(struct device * dev, struct device_attribute *attr,
 	char *name = NULL;
 	char *ep;
 	unsigned int gpio;
-	int irq;
+	int irq = 0;
 	int is_gpio = 0;
 	struct irq_desc *desc;
 
