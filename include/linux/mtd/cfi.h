@@ -289,7 +289,7 @@ static inline uint32_t cfi_build_cmd_addr(uint32_t cmd_ofs,
 	unsigned interleave = cfi_interleave(cfi);
 	unsigned type = cfi->device_type;
 	uint32_t addr;
-	
+
 	addr = (cmd_ofs * type) * interleave;
 
 	/* Modify the unlock address if we are in compatiblity mode.
@@ -521,6 +521,7 @@ struct cfi_fixup {
 #define CFI_MFR_AMD 0x0001
 #define CFI_MFR_ATMEL 0x001F
 #define CFI_MFR_ST  0x0020 	/* STMicroelectronics */
+#define CFI_MFR_NMX 0x0089 	/* Numonyx */
 
 void cfi_fixup(struct mtd_info *mtd, struct cfi_fixup* fixups);
 
