@@ -562,8 +562,129 @@ void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 	}
 }
 EXPORT_SYMBOL(ccwmx51_gpio_spi_chipselect_inactive);
-
 #endif /* defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE) */
+
+#if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+static struct mxc_iomux_pin_cfg __initdata ata_iomux_pins[] = {
+	{
+		MX51_PIN_NANDF_ALE, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CS2, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CS3, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CS4, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CS5, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CS6, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_RE_B, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_WE_B, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_CLE, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_RB0, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_WP_B, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	/* TO 2.0 */
+	{
+		MX51_PIN_GPIO_NAND, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_RB1, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D0, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D1, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D2, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D3, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D4, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D5, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D6, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D7, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D8, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D9, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D10, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D11, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D12, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D13, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D14, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+	{
+		MX51_PIN_NANDF_D15, IOMUX_CONFIG_ALT1,
+		(PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
+	},
+};
+#endif /* CONFIG_PATA_FSL || CONFIG_PATA_FSL_MODULE */
 
 void __init ccwmx51_io_init(void)
 {
@@ -623,6 +744,36 @@ void __init ccwmx51_io_init(void)
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), "gpio3_0");
 	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
 #endif
+
+#if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+#if 0
+	/**
+	 * The following code configures the pin NANDF_CS1/GPIO3_17 as input
+	 * to workaround a problem on the EVACCMX51 board, where this line is
+	 * connected to the buffer pin that controls the direction, colliding
+	 * with the line that has to be connected to control properly the buf
+	 * IO direction.
+	 * To solve this problem and test the hardware, you have to enable
+	 * this code to configure this line as gpio and externally connect
+	 * the PATA_DIOR to NANDF_CS1.
+	 */
+	mxc_request_iomux(MX51_PIN_NANDF_CS1, IOMUX_CONFIG_GPIO);
+	mxc_iomux_set_pad(MX51_PIN_NANDF_CS1, PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH);
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1), "gpio3_17");
+	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
+#endif
+
+	for (i = 0; i < ARRAY_SIZE(ata_iomux_pins); i++) {
+		mxc_request_iomux(ata_iomux_pins[i].pin,
+				  ata_iomux_pins[i].mux_mode);
+		if (ata_iomux_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ata_iomux_pins[i].pin,
+					  ata_iomux_pins[i].pad_cfg);
+		if (ata_iomux_pins[i].in_select)
+			mxc_iomux_set_input(ata_iomux_pins[i].in_select,
+					    ata_iomux_pins[i].in_mode);
+	}
+#endif /* defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE) */
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_i2c_pins); i++) {

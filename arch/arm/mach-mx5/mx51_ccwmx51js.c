@@ -268,6 +268,9 @@ static void __init mxc_board_init(void)
 	|| defined(CONFIG_MTD_NAND_MXC_V3_MODULE)
 	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
 #endif
+#if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+	mxc_register_device(&pata_fsl_device, &ata_data);
+#endif
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	mxc_register_device(&smsc911x_device, &ccwmx51_smsc9118);
 #endif

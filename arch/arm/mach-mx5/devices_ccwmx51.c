@@ -447,6 +447,20 @@ int __init ccwmx51_init_fb(void)
 device_initcall(ccwmx51_init_fb);
 #endif
 
+#if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+struct fsl_ata_platform_data ata_data = {
+	.udma_mask  = ATA_UDMA3,
+	.mwdma_mask = ATA_MWDMA2,
+	.pio_mask   = ATA_PIO4,
+	.fifo_alarm = MXC_IDE_DMA_WATERMARK / 2,
+	.max_sg     = MXC_IDE_DMA_BD_NR,
+	.init       = NULL,
+	.exit       = NULL,
+	.core_reg   = NULL,
+	.io_reg     = NULL,
+};
+#endif
+
 void __init ccwmx51_init_devices ( void )
 {
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)

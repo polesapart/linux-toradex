@@ -1224,12 +1224,12 @@ struct platform_device mxcsdhc3_device = {
 };
 
 static struct resource pata_fsl_resources[] = {
-	{
+	[0] = {
 		.start = ATA_BASE_ADDR,
 		.end = ATA_BASE_ADDR + 0x000000C8,
 		.flags = IORESOURCE_MEM,
 	},
-	{
+	[2] = {
 		.start = MXC_INT_ATA,
 		.end = MXC_INT_ATA,
 		.flags = IORESOURCE_IRQ,
