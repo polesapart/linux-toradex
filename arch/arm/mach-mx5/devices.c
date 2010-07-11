@@ -428,12 +428,22 @@ struct platform_device mxc_fb_devices[] = {
 	},
 };
 
-struct platform_device lcd_pdev = {
-        .name = "ccwmx51_display",
-        .dev = {
-                .coherent_dma_mask = DMA_BIT_MASK(32),
-        },
-};
+struct platform_device lcd_pdev[] = {
+	{
+		.name = "ccwmx51_display",
+		.id = 0,
+		.dev = {
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+		},
+	},
+	{
+		.name = "ccwmx51_display",
+		.id = 1,
+		.dev = {
+			.coherent_dma_mask = DMA_BIT_MASK(32),
+		},
+	},
+ };
 
 static struct resource ldb_resources[] = {
 	{
@@ -651,13 +661,6 @@ struct platform_device mxcspi3_device = {
 	.id = 2,
 	.num_resources = ARRAY_SIZE(mxcspi3_resources),
 	.resource = mxcspi3_resources,
-};
-
-struct ccwmx51_lcd_pdata {
-	int vif;
-	struct mxc_fb_platform_data fb_pdata;
-	void (*reset) (void);
-	void (*bl_enable) (int);
 };
 
 /* I2C controller and device data */

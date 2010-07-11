@@ -175,10 +175,16 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			mxcfb_resources[0].start =
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
-				mxcfb_resources[0].start + fb_mem - 1;
+				mxcfb_resources[0].start + fb_mem / 2 - 1;
+			mxcfb_resources[1].start =
+				mxcfb_resources[0].end + 1;
+			mxcfb_resources[1].end =
+				mxcfb_resources[1].start + fb_mem / 2 - 1;
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;
+			mxcfb_resources[1].start = 0;
+			mxcfb_resources[1].end = 0;
 		}
 #endif
 	}
@@ -206,7 +212,6 @@ static void mxc_power_off(void)
  */
 static void __init mxc_board_init(void)
 {
-
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 
@@ -284,12 +289,23 @@ static void __init mxc_board_init(void)
 #endif
 	mx5_usb_dr_init();
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-	mxc_register_device(&lcd_pdev, plcd_platform_data);
-	mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
-	mxc_fb_devices[0].resource = mxcfb_resources;
+	ccwmx51_init_fb();
+#if defined(CONFIG_CCWMX51_DISP0)
+	if (plcd_platform_data[0].vif != -1)
+		mxc_register_device(&lcd_pdev[0], (void *)&plcd_platform_data[0]);
+
+	mxc_fb_devices[0].num_resources = 1;
+	mxc_fb_devices[0].resource = &mxcfb_resources[0];
 	mxc_register_device(&mxc_fb_devices[0], &mx51_fb_data[0]);
-//	mxc_register_device(&mxc_fb_devices[1], &mx51_fb_data[1]);
-//	mxc_register_device(&mxc_fb_devices[2], NULL);
+#endif
+#if defined(CONFIG_CCWMX51_DISP1)
+	if (plcd_platform_data[1].vif != -1)
+		mxc_register_device(&lcd_pdev[1], (void *)&plcd_platform_data[1]);
+
+	mxc_fb_devices[1].num_resources = 1;
+	mxc_fb_devices[1].resource = &mxcfb_resources[1];
+	mxc_register_device(&mxc_fb_devices[1], &mx51_fb_data[1]);
+#endif /* CONFIG_CCWMX51_DISP1 */
 #endif
 
 #ifdef CONFIG_MXC_PMIC_MC13892

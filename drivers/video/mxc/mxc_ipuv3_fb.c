@@ -22,7 +22,6 @@
  *
  * @ingroup Framebuffer
  */
-
 /*!
  * Include files
  */
@@ -345,8 +344,11 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		}
 	}
 
+#if !(defined(CONFIG_CCWMX51_DISP0) && defined(CONFIG_CCWMX51_DISP1))
+	/* FIXME this lines of code doesnt allow to run the dual head... */
 	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK)
 		return retval;
+#endif
 
 	_setup_disp_channel1(fbi);
 

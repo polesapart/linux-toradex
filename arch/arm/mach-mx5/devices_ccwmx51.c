@@ -94,7 +94,7 @@ struct flash_platform_data mxc_nand_data = {
 struct smsc911x_platform_config ccwmx51_smsc9118 = {
 	.flags          = SMSC911X_USE_32BIT,
 	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-	.irq_type	= SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,	/* push-pull irq */
+	.irq_type       = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,    /* push-pull irq */
 };
 #endif
 
@@ -148,9 +148,16 @@ struct mxc_mmc_platform_data mmc3_data = {
 #endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-struct resource mxcfb_resources[1] = {
+struct resource mxcfb_resources[2] = {
 	{
-	       .flags = IORESOURCE_MEM,
+		.flags = IORESOURCE_MEM,
+		.start = 0,
+		.end   = 0,
+	},
+	{
+		.flags = IORESOURCE_MEM,
+		.start = 0,
+		.end   = 0,
 	},
 };
 #endif
@@ -234,7 +241,7 @@ struct mxc_w1_config mxc_w1_data = {
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 
 static struct resource smsc911x_device_resources[] = {
-	{
+        {
 		.name	= "smsc911x-memory",
 		.start	= CS5_BASE_ADDR,
 		.end	= CS5_BASE_ADDR + SZ_4K - 1,
@@ -248,10 +255,10 @@ static struct resource smsc911x_device_resources[] = {
 };
 
 struct platform_device smsc911x_device = {
-        .name             = "smsc911x",
-        .id               = -1,
-        .num_resources    = ARRAY_SIZE(smsc911x_device_resources),
-        .resource         = smsc911x_device_resources,
+	.name             = "smsc911x",
+	.id               = -1,
+	.num_resources    = ARRAY_SIZE(smsc911x_device_resources),
+	.resource         = smsc911x_device_resources,
 };
 
 /* WEIM registers */
@@ -364,18 +371,24 @@ struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
 };
 
 struct mxc_audio_platform_data wm8753_data = {
-    .ssi_num = 1,
-    .src_port = 2,
-    .ext_port = 3,
-    .sysclk = 12000000,
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 3,
+	.sysclk = 12000000,
 };
 
-struct mxc_fb_platform_data mx51_fb_data[] = {
-	/*VGA*/
-	{
-			.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-			.mode_str = "1024x768M-16@60",	/* Default */
-	}
+struct mxc_fb_platform_data mx51_fb_data[2] = {
+        /* DISP0 */
+        {
+//              .interface_pix_fmt = IPU_PIX_FMT_RGB24,
+                .interface_pix_fmt = IPU_PIX_FMT_RGB666,
+                .mode_str = "1024x768M-16@60",  /* Default */
+        },
+        /* DISP1 */
+        {
+                .interface_pix_fmt = IPU_PIX_FMT_RGB666,
+                .mode_str = "800x480-16@60",    /* Default */
+        }
 };
 #if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
 struct uio_info gpu2d_platform_data = {
@@ -389,7 +402,74 @@ struct uio_info gpu2d_platform_data = {
 #endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-struct ccwmx51_lcd_pdata * plcd_platform_data;
+struct ccwmx51_lcd_pdata plcd_platform_data[2];
+extern int fb2_get_options(char *name, char **option);
+
+#if defined(CONFIG_CCWMX51_DISP1)
+static char *video2_options[FB_MAX] __read_mostly;
+static int ofonly2 __read_mostly;
+
+int fb2_get_options(char *name, char **option)
+{
+	char *opt, *options = NULL;
+	int opt_len, retval = 0;
+	int name_len = strlen(name), i;
+
+	if (name_len && ofonly2 && strncmp(name, "offb", 4))
+		retval = 1;
+
+	if (name_len && !retval) {
+		for (i = 0; i < FB_MAX; i++) {
+			if (video2_options[i] == NULL)
+				continue;
+			opt_len = strlen(video2_options[i]);
+			if (!opt_len)
+				continue;
+			opt = video2_options[i];
+			if (!strncmp(name, opt, name_len) &&
+			    opt[name_len] == ':')
+				options = opt + name_len + 1;
+		}
+	}
+	if (options && !strncmp(options, "off", 3))
+		retval = 1;
+
+	if (option)
+		*option = options;
+
+	return retval;
+}
+
+static int __init video2_setup(char *options)
+{
+	int i, global = 0;
+
+	if (!options || !*options)
+		global = 1;
+
+	if (!global && !strncmp(options, "ofonly", 6)) {
+		ofonly2 = 1;
+		global = 1;
+	}
+
+	if (!global && !strstr(options, "fb:")) {
+		fb_mode_option = options;
+		global = 1;
+	}
+
+	if (!global) {
+		for (i = 0; i < FB_MAX; i++) {
+			if (video2_options[i] == NULL) {
+				video2_options[i] = options;
+				break;
+			}
+		}
+	}
+
+	return 1;
+}
+__setup("video2=", video2_setup);
+#endif
 
 struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
 {
@@ -406,45 +486,97 @@ struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
 
 int __init ccwmx51_init_fb(void)
 {
-	char *options = NULL, *p;
+        char *options = NULL, *options2 = NULL, *p;
+	struct ccwmx51_lcd_pdata *plcd;
+        int ret1, ret2;
 
-	if (fb_get_options("displayfb", &options))
-		pr_warning("no display information available in command line\n");
+	plcd_platform_data[0].vif = -1;
+	plcd_platform_data[1].vif = -1;
 
-	if (!options)
-		return -ENODEV;
+        ret1 = fb_get_options("displayfb", &options);
+        ret2 = fb2_get_options("displayfb", &options2);
+        if (ret1 != 0 && ret2 != 0) {
+                pr_warning("no display information available in command line\n");
+                return -ENODEV;
+        }
 
-	if (!strncasecmp(options, "VGA", 3)) {
-		pr_info("VGA interface is primary\n");
+        if (!options && !options2)
+                return 0;
+#if defined(CONFIG_CCWMX51_DISP0)
+        if (options) {
+                pr_info("options %s\n", options);
 
-		/* Get the desired configuration provided by the bootloader */
-		if (options[3] != '@') {
-			pr_info("Video resolution for VGA interface not provided, using default\n");
-			/* TODO set default video here */
-		} else {
-			options = &options[4];
-			if (((p = strsep (&options, "@")) != NULL) && *p) {
-				if (!strcmp(p, "640x480x16")) {
-					strcpy(mx51_fb_data[0].mode_str, "640x480M-16@60");
-				} else if (!strcmp(p, "800x600x16")) {
-					strcpy(mx51_fb_data[0].mode_str, "800x600M-16@60");
-				} else if (!strcmp(p, "1024x768x16")) {
-					strcpy(mx51_fb_data[0].mode_str, "1024x768M-16@60");
-				} else if (!strcmp(p, "1280x1024x16")) {
-					strcpy(mx51_fb_data[0].mode_str, "1280x1024M-16@60");
-				} else
-					pr_warning("Unsuported video resolution: %s, using default\n", p);
-			}
-		}
-	} else {
-		if ((plcd_platform_data = ccwmx51_get_display(options)) != NULL) {
-			memcpy(&mx51_fb_data[0], &plcd_platform_data->fb_pdata, sizeof(struct mxc_fb_platform_data));
-			plcd_platform_data->vif = 0;	/* Select video interface 0 */
-		}
-	}
-	return 0;
+                if (!strncasecmp(options, "VGA", 3)) {
+                        pr_info("VGA interface in DISP1\n");
+
+                        /* Get the desired configuration provided by the bootloader */
+                        if (options[3] != '@') {
+				pr_info("Video resolution for VGA interface not provided, using default\n");
+				/* TODO set default video here */
+			} else {
+				options = &options[4];
+				if (((p = strsep (&options, "@")) != NULL) && *p) {
+					if (!strcmp(p, "640x480x16")) {
+						strcpy(mx51_fb_data[0].mode_str, "640x480M-16@60");
+					} else if (!strcmp(p, "800x600x16")) {
+						strcpy(mx51_fb_data[0].mode_str, "800x600M-16@60");
+					} else if (!strcmp(p, "1024x768x16")) {
+						strcpy(mx51_fb_data[0].mode_str, "1024x768M-16@60");
+					} else if (!strcmp(p, "1280x1024x16")) {
+						strcpy(mx51_fb_data[0].mode_str, "1280x1024M-16@60");
+					} else
+						pr_warning("Unsuported video resolution: %s, using default\n", p);
+                                }
+                        }
+                } else {
+                        if ((plcd = ccwmx51_get_display(options)) != NULL) {
+                                pr_info("%s panel on DISP1\n", options);
+				memcpy(&plcd_platform_data[0], plcd, sizeof(struct ccwmx51_lcd_pdata));
+                                memcpy(&mx51_fb_data[0], &plcd_platform_data[0].fb_pdata, sizeof(struct mxc_fb_platform_data));
+                                plcd_platform_data[0].vif = 0; /* Select video interface 0 */
+                        }
+                }
+        } else {
+                pr_info("NO options NULL\n");
+
+        }
+#endif
+#if defined(CONFIG_CCWMX51_DISP1)
+        if (options2) {
+                if (!strncasecmp(options2, "VGA", 3)) {
+                        pr_info("VGA interface in DISP2\n");
+
+                        /* Get the desired configuration provided by the bootloader */
+                        if (options2[3] != '@') {
+                                pr_info("Video resolution for VGA interface not provided, using default\n");
+                                /* TODO set default video here */
+                        } else {
+                                options2 = &options2[4];
+                                if (((p = strsep (&options2, "@")) != NULL) && *p) {
+                                        if (!strcmp(p, "640x480x16")) {
+                                                strcpy(mx51_fb_data[1].mode_str, "640x480M-16@60");
+                                        } else if (!strcmp(p, "800x600x16")) {
+                                                strcpy(mx51_fb_data[1].mode_str, "800x600M-16@60");
+                                        } else if (!strcmp(p, "1024x768x16")) {
+                                                strcpy(mx51_fb_data[1].mode_str, "1024x768M-16@60");
+                                        } else if (!strcmp(p, "1280x1024x16")) {
+                                                strcpy(mx51_fb_data[1].mode_str, "1280x1024M-16@60");
+                                        } else
+                                                pr_warning("Unsuported video resolution: %s, using default\n", p);
+                                }
+                        }
+                } else {
+                        if ((plcd = ccwmx51_get_display(options2)) != NULL) {
+                                pr_info("%s panel on DISP2\n", options2);
+				memcpy(&plcd_platform_data[1], plcd, sizeof(struct ccwmx51_lcd_pdata));
+                                memcpy(&mx51_fb_data[1], &plcd_platform_data[1].fb_pdata, sizeof(struct mxc_fb_platform_data));
+                                plcd_platform_data[1].vif = 1; /* Select video interface 1 */
+                        }
+                }
+        }
+#endif
+        return 0;
 }
-device_initcall(ccwmx51_init_fb);
 #endif
 
 #if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
