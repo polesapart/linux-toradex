@@ -403,7 +403,6 @@ struct uio_info gpu2d_platform_data = {
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata plcd_platform_data[2];
-extern int fb2_get_options(char *name, char **option);
 
 #if defined(CONFIG_CCWMX51_DISP1)
 static char *video2_options[FB_MAX] __read_mostly;
@@ -488,20 +487,24 @@ int __init ccwmx51_init_fb(void)
 {
         char *options = NULL, *options2 = NULL, *p;
 	struct ccwmx51_lcd_pdata *plcd;
-        int ret1, ret2;
+        int ret1 = 1, ret2 = 1;
 
 	plcd_platform_data[0].vif = -1;
 	plcd_platform_data[1].vif = -1;
 
-        ret1 = fb_get_options("displayfb", &options);
-        ret2 = fb2_get_options("displayfb", &options2);
-        if (ret1 != 0 && ret2 != 0) {
-                pr_warning("no display information available in command line\n");
-                return -ENODEV;
-        }
+#if defined(CONFIG_CCWMX51_DISP0)
+	ret1 = fb_get_options("displayfb", &options);
+#endif
+#if defined(CONFIG_CCWMX51_DISP1)
+	ret2 = fb2_get_options("displayfb", &options2);
+#endif
+	if (ret1 != 0 && ret2 != 0) {
+		pr_warning("no display information available in command line\n");
+		return -ENODEV;
+	}
 
-        if (!options && !options2)
-                return 0;
+	if (!options && !options2)
+		return 0;
 #if defined(CONFIG_CCWMX51_DISP0)
         if (options) {
                 pr_info("options %s\n", options);
