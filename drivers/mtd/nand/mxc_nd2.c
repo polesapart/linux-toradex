@@ -1345,6 +1345,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 
 	/* Register the partitions */
 #ifdef CONFIG_MTD_PARTITIONS
+	mtd->name = "onboard_boot";
 	nr_parts =
 	    parse_mtd_partitions(mtd, part_probes, &mxc_nand_data->parts, 0);
 	if (nr_parts > 0)
