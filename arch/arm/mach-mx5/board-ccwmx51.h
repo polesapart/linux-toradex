@@ -45,12 +45,25 @@
  * Specifies if the Irda transmit path is inverting
  */
 #define MXC_IRDA_TX_INV	0
-/*!
- * Specifies if the Irda receive path is inverting
- */
-#define MXC_IRDA_RX_INV	0
 
 #define MXC_LL_UART_PADDR	UART1_BASE_ADDR
 #define MXC_LL_UART_VADDR	AIPS1_IO_ADDRESS(UART1_BASE_ADDR)
+
+/* Second touch interface configuration */
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+/* Settings for the JSCCWMX51 Board RevA, for the DISP0 */
+#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
+#define SECOND_TS_SPI_SS_PIN	MX51_PIN_DI1_D1_CS
+/* Settings for the JSCCWMX51 Board RevB, for the DISP0/DISP1 */
+/*
+#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
+#define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
+*/
+#endif /* CONFIG_CCWMX51_SECOND_TOUCH */
+
+
+
+void ccwmx51_2nd_touch_gpio_init(void);
+void ccwmx51_init_2nd_touch(void);
 
 #endif		/* __ASM_ARCH_MXC_BOARD_CCWMX51_H__ */

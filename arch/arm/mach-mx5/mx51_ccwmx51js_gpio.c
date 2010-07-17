@@ -21,6 +21,7 @@
 
 #include "iomux.h"
 #include "mx51_pins.h"
+#include "board-ccwmx51.h"
 
 static void ccwmx51_mmc2_gpio_active(void);
 
@@ -622,6 +623,11 @@ void ccwmx51_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  1 : 0);
 			break;
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+		case 0x4:
+			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 0);
+			break;
+#endif
 		default:
 			break;
 		}
@@ -650,6 +656,11 @@ void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+		case 0x4:
+			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
+			break;
+#endif
 		default:
 			break;
 		}
@@ -1033,6 +1044,32 @@ static void ccwmx51_mmc2_gpio_active(void)
 void ccwmx51_mmc2_gpio_inactive(void)
 {
 }
+#endif
+
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+void ccwmx51_2nd_touch_gpio_init(void)
+{
+	/* Second touch interface interrupt line */
+	mxc_request_iomux(SECOND_TS_IRQ_PIN, IOMUX_CONFIG_GPIO);
+	mxc_iomux_set_pad(SECOND_TS_IRQ_PIN, PAD_CTL_SRE_FAST | PAD_CTL_HYS_ENABLE);
+	mxc_iomux_set_input(MUX_IN_GPIO3_IPP_IND_G_IN_3_SELECT_INPUT, INPUT_CTL_PATH1);
+
+	/* SECOND_TS_SPI_SS_PIN depends on configuration, check board-ccwmx51 to see options */
+	mxc_request_iomux(SECOND_TS_SPI_SS_PIN, IOMUX_CONFIG_GPIO);
+	mxc_iomux_set_pad(SECOND_TS_SPI_SS_PIN, PAD_CTL_SRE_FAST | PAD_CTL_DRV_HIGH |
+			  PAD_CTL_47K_PU | PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE);
+
+	/* Configure the Slave Select signal as gpio, to workaround a silicon errata */
+	gpio_request(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), "ts2_spi_ss");
+	gpio_direction_output(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
+	gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
+
+	/* Configure 2nd touch interrupt line */
+	gpio_request(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN), "ts2_irq");
+	gpio_direction_input(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN));
+}
+#else
+static void ccwmx51_2nd_touch_gpio_init(void) {}
 #endif
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)

@@ -25,6 +25,7 @@
 #include <linux/platform_device.h>
 #include <linux/fsl_devices.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/ads7846.h>
 #include <linux/i2c.h>
 #include <linux/ata.h>
 #include <linux/regulator/consumer.h>
@@ -190,6 +191,49 @@ struct mxc_i2c_platform_data mxci2c_hs_data = {
 };
 
 #if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
+#if CONFIG_CCWMX51_SECOND_TOUCH
+static int touch_pendown_state(void)
+{
+	return gpio_get_value(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN)) ? 0 : 1;
+}
+
+static struct ads7846_platform_data ccwmx51js_touch_data = {
+	.model			= 7843,
+	.x_min			= 100,
+	.y_min			= 100,
+	.x_max			= 4000,
+	.y_max			= 4000,
+	.vref_delay_usecs	= 100,
+	.x_plate_ohms		= 450,
+	.y_plate_ohms		= 250,
+	.pressure_max		= 15000,
+	.debounce_max		= 1,
+	.debounce_rep		= 0,
+	.debounce_tol		= (~0),
+	.settle_delay_usecs	= 20,
+	.get_pendown_state	= touch_pendown_state,
+};
+
+static struct spi_board_info ccwmx51_2nd_touch[] = {
+	{
+		.modalias	= "ads7846",
+		.max_speed_hz	= 1000000,
+		.irq		= IOMUX_TO_IRQ(SECOND_TS_IRQ_PIN),
+		.bus_num        = 1,
+		.chip_select    = 3,
+		.platform_data	= &ccwmx51js_touch_data,
+	},
+};
+
+void ccwmx51_init_2nd_touch(void)
+{
+	ccwmx51_2nd_touch_gpio_init();
+	spi_register_board_info(ccwmx51_2nd_touch, ARRAY_SIZE(ccwmx51_2nd_touch));
+}
+#else
+void ccwmx51_init_2nd_touch(void) {}
+#endif
+
 static struct spi_board_info spi_devices[] = {
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
 	{	/* SPIDEV */
@@ -198,8 +242,8 @@ static struct spi_board_info spi_devices[] = {
 		.bus_num        = 1,
 		.chip_select    = 1,
 	},
-	/* Add here other SPI devices, if any... */
 #endif
+	/* Add here other SPI devices, if any... */
 };
 
 void ccwmx51_init_spidevices(void)

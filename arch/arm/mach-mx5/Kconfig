@@ -260,12 +260,20 @@ config CCWMX51_DISP0_RGB666
 
 endchoice
 
-
 config CCWMX51_DISP1
 	bool "Enable Display Interface 1 (secondary)"
 	depends on FB_MXC_SYNC_PANEL && !FEC
 	help
 	  This enables the i.MX51 Display Interface 1.
+
+config CCWMX51_SECOND_TOUCH
+	bool "Enable support for external touch controller (ADS7843)"
+	depends on SPI_MXC_SELECT1
+	select TOUCHSCREEN_ADS7846
+	help
+	  This enables the support for the external touch interface (ADS7843) available on the
+	  High Resolution Display board, connected to the processor through SPI and that can be
+	  used with the secondary display (but also with the primary)
 
 source "arch/arm/mach-mx5/displays/Kconfig"
 
