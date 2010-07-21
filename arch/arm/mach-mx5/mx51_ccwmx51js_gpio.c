@@ -1069,7 +1069,7 @@ void ccwmx51_2nd_touch_gpio_init(void)
 	gpio_direction_input(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN));
 }
 #else
-static void ccwmx51_2nd_touch_gpio_init(void) {}
+void ccwmx51_2nd_touch_gpio_init(void) {}
 #endif
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
