@@ -175,6 +175,11 @@ static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
         I2C_BOARD_INFO("wm8753", 0x1A),
 	},
 #endif
+#if defined(CONFIG_MXC_CAMERA_MICRON111) || defined(CONFIG_MXC_CAMERA_MICRON111_MODULE)
+	{
+        I2C_BOARD_INFO("mt9v111", 0xB8>>1),
+	},
+#endif
 };
 
 int __init ccwmx51_init_i2c2(void)
