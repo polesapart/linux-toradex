@@ -507,6 +507,119 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_audio_pins[] = {
 };
 #endif
 
+#if defined CONFIG_VIDEO_MXC_IPU_CAMERA
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_camera_pins[] = {
+		/* CSI0 camera interface 1 */
+	{
+		/* CSI1_DATA_EN needs to be pulled up. Pre rev 3 silicon,
+		   we have to do this through an actual pad, see chip errata
+		  "ENGcm09112 IPU: CSIx_DATA_EN_POL Bit is Not Functional".
+		  We could probably remove this and use CSIx_DATA_EN_POL
+		  once we are sure that all modules are using rev >= 3
+		*/
+		MX51_PIN_EIM_A26, IOMUX_CONFIG_ALT5 | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_NONE | PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PULL |
+		PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST),
+		MUX_IN_HSC_MIPI_MIX_IPP_IND_SENS2_DATA_EN_SELECT_INPUT,
+		INPUT_CTL_PATH0,
+	},
+	{
+		MX51_PIN_CSI1_D12, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D13, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D14, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D15, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D16, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D17, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D18, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_D19, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI1_VSYNC, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW),
+	},
+	{
+		MX51_PIN_CSI1_HSYNC, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW),
+	},
+	/* Configure GPIO3_13 as RESET for camera 1 */
+	{
+		MX51_PIN_CSI1_D9, IOMUX_CONFIG_ALT3,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_MEDIUM | PAD_CTL_SRE_FAST),
+	},
+	/* CSI2 camera interface 2 */
+		/* CSI2_DATA_EN needs to be pulled up. Pre rev 3 silicon,
+		   we have to do this through an actual pad, see chip errata
+		  "ENGcm09112 IPU: CSIx_DATA_EN_POL Bit is Not Functional".
+		  We could probably remove this and use CSIx_DATA_EN_POL
+		  once we are sure that all modules are using rev >= 3
+	*/
+	 {
+		MX51_PIN_GPIO1_8, IOMUX_CONFIG_ALT2,
+		(PAD_CTL_HYS_NONE | PAD_CTL_PKE_ENABLE | PAD_CTL_PUE_PULL |
+		PAD_CTL_100K_PU),
+		MUX_IN_HSC_MIPI_MIX_IPP_IND_SENS1_DATA_EN_SELECT_INPUT,
+		INPUT_CTL_PATH2,
+	},
+	{
+		MX51_PIN_CSI2_D12, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D13, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D14, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D15, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D16, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D17, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D18, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_D19, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
+	},
+	{
+		MX51_PIN_CSI2_VSYNC, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW),
+	},
+	{
+		MX51_PIN_CSI2_HSYNC, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW),
+	},
+	{
+		MX51_PIN_CSI2_PIXCLK, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW),
+	},
+	/* Configure GPIO3_12 as RESET for camera 2 */
+	{
+		MX51_PIN_CSI1_D8, IOMUX_CONFIG_ALT3,
+		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_MEDIUM | PAD_CTL_SRE_FAST),
+		MUX_IN_GPIO3_IPP_IND_G_IN_12_SELECT_INPUT,
+		INPUT_CTL_PATH1
+	 },
+};
+#endif /* #if defined CONFIG_VIDEO_MXC_IPU_CAMERA */
+
 #if defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_cspi_pins[] = {
 #ifdef CONFIG_SPI_MXC_SELECT1
@@ -824,6 +937,43 @@ void __init ccwmx51_io_init(void)
 			mxc_iomux_set_input(ccwmx51_iomux_mmc_pins[i].in_select,
 					    ccwmx51_iomux_mmc_pins[i].in_mode);
 	}
+#endif
+
+#if defined CONFIG_VIDEO_MXC_IPU_CAMERA
+	STRAIL("Configuring IOMUX for CAMERAS\n");
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_camera_pins); i++) {
+		mxc_request_iomux(ccwmx51_camera_pins[i].pin,
+				ccwmx51_camera_pins[i].mux_mode);
+		if (ccwmx51_camera_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_camera_pins[i].pin,
+					ccwmx51_camera_pins[i].pad_cfg);
+		if (ccwmx51_camera_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_camera_pins[i].in_select,
+					ccwmx51_camera_pins[i].in_mode);
+	}
+
+	/* Configure non muxed pins */
+	mxc_iomux_set_pad(MX51_PIN_CSI1_PIXCLK,PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW);
+	mxc_iomux_set_pad(MX51_PIN_CSI2_PIXCLK,PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW);
+	mxc_iomux_set_pad(MX51_PIN_CSI1_MCLK,PAD_CTL_DRV_HIGH | PAD_CTL_SRE_SLOW);
+
+	/* Camera 1 reset */
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), "gpio3_13");
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), 0);
+	// Take camera out of reset
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), 0);
+	msleep(100);
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), 1);
+	msleep(100);
+
+	/* Camera 2 reset */
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSI1_D8), "gpio3_12");
+	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSI1_D8), 0);
+	// Take camera out of reset
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSI1_D8), 0);
+	msleep(100);
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSI1_D8), 1);
+	msleep(100);
 #endif
 
 #if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
