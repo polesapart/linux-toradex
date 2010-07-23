@@ -18,6 +18,7 @@
  *
  * @ingroup MXC_V4L2_CAPTURE
  */
+
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -74,21 +75,21 @@ static struct v4l2_output mxc_capture_outputs[MXC_V4L2_CAPTURE_NUM_OUTPUTS] = {
 static struct v4l2_input mxc_capture_inputs[MXC_V4L2_CAPTURE_NUM_INPUTS] = {
 	{
 	 .index = 0,
-	 .name = "CSI IC MEM",
-	 .type = V4L2_INPUT_TYPE_CAMERA,
-	 .audioset = 0,
-	 .tuner = 0,
-	 .std = V4L2_STD_UNKNOWN,
-	 .status = 0,
-	 },
-	{
-	 .index = 1,
 	 .name = "CSI MEM",
 	 .type = V4L2_INPUT_TYPE_CAMERA,
 	 .audioset = 0,
 	 .tuner = 0,
 	 .std = V4L2_STD_UNKNOWN,
 	 .status = V4L2_IN_ST_NO_POWER,
+	 },
+	{
+	 .index = 1,
+	 .name = "CSI IC MEM",
+	 .type = V4L2_INPUT_TYPE_CAMERA,
+	 .audioset = 0,
+	 .tuner = 0,
+	 .std = V4L2_STD_UNKNOWN,
+	 .status = 0,
 	 },
 };
 
@@ -118,6 +119,7 @@ typedef struct {
 	u16 active_left;	/*!< Active left. */
 } video_fmt_t;
 
+#if 0
 /*!
  * Description of video formats supported.
  *
@@ -157,8 +159,10 @@ static video_fmt_t video_fmts[] = {
 	 },
 };
 
+
 /*!* Standard index of TV. */
 static video_fmt_idx video_index = TV_NOT_LOCKED;
+#endif
 
 static int mxc_v4l2_master_attach(struct v4l2_int_device *slave);
 static void mxc_v4l2_master_detach(struct v4l2_int_device *slave);
@@ -260,6 +264,7 @@ static int mxc_allocate_frame_buf(cam_data *cam, int count)
 static void mxc_free_frames(cam_data *cam)
 {
 	int i;
+	unsigned long lock_flags;
 
 	pr_debug("In MVC:mxc_free_frames\n");
 
@@ -269,9 +274,11 @@ static void mxc_free_frames(cam_data *cam)
 
 	cam->enc_counter = 0;
 	cam->skip_frame = 0;
+	spin_lock_irqsave(&cam->dqueue_int_lock, lock_flags);
 	INIT_LIST_HEAD(&cam->ready_q);
 	INIT_LIST_HEAD(&cam->working_q);
 	INIT_LIST_HEAD(&cam->done_q);
+	spin_unlock_irqrestore(&cam->dqueue_int_lock, lock_flags);
 }
 
 /*!
@@ -332,6 +339,7 @@ static int mxc_streamon(cam_data *cam)
 {
 	struct mxc_v4l_frame *frame;
 	int err = 0;
+	unsigned long lock_flags;
 
 	pr_debug("In MVC:mxc_streamon\n");
 
@@ -364,23 +372,27 @@ static int mxc_streamon(cam_data *cam)
 		}
 	}
 
+	spin_lock_irqsave(&cam->queue_int_lock, lock_flags);
 	cam->ping_pong_csi = 0;
 	if (cam->enc_update_eba) {
+
 		frame =
 		    list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
 		list_del(cam->ready_q.next);
 		list_add_tail(&frame->queue, &cam->working_q);
 		err = cam->enc_update_eba(frame->buffer.m.offset,
 					  &cam->ping_pong_csi);
-
-		frame =
-		    list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
-		list_del(cam->ready_q.next);
-		list_add_tail(&frame->queue, &cam->working_q);
-		err |= cam->enc_update_eba(frame->buffer.m.offset,
-					   &cam->ping_pong_csi);
+		if (!list_empty(&cam->ready_q)) {
+			frame =
+				list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
+			list_del(cam->ready_q.next);
+			list_add_tail(&frame->queue, &cam->working_q);
+			err |= cam->enc_update_eba(frame->buffer.m.offset,
+						   &cam->ping_pong_csi);
+		}
+		cam->capture_on = true;
 	} else {
-		return -EINVAL;
+		err = -EINVAL;
 	}
 
 	if (cam->overlay_on == true)
@@ -388,11 +400,9 @@ static int mxc_streamon(cam_data *cam)
 
 	if (cam->enc_enable_csi) {
 		err = cam->enc_enable_csi(cam);
-		if (err != 0)
-			return err;
 	}
 
-	cam->capture_on = true;
+	spin_unlock_irqrestore(&cam->queue_int_lock, lock_flags);
 
 	return err;
 }
@@ -681,6 +691,29 @@ static int mxc_v4l2_g_fmt(cam_data *cam, struct v4l2_format *f)
 		 __func__,
 		 cam->crop_current.width, cam->crop_current.height);
 
+	retval = vidioc_int_g_fmt_cap(cam->sensor,f);
+	return retval;
+}
+
+/*!
+ * V4L2 - mxc_v4l2_enum_fmt function
+ *
+ * @param cam         structure cam_data *
+ *
+ * @param f           structure v4l2_fmtdesc *
+ *
+ * @return  status    0 success, EINVAL failed
+ */
+static int mxc_v4l2_enum_fmt(cam_data *cam, struct v4l2_fmtdesc *f)
+{
+	int retval = 0;
+
+	pr_debug("In MVC: mxc_v4l2_enum_fmt\n");
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
+	retval = vidioc_int_enum_fmt_cap(cam->sensor,f);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
+
 	return retval;
 }
 
@@ -716,9 +749,13 @@ static int mxc_v4l2_s_fmt(cam_data *cam, struct v4l2_format *f)
 		 * for CSI MEM input mode.
 		 */
 		if (strcmp(mxc_capture_inputs[cam->current_input].name,
-			   "CSI MEM") == 0) {
+			   "CSI MEM") == 0 || strcmp(mxc_capture_inputs[cam->current_input].name,
+					   "CSI IC MEM") == 0) {
 			f->fmt.pix.width = cam->crop_current.width;
 			f->fmt.pix.height = cam->crop_current.height;
+		}
+		else {
+			printk("Error no match %s\n",mxc_capture_inputs[cam->current_input].name);
 		}
 
 		if (cam->rotation >= IPU_ROTATE_90_RIGHT) {
@@ -825,6 +862,13 @@ static int mxc_v4l2_s_fmt(cam_data *cam, struct v4l2_format *f)
 				break;
 			}
 		}
+
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
+				       true, true);
+		vidioc_int_s_fmt_cap(cam->sensor, f);
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
+				       false, false);
+
 		break;
 	case V4L2_BUF_TYPE_VIDEO_OVERLAY:
 		pr_debug("   type=V4L2_BUF_TYPE_VIDEO_OVERLAY\n");
@@ -1212,6 +1256,7 @@ exit:
 	return err;
 }
 
+#if 0
 /*!
  * V4L2 - mxc_v4l2_s_std function
  *
@@ -1293,6 +1338,7 @@ static int mxc_v4l2_g_std(cam_data *cam, v4l2_std_id *e)
 
 	return 0;
 }
+#endif
 
 /*!
  * Dequeue one V4L capture buffer
@@ -1423,7 +1469,7 @@ static int mxc_v4l_open(struct file *file)
 		csi_param.force_eof = 0;
 		csi_param.data_en_pol = 0;
 		csi_param.mclk = ifparm.u.bt656.clock_curr;
-
+		csi_param.ext_vsync = ifparm.u.bt656.bt_sync_correct;
 		csi_param.pixclk_pol = ifparm.u.bt656.latch_clk_inv;
 
 		/* Once we handle multiple inputs this will need to change. */
@@ -1480,7 +1526,7 @@ static int mxc_v4l_open(struct file *file)
 		pr_debug("On Open: Input to ipu size is %d x %d\n",
 				cam_fmt.fmt.pix.width, cam_fmt.fmt.pix.height);
 		ipu_csi_set_window_size(cam->crop_current.width,
-					cam->crop_current.width,
+					cam->crop_current.height,
 					cam->csi);
 		ipu_csi_set_window_pos(cam->crop_current.left,
 					cam->crop_current.top,
@@ -1683,6 +1729,21 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		return -EBUSY;
 
 	switch (ioctlnr) {
+
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	case VIDIOC_DBG_S_REGISTER: {
+		struct v4l2_dbg_register * dreg = arg;
+		vidioc_int_s_register(cam->sensor,dreg);
+		break;
+	}
+
+	case VIDIOC_DBG_G_REGISTER: {
+		struct v4l2_dbg_register * dreg = arg;
+		vidioc_int_g_register(cam->sensor,dreg);
+		break;
+	}
+#endif
+
 	/*!
 	 * V4l2 VIDIOC_QUERYCAP ioctl
 	 */
@@ -1717,6 +1778,13 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		struct v4l2_format *sf = arg;
 		pr_debug("   case VIDIOC_S_FMT\n");
 		retval = mxc_v4l2_s_fmt(cam, sf);
+		break;
+	}
+
+	case VIDIOC_ENUM_FMT: {
+		struct v4l2_fmtdesc *fd = arg;
+		pr_debug("   case VIDIOC_ENUM_FMT\n");
+		retval = mxc_v4l2_enum_fmt(cam, fd);
 		break;
 	}
 
@@ -2021,28 +2089,6 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		break;
 	}
 
-	/* linux v4l2 bug, kernel c0485619 user c0405619 */
-	case VIDIOC_ENUMSTD: {
-		struct v4l2_standard *e = arg;
-		pr_debug("   case VIDIOC_ENUMSTD\n");
-		*e = cam->standard;
-		break;
-	}
-
-	case VIDIOC_G_STD: {
-		v4l2_std_id *e = arg;
-		pr_debug("   case VIDIOC_G_STD\n");
-		retval = mxc_v4l2_g_std(cam, e);
-		break;
-	}
-
-	case VIDIOC_S_STD: {
-		v4l2_std_id *e = arg;
-		pr_debug("   case VIDIOC_S_STD\n");
-		retval = mxc_v4l2_s_std(cam, *e);
-
-		break;
-	}
 
 	case VIDIOC_ENUMOUTPUT: {
 		struct v4l2_output *output = arg;
@@ -2131,8 +2177,13 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		break;
 	}
 
-	case VIDIOC_ENUM_FMT:
-	case VIDIOC_TRY_FMT:
+	case VIDIOC_TRY_FMT: {
+		struct v4l2_format * f = arg;
+		pr_debug("   case VIDIOC_TRY_FMT\n");
+		retval = vidioc_int_try_fmt_cap(cam->sensor,f);
+		break;
+	}
+
 	case VIDIOC_QUERYCTRL:
 	case VIDIOC_G_TUNER:
 	case VIDIOC_S_TUNER:

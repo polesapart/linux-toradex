@@ -940,7 +940,6 @@ void __init ccwmx51_io_init(void)
 #endif
 
 #if defined CONFIG_VIDEO_MXC_IPU_CAMERA
-	STRAIL("Configuring IOMUX for CAMERAS\n");
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_camera_pins); i++) {
 		mxc_request_iomux(ccwmx51_camera_pins[i].pin,
 				ccwmx51_camera_pins[i].mux_mode);

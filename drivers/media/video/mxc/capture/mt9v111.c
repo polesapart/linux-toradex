@@ -18,6 +18,9 @@
  *
  * @ingroup Camera
  */
+
+//#define MT9V111_DEBUG
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -40,7 +43,6 @@ static mt9v111_conf mt9v111_device;
 /*!
  * Holds the current frame rate.
  */
-static int reset_frame_rate = MT9V111_FRAME_RATE;
 
 struct sensor {
 	const struct mt9v111_platform_data *platform_data;
@@ -70,7 +72,7 @@ static int mt9v111_probe(struct i2c_client *client,
 static int mt9v111_remove(struct i2c_client *client);
 
 static const struct i2c_device_id mt9v111_id[] = {
-	{"mt9v111", 0},
+	{"mt9v111", 2},
 	{},
 };
 
@@ -91,7 +93,6 @@ static struct i2c_driver mt9v111_i2c_driver = {
  * Function definitions
  */
 
-#ifdef MT9V111_DEBUG
 static inline int mt9v111_read_reg(u8 reg)
 {
 	int val = i2c_smbus_read_word_data(mt9v111_data.i2c_client, reg);
@@ -99,7 +100,6 @@ static inline int mt9v111_read_reg(u8 reg)
 		val = cpu_to_be16(val);
 	return val;
 }
-#endif
 
 /*!
  * Writes to the register via I2C.
@@ -114,7 +114,7 @@ static inline int mt9v111_write_reg(u8 reg, u16 val)
 }
 
 /*!
- * Initialize mt9v111_sensor_lib
+ * Initialize mt9v111_sensor_lib_datasheet
  * Libarary for Sensor configuration through I2C
  *
  * @param       coreReg       Core Registers
@@ -122,13 +122,15 @@ static inline int mt9v111_write_reg(u8 reg, u16 val)
  *
  * @return status
  */
-static u8 mt9v111_sensor_lib(mt9v111_coreReg *coreReg, mt9v111_IFPReg *ifpReg)
+static u8 mt9v111_sensor_lib_datasheet(mt9v111_coreReg * coreReg, mt9v111_IFPReg * ifpReg)
 {
 	u8 reg;
 	u16 data;
 	u8 error = 0;
 
 	pr_debug("In mt9v111_sensor_lib\n");
+
+	/* IFP R51(0x33)=5137,R57(0x39)=290,R59(0x3B)=1068,R62(0x3E)=4095,R89(0x59)=504,R90(0x5A)=605,R92(0x5C)=8222,R93(0x5D)=10021,R100(0x64)=4477 */
 
 	/*
 	 * setup to IFP registers
@@ -137,70 +139,41 @@ static u8 mt9v111_sensor_lib(mt9v111_coreReg *coreReg, mt9v111_IFPReg *ifpReg)
 	data = ifpReg->addrSpaceSel;
 	mt9v111_write_reg(reg, data);
 
-	/* Operation Mode Control */
-	reg = MT9V111I_MODE_CONTROL;
-	data = ifpReg->modeControl;
+	reg = MT9V111I_LIMIT_SHARP_SATU_CTRL;
+	data = ifpReg->limitSharpSatuCtrl;
 	mt9v111_write_reg(reg, data);
 
-	/* Output format */
-	reg = MT9V111I_FORMAT_CONTROL;
-	data = ifpReg->formatControl;	/* Set bit 12 */
-	mt9v111_write_reg(reg, data);
-
-	/* AE limit 4 */
-	reg = MT9V111I_SHUTTER_WIDTH_LIMIT_AE;
-	data = ifpReg->gainLimitAE;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111I_OUTPUT_FORMAT_CTRL2;
-	data = ifpReg->outputFormatCtrl2;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111I_AE_SPEED;
-	data = ifpReg->AESpeed;
-	mt9v111_write_reg(reg, data);
-
-	/* output image size */
-	reg = MT9V111i_H_PAN;
-	data = 0x8000 | ifpReg->HPan;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_H_ZOOM;
-	data = 0x8000 | ifpReg->HZoom;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_H_SIZE;
-	data = 0x8000 | ifpReg->HSize;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_V_PAN;
-	data = 0x8000 | ifpReg->VPan;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_V_ZOOM;
-	data = 0x8000 | ifpReg->VZoom;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_V_SIZE;
-	data = 0x8000 | ifpReg->VSize;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111i_H_PAN;
-	data = ~0x8000 & ifpReg->HPan;
-	mt9v111_write_reg(reg, data);
-#if 0
 	reg = MT9V111I_UPPER_SHUTTER_DELAY_LIM;
 	data = ifpReg->upperShutterDelayLi;
+	mt9v111_write_reg(reg, data);
+
+	reg = MT9V111I_IPF_BLACK_LEVEL_SUB;
+	data = ifpReg->ipfBlackLevelSub;
+	mt9v111_write_reg(reg, data);
+
+	reg = MT9V111I_GAIN_THRE_CCAM_ADJ;
+	data = ifpReg->agimnThreCamAdj;
 	mt9v111_write_reg(reg, data);
 
 	reg = MT9V111I_SHUTTER_60;
 	data = ifpReg->shutter_width_60;
 	mt9v111_write_reg(reg, data);
 
+	reg = MT9V111I_AUTO_EXPOSURE_17;
+	data = ifpReg->auto_exposure_17;
+	mt9v111_write_reg(reg, data);
+
 	reg = MT9V111I_SEARCH_FLICK_60;
 	data = ifpReg->search_flicker_60;
 	mt9v111_write_reg(reg, data);
-#endif
+
+	reg = MT9V111I_RESERVED93;
+	data = ifpReg->reserved93;
+	mt9v111_write_reg(reg, data);
+
+	reg = MT9V111I_RESERVED100;
+	data = ifpReg->reserved100;
+	mt9v111_write_reg(reg, data);
 
 	/*
 	 * setup to sensor core registers
@@ -209,119 +182,48 @@ static u8 mt9v111_sensor_lib(mt9v111_coreReg *coreReg, mt9v111_IFPReg *ifpReg)
 	data = coreReg->addressSelect;
 	mt9v111_write_reg(reg, data);
 
-	/* enable changes and put the Sync bit on */
-	reg = MT9V111S_OUTPUT_CTRL;
-	data = MT9V111S_OUTCTRL_SYNC | MT9V111S_OUTCTRL_CHIP_ENABLE | 0x3000;
-	mt9v111_write_reg(reg, data);
+	/* Core R5=46, R7[4]=0 (DEFAULT) ,R33=58369*/
 
-	/* min PIXCLK - Default */
-	reg = MT9V111S_PIXEL_CLOCK_SPEED;
-	data = coreReg->pixelClockSpeed;
-	mt9v111_write_reg(reg, data);
-
-	/* Setup image flipping / Dark rows / row/column skip */
-	reg = MT9V111S_READ_MODE;
-	data = coreReg->readMode;
-	mt9v111_write_reg(reg, data);
-
-	/* zoom 0 */
-	reg = MT9V111S_DIGITAL_ZOOM;
-	data = coreReg->digitalZoom;
-	mt9v111_write_reg(reg, data);
-
-	/* min H-blank */
 	reg = MT9V111S_HOR_BLANKING;
 	data = coreReg->horizontalBlanking;
 	mt9v111_write_reg(reg, data);
 
-	/* min V-blank */
-	reg = MT9V111S_VER_BLANKING;
-	data = coreReg->verticalBlanking;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111S_SHUTTER_WIDTH;
-	data = coreReg->shutterWidth;
-	mt9v111_write_reg(reg, data);
-
-	reg = MT9V111S_SHUTTER_DELAY;
-	data = ifpReg->upperShutterDelayLi;
-	mt9v111_write_reg(reg, data);
-
-	/* changes become effective */
-	reg = MT9V111S_OUTPUT_CTRL;
-	data = MT9V111S_OUTCTRL_CHIP_ENABLE | 0x3000;
+	reg = MT9V111S_RESERVED33;
+	data = coreReg->reserved33;
 	mt9v111_write_reg(reg, data);
 
 	return error;
 }
 
-/*!
- * MT9V111 frame rate calculate
- *
- * @param frame_rate       int *
- * @param mclk             int
- * @return  None
- */
-static void mt9v111_rate_cal(int *frame_rate, int mclk)
+void mt9v111_config_datasheet(void)
 {
-	int num_clock_per_row;
-	int max_rate = 0;
-
-	pr_debug("In mt9v111_rate_cal\n");
-
-	num_clock_per_row = (MT9V111_MAX_WIDTH + 114 + MT9V111_HORZBLANK_MIN)
-			* 2;
-	max_rate = mclk / (num_clock_per_row *
-			   (MT9V111_MAX_HEIGHT + MT9V111_VERTBLANK_DEFAULT));
-
-	if ((*frame_rate > max_rate) || (*frame_rate == 0)) {
-		*frame_rate = max_rate;
-	}
-
-	mt9v111_device.coreReg->verticalBlanking
-	    = mclk / (*frame_rate * num_clock_per_row) - MT9V111_MAX_HEIGHT;
-
-	reset_frame_rate = *frame_rate;
-}
-
-/*!
- * MT9V111 sensor configuration
- */
-void mt9v111_config(void)
-{
-	pr_debug("In mt9v111_config\n");
+	pr_debug("In mt9v111_config_datasheet\n");
 
 	mt9v111_device.coreReg->addressSelect = MT9V111I_SEL_SCA;
+
+	/* MT9V111I_ADDR_SPACE_SEL */
 	mt9v111_device.ifpReg->addrSpaceSel = MT9V111I_SEL_IFP;
 
-	mt9v111_device.coreReg->windowHeight = MT9V111_WINHEIGHT;
-	mt9v111_device.coreReg->windowWidth = MT9V111_WINWIDTH;
-	mt9v111_device.coreReg->zoomColStart = 0;
-	mt9v111_device.coreReg->zomRowStart = 0;
-	mt9v111_device.coreReg->digitalZoom = 0x0;
+	/* Recommended values for 30fps @ 27MHz from datasheet*/
 
-	mt9v111_device.coreReg->verticalBlanking = MT9V111_VERTBLANK_DEFAULT;
-	mt9v111_device.coreReg->horizontalBlanking = MT9V111_HORZBLANK_MIN;
-	mt9v111_device.coreReg->pixelClockSpeed = 0;
-	mt9v111_device.coreReg->readMode = 0xd0a1;
+	/* Core R5=132, R6=10 , R7[4]=0 (DEFAULT) ,R33=58369*/
 
-	mt9v111_device.ifpReg->outputFormatCtrl2 = 0;
-	mt9v111_device.ifpReg->gainLimitAE = 0x300;
-	mt9v111_device.ifpReg->AESpeed = 0x80;
+	mt9v111_device.coreReg->horizontalBlanking = 132;
+	mt9v111_device.coreReg->verticalBlanking = 10;
+	mt9v111_device.coreReg->reserved33 = 58369;
 
-	/* here is the default value */
-	mt9v111_device.ifpReg->formatControl = 0xc800;
-	mt9v111_device.ifpReg->modeControl = 0x708e;
-	mt9v111_device.ifpReg->awbSpeed = 0x4514;
-	mt9v111_device.coreReg->shutterWidth = 0xf8;
+	/* IFP R51(0x33)=5137,R57(0x39)=290,R59(0x3B)=1068,R62(0x3E)=4095,R89(0x59)=504,R90(0x5A)=605,R92(0x5C)=8222,R93(0x5D)=10021,R100(0x64)=4477 */
 
-	/* output size */
-	mt9v111_device.ifpReg->HPan = 0;
-	mt9v111_device.ifpReg->HZoom = MT9V111_MAX_WIDTH;
-	mt9v111_device.ifpReg->HSize = MT9V111_MAX_WIDTH;
-	mt9v111_device.ifpReg->VPan = 0;
-	mt9v111_device.ifpReg->VZoom = MT9V111_MAX_HEIGHT;
-	mt9v111_device.ifpReg->VSize = MT9V111_MAX_HEIGHT;
+	mt9v111_device.ifpReg->limitSharpSatuCtrl = 5137;
+	mt9v111_device.ifpReg->upperShutterDelayLi = 290;
+	mt9v111_device.ifpReg->ipfBlackLevelSub = 1068;
+	mt9v111_device.ifpReg->agimnThreCamAdj = 4095;
+
+	mt9v111_device.ifpReg->shutter_width_60 = 504;
+	mt9v111_device.ifpReg->auto_exposure_17 = 605;
+	mt9v111_device.ifpReg->search_flicker_60 = 8222;
+	mt9v111_device.ifpReg->reserved93 = 10021;
+	mt9v111_device.ifpReg->reserved100 = 4477;
 }
 
 /*!
@@ -507,6 +409,7 @@ static int ioctl_g_ifparm(struct v4l2_int_device *s, struct v4l2_ifparm *p)
 	p->u.bt656.clock_curr = MT9V111_MCLK;
 	p->if_type = V4L2_IF_TYPE_BT656;
 	p->u.bt656.mode = V4L2_IF_TYPE_BT656_MODE_NOBT_8BIT;
+	p->u.bt656.bt_sync_correct = 1;	// translates to CSI ext vsync
 	p->u.bt656.clock_min = MT9V111_CLK_MIN;
 	p->u.bt656.clock_max = MT9V111_CLK_MAX;
 
@@ -865,6 +768,24 @@ static int ioctl_init(struct v4l2_int_device *s)
 	return 0;
 }
 
+static void mt9v111_ifp_reset ( void )
+{
+	mt9v111_write_reg(MT9V111S_ADDR_SPACE_SEL, 0x0001);
+	mt9v111_write_reg(MT9V111I_SOFT_RESET, 0x0001);
+	msleep(100);
+	mt9v111_write_reg(MT9V111I_SOFT_RESET, 0x0000);
+	msleep(100);
+}
+
+static void mt9v111_sensor_reset ( void )
+{
+	mt9v111_write_reg(MT9V111S_ADDR_SPACE_SEL, 0x0004);
+	mt9v111_write_reg(MT9V111S_RESET, 0x0001);
+	msleep(100);
+	mt9v111_write_reg(MT9V111S_RESET, 0x0000);
+	msleep(100);
+}
+
 /*!
  * ioctl_dev_init - V4L2 sensor interface handler for vidioc_int_dev_init_num
  * @s: pointer to standard V4L2 device structure
@@ -879,12 +800,123 @@ static int ioctl_dev_init(struct v4l2_int_device *s)
 
 	gpio_sensor_active();
 
-	set_mclk_rate(&clock_rate);
-	mt9v111_rate_cal(&reset_frame_rate, clock_rate);
-	mt9v111_sensor_lib(mt9v111_device.coreReg, mt9v111_device.ifpReg);
+	set_mclk_rate(&clock_rate, 0);	// Both sensors use mclk0 on Digi ccwmx51
+
+	mt9v111_sensor_reset();
+	mt9v111_ifp_reset();
+	mt9v111_sensor_lib_datasheet(mt9v111_device.coreReg, mt9v111_device.ifpReg);
 
 	return 0;
 }
+
+/* list of image formats supported by sensor */
+static const struct v4l2_fmtdesc mt9v111_formats[] = {
+	{
+		.description = "RGB565",
+		.pixelformat = V4L2_PIX_FMT_RGB565,
+	},
+	{
+		.description = "YUV422 UYVY",
+		.pixelformat = V4L2_PIX_FMT_UYVY,
+	},
+};
+
+#define MT9V111_NUM_CAPTURE_FORMATS	ARRAY_SIZE(mt9v111_formats)
+
+static int ioctl_enum_fmt_cap(struct v4l2_int_device *s,
+				   struct v4l2_fmtdesc *fmt)
+{
+	int index = fmt->index;
+
+	switch (fmt->type) {
+	case V4L2_BUF_TYPE_VIDEO_CAPTURE:
+		if (index >= MT9V111_NUM_CAPTURE_FORMATS)
+			return -EINVAL;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	fmt->flags = mt9v111_formats[index].flags;
+	strlcpy(fmt->description, mt9v111_formats[index].description,
+		sizeof(fmt->description));
+	fmt->pixelformat = mt9v111_formats[index].pixelformat;
+
+	return 0;
+}
+
+static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
+			struct v4l2_format *f)
+{
+	unsigned short reg;
+
+	/* Select IFP registers */
+	mt9v111_write_reg (MT9V111S_ADDR_SPACE_SEL, 0x0001);
+
+	switch (f->fmt.pix.pixelformat) {
+		case V4L2_PIX_FMT_RGB565:
+			/*MT9V111I_OUTPUT_FORMAT_CTRL2*/
+			reg = mt9v111_read_reg (MT9V111I_OUTPUT_FORMAT_CTRL2);
+			reg &= ~(0x3 << 6);
+			mt9v111_write_reg (MT9V111I_OUTPUT_FORMAT_CTRL2, reg);
+
+			/* MT9V111I_FORMAT_CONTROL */
+			reg = mt9v111_read_reg(MT9V111I_FORMAT_CONTROL);
+			reg |= 1 << 12;
+			mt9v111_write_reg(MT9V111I_FORMAT_CONTROL, reg);
+			break;
+
+		case V4L2_PIX_FMT_YUV444:
+		case V4L2_PIX_FMT_UYVY:
+		case V4L2_PIX_FMT_YVU420:
+		case V4L2_PIX_FMT_YUYV:
+
+			/* MT9V111I_FORMAT_CONTROL */
+			reg = mt9v111_read_reg(MT9V111I_FORMAT_CONTROL);
+			reg &= ~(1 << 12);
+			mt9v111_write_reg(MT9V111I_FORMAT_CONTROL, reg);
+			break;
+
+		default:
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int ioctl_try_fmt_cap(struct v4l2_int_device *s, struct v4l2_format *f)
+{
+	int i;
+
+	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
+		return -EINVAL;
+
+	for( i=0 ; i < MT9V111_NUM_CAPTURE_FORMATS ; i++) {
+		if( f->fmt.pix.pixelformat == mt9v111_formats[i].pixelformat )
+			return 0;
+	}
+
+	return -EINVAL;
+}
+
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int ioctl_get_register(struct v4l2_int_device *s,struct v4l2_dbg_register * dreg)
+{
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
+	dreg->val = mt9v111_read_reg (dreg->reg);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
+	return 0;
+}
+
+static int ioctl_set_register(struct v4l2_int_device *s,struct v4l2_dbg_register * dreg)
+{
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
+	mt9v111_write_reg (dreg->reg, dreg->val);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
+	return 0;
+}
+#endif
 
 /*!
  * This structure defines all the ioctls for this module and links them to the
@@ -910,16 +942,23 @@ static struct v4l2_int_ioctl_desc mt9v111_ioctl_desc[] = {
 	/*!
 	 * VIDIOC_ENUM_FMT ioctl for the CAPTURE buffer type.
 	 */
-/*	{vidioc_int_enum_fmt_cap_num,
-				(v4l2_int_ioctl_func *) ioctl_enum_fmt_cap}, */
+	{vidioc_int_enum_fmt_cap_num,
+				(v4l2_int_ioctl_func *) ioctl_enum_fmt_cap},
 
+
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	{vidioc_int_g_register_num,
+				(v4l2_int_ioctl_func *) ioctl_get_register},
+	{vidioc_int_s_register_num,
+				(v4l2_int_ioctl_func *) ioctl_set_register},
+#endif
 	/*!
 	 * VIDIOC_TRY_FMT ioctl for the CAPTURE buffer type.
 	 * This ioctl is used to negotiate the image capture size and
 	 * pixel format without actually making it take effect.
 	 */
-/*	{vidioc_int_try_fmt_cap_num,
-				(v4l2_int_ioctl_func *) ioctl_try_fmt_cap}, */
+	{vidioc_int_try_fmt_cap_num,
+				(v4l2_int_ioctl_func *) ioctl_try_fmt_cap},
 
 	{vidioc_int_g_fmt_cap_num, (v4l2_int_ioctl_func*) ioctl_g_fmt_cap},
 
@@ -928,7 +967,7 @@ static struct v4l2_int_ioctl_desc mt9v111_ioctl_desc[] = {
 	 * format, returns error code if format not supported or HW can't be
 	 * correctly configured.
 	 */
-/*	{vidioc_int_s_fmt_cap_num, (v4l2_int_ioctl_func *)ioctl_s_fmt_cap}, */
+	{vidioc_int_s_fmt_cap_num, (v4l2_int_ioctl_func *)ioctl_s_fmt_cap},
 
 	{vidioc_int_g_parm_num, (v4l2_int_ioctl_func*) ioctl_g_parm},
 	{vidioc_int_s_parm_num, (v4l2_int_ioctl_func*) ioctl_s_parm},
@@ -951,6 +990,26 @@ static struct v4l2_int_device mt9v111_int_device = {
 		},
 };
 
+static int mt9v111_read_id( void )
+{
+	int sensorid = 0;
+	int ret = 0;
+
+	mt9v111_write_reg (MT9V111S_ADDR_SPACE_SEL, 0x0004);
+
+	sensorid = mt9v111_read_reg (MT9V111S_CHIP_VERSION);
+	if( sensorid == 0x823a )
+	{
+		printk(KERN_INFO" MT9V111 ID %x\n",sensorid);
+	}
+	else
+	{
+		printk(KERN_ERR" MT9V111 Could not detect sensor (read %x)\n",sensorid);
+		ret = -ENODEV;
+	}
+	return ret;
+}
+
 /*!
  * mt9v111 I2C probe function
  * Function set in i2c_driver struct.
@@ -969,12 +1028,11 @@ static int mt9v111_probe(struct i2c_client *client,
 	memset(&mt9v111_data, 0, sizeof(mt9v111_data));
 	mt9v111_data.i2c_client = client;
 	pr_debug("   client name is %s\n", client->name);
-	mt9v111_data.pix.pixelformat = V4L2_PIX_FMT_UYVY;
+	mt9v111_data.pix.pixelformat = V4L2_PIX_FMT_RGB565;
 	mt9v111_data.pix.width = MT9V111_MAX_WIDTH;
 	mt9v111_data.pix.height = MT9V111_MAX_HEIGHT;
 	mt9v111_data.streamcap.capability = 0; /* No higher resolution or frame
-						* frame rate changes supported.
-						*/
+						* frame rate changes supported.*/
 	mt9v111_data.streamcap.timeperframe.denominator = MT9V111_FRAME_RATE;
 	mt9v111_data.streamcap.timeperframe.numerator = 1;
 
@@ -988,6 +1046,19 @@ static int mt9v111_probe(struct i2c_client *client,
 	/* This function attaches this structure to the /dev/video0 device.
 	 * The pointer in priv points to the mt9v111_data structure here.*/
 	retval = v4l2_int_device_register(&mt9v111_int_device);
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
+
+	if( mt9v111_read_id() != 0) {
+		printk(KERN_ERR"mt9v111_probe: No sensor found\n");
+		retval = -ENXIO;
+	}
+
+#ifdef MT9V111_DEBUG
+	mt9v111_test_pattern(1);
+#endif
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
 
 	return retval;
 }
@@ -1033,7 +1104,7 @@ static __init int mt9v111_init(void)
 	memset(mt9v111_device.ifpReg, 0, sizeof(mt9v111_IFPReg));
 
 	/* Set contents of the just created structures. */
-	mt9v111_config();
+	mt9v111_config_datasheet();
 
 	/* Tells the i2c driver what functions to call for this driver. */
 	err = i2c_add_driver(&mt9v111_i2c_driver);

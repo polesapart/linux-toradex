@@ -25,6 +25,7 @@
 #include "ipu_prp_sw.h"
 
 #ifdef CAMERA_DBG
+	extern void ipu_dump_registers(void);
 	#define CAMERA_TRACE(x) (printk)x
 #else
 	#define CAMERA_TRACE(x)
@@ -173,6 +174,10 @@ static int csi_enc_eba_update(dma_addr_t eba, int *buffer_num)
 	ipu_select_buffer(CSI_MEM, IPU_OUTPUT_BUFFER, *buffer_num);
 
 	*buffer_num = (*buffer_num == 0) ? 1 : 0;
+
+#ifdef CAMERA_DBG
+	ipu_dump_registers ();
+#endif
 
 	return 0;
 }

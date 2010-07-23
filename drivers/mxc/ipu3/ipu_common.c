@@ -411,6 +411,8 @@ int ipu_remove(struct platform_device *pdev)
 void ipu_dump_registers(void)
 {
 	printk(KERN_DEBUG "IPU_CONF = \t0x%08X\n", __raw_readl(IPU_CONF));
+	printk(KERN_DEBUG "SMFC_MAP = \t0x%08X\n", __raw_readl(SMFC_MAP));
+	printk(KERN_DEBUG "SMFC_WMC = \t0x%08X\n", __raw_readl(SMFC_WMC));
 	printk(KERN_DEBUG "IDMAC_CONF = \t0x%08X\n", __raw_readl(IDMAC_CONF));
 	printk(KERN_DEBUG "IDMAC_CHA_EN1 = \t0x%08X\n",
 	       __raw_readl(IDMAC_CHA_EN(0)));
@@ -446,6 +448,24 @@ void ipu_dump_registers(void)
 	       __raw_readl(IPU_FS_PROC_FLOW3));
 	printk(KERN_DEBUG "IPU_FS_DISP_FLOW1 = \t0x%08X\n",
 	       __raw_readl(IPU_FS_DISP_FLOW1));
+
+	printk(KERN_DEBUG "IPU_INT_CTRL_1 = \t0x%08X\n", __raw_readl(IPU_INT_CTRL (1)));
+	printk(KERN_DEBUG "IPU_INT_STAT_1 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (1)));
+	printk(KERN_DEBUG "IPU_INT_STAT_2 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (2)));
+	printk(KERN_DEBUG "IPU_INT_STAT_3 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (3)));
+	printk(KERN_DEBUG "IPU_INT_STAT_4 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (4)));
+	printk(KERN_DEBUG "IPU_INT_STAT_5 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (5)));
+	printk(KERN_DEBUG "IPU_INT_STAT_6 = \t0x%08X\n", __raw_readl(IPU_INT_STAT (6)));
+
+	printk(KERN_DEBUG "CSI0_SENS_CONF = \t0x%08X\n", __raw_readl(CSI_SENS_CONF (0)));
+	printk(KERN_DEBUG "CSI0_SENS_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_SENS_FRM_SIZE(0)));
+	printk(KERN_DEBUG "CSI0_ACT_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_ACT_FRM_SIZE(0)));
+	printk(KERN_DEBUG "CSI0_SKIP = \t0x%08X\n", __raw_readl(CSI_SKIP(0)));
+
+	printk(KERN_DEBUG "CSI1_SENS_CONF = \t0x%08X\n", __raw_readl(CSI_SENS_CONF (1)));
+	printk(KERN_DEBUG "CSI1_SENS_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_SENS_FRM_SIZE(1)));
+	printk(KERN_DEBUG "CSI1_ACT_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_ACT_FRM_SIZE(1)));
+	printk(KERN_DEBUG "CSI1_SKIP = \t0x%08X\n", __raw_readl(CSI_SKIP(1)));
 }
 
 /*!
