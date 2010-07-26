@@ -870,11 +870,11 @@ static int getCalibrationData(struct piper_priv *digi)
 					     calibration.nvram->header.wcd_len);
 
 		if (crc == calibration.nvram->header.wcd_crc) {
-			digi_dbg("CRC and signature for calibration data is okay\n");
+			printk(KERN_ERR "CRC and signature for calibration data is okay\n");
 			result = 0;
 			if ((calibration.nvram->header.ver_major == '1')
 			    && (calibration.nvram->header.ver_minor == '0')) {
-				digi_dbg("Converting version 1.0 calibration data\n");
+				printk(KERN_ERR "Converting version 1.0 calibration data\n");
 				determineMaxAdcValues(calibration.nvram);
 				/*
 				 * Now that we have updated the format of the data, we need
@@ -893,12 +893,12 @@ static int getCalibrationData(struct piper_priv *digi)
 			digi->rf->set_hw_info(digi->hw, digi->channel,
 								  calibration.nvram->header.hw_platform);
 		} else {
-			digi_dbg("Calibration data has invalid CRC.\n");
+			printk(KERN_ERR "Calibration data has invalid CRC.\n");
 			setDefaultCalibrationValues(digi);
 			calibration.nvramDataState = NV_CRC_FAILED;
 		}
 	} else {
-		digi_dbg("Calibration data has invalid signature.\n");
+		printk(KERN_ERR "Calibration data has invalid signature.\n");
 		setDefaultCalibrationValues(digi);
 		calibration.nvramDataState = NV_INVALID_SIGNATURE;
 	}
