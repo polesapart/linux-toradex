@@ -157,7 +157,7 @@ int piper_spike_suppression(struct piper_priv *piperp, bool retry)
 		timeout1 = 500;
 
 		/* Wait for timing measurement to finish */
-		while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x0000ff00) != 0x00000100) {
+		while ((piperp->ac->rd_reg(piperp, MAC_STATUS) & 0x00000100) != 0x00000100) {
 			udelay(2);
 			timeout1--;
 			if (!timeout1)
