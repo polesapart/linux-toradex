@@ -108,6 +108,7 @@ static int mxc_pf_init(pf_init_params *pf_init)
 
 	memset(&params, 0, sizeof(params));
 	params.mem_pf_mem.operation = pf_data.mode;
+
 	err = ipu_init_channel(MEM_PF_Y_MEM, &params);
 	if (err < 0) {
 		printk(KERN_ERR "mxc_pf: error initializing channel\n");

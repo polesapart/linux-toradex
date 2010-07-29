@@ -367,7 +367,7 @@ static int ipu_probe(struct platform_device *pdev)
 	_ipu_dmfc_init(DMFC_NORMAL, 1);
 
 	/* Set sync refresh channels and CSI->mem channel as high priority */
-	__raw_writel(0x18800001L, IDMAC_CHA_PRI(0));
+	__raw_writel(0x18800003L, IDMAC_CHA_PRI(0));
 
 	/* Set MCU_T to divide MCU access window into 2 */
 	__raw_writel(0x00400000L | (IPU_MCU_T_DEFAULT << 18), IPU_DISP_GEN);
@@ -410,6 +410,7 @@ int ipu_remove(struct platform_device *pdev)
 
 void ipu_dump_registers(void)
 {
+	printk(KERN_DEBUG "--------------------------------------------\n");
 	printk(KERN_DEBUG "IPU_CONF = \t0x%08X\n", __raw_readl(IPU_CONF));
 	printk(KERN_DEBUG "SMFC_MAP = \t0x%08X\n", __raw_readl(SMFC_MAP));
 	printk(KERN_DEBUG "SMFC_WMC = \t0x%08X\n", __raw_readl(SMFC_WMC));
@@ -466,6 +467,7 @@ void ipu_dump_registers(void)
 	printk(KERN_DEBUG "CSI1_SENS_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_SENS_FRM_SIZE(1)));
 	printk(KERN_DEBUG "CSI1_ACT_FRM_SIZE = \t0x%08X\n", __raw_readl(CSI_ACT_FRM_SIZE(1)));
 	printk(KERN_DEBUG "CSI1_SKIP = \t0x%08X\n", __raw_readl(CSI_SKIP(1)));
+	printk(KERN_DEBUG "--------------------------------------------\n");
 }
 
 /*!
@@ -750,7 +752,6 @@ int32_t ipu_init_channel(ipu_channel_t channel, ipu_channel_params_t *params)
 	g_channel_init_mask |= 1L << IPU_CHAN_ID(channel);
 
 	__raw_writel(ipu_conf, IPU_CONF);
-
 err:
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
 	return ret;
@@ -1791,7 +1792,6 @@ int32_t ipu_enable_channel(ipu_channel_t channel)
 	    (channel == MEM_FG_SYNC)) {
 		reg = __raw_readl(IDMAC_WM_EN(in_dma));
 		__raw_writel(reg | idma_mask(in_dma), IDMAC_WM_EN(in_dma));
-
 		_ipu_dp_dc_enable(channel);
 	}
 
@@ -2172,7 +2172,6 @@ static irqreturn_t ipu_irq_handler(int irq, void *desc)
 						       dev_id);
 		}
 	}
-
 	return result;
 }
 

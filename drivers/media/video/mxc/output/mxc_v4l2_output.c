@@ -920,7 +920,6 @@ static int init_VDI(ipu_channel_params_t params, vout_data *vout,
 			dev_err(dev, "Error initializing PRP output buffer\n");
 			return -EINVAL;
 		}
-
 		if (ipu_init_channel(MEM_ROT_VF_MEM, NULL) != 0) {
 			dev_err(dev, "Error initializing PP ROT channel\n");
 			return -EINVAL;

@@ -227,11 +227,13 @@ int _ipu_csi_mclk_set(uint32_t pixel_clk, uint32_t csi)
 int ipu_csi_enable_mclk(int csi, bool flag, bool wait)
 {
 	if (flag) {
-		clk_enable(g_csi_clk[csi]);
+		// CCWMX51 - Both CSIs from master clock 0
+		clk_enable(g_csi_clk[0]);
 		if (wait == true)
 			msleep(10);
 	} else {
-		clk_disable(g_csi_clk[csi]);
+		// CCWMX51 - Both CSIs from master clock 0
+		clk_disable(g_csi_clk[0]);
 	}
 
 	return 0;
@@ -696,7 +698,6 @@ void _ipu_smfc_init(ipu_channel_t channel, uint32_t mipi_id, uint32_t csi)
 	default:
 		return;
 	}
-
 	__raw_writel(temp, SMFC_MAP);
 }
 

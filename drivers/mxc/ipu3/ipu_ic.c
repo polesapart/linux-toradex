@@ -381,6 +381,8 @@ void _ipu_ic_init_prpenc(ipu_channel_params_t *params, bool src_is_csi)
 		ic_conf |= IC_CONF_RWS_EN;
 
 	__raw_writel(ic_conf, IC_CONF);
+
+//	ic_dump_register();
 }
 
 void _ipu_ic_uninit_prpenc(void)

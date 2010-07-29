@@ -93,6 +93,8 @@ static int prp_still_start(void *private)
 	u32 pixel_fmt;
 	int err;
 	ipu_channel_params_t params;
+	ipu_channel_t channel;
+	int ipu_irq_csi_out_eof;
 
 	if (cam->v2f.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420)
 		pixel_fmt = IPU_PIX_FMT_YUV420P;
@@ -121,12 +123,22 @@ static int prp_still_start(void *private)
 
 	ipu_csi_enable_mclk_if(CSI_MCLK_RAW, cam->csi, true, true);
 
+	if (cam->csi == 0) {
+		channel = CSI_MEM0;
+		ipu_irq_csi_out_eof = IPU_IRQ_CSI0_OUT_EOF;
+	}
+	else {
+		channel = CSI_MEM1;
+		ipu_irq_csi_out_eof = IPU_IRQ_CSI1_OUT_EOF;
+	}
+
 	memset(&params, 0, sizeof(params));
-	err = ipu_init_channel(CSI_MEM, &params);
+	params.csi_mem.csi = cam->csi;
+	err = ipu_init_channel(channel, &params);
 	if (err != 0)
 		return err;
 
-	err = ipu_init_channel_buffer(CSI_MEM, IPU_OUTPUT_BUFFER,
+	err = ipu_init_channel_buffer(channel, IPU_OUTPUT_BUFFER,
 				      pixel_fmt, cam->v2f.fmt.pix.width,
 				      cam->v2f.fmt.pix.height,
 				      cam->v2f.fmt.pix.width, IPU_ROTATE_NONE,
@@ -153,19 +165,19 @@ static int prp_still_start(void *private)
 		return err;
 	}
 #else
-	callback_eof_flag = 0;
-	buffer_num = 0;
 
-	ipu_clear_irq(IPU_IRQ_CSI0_OUT_EOF);
-	err = ipu_request_irq(IPU_IRQ_CSI0_OUT_EOF, prp_still_callback,
+	ipu_clear_irq(ipu_irq_csi_out_eof);
+	err = ipu_request_irq(ipu_irq_csi_out_eof, prp_still_callback,
 			      0, "Mxc Camera", cam);
 	if (err != 0) {
 		printk(KERN_ERR "Error registering irq.\n");
 		return err;
 	}
 
-	ipu_select_buffer(CSI_MEM, IPU_OUTPUT_BUFFER, 0);
-	ipu_enable_channel(CSI_MEM);
+	callback_eof_flag = 0;
+	ipu_select_buffer(channel, IPU_OUTPUT_BUFFER, 0);
+	ipu_enable_channel(channel);
+
 	ipu_enable_csi(cam->csi);
 #endif
 
@@ -182,17 +194,28 @@ static int prp_still_stop(void *private)
 {
 	cam_data *cam = (cam_data *) private;
 	int err = 0;
+	ipu_channel_t channel;
+	int ipu_irq_csi_out_eof;
+
+	if (cam->csi == 0) {
+		channel = CSI_MEM0;
+		ipu_irq_csi_out_eof = IPU_IRQ_CSI0_OUT_EOF;
+	}
+	else {
+		channel = CSI_MEM1;
+		ipu_irq_csi_out_eof = IPU_IRQ_CSI1_OUT_EOF;
+	}
 
 #ifdef CONFIG_MXC_IPU_V1
 	ipu_free_irq(IPU_IRQ_SENSOR_EOF, NULL);
 	ipu_free_irq(IPU_IRQ_SENSOR_OUT_EOF, cam);
 #else
-	ipu_free_irq(IPU_IRQ_CSI0_OUT_EOF, cam);
+	ipu_free_irq(ipu_irq_csi_out_eof, cam);
 #endif
 
 	ipu_disable_csi(cam->csi);
-	ipu_disable_channel(CSI_MEM, true);
-	ipu_uninit_channel(CSI_MEM);
+	ipu_disable_channel(channel, true);
+	ipu_uninit_channel(channel);
 	ipu_csi_enable_mclk_if(CSI_MCLK_RAW, cam->csi, false, false);
 
 	return err;

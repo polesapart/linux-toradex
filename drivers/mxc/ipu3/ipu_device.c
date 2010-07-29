@@ -124,7 +124,6 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 				(&parm, (ipu_channel_buf_parm *) arg,
 				sizeof(ipu_channel_buf_parm)))
 				return -EFAULT;
-
 			ret =
 				ipu_init_channel_buffer(
 						parm.channel, parm.type,
@@ -236,7 +235,6 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 				(&info, (ipu_channel_info *) arg,
 				 sizeof(ipu_channel_info)))
 				return -EFAULT;
-
 			ret = ipu_disable_channel(info.channel,
 				info.stop);
 		}

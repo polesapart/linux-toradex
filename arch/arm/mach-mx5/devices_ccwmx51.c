@@ -273,11 +273,18 @@ static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
         I2C_BOARD_INFO("wm8753", 0x1A),
 	},
 #endif
-#if defined(CONFIG_MXC_CAMERA_MICRON111) || defined(CONFIG_MXC_CAMERA_MICRON111_MODULE)
+
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
-        I2C_BOARD_INFO("mt9v111", 0xB8>>1),
+        I2C_BOARD_INFO("mt9v111_1", 0xB8>>1),
 	},
 #endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
+	{
+        I2C_BOARD_INFO("mt9v111_2", 0x90>>1),
+	},
+#endif
+
 };
 
 int __init ccwmx51_init_i2c2(void)
@@ -294,7 +301,7 @@ struct mxc_i2c_platform_data mxci2c_hs_data = {
 };
 
 #if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
-#if CONFIG_CCWMX51_SECOND_TOUCH
+#if defined(CONFIG_CCWMX51_SECOND_TOUCH)
 static int touch_pendown_state(void)
 {
 	return gpio_get_value(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN)) ? 0 : 1;

@@ -62,19 +62,19 @@ struct sensor {
 	int blue;
 	int ae_mode;
 
-} mt9v111_data;
-
-extern void gpio_sensor_active(void);
-extern void gpio_sensor_inactive(void);
+};
 
 static int mt9v111_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id);
 static int mt9v111_remove(struct i2c_client *client);
 
 static const struct i2c_device_id mt9v111_id[] = {
-	{"mt9v111", 2},
+	{"mt9v111_1", 2},
+	{"mt9v111_2", 3},
 	{},
 };
+
+struct sensor mt9v111_data[ARRAY_SIZE(mt9v111_id)-1];
 
 MODULE_DEVICE_TABLE(i2c, mt9v111_id);
 
@@ -86,16 +86,32 @@ static struct i2c_driver mt9v111_i2c_driver = {
 	.probe = mt9v111_probe,
 	.remove = mt9v111_remove,
 	.id_table = mt9v111_id,
-/* To add power management add .suspend and .resume functions */
+	/* To add power management add .suspend and .resume functions */
 };
 
 /*
  * Function definitions
  */
 
-static inline int mt9v111_read_reg(u8 reg)
+static int mt9v111_id_from_name ( const char * name )
 {
-	int val = i2c_smbus_read_word_data(mt9v111_data.i2c_client, reg);
+	int id = -1;
+
+	if( name == NULL || ( strlen(name) < strlen("mt9v111_n") ) )
+		return -1;
+
+	id = (int)simple_strtol(name+strlen("mt9v111_"),NULL,0) - 1;
+	if( id >= ARRAY_SIZE(mt9v111_id) ) {
+		printk("Invalid sensor index %d for %s\n",id,name);
+		return -1;
+	}
+
+	return id;
+}
+
+static inline int mt9v111_read_reg(int sensorid , u8 reg)
+{
+	int val = i2c_smbus_read_word_data(mt9v111_data[sensorid].i2c_client, reg);
 	if (val != -1)
 		val = cpu_to_be16(val);
 	return val;
@@ -104,12 +120,12 @@ static inline int mt9v111_read_reg(u8 reg)
 /*!
  * Writes to the register via I2C.
  */
-static inline int mt9v111_write_reg(u8 reg, u16 val)
+static inline int mt9v111_write_reg(int sensorid , u8 reg, u16 val)
 {
-	pr_debug("In mt9v111_write_reg (0x%x, 0x%x)\n", reg, val);
+	pr_debug("[%d] In mt9v111_write_reg (0x%x, 0x%x)\n", sensorid , reg, val);
 	pr_debug("   write reg %x val %x.\n", reg, val);
 
-	return i2c_smbus_write_word_data(mt9v111_data.i2c_client,
+	return i2c_smbus_write_word_data(mt9v111_data[sensorid].i2c_client,
 					 reg, cpu_to_be16(val));
 }
 
@@ -122,7 +138,7 @@ static inline int mt9v111_write_reg(u8 reg, u16 val)
  *
  * @return status
  */
-static u8 mt9v111_sensor_lib_datasheet(mt9v111_coreReg * coreReg, mt9v111_IFPReg * ifpReg)
+static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg, mt9v111_IFPReg * ifpReg)
 {
 	u8 reg;
 	u16 data;
@@ -137,60 +153,60 @@ static u8 mt9v111_sensor_lib_datasheet(mt9v111_coreReg * coreReg, mt9v111_IFPReg
 	 */
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = ifpReg->addrSpaceSel;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_LIMIT_SHARP_SATU_CTRL;
 	data = ifpReg->limitSharpSatuCtrl;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_UPPER_SHUTTER_DELAY_LIM;
 	data = ifpReg->upperShutterDelayLi;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_IPF_BLACK_LEVEL_SUB;
 	data = ifpReg->ipfBlackLevelSub;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_GAIN_THRE_CCAM_ADJ;
 	data = ifpReg->agimnThreCamAdj;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_SHUTTER_60;
 	data = ifpReg->shutter_width_60;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_AUTO_EXPOSURE_17;
 	data = ifpReg->auto_exposure_17;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_SEARCH_FLICK_60;
 	data = ifpReg->search_flicker_60;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_RESERVED93;
 	data = ifpReg->reserved93;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_RESERVED100;
 	data = ifpReg->reserved100;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	/*
 	 * setup to sensor core registers
 	 */
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = coreReg->addressSelect;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	/* Core R5=46, R7[4]=0 (DEFAULT) ,R33=58369*/
 
 	reg = MT9V111S_HOR_BLANKING;
 	data = coreReg->horizontalBlanking;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111S_RESERVED33;
 	data = coreReg->reserved33;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	return error;
 }
@@ -233,7 +249,7 @@ void mt9v111_config_datasheet(void)
 
  * @return  Error code of 0.
  */
-static int mt9v111_set_saturation(int saturation)
+static int mt9v111_set_saturation(int sensorid , int saturation)
 {
 	u8 reg;
 	u16 data;
@@ -266,12 +282,12 @@ static int mt9v111_set_saturation(int saturation)
 
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = mt9v111_device.ifpReg->addrSpaceSel;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	/* Operation Mode Control */
 	reg = MT9V111I_AWB_SPEED;
 	data = mt9v111_device.ifpReg->awbSpeed;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	return 0;
 }
@@ -282,7 +298,7 @@ static int mt9v111_set_saturation(int saturation)
  * @param ae_mode      int
  * @return  Error code of 0 (no Error)
  */
-static int mt9v111_set_ae_mode(int ae_mode)
+static int mt9v111_set_ae_mode(int sensorid , int ae_mode)
 {
 	u8 reg;
 	u16 data;
@@ -310,19 +326,20 @@ static int mt9v111_set_ae_mode(int ae_mode)
 	/* V4L2_EXPOSURE_MANUAL = 1 needs register setting of 0x308E */
 	mt9v111_device.ifpReg->modeControl &= 0x3fff;
 	mt9v111_device.ifpReg->modeControl |= (ae_mode & 0x03) << 14;
-	mt9v111_data.ae_mode = ae_mode;
+	mt9v111_data[sensorid].ae_mode = ae_mode;
 
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = mt9v111_device.ifpReg->addrSpaceSel;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	reg = MT9V111I_MODE_CONTROL;
 	data = mt9v111_device.ifpReg->modeControl;
-	mt9v111_write_reg(reg, data);
+	mt9v111_write_reg(sensorid,reg, data);
 
 	return 0;
 }
 
+#if 0
 /*!
  * mt9v111 sensor get AE measurement window mode configuration
  *
@@ -337,6 +354,7 @@ static void mt9v111_get_ae_mode(int *ae_mode)
 		*ae_mode = (mt9v111_device.ifpReg->modeControl & 0xc) >> 2;
 	}
 }
+#endif
 
 #ifdef MT9V111_DEBUG
 /*!
@@ -344,33 +362,33 @@ static void mt9v111_get_ae_mode(int *ae_mode)
  *
  * @return none
  */
-static void mt9v111_test_pattern(bool flag)
+static void mt9v111_test_pattern(int sensorid , bool flag)
 {
 	u16 data;
 
 	/* switch to sensor registers */
-	mt9v111_write_reg(MT9V111I_ADDR_SPACE_SEL, MT9V111I_SEL_SCA);
+	mt9v111_write_reg(sensorid,MT9V111I_ADDR_SPACE_SEL, MT9V111I_SEL_SCA);
 
 	if (flag == true) {
 		testpattern = MT9V111S_OUTCTRL_TEST_MODE;
 
-		data = mt9v111_read_reg(MT9V111S_ROW_NOISE_CTRL) & 0xBF;
-		mt9v111_write_reg(MT9V111S_ROW_NOISE_CTRL, data);
+		data = mt9v111_read_reg(sensorid,MT9V111S_ROW_NOISE_CTRL) & 0xBF;
+		mt9v111_write_reg(sensorid,MT9V111S_ROW_NOISE_CTRL, data);
 
-		mt9v111_write_reg(MT9V111S_TEST_DATA, 0);
+		mt9v111_write_reg(sensorid,MT9V111S_TEST_DATA, 0);
 
 		/* changes take effect */
 		data = MT9V111S_OUTCTRL_CHIP_ENABLE | testpattern | 0x3000;
-		mt9v111_write_reg(MT9V111S_OUTPUT_CTRL, data);
+		mt9v111_write_reg(sensorid,MT9V111S_OUTPUT_CTRL, data);
 	} else {
 		testpattern = 0;
 
-		data = mt9v111_read_reg(MT9V111S_ROW_NOISE_CTRL) | 0x40;
+		data = mt9v111_read_reg(sensorid,MT9V111S_ROW_NOISE_CTRL) | 0x40;
 		mt9v111_write_reg(MT9V111S_ROW_NOISE_CTRL, data);
 
 		/* changes take effect */
 		data = MT9V111S_OUTCTRL_CHIP_ENABLE | testpattern | 0x3000;
-		mt9v111_write_reg(MT9V111S_OUTPUT_CTRL, data);
+		mt9v111_write_reg(sensorid,MT9V111S_OUTPUT_CTRL, data);
 	}
 }
 #endif
@@ -437,11 +455,6 @@ static int ioctl_s_power(struct v4l2_int_device *s, int on)
 
 	sensor->on = on;
 
-	if (on)
-		gpio_sensor_active();
-	else
-		gpio_sensor_inactive();
-
 	return 0;
 }
 
@@ -457,8 +470,12 @@ static int ioctl_g_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 	int ret = 0;
 	struct v4l2_captureparm *cparm = &a->parm.capture;
 	/* s->priv points to mt9v111_data */
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
 
 	pr_debug("In mt9v111:ioctl_g_parm\n");
+
+	if( sensorid < 0 )
+		return ret;
 
 	switch (a->type) {
 	/* This is the only case currently handled. */
@@ -466,10 +483,10 @@ static int ioctl_g_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 		pr_debug("   type is V4L2_BUF_TYPE_VIDEO_CAPTURE\n");
 		memset(a, 0, sizeof(*a));
 		a->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		cparm->capability = mt9v111_data.streamcap.capability;
+		cparm->capability = mt9v111_data[sensorid].streamcap.capability;
 		cparm->timeperframe =
-				mt9v111_data.streamcap.timeperframe;
-		cparm->capturemode = mt9v111_data.streamcap.capturemode;
+				mt9v111_data[sensorid].streamcap.timeperframe;
+		cparm->capturemode = mt9v111_data[sensorid].streamcap.capturemode;
 		ret = 0;
 		break;
 
@@ -508,8 +525,12 @@ static int ioctl_s_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 	int ret = 0;
 	struct v4l2_captureparm *cparm = &a->parm.capture;
 	/* s->priv points to mt9v111_data */
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
 
 	pr_debug("In mt9v111:ioctl_s_parm\n");
+
+	if( sensorid < 0 )
+		return ret;
 
 	switch (a->type) {
 	/* This is the only case currently handled. */
@@ -520,13 +541,13 @@ static int ioctl_s_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 		 * Changing the frame rate is not allowed on this
 		 *camera. */
 		if (cparm->timeperframe.denominator !=
-		    mt9v111_data.streamcap.timeperframe.denominator) {
+		    mt9v111_data[sensorid].streamcap.timeperframe.denominator) {
 			pr_err("ERROR: mt9v111: ioctl_s_parm: " \
 			       "This camera does not allow frame rate "
 			       "changes.\n");
 			ret = -EINVAL;
 		} else {
-			mt9v111_data.streamcap.timeperframe =
+			mt9v111_data[sensorid].streamcap.timeperframe =
 						cparm->timeperframe;
 		      /* Call any camera functions to match settings. */
 		}
@@ -538,7 +559,7 @@ static int ioctl_s_parm(struct v4l2_int_device *s, struct v4l2_streamparm *a)
 				"unsupported capture mode\n");
 			ret  = -EINVAL;
 		} else {
-			mt9v111_data.streamcap.capturemode =
+			mt9v111_data[sensorid].streamcap.capturemode =
 						cparm->capturemode;
 		      /* Call any camera functions to match settings. */
 		      /* Right now this camera only supports 1 mode. */
@@ -588,6 +609,7 @@ static int ioctl_g_fmt_cap(struct v4l2_int_device *s, struct v4l2_format *f)
 	return 0;
 }
 
+#if 0
 /*!
  * ioctl_queryctrl - V4L2 sensor interface handler for VIDIOC_QUERYCTRL ioctl
  * @s: pointer to standard V4L2 device structure
@@ -603,6 +625,7 @@ static int ioctl_queryctrl(struct v4l2_int_device *s, struct v4l2_queryctrl *qc)
 
 	return 0;
 }
+#endif
 
 /*!
  * ioctl_g_ctrl - V4L2 sensor interface handler for VIDIOC_G_CTRL ioctl
@@ -615,24 +638,29 @@ static int ioctl_queryctrl(struct v4l2_int_device *s, struct v4l2_queryctrl *qc)
  */
 static int ioctl_g_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 {
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+
 	pr_debug("In mt9v111:ioctl_g_ctrl\n");
+
+	if( sensorid < 0 )
+		return 0;
 
 	switch (vc->id) {
 	case V4L2_CID_BRIGHTNESS:
 		pr_debug("   V4L2_CID_BRIGHTNESS\n");
-		vc->value = mt9v111_data.brightness;
+		vc->value = mt9v111_data[sensorid].brightness;
 		break;
 	case V4L2_CID_CONTRAST:
 		pr_debug("   V4L2_CID_CONTRAST\n");
-		vc->value = mt9v111_data.contrast;
+		vc->value = mt9v111_data[sensorid].contrast;
 		break;
 	case V4L2_CID_SATURATION:
 		pr_debug("   V4L2_CID_SATURATION\n");
-		vc->value = mt9v111_data.saturation;
+		vc->value = mt9v111_data[sensorid].saturation;
 		break;
 	case V4L2_CID_HUE:
 		pr_debug("   V4L2_CID_HUE\n");
-		vc->value = mt9v111_data.hue;
+		vc->value = mt9v111_data[sensorid].hue;
 		break;
 	case V4L2_CID_AUTO_WHITE_BALANCE:
 		pr_debug(
@@ -646,11 +674,11 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 		break;
 	case V4L2_CID_RED_BALANCE:
 		pr_debug("   V4L2_CID_RED_BALANCE\n");
-		vc->value = mt9v111_data.red;
+		vc->value = mt9v111_data[sensorid].red;
 		break;
 	case V4L2_CID_BLUE_BALANCE:
 		pr_debug("   V4L2_CID_BLUE_BALANCE\n");
-		vc->value = mt9v111_data.blue;
+		vc->value = mt9v111_data[sensorid].blue;
 		break;
 	case V4L2_CID_GAMMA:
 		pr_debug("   V4L2_CID_GAMMA\n");
@@ -658,7 +686,7 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 		break;
 	case V4L2_CID_EXPOSURE:
 		pr_debug("   V4L2_CID_EXPOSURE\n");
-		vc->value = mt9v111_data.ae_mode;
+		vc->value = mt9v111_data[sensorid].ae_mode;
 		break;
 	case V4L2_CID_AUTOGAIN:
 		pr_debug("   V4L2_CID_AUTOGAIN\n");
@@ -697,9 +725,13 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 {
 	int retval = 0;
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
 
 	pr_debug("In mt9v111:ioctl_s_ctrl %d\n",
 		vc->id);
+
+	if( sensorid < 0 )
+		return retval;
 
 	switch (vc->id) {
 	case V4L2_CID_BRIGHTNESS:
@@ -710,7 +742,7 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 		break;
 	case V4L2_CID_SATURATION:
 		pr_debug("   V4L2_CID_SATURATION\n");
-		retval = mt9v111_set_saturation(vc->value);
+		retval = mt9v111_set_saturation(sensorid,vc->value);
 		break;
 	case V4L2_CID_HUE:
 		pr_debug("   V4L2_CID_HUE\n");
@@ -734,7 +766,7 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 		break;
 	case V4L2_CID_EXPOSURE:
 		pr_debug("   V4L2_CID_EXPOSURE\n");
-		retval = mt9v111_set_ae_mode(vc->value);
+		retval = mt9v111_set_ae_mode(sensorid,vc->value);
 		break;
 	case V4L2_CID_AUTOGAIN:
 		pr_debug("   V4L2_CID_AUTOGAIN\n");
@@ -763,26 +795,28 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
  */
 static int ioctl_init(struct v4l2_int_device *s)
 {
-	pr_debug("In mt9v111:ioctl_init\n");
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+
+	pr_debug("In mt9v111:ioctl_init for sensor %d\n",sensorid);
 
 	return 0;
 }
 
-static void mt9v111_ifp_reset ( void )
+static void mt9v111_ifp_reset ( int sensorid )
 {
-	mt9v111_write_reg(MT9V111S_ADDR_SPACE_SEL, 0x0001);
-	mt9v111_write_reg(MT9V111I_SOFT_RESET, 0x0001);
+	mt9v111_write_reg(sensorid,MT9V111S_ADDR_SPACE_SEL, 0x0001);
+	mt9v111_write_reg(sensorid,MT9V111I_SOFT_RESET, 0x0001);
 	msleep(100);
-	mt9v111_write_reg(MT9V111I_SOFT_RESET, 0x0000);
+	mt9v111_write_reg(sensorid,MT9V111I_SOFT_RESET, 0x0000);
 	msleep(100);
 }
 
-static void mt9v111_sensor_reset ( void )
+static void mt9v111_sensor_reset ( int sensorid )
 {
-	mt9v111_write_reg(MT9V111S_ADDR_SPACE_SEL, 0x0004);
-	mt9v111_write_reg(MT9V111S_RESET, 0x0001);
+	mt9v111_write_reg(sensorid,MT9V111S_ADDR_SPACE_SEL, 0x0004);
+	mt9v111_write_reg(sensorid,MT9V111S_RESET, 0x0001);
 	msleep(100);
-	mt9v111_write_reg(MT9V111S_RESET, 0x0000);
+	mt9v111_write_reg(sensorid,MT9V111S_RESET, 0x0000);
 	msleep(100);
 }
 
@@ -794,31 +828,38 @@ static void mt9v111_sensor_reset ( void )
  */
 static int ioctl_dev_init(struct v4l2_int_device *s)
 {
+	int sensorid = 0;
 	uint32_t clock_rate = MT9V111_MCLK;
+
+	sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+	if( sensorid < 0 )
+		return 0;
 
 	pr_debug("In mt9v111:ioctl_dev_init\n");
 
-	gpio_sensor_active();
-
 	set_mclk_rate(&clock_rate, 0);	// Both sensors use mclk0 on Digi ccwmx51
 
-	mt9v111_sensor_reset();
-	mt9v111_ifp_reset();
-	mt9v111_sensor_lib_datasheet(mt9v111_device.coreReg, mt9v111_device.ifpReg);
+	mt9v111_sensor_reset(sensorid);
+	mt9v111_ifp_reset(sensorid);
+	mt9v111_sensor_lib_datasheet(sensorid,mt9v111_device.coreReg, mt9v111_device.ifpReg);
 
 	return 0;
 }
 
 /* list of image formats supported by sensor */
 static const struct v4l2_fmtdesc mt9v111_formats[] = {
+#if defined(CONFIG_MXC_CAMERA_MICRON111_RGB565)
 	{
 		.description = "RGB565",
 		.pixelformat = V4L2_PIX_FMT_RGB565,
 	},
+#endif
+#if defined(CONFIG_MXC_CAMERA_MICRON111_UYVY)
 	{
 		.description = "YUV422 UYVY",
 		.pixelformat = V4L2_PIX_FMT_UYVY,
 	},
+#endif
 };
 
 #define MT9V111_NUM_CAPTURE_FORMATS	ARRAY_SIZE(mt9v111_formats)
@@ -850,21 +891,25 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 			struct v4l2_format *f)
 {
 	unsigned short reg;
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+
+	if( sensorid < 0 )
+		return -ENODEV;
 
 	/* Select IFP registers */
-	mt9v111_write_reg (MT9V111S_ADDR_SPACE_SEL, 0x0001);
+	mt9v111_write_reg (sensorid,MT9V111S_ADDR_SPACE_SEL, 0x0001);
 
 	switch (f->fmt.pix.pixelformat) {
 		case V4L2_PIX_FMT_RGB565:
 			/*MT9V111I_OUTPUT_FORMAT_CTRL2*/
-			reg = mt9v111_read_reg (MT9V111I_OUTPUT_FORMAT_CTRL2);
+			reg = mt9v111_read_reg (sensorid,MT9V111I_OUTPUT_FORMAT_CTRL2);
 			reg &= ~(0x3 << 6);
-			mt9v111_write_reg (MT9V111I_OUTPUT_FORMAT_CTRL2, reg);
+			mt9v111_write_reg (sensorid,MT9V111I_OUTPUT_FORMAT_CTRL2, reg);
 
 			/* MT9V111I_FORMAT_CONTROL */
-			reg = mt9v111_read_reg(MT9V111I_FORMAT_CONTROL);
+			reg = mt9v111_read_reg(sensorid,MT9V111I_FORMAT_CONTROL);
 			reg |= 1 << 12;
-			mt9v111_write_reg(MT9V111I_FORMAT_CONTROL, reg);
+			mt9v111_write_reg(sensorid,MT9V111I_FORMAT_CONTROL, reg);
 			break;
 
 		case V4L2_PIX_FMT_YUV444:
@@ -873,9 +918,9 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 		case V4L2_PIX_FMT_YUYV:
 
 			/* MT9V111I_FORMAT_CONTROL */
-			reg = mt9v111_read_reg(MT9V111I_FORMAT_CONTROL);
+			reg = mt9v111_read_reg(sensorid,MT9V111I_FORMAT_CONTROL);
 			reg &= ~(1 << 12);
-			mt9v111_write_reg(MT9V111I_FORMAT_CONTROL, reg);
+			mt9v111_write_reg(sensorid,MT9V111I_FORMAT_CONTROL, reg);
 			break;
 
 		default:
@@ -903,17 +948,21 @@ static int ioctl_try_fmt_cap(struct v4l2_int_device *s, struct v4l2_format *f)
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int ioctl_get_register(struct v4l2_int_device *s,struct v4l2_dbg_register * dreg)
 {
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
-	dreg->val = mt9v111_read_reg (dreg->reg);
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */ , true, true);
+	dreg->val = mt9v111_read_reg (sensorid,dreg->reg);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */ , false, false);
 	return 0;
 }
 
 static int ioctl_set_register(struct v4l2_int_device *s,struct v4l2_dbg_register * dreg)
 {
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
-	mt9v111_write_reg (dreg->reg, dreg->val);
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
+	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */ , true, true);
+	mt9v111_write_reg (sensorid,dreg->reg, dreg->val);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */ , false, false);
 	return 0;
 }
 #endif
@@ -976,28 +1025,44 @@ static struct v4l2_int_ioctl_desc mt9v111_ioctl_desc[] = {
 	{vidioc_int_s_ctrl_num, (v4l2_int_ioctl_func*) ioctl_s_ctrl},
 };
 
-static struct v4l2_int_slave mt9v111_slave = {
-	.ioctls = mt9v111_ioctl_desc,
-	.num_ioctls = ARRAY_SIZE(mt9v111_ioctl_desc),
-};
+static struct v4l2_int_slave mt9v111_slave[] = {
+	{
+		.ioctls = mt9v111_ioctl_desc,
+		.num_ioctls = ARRAY_SIZE(mt9v111_ioctl_desc),
+		.attach_to = "mxc_v4l2_cap_1",
+	},
+	{
+		.ioctls = mt9v111_ioctl_desc,
+		.num_ioctls = ARRAY_SIZE(mt9v111_ioctl_desc),
+		.attach_to = "mxc_v4l2_cap_2",
+	},
+ };
 
-static struct v4l2_int_device mt9v111_int_device = {
-	.module = THIS_MODULE,
-	.name = "mt9v111",
-	.type = v4l2_int_type_slave,
-	.u = {
-		.slave = &mt9v111_slave,
+static struct v4l2_int_device mt9v111_int_device [] = {
+		{
+			.module = THIS_MODULE,
+			.type = v4l2_int_type_slave,
+			.u = {
+				.slave = &mt9v111_slave[0],
+				},
 		},
-};
+		{
+			.module = THIS_MODULE,
+			.type = v4l2_int_type_slave,
+			.u = {
+				.slave = &mt9v111_slave[1],
+				},
+ 		},
+ };
 
-static int mt9v111_read_id( void )
+static int mt9v111_read_id( int sensoridx )
 {
 	int sensorid = 0;
 	int ret = 0;
 
-	mt9v111_write_reg (MT9V111S_ADDR_SPACE_SEL, 0x0004);
+	mt9v111_write_reg (sensoridx,MT9V111S_ADDR_SPACE_SEL, 0x0004);
 
-	sensorid = mt9v111_read_reg (MT9V111S_CHIP_VERSION);
+	sensorid = mt9v111_read_reg (sensoridx,MT9V111S_CHIP_VERSION);
 	if( sensorid == 0x823a )
 	{
 		printk(KERN_INFO" MT9V111 ID %x\n",sensorid);
@@ -1021,44 +1086,59 @@ static int mt9v111_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	int retval;
+	int sensorid;
 
 	pr_debug("In mt9v111_probe  device id is %s\n", id->name);
 
+	sensorid = mt9v111_id_from_name(id->name);
+
+	if( sensorid < 0 )
+		return -ENODEV;
+
 	/* Set initial values for the sensor struct. */
-	memset(&mt9v111_data, 0, sizeof(mt9v111_data));
-	mt9v111_data.i2c_client = client;
+	memset(&mt9v111_data[sensorid], 0, sizeof(struct sensor));
+	mt9v111_data[sensorid].i2c_client = client;
 	pr_debug("   client name is %s\n", client->name);
-	mt9v111_data.pix.pixelformat = V4L2_PIX_FMT_RGB565;
-	mt9v111_data.pix.width = MT9V111_MAX_WIDTH;
-	mt9v111_data.pix.height = MT9V111_MAX_HEIGHT;
-	mt9v111_data.streamcap.capability = 0; /* No higher resolution or frame
+#if defined(CONFIG_MXC_CAMERA_MICRON111_RGB565)
+	mt9v111_data[sensorid].pix.pixelformat = V4L2_PIX_FMT_RGB565;
+#endif
+#if defined(CONFIG_MXC_CAMERA_MICRON111_UYVY)
+	mt9v111_data[sensorid].pix.pixelformat = V4L2_PIX_FMT_UYVY;
+#endif
+	mt9v111_data[sensorid].pix.width = MT9V111_MAX_WIDTH;
+	mt9v111_data[sensorid].pix.height = MT9V111_MAX_HEIGHT;
+	mt9v111_data[sensorid].streamcap.capability = 0; /* No higher resolution or frame
 						* frame rate changes supported.*/
-	mt9v111_data.streamcap.timeperframe.denominator = MT9V111_FRAME_RATE;
-	mt9v111_data.streamcap.timeperframe.numerator = 1;
+	mt9v111_data[sensorid].streamcap.timeperframe.denominator = MT9V111_FRAME_RATE;
+	mt9v111_data[sensorid].streamcap.timeperframe.numerator = 1;
 
-	mt9v111_int_device.priv = &mt9v111_data;
+	strcpy(mt9v111_int_device[sensorid].name,id->name);
+	pr_debug("   video device name is %s\n", mt9v111_data[sensorid].v4l2_int_device->name);
+	mt9v111_data[sensorid].v4l2_int_device = &mt9v111_int_device[sensorid];
+	mt9v111_int_device[sensorid].priv = &mt9v111_data[sensorid];
 
-	pr_debug("   type is %d (expect %d)\n",
-		mt9v111_int_device.type, v4l2_int_type_slave);
-	pr_debug("   num ioctls is %d\n",
-		mt9v111_int_device.u.slave->num_ioctls);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , true, true);
 
-	/* This function attaches this structure to the /dev/video0 device.
-	 * The pointer in priv points to the mt9v111_data structure here.*/
-	retval = v4l2_int_device_register(&mt9v111_int_device);
-
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, true, true);
-
-	if( mt9v111_read_id() != 0) {
+	if( mt9v111_read_id(sensorid) != 0) {
 		printk(KERN_ERR"mt9v111_probe: No sensor found\n");
-		retval = -ENXIO;
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , false, false);
+		return -ENXIO;
 	}
 
 #ifdef MT9V111_DEBUG
 	mt9v111_test_pattern(1);
 #endif
 
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /*cam->csi*/, false, false);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , false, false);
+
+	pr_debug("   type is %d (expect %d)\n",
+		mt9v111_int_device[sensorid].type, v4l2_int_type_slave);
+	pr_debug("   num ioctls is %d\n",
+		mt9v111_int_device[sensorid].u.slave->num_ioctls);
+
+	/* This function attaches this structure to the /dev/video0 device.
+	 * The pointer in priv points to the mt9v111_data structure here.*/
+	retval = v4l2_int_device_register(&mt9v111_int_device[sensorid]);
 
 	return retval;
 }
@@ -1069,9 +1149,12 @@ static int mt9v111_probe(struct i2c_client *client,
  */
 static int mt9v111_remove(struct i2c_client *client)
 {
+	int i;
+
 	pr_debug("In mt9v111_remove\n");
 
-	v4l2_int_device_unregister(&mt9v111_int_device);
+	for ( i=0 ; i < ARRAY_SIZE(mt9v111_int_device) ; i++ )
+		v4l2_int_device_unregister(&mt9v111_int_device[i]);
 	return 0;
 }
 
@@ -1110,7 +1193,7 @@ static __init int mt9v111_init(void)
 	err = i2c_add_driver(&mt9v111_i2c_driver);
 	if (err != 0)
 		pr_err("%s:driver registration failed, error=%d \n",
-		       __func__, err);
+			   __func__, err);
 
 	return err;
 }
@@ -1126,7 +1209,6 @@ static void __exit mt9v111_clean(void)
 	pr_debug("In mt9v111_clean()\n");
 
 	i2c_del_driver(&mt9v111_i2c_driver);
-	gpio_sensor_inactive();
 
 	if (mt9v111_device.coreReg) {
 		kfree(mt9v111_device.coreReg);

@@ -182,6 +182,7 @@ static int prpvf_start(void *private)
 		printk(KERN_ERR "Error initializing CSI_PRP_VF_MEM\n");
 		goto out_3;
 	}
+
 	err = ipu_init_channel(MEM_ROT_VF_MEM, NULL);
 	if (err != 0) {
 		printk(KERN_ERR "Error MEM_ROT_VF_MEM channel\n");
@@ -200,6 +201,7 @@ static int prpvf_start(void *private)
 	}
 
 	if (cam->vf_rotation >= IPU_ROTATE_90_RIGHT) {
+
 		err = ipu_init_channel_buffer(MEM_ROT_VF_MEM, IPU_OUTPUT_BUFFER,
 					      format,
 					      vf.csi_prp_vf_mem.out_height,
