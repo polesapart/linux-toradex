@@ -10,7 +10,7 @@
  *
  *  !Revision:   $Revision: 1.25 $
  *  !Author:     Silvano Najera, Luis Galdos
- *  !Descr:
+ *  !Descr:      
  *  !References:
  */
 
@@ -121,17 +121,17 @@ struct pic_t {
 	int index;
 	atomic_t irq_enabled;
 	atomic_t requested;
-
+	
 	/* RX-DMA structures */
 	struct iohub_dma_fifo_t rx_fifo;
 	spinlock_t rx_lock;
 	struct fim_dma_cfg_t dma_cfg;
-
+	
 	/* Variables for the DMA-memory buffers */
 	dma_addr_t dma_phys;
 	void __iomem *dma_virt;
 	size_t dma_size;
-
+	
 	/* Data for the handling of the TX-DMA buffers */
 	spinlock_t tx_lock;
 	struct pic_dma_desc_t *tx_desc;
@@ -139,7 +139,7 @@ struct pic_t {
 	atomic_t tx_tasked;
 	atomic_t tx_aborted;
 	struct tasklet_struct rx_tasklet;
-
+	
 	/* Info data for the sysfs */
 	char fw_name[FIM_MAX_FIRMWARE_NAME];
 	int fw_length;
@@ -211,11 +211,11 @@ struct fim_driver {
  *
  * fim_nr  : Number of the FIM to use for the device
  * gpio_nr : GPIO to use for the interface line
- * fim_cfg : Currently not used
+ * fim_cfg : Currently not used 
  */
 struct fim_serial_platform_data {
 	int fim_nr;
-
+	
 	int rx_gpio_nr;
 	unsigned int rx_gpio_func;
 	unsigned int rx_fim_cfg;
@@ -257,7 +257,7 @@ struct fim_serial_platform_data {
 struct fim_sdio_platform_data {
 	int fim_nr;
 	unsigned int host_caps;         /* Host capabilities */
-
+	
 	int d0_gpio_nr;			/* data 0 */
 	unsigned int d0_gpio_func;
 	int d1_gpio_nr;			/* data 1 */
@@ -299,7 +299,7 @@ struct fim_sdio_platform_data {
 		.cmd_gpio_nr = cmd, \
 		.cmd_gpio_func = func
 
-/*
+/* 
  * The new FIM board doesn't connect all the lines to the FIM. The CMD
  * and CD are not connected to the FIM.
  */
@@ -369,28 +369,15 @@ struct fim_can_platform_data {
 	unsigned int rx_gpio_func;
 	int tx_gpio_nr;
 	unsigned int tx_gpio_func;
-#ifdef CONFIG_MACH_CME9210JS
-	unsigned int ff_clr_gpio_nr;
-	unsigned int ff_clk_gpio_nr;
-#endif
 };
 
 /* Macro for the configuration of the GPIOs for the FIM CAN driver */
-#ifdef CONFIG_MACH_CME9210JS
-	#define NS921X_FIM_CAN_GPIOS(rx, tx, func, clr, clk)	\
-			.rx_gpio_nr = rx, \
-			.rx_gpio_func = func, \
-			.tx_gpio_nr = tx, \
-			.tx_gpio_func = func, \
-			.ff_clr_gpio_nr = clr, \
-			.ff_clk_gpio_nr = clk
-#else
-	#define NS921X_FIM_CAN_GPIOS(rx, tx, func)	\
-			.rx_gpio_nr = rx, \
-			.rx_gpio_func = func, \
-			.tx_gpio_nr = tx, \
-			.tx_gpio_func = func
-#endif
+#define NS921X_FIM_CAN_GPIOS(rx, tx, func)	\
+		.rx_gpio_nr = rx, \
+		.rx_gpio_func = func, \
+		.tx_gpio_nr = tx, \
+		.tx_gpio_func = func
+
 /*
  * Structure for the FIM-devices with USB support
  * If a GPIO should not be used, then it's required to disable it by using the

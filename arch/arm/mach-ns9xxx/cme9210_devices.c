@@ -161,9 +161,8 @@ EXPORT_SYMBOL(ns921x_fim_serial0);
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr        = 1,
 	.fim_can_bitrate	= 500000,
-	NS921X_FIM_CAN_GPIOS( 23, 24, /* RX(2,23), TX(6,24) */
-			      NS921X_GPIO_FUNC_2,
-			      12, 8 /* CLR(12), CLK(8) */ ),
+	NS921X_FIM_CAN_GPIOS( 23, 24, /* RX(2,23) + TX(6,24) */
+				NS921X_GPIO_FUNC_2),
 };
 struct platform_device ns921x_fim_can1 = {
 	.name              = "fim-can",

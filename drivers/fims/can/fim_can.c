@@ -2,16 +2,16 @@
  *
  * drivers/fims/fim_can.c
  *
- * Copyright (C) 2008-2010 by Digi International Inc.
+ * Copyright (C) 2008-2009 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published by
  * the Free Software Foundation.
  *
- *  !Revision:   $Revision: 1.3 $
- *  !Author:     Luis Galdos, Hector Oron, Hector Palacios
- *  !Descr:
+ *  !Revision:   $Revision: 1.2 $
+ *  !Author:     Luis Galdos, Hector Oron
+ *  !Descr:      
  *  !References: Based on the virtual CAN driver (Copyright (c) 2002-2007
  *               Volkswagen Group Electronic Research)
  *               All rights reserved.
@@ -57,8 +57,8 @@ const unsigned char *fim_can_firmware = NULL;
 #endif
 
 /* Driver informations */
-#define DRIVER_VERSION				"1.3"
-#define DRIVER_AUTHOR				"Digi International Inc."
+#define DRIVER_VERSION				"1.2"
+#define DRIVER_AUTHOR				"Luis Galdos, Hector Oron"
 #define DRIVER_DESC				"FIM CAN bus driver"
 #define FIM_DRIVER_NAME				"fim-can"
 #define FIM_DRIVER_FIRMWARE_NAME		"fim_can.bin"
@@ -144,10 +144,9 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIRST_DATA_BYTE_IN_MESSAGE		(3)
 
 /*
- * GPIO configuration
+ * GPIO configuration 
  */
 #define FIM_CAN_MAX_GPIOS			(2)
-#define FIM_CAN_MAX_AUXGPIOS			(2)
 
 /* Structure for setting the ID-filters */
 #define FIM_CAN_FILTER_SIZE			(8)
@@ -168,7 +167,7 @@ static struct can_bittiming_const fim_bittiming_const = {
 	.sjw_max = 40,
 	.brp_min = 1,
 	.brp_max = 2048,
-	.brp_inc = 1,
+	.brp_inc = 1,	
 };
 
 /*
@@ -225,15 +224,7 @@ struct fim_can_t {
 	struct semaphore sem;
 	struct net_device *dev;
 	int reg;
-	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
-#ifdef CONFIG_MACH_CME9210JS
-	/* Auxiliar GPIOs to driver the hardware logic
-	 * present in cme9210 to enable the connection of
-	 * the FIMs GPIOs to the exterior.
-	 */
-	int ff_clr_gpio_nr;
-	int ff_clk_gpio_nr;
-#endif
+ 	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
 	struct clk *cpu_clk;
 	int opened;
 	spinlock_t lock;
@@ -336,7 +327,7 @@ static int fim_can_calculate_latency(u32 bitrate, u16 *rx, u16 *tx)
 
 	if (bitrate <= 0 || bitrate > FIM_CAN_MAX_BITRATE)
 		return -ERANGE;
-
+	
 	/*
 	 * In the future we will probably need different latency times for the
 	 * bitrates. Let us keep this function for this purpose.
@@ -346,7 +337,7 @@ static int fim_can_calculate_latency(u32 bitrate, u16 *rx, u16 *tx)
 	*rx = FIM_CAN_RXIRQ_LATENCY;
 	*tx = FIM_CAN_TXIRQ_LATENCY;
 	ret = 0;
-
+	
 	return ret;
 }
 
@@ -445,10 +436,10 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 
 	if (!bt->phase_seg1)
 		bt->phase_seg1 = FIM_CAN_DEFAULT_PHASE1;
-
+	
 	if (!bt->phase_seg2)
 		bt->phase_seg2 = FIM_CAN_DEFAULT_PHASE2;
-
+			
 	fim_can_fill_timing(port, &cfg,
 			    bt->sjw,
 			    bt->prop_seg + bt->phase_seg1 + 1,
@@ -481,7 +472,7 @@ static int fim_can_set_init_config(struct fim_can_t *port)
  * Implement the interface for chaning the state of the CAN-controller. The user
  * have access to this function over the sysfs attributes:
  * echo 2 > sys/class/net/can0/can_restart : mode = 1 (CAN_MODE_START)
- *
+ * 
  */
 static int fim_can_set_mode(struct net_device *dev, enum can_mode mode)
 {
@@ -624,7 +615,7 @@ static int fim_can_start_fim(struct fim_can_t *port)
 	retval = fim_send_start(fim);
 	if (retval)
 		return -EAGAIN;
-
+	
 	printk_debug("Enable interrupt\n");
 	fim_enable_irq(fim);
 
@@ -1205,13 +1196,6 @@ static int unregister_fim_can(struct fim_can_t *port)
 	if (!port || !port->reg)
 		return -ENODEV;
 
-#ifdef CONFIG_MACH_CME9210JS
-	/* Set values of auxiliar GPIOS to disable the hardware logic:
-	 * - set CLR to low to disable the Flip-Flop thus isolating
-	 *   the CAN FIM GPIOs from the GPIOs that are routed to the board.
-	 */
-	gpio_set_value(port->ff_clr_gpio_nr, 0);
-#endif
 	//unregister_netdev(port->dev);
 	unregister_candev(port->dev);
 	free_candev(port->dev);
@@ -1233,21 +1217,17 @@ static int unregister_fim_can(struct fim_can_t *port)
 	/* And free the GPIOs */
 	memcpy(gpios, port->gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
 	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
-
+		
 		if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
 			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
 			gpio_free(gpios[cnt].nr);
 		}
 	}
-#ifdef CONFIG_MACH_CME9210JS
-	gpio_free(port->ff_clr_gpio_nr);
-	gpio_free(port->ff_clk_gpio_nr);
-#endif
 
 	/* Free the obtained clock */
 	if (!IS_ERR(port->cpu_clk))
 		clk_put(port->cpu_clk);
-
+	
 	port->reg = 0;
 
 	return 0;
@@ -1257,8 +1237,7 @@ static int unregister_fim_can(struct fim_can_t *port)
  * IMPORTANT: First register the FIM-driver, and at last the CAN-device, then
  * it will automatically start with the bit time configuration.
  */
-static int register_fim_can(struct device *devi, int picnr,
-			    struct fim_gpio_t gpios[], unsigned int aux_gpios[],
+static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[],
 			    int bitrate)
 {
 	int retval, cnt;
@@ -1308,26 +1287,6 @@ static int register_fim_can(struct device *devi, int picnr,
 			goto err_free_candev;
 		}
 	}
-#ifdef CONFIG_MACH_CME9210JS
-	/* Request the corresponding auxiliar GPIOs */
-	for (cnt=0; cnt < FIM_CAN_MAX_AUXGPIOS; cnt++) {
-		printk_debug("Requesting the GPIO %i as output\n", aux_gpios[cnt]);
-		retval = gpio_request(aux_gpios[cnt], FIM_DRIVER_NAME);
-		if (!retval) {
-			gpio_configure_ns921x_unlocked(aux_gpios[cnt],
-						       NS921X_GPIO_OUTPUT,
-						       NS921X_GPIO_DONT_INVERT,
-						       NS921X_GPIO_FUNC_GPIO,
-						       NS921X_GPIO_ENABLE_PULLUP);
-		} else {
-			/* Free the already requested GPIOs */
-			printk_err("Couldn't request the GPIO %i\n", aux_gpios[cnt]);
-			while (cnt)
-				gpio_free(aux_gpios[--cnt]);
-			goto err_free_candev;
-		}
-	}
-#endif
 
 	/* Now try to register the FIM-driver */
 	port->fim.picnr = picnr;
@@ -1397,19 +1356,6 @@ static int register_fim_can(struct device *devi, int picnr,
 	spin_lock_init(&port->lock);
 	port->dev = dev;
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
-#ifdef CONFIG_MACH_CME9210JS
-	port->ff_clr_gpio_nr = aux_gpios[0];
-	port->ff_clk_gpio_nr = aux_gpios[1];
-	/* Set values of auxiliar GPIOS to enable the hardware logic:
-	 * - set CLR to high to enable the Flip-Flop
-	 * - set CLK to low and then to high to create a rising edge
-	 *   that will enabled the buffers thus connecting the CAN FIM GPIOs
-	 *   to the GPIOs that are routed to the board.
-	 */
-	gpio_set_value(port->ff_clr_gpio_nr, 1);
-	gpio_set_value(port->ff_clk_gpio_nr, 0);
-	gpio_set_value(port->ff_clk_gpio_nr, 1);
-#endif
 	port->reg = 1;
 	dev_set_drvdata(devi, port);
 
@@ -1420,13 +1366,13 @@ err_unreg_fim:
 
 err_free_gpios:
 	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
-
+		
                 if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
 			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
 			gpio_free(gpios[cnt].nr);
 		}
 	}
-
+	
 err_free_candev:
 	free_candev(dev);
 
@@ -1438,7 +1384,6 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	int nrpics;
 	int retval;
 	struct fim_gpio_t gpios[FIM_CAN_MAX_GPIOS];
-	unsigned int aux_gpios[FIM_CAN_MAX_AUXGPIOS];
 	struct fim_can_platform_data *pdata;
 	int bitrate;
 
@@ -1480,18 +1425,9 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	gpios[1].func	= pdata->tx_gpio_func;
 	printk_debug("%s: GPIO RX: %d | GPIO TX: %d \n", __func__,
 		     gpios[0].nr, gpios[1].nr );
-#ifdef CONFIG_MACH_CME9210JS
-	aux_gpios[0] = pdata->ff_clr_gpio_nr;
-	aux_gpios[1] = pdata->ff_clk_gpio_nr;
-	printk_debug("%s: GPIO Flip-Flop CLR: %d | CLK: %d \n", __func__,
-		     aux_gpios[0].nr, aux_gpios[1].nr );
-#else
-	/* init to zero */
-	memset(aux_gpios, 0, sizeof(aux_gpios));
-#endif
+	
 	/* XXX SDIO code approach */
-	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios,
-				  aux_gpios, bitrate);
+	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, bitrate);
 
 	return retval;
 }
@@ -1507,7 +1443,7 @@ static __devexit int fim_can_remove(struct platform_device *pdev)
 	}
 
 	unregister_fim_can(port);
-
+	
 	return 0;
 }
 
