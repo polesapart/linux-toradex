@@ -157,20 +157,20 @@ struct platform_device ns921x_fim_serial0 = {
 EXPORT_SYMBOL(ns921x_fim_serial0);
 #endif /* CONFIG_FIM_ZERO_SERIAL */
 
-#if defined(CONFIG_FIM_ONE_CAN)
-static struct fim_can_platform_data fim_can_data1 = {
-	.fim_nr        = 1,
+#if defined(CONFIG_FIM_ZERO_CAN_SELECTED)
+static struct fim_can_platform_data fim_can_data0 = {
+	.fim_nr        		= 0,
 	.fim_can_bitrate	= 500000,
-	NS921X_FIM_CAN_GPIOS( 23, 24, /* RX(2,23) + TX(6,24) */
+	NS921X_FIM_CAN_GPIOS( 14, 15, /* RX(2,14) + TX(6,15) */
 				NS921X_GPIO_FUNC_2),
 };
-struct platform_device ns921x_fim_can1 = {
+struct platform_device ns921x_fim_can0 = {
 	.name              = "fim-can",
-	.id                = 1,
-	.dev.platform_data = &fim_can_data1,
+	.id                = 0,
+	.dev.platform_data = &fim_can_data0,
 };
-EXPORT_SYMBOL(ns921x_fim_can1);
-#endif /* CONFIG_FIM_ONE_CAN */
+EXPORT_SYMBOL(ns921x_fim_can0);
+#endif /* FIM_ZERO_CAN_SELECTED */
 
 #if defined(CONFIG_FIM_ZERO_SDIO)
 static struct fim_sdio_platform_data fim_sdio_data0 = {

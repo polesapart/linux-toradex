@@ -6,15 +6,15 @@ menuconfig FIM_CORE
 	tristate "FIM drivers support"
 	depends on PROCESSOR_NS921X
         select FW_LOADER
-        select HOTPLUG 
+        select HOTPLUG
 	default n
 	help
 	  This option adds the support for the Flexible Interfaces Modules (FIM).
-	  Currently only the NS921X processors are supporting the FIM-devices. 
+	  Currently only the NS921X processors are supporting the FIM-devices.
           The number of available FIMs is two for NS9215 and one for NS9210.
 
 	  For installing the specific FIM-firmware, the FIM core driver depends on
-	  Hotplug and the firmware-subsystem too. 
+	  Hotplug and the firmware-subsystem too.
 
 ##           If a FIM-driver is selected as loadable module, then is required
 ##           to have installed the user-space application 'mdev' (Busybox).
@@ -140,8 +140,8 @@ config FIM_ZERO_SDIO_SELECTED
 	select FIM_ZERO_SDIO
 	help
 	  Enables the FIM-SDIO driver.
-	  
-          For testing the SDIO functionality is required to choose an additional 
+
+          For testing the SDIO functionality is required to choose an additional
           SDIO-driver (GPS/UART) from the MMC-core.
 
 config FIM_ZERO_SDIO_CD
@@ -198,11 +198,11 @@ config FIM_ZERO_SERIAL_CTSRTS
 	depends on !(CME9210JS_SERIAL_PORTA || CME9210JS_SERIAL_PORTA_FULL || CME9210JS_SERIAL_PORTA_CTSRTSRXTX)
 	select FIM_ZERO_SERIAL_SELECTED
 	help
-	  Enables the FIM-serial driver with HW flow control support. 
+	  Enables the FIM-serial driver with HW flow control support.
 
 config FIM_ZERO_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
+	depends on CAN && CAN_DEV && !((MACH_CME9210 || MACH_CME9210JS) && CME9210JS_SERIAL_PORTA_FULL)
 	select FIM_ZERO_CAN
 	help
 	  Enables the FIM-CAN bus driver.
@@ -391,9 +391,9 @@ config FIM_ONE_SDIO_SELECTED
 	depends on !(FIM_ZERO_SDIO_SELECTED && FIM_APPKIT_BOARD)
 	select FIM_ONE_SDIO
 	help
-	  Enables the FIM-SDIO serial driver. 
-	  
-          For testing the SDIO functionality is required to choose an additional 
+	  Enables the FIM-SDIO serial driver.
+
+          For testing the SDIO functionality is required to choose an additional
           SDIO-driver (GPS/UART) from the MMC-core.
 
 config FIM_ONE_SDIO_CD
@@ -450,11 +450,11 @@ config FIM_ONE_SERIAL_CTSRTS
 	depends on !MACH_CME9210 && !MACH_CME9210JS
 	select FIM_ONE_SERIAL_SELECTED
 	help
-	  Enables the FIM-serial driver with HW flow control support. 
-	  
+	  Enables the FIM-serial driver with HW flow control support.
+
 config FIM_ONE_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && !((MACH_CME9210 || MACH_CME9210JS) && (CME9210JS_SERIAL_PORTA_FULL || FIM_ZERO_SERIAL_SELECTED || FIM_ZERO_SDIO_SELECTED))
+	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
 	select FIM_ONE_CAN
 	help
 	  Enables the FIM-CAN bus driver.
@@ -597,7 +597,6 @@ config SERIAL_FIM_CONSOLE
         help
           Enables the console functionality on the FIM serial ports.
 
-
 # -- Variables for selection the platform devices
 config FIM_ZERO_SDIO
 	bool
@@ -612,7 +611,7 @@ config FIM_ZERO_SERIAL_SELECTED
         select FIM_ZERO_SERIAL
 	select SERIAL_CORE
 	bool
-	
+
 config FIM_ONE_SERIAL
 	bool
 
