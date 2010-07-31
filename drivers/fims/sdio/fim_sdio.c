@@ -97,12 +97,21 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 /* Other module parameters */
 #if defined(MODULE)
 #if defined(CONFIG_FIM_APPKIT_BOARD)
+#if defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS)
+static int cd0_gpio = 9;
+static int cd0_gpio_func = NS921X_GPIO_FUNC_2;
+static int wp0_gpio = 6;
+static int cd1_gpio = 9;
+static int cd1_gpio_func = NS921X_GPIO_FUNC_2;
+static int wp1_gpio = 6;
+#else
 static int cd0_gpio = 101;
 static int cd0_gpio_func = NS921X_GPIO_FUNC_2;
 static int wp0_gpio = 100;
 static int cd1_gpio = 101;
 static int cd1_gpio_func = NS921X_GPIO_FUNC_2;
 static int wp1_gpio = 100;
+#endif /* defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS) */
 #else
 static int cd0_gpio = FIM_GPIO_DONT_USE;
 static unsigned int cd0_gpio_func = NS921X_GPIO_FUNC_GPIO;
@@ -340,7 +349,7 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate);
 static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port);
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd);
 
-static cdtimer_disabled = 0;
+static int cdtimer_disabled = 0;
 
 /* Return the corresponding port structure */
 inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc)
@@ -1159,8 +1168,8 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 
 		/* @XXX: If the configuration failed disable the clock */
 		if (clkdiv < 0x4 || clkdiv > 0xff) {
-			printk_err("Unsupported clock %luHz (div out of range 0x%4lx)\n",
-				   clockrate, clkdiv);
+			printk_info("Unsupported clock %luHz (div out of range 0x%4lx)\n",
+				    clockrate, clkdiv);
 			clockrate = -EINVAL;
 		}
 		else
@@ -1562,56 +1571,56 @@ static int __devinit fim_sdio_probe(struct platform_device *pdev)
 #if defined(MODULE)
 	/* Check CD and WP parameters */
 	if (0 == pdata->fim_nr) {
-		if (cd0_gpio != FIM_GPIO_DONT_USE) {
+		if (cd0_gpio == FIM_GPIO_DONT_USE)
+			printk_info("Card Detect functionality disabled for FIM 0\n");
+		else {
 			if (!gpio_issocgpio(cd0_gpio)) {
 				cd0_gpio = FIM_GPIO_DONT_USE;
-				printk_err("Invalid argument 'cd0'\n");
+				printk_info("Invalid argument 'cd0'\n");
 			}
 			else {
 				if (cd0_gpio_func < NS921X_GPIO_FUNC_0 ||
 				cd0_gpio_func > NS921X_GPIO_FUNC_4 ) {
-					printk_err("Invalid argument 'cd0_func'\n");
+					printk_info("Invalid argument 'cd0_func'\n");
 					return -EINVAL;
 				}
 			}
 		}
-		if (cd0_gpio == FIM_GPIO_DONT_USE)
-			printk("Card Detect functionality disabled for FIM 0\n");
 
-		if (wp0_gpio != FIM_GPIO_DONT_USE) {
+		if (wp0_gpio == FIM_GPIO_DONT_USE)
+			printk_info("Write Protect functionality disabled for FIM 0\n");
+		else {
 			if (!gpio_issocgpio(wp0_gpio)) {
 				wp0_gpio = FIM_GPIO_DONT_USE;
-				printk_err("Invalid argument 'wp0'\n");
+				printk_info("Invalid argument 'wp0'\n");
 			}
 		}
-		if (wp0_gpio == FIM_GPIO_DONT_USE)
-			printk("Write Protect functionality disabled for FIM 0\n");
 	}
 	if (1 == pdata->fim_nr) {
-		if (cd1_gpio != FIM_GPIO_DONT_USE) {
+		if (cd1_gpio == FIM_GPIO_DONT_USE)
+			printk_info("Card Detect functionality disabled for FIM 1\n");
+		else  {
 			if (!gpio_issocgpio(cd1_gpio)) {
 				cd1_gpio = FIM_GPIO_DONT_USE;
-				printk_err("Invalid argument 'cd1'\n");
+				printk_info("Invalid argument 'cd1'\n");
 			}
 			else {
 				if (cd1_gpio_func < NS921X_GPIO_FUNC_0 ||
 				cd1_gpio_func > NS921X_GPIO_FUNC_4 ) {
-					printk_err("Invalid argument 'cd1_func'\n");
+					printk_info("Invalid argument 'cd1_func'\n");
 					return -EINVAL;
 				}
 			}
 		}
-		if (cd1_gpio == FIM_GPIO_DONT_USE)
-			printk("Card Detect functionality disabled for FIM 1\n");
 
-		if (wp1_gpio != FIM_GPIO_DONT_USE) {
+		if (wp1_gpio == FIM_GPIO_DONT_USE)
+			printk_info("Write Protect functionality disabled for FIM 1\n");
+		else  {
 			if (!gpio_issocgpio(wp1_gpio)) {
 				wp1_gpio = FIM_GPIO_DONT_USE;
-				printk_err("Invalid argument 'wp1'\n");
+				printk_info("Invalid argument 'wp1'\n");
 			}
 		}
-		if (wp1_gpio == FIM_GPIO_DONT_USE)
-			printk("Write Protect functionality disabled for FIM 1\n");
 	}
 #endif
 
