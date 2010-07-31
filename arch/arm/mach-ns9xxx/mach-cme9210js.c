@@ -168,7 +168,13 @@ static void __init mach_cme9210js_init_machine(void)
 			gpio_set_value(GPIO_MFGO, 1);
 			udelay(1);
 			gpio_set_value(GPIO_CLK, 1);
-
+			udelay(1);
+			/* Ok, the buffers are enabled and we can free the clock... */
+			gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_INPUT,
+					      NS921X_GPIO_DONT_INVERT,
+					      NS921X_GPIO_FUNC_GPIO,
+					      NS921X_GPIO_DISABLE_PULLUP);
+			gpio_free(GPIO_CLK);
 			ns9xxx_add_device_cme9210_uartb_rxtx();
 		}
 	} else  {
