@@ -25,6 +25,10 @@
 
 #define NS921X_PM_ENET		(1 << 0)
 #define NS921X_PM_UART		(0xf << 1)
+#define NS921X_PM_UARTA		(1 << 1)
+#define NS921X_PM_UARTB		(1 << 2)
+#define NS921X_PM_UARTC		(1 << 3)
+#define NS921X_PM_UARTD		(1 << 4)
 #define NS921X_PM_SPI		(1 << 5)
 #define NS921X_PM_I2C		(1 << 11)
 #define NS921X_PM_RTC		(1 << 12)
@@ -104,13 +108,11 @@ static int ns921x_pm_enter(suspend_state_t state)
 			goto pm_enter_err;
 	}
 
-	if (!(power & ~NS921X_PM_UART)) {
-		if (!ns9xxx_is_enabled_irq(IRQ_NS921X_UARTA) |
-		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTB) |
-		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTC) |
-		    !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTD))
-			goto pm_enter_err;
-	}
+	if ((!(power & ~NS921X_PM_UARTA) && !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTA)) ||
+	    (!(power & ~NS921X_PM_UARTB) && !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTB)) ||
+	    (!(power & ~NS921X_PM_UARTC) && !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTC)) ||
+	    (!(power & ~NS921X_PM_UARTD) && !ns9xxx_is_enabled_irq(IRQ_NS921X_UARTD)))
+		goto pm_enter_err;
 
 	if (!(power & ~NS921X_PM_RTC)) {
 		if (!ns9xxx_is_enabled_irq(IRQ_NS9215_RTC))
@@ -144,7 +146,7 @@ static int ns921x_pm_enter(suspend_state_t state)
 	return 0;
 
 pm_enter_err:
-	pr_warning("No wakeup source or interface disabled, not going to sleep (0x%08x)\n", 
+	pr_warning("No wakeup source or interface disabled, not going to sleep (0x%08x)\n",
 		   __raw_readl(SYS_POWER));
 	return -EDEADLK;
 
@@ -157,9 +159,9 @@ static void ns921x_pm_finish(void)
 
 static struct platform_suspend_ops ns921x_pm_ops = {
 	.valid = suspend_valid_only_mem,
-	.prepare = ns921x_pm_prepare, 
+	.prepare = ns921x_pm_prepare,
 	.enter = ns921x_pm_enter,
-	.finish = ns921x_pm_finish, 
+	.finish = ns921x_pm_finish,
 };
 
 static int __init ns921x_pm_init(void)
