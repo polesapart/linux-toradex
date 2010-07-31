@@ -24,6 +24,10 @@
 #include "ns921x_devices.h"
 #include "cme9210_devices.h"
 
+#define GPIO_MFGO		12
+#define GPIO_CLK		8
+
+
 #if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
 /* Define here the GPIO that will be used for Card Detection */
 //#define	MMC_SPI_CD_GPIO		72
@@ -128,6 +132,10 @@ static struct i2c_board_info i2c_devices[] __initdata = {
 
 static void __init mach_cme9210js_init_machine(void)
 {
+	enum cme9210_variant variant;
+
+	variant = get_cme9210_variant();
+
 	/* register several system clocks */
 	ns921x_init_machine();
 
@@ -140,8 +148,32 @@ static void __init mach_cme9210js_init_machine(void)
 #elif defined(CONFIG_CME9210JS_SERIAL_PORTA_FULL)
 	ns9xxx_add_device_cme9210_uarta_full();
 #endif
-#if defined(CONFIG_CME9210JS_SERIAL_PORTC_RXTX)
-	ns9xxx_add_device_cme9210_uartc_rxtx();
+#if defined(CONFIG_CME9210JS_SERIAL_PORT_ON_JTAG_CON)
+	if (variant == CME9210_CAN) {
+		if (!gpio_request(GPIO_MFGO, "mfgo") &&
+		    !gpio_request(GPIO_CLK, "clk")) {
+
+			gpio_configure_ns921x(GPIO_MFGO, NS921X_GPIO_OUTPUT,
+					      NS921X_GPIO_DONT_INVERT,
+					      NS921X_GPIO_FUNC_GPIO,
+					      NS921X_GPIO_DISABLE_PULLUP);
+
+			gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_OUTPUT,
+					      NS921X_GPIO_DONT_INVERT,
+					      NS921X_GPIO_FUNC_GPIO,
+					      NS921X_GPIO_DISABLE_PULLUP);
+
+			gpio_set_value(GPIO_CLK, 0);
+			udelay(1);
+			gpio_set_value(GPIO_MFGO, 1);
+			udelay(1);
+			gpio_set_value(GPIO_CLK, 1);
+
+			ns9xxx_add_device_cme9210_uartb_rxtx();
+		}
+	} else  {
+		ns9xxx_add_device_cme9210_uartc_rxtx();
+	}
 #endif
 
 	/* Ethernet */

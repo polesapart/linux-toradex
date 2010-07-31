@@ -596,23 +596,16 @@ config CME9210JS_SERIAL_PORTA_FULL
 
 endchoice
 
-config CME9210JS_SERIAL_PORTC
-        bool "Serial port C (only modules with JTAG-header)"
-        depends on SERIAL_NS921X && !I2C_NS9XXX
+
+config CME9210JS_SERIAL_PORT_ON_JTAG_CON
+        bool "Serial port on JTAG connector (only modules with JTAG-header)"
+        depends on SERIAL_NS921X
         help
-          Enable serial port C on Connect ME9210 module. You can only
-          use this port if your module has the JTAG-header!
-	  This port shares GPIOs with I2C bus, so I2C must be disabled.
-
-choice
-	prompt "port configuration"
-	depends on CME9210JS_SERIAL_PORTC
-	default CME9210JS_SERIAL_PORTC_RXTX
-
-config CME9210JS_SERIAL_PORTC_RXTX
-	bool "RX/TX only"
-
-endchoice
+          Enable serial port on the JTAG-header. Only RX/TX lines are available.
+          Note that the serial port is different depending on the Digi Connect
+          ME 9210 variant:
+            -Port B on the Connect ME 9210 that support CAN.
+            -Port C on others.
 
 config CME9210JS_SPI
 	bool "SPI port"

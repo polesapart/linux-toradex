@@ -11,12 +11,18 @@
 
 #include <linux/mtd/physmap.h>
 #include <mach/fim-ns921x.h>
+#include <mach/regs-sys-common.h>
 #include <linux/gpio.h>
 #include <linux/mmc/host.h>
 #include <linux/w1-gpio.h>
 
 #include "ns921x_devices.h"
 #include "cme9210_devices.h"
+
+enum cme9210_variant get_cme9210_variant(void)
+{
+	return __raw_readl(SYS_GENID) & 0x3ff;
+}
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
 void __init ns9xxx_add_device_cme9210_eth(void)
@@ -74,12 +80,19 @@ void __init ns9xxx_add_device_cme9210_uarta(int gpio_nr)
 {
 	ns9xxx_add_device_ns921x_uarta(0, gpio_nr, 0);
 }
+
+void __init ns9xxx_add_device_cme9210_uartb(int gpio_nr)
+{
+	ns9xxx_add_device_ns921x_uartb(16, gpio_nr, 1);
+}
+
 void __init ns9xxx_add_device_cme9210_uartc(int gpio_nr)
 {
 	ns9xxx_add_device_ns921x_uartc(8, gpio_nr, 0);
 }
 #else
 void __init ns9xxx_add_device_cme9210_uarta(int gpio_nr) {}
+void __init ns9xxx_add_device_cme9210_uartb(int gpio_nr) {}
 void __init ns9xxx_add_device_cme9210_uartc(int gpio_nr) {}
 #endif
 
