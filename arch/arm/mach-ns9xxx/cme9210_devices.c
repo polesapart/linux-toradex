@@ -157,7 +157,7 @@ struct platform_device ns921x_fim_serial0 = {
 EXPORT_SYMBOL(ns921x_fim_serial0);
 #endif /* CONFIG_FIM_ZERO_SERIAL */
 
-#if defined(CONFIG_FIM_ZERO_CAN_SELECTED)
+#if defined(CONFIG_FIM_ZERO_CAN_SELECTED) || defined(CONFIG_FIM_CAN_MODULE)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr        		= 0,
 	.fim_can_bitrate	= 500000,
