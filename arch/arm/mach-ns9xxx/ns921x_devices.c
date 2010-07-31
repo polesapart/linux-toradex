@@ -97,9 +97,6 @@ static struct ns921x_sysclk eth_clk = {
 static struct plat_ns9xxx_eth ns9xxx_device_ns921x_eth_data = {
 	.irqrx = IRQ_NS9XXX_ETHRX,
 	.irqtx = IRQ_NS9XXX_ETHTX,
-#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
-	.activityled = 14,
-#endif
 };
 
 static struct resource eth_resources[] = {
@@ -128,6 +125,9 @@ void __init ns9xxx_add_device_ns921x_eth(struct clk *phyclk, u32 phy_mask,
 
 	eth_clk.clk.parent = phyclk;
 	ns9xxx_device_ns921x_eth_data.phy_mask = phy_mask;
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	ns9xxx_device_ns921x_eth_data.activityled = gpio[0];
+#endif
 
 	if (clk_register(&eth_clk.clk))
 		return;

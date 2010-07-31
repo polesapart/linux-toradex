@@ -25,11 +25,11 @@ enum cme9210_variant get_cme9210_variant(void)
 }
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
-void __init ns9xxx_add_device_cme9210_eth(void)
+void __init ns9xxx_add_device_cme9210_eth(int act_led_gpio)
 {
 	int gpio[] = {
 #ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
-			14,
+			-1,
 #endif
 			32, 33, 34, 35, 36, 37, 38, 39, 40,
 			41, 42, 43, 44, 45, 46, 47, 48, 49};
@@ -46,11 +46,14 @@ void __init ns9xxx_add_device_cme9210_eth(void)
 			0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+#ifdef CONFIG_GPIO_ETH_ACTIVITY_LED
+	gpio[0] = act_led_gpio;
+#endif
 	ns9xxx_add_device_ns921x_eth(NULL, 0, gpio,
 				     func, dir, ARRAY_SIZE(gpio));
 }
 #else
-void __init ns9xxx_add_device_cme9210_eth(void) {}
+void __init ns9xxx_add_device_cme9210_eth(int act_led_gpio) {}
 #endif
 
 #if defined(CONFIG_I2C_NS9XXX) || defined(CONFIG_I2C_NS9XXX_MODULE)

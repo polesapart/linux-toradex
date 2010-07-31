@@ -16,7 +16,7 @@ enum cme9210_variant {
 };
 
 enum cme9210_variant get_cme9210_variant(void);
-void __init ns9xxx_add_device_cme9210_eth(void);
+void __init ns9xxx_add_device_cme9210_eth(int act_led_gpio);
 void __init ns9xxx_add_device_cme9210_uarta(int gpio_nr);
 void __init ns9xxx_add_device_cme9210_uartb(int gpio_nr);
 void __init ns9xxx_add_device_cme9210_uartc(int gpio_nr);

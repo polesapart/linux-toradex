@@ -616,7 +616,10 @@ config GPIO_ETH_ACTIVITY_LED
 	depends on NS9XXX_ETH
 	default y
 	help
-	  Enables the use of GPIO14 as Ethernet RX/TX activity LED
+	  Enables the use of a GPIO as Ethernet RX/TX activity LED
+          The used GPIO depends on the specific module variant:
+            -CME9210 with CAN:  GPIO 10.
+            -Others:            GPIO 14.
 
 endif	## if MACH_CME9210JS
 

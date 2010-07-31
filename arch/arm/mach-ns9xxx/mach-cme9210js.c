@@ -182,7 +182,12 @@ static void __init mach_cme9210js_init_machine(void)
 	 * and trigger the OOM killer. This value can be tuned later in
 	 * user space throught proc fs and with sysctl */
 	netdev_max_backlog = 300;
-	ns9xxx_add_device_cme9210_eth();
+
+	/* Select the led activity GPIO acordingly to the module variant */
+	if (variant == CME9210_CAN)
+		ns9xxx_add_device_cme9210_eth(10);
+	else
+		ns9xxx_add_device_cme9210_eth(14);
 
 	/* Watchdog timer */
 	ns9xxx_add_device_ns921x_wdt();
