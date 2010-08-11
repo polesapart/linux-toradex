@@ -41,6 +41,8 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/memory.h>
+#include <linux/input.h>
+#include <linux/gpio_keys.h>
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
@@ -201,6 +203,92 @@ static void mxc_power_off(void)
 #endif
 }
 
+/*
+ * GPIO Buttons
+ */
+#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+static struct gpio_keys_button ccwmx51js_buttons[] = {
+	{
+		.gpio		= IOMUX_TO_GPIO(MX51_PIN_GPIO1_8),
+		.code		= BTN_1,
+		.desc		= "Button 1",
+		.active_low	= 1,
+		.wakeup		= 1,
+	},
+	{
+		.gpio		= IOMUX_TO_GPIO(MX51_PIN_GPIO1_1),
+		.code		= BTN_2,
+		.desc		= "Button 2",
+		.active_low	= 1,
+		.wakeup		= 1,
+	}
+};
+
+static struct gpio_keys_platform_data ccwmx51js_button_data = {
+	.buttons	= ccwmx51js_buttons,
+	.nbuttons	= ARRAY_SIZE(ccwmx51js_buttons),
+};
+
+static struct platform_device ccwmx51js_button_device = {
+	.name		= "gpio-keys",
+	.id		= -1,
+	.num_resources	= 0,
+	.dev		= {
+		.platform_data	= &ccwmx51js_button_data,
+	}
+};
+
+static void __init ccwmx51js_add_device_buttons(void)
+{
+	platform_device_register(&ccwmx51js_button_device);
+}
+#else
+static void __init ek_add_device_buttons(void) {}
+#endif
+
+
+#if defined(CONFIG_NEW_LEDS)
+
+/*
+ * GPIO LEDs
+ */
+static struct gpio_led_platform_data led_data;
+
+static struct gpio_led ccwmx51js_leds[] = {
+	{
+		.name			= "LED1",
+		.gpio			= IOMUX_TO_GPIO(MX51_PIN_NANDF_RB2),
+		.active_low		= 1,
+		.default_trigger	= "none",
+	},
+	{
+		.name			= "LED2",
+		.gpio			= IOMUX_TO_GPIO(MX51_PIN_NANDF_RB1),
+		.active_low		= 1,
+		.default_trigger	= "none",
+	}
+};
+
+static struct platform_device ccwmx51js_gpio_leds_device = {
+	.name			= "leds-gpio",
+	.id			= -1,
+	.dev.platform_data	= &led_data,
+};
+
+void __init ccwmx51js_gpio_leds(struct gpio_led *leds, int nr)
+{
+	if (!nr)
+		return;
+
+	led_data.leds = leds;
+	led_data.num_leds = nr;
+	platform_device_register(&ccwmx51js_gpio_leds_device);
+}
+
+#else
+void __init at91_gpio_leds(struct gpio_led *leds, int nr) {}
+#endif
+
 /*!
  * Board specific initialization.
  */
@@ -294,6 +382,8 @@ static void __init mxc_board_init(void)
 	/* Configure PMIC irq line */
 	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
+	ccwmx51js_add_device_buttons();
+	ccwmx51js_gpio_leds(ccwmx51js_leds, ARRAY_SIZE(ccwmx51js_leds));
 
 	pm_power_off = mxc_power_off;
 }
