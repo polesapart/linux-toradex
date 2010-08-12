@@ -646,8 +646,10 @@ static void s3c24xx_serial_set_termios(struct uart_port *port,
 
 	baud = uart_get_baud_rate(port, termios, old, 0, 115200*8);
 
-	if (baud == 38400 && (port->flags & UPF_SPD_MASK) == UPF_SPD_CUST)
+	if (baud == 38400 && (port->flags & UPF_SPD_MASK) == UPF_SPD_CUST) {
 		quot = port->custom_divisor;
+		clksrc = &tmp_clksrc;
+	}
 	else
 		quot = s3c24xx_serial_getclk(port, &clksrc, &clk, baud);
 
