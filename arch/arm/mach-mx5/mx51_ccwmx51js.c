@@ -84,7 +84,7 @@ static struct cpu_wp cpu_wp_auto[] = {
 	 .mfd = 2,
 	 .mfn = 1,
 	 .cpu_podf = 4,
-	 .cpu_voltage = 850000,},
+	 .cpu_voltage = 900000,},
 };
 
 struct cpu_wp *mx51_get_cpu_wp(int *wp)
