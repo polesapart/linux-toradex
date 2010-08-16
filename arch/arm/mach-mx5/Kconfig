@@ -77,6 +77,34 @@ config MODULE_CCXMX51
 	  custom board. The machine file should be modified to include support for
 	  the interfaces available in that board.
 
+choice
+	prompt "Select the base board variant:"
+	default CCWMX51_DISP0_RGB666
+
+config JSCCWMX51_V1
+	bool "Configure for the JSCCWMX51 V1 base board (30011032-01)"
+	depends on MODULE_CCXMX51
+	help
+	  Configure for the JSCCWMX51 V1 base board. The version of the base board can be
+	  identified by the PCB PN (solder side).
+	  The JSCCWMX51 V1 part number is 30011032-01.
+
+config JSCCWMX51_V2
+	bool "Configure for the JSCCWMX51 V2 base board (30011032-02)"
+	depends on MODULE_CCXMX51
+	help
+	  Configure for the JSCCWMX51 V2 base board. The version of the base board can be
+	  identified by the PCB PN (solder side).
+	  The JSCCWMX51 V1 part number is 30011032-02.
+
+config JSCCWMX51_CUSTOM
+	bool "Configure for a custom ConnectCore i.MX51 base board"
+	depends on MODULE_CCXMX51
+	help
+	  Configure for a custom ConnectCore i.MX51 base board
+
+endchoice
+
 config MACH_MX53_EVK
 	bool "Support MX53 EVK platform"
 	select ARCH_MX53
