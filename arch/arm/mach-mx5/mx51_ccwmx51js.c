@@ -121,6 +121,18 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	int gpu_mem = SZ_64M;
 	int fb_mem = SZ_32M;
 
+#ifdef CONFIG_SYSFS
+	u8 *hwid;
+
+	/* with offset 0x6 bytes after the mac address, its located the calibration data */
+	hwid = phys_to_virt(desc->boot_params) + 0xf00;
+
+	ccwmx51_set_mod_variant(hwid[0]);
+	ccwmx51_set_mod_revision(hwid[1]);
+	ccwmx51_set_mod_sn((hwid[2] << 24) | (hwid[3] << 16) |
+			   (hwid[4] << 8) | hwid[5]);
+#endif
+
 	mxc_set_cpu_type(MXC_CPU_MX51);
 
 	get_cpu_wp = mx51_get_cpu_wp;

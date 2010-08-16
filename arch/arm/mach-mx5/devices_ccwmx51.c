@@ -35,6 +35,7 @@
 #include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
 #include <linux/smsc911x.h>
+#include <linux/sysfs.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -60,6 +61,99 @@
 #include <linux/mtd/partitions.h>
 #include <asm/mach/flash.h>
 #endif
+
+#ifdef CONFIG_SYSFS
+static u8 ccwmx51_mod_variant = 0;
+static u8 ccwmx51_mod_rev = 0;
+static u32 ccwmx51_mod_sn = 0;
+static u8 ccwmx51_bb_rev = BASE_BOARD_REV;
+
+void ccwmx51_set_mod_variant(u8 variant)
+{
+	ccwmx51_mod_variant = variant;
+}
+void ccwmx51_set_mod_revision(u8 revision)
+{
+  	ccwmx51_mod_rev = revision;
+}
+void ccwmx51_set_mod_sn(u32 sn)
+{
+	ccwmx51_mod_sn = sn;
+}
+
+static ssize_t ccwmx51_mod_variant_attr_show(struct kobject *kobj,
+					     struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", ccwmx51_mod_variant);
+}
+
+static ssize_t ccwmx51_mod_rev_attr_show(struct kobject *kobj,
+					 struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", ccwmx51_mod_rev);
+}
+
+static ssize_t ccwmx51_mod_sn_attr_show(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", ccwmx51_mod_sn);
+}
+
+static ssize_t cccwmx51_bb_rev_attr_show(struct kobject *kobj,
+					 struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", ccwmx51_bb_rev);
+}
+
+static struct kobj_attribute ccwmx51_mod_variant_attr =
+	__ATTR(mod_variant, S_IRUGO, ccwmx51_mod_variant_attr_show, NULL);
+static struct kobj_attribute ccwmx51_mod_rev_attr =
+	__ATTR(mod_rev, S_IRUGO, ccwmx51_mod_rev_attr_show, NULL);
+static struct kobj_attribute ccwmx51_mod_sn_attr =
+	__ATTR(mod_sn, S_IRUGO, ccwmx51_mod_sn_attr_show, NULL);
+static struct kobj_attribute ccwmx51_bb_rev_attr =
+	__ATTR(bb_rev, S_IRUGO, cccwmx51_bb_rev_attr_show, NULL);
+
+static int ccwmx51_create_sysfs_entries(void)
+{
+	struct kobject *ccwmx51_kobj;
+	int ret;
+
+	ccwmx51_kobj = kobject_create_and_add("ccwmx51", kernel_kobj);
+	if (!ccwmx51_kobj) {
+		printk(KERN_WARNING "kobject_create_and_add ccwmx51 failed\n");
+		return -EINVAL;
+	}
+
+	ret = sysfs_create_file(ccwmx51_kobj, &ccwmx51_mod_variant_attr.attr);
+	if (ret) {
+		printk(KERN_ERR
+		       "Unable to register sysdev entry for ccwmx51 hardware variant\n");
+		return ret;
+	}
+	ret = sysfs_create_file(ccwmx51_kobj, &ccwmx51_mod_rev_attr.attr);
+	if (ret) {
+		printk(KERN_ERR
+		       "Unable to register sysdev entry for ccwmx51 hardware revision\n");
+		return ret;
+	}
+	ret = sysfs_create_file(ccwmx51_kobj, &ccwmx51_mod_sn_attr.attr);
+	if (ret) {
+		printk(KERN_ERR
+		       "Unable to register sysdev entry for ccwmx51 hardware SN\n");
+		return ret;
+	}
+	ret = sysfs_create_file(ccwmx51_kobj, &ccwmx51_bb_rev_attr.attr);
+	if (ret) {
+		printk(KERN_ERR
+		       "Unable to register sysdev entry for ccwmx51 base board hardware revision\n");
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
 
 #if defined(CONFIG_MTD_NAND_MXC) \
 	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \
@@ -643,7 +737,11 @@ struct fsl_ata_platform_data ata_data = {
 
 void __init ccwmx51_init_devices ( void )
 {
+#ifdef CONFIG_SYSFS
+	ccwmx51_create_sysfs_entries();
+#endif
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	ccwmx51_init_ext_eth_mac();
 #endif
+
 }
