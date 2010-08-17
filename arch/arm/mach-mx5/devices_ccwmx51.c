@@ -207,10 +207,14 @@ static int sdhc_write_protect(struct device *dev)
 
 static unsigned int sdhc_get_card_det_status(struct device *dev)
 {
-     int ret = 0;
+     int ret = 1;
 
      if (to_platform_device(dev)->id == 0)
-    	 ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO1_0));
+#ifdef CONFIG_JSCCWMX51_V1
+	ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO1_0));
+#else
+	ret = 0;
+#endif
      else if (to_platform_device(dev)->id == 2)
          ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO_NAND));
      return ret;

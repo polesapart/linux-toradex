@@ -95,11 +95,12 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
 		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
 		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
 	},
+#ifdef CONFIG_JSCCWMX51_V1
 	{
 		MX51_PIN_GPIO1_0, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
 		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
 	},
-
+#endif
 	/* SDHC3*/
 	{
 		MX51_PIN_NANDF_RDY_INT, IOMUX_CONFIG_ALT5 | IOMUX_CONFIG_SION,
