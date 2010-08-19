@@ -55,7 +55,7 @@
 /* Settings for the JSCCWMX51 Board RevA, for the DISP0 */
 #define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
 #define SECOND_TS_SPI_SS_PIN	MX51_PIN_DI1_D1_CS
-#elif CONFIG_JSCCWMX51_V2
+#elif defined(CONFIG_JSCCWMX51_V2)
 /* Settings for the JSCCWMX51 Board RevB, for the DISP0/DISP1 */
 #define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
 #define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
@@ -65,7 +65,7 @@
 /* Set Base board revision */
 #ifdef CONFIG_JSCCWMX51_V1
 #define BASE_BOARD_REV		1
-#elif CONFIG_JSCCWMX51_V2
+#elif defined(CONFIG_JSCCWMX51_V2)
 #define BASE_BOARD_REV		2
 #else
 #define BASE_BOARD_REV		0
