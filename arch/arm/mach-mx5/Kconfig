@@ -78,30 +78,33 @@ config MODULE_CCXMX51
 	  the interfaces available in that board.
 
 choice
-	prompt "Select the base board variant:"
+	prompt "Select development board variant:"
 	default CCWMX51_DISP0_RGB666
 
 config JSCCWMX51_V1
-	bool "Configure for the JSCCWMX51 V1 base board (30011032-01)"
+	bool "ConnectCore for i.MX51 Early Availability Development Board"
 	depends on MODULE_CCXMX51
 	help
-	  Configure for the JSCCWMX51 V1 base board. The version of the base board can be
-	  identified by the PCB PN (solder side).
-	  The JSCCWMX51 V1 part number is 30011032-01.
+	  Select this option if you are using the development board included in
+	  the Early Availability (EA) kit. The Digi part number for this board
+	  revision is 30011032-01. It is printed on the top side of the
+	  development board, close to the connectors of Signal Rail 1.
 
 config JSCCWMX51_V2
-	bool "Configure for the JSCCWMX51 V2 base board (30011032-02)"
+	bool "ConnectCore for i.MX51 JumpStart Kit Development Board"
 	depends on MODULE_CCXMX51
 	help
-	  Configure for the JSCCWMX51 V2 base board. The version of the base board can be
-	  identified by the PCB PN (solder side).
-	  The JSCCWMX51 V1 part number is 30011032-02.
+	  Select this option if you are using the development board included in
+	  Digi JumpStart Kit. The Digi part number for this board revision is
+	  30011032-02. It is printed on the top side of the development board,
+	  close to the connectors of Signal Rail 1.
 
 config JSCCWMX51_CUSTOM
-	bool "Configure for a custom ConnectCore i.MX51 base board"
+	bool "Custom ConnectCore for i.MX51 Carrier Board"
 	depends on MODULE_CCXMX51
 	help
-	  Configure for a custom ConnectCore i.MX51 base board
+	  Select this option if you are using your own custom-designed carrier
+	  board.
 
 endchoice
 
