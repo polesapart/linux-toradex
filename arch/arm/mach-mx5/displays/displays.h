@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-s3c2443/displays/displays.h
  *
- * Copyright (C) 2009 by Digi International Inc.
+ * Copyright (C) 2009-2010 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,6 +19,10 @@
 #include "CUSTOM.h"
 #endif
 
+#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
+#include "hdmi_ad9389.h"
+#endif
+
 struct ccwmx51_lcd_pdata lcd_display_list[] = {
 #if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
 	LQ070Y3DG3B_DISPLAY,
@@ -26,6 +30,11 @@ struct ccwmx51_lcd_pdata lcd_display_list[] = {
 #if defined(CONFIG_CCWMX51_CUSTOM)
 	CUSTOM_DISPLAY,
 #endif
+};
+
+struct ccwmx51_lcd_pdata hdmi_display_list[] = {
+	AD9389_1024x768x24_60,
+	AD9389_1920x1080x24_60,
 };
 
 #endif /* __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__ */

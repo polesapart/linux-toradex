@@ -329,7 +329,9 @@ static void __init mxc_board_init(void)
 	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
 
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
 	ccwmx51_init_2nd_touch();
+#endif
 
 	pm_power_off = mxc_power_off;
 }

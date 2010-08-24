@@ -1,0 +1,58 @@
+/*
+ * ad9389.h
+ *
+ * Copyright 2010 - Digi International, Inc. All Rights Reserved.
+ *
+ * This package is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This package is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this package; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
+#ifndef __LINUX_VIDE0_AD9389_H
+#define __LINUX_VIDE0_AD9389_H
+
+enum hdmi_mode {
+	DISP_DVI,
+	DISP_HDMI,
+};
+
+struct ad9389_dev {
+	u8			chiprev;
+	struct mutex		irq_lock;
+	struct i2c_client	*client;
+	struct work_struct	work;
+	struct i2c_client	*edid_ram;
+	struct fb_info		*fbi;
+	struct fb_videomode	preferred;
+	u8			*edid_data;
+	int			dvi;
+};
+
+struct ad9389_pdata {
+	int		dispif;
+	enum hdmi_mode	mode;
+	void		*data;
+	unsigned char	edid_addr;
+
+	/* function callbacks */
+	int		(*hw_init)(void);
+	int		(*hw_deinit)(void);
+	void		(*disp_connected)(void);
+	void		(*disp_disconnected)(void);
+	void		(*videomode_to_modelist)(struct ad9389_dev *, struct fb_videomode *,
+						 int, struct list_head *);
+	void		(*videomode_to_var)(struct ad9389_dev *, struct fb_var_screeninfo *);
+	void		(*pre_set_var)(struct fb_var_screeninfo *);
+};
+
+#endif	/* __LINUX_VIDE0_AD9389_H */

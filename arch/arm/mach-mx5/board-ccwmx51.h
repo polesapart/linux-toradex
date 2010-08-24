@@ -62,6 +62,14 @@
 #endif /* CONFIG_JSCCWMX51_VX */
 #endif /* CONFIG_CCWMX51_SECOND_TOUCH */
 
+/* AD9389 interrupt */
+#ifdef CONFIG_JSCCWMX51_V1
+#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_4
+#elif defined(CONFIG_JSCCWMX51_V2)
+#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_0
+#endif
+
+
 /* Set Base board revision */
 #ifdef CONFIG_JSCCWMX51_V1
 #define BASE_BOARD_REV		1
