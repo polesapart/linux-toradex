@@ -262,6 +262,9 @@ static void __init mxc_board_init(void)
 #if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
 	mxc_register_device(&mxc_gpu2d_device, &gpu2d_platform_data);
 #endif
+#if defined (CONFIG_MXC_SECURITY_SCC2)
+	mxc_register_device(&mxcscc_device, NULL);
+#endif
 	mxc_register_device(&mxc_pwm1_device, NULL);
 	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 
