@@ -27,6 +27,7 @@ config MXC_SECURITY_RNG
 	depends on ARCH_MXC
 	depends on !ARCH_MXC91321
 	depends on !ARCH_MX27
+	depends on !ARCH_MX51
 	default n
 	select MXC_SECURITY_CORE
 	---help---
