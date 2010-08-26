@@ -79,7 +79,7 @@ config MODULE_CCXMX51
 
 choice
 	prompt "Select development board variant:"
-	default CCWMX51_DISP0_RGB666
+	default JSCCWMX51_V2
 
 config JSCCWMX51_V1
 	bool "ConnectCore for i.MX51 Early Availability Development Board"
