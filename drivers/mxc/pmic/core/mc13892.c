@@ -262,6 +262,7 @@ int pmic_event_unmask(type_event event)
 
 	return ret;
 }
+EXPORT_SYMBOL(pmic_event_unmask);
 
 int pmic_event_mask(type_event event)
 {
@@ -294,7 +295,7 @@ int pmic_event_mask(type_event event)
 
 	return ret;
 }
-
+EXPORT_SYMBOL(pmic_event_mask);
 /*!
  * This function returns the PMIC version in system.
  *
