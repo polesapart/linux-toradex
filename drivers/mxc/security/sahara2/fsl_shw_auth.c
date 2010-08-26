@@ -326,7 +326,7 @@ static inline fsl_shw_return_t add_assoc_preamble(sah_Head_Desc ** desc_chain,
 	return status;
 }				/* add_assoc_preamble() */
 
-#if SUPPORT_SSL
+#ifdef SUPPORT_SSL
 /*!
  * Generate an SSL value
  *
@@ -473,7 +473,7 @@ fsl_shw_return_t fsl_shw_gen_encrypt(fsl_shw_uco_t * user_ctx,
 	SAH_SF_USER_CHECK();
 
 	if (auth_ctx->mode == FSL_ACC_MODE_SSL) {
-#if SUPPORT_SSL
+#ifdef SUPPORT_SSL
 		ret = do_ssl_gen(user_ctx, auth_ctx, cipher_key_info,
 				 auth_key_info, auth_data_length, auth_data,
 				 payload_length, payload, ct, auth_value);
