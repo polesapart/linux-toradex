@@ -1,12 +1,11 @@
 
-#if 1
+#if CONFIG_JSCCWMX51_V1
 #include "../drivers/mxc/ipu3/ipu_regs.h"
 
 /**
  * This code is only valide to enable/disable the backlight of the second
  * display, on the first version of the JumpStart Board (JSCCWMX51 RevA).
- * Newer versions use a different mechanism to enable the BL of the second
- * display.
+ * Newer versions use a GPIO to enable the BL of the second display.
  */
 void ipu_ccwmx51_disp1_enable(int enable)
 {
@@ -24,8 +23,14 @@ static void lcd_bl_enable_lq70(int enable, int vif)
 {
 	if (vif == 0)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), !enable);
+#ifdef CONFIG_JSCCWMX51_V1
 	else if (vif == 1)
 		ipu_ccwmx51_disp1_enable(enable);
+#elif defined(CONFIG_JSCCWMX51_V2)
+		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
+#else
+#error "A function to enable/disalbe the display have to be specified"
+#endif
 }
 
 #ifdef CONFIG_CCWMX51_DISP0_RGB888
