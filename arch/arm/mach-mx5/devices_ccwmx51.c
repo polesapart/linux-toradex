@@ -63,7 +63,6 @@
 #include <asm/mach/flash.h>
 #endif
 
-#ifdef CONFIG_SYSFS
 static u8 ccwmx51_mod_variant = 0;
 static u8 ccwmx51_mod_rev = 0;
 static u32 ccwmx51_mod_sn = 0;
@@ -82,6 +81,7 @@ void ccwmx51_set_mod_sn(u32 sn)
 	ccwmx51_mod_sn = sn;
 }
 
+#ifdef CONFIG_SYSFS
 static ssize_t ccwmx51_mod_variant_attr_show(struct kobject *kobj,
 					     struct kobj_attribute *attr, char *buf)
 {

@@ -121,18 +121,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	int gpu_mem = SZ_64M;
 	int fb_mem = SZ_32M;
 
-#ifdef CONFIG_SYSFS
-	u8 *hwid;
-
-	/* with offset 0x6 bytes after the mac address, its located the calibration data */
-	hwid = phys_to_virt(desc->boot_params) + 0xf00;
-
-	ccwmx51_set_mod_variant(hwid[0]);
-	ccwmx51_set_mod_revision(hwid[1]);
-	ccwmx51_set_mod_sn((hwid[2] << 24) | (hwid[3] << 16) |
-			   (hwid[4] << 8) | hwid[5]);
-#endif
-
 	mxc_set_cpu_type(MXC_CPU_MX51);
 
 	get_cpu_wp = mx51_get_cpu_wp;
@@ -224,6 +212,14 @@ static void mxc_power_off(void)
  */
 static void __init mxc_board_init(void)
 {
+	/* Setup hwid information, passed through Serial ATAG */
+	ccwmx51_set_mod_variant(system_serial_low & 0xff);
+	ccwmx51_set_mod_revision((system_serial_low >> 8) & 0xff);
+	ccwmx51_set_mod_sn(((system_serial_low << 8) & 0xff000000) |
+			   ((system_serial_low >> 8) & 0x00ff0000) |
+			   ((system_serial_high << 8) & 0x0000ff00) |
+			   ((system_serial_high >> 8) & 0xff));
+
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 
