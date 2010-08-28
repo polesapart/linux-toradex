@@ -193,6 +193,13 @@ config UART1_ENABLED
 	help
 	  Enable the MX51 UART1 interface
 
+config UART1_CTS_RTS_ENABLED
+	bool "Configure RTS/CTS lines for UART1 hardware flow control"
+	default y
+	depends on UART1_ENABLED
+	help
+	  Configure the UART1 RTS/CTS lines for hardware flow control operation
+
 config UART2_ENABLED
 	bool "Enable UART2"
 	default y
@@ -200,12 +207,27 @@ config UART2_ENABLED
 	help
 	  Enable the MX51 UART2 interface
 
+config UART2_CTS_RTS_ENABLED
+	bool "Configure RTS/CTS lines for UART2 hardware flow control"
+	default y
+	depends on UART2_ENABLED
+	help
+	  Configure the UART2 RTS/CTS lines for hardware flow control operation
+
 config UART3_ENABLED
 	bool "Enable UART3"
 	default y
 	depends on SERIAL_MXC
 	help
 	  Enable the MX51 UART3 interface
+
+config UART3_CTS_RTS_ENABLED
+	bool "Configure RTS/CTS lines for UART3 hardware flow control"
+	default y
+	depends on UART3_ENABLED
+	help
+	  Configure the UART3 RTS/CTS lines for hardware flow control operation
+
 endmenu
 
 menu "SPI Interface Options"
