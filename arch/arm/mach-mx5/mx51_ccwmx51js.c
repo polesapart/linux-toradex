@@ -299,7 +299,8 @@ static void __init mxc_board_init(void)
 	mx5_usbh1_init();
 #endif
 	mx5_usb_dr_init();
-#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE) && \
+   (defined(CONFIG_CCWMX51_DISP0) || defined(CONFIG_CCWMX51_DISP1))
 	ccwmx51_init_fb();
 #if defined(CONFIG_CCWMX51_DISP0)
 	if (plcd_platform_data[0].vif != -1)
@@ -317,7 +318,10 @@ static void __init mxc_board_init(void)
 	mxc_fb_devices[1].resource = &mxcfb_resources[1];
 	mxc_register_device(&mxc_fb_devices[1], &mx51_fb_data[1]);
 #endif /* CONFIG_CCWMX51_DISP1 */
-#endif
+
+	/* DI0/1 DP-FG channel, used by the VPU */
+	mxc_register_device(&mxc_fb_devices[2], NULL);
+#endif /* defined(CONFIG_FB_MXC_SYNC_PANEL) || ... */
 
 #ifdef CONFIG_MXC_PMIC_MC13892
 	ccwmx51_init_mc13892();
