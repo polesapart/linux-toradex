@@ -277,7 +277,7 @@ static struct i2c_board_info ccwmx51_i2c_devices[] __initdata = {
 
 #if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
-		I2C_BOARD_INFO("mt9v111", 0xB8>>1),
+		I2C_BOARD_INFO("mt9v111_1", 0xB8>>1),
 	},
 #endif
 #if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
