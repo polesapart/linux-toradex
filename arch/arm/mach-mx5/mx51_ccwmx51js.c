@@ -266,8 +266,8 @@ static void __init mxc_board_init(void)
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 	/* SD card detect irqs */
-	mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
-	mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
+	mxcsdhc1_device.resource[2].start = CCWMX51_SD1_CD_IRQ;
+	mxcsdhc1_device.resource[2].end = CCWMX51_SD1_CD_IRQ;
 	mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
 	mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
 	mxc_register_device(&mxcsdhc1_device, &mmc1_data);

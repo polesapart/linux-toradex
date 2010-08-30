@@ -53,12 +53,8 @@
 #ifdef CONFIG_CCWMX51_SECOND_TOUCH
 #ifdef CONFIG_JSCCWMX51_V1
 /* Settings for the JSCCWMX51 Board RevA, for the DISP0 */
-#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
-#define SECOND_TS_SPI_SS_PIN	MX51_PIN_DI1_D1_CS
 #elif defined(CONFIG_JSCCWMX51_V2)
 /* Settings for the JSCCWMX51 Board RevB, for the DISP0/DISP1 */
-#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
-#define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
 #endif /* CONFIG_JSCCWMX51_VX */
 #endif /* CONFIG_CCWMX51_SECOND_TOUCH */
 
@@ -72,9 +68,21 @@
 
 /* Set Base board revision */
 #ifdef CONFIG_JSCCWMX51_V1
+/* Board revision */
 #define BASE_BOARD_REV		1
+/* SD1 card detect irq */
+#define CCWMX51_SD1_CD_IRQ	IOMUX_TO_IRQ(MX51_PIN_GPIO1_0)
+/* Second touch settings */
+#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
+#define SECOND_TS_SPI_SS_PIN	MX51_PIN_DI1_D1_CS
 #elif defined(CONFIG_JSCCWMX51_V2)
+/* Board revision */
 #define BASE_BOARD_REV		2
+/* SD1 card detect irq, not present CD line... */
+#define CCWMX51_SD1_CD_IRQ	0
+/* Second touch settings */
+#define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
+#define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
 #else
 #define BASE_BOARD_REV		0
 #endif
