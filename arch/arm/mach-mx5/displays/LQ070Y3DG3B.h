@@ -1,5 +1,5 @@
 
-#if CONFIG_JSCCWMX51_V1
+#if defined (CONFIG_JSCCWMX51_V1)
 #include "../drivers/mxc/ipu3/ipu_regs.h"
 
 /**
