@@ -17,6 +17,7 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 #include <linux/device.h>
+#include <linux/cdev.h>
 
 #include <linux/pmic_adc.h>
 #include <linux/pmic_status.h>
@@ -32,6 +33,9 @@
 
 #define MC13892_ADC0_TS_M_LSH	14
 #define MC13892_ADC0_TS_M_WID	3
+
+static int pmic_adc_major;
+static struct class *pmic_adc_class;
 
 /*
  * Maximun allowed variation in the three X/Y co-ordinates acquired from
@@ -1013,17 +1017,322 @@ static ssize_t adc_ctl(struct device *dev, struct device_attribute *attr,
 
 #endif
 
+/*!
+ * This function triggers a conversion and returns sampling results of each
+ * specified channel.
+ *
+ * @param        channels  This input parameter is bitmap to specify channels
+ *                         to be sampled.
+ * @param        result    The pointer to array to store sampling results.
+ *                         The memory should be allocated by the caller of this
+ *                         function.
+ *
+ * @return       This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_adc_convert_multichnnel(t_channel channels,
+					 unsigned short *result)
+{
+	t_adc_param adc_param;
+	int i;
+	PMIC_STATUS ret;
+	if (suspend_flag == 1) {
+		return -EBUSY;
+	}
+	mc13892_adc_init_param(&adc_param);
+	pr_debug("pmic_adc_convert_multichnnel\n");
+
+	channels = channel_num[channels];
+
+	if (channels == -1) {
+		pr_debug("Wrong channel ID\n");
+		return PMIC_PARAMETER_ERROR;
+	}
+
+	adc_param.read_ts = false;
+	adc_param.single_channel = false;
+	if ((channels >= 0) && (channels <= 7)) {
+		adc_param.channel_0 = channels;
+		adc_param.channel_1 = ((channels + 4) % 4) + 4;
+	} else {
+		return PMIC_PARAMETER_ERROR;
+	}
+	adc_param.read_mode = 0x00003f;
+	adc_param.read_ts = false;
+	ret = mc13892_adc_convert(&adc_param);
+
+	for (i = 0; i <= 7; i++) {
+		result[i] = adc_param.value[i];
+	}
+	return ret;
+}
+
+/*!
+ * This function starts a Battery Current mode conversion.
+ *
+ * @param        mode      Conversion mode.
+ * @param        result    Battery Current measurement result.
+ *                         if \a mode = ADC_8CHAN_1X, the result is \n
+ *                             result[0] = (BATTP - BATT_I) \n
+ *                         if \a mode = ADC_1CHAN_8X, the result is \n
+ *                             result[0] = BATTP \n
+ *                             result[1] = BATT_I \n
+ *                             result[2] = BATTP \n
+ *                             result[3] = BATT_I \n
+ *                             result[4] = BATTP \n
+ *                             result[5] = BATT_I \n
+ *                             result[6] = BATTP \n
+ *                             result[7] = BATT_I
+ *
+ * @return       This function returns PMIC_SUCCESS if successful.
+ */
+PMIC_STATUS pmic_adc_get_battery_current(t_conversion_mode mode,
+					 unsigned short *result)
+{
+	PMIC_STATUS ret;
+	t_channel channel;
+	if (suspend_flag == 1) {
+		return -EBUSY;
+	}
+	channel = BATTERY_CURRENT;
+	if (mode == ADC_8CHAN_1X) {
+		ret = pmic_adc_convert(channel, result);
+	} else {
+		ret = pmic_adc_convert_8x(channel, result);
+	}
+	return ret;
+}
+
+/*!
+ * This function implements the open method on a MC13892 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @return       This function returns 0.
+ */
+static int pmic_adc_open(struct inode *inode, struct file *file)
+{
+	while (suspend_flag == 1) {
+		swait++;
+		/* Block if the device is suspended */
+		if (wait_event_interruptible(suspendq, (suspend_flag == 0))) {
+			return -ERESTARTSYS;
+		}
+	}
+	pr_debug("mc13892_adc : mc13892_adc_open()\n");
+	return 0;
+}
+
+/*!
+ * This function implements the release method on a MC13892 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @return       This function returns 0.
+ */
+static int pmic_adc_free(struct inode *inode, struct file *file)
+{
+	pr_debug("mc13892_adc : mc13892_adc_free()\n");
+	return 0;
+}
+
+/*!
+ * This function implements IOCTL controls on a MC13892 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @param        cmd         the command
+ * @param        arg         the parameter
+ * @return       This function returns 0 if successful.
+ */
+static int pmic_adc_ioctl(struct inode *inode, struct file *file,
+			  unsigned int cmd, unsigned long arg)
+{
+	t_adc_convert_param *convert_param;
+	t_touch_mode touch_mode;
+	t_touch_screen touch_sample;
+	unsigned short b_current;
+
+	if ((_IOC_TYPE(cmd) != 'p') && (_IOC_TYPE(cmd) != 'D'))
+		return -ENOTTY;
+
+	while (suspend_flag == 1) {
+		swait++;
+		/* Block if the device is suspended */
+		if (wait_event_interruptible(suspendq, (suspend_flag == 0))) {
+			return -ERESTARTSYS;
+		}
+	}
+
+	switch (cmd) {
+	case PMIC_ADC_INIT:
+		CHECK_ERROR(pmic_adc_init());
+		break;
+
+	case PMIC_ADC_DEINIT:
+		CHECK_ERROR(pmic_adc_deinit());
+		break;
+
+	case PMIC_ADC_CONVERT:
+		if ((convert_param = kmalloc(sizeof(t_adc_convert_param),
+					     GFP_KERNEL)) == NULL) {
+			return -ENOMEM;
+		}
+		if (copy_from_user(convert_param, (t_adc_convert_param *) arg,
+				   sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		CHECK_ERROR_KFREE(pmic_adc_convert(convert_param->channel,
+						   convert_param->result),
+				  (kfree(convert_param)));
+
+		if (copy_to_user((t_adc_convert_param *) arg, convert_param,
+				 sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		kfree(convert_param);
+		break;
+
+	case PMIC_ADC_CONVERT_8X:
+		if ((convert_param = kmalloc(sizeof(t_adc_convert_param),
+					     GFP_KERNEL)) == NULL) {
+			return -ENOMEM;
+		}
+		if (copy_from_user(convert_param, (t_adc_convert_param *) arg,
+				   sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		CHECK_ERROR_KFREE(pmic_adc_convert_8x(convert_param->channel,
+						      convert_param->result),
+				  (kfree(convert_param)));
+
+		if (copy_to_user((t_adc_convert_param *) arg, convert_param,
+				 sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		kfree(convert_param);
+		break;
+
+	case PMIC_ADC_CONVERT_MULTICHANNEL:
+		if ((convert_param = kmalloc(sizeof(t_adc_convert_param),
+					     GFP_KERNEL)) == NULL) {
+			return -ENOMEM;
+		}
+		if (copy_from_user(convert_param, (t_adc_convert_param *) arg,
+				   sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+
+		CHECK_ERROR_KFREE(pmic_adc_convert_multichnnel
+				  (convert_param->channel,
+				   convert_param->result),
+				  (kfree(convert_param)));
+
+		if (copy_to_user((t_adc_convert_param *) arg, convert_param,
+				 sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		kfree(convert_param);
+		break;
+
+	case PMIC_ADC_SET_TOUCH_MODE:
+		CHECK_ERROR(pmic_adc_set_touch_mode((t_touch_mode) arg));
+		break;
+
+	case PMIC_ADC_GET_TOUCH_MODE:
+		CHECK_ERROR(pmic_adc_get_touch_mode(&touch_mode));
+		if (copy_to_user((t_touch_mode *) arg, &touch_mode,
+				 sizeof(t_touch_mode))) {
+			return -EFAULT;
+		}
+		break;
+
+	case PMIC_ADC_GET_TOUCH_SAMPLE:
+		CHECK_ERROR(pmic_adc_get_touch_sample(&touch_sample, 1));
+		if (copy_to_user((t_touch_screen *) arg, &touch_sample,
+				 sizeof(t_touch_screen))) {
+			return -EFAULT;
+		}
+		break;
+
+	case PMIC_ADC_GET_BATTERY_CURRENT:
+		CHECK_ERROR(pmic_adc_get_battery_current(ADC_8CHAN_1X,
+							 &b_current));
+		if (copy_to_user((unsigned short *)arg, &b_current,
+				 sizeof(unsigned short))) {
+
+			return -EFAULT;
+		}
+		break;
+
+	default:
+		pr_debug("pmic_adc_ioctl: unsupported ioctl command 0x%x\n",
+			 cmd);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static struct file_operations mc13892_adc_fops = {
+	.owner = THIS_MODULE,
+	.ioctl = pmic_adc_ioctl,
+	.open = pmic_adc_open,
+	.release = pmic_adc_free,
+};
+
+static struct cdev pmic_adc_cdev;
 static DEVICE_ATTR(adc, 0644, adc_info, adc_ctl);
 
 static int pmic_adc_module_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+	struct device * sdev;
+	dev_t devid;
 
 	pr_debug("PMIC ADC start probe\n");
+
+	if( (ret = alloc_chrdev_region(&devid, 0, 8, "pmic_adc")) < 0 ) {
+		pr_debug(KERN_ERR "Unable to allocate device range for pmic_adc\n");
+		return ret;
+	}
+	pmic_adc_major = MAJOR(devid);
+	if (pmic_adc_major < 0) {
+		pr_debug(KERN_ERR "Unable to get a major for pmic_adc\n");
+		ret = pmic_adc_major;
+		goto unreg_char;
+	}
+
+	cdev_init(&pmic_adc_cdev, &mc13892_adc_fops);
+	ret  =cdev_add(&pmic_adc_cdev, devid, 8);
+	if (ret < 0) {
+		pr_err("pmic_adc: cannot add character device\n");
+		goto unreg_char;
+	}
+
+	pmic_adc_class = class_create(THIS_MODULE, "pmic_adc");
+	if (IS_ERR(pmic_adc_class)) {
+		pr_debug(KERN_ERR "Error creating pmic_adc class.\n");
+		ret = PTR_ERR(pmic_adc_class);
+		goto unreg_char;
+	}
+
+	sdev = device_create(pmic_adc_class, NULL, devid, NULL, "pmic_adc");
+	if (IS_ERR(sdev) ) {
+		pr_debug(KERN_ERR "Error creating pmic_adc class device.\n");
+		ret = PTR_ERR(sdev);
+		goto cl_destroy;
+	}
+
 	ret = device_create_file(&(pdev->dev), &dev_attr_adc);
 	if (ret) {
 		pr_debug("Can't create device file!\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto dev_destroy;
 	}
 
 	init_waitqueue_head(&suspendq);
@@ -1040,7 +1349,15 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 rm_dev_file:
 	device_remove_file(&(pdev->dev), &dev_attr_adc);
-	return ret;
+rm_dev_file:
+ 	device_remove_file(&(pdev->dev), &dev_attr_adc);
+dev_destroy:
+	device_destroy(pmic_adc_class, MKDEV(pmic_adc_major, 0));
+cl_destroy:
+	class_destroy(pmic_adc_class);
+unreg_char:
+	unregister_chrdev(pmic_adc_major, "pmic_adc");
+ 	return ret;
 }
 
 static int pmic_adc_module_remove(struct platform_device *pdev)
