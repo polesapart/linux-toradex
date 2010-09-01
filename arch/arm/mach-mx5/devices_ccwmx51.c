@@ -543,16 +543,6 @@ struct mxc_fb_platform_data mx51_fb_data[2] = {
 		.mode_str = "800x480-16@60",    /* Default */
 	}
 };
-#if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
-struct uio_info gpu2d_platform_data = {
-	.name = "imx_gpu2d",
-	.version = "1",
-	.irq = MXC_INT_GPU2_IRQ,
-	.open = gpu2d_open,
-	.release = gpu2d_release,
-	.mmap = gpu2d_mmap,
-};
-#endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata plcd_platform_data[2];

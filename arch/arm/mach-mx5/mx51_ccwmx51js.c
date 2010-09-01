@@ -255,9 +255,6 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);
 	mxc_register_device(&mxc_iim_device, NULL);
 	mxc_register_device(&gpu_device, NULL);
-#if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
-	mxc_register_device(&mxc_gpu2d_device, &gpu2d_platform_data);
-#endif
 #if defined (CONFIG_MXC_SECURITY_SCC2)
 	mxc_register_device(&mxcscc_device, NULL);
 #endif
