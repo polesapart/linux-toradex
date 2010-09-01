@@ -195,7 +195,7 @@ config UART1_ENABLED
 
 config UART1_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART1 hardware flow control"
-	default y
+	default n
 	depends on UART1_ENABLED
 	help
 	  Configure the UART1 RTS/CTS lines for hardware flow control operation
@@ -209,7 +209,7 @@ config UART2_ENABLED
 
 config UART2_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART2 hardware flow control"
-	default y
+	default n
 	depends on UART2_ENABLED
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
@@ -223,7 +223,7 @@ config UART3_ENABLED
 
 config UART3_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART3 hardware flow control"
-	default y
+	default n
 	depends on UART3_ENABLED
 	help
 	  Configure the UART3 RTS/CTS lines for hardware flow control operation
