@@ -57,7 +57,7 @@ extern void (*set_num_cpu_wp)(int num);
 static int num_cpu_wp = 3;
 
 /* working point(wp): 0 - 800MHz; 1 - 166.25MHz; */
-static struct cpu_wp cpu_wp_auto[] = {
+static struct cpu_wp cpu_wp_auto_800[] = {
 	{
 	 .pll_rate = 1000000000,
 	 .cpu_rate = 1000000000,
@@ -87,10 +87,53 @@ static struct cpu_wp cpu_wp_auto[] = {
 	 .cpu_voltage = 900000,},
 };
 
+static struct cpu_wp cpu_wp_auto_600[] = {
+	{
+	 .pll_rate = 600000000,
+	 .cpu_rate = 600000000,
+	 .pdf = 0,
+	 .mfi = 6,
+	 .mfd = 3,
+	 .mfn = 1,
+	 .cpu_podf = 0,
+	 .cpu_voltage = 1000000,},
+	{
+	 .pll_rate = 600000000,
+	 .cpu_rate = 150000000,
+	 .pdf = 3,
+	 .mfi = 6,
+	 .mfd = 3,
+	 .mfn = 1,
+	 .cpu_podf = 3,
+	 .cpu_voltage = 950000,},
+};
+
+static u32 ccwmx51_get_cpu_freq(void)
+{
+	u32 cpu_freq = 800000000;
+
+	switch (system_serial_low & 0xff) {
+	case 4:
+	case 5:	cpu_freq = 600000000;
+		num_cpu_wp = 2;
+		break;
+	}
+
+	return cpu_freq;
+}
+
 struct cpu_wp *mx51_get_cpu_wp(int *wp)
 {
+	u32 cpu_clk_rate = ccwmx51_get_cpu_freq();
+
 	*wp = num_cpu_wp;
-	return cpu_wp_auto;
+
+	if (cpu_clk_rate == 800000000) {
+		return cpu_wp_auto_800;
+	} else if (cpu_clk_rate == 600000000) {
+		return cpu_wp_auto_600;
+	}
+	return NULL;
 }
 
 void mx51_set_num_cpu_wp(int num)
@@ -339,9 +382,9 @@ static void __init ccwmx51_timer_init(void)
 
 	/* Change the CPU voltages for TO2*/
 	if (cpu_is_mx51_rev(CHIP_REV_2_0) <= 1) {
-		cpu_wp_auto[0].cpu_voltage = 1175000;
-		cpu_wp_auto[1].cpu_voltage = 1100000;
-		cpu_wp_auto[2].cpu_voltage = 1000000;
+		cpu_wp_auto_800[0].cpu_voltage = 1175000;
+		cpu_wp_auto_800[1].cpu_voltage = 1100000;
+		cpu_wp_auto_800[2].cpu_voltage = 1000000;
 	}
 
 	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
