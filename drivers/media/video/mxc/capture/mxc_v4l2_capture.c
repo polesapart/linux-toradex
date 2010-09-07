@@ -2313,12 +2313,21 @@ static void camera_platform_release(struct device *device)
 }
 
 /*! Device Definition for Mt9v111 devices */
-static struct platform_device mxc_v4l2_devices = {
-	.name = "mxc_v4l2",
-	.dev = {
-		.release = camera_platform_release,
-		},
-	.id = 0,
+static struct platform_device mxc_v4l2_devices[] = {
+	{
+		.name = "mxc_v4l2_1",
+		.dev = {
+			.release = camera_platform_release,
+			},
+		.id = 0,
+	},
+	{
+		.name = "mxc_v4l2_2",
+		.dev = {
+			.release = camera_platform_release,
+			},
+		.id = 1,
+	}
 };
 
 /*!
@@ -2456,14 +2465,14 @@ static void camera_callback(u32 mask, void *dev)
  *
  * @return status  0 Success
  */
-static void init_camera_struct(cam_data *cam, struct platform_device *pdev)
+static void init_camera_struct(cam_data *cam,unsigned int csi)
 {
-	pr_debug("In MVC: init_camera_struct for csi %d\n",pdev->csi);
+	pr_debug("In MVC: init_camera_struct for csi %d\n",csi);
 
 	/* Default everything to 0 */
 	memset(cam, 0, sizeof(cam_data));
 
-	cam->csi = pdev->csi;
+	cam->csi = csi;
 
 	init_MUTEX(&cam->param_lock);
 	init_MUTEX(&cam->busy_lock);
@@ -2475,7 +2484,7 @@ static void init_camera_struct(cam_data *cam, struct platform_device *pdev)
 	*(cam->video_dev) = mxc_v4l_template;
 
 	video_set_drvdata(cam->video_dev, cam);
-	dev_set_drvdata(&pdev->dev, (void *)cam);
+	dev_set_drvdata(&mxc_v4l2_devices[csi].dev, (void *)cam);
 	cam->video_dev->minor = -1;
 
 	init_waitqueue_head(&cam->enc_queue);
@@ -2538,11 +2547,12 @@ static u8 camera_power(cam_data *cam, bool cameraOn)
 {
 	pr_debug("In MVC:camera_power on=%d\n", cameraOn);
 
+	if( !cam->open_count )
+		return 0;
+
 	if (cameraOn == true) {
-		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
 		vidioc_int_s_power(cam->sensor, 1);
 	} else {
-		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
 		vidioc_int_s_power(cam->sensor, 0);
 	}
 	return 0;
@@ -2636,15 +2646,20 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 		return -1;
 	}
 
+	if (!cam->open_count) {
+		return 0;
+	}
+
 	cam->low_power = true;
 
 	if (cam->overlay_on == true)
 		stop_preview(cam);
-	if ((cam->capture_on == true) && cam->enc_disable) {
-		cam->enc_disable(cam);
-	}
+// AG: With this the capture doesn't continue after resume
+// Without it at least echo core > /sys/power/pm_test resumes OK
+//	if ((cam->capture_on == true) && cam->enc_disable) {
+//		cam->enc_disable(cam);
+//	}
 	camera_power(cam, false);
-
 	return 0;
 }
 
@@ -2667,14 +2682,19 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 		return -1;
 	}
 
+	if( !cam->open_count )
+		return 0;
+
 	cam->low_power = false;
 	wake_up_interruptible(&cam->power_queue);
+
 	camera_power(cam, true);
 
 	if (cam->overlay_on == true)
 		start_preview(cam);
+
 	if (cam->capture_on == true)
-		mxc_streamon(cam);
+	    mxc_streamon(cam);
 
 	return 0;
 }
@@ -2682,16 +2702,28 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 /*!
  * This structure contains pointers to the power management callback functions.
  */
-static struct platform_driver mxc_v4l2_driver = {
-	.driver = {
-		   .name = "mxc_v4l2_capture",
-		   },
-	.probe = mxc_v4l2_probe,
-	.remove = mxc_v4l2_remove,
-	.suspend = mxc_v4l2_suspend,
-	.resume = mxc_v4l2_resume,
-	.shutdown = NULL,
-};
+static struct platform_driver mxc_v4l2_driver[] = {
+	{
+		.driver = {
+			   .name = "mxc_v4l2_1",
+			   },
+		.probe = NULL,
+		.remove = NULL,
+		.suspend = mxc_v4l2_suspend,
+		.resume = mxc_v4l2_resume,
+		.shutdown = NULL,
+	},
+	{
+		.driver = {
+			   .name = "mxc_v4l2_2",
+			   },
+		.probe = NULL,
+		.remove = NULL,
+		.suspend = mxc_v4l2_suspend,
+		.resume = mxc_v4l2_resume,
+		.shutdown = NULL,
+	},
+ };
 
 /*!
  * Initializes the camera driver.
@@ -2773,19 +2805,19 @@ static __init int camera_init(void)
 
 	pr_debug("In MVC:camera_init\n");
 
-	/* Register the device driver structure. */
-	err = platform_driver_register(&mxc_v4l2_driver);
-	if (err != 0) {
-		pr_err("ERROR: v4l2 capture:camera_init: "
-			"platform_driver_register failed.\n");
-		return err;
-	}
-
 	for (i = 0; i < ARRAY_SIZE(mxc_v4l2_int_device); i++) {
+		/* Register the device driver structure. */
+		err = platform_driver_register(&mxc_v4l2_driver[i]);
+		if (err != 0) {
+			pr_err("ERROR: v4l2 capture:camera_init: "
+				"platform_driver_register failed.\n");
+			return err;
+		}
+
 		/* Create g_cam and initialize it. */
 		if ((g_cam [i] = kmalloc(sizeof(cam_data), GFP_KERNEL)) == NULL) {
 			pr_err("ERROR: v4l2 capture: failed to register camera\n");
-	platform_driver_unregister(&mxc_v4l2_driver);
+			platform_driver_unregister(&mxc_v4l2_driver[i]);
 			return -1;
 		}
 		init_camera_struct(g_cam [i], i);
@@ -2794,29 +2826,24 @@ static __init int camera_init(void)
 		mxc_v4l2_int_device[i].priv = g_cam [i];
 		/* This function contains a bug that won't let this be rmmod'd. */
 		v4l2_int_device_register(&mxc_v4l2_int_device[i]);
-	}
 
-	/* Register the I2C device */
-	err = platform_device_register(&mxc_v4l2_devices);
-	if (err != 0) {
-		pr_err("ERROR: v4l2 capture: camera_init: "
-		       "platform_device_register failed.\n");
-				/* FIX ME! this cleanup code is incomplete */
-		//		platform_driver_unregister(&mxc_v4l2_driver);
-		//		kfree(g_cam [0]);
-		//		g_cam [0] = NULL;
-		return err;
-	}
+		/* Register the I2C device */
+		err = platform_device_register(&mxc_v4l2_devices[i]);
+		if (err != 0) {
+			pr_err("ERROR: v4l2 capture: camera_init: "
+				   "platform_device_register failed.\n");
+					platform_driver_unregister(&mxc_v4l2_driver[i]);
+					kfree(g_cam [i]);
+					g_cam [i] = NULL;
+			return err;
+		}
 
-	for (i = 0; i < ARRAY_SIZE(mxc_v4l2_int_device); i++)
-	{
 		/* register v4l video device */
 		if (video_register_device(g_cam[i]->video_dev, VFL_TYPE_GRABBER, video_nr)== -1) {
-			/* FIX ME! this cleanup code is incomplete */
-//			platform_device_unregister(&mxc_v4l2_devices);
-//			platform_driver_unregister(&mxc_v4l2_driver);
-//			kfree(g_cam[i]);
-//			g_cam [i] = NULL;
+			platform_device_unregister(&mxc_v4l2_devices[i]);
+			platform_driver_unregister(&mxc_v4l2_driver[i]);
+			kfree(g_cam[i]);
+			g_cam [i] = NULL;
 			pr_err("ERROR: v4l2 capture: video_register_device failed\n");
 			return -1;
 		}
@@ -2832,7 +2859,6 @@ static __init int camera_init(void)
  */
 static void __exit camera_exit(void)
 {
-	/*FIXME - Do for both cameras!!!!*/
 	pr_debug("In MVC: camera_exit\n");
 
 	pr_info("V4L2 unregistering video\n");
@@ -2844,12 +2870,27 @@ static void __exit camera_exit(void)
 		pr_info("V4L2 freeing image input device\n");
 		v4l2_int_device_unregister(&mxc_v4l2_int_device[0]);
 		video_unregister_device(g_cam[0]->video_dev);
-		platform_driver_unregister(&mxc_v4l2_driver);
-		platform_device_unregister(&mxc_v4l2_devices);
+		platform_driver_unregister(&mxc_v4l2_driver[0]);
+		platform_device_unregister(&mxc_v4l2_devices[0]);
 
 		mxc_free_frame_buf(g_cam[0]);
 		kfree(g_cam[0]);
 		g_cam[0] = NULL;
+	}
+
+	if (g_cam[1]->open_count) {
+		pr_err("ERROR: v4l2 capture:camera open "
+			"-- setting ops to NULL\n");
+	} else {
+		pr_info("V4L2 freeing image input device\n");
+		v4l2_int_device_unregister(&mxc_v4l2_int_device[1]);
+		video_unregister_device(g_cam[1]->video_dev);
+		platform_driver_unregister(&mxc_v4l2_driver[1]);
+		platform_device_unregister(&mxc_v4l2_devices[1]);
+
+		mxc_free_frame_buf(g_cam[1]);
+		kfree(g_cam[1]);
+		g_cam[1] = NULL;
 	}
 }
 

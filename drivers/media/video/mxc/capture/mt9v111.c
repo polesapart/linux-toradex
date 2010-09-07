@@ -78,6 +78,20 @@ struct sensor mt9v111_data[ARRAY_SIZE(mt9v111_id)-1];
 
 MODULE_DEVICE_TABLE(i2c, mt9v111_id);
 
+static int mt9v111_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	pr_debug("In mt9v111_suspend\n");
+
+	return 0;
+}
+
+static int mt9v111_resume(struct i2c_client *client)
+{
+	pr_debug("In mt9v111_resume\n");
+
+	return 0;
+}
+
 static struct i2c_driver mt9v111_i2c_driver = {
 	.driver = {
 		   .owner = THIS_MODULE,
@@ -86,7 +100,8 @@ static struct i2c_driver mt9v111_i2c_driver = {
 	.probe = mt9v111_probe,
 	.remove = mt9v111_remove,
 	.id_table = mt9v111_id,
-	/* To add power management add .suspend and .resume functions */
+	.suspend = mt9v111_suspend,
+	.resume = mt9v111_resume,
 };
 
 /*
@@ -454,6 +469,13 @@ static int ioctl_s_power(struct v4l2_int_device *s, int on)
 	pr_debug("In mt9v111:ioctl_s_power\n");
 
 	sensor->on = on;
+
+	if(on) {
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */, true, true);
+	}
+	else {
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, 0 /* cam->csi */, false, false);
+	}
 
 	return 0;
 }
