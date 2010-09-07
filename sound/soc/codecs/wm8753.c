@@ -1686,6 +1686,12 @@ static int wm8753_register(struct wm8753_priv *wm8753)
 
 	wm8753_codec = codec;
 
+	/* Configure bclk as mclk/4 */
+	reg = wm8753_read_reg_cache(codec, WM8753_SRATE2);
+	reg &= ~WM8753_BCLK_DIV_MASK;
+	reg |= WM8753_BCLK_DIV_4;
+	wm8753_write(codec, WM8753_SRATE2, reg);
+
 	for (i = 0; i < ARRAY_SIZE(wm8753_dai); i++)
 		wm8753_dai[i].dev = codec->dev;
 
