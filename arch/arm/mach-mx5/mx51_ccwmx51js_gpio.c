@@ -212,104 +212,105 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 #endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
+#define DISP_PAD		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
 #if defined(CONFIG_CCWMX51_DISP0)
         {       /* DISP1 DAT0 */
-                MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT1 */
 		MX51_PIN_DISP1_DAT1, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT2 */
 		MX51_PIN_DISP1_DAT2, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT3 */
 		MX51_PIN_DISP1_DAT3, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT4 */
 		MX51_PIN_DISP1_DAT4, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT5 */
 		MX51_PIN_DISP1_DAT5, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT6 */
 		MX51_PIN_DISP1_DAT6, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT7 */
 		MX51_PIN_DISP1_DAT7, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT8 */
 		MX51_PIN_DISP1_DAT8, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT9 */
 		MX51_PIN_DISP1_DAT9, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT10 */
 		MX51_PIN_DISP1_DAT10, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT11 */
 		MX51_PIN_DISP1_DAT11, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT12 */
 		MX51_PIN_DISP1_DAT12, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT13 */
 		MX51_PIN_DISP1_DAT13, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT14 */
 		MX51_PIN_DISP1_DAT14, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT15 */
 		MX51_PIN_DISP1_DAT15, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT16 */
 		MX51_PIN_DISP1_DAT16, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT17 */
 		MX51_PIN_DISP1_DAT17, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT18 */
 		MX51_PIN_DISP1_DAT18, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT19 */
 		MX51_PIN_DISP1_DAT19, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT20 */
 		MX51_PIN_DISP1_DAT20, IOMUX_CONFIG_ALT0,
-		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+		DISP_PAD,
 	},
 	{	/* DISP1 DAT21 */
                 MX51_PIN_DISP1_DAT21, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
 #if !defined(CONFIG_CCWMX51_DISP1)
         {       /* DISP1 DAT22 */
                 MX51_PIN_DISP1_DAT22, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
 	},
 	{	/* DISP1 DAT23 */
                 MX51_PIN_DISP1_DAT23, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
 #endif
         {       /*  LCD1 Power Enable, as gpio */
@@ -322,95 +323,95 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
         /* This interface can be enabled only if the FEC interface is disabled */
         {       /* DISP2 DAT0 */
                 MX51_PIN_DISP2_DAT0, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT1 */
                 MX51_PIN_DISP2_DAT1, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT2 */
                 MX51_PIN_DISP2_DAT2, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT3 */
                 MX51_PIN_DISP2_DAT3, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT4 */
                 MX51_PIN_DISP2_DAT4, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT5 */
                 MX51_PIN_DISP2_DAT5, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT6 */
                 MX51_PIN_DISP2_DAT6, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT7 */
                 MX51_PIN_DISP2_DAT7, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT8 */
                 MX51_PIN_DISP2_DAT8, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT9 */
                 MX51_PIN_DISP2_DAT9, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT10 */
                 MX51_PIN_DISP2_DAT10, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT11 */
                 MX51_PIN_DISP2_DAT11, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT12 */
                 MX51_PIN_DISP2_DAT12, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT13 */
                 MX51_PIN_DISP2_DAT13, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT14 */
                 MX51_PIN_DISP2_DAT14, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DAT15 */
                 MX51_PIN_DISP2_DAT15, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 16 (also DISP1 DAT22) */
                 MX51_PIN_DISP1_DAT22, IOMUX_CONFIG_ALT5,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 17 (also DISP1 DAT23) */
                 MX51_PIN_DISP1_DAT23, IOMUX_CONFIG_ALT5,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 HSYNC */
                 MX51_PIN_DI2_PIN2, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 VSYNC */
                 MX51_PIN_DI2_PIN3, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 PCLK */
                 MX51_PIN_DI2_DISP_CLK, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 DRDY */
                 MX51_PIN_DI_GP4, IOMUX_CONFIG_ALT4,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
         {       /* DISP2 PWR */ /* Should be this a gpio? */
                 MX51_PIN_DI2_PIN4, IOMUX_CONFIG_ALT0,
-                (PAD_CTL_HYS_NONE | PAD_CTL_DRV_LOW | PAD_CTL_SRE_FAST),
+                DISP_PAD,
         },
 #endif
 };
