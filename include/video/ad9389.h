@@ -49,10 +49,9 @@ struct ad9389_pdata {
 	int		(*hw_deinit)(void);
 	void		(*disp_connected)(void);
 	void		(*disp_disconnected)(void);
-	void		(*videomode_to_modelist)(struct ad9389_dev *, struct fb_videomode *,
+	void		(*vmode_to_modelist)(struct ad9389_dev *, struct fb_videomode *,
 						 int, struct list_head *);
-	void		(*videomode_to_var)(struct ad9389_dev *, struct fb_var_screeninfo *);
-	void		(*pre_set_var)(struct fb_var_screeninfo *);
+	void		(*vmode_to_var)(struct ad9389_dev *, struct fb_var_screeninfo *);
 };
 
 #endif	/* __LINUX_VIDE0_AD9389_H */

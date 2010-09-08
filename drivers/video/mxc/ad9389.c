@@ -23,7 +23,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#define DEBUG
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -41,10 +40,25 @@
 #define	AUDIO_FIFO_FULL_INT	0x10
 #define	ITU656_ERR_INT		0x08
 #define EDID_RDY_INT		0x04
-#define EDID_LENGTH		128
+#define EDID_LENGTH		256
 #define DRV_NAME		"ad9389"
 
+
+#define DEBUG
+#define I2C_DBG			0x0001
+#define EDID_DBG		0x0002
+#define REGS_DBG		0x0004
+#define SCREEN_DBG		0x0008
+
+//int debug = I2C_DBG | EDID_DBG | REGS_DBG | SCREEN_DBG;
+int debug = 0;
+#define DBG(flag, fmt, args...)	do {							\
+					if (debug & flag)				\
+						printk(KERN_DEBUG fmt, ## args);	\
+				} while (0)
+
 struct ad9389_dev *pad9389;
+
 
 static inline int ad9389_read_reg(struct i2c_client *client, u8 reg)
 {
@@ -53,23 +67,32 @@ static inline int ad9389_read_reg(struct i2c_client *client, u8 reg)
 
 static inline int ad9389_write_reg(struct i2c_client *client, u8 reg, u8 val)
 {
+	DBG(I2C_DBG, "I2C WR[%02x] = %02x\n", reg, val);
 	return i2c_smbus_write_byte_data(client, reg, val);
+}
+
+static inline int ad9389_update_reg(struct i2c_client *client, u8 reg, u8 mask, u8 val)
+{
+	u8 regval = i2c_smbus_read_byte_data(client, reg);
+	regval &= ~mask;
+	regval |= val;
+	return ad9389_write_reg(client, reg, regval);
 }
 
 static void ad9389_set_av_mute(struct i2c_client *client, int mute)
 {
-	u8 reg = mute ? 0x40 : 0x80;
-
-	ad9389_write_reg(client, 0x45, reg);
+	if (mute) {
+		ad9389_update_reg(client, 0x45, 0x40, 0x40);
+		ad9389_update_reg(client, 0x45, 0x80, 0);
+	} else {
+		ad9389_update_reg(client, 0x45, 0x40, 0x0);
+		ad9389_update_reg(client, 0x45, 0x80, 0x80);
+	}
 }
 
 static void ad9389_set_power_down(struct i2c_client *client, int powerd)
 {
-	u8 reg = ad9389_read_reg(client, 0x41) & ~0x40;
-
-	if (powerd)
-		reg |= 0x40;
-	ad9389_write_reg(client, 0x41, reg);
+	ad9389_update_reg(client, 0x41, 0x40, powerd ? 0x40 : 0);
 }
 
 static int ad9389_disp_connected(struct i2c_client *client)
@@ -77,12 +100,95 @@ static int ad9389_disp_connected(struct i2c_client *client)
 	return (ad9389_read_reg(client, 0x42) & 0x40) != 0;
 }
 
+static void ad9389_enable_i2s_ch(struct i2c_client *client, u8 enable, u8 ch)
+{
+	u8 mask;
+
+	if (ch > 3)
+		return;
+
+	mask = 0x04 << ch;
+	ad9389_update_reg(client, 0x0c, mask, enable ? mask : 0);
+}
+
+static int ad9389_is_enabled_i2s_ch(struct i2c_client *client, u8 ch)
+{
+	u8 mask;
+
+	if (ch > 3)
+		return -EINVAL;
+
+	mask = 0x04 << ch;
+	return (i2c_smbus_read_byte_data(client, 0x0c) & mask) != 0;
+}
+
+static void ad9389_set_i2s_sf(struct i2c_client *client, int sample_freq)
+{
+	ad9389_update_reg(client, 0x15, 0xf0, sample_freq << 4);
+}
+
+static void ad9389_set_hdmi_mode(struct i2c_client *client, int hdmi)
+{
+	ad9389_update_reg(client, 0xaf, 0x02, hdmi ? 0x02 : 0);
+}
+
+static void ad9389_set_if_cc(struct i2c_client *client, int chcnt)
+{
+	ad9389_update_reg(client, 0x50, 0xe0, chcnt << 5);
+}
+
+static void ad9389_set_spk_map(struct i2c_client *client, int map)
+{
+	ad9389_write_reg(client, 0x51, map);
+}
+
+static void ad9389_set_N(struct i2c_client *client, int N_val)
+{
+	ad9389_write_reg(client, 0x1, N_val >> 16);
+	ad9389_write_reg(client, 0x2, N_val >> 8);
+	ad9389_write_reg(client, 0x3, N_val & 0xff);
+}
+
+static int ad9389_get_N(struct i2c_client *client)
+{
+	int N_val;
+
+	N_val = (ad9389_read_reg(client, 0x1) & 0x0f) << 16;
+	N_val |= (ad9389_read_reg(client, 0x2) << 8);
+	N_val |= ad9389_read_reg(client, 0x3);
+
+	return N_val;
+}
+
+#ifdef USED
+static void ad9389_audio_set_CTS(struct i2c_client *client, int cts)
+{
+	ad9389_update_reg(client, 0x04, 0x0f, (cts >> 16) & 0x0f);
+	ad9389_write_reg(client, 0x05, cts >> 8);
+	ad9389_write_reg(client, 0x6, cts & 0xff);
+}
+
+static void ad9389_set_i2s_nbits(struct i2c_client *client, int bits)
+{
+	if (bits <= 24)
+		ad9389_write_reg(client, 0x0d, bits);
+}
+
+static void ad9389_set_low_freq_vrr(struct i2c_client *client, int lowf)
+{
+	ad9389_update_reg(client, 0x15, 0x01, lowf ? 1 : 0);
+}
+#endif
+
 #ifdef DEBUG
 static void ad9389_dump_edid(u8 *edid)
 {
 	int i;
 
-	printk("EDID data:\n");
+	if (!(debug & EDID_DBG))
+		return;
+
+	printk("\nEDID data:\n");
 	for (i = 0; i < EDID_LENGTH; i++) {
 		if (i % 8 == 0)
 			printk("\n");
@@ -91,12 +197,31 @@ static void ad9389_dump_edid(u8 *edid)
 	printk("\n");
 }
 
+static void ad9389_dump_regs(struct i2c_client *client)
+{
+	int i;
+
+	if (!(debug & REGS_DBG))
+		return;
+
+	printk("\nAD9389 regs:\n");
+	for (i = 0; i < EDID_LENGTH; i++) {
+		if (i % 8 == 0)
+			printk("\n%03x: ", i);
+		printk("%02x ", ad9389_read_reg(client, i));
+	}
+	printk(KERN_DEBUG "\n");
+}
+
 static void fb_dump_modeline( struct fb_videomode *modedb, int num)
 {
 	struct fb_videomode *mode;
 	int i;
 
-	printk("Monitor/TV supported modelines:\n");
+	if (!(debug & SCREEN_DBG))
+		return;
+
+	printk(KERN_DEBUG "Monitor/TV supported modelines:\n");
 
 	for (i = 0; i < num; i++) {
 		mode = &modedb[i];
@@ -121,6 +246,7 @@ static void fb_dump_modeline( struct fb_videomode *modedb, int num)
 }
 #else
 static void ad9389_dump_edid(u8 *edid) {}
+static void ad9389_dump_regs(struct i2c_client *client) {}
 static void fb_dump_modeline( struct fb_videomode *modedb, int num) {}
 #endif
 
@@ -156,9 +282,14 @@ static int ad9389_parse_edid(struct fb_var_screeninfo *einfo, u8 *edid, int *dvi
 	if (edid[1] == 0x00)
 		return -ENOENT;
 
-	*dvi = 0;
-	if ((edid[20] == 0x80) || (edid[20] == 0x88) || (edid[20] == 0))
-		*dvi = 1;
+	/* Assume dvi if no CEA extension */
+	*dvi = 1;
+	if (edid[126] > 0) {
+		/* CEA extensions */
+		if (edid[128] == 0x02 && edid[131] & 0x40) {
+			*dvi = 0;
+		}
+	}
 
 	ret = fb_parse_edid(edid, einfo);
 	if (ret)
@@ -172,6 +303,28 @@ static int ad9389_parse_edid(struct fb_var_screeninfo *einfo, u8 *edid, int *dvi
 
 	return 0;
 }
+
+static void ad9389_audio_setup(struct ad9389_dev *ad9389)
+{
+	struct i2c_client *client = ad9389->client;
+
+	/* disable I2S channels */
+	ad9389_enable_i2s_ch(client, 0, 0);
+	ad9389_enable_i2s_ch(client, 0, 1);
+	ad9389_enable_i2s_ch(client, 0, 2);
+	ad9389_enable_i2s_ch(client, 0, 3);
+
+	/* Set sample freq, currently hardcoded to 44KHz */
+	ad9389_set_i2s_sf(client, 0);
+
+	/* By default, enable i2s ch0. Can be modified through the sysfs */
+	ad9389_set_N(client, 6272);
+	ad9389_set_if_cc(client, 1);
+	ad9389_set_spk_map(client, 0);
+	ad9389_enable_i2s_ch(client, 1, 0);
+	ad9389_set_av_mute(client, 0);
+}
+
 
 static void ad9389_fb_init(struct fb_info *info)
 {
@@ -200,16 +353,12 @@ static void ad9389_fb_init(struct fb_info *info)
 	ad9389_set_power_down(client, 0);
 	ad9389_set_av_mute(client, 1);
 
-	/* disable I2S0 and set I2S standard format*/
-	ad9389_write_reg(client, 0x0c, 0x00);
-
 	/* set static reserved registers*/
-	ad9389_write_reg(client,0x0a, 0);
-	ad9389_write_reg(client, 0x98, 0x07);
+	ad9389_write_reg(client,0x0a, 0x01);
+	ad9389_write_reg(client, 0x98, 0x03);
 	ad9389_write_reg(client, 0x9C, 0x38);
-	ad9389_write_reg(client, 0x9d, 0x61);
-	ad9389_write_reg(client, 0x9f, 0x70);
-	/* set low speed pixel clock */
+
+	/* Write magic numbers */
 	ad9389_write_reg(client, 0xA2, 0x87);
 	ad9389_write_reg(client, 0xA3, 0x87);
 
@@ -217,27 +366,35 @@ static void ad9389_fb_init(struct fb_info *info)
 	ad9389_write_reg(client, 0xba, 0x60);
 	ad9389_write_reg(client, 0x47, 0x80);
 
-	mdelay(200);
+	mdelay(250);
 
 	ret = ad9389_read_edid(ad9389->client, ad9389->edid_data);
 	if (!ret) {
 		ad9389_dump_edid(ad9389->edid_data);
 		ret = ad9389_parse_edid(&var, ad9389->edid_data, &ad9389->dvi);
 		if (!ret) {
+			if (!ad9389->dvi) {
+				ad9389_set_hdmi_mode(client, 1);
+				/* FIXME audio setup should be done once we know the pixclock */
+				ad9389_audio_setup(ad9389);
+			}
+
 			fb_edid_to_monspecs(ad9389->edid_data, &info->monspecs);
 			if (info->monspecs.modedb_len) {
 				fb_dump_modeline(info->monspecs.modedb, info->monspecs.modedb_len);
-				pdata->videomode_to_modelist(ad9389, info->monspecs.modedb,
-							     info->monspecs.modedb_len, &info->modelist);
+				pdata->vmode_to_modelist(ad9389, info->monspecs.modedb,
+							 info->monspecs.modedb_len, &info->modelist);
 			}
 		}
 	} else {
 		/* TODO */
-		printk("NO EDID information found, using default mode?\n");
+		printk(KERN_WARNING "NO EDID information found, using default mode?\n");
 	}
 
-	pdata->videomode_to_var(ad9389, &var);
-	pdata->pre_set_var(&var);
+	ad9389_dump_regs(client);
+
+	if (pdata->vmode_to_var)
+		pdata->vmode_to_var(ad9389, &var);
 
 	var.activate = FB_ACTIVATE_ALL;
 	acquire_console_sem();
@@ -313,9 +470,7 @@ static ssize_t ad9389_show_mute(struct device *dev, struct device_attribute *att
 	int read, ret = 0;
 
 	read = ad9389_read_reg(client, 0x45);
-	if (read < 0)
-		ret = snprintf(buf, PAGE_SIZE, "error");
-	else if (read & 0x40)
+	if (read & 0x40)
 		ret = snprintf(buf, PAGE_SIZE, "on");
 	else if (read & 0x80)
 	  	ret = snprintf(buf, PAGE_SIZE, "off");
@@ -341,10 +496,89 @@ static ssize_t ad9389_store_mute(struct device *dev, struct device_attribute *at
 	return count;
 }
 
+static ssize_t ad9389_show_N_param(struct device *dev, struct device_attribute *attr,
+				char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	int N_val;
+
+	N_val = ad9389_get_N(client);
+
+	return snprintf(buf, PAGE_SIZE, "%d", N_val);
+}
+
+static ssize_t ad9389_store_N_param(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	unsigned long N_val;
+
+	N_val = simple_strtoul(buf, NULL, 10);
+	ad9389_set_N(client, N_val);
+
+	return count;
+}
+
+#define	ad9389_show_i2s_ch(num)						\
+static ssize_t ad9389_show_i2s_ch##num(struct device *dev,		\
+				   struct device_attribute *attr,	\
+				   char *buf)				\
+{									\
+	struct i2c_client *client = to_i2c_client(dev);			\
+	int read, ret = 0;						\
+	read = ad9389_is_enabled_i2s_ch(client, num);			\
+	if (read < 0)							\
+		ret = snprintf(buf, PAGE_SIZE, "error");		\
+	else if (read == 1)						\
+		ret = snprintf(buf, PAGE_SIZE, "on");			\
+	else 								\
+	  	ret = snprintf(buf, PAGE_SIZE, "off");			\
+	return ret;							\
+}
+
+#define	ad9389_store_i2s_ch(num)					\
+static ssize_t ad9389_store_i2s_ch##num(struct device *dev,		\
+				    struct device_attribute *attr,	\
+				    const char *buf, size_t count)	\
+{									\
+	struct i2c_client *client = to_i2c_client(dev);			\
+	int enable;							\
+	if (!strcmp(buf, "on"))						\
+		enable = 1;						\
+	else if (!strcmp(buf, "off"))					\
+		enable = 0;						\
+	else								\
+		return 0;						\
+	ad9389_enable_i2s_ch(client, enable, num);			\
+	return count;							\
+}
+
+#define audio_ch(num)			\
+	static DEVICE_ATTR(i2s_ch##num, S_IWUSR | S_IRUGO, ad9389_show_i2s_ch##num, ad9389_store_i2s_ch##num)
+
 static DEVICE_ATTR(mute, S_IWUSR | S_IRUGO, ad9389_show_mute, ad9389_store_mute);
+static DEVICE_ATTR(N_param, S_IWUSR | S_IRUGO, ad9389_show_N_param, ad9389_store_N_param);
+
+ad9389_show_i2s_ch(0)
+ad9389_show_i2s_ch(1)
+ad9389_show_i2s_ch(2)
+ad9389_show_i2s_ch(3)
+ad9389_store_i2s_ch(0)
+ad9389_store_i2s_ch(1)
+ad9389_store_i2s_ch(2)
+ad9389_store_i2s_ch(3)
+audio_ch(0);
+audio_ch(1);
+audio_ch(2);
+audio_ch(3);
 
 static struct attribute *ad9389_attributes[] = {
 	&dev_attr_mute.attr,
+	&dev_attr_i2s_ch0.attr,
+	&dev_attr_i2s_ch1.attr,
+	&dev_attr_i2s_ch2.attr,
+	&dev_attr_i2s_ch3.attr,
+	&dev_attr_N_param.attr,
 	NULL
 };
 
@@ -462,7 +696,6 @@ err_edid_alloc:
 	pad9389 = NULL;
 	return ret;
 }
-
 
 static int ad9389_remove(struct i2c_client *client)
 {

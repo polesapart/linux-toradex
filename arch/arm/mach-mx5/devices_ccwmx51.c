@@ -547,6 +547,43 @@ struct mxc_fb_platform_data mx51_fb_data[2] = {
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata plcd_platform_data[2];
 
+struct ccwmx51_lcd_pdata * ccwmx51_find_video_config(struct ccwmx51_lcd_pdata list[],
+						     int len,
+						     const char *name)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		if (!strncmp(list[i].fb_pdata.mode->name,
+			     name, strlen(list[i].fb_pdata.mode->name)))
+			return &list[i];
+	return NULL;
+}
+
+static char *ccwmx51_get_video_cmdline_opt(int dispif, const char *str)
+{
+	char *options = NULL;
+	int ret = 1;
+	int len = strlen(str);
+
+#if defined(CONFIG_CCWMX51_DISP0)
+	if (dispif == 0) {
+		ret = fb_get_options("displayfb", &options);
+	}
+#endif
+#if defined(CONFIG_CCWMX51_DISP1)
+	if (dispif == 1) {
+		ret = fb2_get_options("displayfb", &options);
+	}
+#endif
+	if (ret || !options)
+		return NULL;
+	if (!len || !strncasecmp(options, str, len))
+		return &options[len];
+
+	return NULL;
+}
+
 #if defined(CONFIG_CCWMX51_DISP1)
 static char *video2_options[FB_MAX] __read_mostly;
 static int ofonly2 __read_mostly;
@@ -614,17 +651,14 @@ __setup("video2=", video2_setup);
 #endif /* defined(CONFIG_CCWMX51_DISP1) */
 
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
-
-int __initdata pixclk_limit = { KHZ2PICOS(133000) };
-char *vmode = NULL;
-
 #define res_matches_refresh(v, x, y, r) \
                         ((v).xres == (x) && (v).yres == (y) && (v).refresh == (r))
 
-static int fb_dump_mode(const char *str, const struct fb_videomode *vm)
+#ifdef AD9389_DEBUG
+static void fb_dump_mode(const char *str, const struct fb_videomode *vm)
 {
 	if (vm == NULL)
-		return -1;
+		return;
 
 	printk(KERN_INFO "%s geometry %u %u %u\n",
 	       str, vm->xres, vm->yres, vm->pixclock);
@@ -632,7 +666,6 @@ static int fb_dump_mode(const char *str, const struct fb_videomode *vm)
 	       vm->right_margin, vm->upper_margin, vm->lower_margin, vm->hsync_len, vm->vsync_len);
 	printk(KERN_INFO "%s flag %u sync %u vmode %u %s\n", str, vm->flag, vm->sync, vm->vmode,
 	       vm->flag & FB_MODE_IS_FIRST ? "preferred" : "");
-	return 0;
 }
 
 static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
@@ -649,85 +682,44 @@ static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
 	       var->upper_margin, var->lower_margin, var->hsync_len, var->vsync_len);
 	printk(KERN_INFO "%s accel_flags %u sync %u vmode %u\n",
 	       str, var->accel_flags, var->sync, var->vmode);
+	printk(KERN_INFO "%d bpp\n", var->bits_per_pixel);
 }
+#else
+static void fb_dump_mode(const char *str, const struct fb_videomode *vm) {}
+static void fb_dump_var(const char *str, struct fb_var_screeninfo *var) {}
+#endif
 
-struct ccwmx51_lcd_pdata * ccwmx51_get_hdmi_cmdline_mode(char *name)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(hdmi_display_list); i++) {
-		if (!strncmp(hdmi_display_list[i].fb_pdata.mode->name,
-			     name, strlen(hdmi_display_list[i].fb_pdata.mode->name)))
-			return &hdmi_display_list[i];
-	}
-	return NULL;
-}
-
-static int ccwmx51_get_hdmi_videomode(struct ad9389_dev *ad9389, struct fb_videomode **vm)
+static int ccwmx51_get_local_detailed_vmode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str)
 {
 	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
-	char *options = NULL;
 	struct ccwmx51_lcd_pdata *plcd;
-	int ret = 1;
+	char *p;
 
-	if (pdata->dispif == 0) {
-		ret = fb_get_options("displayfb", &options);
-	}
-#if defined(CONFIG_CCWMX51_DISP1)
-	else if (pdata->dispif == 1) {
-		ret = fb2_get_options("displayfb", &options);
-	}
-#endif
-	if (ret || !options)
-		return -ENODEV;
-	if (!strncasecmp(options, "HDMI", 4)) {
-		pr_info("HDMI interface in DISP%d\n", pdata->dispif);
-
+	if ((p = ccwmx51_get_video_cmdline_opt(pdata->dispif, "HDMI")) != NULL) {
+		pr_info("HDMI interface on DISP%d\n", pdata->dispif);
 		/* Get the desired configuration provided by the bootloader */
-		if (options[4] != '@') {
+		if (*p++ != '@') {
 			pr_info("Video resolution for HDMI interface not provided, using auto\n");
-			return 0;
-		} else {
-			options = &options[5];
-			if ((plcd = ccwmx51_get_hdmi_cmdline_mode(options)) != NULL) {
-				pr_info("HDMI: %s config on DISP%d\n", options, pdata->dispif);
-				printk("HDMI %p, %p\n", plcd, plcd->fb_pdata.mode);
+			return 1;
+		}
+		if (!strncasecmp(p, "auto", 4))
+			return 1;
+
+		if ((plcd = ccwmx51_find_video_config(hdmi_display_list,
+						      ARRAY_SIZE(hdmi_display_list),
+						      p)) != NULL) {
+			pr_info("HDMI: %s config on DISP%d\n", p, pdata->dispif);
 				*vm = plcd->fb_pdata.mode;
-				printk("vm %p\n", vm);
-				memcpy(&mx51_fb_data[pdata->dispif], &plcd_platform_data[pdata->dispif].fb_pdata,
-				       sizeof(struct mxc_fb_platform_data));
-				return 1;
-			}
+			memcpy(&mx51_fb_data[pdata->dispif],
+			       &plcd_platform_data[pdata->dispif].fb_pdata,
+			       sizeof(struct mxc_fb_platform_data));
+			return 2;
+		} else {
+			*str = p;
+			return 3;
 		}
 	}
-	return -EINVAL;
-}
-
-static char *ccwmx51_get_hdmi_cmdline_mode2(struct ad9389_dev *ad9389)
-{
-        struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
-        char *options = NULL;
-        int ret = 1;
-
-        if (pdata->dispif == 0) {
-                ret = fb_get_options("displayfb", &options);
-        }
-#if defined(CONFIG_CCWMX51_DISP1)
-        else if (pdata->dispif == 1) {
-                ret = fb2_get_options("displayfb", &options);
-        }
-#endif
-        if (ret || !options)
-                return NULL;
-        if (!strncasecmp(options, "HDMI", 4)) {
-                pr_info("HDMI interface in DISP%d\n", pdata->dispif);
-
-                /* Get the desired configuration provided by the bootloader */
-                if (options[4] == '@')
-			return &options[5];
-	}
-
-	return NULL;
+	return 0;
 }
 
 static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screeninfo *var)
@@ -735,115 +727,110 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	struct fb_info *info = ad9389->fbi;
 	struct fb_monspecs *specs = &info->monspecs;
 	const struct fb_videomode *mode = NULL;
-	char *vmode;
+	char *modestr = NULL;
 	int ret, modeidx;
 
 	/* First, check if we have a predefined mode through the kernel command line */
-        ret = ccwmx51_get_hdmi_videomode(ad9389, (struct fb_videomode **)&mode);
+	ret = ccwmx51_get_local_detailed_vmode(ad9389, (struct fb_videomode **)&mode, &modestr);
 	if (ret == 1) {
-		printk("Configuration found!!\n");
-		fb_dump_mode("hdmi cmdline mode:", mode);
-		fb_videomode_to_var(var, mode);
-		fb_dump_var("hdmi var:", var);
-	} else if ((vmode = ccwmx51_get_hdmi_cmdline_mode2(ad9389)) != NULL) {
-		printk("HDMI mode %s\n", vmode);
-		modeidx = fb_find_mode(var, info, vmode, specs->modedb, specs->modedb_len, NULL, 16);
-                switch (modeidx) {
-		case 0:		printk("NO mode found!\n\n");
-				break;
-		case 1:		printk("Mode found!\n\n");
-				break;
-		case 2:
-		case 3:
-		case 4:		printk("Mode ???\n\n");
-				break;
-		}
-	} else {
-		printk("HDMI AUTO!!\n\n");
+		/* auto, or no video mode provided */
 		mode = fb_find_best_display(specs, &info->modelist);
 		if (mode) {
 			fb_videomode_to_var(var, mode);
-			printk(KERN_INFO "best mode is %ux%u@%u pclk=%u\n",
-			       mode->xres, mode->yres, mode->refresh, mode->pixclock);
-			fb_dump_mode("best mode", mode);
-		} else {
-			printk("NO mode found!!\n\n");
-			//mode = fb_find_nearest_mode
+			fb_dump_mode("HDMI Auto selected mode:", mode);
+			return;
+		}
+	} else if (ret == 2) {
+		/* Selected video mode through cmd line parameters provided */
+		fb_dump_mode("HDMI, forced mode:", mode);
+		fb_videomode_to_var(var, mode);
+		fb_dump_var("HDMI var:", var);
+	} else if (ret == 3 && modestr) {
+		printk("HDMI mode string: %s\n", modestr);
+		modeidx = fb_find_mode(var, info, modestr, specs->modedb, specs->modedb_len, NULL, 16);
+		switch (modeidx) {
+		case 0:	printk(KERN_WARNING "HDMI: NO mode found!\n");	break;
+		case 1:	printk(KERN_DEBUG "Mode found!\n");		break;
+		case 2:
+		case 3:
+		case 4:	printk(KERN_WARNING "Unknown mode ???\n");	break;
 		}
 	}
 }
 
-void mxcfb_videomode_to_modelist(struct ad9389_dev *ad9389, struct fb_videomode *modedb,
+static u32 ccwmx51_get_max_video_pclk(void)
+{
+	/* TODO get this value from the clock subsystem */
+	return KHZ2PICOS(133000);
+}
+
+/**
+ * This function parses the list of supported video modes (got from fb_edid_to_monspecs) and
+ * filters out not supported configurations and change settings, if needed, for some modes,
+ * in order to work properly with the i.mx51
+ */
+static void mxcfb_vmode_to_modelist(struct ad9389_dev *ad9389, struct fb_videomode *modedb,
 				 int num, struct list_head *head)
 {
-	static struct fb_var_screeninfo var;
-	int i, del = 0;
+	int i;
+
 	INIT_LIST_HEAD(head);
 
-	memset(&var, 0, sizeof(var));
-
+	/**
+	 * Add the modes we got through the monitor specs, filtering out those
+	 * unsupported configurations.
+	 */
 	for (i = 0; i < num; i++) {
 		struct list_head *pos, *n;
 		struct fb_modelist *modelist;
+		int remove = 0;
 
-                del = 0;
+		/* Preferred mode fist */
+		if (modedb[i].flag & FB_MODE_IS_FIRST) {
+			printk(KERN_INFO "Preferred video mode %ux%u%s%u pclk=%u\n",
+			       modedb[i].xres, modedb[i].yres,
+			       (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			       modedb[i].refresh, modedb[i].pixclock );
 
-                if ( modedb[i].flag & FB_MODE_IS_FIRST ) {
-                        printk(KERN_INFO "found preferred video mode %ux%u%s%u pclk=%u\n",
-                                modedb[i].xres, modedb[i].yres,
-                                (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-                                modedb[i].refresh,
-                                modedb[i].pixclock );
+			memcpy(&ad9389->preferred, &modedb[i], sizeof(struct fb_videomode));
+		}
 
-                        memcpy(&ad9389->preferred, &modedb[i], sizeof(struct fb_videomode));
-                        // and we carry on because the next few lines may delete it
-                }
-                if ( modedb[i].pixclock < pixclk_limit ) {
-                        printk(KERN_INFO "%ux%u%s%u pclk=%u removed (exceed %u limit)\n",
-                                modedb[i].xres, modedb[i].yres,
-                                (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-                                modedb[i].refresh,
-                                modedb[i].pixclock,
-                                pixclk_limit );
-                        continue; // next i, practically deleted
-                        //modedb[i].pixclock = pixclk_limit;
-                }
-                else if ( (modedb[i].vmode & FB_VMODE_INTERLACED) ) {
-                        printk(KERN_INFO "%ux%u%s%u pclk=%u removed (interlaced)\n",
-                                modedb[i].xres, modedb[i].yres,
-                                (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-                                modedb[i].refresh,
-                                modedb[i].pixclock );
-                        continue; // next i, practically deleted
-                }
+		if ((modedb[i].pixclock * 115 / 100) < ccwmx51_get_max_video_pclk()) {
+			printk(KERN_INFO "REMOVED: %ux%u%s%u pclk=%u (exceed %u limit)\n",
+			       modedb[i].xres, modedb[i].yres,
+			       (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			       modedb[i].refresh, modedb[i].pixclock, ccwmx51_get_max_video_pclk());
+			continue;
+			/* TODO, check if close to the limit and try to adjust... */
+		}
+		if (modedb[i].pixclock < ccwmx51_get_max_video_pclk())
+			modedb[i].pixclock = ccwmx51_get_max_video_pclk();
 
-                /* if candidate is a detail timing, delete existing one in modelist !
-                 * note: some TV has 1280x720@60 in standard timings but also has 1280x720 in detail timing block
-                 *         in this case, use detail timing !
-                 */
-                list_for_each_safe(pos, n, head) {
-                        modelist = list_entry(pos, struct fb_modelist, list);
+		/**
+		 * If candidate is a detail timing, delete existing one in modelist !
+		 * note: some TV has 1280x720@60 in standard timings but also has 1280x720 in detail
+		 * timing block in this case, use detail timing !
+		 */
+		list_for_each_safe(pos, n, head) {
+			modelist = list_entry(pos, struct fb_modelist, list);
 
-                        if ( res_matches_refresh(modelist->mode,
-                                modedb[i].xres, modedb[i].yres, modedb[i].refresh) ) {
-
-                                if ( ( modedb[i].flag & FB_MODE_IS_DETAILED ) ) {
-
-                                        printk(KERN_INFO "%ux%u%s%u pclk=%u removed (duplicate)\n",
-                                                modelist->mode.xres, modelist->mode.yres,
-                                                (modelist->mode.vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-                                                modelist->mode.refresh,
-                                                modelist->mode.pixclock );
-                                        list_del(pos);
-                                        kfree(pos);
-                                        del = 1;
-                                }
-                        }
-                }
-
-                if (del == 0)
-                        fb_add_videomode(&modedb[i], head);
-        }
+			if (res_matches_refresh(modelist->mode,
+						modedb[i].xres, modedb[i].yres,
+						modedb[i].refresh)) {
+				if ((modedb[i].flag & FB_MODE_IS_DETAILED)) {
+					printk(KERN_INFO "%ux%u%s%u pclk=%u removed (duplicate)\n",
+					       modelist->mode.xres, modelist->mode.yres,
+					       (modelist->mode.vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+					       modelist->mode.refresh, modelist->mode.pixclock);
+					list_del(pos);
+					kfree(pos);
+					remove = 1;
+				}
+			}
+		}
+		if (!remove)
+			fb_add_videomode(&modedb[i], head);
+	}
 }
 
 static int ccwmx51_hdmi_hw_init(void)
@@ -863,26 +850,20 @@ static int ccwmx51_hdmi_hw_init(void)
 
 static void ccwmx51_hdmi_disp_connected(void)
 {
-	printk("%s: detecting display...\n", __func__);
+	printk(KERN_DEBUG "%s: display connected\n", __func__);
 }
 
 static void ccwmx51_hdmi_disp_disconnected(void)
 {
-	printk("%s: display disconnected...\n", __func__);
-}
-
-void mxcfb_pre_set_var(struct fb_var_screeninfo *var)
-{
-	/* Nothing todo */
+	printk(KERN_DEBUG "%s: display disconnected\n", __func__);
 }
 
 static struct ad9389_pdata hdmi_pdata = {
 	.hw_init		= &ccwmx51_hdmi_hw_init,
 	.disp_connected		= &ccwmx51_hdmi_disp_connected,
 	.disp_disconnected	= &ccwmx51_hdmi_disp_disconnected,
-	.videomode_to_modelist	= &mxcfb_videomode_to_modelist,
-	.videomode_to_var	= &mxc_videomode_to_var,
-	.pre_set_var		= &mxcfb_pre_set_var,
+	.vmode_to_modelist	= &mxcfb_vmode_to_modelist,
+	.vmode_to_var		= &mxc_videomode_to_var,
 	.edid_addr		= (0x7e >> 1),
 	.dispif			= 0,
 };
@@ -896,73 +877,35 @@ struct i2c_board_info ccwmx51_hdmi[] __initdata = {
 };
 #endif
 
-struct ccwmx51_lcd_pdata * ccwmx51_get_display(char *name)
-{
-        int i;
-
-        for (i = 0; i < ARRAY_SIZE(lcd_display_list); i++)
-                if (!strncmp(lcd_display_list[i].fb_pdata.mode->name,
-                             name, strlen(lcd_display_list[i].fb_pdata.mode->name)))
-                        return &lcd_display_list[i];
-
-        return NULL;
-}
-
-struct ccwmx51_lcd_pdata * ccwmx51_get_ad9389_config(char *name)
-{
-        int i;
-
-        for (i = 0; i < ARRAY_SIZE(hdmi_display_list); i++)
-                if (!strncmp(hdmi_display_list[i].fb_pdata.mode->name,
-                             name, strlen(hdmi_display_list[i].fb_pdata.mode->name)))
-                        return &hdmi_display_list[i];
-
-        return NULL;
-}
-
+#define MAX_VIDEO_IF		2
 int __init ccwmx51_init_fb(void)
 {
-        char *options = NULL, *options2 = NULL, *p;
 	struct ccwmx51_lcd_pdata *plcd;
-        int ret1 = 1, ret2 = 1;
+	char *p;
+	int i;
 
 	plcd_platform_data[0].vif = -1;
 	plcd_platform_data[1].vif = -1;
 
-
-#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
-printk("registering ad9389\n\n");
-       i2c_register_board_info(1, ccwmx51_hdmi, 1);
+	for (i = 0; i < MAX_VIDEO_IF; i++) {
+#if !defined(CONFIG_CCWMX51_DISP0)
+		if (i == 0)	continue;
 #endif
-
-
-#if defined(CONFIG_CCWMX51_DISP0)
-	ret1 = fb_get_options("displayfb", &options);
+#if !defined(CONFIG_CCWMX51_DISP1)
+		if (i == 1)	continue;
 #endif
-#if defined(CONFIG_CCWMX51_DISP1)
-	ret2 = fb2_get_options("displayfb", &options2);
-#endif
-	if (ret1 != 0 && ret2 != 0) {
-		pr_warning("no display information available in command line\n");
-		return -ENODEV;
-	}
-
-	if (!options && !options2)
-		return 0;
-#if defined(CONFIG_CCWMX51_DISP0)
-        if (options) {
-                pr_info("options %s\n", options);
-
-                if (!strncasecmp(options, "VGA", 3)) {
-                        pr_info("VGA interface in DISP1\n");
-
-                        /* Get the desired configuration provided by the bootloader */
-                        if (options[3] != '@') {
+		if ((p = ccwmx51_get_video_cmdline_opt(i, "VGA")) != NULL) {
+			pr_info("VGA interface in DISP%d\n", i);
+			/* Get the desired configuration provided by the bootloader */
+			if (*p++ != '@') {
 				pr_info("Video resolution for VGA interface not provided, using default\n");
 				/* TODO set default video here */
 			} else {
-				options = &options[4];
-				if (((p = strsep (&options, "@")) != NULL) && *p) {
+				/* Check string to see if its one of the configurations we alaredy have...
+				 * and if not, pass it as mode string, just in case we want to use one
+				 * of the standard video configurations
+				 */
+				if (((p = strsep (&p, "@")) != NULL) && *p) {
 					if (!strcmp(p, "640x480x16")) {
 						strcpy(mx51_fb_data[0].mode_str, "640x480M-16@60");
 					} else if (!strcmp(p, "800x600x16")) {
@@ -971,77 +914,31 @@ printk("registering ad9389\n\n");
 						strcpy(mx51_fb_data[0].mode_str, "1024x768M-16@60");
 					} else if (!strcmp(p, "1280x1024x16")) {
 						strcpy(mx51_fb_data[0].mode_str, "1280x1024M-16@60");
-					} else
-                                                pr_warning("Unsuported video resolution: %s, using default\n", p);
-                                }
-                        }
-                } else if (!strncasecmp(options, "HDMI", 4)) {
-                        pr_info("HDMI interface in DISP1\n");
-
-                        /* Get the desired configuration provided by the bootloader */
-                        if (options[3] != '@') {
-                                pr_info("Video resolution for VGA interface not provided, using default\n");
-                                /* TODO set default video here */
-                        } else {
-                                options = &options[4];
-                                if (((p = strsep (&options, "@")) != NULL) && *p) {
-                                        if ((plcd = ccwmx51_get_ad9389_config(options)) != NULL) {
-                                                pr_info("HDMI: %s config on DISP1\n", options);
-                                                memcpy(&plcd_platform_data[0], plcd, sizeof(struct ccwmx51_lcd_pdata));
-                                                memcpy(&mx51_fb_data[0], &plcd_platform_data[0].fb_pdata, sizeof(struct mxc_fb_platform_data));
-                                                plcd_platform_data[0].vif = 0; /* Select video interface 0 */
-                                        }
-
-
-                                }
-                        }
-                } else {
-                        if ((plcd = ccwmx51_get_display(options)) != NULL) {
-                                pr_info("%s panel on DISP1\n", options);
-				memcpy(&plcd_platform_data[0], plcd, sizeof(struct ccwmx51_lcd_pdata));
-				memcpy(&mx51_fb_data[0], &plcd_platform_data[0].fb_pdata, sizeof(struct mxc_fb_platform_data));
-				plcd_platform_data[0].vif = 0; /* Select video interface 0 */
+					} else {
+						pr_warning("Passing video configuration as mode string... %s\n", p);
+						strcpy(mx51_fb_data[0].mode_str, p);
+					}
+				}
+			}
+		} else if ((p = ccwmx51_get_video_cmdline_opt(i, "HDMI")) != NULL) {
+			pr_info("HDMI interface in DISP%d\n", i);
+#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
+			i2c_register_board_info(1, ccwmx51_hdmi, 1);
+#endif
+		} else {
+			/* Custom display */
+			if ((p = ccwmx51_get_video_cmdline_opt(i, "")) != NULL) {
+				if ((plcd = ccwmx51_find_video_config(lcd_display_list, ARRAY_SIZE(lcd_display_list), p)) != NULL) {
+					pr_info("%s panel on DISP%d\n", p, i);
+					memcpy(&plcd_platform_data[i], plcd, sizeof(struct ccwmx51_lcd_pdata));
+					memcpy(&mx51_fb_data[i], &plcd_platform_data[i].fb_pdata, sizeof(struct mxc_fb_platform_data));
+					plcd_platform_data[i].vif = i;
+				}
 			}
 		}
-	} else {
-		pr_info("NO options NULL\n");
-	}
-#endif
-#if defined(CONFIG_CCWMX51_DISP1)
-        if (options2) {
-                if (!strncasecmp(options2, "VGA", 3)) {
-                        pr_info("VGA interface in DISP2\n");
 
-                        /* Get the desired configuration provided by the bootloader */
-                        if (options2[3] != '@') {
-                                pr_info("Video resolution for VGA interface not provided, using default\n");
-                                /* TODO set default video here */
-                        } else {
-                                options2 = &options2[4];
-                                if (((p = strsep (&options2, "@")) != NULL) && *p) {
-                                        if (!strcmp(p, "640x480x16")) {
-                                                strcpy(mx51_fb_data[1].mode_str, "640x480M-16@60");
-                                        } else if (!strcmp(p, "800x600x16")) {
-                                                strcpy(mx51_fb_data[1].mode_str, "800x600M-16@60");
-                                        } else if (!strcmp(p, "1024x768x16")) {
-                                                strcpy(mx51_fb_data[1].mode_str, "1024x768M-16@60");
-                                        } else if (!strcmp(p, "1280x1024x16")) {
-                                                strcpy(mx51_fb_data[1].mode_str, "1280x1024M-16@60");
-                                        } else
-                                                pr_warning("Unsuported video resolution: %s, using default\n", p);
-                                }
-                        }
-                } else {
-                        if ((plcd = ccwmx51_get_display(options2)) != NULL) {
-                                pr_info("%s panel on DISP2\n", options2);
-				memcpy(&plcd_platform_data[1], plcd, sizeof(struct ccwmx51_lcd_pdata));
-                                memcpy(&mx51_fb_data[1], &plcd_platform_data[1].fb_pdata, sizeof(struct mxc_fb_platform_data));
-                                plcd_platform_data[1].vif = 1; /* Select video interface 1 */
-                        }
-                }
-        }
-#endif
-        return 0;
+	}
+	return 0;
 }
 #endif
 

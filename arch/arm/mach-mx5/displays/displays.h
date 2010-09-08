@@ -35,6 +35,9 @@ struct ccwmx51_lcd_pdata lcd_display_list[] = {
 struct ccwmx51_lcd_pdata hdmi_display_list[] = {
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 	AD9389_1024x768x24_60,
+	AD9389_1280x720x24_60,
+	AD9389_1360x768x24_60,
+	AD9389_1366x768x24_60,
 	AD9389_1920x1080x24_60,
 #endif
 };
