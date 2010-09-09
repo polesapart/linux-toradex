@@ -524,7 +524,7 @@ struct mxc_audio_platform_data wm8753_data = {
 	.ssi_num = 1,
 	.src_port = 2,
 	.ext_port = 3,
-	.sysclk = 12000000,
+	.sysclk = 0 /* Set on the fly */,
 };
 
 struct mxc_fb_platform_data mx51_fb_data[2] = {
