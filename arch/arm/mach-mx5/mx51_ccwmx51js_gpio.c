@@ -64,6 +64,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_ext_eth_pins[] = {
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
+#ifdef CONFIG_ESDHCI_MXC_SELECT1
 	/* SDHC1*/
 	{
 		MX51_PIN_SD1_CMD, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
@@ -101,7 +102,8 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
 		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
 	},
 #endif
-#if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
+#endif
+#if defined(CONFIG_ESDHCI_MXC_SELECT3) && (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
 	/* SDHC3*/
 	{
 		MX51_PIN_NANDF_RDY_INT, IOMUX_CONFIG_ALT5 | IOMUX_CONFIG_SION,
