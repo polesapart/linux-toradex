@@ -308,10 +308,12 @@ static void __init mxc_board_init(void)
 	/* SD card detect irqs */
 	mxcsdhc1_device.resource[2].start = CCWMX51_SD1_CD_IRQ;
 	mxcsdhc1_device.resource[2].end = CCWMX51_SD1_CD_IRQ;
+	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
+#if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
 	mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
 	mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
-	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
 	mxc_register_device(&mxcsdhc3_device, &mmc3_data);
+#endif
 #endif
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 	mxc_register_device(&mxc_fec_device, NULL);

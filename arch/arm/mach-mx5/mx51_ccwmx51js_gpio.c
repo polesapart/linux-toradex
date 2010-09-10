@@ -101,6 +101,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
 		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
 	},
 #endif
+#if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
 	/* SDHC3*/
 	{
 		MX51_PIN_NANDF_RDY_INT, IOMUX_CONFIG_ALT5 | IOMUX_CONFIG_SION,
@@ -138,6 +139,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
 		MX51_PIN_NANDF_CS1, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
 		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
 	},
+#endif
 };
 #endif
 
@@ -628,7 +630,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_cspi_pins[] = {
 	},
 #endif
 #endif
-#ifdef CONFIG_SPI_MXC_SELECT2
+#if defined(CONFIG_SPI_MXC_SELECT2) && (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
 	/* ECSPI2 */
 	{	/* SCLK */
 		MX51_PIN_NANDF_RB2, IOMUX_CONFIG_ALT2,
@@ -809,7 +811,6 @@ static struct mxc_iomux_pin_cfg __initdata ata_iomux_pins[] = {
                 MX51_PIN_NANDF_WP_B, IOMUX_CONFIG_ALT1,
                 (PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
         },
-        /* TO 2.0 */
         {
                 MX51_PIN_GPIO_NAND, IOMUX_CONFIG_ALT1,
                 (PAD_CTL_DRV_HIGH | PAD_CTL_DRV_VOT_HIGH),
@@ -1062,8 +1063,10 @@ void __init ccwmx51_io_init(void)
         /* Configure as GPIO to be used to read LED status */
         mxc_config_iomux(MX51_PIN_NANDF_RB2,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
         mxc_iomux_set_pad(MX51_PIN_NANDF_RB2,PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU);
+#if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
         mxc_config_iomux(MX51_PIN_NANDF_RB1,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
         mxc_iomux_set_pad(MX51_PIN_NANDF_RB1,PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU);
+#endif /* !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE) */
 #endif
 
 #endif
@@ -1133,7 +1136,7 @@ void __init ccwmx51_io_init(void)
 	mxc_config_iomux(MX51_PIN_NANDF_CS6,IOMUX_CONFIG_ALT4 | IOMUX_CONFIG_SION);
 #endif
 
-#ifndef CONFIG_SPI_MXC_SELECT2
+#if !defined(CONFIG_SPI_MXC_SELECT2) || (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
 	mxc_config_iomux(MX51_PIN_NANDF_RB1,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
 #endif
 #if !defined(CONFIG_USB_EHCI_ARC_H1) && !defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
