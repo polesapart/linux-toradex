@@ -22,8 +22,10 @@
 #define __LINUX_VIDE0_AD9389_H
 
 enum hdmi_mode {
-	DISP_DVI,
-	DISP_HDMI,
+	MODE_AUTO,
+	MODE_STRING,
+	MODE_FORCED,
+	MODE_UNKNOWN,
 };
 
 struct ad9389_dev {
@@ -33,7 +35,6 @@ struct ad9389_dev {
 	struct work_struct	work;
 	struct i2c_client	*edid_ram;
 	struct fb_info		*fbi;
-	struct fb_videomode	preferred;
 	u8			*edid_data;
 	int			dvi;
 };
@@ -49,8 +50,7 @@ struct ad9389_pdata {
 	int		(*hw_deinit)(void);
 	void		(*disp_connected)(void);
 	void		(*disp_disconnected)(void);
-	void		(*vmode_to_modelist)(struct ad9389_dev *, struct fb_videomode *,
-						 int, struct list_head *);
+	void		(*vmode_to_modelist)(struct fb_videomode *, int, struct list_head *, struct fb_var_screeninfo *);
 	void		(*vmode_to_var)(struct ad9389_dev *, struct fb_var_screeninfo *);
 };
 

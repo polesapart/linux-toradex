@@ -63,6 +63,14 @@
 #include <asm/mach/flash.h>
 #endif
 
+#define AD9389_DBG		0x0001
+#define DBG(flag, fmt, args...)	do {							\
+					if (debug & flag)				\
+						printk(KERN_DEBUG fmt, ## args);	\
+				} while (0)
+
+static int debug = AD9389_DBG;
+
 static u8 ccwmx51_mod_variant = 0;
 static u8 ccwmx51_mod_rev = 0;
 static u32 ccwmx51_mod_sn = 0;
@@ -651,12 +659,10 @@ __setup("video2=", video2_setup);
 #endif /* defined(CONFIG_CCWMX51_DISP1) */
 
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
-#define res_matches_refresh(v, x, y, r) \
-                        ((v).xres == (x) && (v).yres == (y) && (v).refresh == (r))
-
-#ifdef AD9389_DEBUG
 static void fb_dump_mode(const char *str, const struct fb_videomode *vm)
 {
+	if (debug & AD9389_DBG)
+		return;
 	if (vm == NULL)
 		return;
 
@@ -670,6 +676,8 @@ static void fb_dump_mode(const char *str, const struct fb_videomode *vm)
 
 static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
 {
+	if (debug & AD9389_DBG)
+		return;
 	if (var == NULL)
 		return;
 
@@ -684,78 +692,84 @@ static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
 	       str, var->accel_flags, var->sync, var->vmode);
 	printk(KERN_INFO "%d bpp\n", var->bits_per_pixel);
 }
-#else
-static void fb_dump_mode(const char *str, const struct fb_videomode *vm) {}
-static void fb_dump_var(const char *str, struct fb_var_screeninfo *var) {}
-#endif
 
-static int ccwmx51_get_local_detailed_vmode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str)
+enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str)
 {
 	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
 	struct ccwmx51_lcd_pdata *plcd;
 	char *p;
 
 	if ((p = ccwmx51_get_video_cmdline_opt(pdata->dispif, "HDMI")) != NULL) {
-		pr_info("HDMI interface on DISP%d\n", pdata->dispif);
+		DBG(AD9389_DBG, "HDMI interface on DISP%d\n", pdata->dispif);
 		/* Get the desired configuration provided by the bootloader */
 		if (*p++ != '@') {
-			pr_info("Video resolution for HDMI interface not provided, using auto\n");
-			return 1;
+			DBG(AD9389_DBG,
+			    "Video resolution for HDMI interface not provided, using auto\n");
+			return MODE_AUTO;
 		}
 		if (!strncasecmp(p, "auto", 4))
-			return 1;
+			return MODE_AUTO;
 
 		if ((plcd = ccwmx51_find_video_config(hdmi_display_list,
 						      ARRAY_SIZE(hdmi_display_list),
 						      p)) != NULL) {
-			pr_info("HDMI: %s config on DISP%d\n", p, pdata->dispif);
+			DBG(AD9389_DBG, "HDMI: %s config on DISP%d\n", p, pdata->dispif);
 				*vm = plcd->fb_pdata.mode;
 			memcpy(&mx51_fb_data[pdata->dispif],
 			       &plcd_platform_data[pdata->dispif].fb_pdata,
 			       sizeof(struct mxc_fb_platform_data));
-			return 2;
+			return MODE_FORCED;
 		} else {
 			*str = p;
-			return 3;
+			return MODE_STRING;
 		}
 	}
-	return 0;
+	return MODE_UNKNOWN;
 }
-
+#define	AD9389_STR_LEN		30
 static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screeninfo *var)
 {
 	struct fb_info *info = ad9389->fbi;
-	struct fb_monspecs *specs = &info->monspecs;
-	const struct fb_videomode *mode = NULL;
-	char *modestr = NULL;
-	int ret, modeidx;
+	const struct fb_videomode *fbvmode = NULL;
+	char *modestr = NULL, str[AD9389_STR_LEN];
+	int modeidx;
+	enum hdmi_mode mode;
 
 	/* First, check if we have a predefined mode through the kernel command line */
-	ret = ccwmx51_get_local_detailed_vmode(ad9389, (struct fb_videomode **)&mode, &modestr);
-	if (ret == 1) {
+	mode = get_hdmi_mode(ad9389, (struct fb_videomode **)&fbvmode, &modestr);
+	if (mode == MODE_AUTO) {
 		/* auto, or no video mode provided */
-		mode = fb_find_best_display(specs, &info->modelist);
-		if (mode) {
-			fb_videomode_to_var(var, mode);
-			fb_dump_mode("HDMI Auto selected mode:", mode);
+		fbvmode = fb_find_best_mode(var, &info->modelist);
+		if (!mode) {
+			fbvmode = fb_find_best_display(&info->monspecs, &info->modelist);
+			if (!fbvmode) {
+				printk(KERN_WARNING
+				       "HDMI: unable to find a valid video mode/screen,"
+				       " try forcing a mode\n");
+				return;
+			}
+		}
+		strncpy(str, "HDMI auto selected mode:", AD9389_STR_LEN - 1);
+	} else if (mode == MODE_FORCED) {
+		/* Selected video mode through cmd line parameters provided */
+		strncpy(str, "HDMI forced mode:", AD9389_STR_LEN - 1);
+	} else if (mode == MODE_STRING && modestr) {
+		DBG(AD9389_DBG, "HDMI mode string: %s\n", modestr);
+		modeidx = fb_find_mode(var, info, modestr,
+				       info->monspecs.modedb,
+				       info->monspecs.modedb_len,
+				       NULL, var->bits_per_pixel);
+		if (!(modeidx == 1 || modeidx == 1)) {
+			DBG(AD9389_DBG, "HDMI: unable to find valid mode (%s)\n", modestr);
 			return;
 		}
-	} else if (ret == 2) {
-		/* Selected video mode through cmd line parameters provided */
-		fb_dump_mode("HDMI, forced mode:", mode);
-		fb_videomode_to_var(var, mode);
-		fb_dump_var("HDMI var:", var);
-	} else if (ret == 3 && modestr) {
-		printk("HDMI mode string: %s\n", modestr);
-		modeidx = fb_find_mode(var, info, modestr, specs->modedb, specs->modedb_len, NULL, 16);
-		switch (modeidx) {
-		case 0:	printk(KERN_WARNING "HDMI: NO mode found!\n");	break;
-		case 1:	printk(KERN_DEBUG "Mode found!\n");		break;
-		case 2:
-		case 3:
-		case 4:	printk(KERN_WARNING "Unknown mode ???\n");	break;
-		}
+		strncpy(str, "HDMI string mode:", AD9389_STR_LEN - 1);
 	}
+	str[AD9389_STR_LEN - 1] = 0;
+	fb_dump_mode(str, fbvmode);
+	fb_videomode_to_var(var, fbvmode);
+	fb_dump_var(str, var);
+
 }
 
 static u32 ccwmx51_get_max_video_pclk(void)
@@ -766,13 +780,12 @@ static u32 ccwmx51_get_max_video_pclk(void)
 
 /**
  * This function parses the list of supported video modes (got from fb_edid_to_monspecs) and
- * filters out not supported configurations and change settings, if needed, for some modes,
- * in order to work properly with the i.mx51
+ * filters out not supported configurations
  */
-static void mxcfb_vmode_to_modelist(struct ad9389_dev *ad9389, struct fb_videomode *modedb,
-				 int num, struct list_head *head)
+static void mxcfb_vmode_to_modelist(struct fb_videomode *modedb, int num,
+				    struct list_head *head,  struct fb_var_screeninfo *var)
 {
-	int i;
+	int i, xres = 0, yres = 0, aspratio = 0;
 
 	INIT_LIST_HEAD(head);
 
@@ -785,51 +798,87 @@ static void mxcfb_vmode_to_modelist(struct ad9389_dev *ad9389, struct fb_videomo
 		struct fb_modelist *modelist;
 		int remove = 0;
 
-		/* Preferred mode fist */
-		if (modedb[i].flag & FB_MODE_IS_FIRST) {
-			printk(KERN_INFO "Preferred video mode %ux%u%s%u pclk=%u\n",
-			       modedb[i].xres, modedb[i].yres,
-			       (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-			       modedb[i].refresh, modedb[i].pixclock );
-
-			memcpy(&ad9389->preferred, &modedb[i], sizeof(struct fb_videomode));
-		}
-
-		if ((modedb[i].pixclock * 115 / 100) < ccwmx51_get_max_video_pclk()) {
-			printk(KERN_INFO "REMOVED: %ux%u%s%u pclk=%u (exceed %u limit)\n",
-			       modedb[i].xres, modedb[i].yres,
-			       (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-			       modedb[i].refresh, modedb[i].pixclock, ccwmx51_get_max_video_pclk());
+		remove = 0;
+		/* Interlaced not supported */
+		if (modedb[i].vmode & FB_VMODE_INTERLACED) {
+			DBG(AD9389_DBG, "REMOVED: %ux%u%s%u pclk=%u (interlaced modes not supported)\n",
+			    modedb[i].xres, modedb[i].yres,
+			    (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			    modedb[i].refresh, modedb[i].pixclock);
 			continue;
-			/* TODO, check if close to the limit and try to adjust... */
 		}
+
+		/* If clock exceeds the max pixel clock supported, remove that video mode */
+		if ((modedb[i].pixclock * 115 / 100) < ccwmx51_get_max_video_pclk()) {
+			DBG(AD9389_DBG, "REMOVED: %ux%u%s%u pclk=%u (exceed %u limit)\n",
+			    modedb[i].xres, modedb[i].yres,
+			    (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			    modedb[i].refresh, modedb[i].pixclock, ccwmx51_get_max_video_pclk());
+			continue;
+		}
+
+		/* If over the pixel clock limix, but close enough, set the max pixel clock freq */
 		if (modedb[i].pixclock < ccwmx51_get_max_video_pclk())
 			modedb[i].pixclock = ccwmx51_get_max_video_pclk();
 
+		/* Preferred mode fist */
+		if (modedb[i].flag & FB_MODE_IS_FIRST) {
+			DBG(AD9389_DBG, "PREFERRED: %ux%u%s%u pclk=%u\n",
+			    modedb[i].xres, modedb[i].yres,
+			    (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			    modedb[i].refresh, modedb[i].pixclock);
+
+			aspratio = modedb[i].xres * 10 / modedb[i].yres;
+			DBG(AD9389_DBG, "Aspect Ratio: %d\n", aspratio);
+		}
+
+		if (modedb[i].xres * 10 / modedb[i].yres != aspratio) {
+			DBG(AD9389_DBG, "REMOVED: %ux%u%s%u pclk=%u (aspect ratio)\n",
+			    modedb[i].xres, modedb[i].yres,
+			    (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			    modedb[i].refresh, modedb[i].pixclock);
+			continue;
+		}
+
 		/**
-		 * If candidate is a detail timing, delete existing one in modelist !
-		 * note: some TV has 1280x720@60 in standard timings but also has 1280x720 in detail
-		 * timing block in this case, use detail timing !
+		 * If candidate is a detail timing, delete existing one in modelist and use
+		 * the detail timing information.
 		 */
 		list_for_each_safe(pos, n, head) {
 			modelist = list_entry(pos, struct fb_modelist, list);
 
-			if (res_matches_refresh(modelist->mode,
-						modedb[i].xres, modedb[i].yres,
-						modedb[i].refresh)) {
-				if ((modedb[i].flag & FB_MODE_IS_DETAILED)) {
-					printk(KERN_INFO "%ux%u%s%u pclk=%u removed (duplicate)\n",
-					       modelist->mode.xres, modelist->mode.yres,
-					       (modelist->mode.vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
-					       modelist->mode.refresh, modelist->mode.pixclock);
-					list_del(pos);
-					kfree(pos);
-					remove = 1;
-				}
+			if ((modelist->mode.xres == modedb[i].xres) &&
+			    (modelist->mode.yres == modedb[i].yres) &&
+			    (modelist->mode.refresh == modedb[i].refresh) &&
+			    (modedb[i].flag & FB_MODE_IS_DETAILED)) {
+				DBG(AD9389_DBG, "REMOVED: %ux%u%s%u pclk=%u (duplicated)\n",
+				    modelist->mode.xres, modelist->mode.yres,
+				    (modelist->mode.vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+				    modelist->mode.refresh, modelist->mode.pixclock);
+				list_del(pos);
+				kfree(pos);
+				remove = 1;
 			}
 		}
-		if (!remove)
+
+		if (!remove) {
 			fb_add_videomode(&modedb[i], head);
+			DBG(AD9389_DBG, "ADDING: Video mode %ux%u%s%u pclk=%u\n",
+			    modedb[i].xres, modedb[i].yres,
+			    (modedb[i].vmode & FB_VMODE_INTERLACED ) ? "i@" : "@",
+			    modedb[i].refresh, modedb[i].pixclock);
+
+			if (modedb[i].xres > xres && modedb[i].yres > yres) {
+				xres = modedb[i].xres;
+				yres = modedb[i].yres;
+			}
+		}
+	}
+
+	/* Update var->xres and var->yres, used to determine the best video mode*/
+	if (var->xres != xres || var->yres != yres) {
+		var->xres = xres;
+		var->yres = yres;
 	}
 }
 

@@ -382,8 +382,14 @@ static void ad9389_fb_init(struct fb_info *info)
 			fb_edid_to_monspecs(ad9389->edid_data, &info->monspecs);
 			if (info->monspecs.modedb_len) {
 				fb_dump_modeline(info->monspecs.modedb, info->monspecs.modedb_len);
-				pdata->vmode_to_modelist(ad9389, info->monspecs.modedb,
-							 info->monspecs.modedb_len, &info->modelist);
+				if (pdata->vmode_to_modelist)
+					pdata->vmode_to_modelist(info->monspecs.modedb,
+								 info->monspecs.modedb_len,
+								 &info->modelist, &var);
+				else
+					fb_videomode_to_modelist(info->monspecs.modedb,
+								 info->monspecs.modedb_len,
+								 &info->modelist);
 			}
 		}
 	} else {
