@@ -303,8 +303,12 @@ config ESDHCI_MXC_SELECT3
 
 endmenu
 
+if !FB_MXC_SYNC_PANEL
+comment "---Video interface disabled"
+endif
+
 if FB_MXC_SYNC_PANEL
-menu "Enable Video Interface(s)"
+menu "Video Interface(s)"
 
 config CCWMX51_DISP0
 	bool "Enable Display Interface 1 (primary)"
