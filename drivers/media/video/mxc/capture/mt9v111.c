@@ -914,6 +914,8 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 {
 	unsigned short reg;
 	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+	struct sensor *sensor = s->priv;
+	/* s->priv points to mt9v111_data */
 
 	if( sensorid < 0 )
 		return -ENODEV;
@@ -949,6 +951,10 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 			return -EINVAL;
 	}
 
+	sensor->pix.width = f->fmt.pix.width;
+	sensor->pix.height = f->fmt.pix.height;
+	sensor->pix.sizeimage = f->fmt.pix.sizeimage;
+	sensor->pix.pixelformat = f->fmt.pix.pixelformat;
 	return 0;
 }
 
