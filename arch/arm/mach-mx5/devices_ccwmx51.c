@@ -63,6 +63,10 @@
 #include <asm/mach/flash.h>
 #endif
 
+#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
+static int debug = 0;
+#endif
+
 #define AD9389_DBG		0x0001
 #define DBG(flag, fmt, args...)	do {						\
 					if (debug & flag)			\
