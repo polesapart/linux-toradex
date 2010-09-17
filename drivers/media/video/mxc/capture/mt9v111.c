@@ -54,12 +54,9 @@ struct sensor {
 
 	/* control settings */
 	int brightness;
-	int hue;
-	int contrast;
 	int saturation;
-	int red;
-	int green;
-	int blue;
+	int sharpness;
+	int gain;
 	int ae_mode;
 
 };
@@ -257,6 +254,7 @@ void mt9v111_config_datasheet(void)
 	mt9v111_device.ifpReg->reserved100 = 4477;
 }
 
+
 /*!
  * mt9v111 sensor set saturtionn
  *
@@ -290,6 +288,9 @@ static int mt9v111_set_saturation(int sensorid , int saturation)
 	case 25:
 		mt9v111_device.ifpReg->awbSpeed = 0x6514;
 		break;
+	case 0:
+		mt9v111_device.ifpReg->awbSpeed = 0x7514;
+		break;
 	default:
 		mt9v111_device.ifpReg->awbSpeed = 0x4514;
 		break;
@@ -302,6 +303,355 @@ static int mt9v111_set_saturation(int sensorid , int saturation)
 	/* Operation Mode Control */
 	reg = MT9V111I_AWB_SPEED;
 	data = mt9v111_device.ifpReg->awbSpeed;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+#if 0
+/*!
+ * mt9v111 sensor set digital zoom
+ *
+ * @param on/off   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalzoom(int sensorid , unsigned int on)
+{
+	u8 reg;
+	u16 data;
+	pr_debug("In mt9v111_set_digitalzoom(%d)\n",on);
+
+	if( on > 1 )
+	    return -1;
+
+	mt9v111_device.coreReg->digitalZoom = on;
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.coreReg->addressSelect;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111S_DIGITAL_ZOOM;
+	data = mt9v111_device.coreReg->digitalZoom;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+/*!
+ * mt9v111 sensor set digital pan
+ *
+ * @param pan_level   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalpan (int sensorid , int pan_level)
+{
+	u8 reg;
+	u16 data;
+	pr_debug("In mt9v111_set_digitalpan(%d)\n",
+		pan_level);
+
+	mt9v111_device.ifpReg->HPan = 8;
+	if (pan_level & 0xFFFF0000) {
+		pan_level = (0xFFFFFFFF - pan_level);
+		pan_level = pan_level / 0x14;
+		mt9v111_device.ifpReg->HPan =
+			mt9v111_device.ifpReg->HPan - (pan_level & 0x3FF);
+	} else {
+		pan_level = pan_level / 0x14;
+		mt9v111_device.ifpReg->HPan =
+			mt9v111_device.ifpReg->HPan + (pan_level - 1);
+	}
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111i_H_PAN;
+	data = mt9v111_device.ifpReg->HPan;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+/*!
+ * mt9v111 sensor set digital tilt
+ *
+ * @param tilt_level   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitaltilt (int sensorid , int tilt_level)
+{
+	u8 reg;
+	u16 data;
+	pr_debug("In mt9v111_set_digitaltilt(%d)\n",
+		tilt_level);
+
+	mt9v111_device.ifpReg->VPan = 8;
+        if( tilt_level & 0xFFFF0000 ) {
+				tilt_level = (0xFFFFFFFF - tilt_level);
+				tilt_level = tilt_level / 0x14;
+                mt9v111_device.ifpReg->VPan = mt9v111_device.ifpReg->VPan - (tilt_level & 0x3FF);
+        }
+        else {
+				tilt_level = tilt_level / 0x14;
+                mt9v111_device.ifpReg->VPan = mt9v111_device.ifpReg->VPan + (tilt_level - 1);
+        }
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111i_V_PAN;
+	data = mt9v111_device.ifpReg->VPan;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+/*!
+ * mt9v111 sensor set output resolution
+ *
+ * @param resolution   res
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_outputresolution(int sensorid , MT9V111_OutputResolution res)
+{
+	u8 reg;
+	u16 data;
+	int zoom = 0;
+
+	pr_debug("In mt9v111_set_outputresolution(%d)\n",res);
+
+	switch (res) {
+	    case MT9V111_OutputResolution_VGA:
+			/* 640x480 */
+			mt9v111_device.ifpReg->HSize = 0x0280;
+			mt9v111_device.ifpReg->VSize = 0x01E0;
+			break;
+
+	    case MT9V111_OutputResolution_QVGA:
+			/* 320x240 */
+			mt9v111_device.ifpReg->HSize = 0x0140;
+			mt9v111_device.ifpReg->VSize = 0x00F0;
+			break;
+
+	    case MT9V111_OutputResolution_CIF:
+			/* 352x288 */
+			mt9v111_device.ifpReg->HSize = 0x0160;
+			mt9v111_device.ifpReg->VSize = 0x0120;
+			mt9v111_device.ifpReg->HZoom = 0x0160;
+			mt9v111_device.ifpReg->VZoom = 0x0120;
+			zoom = 1;
+			break;
+
+	    case MT9V111_OutputResolution_QCIF:
+			/* 176X220 */
+			mt9v111_device.ifpReg->HSize = 0x00B0;
+			mt9v111_device.ifpReg->VSize = 0x0090;
+			mt9v111_device.ifpReg->HZoom = 0x00B0;
+			mt9v111_device.ifpReg->VZoom = 0x0090;
+			zoom = 1;
+			break;
+
+	    case MT9V111_OutputResolution_QQVGA:
+			/* 2048*1536 */
+			mt9v111_device.ifpReg->HSize = 0x00A0;
+			mt9v111_device.ifpReg->VSize = 0x0078;
+			mt9v111_device.ifpReg->HZoom = 0x00A0;
+			mt9v111_device.ifpReg->VZoom = 0x0078;
+			zoom = 1;
+			break;
+
+	    case MT9V111_OutputResolution_SXGA:
+		/* 1280x1024 */
+			break;
+
+		default:
+			break;
+	}
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	reg = MT9V111i_V_SIZE;
+	data = mt9v111_device.ifpReg->VSize;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	reg = MT9V111i_H_SIZE;
+	data = mt9v111_device.ifpReg->HSize;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	if ( zoom ) {
+	    reg = MT9V111i_V_ZOOM;
+	    data = mt9v111_device.ifpReg->VZoom;
+	    mt9v111_write_reg(sensorid,reg, data);
+
+	    reg = MT9V111i_H_ZOOM;
+	    data = mt9v111_device.ifpReg->HZoom;
+	    mt9v111_write_reg(sensorid,reg, data);
+	}
+
+	return 0;
+}
+
+/*!
+ * mt9v111 sensor set digital flash
+ *
+ * @param flash_level   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalflash (int sensorid , int flash_level)
+{
+	u8 reg;
+	u16 data = mt9v111_read_reg(sensorid,MT9V111i_FLASH_CTRL);
+	pr_debug("In mt9v111_set_digitalflash(%d)\n",
+			flash_level);
+
+	if(flash_level) {
+	    data &= (0xFF00);
+	    data |= ((flash_level & 0x00FF) | (1<<13));
+	}
+	else {
+	    data &= ~(1<<13);
+	}
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111i_FLASH_CTRL;
+	mt9v111_device.ifpReg->flashCtrl = data;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+/*!
+ * mt9v111 sensor set digital monochrome
+ *
+ * @param on   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalmonochrome (int sensorid , int on)
+{
+	u8 reg;
+	u16 data = mt9v111_read_reg(sensorid,MT9V111I_FORMAT_CONTROL);
+	pr_debug("In mt9v111_set_digitalmonochrome(%d)\n",
+			on);
+
+        /* clear the monochrome bit field */
+        data &= ~(1<<5);
+
+         /* enable or disable monochrome mode */
+         if( on )
+                 data |= (0<<5);
+         else
+                 data |= (1<<5);
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111I_FORMAT_CONTROL;
+	mt9v111_device.ifpReg->formatControl = data;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+#endif
+
+/*!
+ * mt9v111 sensor set digital sharpness
+ *
+ * @param value   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalsharpness (int sensorid , int value)
+{
+	u8 reg;
+	u16 data = mt9v111_read_reg(sensorid,MT9V111I_APERTURE_GAIN);
+	pr_debug("In mt9v111_set_digitalsharpness(%d)\n",
+			value);
+
+        /* erase current and remove auto reduce sharpness in low light */
+         data &= ~(0x000F);
+         value = value / 0x14;
+         /* create the new register value */
+         data |= (value & (0x000F));
+
+         if( data > (0x000F) )
+                 return -1;
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111I_APERTURE_GAIN;
+	mt9v111_device.ifpReg->apertureGain = data;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	return 0;
+}
+
+static char brightness_table[] = {0x64,0x54,0x44,0x34,0x24,0x14,0x00,0x64,0x74,0x84,0x94,0xA4,0xb4,0xC4};
+
+/*!
+ * mt9v111 sensor set digital brightness
+ *
+ * @param value   int
+
+ * @return  0 on success, -1 on error.
+ */
+static int mt9v111_set_digitalbrightness (int sensorid , int value)
+{
+	u8 reg;
+	u16 data = mt9v111_read_reg(sensorid,MT9V111I_AE_PRECISION_TARGET);
+	u32 max_brightness, area_offset;
+	pr_debug("In mt9v111_set_digitalbrightness(%d)\n",
+			value);
+
+
+	max_brightness = mt9v111_read_reg(sensorid,MT9V111I_CLIP_LIMIT_OUTPUT_LUMI);
+        max_brightness >>= 8;
+
+        if ( value > 0xFFFF0000 )
+        {
+                max_brightness = (0xFFFFFFFF - value);
+                area_offset = 0;
+        }
+        else
+        {
+                max_brightness = value;
+                area_offset = 6;
+        }
+
+        max_brightness = max_brightness / 100;
+        max_brightness &= 0x00FF;
+        max_brightness = max_brightness / 0x14;             // steps
+        data &= (0xFF00);                           // clear current brightness
+        data |= brightness_table[max_brightness+area_offset];
+
+	reg = MT9V111I_ADDR_SPACE_SEL;
+	data = mt9v111_device.ifpReg->addrSpaceSel;
+	mt9v111_write_reg(sensorid,reg, data);
+
+	/* Operation Mode Control */
+	reg = MT9V111I_AE_PRECISION_TARGET;
+	mt9v111_device.ifpReg->AEPrecisionTarget = data;
 	mt9v111_write_reg(sensorid,reg, data);
 
 	return 0;
@@ -672,59 +1022,17 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 		pr_debug("   V4L2_CID_BRIGHTNESS\n");
 		vc->value = mt9v111_data[sensorid].brightness;
 		break;
-	case V4L2_CID_CONTRAST:
-		pr_debug("   V4L2_CID_CONTRAST\n");
-		vc->value = mt9v111_data[sensorid].contrast;
-		break;
 	case V4L2_CID_SATURATION:
 		pr_debug("   V4L2_CID_SATURATION\n");
 		vc->value = mt9v111_data[sensorid].saturation;
-		break;
-	case V4L2_CID_HUE:
-		pr_debug("   V4L2_CID_HUE\n");
-		vc->value = mt9v111_data[sensorid].hue;
-		break;
-	case V4L2_CID_AUTO_WHITE_BALANCE:
-		pr_debug(
-			"   V4L2_CID_AUTO_WHITE_BALANCE\n");
-		vc->value = 0;
-		break;
-	case V4L2_CID_DO_WHITE_BALANCE:
-		pr_debug(
-			"   V4L2_CID_DO_WHITE_BALANCE\n");
-		vc->value = 0;
-		break;
-	case V4L2_CID_RED_BALANCE:
-		pr_debug("   V4L2_CID_RED_BALANCE\n");
-		vc->value = mt9v111_data[sensorid].red;
-		break;
-	case V4L2_CID_BLUE_BALANCE:
-		pr_debug("   V4L2_CID_BLUE_BALANCE\n");
-		vc->value = mt9v111_data[sensorid].blue;
-		break;
-	case V4L2_CID_GAMMA:
-		pr_debug("   V4L2_CID_GAMMA\n");
-		vc->value = 0;
 		break;
 	case V4L2_CID_EXPOSURE:
 		pr_debug("   V4L2_CID_EXPOSURE\n");
 		vc->value = mt9v111_data[sensorid].ae_mode;
 		break;
-	case V4L2_CID_AUTOGAIN:
-		pr_debug("   V4L2_CID_AUTOGAIN\n");
-		vc->value = 0;
-		break;
 	case V4L2_CID_GAIN:
 		pr_debug("   V4L2_CID_GAIN\n");
-		vc->value = 0;
-		break;
-	case V4L2_CID_HFLIP:
-		pr_debug("   V4L2_CID_HFLIP\n");
-		vc->value = 0;
-		break;
-	case V4L2_CID_VFLIP:
-		pr_debug("   V4L2_CID_VFLIP\n");
-		vc->value = 0;
+		vc->value = mt9v111_data[sensorid].gain;
 		break;
 	default:
 		pr_debug("   Default case\n");
@@ -758,49 +1066,23 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 	switch (vc->id) {
 	case V4L2_CID_BRIGHTNESS:
 		pr_debug("   V4L2_CID_BRIGHTNESS\n");
-		break;
-	case V4L2_CID_CONTRAST:
-		pr_debug("   V4L2_CID_CONTRAST\n");
+		mt9v111_set_digitalbrightness(sensorid,vc->value);
+		mt9v111_data[sensorid].brightness = vc->value;
 		break;
 	case V4L2_CID_SATURATION:
 		pr_debug("   V4L2_CID_SATURATION\n");
 		retval = mt9v111_set_saturation(sensorid,vc->value);
-		break;
-	case V4L2_CID_HUE:
-		pr_debug("   V4L2_CID_HUE\n");
-		break;
-	case V4L2_CID_AUTO_WHITE_BALANCE:
-		pr_debug(
-			"   V4L2_CID_AUTO_WHITE_BALANCE\n");
-		break;
-	case V4L2_CID_DO_WHITE_BALANCE:
-		pr_debug(
-			"   V4L2_CID_DO_WHITE_BALANCE\n");
-		break;
-	case V4L2_CID_RED_BALANCE:
-		pr_debug("   V4L2_CID_RED_BALANCE\n");
-		break;
-	case V4L2_CID_BLUE_BALANCE:
-		pr_debug("   V4L2_CID_BLUE_BALANCE\n");
-		break;
-	case V4L2_CID_GAMMA:
-		pr_debug("   V4L2_CID_GAMMA\n");
+		mt9v111_data[sensorid].saturation = vc->value;
 		break;
 	case V4L2_CID_EXPOSURE:
 		pr_debug("   V4L2_CID_EXPOSURE\n");
 		retval = mt9v111_set_ae_mode(sensorid,vc->value);
-		break;
-	case V4L2_CID_AUTOGAIN:
-		pr_debug("   V4L2_CID_AUTOGAIN\n");
+		mt9v111_data[sensorid].ae_mode = vc->value;
 		break;
 	case V4L2_CID_GAIN:
 		pr_debug("   V4L2_CID_GAIN\n");
-		break;
-	case V4L2_CID_HFLIP:
-		pr_debug("   V4L2_CID_HFLIP\n");
-		break;
-	case V4L2_CID_VFLIP:
-		pr_debug("   V4L2_CID_VFLIP\n");
+		mt9v111_set_digitalsharpness(sensorid,vc->value);
+		mt9v111_data[sensorid].gain = vc->value;
 		break;
 	default:
 		pr_debug("   Default case\n");
