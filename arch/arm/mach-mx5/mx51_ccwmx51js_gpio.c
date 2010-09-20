@@ -1102,7 +1102,7 @@ void __init ccwmx51_io_init(void)
 #endif
 
 	/* Configure Digital IO as GPIO */
-#if defined(JSCCWMX51_V1)
+#if defined(CONFIG_JSCCWMX51_V1)
 #if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
 	mxc_config_iomux(MX51_PIN_NANDF_CS4,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
 	mxc_config_iomux(MX51_PIN_NANDF_CS5,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
@@ -1126,7 +1126,7 @@ void __init ccwmx51_io_init(void)
 #endif
 #endif
 
-#if defined(JSCCWMX51_V2)
+#if defined(CONFIG_JSCCWMX51_V2)
 #if !definded (CONFIG_SPI_MXC_SELECT2)
 	mxc_config_iomux(MX51_PIN_NANDF_RB3,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
 #endif
