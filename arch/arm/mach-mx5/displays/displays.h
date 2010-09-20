@@ -24,11 +24,13 @@
 #endif
 
 struct ccwmx51_lcd_pdata lcd_display_list[] = {
+#if defined(CONFIG_CCWMX51_DISP0) || defined(CONFIG_CCWMX51_DISP1)
 #if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
 	LQ070Y3DG3B_DISPLAY,
 #endif
 #if defined(CONFIG_CCWMX51_CUSTOM)
 	CUSTOM_DISPLAY,
+#endif
 #endif
 };
 
