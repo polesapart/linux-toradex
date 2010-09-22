@@ -1127,7 +1127,7 @@ void __init ccwmx51_io_init(void)
 #endif
 
 #if defined(CONFIG_JSCCWMX51_V2)
-#if !definded (CONFIG_SPI_MXC_SELECT2)
+#if !defined (CONFIG_SPI_MXC_SELECT2)
 	mxc_config_iomux(MX51_PIN_NANDF_RB3,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
 #endif
 
