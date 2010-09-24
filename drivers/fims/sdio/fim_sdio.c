@@ -142,15 +142,10 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 /* Macros for the SDIO-interface to the FIM-firmware */
 #define SDIO_HOST_TX_HDR			0x40
 #define SDIO_HOST_CMD_MASK			0x3f
-#define SDIO_FIFO_TX_48RSP			0x01
-#define	SDIO_FIFO_TX_136RSP			0x02
-#define SDIO_FIFO_TX_BW4			0x04
-#define SDIO_FIFO_TX_BLKWR			0x08
-#define SDIO_FIFO_TX_BLKRD			0x10
-#define SDIO_FIFO_TX_DISCRC			0x20
 
 /* User specified macros */
-#define FIM_SDIO_TIMEOUT_MS			500
+//#define FIM_SDIO_TIMEOUT_MS			500
+#define FIM_SDIO_TIMEOUT_MS			1000
 #define FIM_SDIO_TX_CMD_LEN			5
 #define FIM_SDIO_MAX_RESP_LENGTH			17
 
@@ -161,21 +156,46 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 
 /*
  * Firmware specific control registers
- * IMPORTANT: The control bit for the card detect is enabled wih the main control!
  */
-#define FIM_SDIO_CLKDIV_REG			0
-#define FIM_SDIO_INTCFG_REG			1
-#define FIM_SDIO_INTCFG_MAIN			(1 << 0)
-#define FIM_SDIO_INTCFG_CARD			(1 << 1)
-#define FIM_SDIO_INTCFG_SDIO			(1 << 2)
-#define FIM_SDIO_BLOCKS_REG                     2
-#define FIM_SDIO_BLKSZ_LSB_REG			3
-#define FIM_SDIO_BLKSZ_MSB_REG			4
-#define FIM_SDIO_MAIN_REG			5
-#define FIM_SDIO_MAIN_START			(1 << 0)
+#define FIM_SDIO_CLKDIV_REG			0	/* Clock delay */
 
-/* Firmware specific status registers */
-#define FIM_SDIO_VERSION_SREG			0
+#define FIM_SDIO_CONTROL1_REG			1
+# define FIM_SDIO_CONTROL1_INTR_EN		0x01	/* 0: disable, 1: enable */
+# define FIM_SDIO_CONTROL1_BUS_WIDTH4		0x02	/* 0: 1-bit mode, 1: 4-bit mode */
+# define FIM_SDIO_CONTROL1_HIGH_SPEED		0x04	/* 0: use clock set in CONTROL0, 1: ignore clock set in CONTROL0 */
+# define FIM_SDIO_CONTROL1_DISABLE_CRC		0x08	/* 0: enable, 1: disable */
+# define FIM_SDIO_CONTROL1_STOP			0x10	/* stop the current multiblock transaction */
+# define FIM_SDIO_CONTROL1_START		0x80	/* start firmware running */
+
+#define FIM_SDIO_CONTROL2_REG			2
+# define FIM_SDIO_CONTROL2_RESP48		0x01	/* expected 48 bits response */
+# define FIM_SDIO_CONTROL2_RESP136		0x02	/* expected 136 bits response */
+# define FIM_SDIO_CONTROL2_BLK_READ		0x04	/* block read command */
+# define FIM_SDIO_CONTROL2_BLK_WRITE		0x08	/* block write command */
+# define FIM_SDIO_CONTROL2_CHECK_BUSY		0x10	/* wait until the card is not busy after current command respone */
+# define FIM_SDIO_CONTROL2_SKIP_CRC		0x20	/* skip CRC for a command respone, use it for R2 and R3 */
+# define FIM_SDIO_CONTROL2_WAIT_FOR_CMD		0x40	/* after executing the current command, FIM waits for a new command to start the clock */
+
+#define FIM_SDIO_BLKSZ_LSB_REG			3	/* LSB of the block/data size configured in bytes */
+#define FIM_SDIO_BLKSZ_MSB_REG			4	/* MSB of the block/data size configured in bytes */
+#define FIM_SDIO_BLKCNT_LSB_REG			5	/* LSB of the block count (set this to 1 if it is single block transfer */
+#define FIM_SDIO_BLKCNT_MSB_REG			6	/* MSB of the block count */
+
+/*
+ * Firmware specific status registers
+ */
+#define FIM_SDIO_FIMVER_REG			0	/* Firmware version number */
+#define FIM_SDIO_PORTEXP1_REG			1
+# define FIM_SDIO_PORTEXP1_RESP			0x01	/* received data is respone */
+# define FIM_SDIO_PORTEXP1_READ			0x02	/* received data is read data */
+# define FIM_SDIO_PORTEXP1_TIMEOUT		0x04	/* no response received */
+# define FIM_SDIO_PORTEXP1_CRCERR_CMD		0x08	/* CRC error in command response */
+# define FIM_SDIO_PORTEXP1_CRCERR_DATA		0x10	/* CRC error in read data */
+#define FIM_SDIO_DATAWR_STATUS_REG		2	/* Data write status reg. Will be updated with the CRC status after each block completion */
+# define FIM_SDIO_DATAWR_STATUS_NOT_RDY		0x00	/* Not ready / In progress */
+# define FIM_SDIO_DATAWR_STATUS_SUCCESS		0x02	/* Success */
+# define FIM_SDIO_DATAWR_STATUS_NEG_CRC		0x05	/* Negative CRC */
+# define FIM_SDIO_DATAWR_STATUS_NO_CRC		0x07	/* No CRC status response */
 
 /* Internal flags for the request function */
 #define FIM_SDIO_REQUEST_NEW			0x00
@@ -205,7 +225,7 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 # define FIM_SDIO_MAX_BLOCKS			(FIM_SDIO_DMA_RX_BUFFERS - 10)
 # define FIM_SDIO_SKIP_CRC_CHECK
 #else
-# define FIM_SDIO_MAX_BLOCKS			1
+# define FIM_SDIO_MAX_BLOCKS			(PAGE_SIZE / 512)
 #endif
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] fim-sdio: " fmt, ## args)
@@ -254,7 +274,6 @@ enum fim_blkrd_state {
 	BLKRD_STATE_CRC_ERR		= 6, /* Compared CRC (PIC and card) differs */
 };
 
-
 /* Values for the command state machine */
 enum fim_cmd_state {
 	CMD_STATE_IDLE			= 0,
@@ -278,7 +297,6 @@ struct fim_sdio_t {
 	struct fim_gpio_t gpios[FIM_SDIO_MAX_GPIOS];
 	struct fim_buffer_t *buf;
 	struct mmc_command *mmc_cmd;
-	struct timer_list mmc_timer;
 	struct mmc_host *mmc;
 	struct mmc_request *mmc_req;
 
@@ -286,6 +304,7 @@ struct fim_sdio_t {
 	enum fim_blkrd_state blkrd_state;
 
 	int trans_blocks;
+	int trans_blksz;
 	int trans_sg;
 	int reg;
 
@@ -295,6 +314,7 @@ struct fim_sdio_t {
 	int cd_irq;
 	int cd_value;
 	struct timer_list cd_timer;
+	struct timer_list debounce_timer;
 
 	/* struct scatterlist *sg; */
 	u8 *sg_virt;
@@ -302,18 +322,18 @@ struct fim_sdio_t {
 	/* Members used for restarting the FIM */
 	atomic_t fim_is_down;
 	struct work_struct restart_work;
+
+	/* Wait queue, and events */
+	wait_queue_head_t wq;
+	u8 tx_ready;
+	u8 rx_ready;
 };
 
 /*
  * Transfer command structure for the card
- * opctl : Control byte for the PIC
- * blksz : Block size
- * cmd   : Command to send to the card
+* cmd   : Command to send to the card
  */
 struct fim_sd_tx_cmd_t {
-	unsigned char opctl;
-	unsigned char blksz_msb;
-        unsigned char blksz_lsb;
         unsigned char cmd[FIM_SDIO_TX_CMD_LEN];
 }__attribute__((__packed__));
 
@@ -321,13 +341,9 @@ struct fim_sd_tx_cmd_t {
 /*
  * Response receive structure from the Card
  * resp  : Card response, with a length of 5 or 17 as appropriate
- * stat  : Opcode of the executed command
- * crc   : CRC
- */
+*/
 struct fim_sd_rx_resp_t {
-        unsigned char stat;
         unsigned char resp[FIM_SDIO_MAX_RESP_LENGTH];
-        unsigned char crc;
 }__attribute__((__packed__));
 
 
@@ -360,26 +376,6 @@ inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc)
 	return (struct fim_sdio_t *)mmc->private[0];
 }
 
-/*
- * This function is called when the FIM didn't respond to our requests. This normally
- * happens when the card was unplugged during a data transfer or by another similar
- * errors. So, for avoiding some additional failure we stop any further transfers to
- * the FIM.
- */
-static void fim_sd_cmd_timeout(unsigned long data)
-{
-	struct fim_sdio_t *port;
-
-	port = (struct fim_sdio_t *)data;
-
-	/* If the command pointer isn't NULL then a timeout has ocurred */
-	if (port->mmc_cmd) {
-		atomic_set(&port->fim_is_down, 1);
-		port->mmc_cmd->error = -ENOMEDIUM;
-		fim_sd_process_next(port);
-	}
-}
-
 /* Workqueue for restarting a FIM */
 static void fim_sd_restart_work_func(struct work_struct *work)
 {
@@ -405,7 +401,7 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 		return;
 	}
 
-        ret = fim_send_start(&port->fim);
+	ret = fim_send_start(&port->fim);
         if (ret) {
 		printk_err("FIM%i start failed\n", fim->picnr);
 		return;
@@ -414,6 +410,7 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 	/* Reset the internal values */
 	printk_dbg("Re-enabling the IRQ of FIM%u\n", fim->picnr);
 	atomic_set(&port->fim_is_down, 0);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, FIM_SDIO_CONTROL1_START);
 	fim_enable_irq(&port->fim);
 	port->mmc_cmd = NULL;
 	mmc_detect_change(port->mmc, msecs_to_jiffies(100));
@@ -471,17 +468,41 @@ static inline int fim_sd_prepare_cd_irq(struct fim_sdio_t *port)
 }
 
 /*
+ * Card detect debounce timer callback.
+ * Enables the card detect interrupt, and sets its type.
+ */
+static void fim_sd_cd_debounce_func(unsigned long _port)
+{
+	struct fim_sdio_t *port;
+	int ret;
+
+	port = (struct fim_sdio_t *)_port;
+
+	/* Set new IRQ type */
+	if ((ret = fim_sd_prepare_cd_irq(port))) {
+		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);
+	}
+
+	/* Enabling IRQ */
+	enable_irq(port->cd_irq);
+}
+
+/*
  * The external interrupt line only supports one edge detection! That means, we must
  * check the status of the line and reconfigure the interrupt trigger type.
  */
 static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 {
 	struct fim_sdio_t *port;
-	int ret;
+	//int ret;
 
 	port = (struct fim_sdio_t *)_port;
-	if ((ret = fim_sd_prepare_cd_irq(port)))
-		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);
+	/*if ((ret = fim_sd_prepare_cd_irq(port)))
+		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);*/
+
+	/* Disable CD IRQ, and start debounce timer */
+	disable_irq(port->cd_irq);
+	mod_timer(&port->debounce_timer, jiffies + msecs_to_jiffies(300));
 
 	/*
 	 * If the FIM was stopped, then only schedule the workqueue for restarting it
@@ -490,7 +511,7 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 	if (atomic_read(&port->fim_is_down))
 		schedule_work(&port->restart_work);
 	else
-		mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+		mmc_detect_change(port->mmc, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
 }
@@ -514,6 +535,7 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		       unsigned int rx_fifo)
 {
 	struct fim_sdio_t *port;
+	unsigned int ireg;
 
 	port = driver->driver_data;
 	if (!port || !port->mmc) {
@@ -525,7 +547,8 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 
 	case FIM_SDIO_INTARM_CARD_DETECTED:
 		if (fim_sd_card_plugged(port)) {
-			fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, 0);
+			fim_get_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, &ireg);
+			fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, (ireg & ~FIM_SDIO_CONTROL1_INTR_EN));
 			printk_debug("SD card detected\n");
 		} else {
 			printk_debug("SD card removed\n");
@@ -545,6 +568,9 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		else
 			printk_dbg("Premature SDIO IRQ received!\n");
 		break;
+	case 0x10:
+		printk_err("CRC status IRQ!!!\n");
+		break;
 	default:
 		printk_err("Unknown IRQ %i | FIM %i | %x\n",
 			   code, port->fim.picnr, rx_fifo);
@@ -556,7 +582,7 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
  * This is the TX-callback that the API call after a DMA-package was closed
  * The fim buffer structure contains our internal private data
  * Free the allocated FIM-buffer that was used for sending the DMA-data
- */
+*/
 static void fim_sd_tx_isr(struct fim_driver *driver, int irq,
 			  struct fim_buffer_t *pdata)
 {
@@ -568,6 +594,10 @@ static void fim_sd_tx_isr(struct fim_driver *driver, int irq,
 		buf = pdata->private;
 		fim_free_buffer(&port->fim, buf);
 	}
+
+	/* Set transmit ready flag */
+	port->tx_ready = 1;
+	wake_up_interruptible(&port->wq);
 }
 
 /* @XXX: Remove this ugly code! */
@@ -577,129 +607,36 @@ inline static void fim_sd_parse_resp(struct mmc_command *cmd,
 	unsigned char *ptr;
 	ptr = (unsigned char *)cmd->resp;
 	if (cmd->flags & MMC_RSP_136) {
+		*ptr++ = resp->resp[4];
 		*ptr++ = resp->resp[3];
 		*ptr++ = resp->resp[2];
 		*ptr++ = resp->resp[1];
-		*ptr++ = resp->resp[0];
+		*ptr++ = resp->resp[8];
 		*ptr++ = resp->resp[7];
 		*ptr++ = resp->resp[6];
 		*ptr++ = resp->resp[5];
-		*ptr++ = resp->resp[4];
+		*ptr++ = resp->resp[12];
 		*ptr++ = resp->resp[11];
 		*ptr++ = resp->resp[10];
 		*ptr++ = resp->resp[9];
-		*ptr++ = resp->resp[8];
+		*ptr++ = resp->resp[16];
 		*ptr++ = resp->resp[15];
 		*ptr++ = resp->resp[14];
 		*ptr++ = resp->resp[13];
-		*ptr++ = resp->resp[12];
 	} else {
+		*ptr++ = resp->resp[4];
 		*ptr++ = resp->resp[3];
 		*ptr++ = resp->resp[2];
 		*ptr++ = resp->resp[1];
+		*ptr++ = resp->resp[5];
 		*ptr++ = resp->resp[0];
-		*ptr++ = resp->resp[4];
-		*ptr++ = resp->stat;
 	}
-}
-
-/*
- * This function checks the CRC by block read transfer
- * The information about the length and content of the CRC was obtained
- * from the firmware-source code (sd.asm)
- */
-inline static int fim_sd_check_blkrd_crc(struct fim_sdio_t *port, unsigned char *data,
-					 int length)
-{
-	int crc_len;
-	unsigned char *pic_crc;
-
-	/*
-	 * The CRC length depends on the bus width (see sd.asm)
-	 * No CRC enabled : One byte (0x00)
-	 * One bit bus    : Four bytes
-	 * Four bit bus   : Eight bytes
-	 */
-	if (!(port->mmc_cmd->flags & MMC_RSP_CRC)) {
-		crc_len = 1;
-		pic_crc = data;
-	} else if (port->mmc->ios.bus_width == MMC_BUS_WIDTH_1) {
-		crc_len = 4;
-		pic_crc = data + 2;
-	} else {
-		crc_len = 16;
-		pic_crc = data + 8;
-	}
-
-	if (crc_len != length) {
-		printk_err("Unexpected CRC length %i (expected %i)\n",
-		       length, crc_len);
-		return -EINVAL;
-	}
-
-        /*
-	 * Code for forcing a CRC-error and the behavior of the MMC-layer
-	 * crc_error = 10 : Error reading the partition table
-	 * crc_error = 40 : Error by a block read transfer
-	 */
-#ifdef FIM_SDIO_FORCE_CRC
-	static int crc_error = 0;
-	if (crc_error == 40) {
-		crc_error++;
-		return 1;
-	} else
-		crc_error++;
-#endif
-
-	/* If the CRC is disabled, the PIC only appended a dummy Byte */
-	if (crc_len == 1)
-		return 0;
-
-#if defined(FIM_SDIO_DEBUG_CRC)
-#define FIM_SDIO_CRC_PATTERN                   "%02x %02x %02x %02x %02x %02x %02x %02x"
-	{
-		int retval, len;
-
-		len = crc_len >> 1;
-		retval = memcmp(data, pic_crc, len);
-		if (retval) {
-
-			printk_dbg("Data len %i | CRC len %i\n", length, len);
-
-			printk_dbg("CRC FIM : " FIM_SDIO_CRC_PATTERN "\n",
-				   *pic_crc, *(pic_crc + 1),
-				   *(pic_crc + 2), *(pic_crc + 3),
-				   *(pic_crc + 4), *(pic_crc + 5),
-				   *(pic_crc + 6), *(pic_crc + 7));
-			printk_dbg("CRC MMC : " FIM_SDIO_CRC_PATTERN "\n",
-				   *data, *(data + 1),
-				   *(data + 2), *(data + 3),
-				   *(data + 4), *(data + 5),
-				   *(data + 6), *(data + 7));
-		}
-
-		return retval;
-	}
-#else
-	return memcmp(data, pic_crc, crc_len >> 1);
-#endif
-}
-
-inline static void fim_sd_print_crc(int length, unsigned char *crc)
-{
-	/* Only four and six as length supported */
-	if (length == 4)
-		printk_info("CRC: %u\n", *((unsigned int *)crc));
-	else
-		printk_info("CRC: %lu\n", *((unsigned long *)crc));
 }
 
 /*
  * Called when a receive DMA-buffer was closed.
- * Unfortunately the data received from the PIC has different formats. Sometimes it
- * contains a response, sometimes data of a block read request and sometimes the CRC
- * of the read data. In the case of a read transfer it is really amazing, then
- * the transfer consists in four DMA-buffers.
+ * The data received from the PIC has different formats. Sometimes it
+ * contains a response and sometimes data of a block read request.
  */
 static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 			  struct fim_buffer_t *pdata)
@@ -707,9 +644,8 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	struct fim_sdio_t *port;
 	struct mmc_command *mmc_cmd;
 	struct fim_sd_rx_resp_t *resp;
-	int len, crc_len;
-	unsigned char *crc_ptr;
-	int is_ack;
+	int len;
+	unsigned int stat;
 
 	/* Get the correct port from the FIM-driver structure */
 	len = pdata->length;
@@ -730,82 +666,85 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	 * read too, for this reason was implemented the state machine
 	 */
 	resp = (struct fim_sd_rx_resp_t *)pdata->data;
-	is_ack = (pdata->length == 1) ? 1 : 0;
 
-	printk_debug("CMD%i | RESP stat %x | CMD stat %i | BLKRD stat %i | Len %i\n",
-		     mmc_cmd->opcode, resp->stat, port->cmd_state,
-		     port->blkrd_state, pdata->length);
+	fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
 
-	/*
-	 * By the ACKs the PIC will NOT send a timeout. Timeouts are only
-	 * set by the response and and block read data
-	 */
-	if (is_ack && resp->stat & FIM_SDIO_RX_TIMEOUT) {
-		mmc_cmd->error = -ETIMEDOUT;
-		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
-		port->cmd_state = CMD_STATE_HAVE_RSP;
+	if ( stat & FIM_SDIO_PORTEXP1_READ ) {
+		/* First comes data */
+		if ( port->blkrd_state == BLKRD_STATE_WAIT_DATA ) {
+			if ( stat & FIM_SDIO_PORTEXP1_CRCERR_DATA ) {
+				/* We need to receive response in case of error also */
+				port->blkrd_state = BLKRD_STATE_CRC_ERR;
+			}
+			else {
+				fim_sd_dma_to_sg(port, mmc_cmd->data,
+						pdata->data, pdata->length);
 
-		/* Check the conditions for the BLOCK READ state machine */
-	} else if (port->blkrd_state == BLKRD_STATE_WAIT_ACK && is_ack &&
-		   resp->stat & FIM_SDIO_RX_BLKRD) {
-		port->blkrd_state = BLKRD_STATE_WAIT_DATA;
-
-		/* Check if the block read data has arrived */
-	} else if (port->blkrd_state == BLKRD_STATE_WAIT_DATA && !is_ack) {
-		crc_len = len - mmc_cmd->data->blksz;
-		crc_ptr = pdata->data + mmc_cmd->data->blksz;
-		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
-
-#if !defined(FIM_SDIO_SKIP_CRC_CHECK)
-#define FIM_SDIO_RDBLK_PATTERN "%02x %02x %02x %02x %02x %02x " \
-				"%02x %02x %02x %02x %02x %02x"
-		if (fim_sd_check_blkrd_crc(port, crc_ptr, crc_len)) {
-			printk_err("CRC failure | Data %i | CRC %i | Retries %i\n",
-				   len, crc_len, mmc_cmd->retries);
-
-			printk_dbg(FIM_SDIO_RDBLK_PATTERN "\n",
-				   *pdata->data      , *(pdata->data + 1),
-				   *(pdata->data + 2), *(pdata->data + 3),
-				   *(pdata->data + 4), *(pdata->data + 5),
-				   *(pdata->data + 6), *(pdata->data + 7),
-				   *(pdata->data + 8), *(pdata->data + 9),
-				   *(pdata->data + 10), *(pdata->data + 11));
-
-			mmc_cmd->error = -EILSEQ;
-		} else {
-			fim_sd_dma_to_sg(port, mmc_cmd->data,
-					 pdata->data, pdata->length - crc_len);
- 		}
-#else
-		fim_sd_dma_to_sg(port, mmc_cmd->data,
-				 pdata->data, pdata->length - crc_len);
-#endif
-
-		/* Check if we have a multiple transfer read */
-		port->trans_blocks -= 1;
-		if (port->trans_blocks > 0) {
-			printk_debug("Wait for next block %i\n", port->trans_blocks);
-			port->blkrd_state = BLKRD_STATE_WAIT_ACK;
+				/* Check if we have a multiple transfer read */
+				port->trans_blocks -= len / port->trans_blksz;
+				if (port->trans_blocks > 0) {
+					printk_debug("Wait for next block %i\n", port->trans_blocks);
+				}
+				else {
+					port->blkrd_state = BLKRD_STATE_HAVE_DATA;
+				}
+			}
 		}
+		/* After data, there comes the response */
+		else if ( port->cmd_state == CMD_STATE_WAIT_DATA ) {
+			fim_sd_parse_resp(mmc_cmd, resp);
+			port->cmd_state = CMD_STATE_HAVE_RSP;
+		}
+		/* Unexpected state */
+		else {
+			if (mmc_cmd->data && mmc_cmd->data->flags & MMC_DATA_READ)
+				printk_err("Failed multi RX (CMD%u | PIC stat %x | State %x)\n",
+					mmc_cmd->opcode, stat, port->blkrd_state);
+			else
+				printk_err("Unexpected RX stat (CMD%i | PIC stat %x | Leng %i)\n",
+					mmc_cmd->opcode, stat, pdata->length);
+		}
+	}
+	else if ( stat & FIM_SDIO_PORTEXP1_RESP ) {
+		/* First comes response */
+		if ( port->cmd_state == CMD_STATE_WAIT_DATA ) {
+			fim_sd_parse_resp(mmc_cmd, resp);
+			port->cmd_state = CMD_STATE_HAVE_RSP;
+		}
+		/* After response, there comes the data */
+		else if ( port->blkrd_state == BLKRD_STATE_WAIT_DATA ) {
+			if ( stat & FIM_SDIO_PORTEXP1_CRCERR_DATA ) {
+				port->blkrd_state = BLKRD_STATE_CRC_ERR;
+			}
+			else {
+				fim_sd_dma_to_sg(port, mmc_cmd->data,
+						pdata->data, pdata->length);
 
-		/* Check the conditions for the COMMAND state machine */
-	} else if (is_ack && port->cmd_state == CMD_STATE_WAIT_ACK &&
-		   resp->stat & FIM_SDIO_RX_RSP) {
-		port->cmd_state = CMD_STATE_WAIT_DATA;
-	} else if (!is_ack && port->cmd_state == CMD_STATE_WAIT_DATA) {
-		fim_sd_parse_resp(mmc_cmd, resp);
-		port->cmd_state = CMD_STATE_HAVE_RSP;
+				/* Check if we have a multiple transfer read */
+				port->trans_blocks -= len / port->trans_blksz;
+				if (port->trans_blocks > 0) {
+					printk_debug("Wait for next block %i\n", port->trans_blocks);
+				}
+				else {
+					port->blkrd_state = BLKRD_STATE_HAVE_DATA;
+				}
+			}
+		}
+		/* Unexpected state */
+		else {
+			if (mmc_cmd->data && mmc_cmd->data->flags & MMC_DATA_READ)
+				printk_err("Failed multi RX (CMD%u | PIC stat %x | State %x)\n",
+					mmc_cmd->opcode, stat, port->blkrd_state);
+			else
+				printk_err("Unexpected RX stat (CMD%i | PIC stat %x | Leng %i)\n",
+					mmc_cmd->opcode, stat, pdata->length);
+		}
+	}
 
-		/* Check for unexpected acks or opcodes */
-	} else {
-
-		/* @FIXME: Need a correct errror handling for this condition */
-		if (mmc_cmd->data && mmc_cmd->data->flags & MMC_DATA_READ)
-			printk_err("Failed multi RX (CMD%u | PIC stat %x | State %x)\n",
-				   mmc_cmd->opcode, resp->stat, port->blkrd_state);
-		else
-			printk_err("Unexpected RX stat (CMD%i | PIC stat %x | Leng %i)\n",
-				   mmc_cmd->opcode, resp->stat, pdata->length);
+	if ( port->cmd_state == CMD_STATE_HAVE_RSP &&
+		port->blkrd_state == BLKRD_STATE_CRC_ERR ) {
+		printk_err("CRC failure\n");
+		mmc_cmd->error = -EILSEQ;
 	}
 
 	/*
@@ -817,24 +756,11 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 	}
 
-	/*
-	 * Now evaluate if need to wait for another RX-interrupt or
-	 * can send the request done to the MMC-layer
-	 */
-	if (port->cmd_state == CMD_STATE_HAVE_RSP &&
-	    port->blkrd_state == BLKRD_STATE_HAVE_DATA) {
-
-#if defined(FIM_SDIO_MULTI_BLOCK)
-		if (mmc_cmd->data) {
-			uint blocks;
-
-			fim_get_ctrl_reg(&port->fim, FIM_SDIO_BLOCKS_REG, &blocks);
-			printk_debug("CMD%u: End code %i | Blocks %u\n",
-				   mmc_cmd->opcode, mmc_cmd->error, blocks);
-		}
-#endif /* FIM_SDIO_MULTI_BLOCK */
-
-		fim_sd_process_next(port);
+	/* Sign that we're ready */
+	if ( port->cmd_state == CMD_STATE_HAVE_RSP &&
+		port->blkrd_state == BLKRD_STATE_HAVE_DATA ) {
+		port->rx_ready = 1;
+		wake_up_interruptible(&port->wq);
 	}
 
  exit_unlock:
@@ -845,13 +771,30 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 {
 	struct fim_driver *fim;
+	int ret;
 
 	if (!buf || !port)
 		return -EINVAL;
 
 	fim = &port->fim;
 	buf->private = buf;
-	return fim_send_buffer(fim, buf);
+
+	port->tx_ready = 0;
+
+	ret = fim_send_buffer(fim, buf);
+	if ( ret != 0 )
+	{
+		return ret;
+	}
+
+	/* Wait for sending completed */
+	if ( wait_event_interruptible_timeout(port->wq, port->tx_ready, msecs_to_jiffies(1000)) <= 0 )
+	{
+		printk_err("DMA transmit timeout\n");
+		return -ETIMEDOUT;
+	}
+
+	return 0;
 }
 
 /* Returns a command buffer allocated from the FIM-API */
@@ -912,15 +855,17 @@ inline static void fim_sd_sg_to_dma(struct fim_sdio_t *port, struct mmc_data *da
 	dma_len = 0;
 
 	/* Need a correct error handling */
-	if (len > 1) {
+	/*if (len > 1) {
 		printk_err("The FIM-SD host only supports single block\n");
 		len = 1;
-	}
+	}*/
 
 	/* @XXX: Check the correctness of the memcpy operation */
 	for (cnt = 0; cnt < len && dma_len <= buf->length; cnt++) {
                 sg_buf = sg_virt(&sg[cnt]);
+		//printk_err("D: %x, S: %x\n", dma_buf, sg_buf);
 		process = (buf->length >= sg[cnt].length) ? sg[cnt].length : buf->length;
+		//printk("%x, %x\n", dma_buf, sg_buf);
                 memcpy(dma_buf, sg_buf, process);
 		dma_buf += process;
 		dma_len += process;
@@ -969,6 +914,35 @@ inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *d
 	return sg_buf;
 }
 
+inline static int fim_sd_get_transmit_crc_status(struct fim_sdio_t *port)
+{
+	unsigned int crc_status;
+	//unsigned int ret;
+	volatile unsigned char cnt = 200;
+
+	/* Wait for write CRC status */
+	do {
+		--cnt;
+		/*if ( (ret = wait_event_interruptible_timeout(port->wq, 0, usecs_to_jiffies(10))) != 0 ) {
+			printk_err("Problem with wait_queue: %d\n", ret);
+			return -ETIMEDOUT;
+		}*/
+
+		fim_get_stat_reg(&port->fim, FIM_SDIO_DATAWR_STATUS_REG, &crc_status);
+	} while ( ((crc_status == 0) || (crc_status == 1)) && (cnt != 0) );
+
+	if ( crc_status == 0 ) {
+		printk_err("Transmit CRC timeout\n");
+		return -ETIMEDOUT;
+	}
+	else if ( crc_status != FIM_SDIO_DATAWR_STATUS_SUCCESS ) {
+		printk_err("Transmit CRC error: %d\n", crc_status);
+		return -EILSEQ;
+	}
+
+	return 0;
+}
+
 /* This function will send the command to the PIC using the TX-DMA buffers */
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 {
@@ -976,37 +950,31 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	struct fim_buffer_t *buf;
 	struct fim_sd_tx_cmd_t *txcmd;
 	unsigned int block_length, blocks;
-	int retval, length;
+	int retval, cur_len, data_len = 0, len = 0;
+	unsigned char opctl = 0;
+	unsigned int stat;
+	unsigned char cntr;
 
 	/* @TODO: Send an error response to the MMC-core */
 	if (!(buf = fim_sd_alloc_cmd(port))) {
 		printk_err("No memory available for a new CMD?\n");
+		cmd->error = -ENOMEM;
 		return -ENOMEM;
 	}
 
 	/* Use the buffer data for the TX-command */
 	txcmd = (struct fim_sd_tx_cmd_t *)buf->data;
-	txcmd->opctl = 0;
 
 	/*
 	 * Set the internal flags for the next response sequences
 	 * Assume that we will wait for a command response (not block read).
 	 * By block reads the flag will be modified inside the if-condition
 	 */
-	port->cmd_state = CMD_STATE_WAIT_ACK;
+	port->cmd_state = CMD_STATE_WAIT_DATA;
 	port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 	if ((data = cmd->data) != NULL) {
 		block_length = data->blksz;
 		blocks = data->blocks;
-
-#if !defined(FIM_SDIO_MULTI_BLOCK)
-		if (blocks != 1) {
-			printk_err("Only supports single block transfer (%i)\n", blocks);
-			cmd->error = -EILSEQ;
-			fim_sd_process_next(port);
-			return -EILSEQ;
-		}
-#endif
 
 		printk_debug("CMD%u: %s %i blks | %i blksz | SG len %u\n",
 			     cmd->opcode,
@@ -1018,21 +986,22 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		port->trans_sg     = 0;
 		port->sg_virt      = sg_virt(&data->sg[0]);
 		port->trans_blocks = blocks;
+		port->trans_blksz  = block_length;
 
 		/* Setup the FIM registers (number of blocks and block size) */
-#if defined(FIM_SDIO_MULTI_BLOCK)
-		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLOCKS_REG, blocks);
-		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKSZ_LSB_REG, block_length);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKCNT_LSB_REG, blocks & 0xFF);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKCNT_MSB_REG, (blocks >> 8) & 0xFF);
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKSZ_LSB_REG, block_length & 0xFF);
 		fim_set_ctrl_reg(&port->fim, FIM_SDIO_BLKSZ_MSB_REG,
-				 (block_length >> 8));
-#endif
+				 (block_length >> 8) & 0xFF);
 
 		/* Check if the transfer request is for reading or writing */
 		if (cmd->data->flags & MMC_DATA_READ) {
-			txcmd->opctl |= SDIO_FIFO_TX_BLKRD;
-			port->blkrd_state = BLKRD_STATE_WAIT_ACK;
-		} else
-			txcmd->opctl |= SDIO_FIFO_TX_BLKWR;
+			opctl |= FIM_SDIO_CONTROL2_BLK_READ;
+			port->blkrd_state = BLKRD_STATE_WAIT_DATA;
+		} else {
+			opctl |= FIM_SDIO_CONTROL2_BLK_WRITE;
+		}
 	} else {
 		block_length = 0;
 		blocks = 0;
@@ -1040,29 +1009,31 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 
 	/* Set the correct expected response length */
 	if (cmd->flags & MMC_RSP_136)
-		txcmd->opctl |= SDIO_FIFO_TX_136RSP;
-	else
-		txcmd->opctl |= SDIO_FIFO_TX_48RSP;
+		opctl |= FIM_SDIO_CONTROL2_RESP136;
+	else if (cmd->flags & MMC_RSP_PRESENT)
+		opctl |= FIM_SDIO_CONTROL2_RESP48;
+	/* Anyway, there's no response for command */
 
 	/* Set the correct CRC configuration */
 	if (!(cmd->flags & MMC_RSP_CRC)) {
 		printk_debug("CRC is disabled\n");
-		txcmd->opctl |= SDIO_FIFO_TX_DISCRC;
+		opctl |= FIM_SDIO_CONTROL2_SKIP_CRC;
 	}
 
-	/* Set the correct bus width */
-	if (port->mmc->ios.bus_width == MMC_BUS_WIDTH_4) {
-		printk_debug("Bus width has four bits\n");
-		txcmd->opctl |= SDIO_FIFO_TX_BW4;
+	/* If it's a multi-block read, then stop CLK after the last block */
+	if ( cmd->opcode == 18 ) {
+		opctl |= FIM_SDIO_CONTROL2_WAIT_FOR_CMD;
 	}
 
-	txcmd->blksz_msb = (block_length >> 8);
-	txcmd->blksz_lsb =  block_length;
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL2_REG, opctl);
+
 	txcmd->cmd[0] = SDIO_HOST_TX_HDR | (cmd->opcode & SDIO_HOST_CMD_MASK);
 	txcmd->cmd[1] = cmd->arg >> 24;
 	txcmd->cmd[2] = cmd->arg >> 16;
 	txcmd->cmd[3] = cmd->arg >> 8;
 	txcmd->cmd[4] = cmd->arg;
+
+	port->rx_ready = 0;
 
 	/*
 	 * Store the private data for the callback function
@@ -1073,15 +1044,10 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	port->mmc_cmd = cmd;
 	buf->private = port;
 	if ((retval = fim_sd_send_buffer(port, buf))) {
-/* 		printk_err("MMC command %i (err %i)\n", cmd->opcode, */
-/* 			   retval); */
 		fim_sd_free_buffer(port, buf);
-		mod_timer(&port->mmc_timer,
-			  jiffies + msecs_to_jiffies(1/* FIM_SDIO_TIMEOUT_MS */));
-		goto exit_ok;
-	} else
-		mod_timer(&port->mmc_timer,
-			  jiffies + msecs_to_jiffies(FIM_SDIO_TIMEOUT_MS));
+		cmd->error = retval;
+		return retval;
+	}
 
 	/*
 	 * If we have a write command then fill a next buffer and send it
@@ -1089,21 +1055,78 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	 * WR-transfer but have no transfer data (perhaps not too critical?)
 	 */
 	if (data && data->flags & MMC_DATA_WRITE) {
-		length = data->blksz * data->blocks;
-		if (!(buf = fim_sd_alloc_buffer(port, length))) {
-			printk_err("Buffer alloc BLKWR failed, %i\n", length);
-			goto exit_ok;
-		}
+		data_len = data->blksz * data->blocks;
+		while ( len < data_len ) {
+			cur_len = ((data_len - len) > FIM_SDIO_DMA_BUFFER_SIZE) ?
+				FIM_SDIO_DMA_BUFFER_SIZE : data_len - len;
 
-		buf->private = port;
-		fim_sd_sg_to_dma(port, data, buf);
-		if ((retval = fim_sd_send_buffer(port, buf))) {
-			printk_err("Send BLKWR-buffer failed, %i\n", retval);
-			fim_sd_free_buffer(port, buf);
+			if (!(buf = fim_sd_alloc_buffer(port, cur_len))) {
+				printk_err("Buffer alloc BLKWR failed, %i\n", cur_len);
+				cmd->error = -EIO;
+				return -EIO;
+			}
+
+			buf->private = port;
+			fim_sd_sg_to_dma(port, data, buf);
+			if ((retval = fim_sd_send_buffer(port, buf))) {
+				printk_err("Send BLKWR-buffer failed, %i\n", retval);
+				fim_sd_free_buffer(port, buf);
+				cmd->error = retval;
+				return retval;
+			}
+
+			if ( (retval = fim_sd_get_transmit_crc_status(port)) != 0 ) {
+				cmd->error = retval;
+				return retval;
+			}
+
+			len += cur_len;
 		}
 	}
 
- exit_ok:
+	/* If command doesn't have a response, then this is the end, no need RX ISR */
+	if ( !(cmd->flags & MMC_RSP_PRESENT) ) {
+		fim_sd_process_next(port);
+		return 0;
+	}
+
+	/* Wait 10ms for command response (it's max. 64 SD CLK according to the spec) */
+	cntr = 10;
+	do {
+		--cntr;
+		if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1))) < 0 ) {
+			printk_err("Problem with wait_queue: %d\n", retval);
+			return -ETIMEDOUT;
+		}
+
+		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
+	} while ( (stat == 0) && (cntr != 0) );
+
+	if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
+		printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
+		port->mmc_cmd->error = -ETIMEDOUT;
+		fim_sd_process_next(port);
+		return 0;
+	}
+	else if ( stat == 0 ) {
+		printk_err("No response from FIM, down\n");
+		atomic_set(&port->fim_is_down, 1);
+		port->mmc_cmd->error = -ENOMEDIUM;
+		fim_sd_process_next(port);
+		return 0;
+	}
+
+	/* Set message RX timeout */
+	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1000));
+	if ( retval <= 0 ) {
+		printk_err("Message RX timeout\n");
+		port->mmc_cmd->error = -ETIMEDOUT;
+		fim_sd_process_next(port);
+		return 0;
+	}
+
+	fim_sd_process_next(port);
+
 	return 0;
 }
 
@@ -1117,10 +1140,20 @@ static void fim_sd_process_next(struct fim_sdio_t *port)
 {
 	if (port->flags == FIM_SDIO_REQUEST_NEW) {
 		port->flags = FIM_SDIO_REQUEST_CMD;
-		fim_sd_send_command(port, port->mmc_req->cmd);
+		if ( fim_sd_send_command(port, port->mmc_req->cmd) != 0 ) {
+			port->mmc_cmd = NULL;
+			mmc_request_done(port->mmc, port->mmc_req);
+		}
 	} else if ((!(port->flags & FIM_SDIO_REQUEST_STOP)) && port->mmc_req->stop) {
 		port->flags = FIM_SDIO_REQUEST_STOP;
-		fim_sd_send_command(port, port->mmc_req->stop);
+		/* Need to leave a little time between CMD18 (multiblock read) and CMD18 (stop) commnads */
+		if ( port->mmc_req->cmd->opcode == 18 ) {
+			mdelay(1);
+		}
+		if ( fim_sd_send_command(port, port->mmc_req->stop) != 0 ) {
+			port->mmc_cmd = NULL;
+			mmc_request_done(port->mmc, port->mmc_req);
+		}
 	} else {
 		/* By timeouts the core might retry sending another command */
 		port->mmc_cmd = NULL;
@@ -1163,11 +1196,11 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 	unsigned long clk;
 
 	if (clockrate) {
-		clk = clk_get_rate(port->sys_clk) / 4;
+		clk = clk_get_rate(port->sys_clk) / 7;
 		clkdiv  = clk /clockrate + 0x02;
 
 		/* @XXX: If the configuration failed disable the clock */
-		if (clkdiv < 0x4 || clkdiv > 0xff) {
+		if (clkdiv < 0x2 || clkdiv > 0xff) {
 			printk_info("Unsupported clock %luHz (div out of range 0x%4lx)\n",
 				    clockrate, clkdiv);
 			clockrate = -EINVAL;
@@ -1210,11 +1243,22 @@ static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	case MMC_POWER_OFF:
 	case MMC_POWER_UP:
 	case MMC_POWER_ON:
-		ireg |= FIM_SDIO_INTCFG_MAIN | FIM_SDIO_INTCFG_CARD;
+		ireg |= FIM_SDIO_CONTROL1_INTR_EN;
 		break;
 	}
 
-	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
+	switch (ios->bus_width) {
+	case MMC_BUS_WIDTH_1:
+		break;
+	case MMC_BUS_WIDTH_4:
+		ireg |= FIM_SDIO_CONTROL1_BUS_WIDTH4;
+		break;
+	default:
+		printk_err("Invalid bus width option = %d\n", ios->bus_width);
+		break;
+	}
+
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, ireg);
 
 	fim_sd_set_clock(port, ios->clock);
 }
@@ -1254,13 +1298,13 @@ static void fim_sd_enable_sdio_irq(struct mmc_host *mmc, int enable)
 		return;
 	}
 
-	fim_get_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, &ireg);
+	fim_get_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, &ireg);
 	if (enable)
-		ireg |= FIM_SDIO_INTCFG_SDIO;
+		ireg |= FIM_SDIO_CONTROL1_INTR_EN;
 	else
-		ireg &= ~FIM_SDIO_INTCFG_SDIO;
+		ireg &= ~FIM_SDIO_CONTROL1_INTR_EN;
 
-	fim_set_ctrl_reg(&port->fim, FIM_SDIO_INTCFG_REG, ireg);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, ireg);
 }
 
 
@@ -1285,11 +1329,10 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	mmc_remove_host(port->mmc);
 	mmc_free_host(port->mmc);
 
-	del_timer_sync(&port->mmc_timer);
 	cdtimer_disabled = 1;
 
 	/* Reset the main control register */
-	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, 0);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, 0);
 
 	fim_unregister_driver(&port->fim);
 
@@ -1394,15 +1437,18 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 		}
 	}
 
-	/* Configure and init the timer for the command timeouts */
-	init_timer(&port->mmc_timer);
-	port->mmc_timer.function = fim_sd_cmd_timeout;
-	port->mmc_timer.data = (unsigned long)port;
-
 	/* This is the timer for checking the state of the card detect line */
 	init_timer(&port->cd_timer);
 	port->cd_timer.function = fim_sd_cd_timer_func;
 	port->cd_timer.data = (unsigned long)port;
+
+	/* Initialize card detect pin's debounce timer */
+	init_timer(&port->debounce_timer);
+	port->debounce_timer.function = fim_sd_cd_debounce_func;
+	port->debounce_timer.data = (unsigned long)port;
+
+	/* Init wait queue head */
+	init_waitqueue_head(&port->wq);
 
 	port->mmc = mmc_alloc_host(sizeof(struct fim_sdio_t *), port->fim.dev);
 	if (!port->mmc) {
@@ -1512,10 +1558,10 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 	/* And enable the FIM-interrupt */
 	fim_enable_irq(&port->fim);
-	fim_set_ctrl_reg(&port->fim, FIM_SDIO_MAIN_REG, FIM_SDIO_MAIN_START);
+	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, FIM_SDIO_CONTROL1_START);
 
 	/* Print the firmware version */
-	fim_get_stat_reg(&port->fim, FIM_SDIO_VERSION_SREG, &fwver);
+	fim_get_stat_reg(&port->fim, FIM_SDIO_FIMVER_REG, &fwver);
 	printk_dbg("FIM%d running [fw rev 0x%02x]\n", port->fim.picnr, fwver);
 	return 0;
 
