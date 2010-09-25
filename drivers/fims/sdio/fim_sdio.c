@@ -998,6 +998,12 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		/* Check if the transfer request is for reading or writing */
 		if (cmd->data->flags & MMC_DATA_READ) {
 			opctl |= FIM_SDIO_CONTROL2_BLK_READ;
+
+			/* If it's a multi-block read, then stop CLK after the last block */
+			if ( blocks > 1 ) {
+				opctl |= FIM_SDIO_CONTROL2_WAIT_FOR_CMD;
+			}
+
 			port->blkrd_state = BLKRD_STATE_WAIT_DATA;
 		} else {
 			opctl |= FIM_SDIO_CONTROL2_BLK_WRITE;
@@ -1018,11 +1024,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	if (!(cmd->flags & MMC_RSP_CRC)) {
 		printk_debug("CRC is disabled\n");
 		opctl |= FIM_SDIO_CONTROL2_SKIP_CRC;
-	}
-
-	/* If it's a multi-block read, then stop CLK after the last block */
-	if ( cmd->opcode == 18 ) {
-		opctl |= FIM_SDIO_CONTROL2_WAIT_FOR_CMD;
 	}
 
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL2_REG, opctl);
@@ -1086,7 +1087,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 
 	/* If command doesn't have a response, then this is the end, no need RX ISR */
 	if ( !(cmd->flags & MMC_RSP_PRESENT) ) {
-		fim_sd_process_next(port);
+		//fim_sd_process_next(port);
 		return 0;
 	}
 
@@ -1105,15 +1106,17 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
 		printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
 		port->mmc_cmd->error = -ETIMEDOUT;
-		fim_sd_process_next(port);
-		return 0;
+		//fim_sd_process_next(port);
+		//return 0;
+		return -ETIMEDOUT;
 	}
 	else if ( stat == 0 ) {
 		printk_err("No response from FIM, down\n");
 		atomic_set(&port->fim_is_down, 1);
 		port->mmc_cmd->error = -ENOMEDIUM;
-		fim_sd_process_next(port);
-		return 0;
+		//fim_sd_process_next(port);
+		//return 0;
+		return -ETIMEDOUT;
 	}
 
 	/* Set message RX timeout */
@@ -1121,8 +1124,9 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	if ( retval <= 0 ) {
 		printk_err("Message RX timeout\n");
 		port->mmc_cmd->error = -ETIMEDOUT;
-		fim_sd_process_next(port);
-		return 0;
+		//fim_sd_process_next(port);
+		//return 0;
+		return -ETIMEDOUT;
 	}
 
 	fim_sd_process_next(port);
@@ -1138,6 +1142,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
  */
 static void fim_sd_process_next(struct fim_sdio_t *port)
 {
+#if 0
 	if (port->flags == FIM_SDIO_REQUEST_NEW) {
 		port->flags = FIM_SDIO_REQUEST_CMD;
 		if ( fim_sd_send_command(port, port->mmc_req->cmd) != 0 ) {
@@ -1159,6 +1164,7 @@ static void fim_sd_process_next(struct fim_sdio_t *port)
 		port->mmc_cmd = NULL;
 		mmc_request_done(port->mmc, port->mmc_req);
 	}
+#endif
 }
 
 /*
@@ -1170,6 +1176,7 @@ static void fim_sd_process_next(struct fim_sdio_t *port)
 static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct fim_sdio_t *port;
+	int ret;
 
 	if (!(port = get_port_from_mmc(mmc)))
 		return;
@@ -1185,8 +1192,25 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	 * Wait if the timeout function is running or the RX-callback is active
 	 */
 	port->mmc_req = mrq;
-	port->flags = FIM_SDIO_REQUEST_NEW;
-	fim_sd_process_next(port);
+	/*port->flags = FIM_SDIO_REQUEST_NEW;
+	fim_sd_process_next(port);*/
+
+	if ( (ret = fim_sd_send_command(port, port->mmc_req->cmd)) != 0 ) {
+		//printk_err("SD send error: %d\n", ret);
+		//goto exit;
+	}
+
+	if ( port->mmc_req->stop ) {
+		//if ( port->mmc_req->cmd->opcode == 18
+		if ( fim_sd_send_command(port, port->mmc_req->stop) != 0 ) {
+			//printk_err("SD stop send error: %d\n", ret);
+			//goto exit;
+		}
+	}
+
+exit:
+	port->mmc_cmd = NULL;
+	mmc_request_done(port->mmc, port->mmc_req);
 }
 
 /* Set the transfer clock using the pre-defined values */
