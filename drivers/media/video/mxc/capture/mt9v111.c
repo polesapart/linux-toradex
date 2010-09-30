@@ -51,6 +51,7 @@ struct sensor {
 	struct v4l2_pix_format pix;
 	struct v4l2_captureparm streamcap;
 	bool on;
+	bool used;
 
 	/* control settings */
 	int brightness;
@@ -1449,6 +1450,8 @@ static int mt9v111_probe(struct i2c_client *client,
 	/* This function attaches this structure to the /dev/video0 device.
 	 * The pointer in priv points to the mt9v111_data structure here.*/
 	retval = v4l2_int_device_register(&mt9v111_int_device[sensorid]);
+	if( retval == 0 )
+		mt9v111_data[sensorid].used = 1;
 
 	return retval;
 }
@@ -1463,8 +1466,10 @@ static int mt9v111_remove(struct i2c_client *client)
 
 	pr_debug("In mt9v111_remove\n");
 
-	for ( i=0 ; i < ARRAY_SIZE(mt9v111_int_device) ; i++ )
-		v4l2_int_device_unregister(&mt9v111_int_device[i]);
+	for ( i=0 ; i < ARRAY_SIZE(mt9v111_int_device) ; i++ ) {
+		if( mt9v111_data[i].used )
+			v4l2_int_device_unregister(&mt9v111_int_device[i]);
+	}
 	return 0;
 }
 
