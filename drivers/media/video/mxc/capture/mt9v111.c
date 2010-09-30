@@ -204,6 +204,13 @@ static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg,
 	data = ifpReg->reserved100;
 	mt9v111_write_reg(sensorid,reg, data);
 
+#if defined(CONFIG_JSCCWMX51_V1)
+	reg = MT9V111I_FORMAT_CONTROL;
+	data = ifpReg->formatControl;
+	STRAIL("Writing formatControl(%d) with %d\n",MT9V111I_FORMAT_CONTROL,data);
+	mt9v111_write_reg(sensorid,reg, data);
+#endif
+
 	/*
 	 * setup to sensor core registers
 	 */
@@ -220,6 +227,13 @@ static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg,
 	reg = MT9V111S_RESERVED33;
 	data = coreReg->reserved33;
 	mt9v111_write_reg(sensorid,reg, data);
+
+#if defined(CONFIG_JSCCWMX51_V1)
+	reg = MT9V111S_READ_MODE;
+	data = coreReg->readMode;
+	STRAIL("Writing readMode(%d) with %d\n",MT9V111S_READ_MODE,data);
+	mt9v111_write_reg(sensorid,reg, data);
+#endif
 
 	return error;
 }
@@ -253,6 +267,12 @@ void mt9v111_config_datasheet(void)
 	mt9v111_device.ifpReg->search_flicker_60 = 8222;
 	mt9v111_device.ifpReg->reserved93 = 10021;
 	mt9v111_device.ifpReg->reserved100 = 4477;
+
+#if defined(CONFIG_JSCCWMX51_V1)
+	/* Vertical flip for EAK */
+	mt9v111_device.coreReg->readMode = 32768;
+	mt9v111_device.ifpReg->formatControl = 55298;
+#endif
 }
 
 
