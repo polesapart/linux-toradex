@@ -207,7 +207,6 @@ static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg,
 #if defined(CONFIG_JSCCWMX51_V1)
 	reg = MT9V111I_FORMAT_CONTROL;
 	data = ifpReg->formatControl;
-	STRAIL("Writing formatControl(%d) with %d\n",MT9V111I_FORMAT_CONTROL,data);
 	mt9v111_write_reg(sensorid,reg, data);
 #endif
 
@@ -231,7 +230,6 @@ static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg,
 #if defined(CONFIG_JSCCWMX51_V1)
 	reg = MT9V111S_READ_MODE;
 	data = coreReg->readMode;
-	STRAIL("Writing readMode(%d) with %d\n",MT9V111S_READ_MODE,data);
 	mt9v111_write_reg(sensorid,reg, data);
 #endif
 
