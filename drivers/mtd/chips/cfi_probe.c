@@ -19,6 +19,7 @@
 #include <linux/mtd/gen_probe.h>
 
 //#define DEBUG_CFI
+#define M29W640_WBUF_WORKAROUND
 
 #ifdef DEBUG_CFI
 static void print_cfi_ident(struct cfi_ident *);
@@ -193,6 +194,7 @@ static int __xipram cfi_chip_setup(struct map_info *map,
 		extendedId2 = cfi_read_query16(map, base + 0xe * ofs_factor);
 		extendedId3 = cfi_read_query16(map, base + 0xf * ofs_factor);
 
+#ifdef M29W640_WBUF_WORKAROUND
 		/* Deactivate write-buffer on M29W640. Write buffer doesn't work
 		 * on this memory on cc9p9215. Root cause still unknown */
 		if (0x227e == extendedId1 &&
@@ -201,6 +203,7 @@ static int __xipram cfi_chip_setup(struct map_info *map,
 			cfi->cfiq->BufWriteTimeoutTyp = 0;
 			cfi->cfiq->BufWriteTimeoutMax = 0;
 		}
+#endif
 	}
 
 	/* Do any necessary byteswapping */
