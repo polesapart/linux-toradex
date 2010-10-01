@@ -401,8 +401,13 @@ static void __init ccwmx51_timer_init(void)
 static struct sys_timer mxc_timer = {
 	.init	= ccwmx51_timer_init,
 };
-
+#if defined(CONFIG_JSCCWMX51_V1)
+MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a EAK board")
+#elif defined(CONFIG_JSCCWMX51_V2)
 MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
+#else
+MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on an undefined board")
+#endif
 	/* Maintainer: Digi International, Inc. */
 	.phys_io = AIPS1_BASE_ADDR,
 	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
