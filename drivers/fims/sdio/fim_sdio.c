@@ -998,12 +998,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		/* Check if the transfer request is for reading or writing */
 		if (cmd->data->flags & MMC_DATA_READ) {
 			opctl |= FIM_SDIO_CONTROL2_BLK_READ;
-
-			/* If it's a multi-block read, then stop CLK after the last block */
-			if ( blocks > 1 ) {
-				opctl |= FIM_SDIO_CONTROL2_WAIT_FOR_CMD;
-			}
-
 			port->blkrd_state = BLKRD_STATE_WAIT_DATA;
 		} else {
 			opctl |= FIM_SDIO_CONTROL2_BLK_WRITE;
