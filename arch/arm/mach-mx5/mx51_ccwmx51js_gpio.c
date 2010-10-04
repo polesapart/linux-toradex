@@ -1124,6 +1124,12 @@ void __init ccwmx51_io_init(void)
 	ccwmx51_mmc2_gpio_active();
 #endif
 
+	/* Configure user key 1 as GPIO */
+#if defined(CONFIG_JSCCWMX51_V2)
+	mxc_config_iomux(MX51_PIN_DISPB2_SER_DIO,IOMUX_CONFIG_ALT4 | IOMUX_CONFIG_SION);
+	mxc_iomux_set_input(MUX_IN_GPIO3_IPP_IND_G_IN_6_SELECT_INPUT,INPUT_CTL_PATH1);
+#endif
+
 	/* Configure Digital IO as GPIO */
 #if defined(CONFIG_JSCCWMX51_V1)
 #if !defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE)
