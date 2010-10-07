@@ -734,8 +734,43 @@ static int ad9389_suspend(struct i2c_client *client, pm_message_t state)
 
 static int ad9389_resume(struct i2c_client *client)
 {
+	struct ad9389_dev *ad9389 = pad9389;
+	int ret;
+	static struct fb_var_screeninfo var;
+
 	dev_dbg(&client->dev, "PM resume\n");
+
+	/* Disable Power down and set mute to on */
 	ad9389_set_power_down(client, 0);
+	ad9389_set_av_mute(client, 1);
+
+	/* set static reserved registers*/
+	ad9389_write_reg(client,0x0a, 0x01);
+	ad9389_write_reg(client, 0x98, 0x03);
+	ad9389_write_reg(client, 0x9C, 0x38);
+
+	/* Write magic numbers */
+	ad9389_write_reg(client, 0xA2, 0x87);
+	ad9389_write_reg(client, 0xA3, 0x87);
+
+	/* set capture edge */
+	ad9389_write_reg(client, 0xba, 0x60);
+	ad9389_write_reg(client, 0x47, 0x80);
+
+	mdelay(250);
+
+	ret = ad9389_read_edid(ad9389->client, ad9389->edid_data);
+	if (!ret) {
+		ad9389_dump_edid(ad9389->edid_data);
+		ret = ad9389_parse_edid(&var, ad9389->edid_data, &ad9389->dvi);
+		if (!ret) {
+			if (!ad9389->dvi) {
+				ad9389_set_hdmi_mode(client, 1);
+				/* FIXME audio setup should be done once we know the pixclock */
+				ad9389_audio_setup(ad9389);
+			}
+		}
+	}
 	return 0;
 }
 #else
