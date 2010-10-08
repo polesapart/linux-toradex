@@ -83,7 +83,7 @@ const unsigned char *fim_sdio_firmware = NULL;
 #endif
 
 /* Driver informations */
-#define DRIVER_VERSION				"0.3"
+#define DRIVER_VERSION				"0.4"
 #define DRIVER_AUTHOR				"Digi International"
 #define DRIVER_DESC				"FIM SDIO driver"
 #define FIM_SDIO_DRIVER_NAME			"fim-sdio"
@@ -402,7 +402,7 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 	}
 
 	ret = fim_send_start(&port->fim);
-        if (ret) {
+	if (ret) {
 		printk_err("FIM%i start failed\n", fim->picnr);
 		return;
         }
