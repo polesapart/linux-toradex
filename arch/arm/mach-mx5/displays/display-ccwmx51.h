@@ -12,11 +12,12 @@
 #include <mach/hardware.h>
 #include <mach/mxc.h>
 
-struct ccwmx51_lcd_pdata {
-	int vif;
-	struct mxc_fb_platform_data fb_pdata;
-	void (*reset) (int);
-	void (*bl_enable) (int, int);
-};
+ struct ccwmx51_lcd_pdata {
+ 	int vif;
+ 	struct mxc_fb_platform_data fb_pdata;
+	void (*init) (int);
+	void (*deinit) (int);
+ 	void (*bl_enable) (int, int);
+ };
 
 #endif /* __ASM_ARCH_MXC_BOARD_CCWMX51_H__ */

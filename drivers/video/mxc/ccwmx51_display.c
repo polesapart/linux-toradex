@@ -75,14 +75,14 @@ static int __devinit lcd_sync_probe(struct platform_device *pdev)
 {
 	struct ccwmx51_lcd_pdata *plat = pdev->dev.platform_data;
 
- 	if (!plat)
-                return -ENODEV;
+	if (!plat)
+		return -ENODEV;
 
-        if (plat->reset)
-                plat->reset(plat->vif);
+	if (plat->init)
+		plat->init(plat->vif);
 
-        plcd_dev = pdev;
-        lcd_init_fb(registered_fb[plat->vif]);
+	plcd_dev = pdev;
+	lcd_init_fb(registered_fb[plat->vif]);
 	fb_show_logo(registered_fb[plat->vif], 0);
 	fb_register_client(&nb);
 
@@ -97,6 +97,9 @@ static int __devexit lcd_sync_remove(struct platform_device *pdev)
 
 	fb_unregister_client(&nb);
 	lcd_poweroff(plat);
+	if (plat->deinit)
+		plat->deinit(plat->vif);
+
 	plcd_dev = NULL;
 
 	return 0;

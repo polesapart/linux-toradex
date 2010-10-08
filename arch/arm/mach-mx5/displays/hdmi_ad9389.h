@@ -1,12 +1,19 @@
+/*
+ * arch/arm/mach-mx5/displays/hdmi_ad9389.h
+ *
+ * Copyright (C) 2010 by Digi International Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published by
+ * the Free Software Foundation.
+ */
 
-static void ccwmx51js_ad9389_enable(int enable, int vif)
-{
-}
+#ifndef __ASM_ARCH_MXC_CCWMX51_DISPLAYS_HDMI_AD9389_H__
+#define __ASM_ARCH_MXC_CCWMX51_DISPLAYS_HDMI_AD9389_H__
 
-#ifdef CONFIG_CCWMX51_DISP0_RGB888
-
-static struct fb_videomode ad9389_1280x720x24_60 = {
-	.name		= "1280x720x24@60",
+static struct fb_videomode ad9389_1280x720x24 = {
+	.name		= "1280x720",
 	.refresh	= 60,
 	.xres		= 1280,
 	.yres		= 720,
@@ -21,18 +28,8 @@ static struct fb_videomode ad9389_1280x720x24_60 = {
 	.sync		= FB_SYNC_EXT,
 };
 
-#define AD9389_1280x720x24_60				\
-{							\
-	.fb_pdata = {					\
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,	\
-		.mode_str = "1280x720x24@60",		\
-		.mode = &ad9389_1280x720x24_60,		\
-	},						\
-	.bl_enable = &ccwmx51js_ad9389_enable,		\
-}
-
-static struct fb_videomode ad9389_1360x768x24_60 = {
-	.name		= "1360x768x24@60",
+static struct fb_videomode ad9389_1360x768x24 = {
+	.name		= "1360x768",
 	.refresh	= 60,
 	.xres		= 1360,
 	.yres		= 768,
@@ -47,18 +44,9 @@ static struct fb_videomode ad9389_1360x768x24_60 = {
 	.sync		= FB_SYNC_EXT,
 };
 
-#define AD9389_1360x768x24_60				\
-{							\
-	.fb_pdata = {					\
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,	\
-		.mode_str = "1360x768x24@60",		\
-		.mode = &ad9389_1360x768x24_60,	\
-	},						\
-	.bl_enable = &ccwmx51js_ad9389_enable,		\
-}
 
-static struct fb_videomode ad9389_1366x768x24_60 = {
-	.name		= "1366x768x24@60",
+static struct fb_videomode ad9389_1366x768x24 = {
+	.name		= "1366x768",
 	.refresh	= 60,
 	.xres		= 1366,
 	.yres		= 768,
@@ -73,18 +61,8 @@ static struct fb_videomode ad9389_1366x768x24_60 = {
 	.sync		= FB_SYNC_EXT,
 };
 
-#define AD9389_1366x768x24_60				\
-{							\
-	.fb_pdata = {					\
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,	\
-		.mode_str = "1366x768x24@60",		\
-		.mode = &ad9389_1366x768x24_60,		\
-	},						\
-	.bl_enable = &ccwmx51js_ad9389_enable,		\
-}
-
-static struct fb_videomode ad9389_1920x1080x24_60 = {
-	.name		= "1920x1080x24@60",
+static struct fb_videomode ad9389_1920x1080x24 = {
+	.name		= "1920x1080",
 	.refresh	= 60,
 	.xres 		= 1920,
 	.yres 		= 1080,
@@ -100,19 +78,8 @@ static struct fb_videomode ad9389_1920x1080x24_60 = {
 	.sync		= FB_SYNC_EXT,
 };
 
-#define AD9389_1920x1080x24_60				\
-{							\
-	.fb_pdata = {					\
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,	\
-		.mode_str = "1920x1080x24@60",		\
-		.mode = &ad9389_1920x1080x24_60,	\
-	},						\
-	.bl_enable = &ccwmx51js_ad9389_enable,		\
-}
-
-
-static struct fb_videomode ad9389_1024x768x24_60 = {
-	.name		= "1024x768x24@60",
+static struct fb_videomode ad9389_1024x768x24 = {
+	.name		= "1024x768",
 	.refresh	= 60,
 	.xres		= 1024,
 	.yres		= 768,
@@ -128,16 +95,88 @@ static struct fb_videomode ad9389_1024x768x24_60 = {
 	.flag		= FB_MODE_IS_VESA,
 };
 
-#define AD9389_1024x768x24_60				\
-{							\
-	.fb_pdata = {					\
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,	\
-		.mode_str = "1024x768x24@60",		\
-		.mode = &ad9389_1024x768x24_60,		\
-	},						\
-	.bl_enable = &ccwmx51js_ad9389_enable,		\
-}
-#endif /* CONFIG_CCWMX51_DISP0_RGB888 */
+static struct fb_videomode ad9389_custom_1 = {
+	.name		= "custom1",
+	.refresh	= 0,
+	.xres		= 0,
+	.yres		= 0,
+	.pixclock	= 0,
+	.left_margin	= 0,
+	.right_margin	= 0,
+	.upper_margin	= 0,
+	.lower_margin	= 0,
+	.hsync_len	= 0,
+	.vsync_len	= 0,
+	.vmode		= FB_VMODE_NONINTERLACED,
+	.sync		= FB_SYNC_EXT,
+};
 
-#if defined(CONFIG_CCWMX51_DISP0_RGB666) || defined(CONFIG_CCWMX51_DISP1)
-#endif /* CONFIG_CCWMX51_DISP0_RGB666 */
+static struct fb_videomode ad9389_custom_2 = {
+	.name		= "custom2",
+	.refresh	= 0,
+	.xres		= 0,
+	.yres		= 0,
+	.pixclock	= 0,
+	.left_margin	= 0,
+	.right_margin	= 0,
+	.upper_margin	= 0,
+	.lower_margin	= 0,
+	.hsync_len	= 0,
+	.vsync_len	= 0,
+	.vmode		= FB_VMODE_NONINTERLACED,
+	.sync		= FB_SYNC_EXT,
+};
+
+struct ccwmx51_lcd_pdata ad9389_panel_list[] = {
+	{
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "1280x720",
+			.mode = &ad9389_1280x720x24,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "1360x768",
+			.mode = &ad9389_1360x768x24,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "1366x768",
+			.mode = &ad9389_1366x768x24,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "1920x1080",
+			.mode = &ad9389_1920x1080x24,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "1024x768",
+			.mode = &ad9389_1024x768x24,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "custom1",
+			.mode = &ad9389_custom_1,
+		},
+		.bl_enable = NULL,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "custom2",
+			.mode = &ad9389_custom_2,
+		},
+		.bl_enable = NULL,
+	},
+};
+#endif /* __ASM_ARCH_MXC_CCWMX51_DISPLAYS_HDMI_AD9389_H__ */

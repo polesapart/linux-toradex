@@ -1,5 +1,5 @@
 /*
- * arch/arm/mach-s3c2443/displays/displays.h
+ * arch/arm/mach-mx5/displays/displays.h
  *
  * Copyright (C) 2009-2010 by Digi International Inc.
  * All rights reserved.
@@ -12,36 +12,17 @@
 #ifndef __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__
 #define __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__
 
-#if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
-#include "LQ070Y3DG3B.h"
-#endif
-#if defined(CONFIG_CCWMX51_CUSTOM)
-#include "CUSTOM.h"
+extern void gpio_video_active(int vif, u32 pad);
+extern void gpio_video_inactive(int vif);
+
+#ifdef CONFIG_CCWMX51_DISP0_RGB888
+#define VIDEO_PIX_FMT	IPU_PIX_FMT_RGB24
+#else
+#define VIDEO_PIX_FMT	IPU_PIX_FMT_RGB666
 #endif
 
-#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 #include "hdmi_ad9389.h"
-#endif
-
-struct ccwmx51_lcd_pdata lcd_display_list[] = {
-#if defined(CONFIG_CCWMX51_DISP0) || defined(CONFIG_CCWMX51_DISP1)
-#if defined(CONFIG_CCWMX51_LQ070Y3DG3B)
-	LQ070Y3DG3B_DISPLAY,
-#endif
-#if defined(CONFIG_CCWMX51_CUSTOM)
-	CUSTOM_DISPLAY,
-#endif
-#endif
-};
-
-struct ccwmx51_lcd_pdata hdmi_display_list[] = {
-#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
-	AD9389_1024x768x24_60,
-	AD9389_1280x720x24_60,
-	AD9389_1360x768x24_60,
-	AD9389_1366x768x24_60,
-	AD9389_1920x1080x24_60,
-#endif
-};
+#include "vga.h"
+#include "lcd.h"
 
 #endif /* __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__ */

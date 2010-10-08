@@ -347,8 +347,10 @@ config CCWMX51_DISP0_RGB666
 endchoice
 endif
 
-comment "---Display 2 disabled. To enable, disable the FEC (under network drivers) and set 18bit color mode"
-	depends on FEC || CCWMX51_DISP0_RGB888
+comment "To enable the Display 2 Video interface, disable the FEC (under network drivers)"
+	  depends on FEC || CCWMX51_DISP0_RGB888
+comment "and set 18bit color mode for the Display 1"
+	  depends on FEC || CCWMX51_DISP0_RGB888
 
 config CCWMX51_DISP1
 	bool "Enable Display Interface 2 (secondary)"
@@ -364,8 +366,6 @@ config CCWMX51_SECOND_TOUCH
 	  This enables the support for the external touch interface (ADS7843) available on the
 	  High Resolution Display board, connected to the processor through SPI and that can be
 	  used with the secondary display (but also with the primary)
-
-source "arch/arm/mach-mx5/displays/Kconfig"
 
 endmenu
 
