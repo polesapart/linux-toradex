@@ -1705,7 +1705,11 @@ static int mxcfb_probe(struct platform_device *pdev)
 	fbi->var.yres = 320;
 
 	if (!mxcfbi->default_bpp)
+#ifdef CONFIG_CCWMX51_DEFAULT_VIDEO_BPP
+		mxcfbi->default_bpp = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;
+#else
 		mxcfbi->default_bpp = 16;
+#endif
 
 	if (plat_data && !mxcfbi->ipu_di_pix_fmt)
 		mxcfbi->ipu_di_pix_fmt = plat_data->interface_pix_fmt;

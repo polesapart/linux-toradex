@@ -310,6 +310,24 @@ endif
 if FB_MXC_SYNC_PANEL
 menu "Video Interface(s)"
 
+choice
+	prompt "Video color depth"
+	default CCWMX51_DEFAULT_VIDEO_32BPP
+	depends on MODULE_CCXMX51
+
+config CCWMX51_DEFAULT_VIDEO_32BPP
+	bool "32 bits per pixel"
+
+config CCWMX51_DEFAULT_VIDEO_16BPP
+	bool "16 bits per pixel"
+endchoice
+
+config CCWMX51_DEFAULT_VIDEO_BPP
+	int
+	depends on MODULE_CCXMX51
+	default 32 if CCWMX51_DEFAULT_VIDEO_32BPP
+	default 16 if CCWMX51_DEFAULT_VIDEO_16BPP
+
 config CCWMX51_DISP0
 	bool "Enable Display Interface 1 (primary)"
 	help

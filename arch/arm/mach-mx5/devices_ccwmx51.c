@@ -540,11 +540,7 @@ struct mxc_audio_platform_data wm8753_data = {
 struct mxc_fb_platform_data mx51_fb_data[2] = {
 	/* DISP0 */
 	{
-#ifdef CCWMX51_DISP0_RGB666
-		.interface_pix_fmt = IPU_PIX_FMT_RGB666,
-#else
-		.interface_pix_fmt = IPU_PIX_FMT_RGB24,
-#endif
+		.interface_pix_fmt = VIDEO_PIX_FMT,
 		.mode_str = "1024x768M-16@60",  /* Default */
 	},
 	/* DISP1 */
@@ -735,6 +731,8 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	int modeidx;
 	enum hdmi_mode mode;
 
+	var->bits_per_pixel = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;	/* Set default bpp  */
+
 	/* First, check if we have a predefined mode through the kernel command line */
 	mode = get_hdmi_mode(ad9389, (struct fb_videomode **)&fbvmode, &modestr);
 	if (mode == MODE_AUTO) {
@@ -770,6 +768,10 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	str[AD9389_STR_LEN - 1] = 0;
 	fb_dump_mode(str, fbvmode);
 	fb_videomode_to_var(var, fbvmode);
+
+#ifndef CONFIG_CCWMX51_DISP0_RGB888
+	var->pixclock = (var->pixclock * 46) / 33;
+#endif
 	fb_dump_var(str, var);
 }
 
@@ -966,10 +968,15 @@ int __init ccwmx51_init_fb(void)
 							      p)) != NULL) {
 				pr_info("Panel: %s", p);
 				if (panel->fb_pdata.interface_pix_fmt == IPU_PIX_FMT_RGB666)
-					panel->fb_pdata.mode->pixclock = (panel->fb_pdata.mode->pixclock * 46) / 33;
+					panel->fb_pdata.mode->pixclock =
+						      (panel->fb_pdata.mode->pixclock * 46) / 33;
 
-				memcpy(&plcd_platform_data[i], panel, sizeof(struct ccwmx51_lcd_pdata));
-				memcpy(&mx51_fb_data[i], &plcd_platform_data[i].fb_pdata, sizeof(struct mxc_fb_platform_data));
+				memcpy(&plcd_platform_data[i],
+				       panel,
+				       sizeof(struct ccwmx51_lcd_pdata));
+				memcpy(&mx51_fb_data[i],
+				       &plcd_platform_data[i].fb_pdata,
+				       sizeof(struct mxc_fb_platform_data));
 				plcd_platform_data[i].vif = i;
 				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
 			}
@@ -984,23 +991,22 @@ int __init ccwmx51_init_fb(void)
 				 * and if not, pass it as mode string, just in case we want to use one
 				 * of the standard video configurations
 				 */
-				if (((p = strsep (&p, "@")) != NULL) && *p) {
-					if (!strcmp(p, "640x480x16")) {
-						strcpy(mx51_fb_data[0].mode_str, "640x480M-16@60");
-					} else if (!strcmp(p, "800x600x16")) {
-						strcpy(mx51_fb_data[0].mode_str, "800x600M-16@60");
-					} else if (!strcmp(p, "1024x768x16")) {
-						strcpy(mx51_fb_data[0].mode_str, "1024x768M-16@60");
-					} else if (!strcmp(p, "1280x1024x16")) {
-						strcpy(mx51_fb_data[0].mode_str, "1280x1024M-16@60");
-					} else {
-						pr_warning("Passing video configuration as mode string... %s\n", p);
-						strcpy(mx51_fb_data[0].mode_str, p);
-					}
+				if ((panel = ccwmx51_find_video_config(vga_panel_list,
+								       ARRAY_SIZE(vga_panel_list),
+								       p)) != NULL) {
+					pr_info("Panel: %s", p);
+					if (panel->fb_pdata.interface_pix_fmt == IPU_PIX_FMT_RGB666)
+						panel->fb_pdata.mode->pixclock =
+							    (panel->fb_pdata.mode->pixclock * 46) / 33;
+					memcpy(&mx51_fb_data[i],
+					       &plcd_platform_data[i].fb_pdata,
+					       sizeof(struct mxc_fb_platform_data));
+				} else {
+					/* Pass the video configuration as mode string */
+					strcpy(mx51_fb_data[0].mode_str, p);
 				}
 			}
 		}
-
 		mxc_fb_devices[i].num_resources = 1;
 		mxc_fb_devices[i].resource = &mxcfb_resources[i];
 		mxc_register_device(&mxc_fb_devices[i], &mx51_fb_data[i]);
