@@ -408,6 +408,7 @@ static void ad9389_fb_init(struct fb_info *info)
 	fb_set_var(info, &var);
 	info->flags &= ~FBINFO_MISC_USEREVENT;
 	fb_blank(info, FB_BLANK_UNBLANK);
+	fb_show_logo(info, 0);
 	release_console_sem();
 }
 
@@ -670,7 +671,6 @@ static int ad9389_probe(struct i2c_client *client,
 		goto err_sysfs_file;
 
 	ad9389->fbi = registered_fb[pdata->dispif];
-	fb_show_logo(registered_fb[pdata->dispif], 0);
 	fb_register_client(&nb);
 
 	/* Ack any active interrupt and enable irqs */
