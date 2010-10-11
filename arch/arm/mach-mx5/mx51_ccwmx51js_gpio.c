@@ -218,7 +218,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 #if defined(CONFIG_CCWMX51_DISP0)
 #define DISP1_PAD0		(PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST)
-static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video1_pins[] = {
+static struct mxc_iomux_pin_cfg ccwmx51_iomux_video1_pins[] = {
         {       /* DISP1 DAT0 */
 		MX51_PIN_DISP1_DAT0, IOMUX_CONFIG_ALT0,
 		DISP1_PAD0,
@@ -983,24 +983,6 @@ void __init ccwmx51_io_init(void)
 			mxc_iomux_set_input(ccwmx51_iomux_usbh1_pins[i].in_select,
 					    ccwmx51_iomux_usbh1_pins[i].in_mode);
 	}
-#endif
-
-#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-#if 0
-	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video1_pins); i++) {
-		mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,
-				  ccwmx51_iomux_video1_pins[i].mux_mode);
-		if (ccwmx51_iomux_video1_pins[i].pad_cfg)
-			mxc_iomux_set_pad(ccwmx51_iomux_video1_pins[i].pin,
-					  ccwmx51_iomux_video1_pins[i].pad_cfg);
-		if (ccwmx51_iomux_video1_pins[i].in_select)
-			mxc_iomux_set_input(ccwmx51_iomux_video1_pins[i].in_select,
-					    ccwmx51_iomux_video1_pins[i].in_mode);
-	}
-	/*  LCD Power Enable */
-	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), "gpio3_0");
-        gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
-#endif
 #endif
 
 #if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
