@@ -123,6 +123,49 @@ static const char *part_probes[] = {
 
 static wait_queue_head_t irq_waitq;
 
+#if 0
+static void nand_page_dump(struct mtd_info *mtd, u8 *dbuf, u8* obuf)
+{
+        int i;
+
+        if (dbuf != NULL) {
+                printk("\nData buffer:");
+                for (i = 0; i < mtd->writesize; i++) {
+                        if (!(i % 8))   printk("\n%03x: ", i);
+                        printk("%02x ", dbuf[i]);
+                }
+        }
+        printk("\n");
+        if (obuf != NULL) {
+                printk("\nOOB buffer:");
+                for (i = 0; i < mtd->oobsize; i++) {
+                        if (!(i % 8))   printk("\n%02x: ", i);
+                        printk("%02x ", obuf[i]);
+                }
+        }
+        printk("\n");
+}
+#endif
+
+#ifdef CONFIG_MXC_NAND_SWAP_BI
+#define PART_UBOOT_SIZE         0xc0000
+#define SKIP_SWAP_BI_MAX_PAGE           (PART_UBOOT_SIZE / 0x800)
+inline int skip_swap_bi(int page)
+{
+        /**
+         * Seems that the boot code of the i.mx515 rom is not able to
+         * boot from a nand flash when the data has been written swapping
+	 * the bad block byte. Avoid doing that (the swapping) when
+	 * programming U-Boot into the flash.
+         */
+        if (page < SKIP_SWAP_BI_MAX_PAGE)
+                return 1;
+        return 0;
+}
+#else
+inline int skip_swap_bi(int page_addr) { return 1; }
+#endif
+
 static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 {
 	/* Disable Interuupt */
@@ -132,7 +175,7 @@ static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static void mxc_nand_bi_swap(struct mtd_info *mtd)
+static void mxc_nand_bi_swap(struct mtd_info *mtd, int page_addr)
 {
 	u16 ma, sa, nma, nsa;
 
@@ -142,6 +185,9 @@ static void mxc_nand_bi_swap(struct mtd_info *mtd)
 	/* Disable bi swap if the user set disable_bi_swap at sys entry */
 	if (mxc_nand_data->disable_bi_swap)
 		return;
+
+        if (skip_swap_bi(page_addr))
+                return;
 
 	ma = __raw_readw(BAD_BLK_MARKER_MAIN);
 	sa = __raw_readw(BAD_BLK_MARKER_SP);
@@ -314,7 +360,7 @@ static void auto_cmd_interleave(struct mtd_info *mtd, u16 cmd)
 			/* data transfer */
 			memcpy(MAIN_AREA0, dbuf, dlen);
 			copy_spare(mtd, obuf, SPARE_AREA0, olen, false);
-			mxc_nand_bi_swap(mtd);
+                        mxc_nand_bi_swap(mtd, page_addr - 1);
 
 			/* update the value */
 			dbuf += dlen;
@@ -345,7 +391,7 @@ static void auto_cmd_interleave(struct mtd_info *mtd, u16 cmd)
 			mxc_check_ecc_status(mtd);
 
 			/* data transfer */
-			mxc_nand_bi_swap(mtd);
+                        mxc_nand_bi_swap(mtd, page_addr - 1);
 			memcpy(dbuf, MAIN_AREA0, dlen);
 			copy_spare(mtd, obuf, SPARE_AREA0, olen, true);
 
@@ -986,7 +1032,7 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		 */
 		nfc_memcpy(MAIN_AREA0, data_buf, mtd->writesize);
 		copy_spare(mtd, oob_buf, SPARE_AREA0, mtd->oobsize, false);
-		mxc_nand_bi_swap(mtd);
+                mxc_nand_bi_swap(mtd, page_addr);
 #endif
 
 		if (IS_LARGE_PAGE_NAND)
@@ -1037,11 +1083,10 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		 * byte alignment, so we can use
 		 * memcpy safely
 		 */
-		mxc_nand_bi_swap(mtd);
+                mxc_nand_bi_swap(mtd, page_addr);
 		nfc_memcpy(data_buf, MAIN_AREA0, mtd->writesize);
 		copy_spare(mtd, oob_buf, SPARE_AREA0, mtd->oobsize, true);
 #endif
-
 		break;
 
 	case NAND_CMD_READID:
@@ -1180,7 +1225,6 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 
 	/* fix up the offset */
 	largepage_memorybased.offs = BAD_BLK_MARKER_OOB_OFFS;
-
 	/* keep compatible for bbt table with old soc */
 	if (cpu_is_mx53()) {
 		bbt_mirror_descr.offs = BAD_BLK_MARKER_OOB_OFFS + 2;
@@ -1638,6 +1682,13 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 		add_mtd_device(mtd);
 	}
 
+#ifdef CONFIG_MODULE_CCXMX51
+        {
+                extern u8 ccwmx51_swap_bi;
+                mxc_nand_data->disable_bi_swap = !ccwmx51_swap_bi;
+                pr_info("%sUsing swap BI (%x)\n", ccwmx51_swap_bi ? "" : "No ", ccwmx51_swap_bi);
+        }
+#endif
 	/* Create sysfs entries for this device. */
 	manage_sysfs_files(true);
 

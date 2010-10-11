@@ -55,6 +55,7 @@
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
 static int num_cpu_wp = 3;
+u8 ccwmx51_swap_bi = 0;
 
 /* working point(wp): 0 - 800MHz; 1 - 166.25MHz; */
 static struct cpu_wp cpu_wp_auto_800[] = {
@@ -263,6 +264,8 @@ static void __init mxc_board_init(void)
 			   ((system_serial_high << 8) & 0x0000ff00) |
 			   ((system_serial_high >> 8) & 0xff));
 
+	ccwmx51_swap_bi = system_serial_high >> 16;
+
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 
@@ -358,7 +361,6 @@ static void __init mxc_board_init(void)
 #ifdef CONFIG_CCWMX51_SECOND_TOUCH
 	ccwmx51_init_2nd_touch();
 #endif
-
 	pm_power_off = mxc_power_off;
 }
 
