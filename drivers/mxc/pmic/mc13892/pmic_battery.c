@@ -105,6 +105,18 @@ enum chg_setting {
        VI_PROGRAM_EN
 };
 
+static unsigned int max_voltage_design = 3800000;
+module_param(max_voltage_design, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(max_voltage_design, "Maximum battery voltage by design.");
+
+static unsigned int min_voltage_design = 3300000;
+module_param(min_voltage_design, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(min_voltage_design, "Minimum battery voltage by design.");
+
+static unsigned int main_charger_current  = 0x8; /* 720 mA */
+module_param(main_charger_current, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(main_charger_current, "Main charge path regulator current limit.");
+
 /* Flag used to indicate if Charger workaround is active. */
 int chg_wa_is_active;
 /* Flag used to indicate if Charger workaround timer is on. */
@@ -298,7 +310,7 @@ static int pmic_restart_charging(void)
 	pmic_set_chg_misc(BAT_TH_CHECK_DIS, 1);
 	pmic_set_chg_misc(AUTO_CHG_DIS, 0);
 	pmic_set_chg_misc(VI_PROGRAM_EN, 1);
-	pmic_set_chg_current(0x8);
+	pmic_set_chg_current(main_charger_current);
 	pmic_set_chg_misc(RESTART_CHG_STAT, 1);
 	pmic_set_chg_misc(PLIM_DIS, 3);
 	return 0;
@@ -394,7 +406,7 @@ static void chg_thread(struct work_struct *work)
 
 	if (disable_chg_timer) {
 		disable_chg_timer = 0;
-		pmic_set_chg_current(0x8);
+		pmic_set_chg_current(main_charger_current);
 		queue_delayed_work(chg_wq, &chg_work, 100);
 		chg_wa_timer = 1;
 		return;
@@ -519,7 +531,7 @@ static void mc13892_battery_update_status(struct mc13892_dev_info *di)
 			else
 				di->battery_status =
 					POWER_SUPPLY_STATUS_NOT_CHARGING;
-		}
+			}
 
 		if (di->battery_status == POWER_SUPPLY_STATUS_NOT_CHARGING)
 			di->full_counter++;
@@ -589,10 +601,10 @@ static int mc13892_battery_get_property(struct power_supply *psy,
 		val->intval = di->accum_current_uAh;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		val->intval = 3800000;
+		val->intval = max_voltage_design;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
-		val->intval = 3300000;
+		val->intval = min_voltage_design;
 		break;
 	default:
 		return -EINVAL;
