@@ -322,7 +322,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_video1_pins[] = {
 
 #if defined(CONFIG_CCWMX51_DISP1)
 #define DISP2_PAD0		(PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST)
-static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_video2_pins[] = {
+static struct mxc_iomux_pin_cfg ccwmx51_iomux_video2_pins[] = {
         /* This interface can be enabled only if the FEC interface is disabled */
         {       /* DISP2 DAT0 */
                 MX51_PIN_DISP2_DAT0, IOMUX_CONFIG_ALT0,
