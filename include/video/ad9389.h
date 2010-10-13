@@ -46,10 +46,10 @@ struct ad9389_pdata {
 	unsigned char	edid_addr;
 
 	/* function callbacks */
-	int		(*hw_init)(void);
-	int		(*hw_deinit)(void);
-	void		(*disp_connected)(void);
-	void		(*disp_disconnected)(void);
+	int		(*hw_init)(struct ad9389_dev *);
+	int		(*hw_deinit)(struct ad9389_dev *);
+	void		(*disp_connected)(struct ad9389_dev *);
+	void		(*disp_disconnected)(struct ad9389_dev *);
 	void		(*vmode_to_modelist)(struct fb_videomode *, int, struct list_head *, struct fb_var_screeninfo *);
 	void		(*vmode_to_var)(struct ad9389_dev *, struct fb_var_screeninfo *);
 };

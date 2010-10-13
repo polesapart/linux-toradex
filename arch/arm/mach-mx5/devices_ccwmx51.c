@@ -849,6 +849,17 @@ static void mxcfb_vmode_to_modelist(struct fb_videomode *modedb, int num,
 			modedb[i].pixclock = ccwmx51_get_max_video_pclk();
 
 		/**
+		 * Adjust timing to IPU restrictions (better done here, to avoid ipu driver to
+		 * incorrectly calculate settings based on our configuration).
+		 */
+		if (modedb[i].lower_margin < 2) {
+			/* This will not affect much, so we dont adjust the pixel clock */
+			DBG(AD9389_DBG, "ADJUSTED: lower margin from %u to 2\n",
+				    modedb[i].lower_margin);
+			modedb[i].lower_margin = 2;
+		}
+
+		/**
 		 * If candidate is a detail timing, delete existing one in modelist and use
 		 * the detail timing information.
 		 */
@@ -891,27 +902,37 @@ static void mxcfb_vmode_to_modelist(struct fb_videomode *modedb, int num,
 	}
 }
 
-static int ccwmx51_hdmi_hw_init(void)
+static int ccwmx51_hdmi_hw_init(struct ad9389_dev *ad9389)
 {
-	mxc_request_iomux(AD9389_GPIO_IRQ, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION);
-	mxc_iomux_set_pad(AD9389_GPIO_IRQ, PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM |
-			  PAD_CTL_100K_PU | PAD_CTL_HYS_ENABLE |
-			  PAD_CTL_DRV_VOT_HIGH);
+	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
 
-	gpio_request(IOMUX_TO_GPIO(AD9389_GPIO_IRQ), "ad9389_irq");
-	gpio_direction_input(IOMUX_TO_GPIO(AD9389_GPIO_IRQ));
+	if (pdata->dispif == 0) {
+		mxc_request_iomux(AD9389_GPIO_IRQ, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION);
+		mxc_iomux_set_pad(AD9389_GPIO_IRQ, PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM |
+				  PAD_CTL_100K_PU | PAD_CTL_HYS_ENABLE |
+				  PAD_CTL_DRV_VOT_HIGH);
 
-	set_irq_type(IOMUX_TO_GPIO(AD9389_GPIO_IRQ), IRQ_TYPE_EDGE_BOTH);
+		gpio_request(IOMUX_TO_GPIO(AD9389_GPIO_IRQ), "ad9389_irq");
+		gpio_direction_input(IOMUX_TO_GPIO(AD9389_GPIO_IRQ));
+
+		set_irq_type(IOMUX_TO_GPIO(AD9389_GPIO_IRQ), IRQ_TYPE_EDGE_BOTH);
+	}
+
+	/* Configure here the hot plug detection for HDMI on DISP1 */
+	/* if (pdata->dispif == 1) { } */
+
+	gpio_video_active(pdata->dispif,
+			  PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
 
 	return 0;
 }
 
-static void ccwmx51_hdmi_disp_connected(void)
+static void ccwmx51_hdmi_disp_connected(struct ad9389_dev *ad9389)
 {
 	printk(KERN_DEBUG "%s: display connected\n", __func__);
 }
 
-static void ccwmx51_hdmi_disp_disconnected(void)
+static void ccwmx51_hdmi_disp_disconnected(struct ad9389_dev *ad9389)
 {
 	printk(KERN_DEBUG "%s: display disconnected\n", __func__);
 }
@@ -982,6 +1003,8 @@ int __init ccwmx51_init_fb(void)
 			}
 		} else if ((p = ccwmx51_get_video_cmdline_opt(i, "VGA")) != NULL) {
 			pr_info("VGA interface in DISP%d\n", i);
+			gpio_video_active(i, PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+
 			/* Get the desired configuration provided by the bootloader */
 			if (*p++ != '@') {
 				pr_info("Video resolution for VGA interface not provided, using default\n");

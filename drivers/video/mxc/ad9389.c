@@ -339,12 +339,12 @@ static void ad9389_fb_init(struct fb_info *info)
 	if (!ad9389_disp_connected(client)) {
 		ad9389_set_power_down(client, 1);
 		if(pdata->disp_disconnected)
-			pdata->disp_disconnected();
+			pdata->disp_disconnected(ad9389);
 		return;
 	}
 
 	if(pdata->disp_connected)
-		pdata->disp_connected();
+		pdata->disp_connected(ad9389);
 
 	dev_info(info->dev, "%s, display connected\n", __func__);
 	memset(&var, 0, sizeof(var));
@@ -638,7 +638,7 @@ static int ad9389_probe(struct i2c_client *client,
 
 	/* platform specific initialization (gpio, irq...) */
 	if (pdata->hw_init)
-		pdata->hw_init();
+		pdata->hw_init(ad9389);
 
 	ret = request_irq(client->irq, ad9389_handler,
 			  IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING, DRV_NAME, ad9389);
@@ -695,7 +695,7 @@ err_presence:
 err_irq:
 	flush_scheduled_work();
 	if (pdata->hw_deinit)
-		pdata->hw_deinit();
+		pdata->hw_deinit(ad9389);
 	kfree(ad9389->edid_data);
 err_edid_alloc:
 	kfree(ad9389);
@@ -718,7 +718,7 @@ static int ad9389_remove(struct i2c_client *client)
 	pad9389 = NULL;
 
 	if (pdata->hw_deinit)
-		pdata->hw_deinit();
+		pdata->hw_deinit(ad9389);
 
 	return 0;
 }
