@@ -1,0 +1,676 @@
+/*
+ * drivers/pwm/s3c24xx-pwm.c
+ *
+ * Copyright (C) 2010 by Digi International Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+# define LAST_COUNT	0xFFFFFFFF	/* 32 bit counter */
+// # define DEBUG
+
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/clk.h>
+#include <linux/err.h>
+#include <linux/io.h>
+#include <linux/interrupt.h>
+#include <linux/platform_device.h>
+#include <linux/pwm.h>
+#include <mach/gpio.h>
+#include <plat/s3c24xx-pwm.h>
+#include <plat/regs-timer.h>
+
+struct s3c24xx_pwm {
+	struct pwm_device pwm;
+	spinlock_t lock;
+
+	struct s3c24xx_pwm_pdata *pdata;
+};
+
+static struct clk *clk_scaler[2];
+
+#define pwm_tcon_start(pch) (1 << (pch->tcon_base + 0))
+#define pwm_tcon_invert(pch) (1 << (pch->tcon_base + 2))
+#define pwm_tcon_autoreload(pch) (1 << (pch->tcon_base + 3))
+#define pwm_tcon_manulupdate(pch) (1 << (pch->tcon_base + 1))
+
+static inline int pwm_is_tdiv(struct s3c24xx_pwm *pwm)
+{
+	return clk_get_parent(pwm->clk) == pwm->clk_div;
+}
+
+/* @XXX: Return NULL by failures */
+static inline struct s3c24xx_pwm_channel *s3c24xx_pwm_to_channel(struct pwm_channel *p)
+{
+	struct s3c24xx_pwm *np;
+	struct s3c24xx_pwm_channel *retval;
+
+
+	if (!p) {
+		pr_err("%s: NULL pointer passed!\n", __func__);
+		return NULL;
+	}
+
+	np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	if (!np) {
+		pr_err("%s: NO np found!\n", __func__);
+		return NULL;
+	}
+
+	if (!np->pdata) {
+		pr_err("%s: NO platform data found!\n", __func__);
+		return NULL;
+	}
+
+	if (!np->pdata->channels)
+		pr_err("NO channels passed?\n");
+
+	retval = np->pdata->channels + p->chan;
+	if (!retval)
+		pr_err("%s: Invalid channel number passed?\n", __func__);
+
+	return retval;
+}
+
+/* Checks if pwm is being used */
+static inline int __s3c24xx_pwm_is_on(struct pwm_channel *p)
+{
+	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	u32 timer_control;
+//	struct s3c24xx_pwm_pdata *pdata;
+	struct s3c24xx_pwm_channel *pch;
+
+	if (!np) {
+		pr_err("Unable to fetch structure s3c24xx_pwm.\n");
+		return -EINVAL;
+	}
+
+	pch = s3c24xx_pwm_to_channel(p);
+	timer_control = readl(SYS_TC(pch->timer));
+
+	return (timer_control & NS921X_TCR_TE) ? 1 : 0;
+}
+
+/* Starts PWM output */
+static inline void __s3c24xx_pwm_start(struct pwm_channel *p)
+{
+	unsigned long flags;
+	unsigned long tcon;
+	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+
+	local_irq_save(flags);
+
+	tcon = __raw_readl(S3C2410_TCON);
+	tcon |= pwm_tcon_start(pch);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	local_irq_restore(flags);
+
+	pch->running = 1;
+}
+
+/* Stops PWM output */
+static inline void __s3c24xx_pwm_stop(struct pwm_channel *p)
+{
+	unsigned long flags;
+	unsigned long tcon;
+	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+
+	local_irq_save(flags);
+
+	tcon = __raw_readl(S3C2410_TCON);
+	tcon &= ~pwm_tcon_start(pch);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	local_irq_restore(flags);
+
+	pwm->running = 0;
+}
+
+/* Toggles PWM output polarity */
+static inline void
+__s3c24xx_pwm_config_polarity(struct pwm_channel *p, int polarity)
+{
+	unsigned long flags;
+	unsigned long tcon;
+	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+
+	local_irq_save(flags);
+
+	tcon = __raw_readl(S3C2410_TCON);
+	if (polarity) {
+		/* Don't use inverter */
+		tcon &= ~pwm_tcon_invert(pch);
+	}
+	else {
+		/* Use inverter */
+		tcon |= pwm_tcon_invert(pch);
+	}
+	__raw_writel(tcon, S3C2410_TCON);
+
+	local_irq_restore(flags);
+}
+
+static unsigned long pwm_calc_tin(struct s3c24xx_pwm *pwm, unsigned long freq)
+{
+	unsigned long tin_parent_rate;
+	unsigned int div;
+
+	tin_parent_rate = clk_get_rate(clk_get_parent(pwm->clk_div));
+	pwm_dbg(pwm, "tin parent at %lu\n", tin_parent_rate);
+
+	for (div = 2; div <= 16; div *= 2) {
+		if ((tin_parent_rate / (div << 16)) < freq)
+			return tin_parent_rate / div;
+	}
+
+	return tin_parent_rate / 16;
+}
+
+#define NS_IN_HZ (1000000000UL)
+
+/* Configures duty_ns */
+static inline int
+__s3c24xx_pwm_config_duty_ns(struct pwm_channel *p, unsigned long duty_ns)
+{
+	unsigned long tin_ns;
+	unsigned long tcon;
+	unsigned long tcnt;
+	unsigned long tcmp;
+	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+
+	if (duty_ns > NS_IN_HZ)
+		return -ERANGE;
+
+	if (duty_ns == pch->duty_ns)
+		return 0;
+
+	pch->duty_ns = duty_ns;
+
+	/* The TCMP and TCNT can be read without a lock, they're not
+	 * shared between the timers. */
+	tcnt = __raw_readl(S3C2410_TCNTB(pch->timer));
+
+	tin_ns = NS_IN_HZ / clk_get_rate(np->clk);
+	tcmp = tcnt - (duty_ns / tin_ns);
+	if (tcmp < 0)
+		tcmp = 0;
+
+	/* Update the PWM register block. */
+	local_irq_save(flags);
+
+	__raw_writel(tcmp, S3C2410_TCMPB(pch->timer));
+
+	tcon = __raw_readl(S3C2410_TCON);
+	tcon |= pwm_tcon_manulupdate(pch);
+	tcon |= pwm_tcon_autoreload(pch);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	tcon &= ~pwm_tcon_manulupdate(pwm);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	local_irq_restore(flags);
+
+	return 0;
+}
+
+/* Configures duty_ticks */
+static inline int
+__s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
+{
+	// TODO
+	return 0;
+}
+
+
+/*
+ * Figure to understand PWM concepts
+ *		-----------------
+ *		|		|
+ *		|		|
+ * --------------		-----------------
+ * ^		^		^		^
+ * RELOAD	HIGH		LOW		LAST_COUNT
+ *
+ * NS921X driver assumes RELOAD = HIGH
+ */
+
+/* Configures period_ticks */
+static inline int
+__s3c24xx_pwm_config_period_ns(struct pwm_channel *p, unsigned long period_ns)
+{
+	unsigned long tin_ns;
+	unsigned long tcon;
+	unsigned long tcnt;
+	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+
+	if (period_ns > NS_IN_HZ)
+		return -ERANGE;
+
+	if (period_ns == pch->period_ns)
+		return 0;
+
+	pch->period_ns = period_ns;
+
+	if (pwm_is_tdiv(np)) {
+		tin_rate = pwm_calc_tin(np, period_ns);
+		clk_set_rate(np->clk_div, tin_rate);
+	} else {
+		tin_rate = clk_get_rate(np->clk);
+	}
+
+	pwm_dbg(pwm, "tin_rate=%lu\n", tin_rate);
+
+	tin_ns = NS_IN_HZ / tin_rate;
+	tcnt = period_ns / tin_ns;
+
+
+	/* Update the PWM register block. */
+	local_irq_save(flags);
+
+	__raw_writel(tcnt, S3C2410_TCNTB(pch->timer));
+
+	tcon = __raw_readl(S3C2410_TCON);
+	tcon |= pwm_tcon_manulupdate(pch);
+	tcon |= pwm_tcon_autoreload(pch);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	tcon &= ~pwm_tcon_manulupdate(pwm);
+	__raw_writel(tcon, S3C2410_TCON);
+
+	local_irq_restore(flags);
+
+	return 0;
+}
+
+/* Configures period_ticks */
+static inline int
+__s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, struct pwm_channel_config *c)
+{
+	//TODO
+	return 0;
+}
+
+/* No sleeping configuration */
+static int s3c24xx_pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_config *c)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&p->lock, flags);
+
+	switch (c->config_mask) {
+
+	case PWM_CONFIG_DUTY_NS:
+		ret = __s3c24xx_pwm_config_duty_ns(p, c->duty_ns);
+		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
+		break;
+
+/*	case PWM_CONFIG_DUTY_TICKS:
+		ret = __s3c24xx_pwm_config_duty_ticks(p, c->duty_ticks);
+		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
+		break;
+*/
+	case PWM_CONFIG_PERIOD_NS:
+		ret = __s3c24xx_pwm_config_period_ns(p, c->period_ns);
+		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
+		break;
+
+/*	case PWM_CONFIG_PERIOD_TICKS:
+		ret = __s3c24xx_pwm_config_period_ticks(p, c);
+		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
+		break;
+*/
+	case PWM_CONFIG_STOP:
+		__s3c24xx_pwm_stop(p);
+		pr_debug("%s:%d stop\n", p->pwm->bus_id, p->chan);
+		break;
+
+	case PWM_CONFIG_START:
+		__s3c24xx_pwm_start(p);
+		pr_debug("%s:%d start\n", p->pwm->bus_id, p->chan);
+		break;
+
+	case PWM_CONFIG_POLARITY:
+		__s3c24xx_pwm_config_polarity(p, c->polarity);
+		break;
+
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	spin_unlock_irqrestore(&p->lock, flags);
+	return ret;
+}
+
+/* PWM configuration */
+static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *c)
+{
+	/* We currently avoid using 64bit arithmetic by using the
+	 * fact that anything faster than 1Hz is easily representable
+	 * by 32bits. */
+
+	if (c->period_ns > NS_IN_HZ || duty_ns > NS_IN_HZ)
+		return -ERANGE;
+
+	if (duty_ns > period_ns)
+		return -EINVAL;
+
+	if (period_ns == pwm->period_ns &&
+	    duty_ns == pwm->duty_ns)
+		return 0;
+
+	if (p->pwm->config_nosleep) {
+		if (!p->pwm->config_nosleep(p, c))
+			return 0;
+	}
+
+	might_sleep();
+
+/*	if (c->config_mask & PWM_CONFIG_PERIOD_TICKS) {
+		__s3c24xx_pwm_config_period_ticks(p, c);
+		if (!(c->config_mask & PWM_CONFIG_DUTY_TICKS)) {
+			__s3c24xx_pwm_config_duty_ticks(p, p->duty_ticks);
+		}
+	}
+*/
+	if (c->config_mask & PWM_CONFIG_PERIOD_NS) {
+		__s3c24xx_pwm_config_period_ns(p, c->period_ns);
+		if (!(c->config_mask & PWM_CONFIG_DUTY_NS)) {
+			__s3c24xx_pwm_config_duty_ns(p, p->duty_ns);
+		}
+	}
+
+/*	if (c->config_mask & PWM_CONFIG_DUTY_TICKS)
+		__s3c24xx_pwm_config_duty_ticks(p, c->duty_ticks);
+*/
+	if (c->config_mask & PWM_CONFIG_DUTY_NS)
+		__s3c24xx_pwm_config_duty_ns(p, c->duty_ns);
+
+	if (c->config_mask & PWM_CONFIG_POLARITY)
+		__s3c24xx_pwm_config_polarity(p, c->polarity);
+
+	if ((c->config_mask & PWM_CONFIG_START)
+	    || (was_on && !(c->config_mask & PWM_CONFIG_STOP)))
+		__s3c24xx_pwm_start(p);
+
+	pr_debug("%s:%d config_mask %x\n", p->pwm->bus_id, p->chan, c->config_mask);
+
+	return 0;
+}
+
+/* PWM request function */
+static int s3c24xx_pwm_request(struct pwm_channel *p)
+{
+	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	struct s3c24xx_pwm_channel *chi;
+	unsigned long flags;
+	char pwmgpio[20];
+	int ret;
+
+	chi = s3c24xx_pwm_to_channel(p);
+
+	spin_lock_irqsave(&p->lock, flags);
+
+	/* Determine if the timer is alredy enabled == requested */
+	if (chi->use_count == 0) {
+		chi->use_count = 1;
+	} else {
+		ret = -EBUSY;
+		goto gpio_err;
+	}
+
+	/* Request the GPIO */
+	sprintf(pwmgpio, "%s.%d", p->pwm->bus_id, p->chan);
+	ret = gpio_request(chi->gpio, pwmgpio);
+	if (ret) {
+		pr_err("Request of GPIO %i failure\n", chi->gpio);
+		goto gpio_err;
+	}
+	/* Configures GPIO for TOUTn function */
+	s3c2410_gpio_cfgpin(chi->gpio, S3C2410_GPIO_SFN2);
+
+	p->tick_hz = clk_get_rate(np->clk);
+	__s3c24xx_pwm_stop(p);
+	spin_unlock_irqrestore(&p->lock, flags);
+
+	pr_debug("%s: tick_hz = %lu\n", __func__, p->tick_hz);
+
+	return 0;
+
+gpio_cfg:
+	s3c2410_gpio_cfgpin(chi->gpio, S3C2410_GPIO_INPUT);
+	gpio_free(chi->gpio);
+gpio_err:
+	return ret;
+}
+
+/* Frees resources taken by PWM */
+static void s3c24xx_pwm_free(struct pwm_channel *p)
+{
+	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+	struct s3c24xx_pwm_channel *chi = s3c24xx_pwm_to_channel(p);
+
+	pr_debug("%s\n", __func__);
+
+	if (chi->use_count) {
+		pwm->use_count--;
+	} else {
+		printk(KERN_ERR "PWM channel %d already freed\n", chi->timer);
+	}
+
+	s3c2410_gpio_cfgpin(chi->gpio, S3C2410_GPIO_INPUT);
+	gpio_free(chi->gpio);
+}
+
+static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
+{
+	struct s3c24xx_pwm *np;
+	struct s3c24xx_pwm_pdata *pdata;
+	struct s3c24xx_pwm_channel *ch;
+	int ret;
+	int i;
+
+	pr_debug("Probing a new device (ID %i)\n", pdev->id);
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		pr_err("No platform data passed? Aborting.\n");
+		return -EINVAL;
+	}
+
+	/* Sanity check */
+	if (pdata->number_channels > S3C24XX_PWM_CHANNEL_MAX) {
+		pr_err("Invalid number '%i' of channels\n", pdata->number_channels);
+		return -EINVAL;
+	}
+
+	/* Initialize channels */
+	for (i = 0; i < pdata->number_channels; i++) {
+		ch = pdata->channels[i];
+		/* calculate base of control bits in TCON */
+		ch->tcon_base = i == 0 ? 0 : (i *) + 4;
+		ch->use_count = 0;
+		ch->running = 0;
+	}
+	pr_debug("%i PWM channels registered.\n", pdata->number_channels);
+
+	np = kzalloc(sizeof(*np), GFP_KERNEL);
+	if (!np) {
+		ret = -ENOMEM;
+		goto err_s3c24xx_pwm_alloc;
+	}
+
+	spin_lock_init(&np->lock);
+
+	np->clk = clk_get(dev, "pwm-tin");
+	if (IS_ERR(np->clk)) {
+		dev_err(dev, "failed to get pwm tin clk\n");
+		ret = PTR_ERR(np->clk);
+		goto err_clk_get;
+	}
+
+	np->clk_div = clk_get(dev, "pwm-tdiv");
+	if (IS_ERR(np->clk_div)) {
+		dev_err(dev, "failed to get pwm tdiv clk\n");
+		ret = PTR_ERR(np->clk_div);
+		goto err_clk_tin;
+	}
+
+	np->pwm.bus_id = pdev->dev.bus_id;
+	np->pwm.nchan = pdata->number_channels;
+
+	/* Copy the external platform data to our internal structure */
+	//memcpy(&np->pdata, pdata, sizeof(*pdata));
+
+	np->pwm.owner = THIS_MODULE;
+	np->pwm.request = s3c24xx_pwm_request;
+	np->pwm.free = s3c24xx_pwm_free;
+	np->pwm.config_nosleep = s3c24xx_pwm_config_nosleep;
+	np->pwm.config = s3c24xx_pwm_config;
+
+	ret = pwm_register(&np->pwm);
+	if (ret) {
+		pr_debug("Failure registering pwm\n");
+		goto err_clk_tdiv;
+	}
+
+	platform_set_drvdata(pdev, np);
+	/* @XXX: Probably not the best place for this assignment */
+	np->pdata = pdata;
+	return 0;
+
+ err_clk_tdiv:
+	clk_put(np->clk_div);
+
+ err_clk_tin:
+	clk_put(np->clk);
+
+ err_clk_get:
+	kfree(np);
+
+ err_s3c24xx_pwm_alloc:
+	return ret;
+}
+
+static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
+{
+	struct s3c24xx_pwm *np;
+	struct s3c24xx_pwm_pdata *pdata;
+	struct device *d = &pdev->dev;
+	struct s3c24xx_pwm_channel *chi;
+	struct pwm_channel *p;
+	int ret;
+	u32 i;
+
+	pr_debug("Removing device (ID %i)\n", pdev->id);
+
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		pr_err("No platform data passed? Aborting.\n");
+		return -EINVAL;
+	}
+
+	np = platform_get_drvdata(pdev);
+	p = np->pwm.channels;
+
+	ret = pwm_unregister(&np->pwm);
+	if (ret) {
+		pr_debug("Failure unregistering pwm\n");
+	}
+
+	/*
+	 * @TODO: We might want to reset Read and Capture Register, but we can not write to it.
+	 */
+	for (i=0; i < pdata->number_channels; i++) {
+
+		chi = s3c24xx_pwm_to_channel(p+i);
+
+		/* Resets Timer Control Register */
+		writel(0x00, SYS_TC(chi->timer));
+
+		/* Resets High, Low, Reload Registers*/
+		writel(0x00, SYS_TRELCCR(chi->timer));
+		writel(0x00, SYS_THR(chi->timer - 6));	/* high equals to reload */
+		writel(0x00, SYS_TLR(chi->timer - 6));
+
+		/* Sets GPIO as inputs */
+		gpio_configure_ns921x_unlocked(chi->gpio, 1, NS921X_GPIO_DONT_INVERT,
+					       NS921X_GPIO_FUNC_3, 0);
+
+		/* Frees GPIO */
+		gpio_free(chi->gpio);
+	}
+
+	clk_put(np->clk);
+	platform_set_drvdata(pdev, NULL);
+
+	kfree(np);
+	module_put(d->driver->owner);
+
+	return 0;
+}
+
+static struct platform_driver s3c24xx_pwm_driver = {
+	.driver = {
+		   .name = "s3c24xx_pwmc",
+		   .owner = THIS_MODULE,
+		   },
+	.probe = s3c24xx_pwmc_probe,
+	.remove = __devexit_p(s3c24xx_pwmc_remove),
+};
+
+static char banner[] __initdata =
+        KERN_INFO "S3C24XX PWM driver\n";
+
+static int __init s3c24xx_pwm_init(void)
+{
+	int ret;
+
+	clk_scaler[0] = clk_get(NULL, "pwm-scaler0");
+	clk_scaler[1] = clk_get(NULL, "pwm-scaler1");
+
+	if (IS_ERR(clk_scaler[0]) || IS_ERR(clk_scaler[1])) {
+		printk(KERN_ERR "%s: failed to get scaler clocks\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = platform_driver_register(&s3c24xx_pwm_driver);
+	if (ret)
+		printk(KERN_ERR "%s: failed to add pwm driver\n", __func__);
+	else
+		printk(banner);
+
+	return ret;
+}
+
+module_init(s3c24xx_pwm_init);
+
+static void s3c24xx_pwm_exit(void)
+{
+	platform_driver_unregister(&s3c24xx_pwm_driver);
+}
+
+module_exit(s3c24xx_pwm_exit);
+
+MODULE_AUTHOR("Hector Oron <Hector.Oron <at> digi.com>");
+MODULE_DESCRIPTION("Driver for s3c24xx PWMC peripheral");
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:s3c24xx_pwmc");
