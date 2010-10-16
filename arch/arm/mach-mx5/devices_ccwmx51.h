@@ -44,7 +44,6 @@ extern struct platform_device smsc911x_device;
 extern void ccwmx51_set_mod_variant(u8 variant);
 extern void ccwmx51_set_mod_revision(u8 revision);
 extern void ccwmx51_set_mod_sn(u32 sn);
-
-
+extern void ccwmx51_register_sdio(int interface);
 
 #endif /* DEVICES_CCWMX51_H_ */

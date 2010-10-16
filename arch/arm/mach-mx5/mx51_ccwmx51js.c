@@ -307,20 +307,14 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_pwm1_device, NULL);
 	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 
-#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
-	/* SD card detect irqs */
 #ifdef CONFIG_ESDHCI_MXC_SELECT1
-	mxcsdhc1_device.resource[2].start = CCWMX51_SD1_CD_IRQ;
-	mxcsdhc1_device.resource[2].end = CCWMX51_SD1_CD_IRQ;
-	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
+	ccwmx51_register_sdio(0);	/* SDHC1 */
 #endif /* CONFIG_ESDHCI_MXC_SELECT1 */
 #if defined(CONFIG_ESDHCI_MXC_SELECT3) && \
     (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
-	mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
-	mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
-	mxc_register_device(&mxcsdhc3_device, &mmc3_data);
+	ccwmx51_register_sdio(2);	/* SDHC3 */
 #endif /* CONFIG_ESDHCI_MXC_SELECT3 && !CONFIG_PATA_FSL && !CONFIG_PATA_FSL_MODULE */
-#endif /* CONFIG_MMC_IMX_ESDHCI || CONFIG_MMC_IMX_ESDHCI_MODULE */
+
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 	mxc_register_device(&mxc_fec_device, NULL);
 #endif

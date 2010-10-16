@@ -53,12 +53,6 @@ EXPORT_SYMBOL(gpio_pmic_active);
 void gpio_activate_audio_ports(void) {}
 EXPORT_SYMBOL(gpio_activate_audio_ports);
 
-void gpio_sdhc_active(int module) {}
-EXPORT_SYMBOL(gpio_sdhc_active);
-
-void gpio_sdhc_inactive(int module) {}
-EXPORT_SYMBOL(gpio_sdhc_inactive);
-
 void gpio_sensor_select(int sensor) {}
 
 void gpio_sensor_active(unsigned int csi) {}

@@ -165,6 +165,74 @@ static int ccwmx51_create_sysfs_entries(void)
 }
 #endif
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+static int sdhc_write_protect(struct device *dev)
+{
+	unsigned short rc = 0;
+
+	if (to_platform_device(dev)->id == 0)
+		rc = 0; /* Not supported WP on JSK board, therefore write is enabled */
+	else if (to_platform_device(dev)->id == 2)
+		rc = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
+	return rc;
+}
+
+static unsigned int sdhc_get_card_det_status(struct device *dev)
+{
+	int ret = 1;
+
+	if (to_platform_device(dev)->id == 0)
+#ifdef CONFIG_JSCCWMX51_V1
+		ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO1_0));
+#else
+		ret = 0;
+#endif
+	else if (to_platform_device(dev)->id == 2)
+		ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO_NAND));
+	return ret;
+}
+
+struct mxc_mmc_platform_data mmc1_data = {
+	.ocr_mask = MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 400000,
+	.max_clk = 52000000,
+	.card_inserted_state = 0,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+
+struct mxc_mmc_platform_data mmc3_data = {
+	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30 |
+		    MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 150000,
+	.max_clk = 50000000,
+	.card_inserted_state = 1,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+
+void ccwmx51_register_sdio(int interface)
+{
+	switch (interface) {
+	case 0:
+		mxcsdhc1_device.resource[2].start = CCWMX51_SD1_CD_IRQ;
+		mxcsdhc1_device.resource[2].end = CCWMX51_SD1_CD_IRQ;
+		mxc_register_device(&mxcsdhc1_device, &mmc1_data);
+		break;
+	case 2:
+		mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
+		mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
+		mxc_register_device(&mxcsdhc3_device, &mmc3_data);
+		break;
+	}
+}
+#endif
 
 #if defined(CONFIG_MTD_NAND_MXC) \
 	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \
@@ -201,59 +269,6 @@ struct smsc911x_platform_config ccwmx51_smsc9118 = {
 	.flags          = SMSC911X_USE_32BIT,
 	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
 	.irq_type       = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,    /* push-pull irq */
-};
-#endif
-
-#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
-static int sdhc_write_protect(struct device *dev)
-{
-     unsigned short rc = 0;
-
-     if (to_platform_device(dev)->id == 0)
-             rc = 0; /* Not supported WP on JSK board, therefore write is enabled */
-     else if (to_platform_device(dev)->id == 2)
-             rc = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
-     return rc;
-}
-
-static unsigned int sdhc_get_card_det_status(struct device *dev)
-{
-     int ret = 1;
-
-     if (to_platform_device(dev)->id == 0)
-#ifdef CONFIG_JSCCWMX51_V1
-	ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO1_0));
-#else
-	ret = 0;
-#endif
-     else if (to_platform_device(dev)->id == 2)
-         ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO_NAND));
-     return ret;
-}
-
-struct mxc_mmc_platform_data mmc1_data = {
-	.ocr_mask = MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA,
-	.min_clk = 400000,
-	.max_clk = 52000000,
-	.card_inserted_state = 0,
-	.status = sdhc_get_card_det_status,
-	.wp_status = sdhc_write_protect,
-	.clock_mmc = "esdhc_clk",
-	.power_mmc = NULL,
-};
-
-struct mxc_mmc_platform_data mmc3_data = {
-	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30 |
-	    MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA,
-	.min_clk = 150000,
-	.max_clk = 50000000,
-	.card_inserted_state = 1,
-	.status = sdhc_get_card_det_status,
-	.wp_status = sdhc_write_protect,
-	.clock_mmc = "esdhc_clk",
-	.power_mmc = NULL,
 };
 #endif
 
