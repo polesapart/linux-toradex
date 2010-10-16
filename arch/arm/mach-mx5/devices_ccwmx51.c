@@ -1058,14 +1058,30 @@ int __init ccwmx51_init_fb(void)
 #endif
 
 #if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+extern void gpio_ata_active(void);
+extern void gpio_ata_inactive(void);
+
+static int ccwmx51_init_ata(struct platform_device *pdev)
+{
+	gpio_ata_active();
+	return 0;
+}
+
+static void ccwmx51_deinit_ata(void)
+{
+	gpio_ata_inactive();
+}
+
 struct fsl_ata_platform_data ata_data = {
+#ifndef CONFIG_PATA_FSL_DISABLE_DMA
 	.udma_mask  = ATA_UDMA3,
 	.mwdma_mask = ATA_MWDMA2,
+#endif
 	.pio_mask   = ATA_PIO4,
 	.fifo_alarm = MXC_IDE_DMA_WATERMARK / 2,
 	.max_sg     = MXC_IDE_DMA_BD_NR,
-	.init       = NULL,
-	.exit       = NULL,
+	.init       = ccwmx51_init_ata,
+	.exit       = ccwmx51_deinit_ata,
 	.core_reg   = NULL,
 	.io_reg     = NULL,
 };

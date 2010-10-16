@@ -98,6 +98,7 @@ config SATA_SIL24
 
 	  If unsure, say N.
 
+
 config ATA_SFF
 	bool "ATA SFF support"
 	default y
@@ -389,6 +390,14 @@ config PATA_FSL
          On Freescale processors, say Y here if you wish to use the on-chip
          ATA interface.
          If you are unsure, say N to this.
+
+config PATA_FSL_DISABLE_DMA
+	bool "Disable DMA on Freescale on-chip PATA devices"
+	depends on PATA_FSL
+	default y
+	help
+	  Say yes to disable the Ultra DMA and Multi Word DMA transfers on
+	  Freescale PATA SoC interface.
 
 config PATA_HPT366
 	tristate "HPT 366/368 PATA support"

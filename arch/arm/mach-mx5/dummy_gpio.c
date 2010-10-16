@@ -61,12 +61,6 @@ EXPORT_SYMBOL(gpio_sensor_active);
 void gpio_sensor_inactive(unsigned int csi) {}
 EXPORT_SYMBOL(gpio_sensor_inactive);
 
-void gpio_ata_active(void) {}
-EXPORT_SYMBOL(gpio_ata_active);
-
-void gpio_ata_inactive(void) {}
-EXPORT_SYMBOL(gpio_ata_inactive);
-
 void gpio_nand_active(void) {}
 EXPORT_SYMBOL(gpio_nand_active);
 
