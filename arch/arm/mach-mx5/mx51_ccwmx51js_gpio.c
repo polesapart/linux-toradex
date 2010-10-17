@@ -1256,12 +1256,23 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_iomux_set_pad(MX51_PIN_UART1_TXD, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART1_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH0);
 
-#ifdef CONFIG_UART1_CTS_RTS_ENABLED
+#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
 		mxc_request_iomux(MX51_PIN_UART1_CTS, IOMUX_CONFIG_ALT0);
 		mxc_request_iomux(MX51_PIN_UART1_RTS, IOMUX_CONFIG_ALT0);
 		mxc_iomux_set_pad(MX51_PIN_UART1_CTS, SERIAL_PORT_PAD);
 		mxc_iomux_set_pad(MX51_PIN_UART1_RTS, SERIAL_PORT_PAD);
+		mxc_iomux_set_input(MUX_IN_UART1_IPP_UART_RTS_B_SELECT_INPUT, INPUT_CTL_PATH0);
 #endif /* CONFIG_UART1_CTS_RTS_ENABLED */
+#ifdef CONFIG_UART1_FULL_UART_ENABLED
+		mxc_request_iomux(MX51_PIN_KEY_COL5, IOMUX_CONFIG_ALT1);	/* DCD */
+		mxc_request_iomux(MX51_PIN_KEY_COL4, IOMUX_CONFIG_ALT1);	/* RI */
+		mxc_request_iomux(MX51_PIN_UART3_TXD, IOMUX_CONFIG_ALT0);	/* DSR */
+		mxc_request_iomux(MX51_PIN_UART3_RXD, IOMUX_CONFIG_ALT0);	/* DTR */
+		mxc_iomux_set_pad(MX51_PIN_KEY_COL5, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_KEY_COL4, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_UART3_TXD, SERIAL_PORT_PAD);
+		mxc_iomux_set_pad(MX51_PIN_UART3_RXD, SERIAL_PORT_PAD);
+#endif /* CONFIG_UART1_FULL_UART_ENABLED */
 #endif /* CONFIG_UART1_ENABLED */
 		break;
 

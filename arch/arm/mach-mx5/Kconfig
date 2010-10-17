@@ -197,12 +197,27 @@ config UART1_ENABLED
 	help
 	  Enable the MX51 UART1 interface
 
+choice
+	prompt "Select the configuration for the UART lines:"
+	default UART1_2WIRE_ENABLED
+	depends on UART1_ENABLED
+
+config UART1_2WIRE_ENABLED
+	bool "Configure UART1 as 2 wire UART (RX/TX)"
+
 config UART1_CTS_RTS_ENABLED
-	bool "Configure RTS/CTS lines for UART1 hardware flow control"
+	bool "Configure UART1 as 4 wire UART (RX/TX/RTS/CTS)"
+
+config UART1_FULL_UART_ENABLED
+	bool "Configure UART1 as full UART (RX/TX/RTS/CTS/DCD/DTR/DSR/RI)"
+endchoice
+
+config UART1_IRDA_ENABLED
+	bool "Enable IRDA mode"
 	default n
 	depends on UART1_ENABLED
 	help
-	  Configure the UART1 RTS/CTS lines for hardware flow control operation
+	  Enable IRDA mode
 
 config UART2_ENABLED
 	bool "Enable UART2"
@@ -218,12 +233,31 @@ config UART2_CTS_RTS_ENABLED
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
 
+config UART2_IRDA_ENABLED
+	bool "Enable IRDA mode"
+	default n
+	depends on UART2_ENABLED
+	help
+	  Enable IRDA mode
+
+comment "UART3 is not available on the ConnectCore Wi-i.MX51 JumpStart board if UART1"
+	  depends on UART1_FULL_UART_ENABLED
+comment "is configured as full UART. This may not be the case in a custom base board."
+	  depends on UART1_FULL_UART_ENABLED
+
 config UART3_ENABLED
 	bool "Enable UART3"
 	default y
-	depends on SERIAL_MXC
+	depends on SERIAL_MXC && MACH_CCWMX51JS && !UART1_FULL_UART_ENABLED
 	help
 	  Enable the MX51 UART3 interface
+
+config UART3_IRDA_ENABLED
+	bool "Enable IRDA mode"
+	default n
+	depends on UART3_ENABLED
+	help
+	  Enable IRDA mode
 
 config UART3_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART3 hardware flow control"

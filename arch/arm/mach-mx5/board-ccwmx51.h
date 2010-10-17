@@ -20,8 +20,14 @@
 #else
 #define UART1_ENABLED		0
 #endif
-#define UART1_MODE		MODE_DCE
+#if defined CONFIG_UART1_IRDA_ENABLED
+#define UART1_IR		IRDA
+#else
 #define UART1_IR		NO_IRDA
+#endif
+#define UART1_MODE		MODE_DCE
+#define UART1_DMA_ENABLED	0
+
 
 /* UART 2 configuration */
 #if defined CONFIG_UART2_ENABLED
@@ -29,8 +35,13 @@
 #else
 #define UART2_ENABLED		0
 #endif
-#define UART2_MODE		MODE_DCE
+#if defined CONFIG_UART2_IRDA_ENABLED
+#define UART2_IR		IRDA
+#else
 #define UART2_IR		NO_IRDA
+#endif
+#define UART2_MODE		MODE_DCE
+#define UART2_DMA_ENABLED	0
 
 /* UART 3 configuration */
 #if defined CONFIG_UART3_ENABLED
@@ -38,8 +49,13 @@
 #else
 #define UART3_ENABLED		0
 #endif
-#define UART3_MODE		MODE_DCE
+#if defined CONFIG_UART3_IRDA_ENABLED
+#define UART3_IR		IRDA
+#else
 #define UART3_IR		NO_IRDA
+#endif
+#define UART3_MODE		MODE_DCE
+#define UART3_DMA_ENABLED	0
 
 /*!
  * Specifies if the Irda transmit path is inverting

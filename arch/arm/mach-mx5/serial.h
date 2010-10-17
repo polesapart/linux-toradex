@@ -44,7 +44,7 @@
 #define UART1_UFCR_TXTL         16
 #define UART1_DMA_ENABLE	0
 /* UART 2 configuration */
-#define UART2_UCR4_CTSTL        -1
+#define UART2_UCR4_CTSTL        16
 #define UART2_DMA_ENABLE	1
 #define UART2_DMA_RXBUFSIZE     512
 #define UART2_UFCR_RXTL         16
@@ -67,5 +67,9 @@
 #define UART5_DMA_RXBUFSIZE     512
 #define UART5_UFCR_RXTL         16
 #define UART5_UFCR_TXTL         16
+
+#ifdef CONFIG_MODULE_CCXMX51
+#include "board-ccwmx51.h"
+#endif
 
 #endif				/* __ARCH_ARM_MACH_MX51_SERIAL_H__ */
