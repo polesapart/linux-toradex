@@ -201,14 +201,24 @@ static int pmic_set_chg_misc(enum chg_setting type, unsigned short flag)
 	return 0;
 }
 
+static void pmic_stop_charging(void)
+{
+	pmic_set_chg_misc(AUTO_CHG_DIS, 0);
+	pmic_set_chg_current(0);
+}
+
 static int pmic_get_batt_voltage(unsigned short *voltage)
 {
 	t_channel channel;
 	unsigned short result[8];
 
+	pmic_stop_charging();
+
 	channel = BATTERY_VOLTAGE;
 	CHECK_ERROR(pmic_adc_convert(channel, result));
 	*voltage = result[0];
+
+	pmic_restart_charging();
 
 	return 0;
 }
@@ -218,9 +228,13 @@ static int pmic_get_batt_current(unsigned short *curr)
 	t_channel channel;
 	unsigned short result[8];
 
+	pmic_stop_charging();
+
 	channel = BATTERY_CURRENT;
 	CHECK_ERROR(pmic_adc_convert(channel, result));
 	*curr = result[0];
+
+	pmic_restart_charging();
 
 	return 0;
 }
