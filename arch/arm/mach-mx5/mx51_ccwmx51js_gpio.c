@@ -1199,13 +1199,11 @@ void __init ccwmx51_io_init(void)
 
 #if !defined(CONFIG_SPI_MXC_SELECT2) || (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
 	mxc_config_iomux(MX51_PIN_NANDF_RB1,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
+	mxc_config_iomux(MX51_PIN_NANDF_RB2,IOMUX_CONFIG_ALT3 | IOMUX_CONFIG_SION);
 #endif
 #if !defined(CONFIG_USB_EHCI_ARC_H1) && !defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
 	mxc_config_iomux(MX51_PIN_DISPB2_SER_RS,IOMUX_CONFIG_ALT4 | IOMUX_CONFIG_SION);
 	mxc_iomux_set_input(MUX_IN_GPIO3_IPP_IND_G_IN_8_SELECT_INPUT,INPUT_CTL_PATH1);
-#endif
-#if !defined(CONFIG_MMC_IMX_ESDHCI) && !defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
-	mxc_config_iomux(MX51_PIN_NANDF_CS7,IOMUX_CONFIG_ALT4 | IOMUX_CONFIG_SION);
 #endif
 #endif
 
