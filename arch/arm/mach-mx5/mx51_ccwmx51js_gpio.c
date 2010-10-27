@@ -1282,11 +1282,13 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_iomux_set_input(MUX_IN_UART2_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH2);
 
 #ifdef CONFIG_UART2_CTS_RTS_ENABLED
+#if !defined(CONFIG_USB_EHCI_ARC_H1) && !defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
 		mxc_request_iomux(MX51_PIN_USBH1_DATA0, IOMUX_CONFIG_ALT1);	/* CTS */
 		mxc_request_iomux(MX51_PIN_USBH1_DATA3, IOMUX_CONFIG_ALT1);	/* RTS */
 		mxc_iomux_set_pad(MX51_PIN_USBH1_DATA0, SERIAL_PORT_PAD);
 		mxc_iomux_set_pad(MX51_PIN_USBH1_DATA3, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART2_IPP_UART_RTS_B_SELECT_INPUT, INPUT_CTL_PATH5);
+#endif /* CONFIG_USB_EHCI_ARC_H1 && CONFIG_USB_EHCI_ARC_H1_MODULE */
 #endif /* CONFIG_UART2_CTS_RTS_ENABLED */
 #endif /* CONFIG_UART2_CTS_RTS_ENABLED */
 		break;
