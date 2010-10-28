@@ -84,8 +84,9 @@
 
 /* Set Base board revision */
 #ifdef CONFIG_JSCCWMX51_V1
-/* Board revision */
+/* Board revision and mach name postfix */
 #define BASE_BOARD_REV		1
+#define BOARD_NAME		" on a EAK board"
 /* SD1 card detect irq */
 #define CCWMX51_SD1_CD_IRQ	IOMUX_TO_IRQ(MX51_PIN_GPIO1_0)
 /* Second touch settings */
@@ -94,6 +95,7 @@
 #elif defined(CONFIG_JSCCWMX51_V2)
 /* Board revision */
 #define BASE_BOARD_REV		2
+#define BOARD_NAME		" on a JSK board"
 /* SD1 card detect irq, not present CD line... */
 #define CCWMX51_SD1_CD_IRQ	0
 /* Second touch settings */
@@ -101,6 +103,7 @@
 #define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
 #else
 #define BASE_BOARD_REV		0
+#define BOARD_NAME		" on an undefined board"
 #endif
 
 void ccwmx51_2nd_touch_gpio_init(void);

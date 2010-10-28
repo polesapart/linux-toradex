@@ -378,20 +378,31 @@ static void __init ccwmx51_timer_init(void)
 static struct sys_timer mxc_timer = {
 	.init	= ccwmx51_timer_init,
 };
-#if defined(CONFIG_JSCCWMX51_V1)
-MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a EAK board")
-#elif defined(CONFIG_JSCCWMX51_V2)
-MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
-#else
-MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on an undefined board")
-#endif
+
+#if defined(CONFIG_MACH_CCWMX51JS)
+MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51"BOARD_NAME)
 	/* Maintainer: Digi International, Inc. */
-	.phys_io = AIPS1_BASE_ADDR,
-	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
-	.boot_params = PHYS_OFFSET + 0x100,
-	.fixup = fixup_mxc_board,
-	.map_io = mx5_map_io,
-	.init_irq = mx5_init_irq,
-	.init_machine = mxc_board_init,
-	.timer = &mxc_timer,
+	.phys_io	= AIPS1_BASE_ADDR,
+	.io_pg_offst	= ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.fixup		= fixup_mxc_board,
+	.map_io		= mx5_map_io,
+	.init_irq	= mx5_init_irq,
+	.init_machine	= mxc_board_init,
+	.timer		= &mxc_timer,
 MACHINE_END
+#endif /* CONFIG_MACH_CCWMX51JS */
+
+#if defined(CONFIG_MACH_CCMX51JS)
+MACHINE_START(CCMX51JS, "ConnectCore i.MX51"BOARD_NAME)
+	/* Maintainer: Digi International, Inc. */
+	.phys_io	= AIPS1_BASE_ADDR,
+	.io_pg_offst	= ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.fixup		= fixup_mxc_board,
+	.map_io		= mx5_map_io,
+	.init_irq	= mx5_init_irq,
+	.init_machine	= mxc_board_init,
+	.timer		= &mxc_timer,
+MACHINE_END
+#endif /* CONFIG_MACH_CCMX51JS */
