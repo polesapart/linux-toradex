@@ -84,6 +84,7 @@ choice
 config JSCCWMX51_V1
 	bool "ConnectCore for i.MX51 Early Availability Development Board"
 	depends on MODULE_CCXMX51
+	select CCWMX51_DISP0_RGB888 if CCWMX51_DISP0
 	help
 	  Select this option if you are using the development board included in
 	  the Early Availability (EA) kit. The Digi part number for this board
@@ -93,6 +94,7 @@ config JSCCWMX51_V1
 config JSCCWMX51_V2
 	bool "ConnectCore for i.MX51 JumpStart Kit Development Board"
 	depends on MODULE_CCXMX51
+	select CCWMX51_DISP0_RGB666 if CCWMX51_DISP0
 	help
 	  Select this option if you are using the development board included in
 	  Digi JumpStart Kit. The Digi part number for this board revision is
@@ -380,10 +382,10 @@ config CCWMX51_DISP0
 if CCWMX51_DISP0
 choice
 	prompt "Display 1 color mode"
-	default CCWMX51_DISP0_RGB666
 
 config CCWMX51_DISP0_RGB888
 	bool "24bit color mode"
+	depends on JSCCWMX51_V1
 	help
 	  Configure Display 1 in 24bit color mode.
 
@@ -397,6 +399,7 @@ config CCWMX51_DISP0_RGB888
 
 config CCWMX51_DISP0_RGB666
 	bool "18bit color mode"
+	depends on JSCCWMX51_V2
 	help
 	  Configure Display 1 in 18bit color mode.  Use this mode if working
 	  on a JumpStart Kit Development Board.
