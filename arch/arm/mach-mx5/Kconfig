@@ -211,7 +211,7 @@ menu "Serial Port Options"
 config UART1_ENABLED
 	bool "Enable UART1"
 	default y
-	depends on SERIAL_MXC
+	depends on SERIAL_MXC && MODULE_CCXMX51
 	help
 	  Enable the MX51 UART1 interface
 
@@ -240,7 +240,7 @@ config UART1_IRDA_ENABLED
 config UART2_ENABLED
 	bool "Enable UART2"
 	default y
-	depends on SERIAL_MXC
+	depends on SERIAL_MXC && MODULE_CCXMX51
 	help
 	  Enable the MX51 UART2 interface
 
@@ -272,7 +272,7 @@ comment "is configured as full UART. This may not be the case in a custom base b
 config UART3_ENABLED
 	bool "Enable UART3"
 	default y
-	depends on SERIAL_MXC && MACH_CCWMX51JS && !UART1_FULL_UART_ENABLED
+	depends on SERIAL_MXC && MODULE_CCXMX51 && !UART1_FULL_UART_ENABLED
 	help
 	  Enable the MX51 UART3 interface
 
@@ -295,7 +295,7 @@ endmenu
 menu "SPI Interface Options"
 config SPI_MXC_SELECT1
 	bool "Enable CSPI1"
-	depends on SPI_MXC
+	depends on SPI_MXC && MODULE_CCXMX51
 	default y
 	help
 	  Enable the CSPI1 interface
@@ -309,14 +309,14 @@ config SPI_MXC_SELECT1_SS1
 
 config SPI_MXC_SELECT2
 	bool "Enable CSPI2"
-	depends on SPI_MXC
+	depends on SPI_MXC && MODULE_CCXMX51
 	default n
 	help
 	  Enable the CSPI2 interface
 
 config SPI_MXC_SELECT3
 	bool "Enable CSPI3"
-	depends on SPI_MXC
+	depends on SPI_MXC && MODULE_CCXMX51
 	default n
 	help
 	  Enable the CSPI3 interface
