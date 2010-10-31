@@ -29,7 +29,7 @@
 static void lcd_poweron(struct ccwmx51_lcd_pdata *plat);
 static void lcd_poweroff(struct ccwmx51_lcd_pdata *plat);
 
-static struct platform_device *plcd_dev[MAX_DISPLAYS];
+static struct platform_device *plcd_dev[MAX_DISPLAYS] = {NULL, NULL};
 
 static int lcd_get_index(struct fb_info *info)
 {
@@ -112,7 +112,13 @@ static int __devinit lcd_sync_probe(struct platform_device *pdev)
 		}
 	}
 
-	fb_register_client(&nb);
+	/**
+	 * Register the block notifier only once. The device being notified can be
+	 * retrieved from the received event. There are some issues when the same
+	 * notifier is registered multiple times.
+	 */
+	if (plcd_dev[0] == NULL && plcd_dev[1] == NULL)
+		fb_register_client(&nb);
 	lcd_poweron(plat);
 
 	return 0;
@@ -122,12 +128,14 @@ static int __devexit lcd_sync_remove(struct platform_device *pdev)
 {
 	struct ccwmx51_lcd_pdata *plat = pdev->dev.platform_data;
 
-	fb_unregister_client(&nb);
 	lcd_poweroff(plat);
 	if (plat->deinit)
 		plat->deinit(plat->vif);
 
 	plcd_dev[plat->vif] = NULL;
+
+	if (plcd_dev[0] == NULL && plcd_dev[1] == NULL)
+		fb_unregister_client(&nb);
 
 	return 0;
 }
