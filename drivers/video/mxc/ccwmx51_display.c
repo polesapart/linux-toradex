@@ -105,6 +105,9 @@ static int __devinit lcd_sync_probe(struct platform_device *pdev)
 		if ((!strcmp(registered_fb[i]->fix.id, DISP0_ID) && plat->vif == 0) ||
 		    (!strcmp(registered_fb[i]->fix.id, DISP1_ID) && plat->vif == 1)) {
 			lcd_init_fb(registered_fb[i]);
+			/* Clear the screen */
+			memset((char *)registered_fb[i]->screen_base, 0,
+			       registered_fb[i]->fix.smem_len);
 			fb_show_logo(registered_fb[i], 0);
 		}
 	}
