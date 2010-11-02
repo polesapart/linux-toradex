@@ -334,19 +334,14 @@ static int touch_pendown_state(void)
 
 static struct ads7846_platform_data ccwmx51js_touch_data = {
 	.model			= 7843,
-	.x_min			= 100,
-	.y_min			= 100,
-	.x_max			= 4000,
-	.y_max			= 4000,
-	.vref_delay_usecs	= 100,
-	.x_plate_ohms		= 450,
-	.y_plate_ohms		= 250,
-	.pressure_max		= 15000,
-	.debounce_max		= 1,
-	.debounce_rep		= 0,
-	.debounce_tol		= (~0),
-	.settle_delay_usecs	= 20,
+	.x_min			= 0,
+	.y_min			= 0,
+	.x_max			= 4095,
+	.y_max			= 4095,
 	.get_pendown_state	= touch_pendown_state,
+	.buflen			= 6,
+	.skip_samples		= 0,
+	.rotate			= 0,
 };
 
 static struct spi_board_info ccwmx51_2nd_touch[] = {
