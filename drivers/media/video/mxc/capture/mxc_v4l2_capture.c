@@ -1582,7 +1582,7 @@ static int mxc_v4l_close(struct file *file)
 		err = stop_preview(cam);
 		cam->overlay_on = false;
 	}
-	if (cam->capture_pid == current->pid) {
+	if (cam->capture_pid == current->tgid) {
 		err |= mxc_streamoff(cam);
 		wake_up_interruptible(&cam->enc_queue);
 	}
