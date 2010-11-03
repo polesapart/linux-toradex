@@ -331,14 +331,20 @@ int __init uart_register_gpios(int gpio_start,
 	for (i = 0; i < gpio_nr; i++) {
 		if (i!=2 || !data->rtsen) /* Skip request of CTS line */
 		{
+			int invert = 0;
+
 			if (gpio_request(gpio_start + gpio[i], "ns921x-serial"))
 				goto err;
+			if (i==3) {
+				/* RTS polarity defined by configuration for RS485 mode */
+				invert = data->rtsinvert;
+				printk("Inverting RTS\n");
 #ifdef CONFIG_NS921X_SERIAL_RTS_AS_GPIO
-			if (i==3) /* RTS needs to be used as gpio to allow using AFE */
-				gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, 3, 0);
-			else
+				/* RTS needs to be used as gpio to allow using AFE */
+				func = 3;
 #endif
-				gpio_configure_ns921x(gpio_start + gpio[i], 0, 0, func, 0);
+			}
+			gpio_configure_ns921x(gpio_start + gpio[i], 0, invert, func, 0);
 		}
 		data->gpios[i] = gpio_start + gpio[i];
 	}
@@ -358,6 +364,10 @@ void __init ns9xxx_add_device_ns921x_uarta(int gpio_start,
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTA_RXTX485) || \
 	defined(CONFIG_CME9210JS_SERIAL_PORTA_RXTX485)
 	uarta_data.rtsen = 1;
+#if defined(CONFIG_CC9P9215JS_SERIAL_PORTA_RTS485POLHIGH) || \
+	defined(CONFIG_CME9210JS_SERIAL_PORTA_RTS485POLHIGH)
+	uarta_data.rtsinvert = 1;
+#endif
 #else
 	uarta_data.rtsen = 0;
 #endif
@@ -376,6 +386,9 @@ void __init ns9xxx_add_device_ns921x_uartb(int gpio_start,
 	uartb_data.nr_gpios = gpio_nr;
 #ifdef CONFIG_CC9P9215JS_SERIAL_PORTB_RXTX485
 	uartb_data.rtsen = 1;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTB_RTS485POLHIGH
+	uartb_data.rtsinvert = 1;
+#endif
 #else
 	uartb_data.rtsen = 0;
 #endif
@@ -395,6 +408,9 @@ void __init ns9xxx_add_device_ns921x_uartc(int gpio_start,
 	uartc_data.nr_gpios = gpio_nr;
 #ifdef CONFIG_CC9P9215JS_SERIAL_PORTC_RXTX485
 	uartc_data.rtsen = 1;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTC_RTS485POLHIGH
+	uartc_data.rtsinvert = 1;
+#endif
 #else
 	uartc_data.rtsen = 0;
 #endif
@@ -414,6 +430,9 @@ void __init ns9xxx_add_device_ns921x_uartd(int gpio_start,
 	uartd_data.nr_gpios = gpio_nr;
 #ifdef CONFIG_CC9P9215JS_SERIAL_PORTD_RXTX485
 	uartd_data.rtsen = 1;
+#ifdef CONFIG_CC9P9215JS_SERIAL_PORTD_RTS485POLHIGH
+	uartd_data.rtsinvert = 1;
+#endif
 #else
 	uartd_data.rtsen = 0;
 #endif

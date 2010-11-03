@@ -333,6 +333,25 @@ config CC9P9215JS_SERIAL_PORTA_FULL
 
 endchoice
 
+choice
+	prompt "RTS polarity for RS-485 transceiver control"
+	depends on CC9P9215JS_SERIAL_PORTA_RXTX485
+	default CC9P9215JS_SERIAL_PORTA_RTS485POLLOW
+
+config CC9P9215JS_SERIAL_PORTA_RTS485POLHIGH
+	bool "High polarity (RTS high on transmission)"
+	help
+	  RTS will be driven high during transmission and low during
+	  reception.
+
+config CC9P9215JS_SERIAL_PORTA_RTS485POLLOW
+	bool "Low polarity (RTS low on transmission)"
+	help
+	  RTS will be driven low during transmission and high during
+	  reception.
+
+endchoice
+
 config CC9P9215JS_SERIAL_PORTB
 	bool "Serial port B"
 	default y
@@ -357,6 +376,25 @@ config CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX
 
 config CC9P9215JS_SERIAL_PORTB_FULL
 	bool "Full port"
+
+endchoice
+
+choice
+	prompt "RTS polarity for RS-485 transceiver control"
+	depends on CC9P9215JS_SERIAL_PORTB_RXTX485
+	default CC9P9215JS_SERIAL_PORTB_RTS485POLLOW
+
+config CC9P9215JS_SERIAL_PORTB_RTS485POLHIGH
+	bool "High polarity (RTS high on transmission)"
+	help
+	  RTS will be driven high during transmission and low during
+	  reception.
+
+config CC9P9215JS_SERIAL_PORTB_RTS485POLLOW
+	bool "Low polarity (RTS low on transmission)"
+	help
+	  RTS will be driven low during transmission and high during
+	  reception.
 
 endchoice
 
@@ -387,6 +425,25 @@ config CC9P9215JS_SERIAL_PORTC_FULL
 
 endchoice
 
+choice
+	prompt "RTS polarity for RS-485 transceiver control"
+	depends on CC9P9215JS_SERIAL_PORTC_RXTX485
+	default CC9P9215JS_SERIAL_PORTC_RTS485POLLOW
+
+config CC9P9215JS_SERIAL_PORTC_RTS485POLHIGH
+	bool "High polarity (RTS high on transmission)"
+	help
+	  RTS will be driven high during transmission and low during
+	  reception.
+
+config CC9P9215JS_SERIAL_PORTC_RTS485POLLOW
+	bool "Low polarity (RTS low on transmission)"
+	help
+	  RTS will be driven low during transmission and high during
+	  reception.
+
+endchoice
+
 config CC9P9215JS_SERIAL_PORTD
 	bool "Serial port D"
 	default y
@@ -411,6 +468,25 @@ config CC9P9215JS_SERIAL_PORTD_CTSRTSRXTX
 
 config CC9P9215JS_SERIAL_PORTD_FULL
 	bool "Full port"
+
+endchoice
+
+choice
+	prompt "RTS polarity for RS-485 transceiver control"
+	depends on CC9P9215JS_SERIAL_PORTD_RXTX485
+	default CC9P9215JS_SERIAL_PORTD_RTS485POLLOW
+
+config CC9P9215JS_SERIAL_PORTD_RTS485POLHIGH
+	bool "High polarity (RTS high on transmission)"
+	help
+	  RTS will be driven high during transmission and low during
+	  reception.
+
+config CC9P9215JS_SERIAL_PORTD_RTS485POLLOW
+	bool "Low polarity (RTS low on transmission)"
+	help
+	  RTS will be driven low during transmission and high during
+	  reception.
 
 endchoice
 
@@ -593,6 +669,25 @@ config CME9210JS_SERIAL_PORTA_CTSRTSRXTX
 
 config CME9210JS_SERIAL_PORTA_FULL
 	bool "Full port"
+
+endchoice
+
+choice
+	prompt "RTS polarity for RS-485 transceiver control"
+	depends on CME9210JS_SERIAL_PORTA_RXTX485
+	default CME9210JS_SERIAL_PORTA_RTS485POLHIGH
+
+config CME9210JS_SERIAL_PORTA_RTS485POLHIGH
+	bool "High polarity (RTS high on transmission)"
+	help
+	  RTS will be driven high during transmission and low during
+	  reception.
+
+config CME9210JS_SERIAL_PORTA_RTS485POLLOW
+	bool "Low polarity (RTS low on transmission)"
+	help
+	  RTS will be driven low during transmission and high during
+	  reception.
 
 endchoice
 
