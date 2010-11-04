@@ -601,22 +601,21 @@ static int mt9v111_set_digitalmonochrome (int sensorid , int on)
 static int mt9v111_set_digitalsharpness (int sensorid , int value)
 {
 	u8 reg;
-	u16 data = mt9v111_read_reg(sensorid,MT9V111I_APERTURE_GAIN);
-	pr_debug("In mt9v111_set_digitalsharpness(%d)\n",
-			value);
+	u16 data ;
 
-        /* erase current and remove auto reduce sharpness in low light */
-         data &= ~(0x000F);
-         value = value / 0x14;
-         /* create the new register value */
-         data |= (value & (0x000F));
-
-         if( data > (0x000F) )
-                 return -1;
+	pr_debug("In mt9v111_set_digitalsharpness(%d)\n",value);
 
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = mt9v111_device.ifpReg->addrSpaceSel;
 	mt9v111_write_reg(sensorid,reg, data);
+
+	data = mt9v111_read_reg(sensorid,MT9V111I_APERTURE_GAIN);
+
+	/* erase current and remove auto reduce sharpness in low light */
+	 data &= ~(0x000F);
+	 data |= (value & (0x000F));
+	 if( data > (0x000F) )
+			 return -1;
 
 	/* Operation Mode Control */
 	reg = MT9V111I_APERTURE_GAIN;
