@@ -39,6 +39,7 @@
 #include <media/v4l2-int-device.h>
 #include "mxc_v4l2_capture.h"
 #include "ipu_prp_sw.h"
+#include "asm/delay.h"
 
 static int video_nr = -1;
 
@@ -1527,6 +1528,8 @@ static int mxc_v4l_open(struct file *file)
 			__func__,
 			cam->crop_current.width, cam->crop_current.height);
 
+		udelay(100);
+
 		csi_param.data_fmt = cam_fmt.fmt.pix.pixelformat;
 		pr_debug("On Open: Input to ipu size is %d x %d\n",
 				cam_fmt.fmt.pix.width, cam_fmt.fmt.pix.height);
@@ -1541,12 +1544,16 @@ static int mxc_v4l_open(struct file *file)
 					cam_fmt.fmt.pix.pixelformat,
 					csi_param);
 
+		udelay(100);
+
 		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
 				       true, true);
 		vidioc_int_init(cam->sensor);
 
 		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
 				       false, false);
+
+		udelay(100);
 }
 
 	file->private_data = dev;
@@ -2654,11 +2661,6 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (cam->overlay_on == true)
 		stop_preview(cam);
-// AG: With this the capture doesn't continue after resume
-// Without it at least echo core > /sys/power/pm_test resumes OK
-//	if ((cam->capture_on == true) && cam->enc_disable) {
-//		cam->enc_disable(cam);
-//	}
 	camera_power(cam, false);
 	return 0;
 }
