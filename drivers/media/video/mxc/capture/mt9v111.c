@@ -626,8 +626,6 @@ static int mt9v111_set_digitalsharpness (int sensorid , int value)
 	return 0;
 }
 
-static char brightness_table[] = {0x64,0x54,0x44,0x34,0x24,0x14,0x00,0x64,0x74,0x84,0x94,0xA4,0xb4,0xC4};
-
 /*!
  * mt9v111 sensor set digital brightness
  *
@@ -638,35 +636,25 @@ static char brightness_table[] = {0x64,0x54,0x44,0x34,0x24,0x14,0x00,0x64,0x74,0
 static int mt9v111_set_digitalbrightness (int sensorid , int value)
 {
 	u8 reg;
-	u16 data = mt9v111_read_reg(sensorid,MT9V111I_AE_PRECISION_TARGET);
-	u32 max_brightness, area_offset;
-	pr_debug("In mt9v111_set_digitalbrightness(%d)\n",
-			value);
+	u16 data;
+	u32 max_brightness, min_brightness;
 
+	data = mt9v111_read_reg(sensorid,MT9V111I_CLIP_LIMIT_OUTPUT_LUMI);
+	max_brightness = data >> 8;
+	min_brightness = (u8)data;
 
-	max_brightness = mt9v111_read_reg(sensorid,MT9V111I_CLIP_LIMIT_OUTPUT_LUMI);
-        max_brightness >>= 8;
-
-        if ( value > 0xFFFF0000 )
-        {
-                max_brightness = (0xFFFFFFFF - value);
-                area_offset = 0;
-        }
-        else
-        {
-                max_brightness = value;
-                area_offset = 6;
-        }
-
-        max_brightness = max_brightness / 100;
-        max_brightness &= 0x00FF;
-        max_brightness = max_brightness / 0x14;             // steps
-        data &= (0xFF00);                           // clear current brightness
-        data |= brightness_table[max_brightness+area_offset];
+	if( value > max_brightness )
+		value = max_brightness;
+	else if( value < min_brightness )
+		value = min_brightness;
 
 	reg = MT9V111I_ADDR_SPACE_SEL;
 	data = mt9v111_device.ifpReg->addrSpaceSel;
 	mt9v111_write_reg(sensorid,reg, data);
+
+	data = mt9v111_read_reg(sensorid,MT9V111I_AE_PRECISION_TARGET);
+	data &= 0xFF00; /* Clear target luminance */
+	data |= ((u8)value );
 
 	/* Operation Mode Control */
 	reg = MT9V111I_AE_PRECISION_TARGET;
