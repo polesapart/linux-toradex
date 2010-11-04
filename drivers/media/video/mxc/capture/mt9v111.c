@@ -1112,19 +1112,6 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s, struct v4l2_control *vc)
 	return retval;
 }
 
-/*!
- * ioctl_init - V4L2 sensor interface handler for VIDIOC_INT_INIT
- * @s: pointer to standard V4L2 device structure
- */
-static int ioctl_init(struct v4l2_int_device *s)
-{
-	int sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
-
-	pr_debug("In mt9v111:ioctl_init for sensor %d\n",sensorid);
-
-	return 0;
-}
-
 static void mt9v111_ifp_reset ( int sensorid )
 {
 	mt9v111_write_reg(sensorid,MT9V111S_ADDR_SPACE_SEL, 0x0001);
@@ -1141,6 +1128,27 @@ static void mt9v111_sensor_reset ( int sensorid )
 	msleep(100);
 	mt9v111_write_reg(sensorid,MT9V111S_RESET, 0x0000);
 	msleep(100);
+}
+
+/*!
+ * ioctl_init - V4L2 sensor interface handler for VIDIOC_INT_INIT
+ * @s: pointer to standard V4L2 device structure
+ */
+static int ioctl_init(struct v4l2_int_device *s)
+{
+	int sensorid = 0;
+
+	sensorid = mt9v111_id_from_name(((struct sensor *)s->priv)->v4l2_int_device->name);
+	if( sensorid < 0 )
+		return 0;
+
+	pr_debug("In mt9v111:ioctl_init for sensor %d\n",sensorid);
+
+	mt9v111_sensor_reset(sensorid);
+	mt9v111_ifp_reset(sensorid);
+	mt9v111_sensor_lib_datasheet(sensorid,mt9v111_device.coreReg, mt9v111_device.ifpReg);
+
+	return 0;
 }
 
 /*!
