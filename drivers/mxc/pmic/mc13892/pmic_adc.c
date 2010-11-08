@@ -1344,7 +1344,7 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 	}
 
 	pmic_adc_ready = 1;
-	pr_debug("PMIC ADC successfully probed\n");
+	printk(KERN_DEBUG"PMIC ADC successfully probed\n");
 	return 0;
 
 rm_dev_file:
