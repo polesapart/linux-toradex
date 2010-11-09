@@ -16,9 +16,6 @@
 
 #include <linux/clk.h>
 
-/* Maximal number of available channels */
-#define S3C24XX_PWM_CHANNEL_MAX		4
-
 /* This is the data for the PWM channels */
 struct s3c24xx_pwm_channel {
 	/* platform defined */

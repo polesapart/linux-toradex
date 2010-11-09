@@ -32,4 +32,15 @@ config NS921X_PWM
 	  displays, motor control, and waveform generation.  If
 	  unsure, say N.
 
+config S3C2443_PWM
+	tristate "s3c2443 PWM support"
+	depends on MACH_CC9M2443JS || MACH_CCW9M2443JS
+	help
+	  This option enables device driver support for the PWM
+	  timers on S3C2443 processor.
+	  Pulse Width Modulation is used many for purposes, including
+	  software controlled power-efficent backlights on LCD
+	  displays, motor control, and waveform generation.  If
+	  unsure, say N.
+
 endif
