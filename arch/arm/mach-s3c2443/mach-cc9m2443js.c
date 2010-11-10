@@ -597,7 +597,8 @@ static struct resource s3c2443_pwm_resources[] = {
 	PWM_RESOURCE(0, IRQ_TIMER0),
 	PWM_RESOURCE(1, IRQ_TIMER1),
 	PWM_RESOURCE(2, IRQ_TIMER2),
-	PWM_RESOURCE(3, IRQ_TIMER3),
+	/* timer 3 output is not connected */
+	//PWM_RESOURCE(3, IRQ_TIMER3),
 	/* timer4 has no output */
 };
 
@@ -611,7 +612,9 @@ static struct s3c24xx_pwm_channel s3c2443_pwm_channels[] = {
 	PWM_CHANNEL(0, S3C2410_GPB0),
 	PWM_CHANNEL(1, S3C2410_GPB1),
 	PWM_CHANNEL(2, S3C2410_GPB2),
-	PWM_CHANNEL(3, S3C2410_GPB3),
+	/* timer 3 output is not connected */
+//	PWM_CHANNEL(3, S3C2410_GPB3),
+	/* timer4 has no output */
 };
 
 /* This will be initialized in the init function to point to the
@@ -630,10 +633,12 @@ static struct platform_device s3c2443_device_pwm = {
 
 static void __init s3c2443_pwm_init(void)
 {
+	printk("PWM: %s()\n", __FUNCTION__);
 	/* Init platform data channels pointer to
 	 * the channels array */
 	s3c2443_pwm_pdata.number_channels = ARRAY_SIZE(s3c2443_pwm_channels);
 	s3c2443_pwm_pdata.channels = s3c2443_pwm_channels;
+	printk("s3c2443_pwm_pdata.number_channels = %d\n", s3c2443_pwm_pdata.number_channels);
 }
 #endif
 
@@ -735,7 +740,7 @@ static void __init cc9m2443_machine_init(void)
 
 	s3c_device_i2c.dev.platform_data = &cc9m2443_i2c_info;
 
-#ifdef CONFIG_S3C2443_PWM
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
 	/* Init PWM platform data with channels */
 	s3c2443_pwm_init();
 #endif
