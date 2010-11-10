@@ -86,25 +86,6 @@ static inline struct s3c24xx_pwm_channel *s3c24xx_pwm_to_channel(struct pwm_chan
 	return retval;
 }
 
-/* Checks if pwm is being used */
-static inline int __s3c24xx_pwm_is_on(struct pwm_channel *p)
-{
-	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
-	u32 timer_control;
-//	struct s3c24xx_pwm_pdata *pdata;
-	struct s3c24xx_pwm_channel *pch;
-
-	if (!np) {
-		pr_err("Unable to fetch structure s3c24xx_pwm.\n");
-		return -EINVAL;
-	}
-
-	pch = s3c24xx_pwm_to_channel(p);
-	timer_control = readl(SYS_TC(pch->timer));
-
-	return (timer_control & NS921X_TCR_TE) ? 1 : 0;
-}
-
 /* Starts PWM output */
 static inline void __s3c24xx_pwm_start(struct pwm_channel *p)
 {
@@ -466,22 +447,23 @@ gpio_err:
 static void s3c24xx_pwm_free(struct pwm_channel *p)
 {
 	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
-	struct s3c24xx_pwm_channel *chi = s3c24xx_pwm_to_channel(p);
+	struct s3c24xx_pwm_channel *ch = s3c24xx_pwm_to_channel(p);
 
 	pr_debug("%s\n", __func__);
 
-	if (chi->use_count) {
+	if (ch->use_count) {
 		pwm->use_count--;
 	} else {
-		printk(KERN_ERR "PWM channel %d already freed\n", chi->timer);
+		printk(KERN_ERR "PWM channel %d already freed\n", ch->timer);
 	}
 
-	s3c2410_gpio_cfgpin(chi->gpio, S3C2410_GPIO_INPUT);
-	gpio_free(chi->gpio);
+	s3c2410_gpio_cfgpin(ch->gpio, S3C2410_GPIO_INPUT);
+	gpio_free(ch->gpio);
 }
 
 static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct s3c24xx_pwm *np;
 	struct s3c24xx_pwm_pdata *pdata;
 	struct s3c24xx_pwm_channel *ch;
@@ -509,30 +491,36 @@ static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
 		ch->tcon_base = i == 0 ? 0 : (i *) + 4;
 		ch->use_count = 0;
 		ch->running = 0;
+
+		/* Hack pdev->id to get the proper clock producer for
+		 * each channel */
+		pdev->id = i;
+
+		ch->clk = clk_get(dev, "pwm-tin");
+		if (IS_ERR(ch->clk)) {
+			dev_err(dev, "failed to get pwm tin clk\n");
+			ret = PTR_ERR(ch->clk);
+			goto err_clk_tin;
+		}
+
+		ch->clk_div = clk_get(dev, "pwm-tdiv");
+		if (IS_ERR(ch->clk_div)) {
+			dev_err(dev, "failed to get pwm tdiv clk\n");
+			ret = PTR_ERR(ch->clk_div);
+			goto err_clk_tdiv;
+		}
 	}
+	/* Restore previously hacked pdev->id */
+	pdev->id = -1;
+
 	pr_debug("%i PWM channels registered.\n", pdata->number_channels);
 
 	np = kzalloc(sizeof(*np), GFP_KERNEL);
 	if (!np) {
 		ret = -ENOMEM;
-		goto err_s3c24xx_pwm_alloc;
+		goto err_clk_tdiv;
 	}
-
 	spin_lock_init(&np->lock);
-
-	np->clk = clk_get(dev, "pwm-tin");
-	if (IS_ERR(np->clk)) {
-		dev_err(dev, "failed to get pwm tin clk\n");
-		ret = PTR_ERR(np->clk);
-		goto err_clk_get;
-	}
-
-	np->clk_div = clk_get(dev, "pwm-tdiv");
-	if (IS_ERR(np->clk_div)) {
-		dev_err(dev, "failed to get pwm tdiv clk\n");
-		ret = PTR_ERR(np->clk_div);
-		goto err_clk_tin;
-	}
 
 	np->pwm.bus_id = pdev->dev.bus_id;
 	np->pwm.nchan = pdata->number_channels;
@@ -558,15 +546,19 @@ static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
 	return 0;
 
  err_clk_tdiv:
-	clk_put(np->clk_div);
+	ch = pdata->channels[i];
+	clk_put(ch->clk);
 
  err_clk_tin:
-	clk_put(np->clk);
+	while (i > 0) {
+		i--;
+		ch = pdata->channels[i];
+		clk_put(ch->clk_div);
+		clk_put(ch->clk);
+	}
 
- err_clk_get:
 	kfree(np);
 
- err_s3c24xx_pwm_alloc:
 	return ret;
 }
 
@@ -574,8 +566,8 @@ static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
 {
 	struct s3c24xx_pwm *np;
 	struct s3c24xx_pwm_pdata *pdata;
-	struct device *d = &pdev->dev;
-	struct s3c24xx_pwm_channel *chi;
+	struct device *dev = &pdev->dev;
+	struct s3c24xx_pwm_channel *ch;
 	struct pwm_channel *p;
 	int ret;
 	u32 i;
@@ -591,39 +583,26 @@ static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
 	np = platform_get_drvdata(pdev);
 	p = np->pwm.channels;
 
+	for(i = 0; i < pdata->number_channels; i++) {
+		/* Stop and free all channels?? */
+		printk("p + i(%d) = %p\n", (p + i));
+		__s3c24xx_pwm_stop(p + i);
+		s3c24xx_pwm_free(p + i);
+		/* Free clocks */
+		ch = pdata->channels[i];
+		clk_put(ch->clk_div);
+		clk_put(ch->clk);
+	}
+
 	ret = pwm_unregister(&np->pwm);
 	if (ret) {
 		pr_debug("Failure unregistering pwm\n");
 	}
 
-	/*
-	 * @TODO: We might want to reset Read and Capture Register, but we can not write to it.
-	 */
-	for (i=0; i < pdata->number_channels; i++) {
-
-		chi = s3c24xx_pwm_to_channel(p+i);
-
-		/* Resets Timer Control Register */
-		writel(0x00, SYS_TC(chi->timer));
-
-		/* Resets High, Low, Reload Registers*/
-		writel(0x00, SYS_TRELCCR(chi->timer));
-		writel(0x00, SYS_THR(chi->timer - 6));	/* high equals to reload */
-		writel(0x00, SYS_TLR(chi->timer - 6));
-
-		/* Sets GPIO as inputs */
-		gpio_configure_ns921x_unlocked(chi->gpio, 1, NS921X_GPIO_DONT_INVERT,
-					       NS921X_GPIO_FUNC_3, 0);
-
-		/* Frees GPIO */
-		gpio_free(chi->gpio);
-	}
-
-	clk_put(np->clk);
 	platform_set_drvdata(pdev, NULL);
 
 	kfree(np);
-	module_put(d->driver->owner);
+	module_put(dev->driver->owner);
 
 	return 0;
 }
@@ -670,7 +649,7 @@ static void s3c24xx_pwm_exit(void)
 
 module_exit(s3c24xx_pwm_exit);
 
-MODULE_AUTHOR("Hector Oron <Hector.Oron <at> digi.com>");
-MODULE_DESCRIPTION("Driver for s3c24xx PWMC peripheral");
+MODULE_AUTHOR("Digi International Inc.");
+MODULE_DESCRIPTION("Driver for s3c24xx PWM peripheral");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:s3c24xx_pwmc");
