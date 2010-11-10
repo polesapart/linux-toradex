@@ -169,7 +169,7 @@ struct ads7846 {
 /* Following configuration should be done in the platform configuration */
 #define	SCREEN_LANDSCAPE	1
 #undef	SCREEN_PORTRAIT
-#define MAX_DIFF_BETWEEN_SAMPLES	100
+#define MAX_DIFF_BETWEEN_SAMPLES	25
 
 
 /*--------------------------------------------------------------------------*/
@@ -561,6 +561,7 @@ static void ads7843_rx_average(void *ads)
 	x /= sample_count;
 
        if (ts->pendown) {
+
                input_report_key(input_dev, BTN_TOUCH, 1);
                input_report_abs(input_dev, ABS_PRESSURE, ts->pressure_max / 2);
                input_report_abs(input_dev, ABS_X, x);
