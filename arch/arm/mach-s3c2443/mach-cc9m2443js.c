@@ -583,6 +583,7 @@ static struct platform_device s3c2443_device_adc = {
 	}
 };
 
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
 /* Pulse Width Modulation (PWM) timers */
 #define PWM_RESOURCE(_tmr, _irq)		\
 	{					\
@@ -606,7 +607,6 @@ static struct resource s3c2443_pwm_resources[] = {
 		.gpio	= _gpio,	\
 	}
 
-#ifdef CONFIG_S3C2443_PWM
 static struct s3c24xx_pwm_channel s3c2443_pwm_channels[] = {
 	PWM_CHANNEL(0, S3C2410_GPB0),
 	PWM_CHANNEL(1, S3C2410_GPB1),
@@ -653,7 +653,7 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c443_device_ide,
 	&s3c443_device_pcmcia,
 	&s3c2443_device_adc,
-#ifdef CONFIG_S3C2443_PWM
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
 	&s3c2443_device_pwm,
 #endif
 };
