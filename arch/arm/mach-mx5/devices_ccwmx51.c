@@ -735,8 +735,12 @@ enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm
 			return MODE_AUTO;
 		} else if (!strncasecmp(p, "auto@", 5)) {
 			*str = p + 5;
+			if ((temp = strchr(*str, ',')) != NULL)
+				*temp = '\0';
+			DBG(AD9389_DBG, "HDMI: auto string %s\n", *str);
 			return MODE_AUTO_STRING;
 		} else if (!strncasecmp(p, "auto", 4)) {
+			DBG(AD9389_DBG, "HDMI: auto\n");
 			return MODE_AUTO;
 		} else  if ((panel = ccwmx51_find_video_config(ad9389_panel_list,
 						      ARRAY_SIZE(ad9389_panel_list),
@@ -745,9 +749,13 @@ enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm
 			memcpy(&mx51_fb_data[pdata->dispif],
 			       &plcd_platform_data[pdata->dispif].fb_pdata,
 			       sizeof(struct mxc_fb_platform_data));
+			DBG(AD9389_DBG, "HDMI: forced mode\n");
 			return MODE_FORCED;
 		} else {
 			*str = p;
+			if ((temp = strchr(*str, ',')) != NULL)
+				*temp = '\0';
+			DBG(AD9389_DBG, "HDMI: string %s\n", *str);
 			return MODE_STRING;
 		}
 	}
