@@ -19,9 +19,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-# define LAST_COUNT	0xFFFFFFFF	/* 32 bit counter */
-// # define DEBUG
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/clk.h>
@@ -35,6 +32,20 @@
 #include <plat/regs-timer.h>
 
 #define MAX_TIMER_COUNT	0xffff
+
+/* Timers 0 and 1 share an 8-bit prescaler to divide the
+ * input clock PCLK. By defining the following constant
+ * you set this prescaler to a predefined value.
+ * Allowed values are in the range 0..0xff.
+ * If the constant is not defined, the driver will calculate
+ * a prescaler as follows:
+ * - If only one timer is running, the prescaler will be set
+ *   to the value that allows to have the period with the maximum
+ *   duty cycle resolution (CNT=0xffff, CMP=0)
+ * - If the two timers are running, the prescaler will be set
+ *   to the value that allows both periods with the minimum error
+ */
+//#define FIXED_PRESCALER_0	0x80
 
 struct s3c24xx_pwm {
 	struct pwm_device pwm;
@@ -243,11 +254,22 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long tcon;
 	unsigned long tcnt;
 	unsigned long flags;
+	unsigned long parent_rate;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
 	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
 	period = NS_IN_HZ / period_ns;
+
+	parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
+#ifdef FIXED_PRESCALER_0
+	/* Fixed prescaler set by user */
+	clk_set_rate(clk_get_parent(pch->clk_div), parent_rate/FIXED_PRESCALER_0);
+#else
+	/* Auto-adjust prescaler */
+	//TODO
+#endif
+
 
 	if (pwm_is_tdiv(pch)) {
 		tin_rate = pwm_calc_tin(pch, period);
@@ -343,32 +365,6 @@ static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *
 	/* We currently avoid using 64bit arithmetic by using the
 	 * fact that anything faster than 1Hz is easily representable
 	 * by 32bits. */
-
-	/*
-	if (c->config_mask == PWM_CONFIG_DUTY_NS ||
-	    c->config_mask == PWM_CONFIG_PERIOD_NS) {
-		if (c->period_ns > NS_IN_HZ || c->duty_ns > NS_IN_HZ)
-			return -ERANGE;
-
-		if (c->duty_ns > c->period_ns)
-			return -EINVAL;
-
-		printk("c->period_ns = %ld\n", c->period_ns);
-		printk("c->duty_ns = %ld\n", c->duty_ns);
-
-		duty_ticks = pwm_ns_to_ticks(p, c->duty_ns);
-		period_ticks = pwm_ns_to_ticks(p, c->period_ns);
-
-		printk("c->period_ticks = %ld\n", c->period_ticks);
-		printk("c->duty_ticks = %ld\n", c->duty_ticks);
-
-		printk("period_ticks = %ld\n", period_ticks);
-		printk("duty_ticks = %ld\n", duty_ticks);
-
-		if (c->period_ticks == period_ticks &&
-		c->duty_ticks == duty_ticks)
-			return 0;
-	}*/
 
 	if (p->pwm->config_nosleep) {
 		if (!p->pwm->config_nosleep(p, c))
@@ -635,11 +631,10 @@ static int __init s3c24xx_pwm_init(void)
 		return -EINVAL;
 	}
 
+	printk(banner);
 	ret = platform_driver_register(&s3c24xx_pwm_driver);
 	if (ret)
 		printk(KERN_ERR "%s: failed to add pwm driver\n", __func__);
-	else
-		printk(banner);
 
 	return ret;
 }
