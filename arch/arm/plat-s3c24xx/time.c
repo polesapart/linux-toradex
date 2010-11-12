@@ -165,7 +165,18 @@ static void s3c2410_timer_setup (void)
 
 	tcon = __raw_readl(S3C2410_TCON);
 	tcfg1 = __raw_readl(S3C2410_TCFG1);
+
+	/* HP: Timer4 is used for system timer and its prescaler
+	 * (which is shared by timers 2 and 3) is already set and
+	 * should not be modified.
+	 * Timer0 and Timer1 prescaler was set by U-Boot, for the usleep
+	 * calculation and now it has a value different than the reset
+	 * value of 0. Lets reset this prescaler */
 	tcfg0 = __raw_readl(S3C2410_TCFG0);
+	tcfg0 &= 0xffffff00;
+	__raw_writel(tcfg0, S3C2410_TCFG0);
+	tcfg0 = __raw_readl(S3C2410_TCFG0);
+
 
 	/* configure the system for whichever machine is in use */
 
