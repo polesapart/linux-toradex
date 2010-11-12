@@ -29,6 +29,8 @@
 
 #include <plat/regs-timer.h>
 
+#define MAX_PRESCALER	0xff
+
 /* Each of the timers 0 through 5 go through the following
  * clock tree, with the inputs depending on the timers.
  *
@@ -84,21 +86,52 @@ static unsigned long clk_pwm_scaler_getrate(struct clk *clk)
 		tcfg0 &= S3C2410_TCFG_PRESCALER0_MASK;
 	}
 
+	printk("parent = %lu\n", clk_get_rate(clk->parent));
+	printk("tcfg0 + 1 = %lu\n", (tcfg0 + 1));
 	return clk_get_rate(clk->parent) / (tcfg0 + 1);
 }
 
-/* TODO - add set rate calls. */
+/* This function only modifies prescaler 0 */
+static int clk_pwm_scaler_setrate(struct clk *clk, unsigned long rate)
+{
+	//struct pwm_tdiv_clk *divclk = to_tdiv(clk);
+	unsigned long tcfg0;
+	unsigned long parent_rate = clk_get_rate(clk->parent);
+	unsigned long prescaler;
+	unsigned long flags;
+
+	printk("%s(parent_rate=%lu)\n", __FUNCTION__, rate);
+	printk("desired rate=%lu\n", rate);
+	prescaler = parent_rate / rate;
+	printk("prescaler=%lu\n", prescaler);
+	if (prescaler > MAX_PRESCALER)
+		return -EINVAL;
+
+	local_irq_save(flags);
+	tcfg0 = __raw_readl(S3C2410_TCFG1);
+	tcfg0 &= ~(S3C2410_TCFG_PRESCALER0_MASK);
+	tcfg0 |= prescaler;
+	__raw_writel(tcfg0, S3C2410_TCFG0);
+
+	local_irq_restore(flags);
+
+	return 0;
+}
+
 
 static struct clk clk_timer_scaler[] = {
 	[0]	= {
 		.name		= "pwm-scaler0",
 		.id		= -1,
 		.get_rate	= clk_pwm_scaler_getrate,
+		.set_rate	= clk_pwm_scaler_setrate,
 	},
 	[1]	= {
 		.name		= "pwm-scaler1",
 		.id		= -1,
 		.get_rate	= clk_pwm_scaler_getrate,
+		/* This is the prescaler used by the system timer
+		 * and no driver should modify it */
 	},
 };
 
@@ -133,6 +166,7 @@ static unsigned long clk_pwm_tdiv_get_rate(struct clk *clk)
 	unsigned long tcfg1 = __raw_readl(S3C2410_TCFG1);
 	unsigned int divisor;
 
+	printk("%s()\n", __FUNCTION__);
 	tcfg1 >>= S3C2410_TCFG1_SHIFT(clk->id);
 	tcfg1 &= S3C2410_TCFG1_MUX_MASK;
 
@@ -141,6 +175,8 @@ static unsigned long clk_pwm_tdiv_get_rate(struct clk *clk)
 	else
 		divisor = tcfg_to_divisor(tcfg1);
 
+	printk("parent=%lu\n", clk_get_rate(clk->parent));
+	printk("divisor=%d\n", divisor);
 	return clk_get_rate(clk->parent) / divisor;
 }
 
@@ -162,6 +198,7 @@ static unsigned long clk_pwm_tdiv_round_rate(struct clk *clk,
 	else
 		divisor = 16;
 
+	printk("%s -> divisor = %lu\n", __FUNCTION__, divisor);
 	return parent_rate / divisor;
 }
 
@@ -195,6 +232,7 @@ static void clk_pwm_tdiv_update(struct pwm_tdiv_clk *divclk)
 	unsigned long flags;
 	unsigned long shift =  S3C2410_TCFG1_SHIFT(divclk->clk.id);
 
+	printk("%s(divisor=%d)\n", __FUNCTION__, divclk->divisor);
 	local_irq_save(flags);
 
 	tcfg1 = __raw_readl(S3C2410_TCFG1);
@@ -212,11 +250,15 @@ static int clk_pwm_tdiv_set_rate(struct clk *clk, unsigned long rate)
 	unsigned long parent_rate = clk_get_rate(clk->parent);
 	unsigned long divisor;
 
+	printk("%s(rate=%lu)\n", __FUNCTION__, rate);
 	tcfg1 >>= S3C2410_TCFG1_SHIFT(clk->id);
 	tcfg1 &= S3C2410_TCFG1_MUX_MASK;
 
+	printk("Desired rate: %lu HZ\n", rate);
 	rate = clk_round_rate(clk, rate);
+	printk("Rounded rate: %lu HZ\n", rate);
 	divisor = parent_rate / rate;
+	printk("Divisor: %lu\n", divisor);
 
 	if (divisor > 16)
 		return -EINVAL;
