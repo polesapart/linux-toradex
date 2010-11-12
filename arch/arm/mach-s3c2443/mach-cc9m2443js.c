@@ -597,9 +597,6 @@ static struct resource s3c2443_pwm_resources[] = {
 	PWM_RESOURCE(0, IRQ_TIMER0),
 	PWM_RESOURCE(1, IRQ_TIMER1),
 	PWM_RESOURCE(2, IRQ_TIMER2),
-	/* timer 3 output is not connected */
-	//PWM_RESOURCE(3, IRQ_TIMER3),
-	/* timer4 has no output */
 };
 
 #define PWM_CHANNEL(_tmr, _gpio)	\
@@ -611,10 +608,20 @@ static struct resource s3c2443_pwm_resources[] = {
 static struct s3c24xx_pwm_channel s3c2443_pwm_channels[] = {
 	PWM_CHANNEL(0, S3C2410_GPB0),
 	PWM_CHANNEL(1, S3C2410_GPB1),
+
+	/* timer 2 is connected to the DEBUG_LED on the
+	 * JumpStart board. Its frequencies are limited
+	 * because it shares the prescaler with timers
+	 * 3 and 4 (and timer 4 is the system clock) so
+	 * its prescaler can not be modified */
 	PWM_CHANNEL(2, S3C2410_GPB2),
-	/* timer 3 output is not connected */
-//	PWM_CHANNEL(3, S3C2410_GPB3),
-	/* timer4 has no output */
+
+	/* timer 3 output is not connected in the cc9m2443
+	 * module and it is connected to Piper reset on the
+	 * ccw9m2443 (wireless variant) */
+
+	/* timer 4 has no output and it is used for the
+	 * system timer */
 };
 
 /* This will be initialized in the init function to point to the
@@ -633,12 +640,10 @@ static struct platform_device s3c2443_device_pwm = {
 
 static void __init s3c2443_pwm_init(void)
 {
-	printk("PWM: %s()\n", __FUNCTION__);
 	/* Init platform data channels pointer to
 	 * the channels array */
 	s3c2443_pwm_pdata.number_channels = ARRAY_SIZE(s3c2443_pwm_channels);
 	s3c2443_pwm_pdata.channels = s3c2443_pwm_channels;
-	printk("s3c2443_pwm_pdata.number_channels = %d\n", s3c2443_pwm_pdata.number_channels);
 }
 #endif
 
@@ -670,7 +675,6 @@ static void __init cc9m2443_map_io(void)
 
 	s3c24xx_init_io(cc9m2443_iodesc, ARRAY_SIZE(cc9m2443_iodesc));
 	s3c24xx_init_clocks(12000000);
-
 
 	/*
 	 * Init the GPIOs for the UART-ports
