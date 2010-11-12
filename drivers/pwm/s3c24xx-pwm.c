@@ -34,6 +34,8 @@
 #include <asm/plat-s3c24xx/pwm.h>
 #include <plat/regs-timer.h>
 
+#define MAX_TIMER_COUNT	0xffff
+
 struct s3c24xx_pwm {
 	struct pwm_device pwm;
 	spinlock_t lock;
@@ -150,7 +152,6 @@ __s3c24xx_pwm_config_polarity(struct pwm_channel *p, int polarity)
 	unsigned long tcon;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	local_irq_save(flags);
 
 	tcon = __raw_readl(S3C2410_TCON);
@@ -173,9 +174,7 @@ static unsigned long pwm_calc_tin(struct s3c24xx_pwm_channel *pch, unsigned long
 	unsigned long tin_parent_rate;
 	unsigned int div;
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	tin_parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
-	printk("PWM: tin parent at %lu\n", tin_parent_rate);
 
 	for (div = 2; div <= 16; div *= 2) {
 		if ((tin_parent_rate / (div << 16)) < freq)
@@ -187,56 +186,19 @@ static unsigned long pwm_calc_tin(struct s3c24xx_pwm_channel *pch, unsigned long
 
 #define NS_IN_HZ (1000000000UL)
 
-#if 1
-/* Configures duty_ns */
-static inline int
-__s3c24xx_pwm_config_duty_ns(struct pwm_channel *p, unsigned long duty_ns)
-{
-	unsigned long tin_ns;
-	unsigned long tcon;
-	unsigned long tcnt;
-	unsigned long tcmp;
-	unsigned long long duty_ticks;
-	unsigned long flags;
-//	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
-	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
-
-	printk("PWM: %s()\n", __FUNCTION__);
-	if (duty_ns > NS_IN_HZ)
-		return -ERANGE;
-
-	duty_ticks = pwm_ns_to_ticks(p, duty_ns);
-	if (duty_ticks == p->duty_ticks)
-		return 0;
-	p->duty_ticks = duty_ticks;
-
-	/* The TCMP and TCNT can be read without a lock, they're not
-	 * shared between the timers. */
-	tcnt = __raw_readl(S3C2410_TCNTB(pch->timer));
-
-	tin_ns = NS_IN_HZ / clk_get_rate(pch->clk);
-	tcmp = tcnt - (duty_ns / tin_ns);
-	if (tcmp < 0)
-		tcmp = 0;
-
-	/* Update the PWM register block. */
-	local_irq_save(flags);
-
-	__raw_writel(tcmp, S3C2410_TCMPB(pch->timer));
-
-	tcon = __raw_readl(S3C2410_TCON);
-	tcon |= pwm_tcon_manulupdate(pch);
-	tcon |= pwm_tcon_autoreload(pch);
-	__raw_writel(tcon, S3C2410_TCON);
-
-	tcon &= ~pwm_tcon_manulupdate(pch);
-	__raw_writel(tcon, S3C2410_TCON);
-
-	local_irq_restore(flags);
-
-	return 0;
-}
-#endif
+/*
+ * Figure to understand PWM concepts
+ *        -------------------------                 -----
+ *        |                        |                |
+ *        |                        |                |
+ * --------                        -----------------
+ *
+ *        ^                        ^                ^
+ *        |-- DUTY (polarity=1) ---|                |
+ *        |                                         |
+ *        |----------- PERIOD-----------------------|
+ *
+ */
 
 /* Configures duty_ticks */
 static inline int
@@ -267,76 +229,8 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
 	__raw_writel(tcon, S3C2410_TCON);
 
 	local_irq_restore(flags);
-	return 0;
+ 	return 0;
 }
-
-
-/*
- * Figure to understand PWM concepts
- *		-----------------
- *		|		|
- *		|		|
- * --------------		-----------------
- * ^		^		^		^
- * RELOAD	HIGH		LOW		LAST_COUNT
- *
- * NS921X driver assumes RELOAD = HIGH
- */
-
-#if 1
-/* Configures period_ticks */
-static inline int
-__s3c24xx_pwm_config_period_ns(struct pwm_channel *p, unsigned long period_ns)
-{
-	unsigned long long period_ticks;
-	unsigned long tin_rate;
-	unsigned long tin_ns;
-	unsigned long tcon;
-	unsigned long tcnt;
-	unsigned long flags;
-//	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
-	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
-
-	printk("PWM: %s()\n", __FUNCTION__);
-	if (period_ns > NS_IN_HZ)
-		return -ERANGE;
-
-	period_ticks = pwm_ns_to_ticks(p, period_ns);
-	if (period_ticks == p->period_ticks)
-		return 0;
-
-	p->period_ticks = period_ticks;
-
-	if (pwm_is_tdiv(pch)) {
-		tin_rate = pwm_calc_tin(pch, period_ns);
-		clk_set_rate(pch->clk_div, tin_rate);
-	} else {
-		tin_rate = clk_get_rate(pch->clk);
-	}
-
-	printk("PWM: tin_rate=%lu\n", tin_rate);
-
-	tin_ns = NS_IN_HZ / tin_rate;
-	tcnt = period_ns / tin_ns;
-
-	/* Update the PWM register block. */
-	local_irq_save(flags);
-
-	__raw_writel(tcnt, S3C2410_TCNTB(pch->timer));
-
-	tcon = __raw_readl(S3C2410_TCON);
-	tcon |= pwm_tcon_manulupdate(pch);
-	tcon |= pwm_tcon_autoreload(pch);
-	__raw_writel(tcon, S3C2410_TCON);
-
-	tcon &= ~pwm_tcon_manulupdate(pch);
-	__raw_writel(tcon, S3C2410_TCON);
-
-	local_irq_restore(flags);
-
-	return 0;
-}
-#endif
 
 /* Configures period_ticks */
 static inline int
@@ -351,6 +245,7 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long flags;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
+	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
 	period = NS_IN_HZ / period_ns;
 
@@ -360,11 +255,18 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	} else {
 		tin_rate = clk_get_rate(pch->clk);
 	}
+	/* After changing the period, the divisor might
+	 * have changed, and with it, the tick, which must
+	 * be now recalculated */
+	p->tick_hz = clk_get_rate(pch->clk);
+	printk("p>tick_hz = %lu\n", p->tick_hz);
 
-	printk("PWM: tin_rate=%lu\n", tin_rate);
-
-	tin_ns = NS_IN_HZ / tin_rate;
-	tcnt = period_ns / tin_ns;
+	/* Recalculate ticks with the new tick_hz, just in case */
+	tcnt = pwm_ns_to_ticks(p, period_ns);
+	printk("original ticks: %lu\n", period_ticks);
+	printk("recalculated ticks: %lu\n", tcnt);
+	if (tcnt > MAX_TIMER_COUNT)
+		tcnt = MAX_TIMER_COUNT;
 
 	p->period_ticks = period_ticks;
 
@@ -392,23 +294,12 @@ static int s3c24xx_pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_
 	int ret = 0;
 	unsigned long flags;
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	spin_lock_irqsave(&p->lock, flags);
 
 	switch (c->config_mask) {
 
-	case PWM_CONFIG_DUTY_NS:
-		ret = __s3c24xx_pwm_config_duty_ns(p, c->duty_ns);
-		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
-		break;
-
 	case PWM_CONFIG_DUTY_TICKS:
 		ret = __s3c24xx_pwm_config_duty_ticks(p, c->duty_ticks);
-		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
-		break;
-
-	case PWM_CONFIG_PERIOD_NS:
-		ret = __s3c24xx_pwm_config_period_ns(p, c->period_ns);
 		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
 		break;
 
@@ -449,7 +340,6 @@ static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *
 	//unsigned long long period_ticks;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	/* We currently avoid using 64bit arithmetic by using the
 	 * fact that anything faster than 1Hz is easily representable
 	 * by 32bits. */
@@ -494,18 +384,8 @@ static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *
 		}
 	}
 
-	if (c->config_mask & PWM_CONFIG_PERIOD_NS) {
-		__s3c24xx_pwm_config_period_ns(p, c->period_ns);
-		if (!(c->config_mask & PWM_CONFIG_DUTY_NS)) {
-			__s3c24xx_pwm_config_duty_ns(p, c->duty_ns);
-		}
-	}
-
 	if (c->config_mask & PWM_CONFIG_DUTY_TICKS)
 		__s3c24xx_pwm_config_duty_ticks(p, c->duty_ticks);
-
-	if (c->config_mask & PWM_CONFIG_DUTY_NS)
-		__s3c24xx_pwm_config_duty_ns(p, c->duty_ns);
 
 	if (c->config_mask & PWM_CONFIG_POLARITY)
 		__s3c24xx_pwm_config_polarity(p, c->polarity);
@@ -529,7 +409,6 @@ static int s3c24xx_pwm_request(struct pwm_channel *p)
 	char pwmgpio[20];
 	int ret;
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	spin_lock_irqsave(&p->lock, flags);
 
 	/* Determine if the timer is alredy enabled == requested */
@@ -549,10 +428,8 @@ static int s3c24xx_pwm_request(struct pwm_channel *p)
 	}
 	/* Configures GPIO for TOUTn function */
 	s3c2410_gpio_cfgpin(pch->gpio, S3C2410_GPIO_SFN2);
-	printk("PBCON = 0x%08x\n", __raw_readl(S3C2410_GPBCON));
 
 	p->tick_hz = clk_get_rate(pch->clk);
-	printk("p->tick_hz = %lu\n", p->tick_hz);
 	__s3c24xx_pwm_stop(p);
 	spin_unlock_irqrestore(&p->lock, flags);
 
@@ -575,7 +452,6 @@ static void s3c24xx_pwm_free(struct pwm_channel *p)
 //	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	pr_debug("%s\n", __func__);
 
 	if (pch->use_count) {
@@ -597,7 +473,6 @@ static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
 	int ret;
 	int i;
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	pr_debug("Probing a new device (ID %i)\n", pdev->id);
 
 	pdata = pdev->dev.platform_data;
@@ -700,7 +575,6 @@ static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
 	int ret;
 	u32 i;
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	pr_debug("Removing device (ID %i)\n", pdev->id);
 
 	pdata = pdev->dev.platform_data;
@@ -714,7 +588,6 @@ static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
 
 	for(i = 0; i < pdata->number_channels; i++) {
 		/* Stop and free all channels?? */
-		printk("p + i(%d) = %p\n", i, (p + i));
 		__s3c24xx_pwm_stop(p + i);
 		s3c24xx_pwm_free(p + i);
 		/* Free clocks */
