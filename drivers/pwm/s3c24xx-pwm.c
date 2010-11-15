@@ -34,20 +34,6 @@
 #define MAX_TIMER_COUNT	0xffff
 #define MAX_PRESCALER	0xff
 
-/* Timers 0 and 1 share an 8-bit prescaler to divide the
- * input clock PCLK. By defining the following constant
- * you set this prescaler to a predefined value.
- * Allowed values are in the range 0..0xff.
- * If the constant is not defined, the driver will calculate
- * a prescaler as follows:
- * - If only one timer is running, the prescaler will be set
- *   to the value that allows to have the period with the maximum
- *   duty cycle resolution (CNT=0xffff, CMP=0)
- * - If the two timers are running, the prescaler will be set
- *   to the value that allows both periods with the minimum error
- */
-//#define FIXED_PRESCALER_0	0x80
-
 struct s3c24xx_pwm {
 	struct pwm_device pwm;
 	spinlock_t lock;
@@ -56,6 +42,8 @@ struct s3c24xx_pwm {
 };
 
 static struct clk *clk_scaler[2];
+/* Prescaler of each timer */
+static int timers_prescaler[5] = {0, 0, 1, 1, 1};
 
 #define pwm_tcon_start(pch) (1 << (pch->tcon_base + 0))
 #define pwm_tcon_invert(pch) (1 << (pch->tcon_base + 2))
@@ -71,7 +59,7 @@ static inline void dump_regs(void)
 	printk("TCFG0: 0x%08x\n", __raw_readl(S3C2410_TCFG0));
 	printk("TCFG1: 0x%08x\n", __raw_readl(S3C2410_TCFG1));
 	printk("TCON: 0x%08x\n", __raw_readl(S3C2410_TCON));
-	for(i=0; i < 2; i++) {
+	for(i=0; i < 3; i++) {
 		printk("TCNTB%d: 0x%08x\n", i, __raw_readl(S3C2410_TCNTB(i)));
 		printk("TCMPB%d: 0x%08x\n", i, __raw_readl(S3C2410_TCMPB(i)));
 	}
@@ -196,27 +184,6 @@ static unsigned long pwm_calc_tin(struct s3c24xx_pwm_channel *pch, unsigned long
 	return tin_parent_rate / 16;
 }
 
-/* Returns the timers that share the same prescaler than 'timer' and that
- * are currently running */
-static int prescaler_timers_running_notme(struct s3c24xx_pwm *pwm, int timer)
-{
-	int i;
-	int running_timers = 0;
-	struct s3c24xx_pwm_channel *pch;
-
-	for (i = 0; i < pwm->pdata->number_channels; i++) {
-		pch = &pwm->pdata->channels[i];
-		if (pch->timer != timer &&
-		    ((timer < 2 && pch->timer < 2 ) ||
-		     (timer >= 2 && pch->timer >= 2 ))) {
-			if (pch->running)
-				running_timers++;
-		}
-	}
-
-	return running_timers;
-}
-
 #define NS_IN_HZ (1000000000UL)
 
 /*
@@ -264,6 +231,27 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
 
 	local_irq_restore(flags);
  	return 0;
+}
+
+#if 0
+/* Returns the timers that share the same prescaler than 'timer' and that
+ * are currently running */
+static int prescaler_timers_running_notme(struct s3c24xx_pwm *pwm, int timer)
+{
+	int i;
+	int running_timers = 0;
+	struct s3c24xx_pwm_channel *pch;
+
+	for (i = 0; i < pwm->pdata->number_channels; i++) {
+		pch = &pwm->pdata->channels[i];
+		if (pch->timer != timer &&
+		    timers_prescaler[timer] == timers_prescaler[pch->timer]) {
+			if (pch->running)
+				running_timers++;
+		}
+	}
+
+	return running_timers;
 }
 
 static unsigned char calc_prescaler(unsigned long pclk_rate,
@@ -334,6 +322,7 @@ static int calc_div(unsigned long clk_rate,
 	}
 	return 1;
 }
+#endif
 
 /* Configures period_ticks */
 static inline int
@@ -346,9 +335,11 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long tcnt;
 	unsigned long flags;
 	unsigned long pclk_rate;
-	unsigned char prescaler;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+#if 0
+	unsigned char prescaler;
 	struct s3c24xx_pwm *pwm = container_of(p->pwm, struct s3c24xx_pwm, pwm);
+#endif
 
 	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
@@ -356,12 +347,15 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 		return -ERANGE;
 	period = NS_IN_HZ / period_ns;
 
-	if (pch->timer < 2) {
+	/* Adjust prescaler (only applicable to prescaler 0 -timers 0 and 1-) */
+	if (0 == timers_prescaler[pch->timer]) {
 		pclk_rate = clk_get_rate(clk_get_parent(clk_scaler[0]));
-#ifdef FIXED_PRESCALER_0
+#ifdef CONFIG_FIXED_PRESCALER_0
 		/* Set prescaler to fixed prescaler set by user */
-		clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(FIXED_PRESCALER_0+1));
-#else
+		clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(CONFIG_FIXED_PRESCALER_0+1));
+#endif
+
+#if 0
 		/* Auto-adjust prescaler */
 		if (prescaler_timers_running_notme(pwm, pch->timer) == 0) {
 			/* No other timers are running. There is no
@@ -389,7 +383,7 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 				 * Check the lowest div and prescaler than can generate
 				 * the periods of both timers.
 				 */
-				//TODO
+				//TODO: can it be done?
 			}
 		}
 #endif

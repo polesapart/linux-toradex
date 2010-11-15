@@ -43,4 +43,30 @@ config S3C2443_PWM
 	  displays, motor control, and waveform generation.  If
 	  unsure, say N.
 
+config S3C2443_PWM_PRESCALER_0
+	int "Prescaler 0 (for timers 0 and 1)"
+	range 0 255
+	default 2
+	depends on S3C2443_PWM
+	help
+	  This value sets the prescaler 0 shared by PWM timers 0 and 1.
+	  Allowed values range between 0 and 255, and the maximum
+	  period that can be generated can be calculated using this
+	  formula:
+
+          max_period = (65535 * 16 * (prescaler + 1) / PCLK)
+
+	  The minimum duty cycle varies depending on the automatically
+	  calculated divisor but at most will be:
+
+	  min_duty_cycle = max_period / 65535
+
+          For example, for a PCLK of 66.75MHz and a prescaler of 2
+	  the maximum period is 47.12 ms, and the minimum duty is
+	  0.719 usec (0.0015 %)
+
+	  NOTE: Prescaler 1 (shared by timers 2, 3, and 4) cannot be
+	  modified because timer 4 is used as system timer with a
+	  fixed prescaler of 2.
+
 endif
