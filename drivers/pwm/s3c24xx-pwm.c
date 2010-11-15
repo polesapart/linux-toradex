@@ -32,6 +32,7 @@
 #include <plat/regs-timer.h>
 
 #define MAX_TIMER_COUNT	0xffff
+#define MAX_PRESCALER	0xff
 
 /* Timers 0 and 1 share an 8-bit prescaler to divide the
  * input clock PCLK. By defining the following constant
@@ -195,6 +196,27 @@ static unsigned long pwm_calc_tin(struct s3c24xx_pwm_channel *pch, unsigned long
 	return tin_parent_rate / 16;
 }
 
+/* Returns the timers that share the same prescaler than 'timer' and that
+ * are currently running */
+static int prescaler_timers_running_notme(struct s3c24xx_pwm *pwm, int timer)
+{
+	int i;
+	int running_timers = 0;
+	struct s3c24xx_pwm_channel *pch;
+
+	for (i = 0; i < pwm->pdata->number_channels; i++) {
+		pch = &pwm->pdata->channels[i];
+		if (pch->timer != timer &&
+		    ((timer < 2 && pch->timer < 2 ) ||
+		     (timer >= 2 && pch->timer >= 2 ))) {
+			if (pch->running)
+				running_timers++;
+		}
+	}
+
+	return running_timers;
+}
+
 #define NS_IN_HZ (1000000000UL)
 
 /*
@@ -255,20 +277,72 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long tcnt;
 	unsigned long flags;
 	unsigned long parent_rate;
+	unsigned long long temp = 0;
+	unsigned char prescaler;
+	int div;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
+	struct s3c24xx_pwm *pwm = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 
 	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
 	period = NS_IN_HZ / period_ns;
 
-	parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
+	if (pch->timer < 2) {
+		parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
 #ifdef FIXED_PRESCALER_0
-	/* Fixed prescaler set by user */
-	clk_set_rate(clk_get_parent(pch->clk_div), parent_rate/FIXED_PRESCALER_0);
+		/* Fixed prescaler set by user */
+		prescaler = FIXED_PRESCALER_0;
 #else
-	/* Auto-adjust prescaler */
-	//TODO
+		/* Auto-adjust prescaler */
+
+		if (prescaler_timers_running_notme(pwm, pch->timer) == 0) {
+			/* No other timers are running. There is no
+			 * restriction about the prescaler value to use. */
+
+			/* Look for the lowest prescaler value that can generate
+			 * the requested period using the lowest divisor. This
+			 * way we can have the maximum resolution for the duty
+			 * cycle (minimum duty cycle) */
+			printk("  period_ns = %lu\n", period_ns);
+			printk("  parent_rate = %lu\n", parent_rate);
+			for (div = 2; div <= 16; div *= 2) {
+				printk("  div = %d\n", div);
+
+				/* Formula:
+				 *
+				 *                 period_ns * PCLK
+				 * prescaler = -------------------------
+				 *              div * 0xffff * NS_IN_HZ
+				 *
+				 * NOTE: we need to split the operations
+				 *       because the large numbers involved
+				 *       cause bad results if the formula is
+				 *       executed in one instruction.
+				 */
+				temp = parent_rate / div;
+				do_div(temp, MAX_TIMER_COUNT);
+				temp *= period_ns;
+				do_div(temp, NS_IN_HZ);
+
+				if (temp <= MAX_PRESCALER)
+					break;
+			}
+			if (temp > MAX_PRESCALER) {
+				temp = MAX_PRESCALER;
+			}
+			prescaler = temp;
+			printk("--------------\n");
+			printk("prescaler = %d\n", prescaler);
+			printk("div = %d\n", div);
+			printk("--------------\n");
+		}
+		else {
+			/* Other timers are running with the same prescaler */
+		}
 #endif
+		/* Set prescaler */
+		clk_set_rate(clk_get_parent(pch->clk_div), parent_rate/(prescaler+1));
+	}
 
 
 	if (pwm_is_tdiv(pch)) {
