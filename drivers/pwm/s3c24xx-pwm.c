@@ -266,6 +266,75 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
  	return 0;
 }
 
+static unsigned char calc_prescaler(unsigned long pclk_rate,
+				    unsigned long period_ns)
+{
+	unsigned long long temp = 0;
+	unsigned char div;
+	unsigned char prescaler;
+
+	for (div = 2; div <= 16; div *= 2) {
+		/* Formula:
+		*
+		*                 period_ns * PCLK
+		* prescaler = -------------------------
+		*              div * 0xffff * NS_IN_HZ
+		*
+		* NOTE: we need to split the math operations
+		*       because the large numbers involved
+		*       cause bad results if the formula is
+		*       executed in only one instruction.
+		*/
+		temp = pclk_rate / div;
+		do_div(temp, MAX_TIMER_COUNT);
+		temp *= period_ns;
+		do_div(temp, NS_IN_HZ);
+
+		if (temp <= MAX_PRESCALER)
+			break;
+	}
+	if (temp > MAX_PRESCALER) {
+		temp = MAX_PRESCALER;
+	}
+
+	prescaler = (unsigned char)temp;
+	printk("--------------\n");
+	printk("prescaler = %d\n", prescaler);
+	printk("div = %d\n", div);
+	printk("--------------\n");
+
+	return prescaler;
+}
+
+static int calc_div(unsigned long clk_rate,
+		     unsigned long period_ns)
+{
+	unsigned long long temp = 0;
+	unsigned char div;
+
+	/* Check if we can get the requested period with the
+	* current prescaler.
+	* In other words: search a divisor that can get
+	* a count below the max 0xffff
+	*
+	*          clk_rate * period_ns
+	* count = -----------------------
+	*             div * NS_IN_HZ
+	*
+	*/
+	temp = clk_rate * period_ns;
+	do_div(temp, NS_IN_HZ);
+	for (div = 2; div <= 16; div *= 2) {
+		do_div(temp, div);
+		if (temp <= MAX_TIMER_COUNT)
+			break;
+	}
+	if (temp > MAX_TIMER_COUNT) {
+		return 0;	/* no valid div */
+	}
+	return 1;
+}
+
 /* Configures period_ticks */
 static inline int
 __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ticks)
@@ -273,14 +342,11 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long period_ns;
 	unsigned long period;
 	unsigned long tin_rate;
-	unsigned long tin_ns;
 	unsigned long tcon;
 	unsigned long tcnt;
 	unsigned long flags;
 	unsigned long pclk_rate;
-	unsigned long long temp = 0;
 	unsigned char prescaler;
-	int div;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 	struct s3c24xx_pwm *pwm = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 
@@ -305,67 +371,25 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 			 * the requested period using the lowest divisor. This
 			 * way we can have the maximum resolution for the duty
 			 * cycle (minimum duty cycle) */
-			printk("  period_ns = %lu\n", period_ns);
-			printk("  pclk_rate = %lu\n", pclk_rate);
-			for (div = 2; div <= 16; div *= 2) {
-				printk("  div = %d\n", div);
-
-				/* Formula:
-				 *
-				 *                 period_ns * PCLK
-				 * prescaler = -------------------------
-				 *              div * 0xffff * NS_IN_HZ
-				 *
-				 * NOTE: we need to split the math operations
-				 *       because the large numbers involved
-				 *       cause bad results if the formula is
-				 *       executed in only one instruction.
-				 */
-				temp = pclk_rate / div;
-				do_div(temp, MAX_TIMER_COUNT);
-				temp *= period_ns;
-				do_div(temp, NS_IN_HZ);
-
-				if (temp <= MAX_PRESCALER)
-					break;
-			}
-			if (temp > MAX_PRESCALER) {
-				temp = MAX_PRESCALER;
-			}
-			prescaler = (unsigned char)temp;
-			printk("--------------\n");
-			printk("prescaler = %d\n", prescaler);
-			printk("div = %d\n", div);
-			printk("--------------\n");
+			prescaler = calc_prescaler(pclk_rate, period_ns);
 			/* Set prescaler */
 			clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(prescaler+1));
 		}
 		else {
 			/* Other timers are running with the same prescaler */
 			unsigned long tin_parent_rate;
-
-			/* Check if we can get the requested period with the
-			 * current prescaler.
+			/*
 			 *                          PCLK
 			 * tin_parent_rate = ------------------
 			 *                    current_prescaler
-			 *
-			 * In other words: search a divisor that can get
-			 * a count below the max 0xffff
-			 *
-			 *          tin_parent_rate * period_ns
-			 * count = -----------------------------
-			 *                div * NS_IN_HZ
-			 *
 			 */
 			tin_parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
-			temp = tin_parent_rate * period_ns;
-			do_div(temp, NS_IN_HZ);
-			for (div = 2; div <= 16; div *= 2) {
-				printk("  div = %d\n", div);
-				do_div(temp, div);
-				if (temp <= MAX_TIMER_COUNT)
-					break;
+			if (!calc_div(tin_parent_rate, period_ns)) {
+				/* The period can not be generated with the current prescaler.
+				 * Check the lowest div and prescaler than can generate
+				 * the periods of both timers.
+				 */
+				//TODO
 			}
 		}
 #endif
