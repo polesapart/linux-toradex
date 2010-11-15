@@ -286,6 +286,8 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 
 	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
+	if (!period_ns)
+		return -ERANGE;
 	period = NS_IN_HZ / period_ns;
 
 	if (pch->timer < 2) {
