@@ -86,8 +86,6 @@ static unsigned long clk_pwm_scaler_getrate(struct clk *clk)
 		tcfg0 &= S3C2410_TCFG_PRESCALER0_MASK;
 	}
 
-	printk("parent = %lu\n", clk_get_rate(clk->parent));
-	printk("tcfg0 + 1 = %lu\n", (tcfg0 + 1));
 	return clk_get_rate(clk->parent) / (tcfg0 + 1);
 }
 
@@ -102,13 +100,13 @@ static int clk_pwm_scaler_setrate(struct clk *clk, unsigned long rate)
 
 	printk("%s(parent_rate=%lu)\n", __FUNCTION__, rate);
 	printk("desired rate=%lu\n", rate);
-	prescaler = parent_rate / rate;
+	prescaler = (parent_rate / rate) - 1;
 	printk("prescaler=%lu\n", prescaler);
 	if (prescaler > MAX_PRESCALER)
 		return -EINVAL;
 
 	local_irq_save(flags);
-	tcfg0 = __raw_readl(S3C2410_TCFG1);
+	tcfg0 = __raw_readl(S3C2410_TCFG0);
 	tcfg0 &= ~(S3C2410_TCFG_PRESCALER0_MASK);
 	tcfg0 |= prescaler;
 	__raw_writel(tcfg0, S3C2410_TCFG0);

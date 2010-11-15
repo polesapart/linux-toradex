@@ -241,6 +241,7 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
 	unsigned long tcmp;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 	unsigned long flags;
+	printk("%s(duty_ticks=%d, period_ticks=%d)\n", __FUNCTION__, duty_ticks, p->period_ticks);
 
 	if (duty_ticks > p->period_ticks)
 		return -ERANGE;
@@ -288,7 +289,8 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	period = NS_IN_HZ / period_ns;
 
 	if (pch->timer < 2) {
-		parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
+		//parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
+		parent_rate = clk_get_rate(clk_get_parent(clk_scaler[0]));
 #ifdef FIXED_PRESCALER_0
 		/* Fixed prescaler set by user */
 		prescaler = FIXED_PRESCALER_0;
@@ -314,10 +316,10 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 				 * prescaler = -------------------------
 				 *              div * 0xffff * NS_IN_HZ
 				 *
-				 * NOTE: we need to split the operations
+				 * NOTE: we need to split the math operations
 				 *       because the large numbers involved
 				 *       cause bad results if the formula is
-				 *       executed in one instruction.
+				 *       executed in only one instruction.
 				 */
 				temp = parent_rate / div;
 				do_div(temp, MAX_TIMER_COUNT);
@@ -330,7 +332,7 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 			if (temp > MAX_PRESCALER) {
 				temp = MAX_PRESCALER;
 			}
-			prescaler = temp;
+			prescaler = (unsigned char)temp;
 			printk("--------------\n");
 			printk("prescaler = %d\n", prescaler);
 			printk("div = %d\n", div);
@@ -344,7 +346,6 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 		clk_set_rate(clk_get_parent(pch->clk_div), parent_rate/(prescaler+1));
 	}
 
-
 	if (pwm_is_tdiv(pch)) {
 		tin_rate = pwm_calc_tin(pch, period);
 		clk_set_rate(pch->clk_div, tin_rate);
@@ -355,16 +356,14 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	 * have changed, and with it, the tick, which must
 	 * be now recalculated */
 	p->tick_hz = clk_get_rate(pch->clk);
-	printk("p>tick_hz = %lu\n", p->tick_hz);
 
 	/* Recalculate ticks with the new tick_hz, just in case */
 	tcnt = pwm_ns_to_ticks(p, period_ns);
-	printk("original ticks: %lu\n", period_ticks);
-	printk("recalculated ticks: %lu\n", tcnt);
 	if (tcnt > MAX_TIMER_COUNT)
 		tcnt = MAX_TIMER_COUNT;
 
-	p->period_ticks = period_ticks;
+	/* Save new ticks */
+	p->period_ticks = tcnt;
 
 	/* Update the PWM register block. */
 	local_irq_save(flags);
@@ -389,6 +388,7 @@ static int s3c24xx_pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_
 {
 	int ret = 0;
 	unsigned long flags;
+	unsigned long duty_ns;
 
 	spin_lock_irqsave(&p->lock, flags);
 
@@ -396,12 +396,18 @@ static int s3c24xx_pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_
 
 	case PWM_CONFIG_DUTY_TICKS:
 		ret = __s3c24xx_pwm_config_duty_ticks(p, c->duty_ticks);
-		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
 		break;
 
 	case PWM_CONFIG_PERIOD_TICKS:
+		/* Save original duty cycle */
+		duty_ns =  pwm_ticks_to_ns(p, p->duty_ticks);
 		ret = __s3c24xx_pwm_config_period_ticks(p, c->period_ticks);
-		pr_debug("duty_ns: %lu period_ns: %lu\n", c->duty_ns, c->period_ns);
+		if (!ret) {
+			/* If period has changed, reconfigure duty cycle */
+			__s3c24xx_pwm_config_duty_ticks(p, pwm_ns_to_ticks(p, duty_ns));
+			/* Do not bother to return error code if this fails or
+			 * the set period function will be called again later */
+		}
 		break;
 
 	case PWM_CONFIG_STOP:
