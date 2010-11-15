@@ -179,4 +179,64 @@
 #define DMA_REQ_CSPI3_TX        2
 #define DMA_REQ_CSPI3_RX        1
 
+/*
+ * GPT register address offsets & bit definitions.
+ */
+#define GPTX_TCTL_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x00)
+#define GPTX_TPRER_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x04)
+#define GPTX_TCMP_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x08)
+#define GPTX_TCR_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x0C)
+#define GPTX_TCN_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x10)
+#define GPTX_TSTAT_ADDR(GPTX_BASE_ADDR) (IO_ADDRESS(GPTX_BASE_ADDR) + 0x14)
+
+/* TCTL bit definitions */
+#define GPT_TCTL_SWR                (1 << 15)
+#define GPT_TCTL_CLKSRC_BIT_SHIFT   1
+#define GPT_TCTL_CLKSRC_MASK        (7 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CLKSRC_NOCLOCK     (0 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CLKSRC_HIFREQ      (1 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CLKSRC_HIFREQ_BY4  (2 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CLKSRC_CLKIN       (3 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CLKSRC_CLK32K      (4 << GPT_TCTL_CLKSRC_BIT_SHIFT)
+#define GPT_TCTL_CC_ENABLE          (1 << 10)
+#define GPT_TCTL_OM_TOGGLE          (1 << 9)
+#define GPT_TCTL_COMP_INTR_EN       (1 << 4)
+#define GPT_TCTL_TEN                (1 << 0)
+
+/* TSTAT bit definitions */
+#define GPT_TSTAT_COMP_EVNT         (1 << 0)
+
+/* 
+ * GPT calculations. 
+ */
+
+/* 
+ * GPT MCLK: GPT_CLK_DIV is 1, except when PERCLK1 is the clock source, in 
+ * which case it can be 1 or 4.
+ */
+#define GPT_MCLK(GPT_CLK_SRC_HZ, GPT_CLK_DIV) (GPT_CLK_SRC_HZ/GPT_CLK_DIV)
+
+/* 
+ * GPT PCLK: GPT_PRESCALER is the prescaler divide value, which is one 
+ * more than the PRER register value. 
+ */
+#define GPT_PCLK(GPT_CLK_SRC_HZ, GPT_CLK_DIV, GPT_PRESCALER) \
+	(GPT_MCLK(GPT_CLK_SRC_HZ, GPT_CLK_DIV)/GPT_PRESCALER)
+
+/*
+ * GPT Compare count: GPT_PCLK_HZ/FREQ_HZ, where FREQ_HZ is the 
+ * frequency at which a compare event should occur.
+ * Division is performed as ((dividend + (divisor / 2)) / divisor)
+ * to reduce rounding errors.
+ */
+#define GPT_COMPARE(FREQ_HZ, GPT_PCLK_HZ) \
+	( (GPT_PCLK_HZ + (FREQ_HZ / 2)) / FREQ_HZ )
+
+/*
+ * GPT Compare register value: GPT_COMPARE - 1 
+ */
+#define GPT_TCMP_VAL(FREQ_HZ, GPT_PCLK_HZ) \
+	( GPT_COMPARE(FREQ_HZ, GPT_PCLK_HZ) - 1 )
+
+
 #endif /* __ASM_ARCH_MXC_MX2x_H__ */

@@ -400,13 +400,26 @@ static unsigned long get_rate_ipg(struct clk *clk)
 {
 	unsigned long rate, ipg_pdf;
 
-	if (mx27_revision() >= CHIP_REV_2_0)
-		return clk_get_rate(clk->parent);
-	else
-		ipg_pdf = (__raw_readl(CCM_CSCR) >> 8) & 1;
-
 	rate = clk_get_rate(clk->parent);
-	return rate / (ipg_pdf + 1);
+
+	/* 
+	 * For i.MX27 TO2, IPG_CLK = MPLL / (3 * (AHB_DIV + 1)) 
+	 * as calculated in a Freescale provided version of 
+	 * RedBoot.
+	 * Ref: packages/hal/arm/mx27/var/current/src/cmds.c:get_main_clock(...)
+	 * in RedBoot.
+	 */
+	if (mx27_revision() >= CHIP_REV_2_0) {
+
+		ipg_pdf = (__raw_readl(CCM_CSCR) >> 8) & 0x3;
+		rate = rate / (3 * (ipg_pdf + 1));
+	}
+	else {
+		ipg_pdf = (__raw_readl(CCM_CSCR) >> 8) & 1;
+		rate = rate / (ipg_pdf + 1);
+	}
+
+	return rate;
 }
 
 static unsigned long get_rate_per(struct clk *clk)
@@ -693,6 +706,12 @@ static void __init to2_adjust_clocks(void)
 
 		if (!(cscr & CCM_CSCR_VPU))
 			vpu_clk.parent = &spll_clk;
+
+		/* 
+		 * For TO2 and later, MPLL path 1 is the parent for 
+		 * IPG clock. MPLL path 1 has the same rate as MPLL.
+		 */
+		ipg_clk.parent = &mpll_main1_clk;
 	} else {
 		cpu_clk.parent = &mpll_clk;
 		cpu_clk.set_parent = NULL;

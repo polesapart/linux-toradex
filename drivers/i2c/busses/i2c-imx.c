@@ -160,7 +160,7 @@ static int i2c_imx_trx_complete(struct imx_i2c_struct *i2c_imx)
 {
 	int result;
 
-	result = wait_event_interruptible_timeout(i2c_imx->queue,
+	result = wait_event_timeout(i2c_imx->queue,
 		i2c_imx->i2csr & I2SR_IIF, HZ / 10);
 
 	if (unlikely(result < 0)) {
@@ -228,6 +228,7 @@ static void i2c_imx_stop(struct imx_i2c_struct *i2c_imx)
 		writeb(temp, i2c_imx->base + IMX_I2C_I2CR);
 		i2c_imx->stopped = 1;
 	}
+#ifdef ENABLE_IMX_I2C_RESET_AFTER_STOP
 	if (cpu_is_mx1()) {
 		/*
 		 * This delay caused by an i.MXL hardware bug.
@@ -235,12 +236,14 @@ static void i2c_imx_stop(struct imx_i2c_struct *i2c_imx)
 		 */
 		udelay(i2c_imx->disable_delay);
 	}
-
+#endif
 	if (!i2c_imx->stopped)
 		i2c_imx_bus_busy(i2c_imx, 0);
 
+#ifdef ENABLE_IMX_I2C_RESET_AFTER_STOP
 	/* Disable I2C controller */
 	writeb(0, i2c_imx->base + IMX_I2C_I2CR);
+#endif
 	clk_disable(i2c_imx->clk);
 }
 
@@ -293,7 +296,7 @@ static irqreturn_t i2c_imx_isr(int irq, void *dev_id)
 		i2c_imx->i2csr = temp;
 		temp &= ~I2SR_IIF;
 		writeb(temp, i2c_imx->base + IMX_I2C_I2SR);
-		wake_up_interruptible(&i2c_imx->queue);
+		wake_up(&i2c_imx->queue);
 		return IRQ_HANDLED;
 	}
 

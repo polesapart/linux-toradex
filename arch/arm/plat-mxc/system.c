@@ -39,6 +39,7 @@ static void __iomem *wdog_base;
 void arch_reset(char mode, const char *cmd)
 {
 	unsigned int wcr_enable;
+	unsigned int wdog_clk_present = 1;
 
 #ifdef CONFIG_ARCH_MXC91231
 	if (cpu_is_mxc91231()) {
@@ -48,22 +49,29 @@ void arch_reset(char mode, const char *cmd)
 #endif
 	if (cpu_is_mx1()) {
 		wcr_enable = (1 << 0);
+		wdog_clk_present = 1;
 	} else {
 		struct clk *clk;
 
 		clk = clk_get_sys("imx-wdt.0", NULL);
-		if (!IS_ERR(clk))
+		if (IS_ERR(clk)) 
+			wdog_clk_present = 0;
+		else
 			clk_enable(clk);
 		wcr_enable = (1 << 2);
 	}
 
-	/* Assert SRS signal */
-	__raw_writew(wcr_enable, wdog_base);
+	if (wdog_clk_present) {
+		/* Assert SRS signal */
+		__raw_writew(wcr_enable, wdog_base);
 
-	/* wait for reset to assert... */
-	mdelay(500);
+		/* wait for reset to assert... */
+		mdelay(500);
 
-	printk(KERN_ERR "Watchdog reset failed to assert reset\n");
+		printk(KERN_ERR "Watchdog reset failed to assert reset\n");
+	} else {
+		printk(KERN_ERR "Watchdog clock not available.\n");
+	}
 
 	/* delay to allow the serial port to show the message */
 	mdelay(50);

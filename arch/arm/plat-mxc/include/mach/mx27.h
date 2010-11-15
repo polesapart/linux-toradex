@@ -28,8 +28,8 @@
 #define IRAM_BASE_ADDR          0xFFFF4C00	/* internal ram */
 
 #define MSHC_BASE_ADDR          (AIPI_BASE_ADDR + 0x18000)
-#define GPT5_BASE_ADDR          (AIPI_BASE_ADDR + 0x19000)
-#define GPT4_BASE_ADDR          (AIPI_BASE_ADDR + 0x1A000)
+#define GPT4_BASE_ADDR          (AIPI_BASE_ADDR + 0x19000)
+#define GPT5_BASE_ADDR          (AIPI_BASE_ADDR + 0x1A000)
 #define UART5_BASE_ADDR         (AIPI_BASE_ADDR + 0x1B000)
 #define UART6_BASE_ADDR         (AIPI_BASE_ADDR + 0x1C000)
 #define I2C2_BASE_ADDR          (AIPI_BASE_ADDR + 0x1D000)
