@@ -50,22 +50,6 @@ static int timers_prescaler[5] = {0, 0, 1, 1, 1};
 #define pwm_tcon_autoreload(pch) (1 << (pch->tcon_base + 3))
 #define pwm_tcon_manulupdate(pch) (1 << (pch->tcon_base + 1))
 
-static inline void dump_regs(void)
-{
-	int i;
-	unsigned long flags;
-
-	local_irq_save(flags);
-	printk("TCFG0: 0x%08x\n", __raw_readl(S3C2410_TCFG0));
-	printk("TCFG1: 0x%08x\n", __raw_readl(S3C2410_TCFG1));
-	printk("TCON: 0x%08x\n", __raw_readl(S3C2410_TCON));
-	for(i=0; i < 3; i++) {
-		printk("TCNTB%d: 0x%08x\n", i, __raw_readl(S3C2410_TCNTB(i)));
-		printk("TCMPB%d: 0x%08x\n", i, __raw_readl(S3C2410_TCMPB(i)));
-	}
-	local_irq_restore(flags);
-}
-
 static inline int pwm_is_tdiv(struct s3c24xx_pwm_channel *pch)
 {
 	return clk_get_parent(pch->clk) == pch->clk_div;
@@ -120,7 +104,6 @@ static inline void __s3c24xx_pwm_start(struct pwm_channel *p)
 	local_irq_restore(flags);
 
 	pch->running = 1;
-	dump_regs();
 }
 
 /* Stops PWM output */
@@ -139,7 +122,6 @@ static inline void __s3c24xx_pwm_stop(struct pwm_channel *p)
 	local_irq_restore(flags);
 
 	pch->running = 0;
-	dump_regs();
 }
 
 /* Toggles PWM output polarity */
@@ -164,7 +146,6 @@ __s3c24xx_pwm_config_polarity(struct pwm_channel *p, int polarity)
 	__raw_writel(tcon, S3C2410_TCON);
 
 	local_irq_restore(flags);
-	dump_regs();
 }
 
 static unsigned long pwm_calc_tin(struct s3c24xx_pwm_channel *pch, unsigned long freq)
@@ -230,93 +211,6 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
  	return 0;
 }
 
-#if 0
-/* Returns the timers that share the same prescaler than 'timer' and that
- * are currently running */
-static int prescaler_timers_running_notme(struct s3c24xx_pwm *pwm, int timer)
-{
-	int i;
-	int running_timers = 0;
-	struct s3c24xx_pwm_channel *pch;
-
-	for (i = 0; i < pwm->pdata->number_channels; i++) {
-		pch = &pwm->pdata->channels[i];
-		if (pch->timer != timer &&
-		    timers_prescaler[timer] == timers_prescaler[pch->timer]) {
-			if (pch->running)
-				running_timers++;
-		}
-	}
-
-	return running_timers;
-}
-
-static unsigned char calc_prescaler(unsigned long pclk_rate,
-				    unsigned long period_ns)
-{
-	unsigned long long temp = 0;
-	unsigned char div;
-	unsigned char prescaler;
-
-	for (div = 2; div <= 16; div *= 2) {
-		/* Formula:
-		*
-		*                 period_ns * PCLK
-		* prescaler = -------------------------
-		*              div * 0xffff * NS_IN_HZ
-		*
-		* NOTE: we need to split the math operations
-		*       because the large numbers involved
-		*       cause bad results if the formula is
-		*       executed in only one instruction.
-		*/
-		temp = pclk_rate / div;
-		do_div(temp, MAX_TIMER_COUNT);
-		temp *= period_ns;
-		do_div(temp, NS_IN_HZ);
-
-		if (temp <= MAX_PRESCALER)
-			break;
-	}
-	if (temp > MAX_PRESCALER) {
-		temp = MAX_PRESCALER;
-	}
-
-	prescaler = (unsigned char)temp;
-
-	return prescaler;
-}
-
-static int calc_div(unsigned long clk_rate,
-		     unsigned long period_ns)
-{
-	unsigned long long temp = 0;
-	unsigned char div;
-
-	/* Check if we can get the requested period with the
-	* current prescaler.
-	* In other words: search a divisor that can get
-	* a count below the max 0xffff
-	*
-	*          clk_rate * period_ns
-	* count = -----------------------
-	*             div * NS_IN_HZ
-	*
-	*/
-	temp = clk_rate * period_ns;
-	do_div(temp, NS_IN_HZ);
-	for (div = 2; div <= 16; div *= 2) {
-		do_div(temp, div);
-		if (temp <= MAX_TIMER_COUNT)
-			break;
-	}
-	if (temp > MAX_TIMER_COUNT) {
-		return 0;	/* no valid div */
-	}
-	return 1;
-}
-#endif
-
 /* Configures period_ticks */
 static inline int
 __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ticks)
@@ -329,10 +223,6 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	unsigned long flags;
 	unsigned long pclk_rate;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
-#if 0
-	unsigned char prescaler;
-	struct s3c24xx_pwm *pwm = container_of(p->pwm, struct s3c24xx_pwm, pwm);
-#endif
 
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
 	if (!period_ns)
@@ -345,39 +235,6 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 #ifdef CONFIG_FIXED_PRESCALER_0
 		/* Set prescaler to fixed prescaler set by user */
 		clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(CONFIG_FIXED_PRESCALER_0+1));
-#endif
-
-#if 0
-		/* Auto-adjust prescaler */
-		if (prescaler_timers_running_notme(pwm, pch->timer) == 0) {
-			/* No other timers are running. There is no
-			 * restriction about the prescaler value to use. */
-
-			/* Look for the lowest prescaler value that can generate
-			 * the requested period using the lowest divisor. This
-			 * way we can have the maximum resolution for the duty
-			 * cycle (minimum duty cycle) */
-			prescaler = calc_prescaler(pclk_rate, period_ns);
-			/* Set prescaler */
-			clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(prescaler+1));
-		}
-		else {
-			/* Other timers are running with the same prescaler */
-			unsigned long tin_parent_rate;
-			/*
-			 *                          PCLK
-			 * tin_parent_rate = ------------------
-			 *                    current_prescaler
-			 */
-			tin_parent_rate = clk_get_rate(clk_get_parent(pch->clk_div));
-			if (!calc_div(tin_parent_rate, period_ns)) {
-				/* The period can not be generated with the current prescaler.
-				 * Check the lowest div and prescaler than can generate
-				 * the periods of both timers.
-				 */
-				//TODO: can it be done?
-			}
-		}
 #endif
 	}
 
@@ -466,15 +323,12 @@ static int s3c24xx_pwm_config_nosleep(struct pwm_channel *p, struct pwm_channel_
 
 	spin_unlock_irqrestore(&p->lock, flags);
 
-	dump_regs();
 	return ret;
 }
 
 /* PWM configuration */
 static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *c)
 {
-	//unsigned long long duty_ticks;
-	//unsigned long long period_ticks;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
 	/* We currently avoid using 64bit arithmetic by using the
@@ -507,14 +361,12 @@ static int s3c24xx_pwm_config(struct pwm_channel *p, struct pwm_channel_config *
 
 	pr_debug("%s:%d config_mask %x\n", p->pwm->bus_id, p->chan, c->config_mask);
 
-	dump_regs();
 	return 0;
 }
 
 /* PWM request function */
 static int s3c24xx_pwm_request(struct pwm_channel *p)
 {
-//	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 	unsigned long flags;
 	char pwmgpio[20];
@@ -548,11 +400,6 @@ static int s3c24xx_pwm_request(struct pwm_channel *p)
 
 	return 0;
 
-/*
-gpio_cfg:
-	s3c2410_gpio_cfgpin(pch->gpio, S3C2410_GPIO_INPUT);
-	gpio_free(pch->gpio);
-*/
 gpio_err:
 	return ret;
 }
@@ -560,7 +407,6 @@ gpio_err:
 /* Frees resources taken by PWM */
 static void s3c24xx_pwm_free(struct pwm_channel *p)
 {
-//	struct s3c24xx_pwm *np = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
 	pr_debug("%s\n", __func__);
@@ -740,8 +586,6 @@ static char banner[] __initdata =
 static int __init s3c24xx_pwm_init(void)
 {
 	int ret;
-
-	dump_regs();
 
 	clk_scaler[0] = clk_get(NULL, "pwm-scaler0");
 	clk_scaler[1] = clk_get(NULL, "pwm-scaler1");
