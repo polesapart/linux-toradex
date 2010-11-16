@@ -32,7 +32,6 @@
 #include <plat/regs-timer.h>
 
 #define MAX_TIMER_COUNT	0xffff
-#define MAX_PRESCALER	0xff
 
 struct s3c24xx_pwm {
 	struct pwm_device pwm;
@@ -232,9 +231,9 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	/* Adjust prescaler (only applicable to prescaler 0 -timers 0 and 1-) */
 	if (0 == timers_prescaler[pch->timer]) {
 		pclk_rate = clk_get_rate(clk_get_parent(clk_scaler[0]));
-#ifdef CONFIG_FIXED_PRESCALER_0
+#ifdef CONFIG_S3C2443_PWM_PRESCALER_0
 		/* Set prescaler to fixed prescaler set by user */
-		clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(CONFIG_FIXED_PRESCALER_0+1));
+		clk_set_rate(clk_get_parent(pch->clk_div), pclk_rate/(CONFIG_S3C2443_PWM_PRESCALER_0+1));
 #endif
 	}
 
