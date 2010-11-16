@@ -1,5 +1,5 @@
 /* -*- linux-c -*-
- * 
+ *
  * linux/arch/arm/mach-s3c2443/mach-cc9m2443js.c
  *
  * Copyright (c) 2007 Simtec Electronics
@@ -66,6 +66,7 @@
 #include <mach/irqs.h>
 #include <mach/regs-irq.h>
 #include <plat/irq.h>
+#include <asm/plat-s3c24xx/pwm.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -518,7 +519,7 @@ static struct platform_device cc9m2443_device_udc = {
 		.platform_data = &cc9m2443_udc_pdata,
 	}
 };
-	
+
 static struct resource s3c2443_ide_resource[] = {
 	[0] = {
 		.start = S3C2443_PA_CFATA,
@@ -585,6 +586,70 @@ static struct platform_device s3c2443_device_adc = {
 	}
 };
 
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
+/* Pulse Width Modulation (PWM) timers */
+#define PWM_RESOURCE(_tmr, _irq)		\
+	{					\
+		.name   = "s3c24xx-pwm",	\
+		.start	= _irq,			\
+		.end	= _irq,			\
+		.flags	= IORESOURCE_IRQ,	\
+	}
+
+static struct resource s3c2443_pwm_resources[] = {
+	PWM_RESOURCE(0, IRQ_TIMER0),
+	PWM_RESOURCE(1, IRQ_TIMER1),
+	PWM_RESOURCE(2, IRQ_TIMER2),
+};
+
+#define PWM_CHANNEL(_tmr, _gpio)	\
+	{				\
+		.timer	= _tmr,		\
+		.gpio	= _gpio,	\
+	}
+
+static struct s3c24xx_pwm_channel s3c2443_pwm_channels[] = {
+	PWM_CHANNEL(0, S3C2410_GPB0),
+	PWM_CHANNEL(1, S3C2410_GPB1),
+
+	/* timer 2 is connected to the DEBUG_LED on the
+	 * JumpStart board. Its frequencies are limited
+	 * because it shares the prescaler with timers
+	 * 3 and 4 (and timer 4 is the system clock) so
+	 * its prescaler can not be modified */
+	PWM_CHANNEL(2, S3C2410_GPB2),
+
+	/* timer 3 output is not connected in the cc9m2443
+	 * module and it is connected to Piper reset on the
+	 * ccw9m2443 (wireless variant) */
+
+	/* timer 4 has no output and it is used for the
+	 * system timer */
+};
+
+/* This will be initialized in the init function to point to the
+ * channels array */
+static struct s3c24xx_pwm_pdata s3c2443_pwm_pdata;
+
+static struct platform_device s3c2443_device_pwm = {
+	.name		= "s3c24xx-pwm",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(s3c2443_pwm_resources),
+	.resource	= s3c2443_pwm_resources,
+	.dev = {
+		.platform_data = &s3c2443_pwm_pdata,
+	}
+};
+
+static void __init s3c2443_pwm_init(void)
+{
+	/* Init platform data channels pointer to
+	 * the channels array */
+	s3c2443_pwm_pdata.number_channels = ARRAY_SIZE(s3c2443_pwm_channels);
+	s3c2443_pwm_pdata.channels = s3c2443_pwm_channels;
+}
+#endif
+
 /* Platform devices for the CC9M2443 */
 static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c_device_usb,
@@ -601,6 +666,9 @@ static struct platform_device *cc9m2443_devices[] __initdata = {
 	&s3c443_device_ide,
 	&s3c443_device_pcmcia,
 	&s3c2443_device_adc,
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
+	&s3c2443_device_pwm,
+#endif
 };
 
 static void __init cc9m2443_map_io(void)
@@ -624,13 +692,13 @@ static void __init cc9m2443_map_io(void)
 
 		s3c2410_gpio_cfgpin(cfg->rx_gpio, cfg->rx_cfg);
 		s3c2410_gpio_cfgpin(cfg->tx_gpio, cfg->tx_cfg);
-		
+
 		if (cfg->cts_gpio && cfg->rts_gpio) {
 			s3c2410_gpio_cfgpin(cfg->cts_gpio, cfg->cts_cfg);
 			s3c2410_gpio_cfgpin(cfg->rts_gpio, cfg->rts_cfg);
 		}
 	}
-	
+
 	s3c24xx_init_uarts(cc9m2443_uartcfgs, ARRAY_SIZE(cc9m2443_uartcfgs));
 }
 
@@ -721,13 +789,18 @@ static void __init cc9m2443_machine_init(void)
 	s3c_device_nand.dev.platform_data = &cc9m2443_nand_info;
 
 	s3c_device_i2c.dev.platform_data = &cc9m2443_i2c_info;
-	
+
+#if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
+	/* Init PWM platform data with channels */
+	s3c2443_pwm_init();
+#endif
+
 	/* Enable the pullup for the write protect GPIO of the SD-port */
 	s3c2410_gpio_pullup(S3C2410_GPG9, 0x0);
 
         /* For the bus detection we MUST activate the pull-down */
         s3c2443_gpio_extpull(S3C2410_GPF5, 1);
-		
+
 	/* Though this call the probes of the different drivers will be called */
 	platform_add_devices(cc9m2443_devices, ARRAY_SIZE(cc9m2443_devices));
 
@@ -739,7 +812,7 @@ static void __init cc9m2443_machine_init(void)
 	 */
 	s3c2443_gpio_cfgpin(CC9M2443_RTC_IRQ_GPIO, CC9M2443_RTC_IRQ_CFG);
 	set_irq_type(CC9M2443_RTC_IRQ, IRQF_TRIGGER_FALLING);
-	
+
 	/* The first argument is the bus or adapter number to attach the devices */
 	i2c_register_board_info(CONFIG_I2C_S3C2410_ADAPTER_NR,
 				cc9m2443_i2c_devices,
