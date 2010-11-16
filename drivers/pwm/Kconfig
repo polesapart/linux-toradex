@@ -33,7 +33,7 @@ config NS921X_PWM
 	  unsure, say N.
 
 config S3C2443_PWM
-	tristate "s3c2443 PWM support"
+	tristate "Digi S3C2443 PWM support"
 	depends on MACH_CC9M2443JS || MACH_CCW9M2443JS
 	help
 	  This option enables device driver support for the PWM
@@ -50,20 +50,15 @@ config S3C2443_PWM_PRESCALER_0
 	depends on S3C2443_PWM
 	help
 	  This value sets the prescaler 0 shared by PWM timers 0 and 1.
-	  Allowed values range between 0 and 255, and the maximum
-	  period that can be generated can be calculated using this
-	  formula:
+	  Allowed values range between 0 and 255, and the period that can
+	  be generated can be calculated using these formulas:
 
-          max_period = (65535 * 16 * (prescaler + 1) / PCLK)
+            max_period = (65535 * 16 * (prescaler + 1) / PCLK)
 
-	  The minimum duty cycle varies depending on the automatically
-	  calculated divisor but at most will be:
-
-	  min_duty_cycle = max_period / 65535
+	    min_period = (2 * 2 * (prescaler + 1) / PCLK)
 
           For example, for a PCLK of 66.75MHz and a prescaler of 2
-	  the maximum period is 47.12 ms, and the minimum duty is
-	  719 ns (0.0015 % of the period)
+	  the maximum period is 47.12 ms, and the minimum is 180 ns.
 
 	  NOTE: Prescaler 1 (shared by timers 2, 3, and 4) cannot be
 	  modified because timer 4 is used as system timer with a
