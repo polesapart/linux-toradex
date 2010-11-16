@@ -66,6 +66,9 @@
 #include <mach/regs-irq.h>
 #include <plat/irq.h>
 #include <asm/plat-s3c24xx/pwm.h>
+#include <linux/pwm.h>
+#include <linux/leds.h>
+#include <linux/pwm-led.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -638,8 +641,40 @@ static struct platform_device s3c2443_device_pwm = {
 	}
 };
 
+#if defined(CONFIG_LEDS_CLASS) && defined(CONFIG_LEDS_TRIGGERS)
+static struct led_info s3c24xx_leds_pdata_info = {
+	.name			= "leds-pwm",
+	.default_trigger	= "ledtrig-dim",
+	.flags			= 0,
+};
+
+static struct pwm_channel_config s3c24xx_leds_pdata_config = {
+	.duty_ns	= 0,
+	.period_ns	= 0,
+};
+
+static struct pwm_led_platform_data s3c24xx_leds_pdata = {
+	.bus_id		= "s3c24xx-pwm",
+	.chan		= 2,
+	.led_info	= &s3c24xx_leds_pdata_info,
+	.config		= &s3c24xx_leds_pdata_config,
+};
+
+static struct platform_device s3c24xx_device_leds = {
+	.name		= "leds-pwm",
+	.id		= 0,
+	.dev		= {
+		.platform_data = &s3c24xx_leds_pdata,
+	}
+};
+#endif
+
 static void __init s3c2443_pwm_init(void)
 {
+
+#if defined(CONFIG_LEDS_CLASS) && defined(CONFIG_LEDS_TRIGGERS)
+	platform_device_register(&s3c24xx_device_leds);
+#endif
 	/* Init platform data channels pointer to
 	 * the channels array */
 	s3c2443_pwm_pdata.number_channels = ARRAY_SIZE(s3c2443_pwm_channels);
