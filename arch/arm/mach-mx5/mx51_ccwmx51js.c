@@ -163,7 +163,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	int total_mem = SZ_512M;
 	int left_mem = 0;
 	int gpu_mem = SZ_64M;
-	int fb_mem = SZ_32M;
+	int fb_mem = FB_MEM_SIZE;
 
 	mxc_set_cpu_type(MXC_CPU_MX51);
 
@@ -207,7 +207,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-
+#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
+#endif
 		/*reserve memory for gpu*/
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
@@ -219,11 +221,13 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			mxcfb_resources[0].start =
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
-				mxcfb_resources[0].start + fb_mem / 2 - 1;
+				mxcfb_resources[0].start + fb_mem - 1;
+#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
 			mxcfb_resources[1].start =
 				mxcfb_resources[0].end + 1;
 			mxcfb_resources[1].end =
-				mxcfb_resources[1].start + fb_mem / 2 - 1;
+				mxcfb_resources[1].start + fb_mem - 1;
+#endif
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;

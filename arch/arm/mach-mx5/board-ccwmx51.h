@@ -106,6 +106,13 @@
 #define BOARD_NAME		" on an undefined board"
 #endif
 
+/* framebuffer settings */
+#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+#define FB_MEM_SIZE		SZ_16M
+#else
+#define FB_MEM_SIZE		SZ_8M
+#endif
+
 void ccwmx51_2nd_touch_gpio_init(void);
 void ccwmx51_init_2nd_touch(void);
 
