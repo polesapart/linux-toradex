@@ -111,7 +111,6 @@ static inline void __s3c24xx_pwm_start(struct pwm_channel *p)
 	unsigned long tcon;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	local_irq_save(flags);
 
 	tcon = __raw_readl(S3C2410_TCON);
@@ -131,7 +130,6 @@ static inline void __s3c24xx_pwm_stop(struct pwm_channel *p)
 	unsigned long tcon;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 
-	printk("PWM: %s()\n", __FUNCTION__);
 	local_irq_save(flags);
 
 	tcon = __raw_readl(S3C2410_TCON);
@@ -208,7 +206,6 @@ __s3c24xx_pwm_config_duty_ticks(struct pwm_channel *p, unsigned long duty_ticks)
 	unsigned long tcmp;
 	struct s3c24xx_pwm_channel *pch = s3c24xx_pwm_to_channel(p);
 	unsigned long flags;
-	printk("%s(duty_ticks=%lu, period_ticks=%lu)\n", __FUNCTION__, duty_ticks, p->period_ticks);
 
 	if (duty_ticks > p->period_ticks)
 		return -ERANGE;
@@ -286,10 +283,6 @@ static unsigned char calc_prescaler(unsigned long pclk_rate,
 	}
 
 	prescaler = (unsigned char)temp;
-	printk("--------------\n");
-	printk("prescaler = %d\n", prescaler);
-	printk("div = %d\n", div);
-	printk("--------------\n");
 
 	return prescaler;
 }
@@ -341,7 +334,6 @@ __s3c24xx_pwm_config_period_ticks(struct pwm_channel *p, unsigned long period_ti
 	struct s3c24xx_pwm *pwm = container_of(p->pwm, struct s3c24xx_pwm, pwm);
 #endif
 
-	printk("%s(ticks=%lu)\n", __FUNCTION__, period_ticks);
 	period_ns = pwm_ticks_to_ns(p, period_ticks);
 	if (!period_ns)
 		return -ERANGE;
@@ -706,11 +698,16 @@ static int __devexit s3c24xx_pwmc_remove(struct platform_device *pdev)
 	p = np->pwm.channels;
 
 	for(i = 0; i < pdata->number_channels; i++) {
-		/* Stop and free all channels?? */
-		__s3c24xx_pwm_stop(p + i);
-		s3c24xx_pwm_free(p + i);
-		/* Free clocks */
 		pch = &pdata->channels[i];
+		if (pch->use_count) {
+			/* Stop running channels */
+			if (pch->running) {
+				__s3c24xx_pwm_stop(p + i);
+			}
+			/* Free requested channels */
+			s3c24xx_pwm_free(p + i);
+		}
+		/* Free clocks */
 		clk_put(pch->clk_div);
 		clk_put(pch->clk);
 	}
