@@ -150,7 +150,8 @@ static struct spi_board_info spi_devices[] __initdata = {
 	{
 		.modalias	= "spidev",
 		.max_speed_hz	= 10000000,
-		.bus_num	= 1,
+/*		.bus_num	= 1, put this back to 1 */
+		.bus_num	= 3,
 		.chip_select	= 0,
 	},
 #endif

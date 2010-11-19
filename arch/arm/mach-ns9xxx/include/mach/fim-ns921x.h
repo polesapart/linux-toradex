@@ -317,6 +317,68 @@ struct fim_sdio_platform_data {
 		.cmd_gpio_nr = cmd, \
 		.cmd_gpio_func = func
 
+
+/*
+ * Passing this value as a chip select number will tell the driver that
+ * the slave device has no chip select.
+ */
+#define FIM_SPI_NO_CHIP_SELECT      (255)
+
+/*
+ * Number of different chip selects to support.
+ */
+#define FIM_SPI_MAX_CS              (4)
+
+struct fim_spi_cs_list {
+    bool enabled;
+    int gpio;
+};
+
+/*
+ * Structure for the FIM-devices with SPI support.
+ */
+struct spi_ns921x_fim {
+    int fim_nr;                     /* FIM number to use (0 or 1) */
+    unsigned flags;
+#define SPI_NS921X_SUPPORT_MASTER_CS    (1)
+    int mosi_gpio_nr;               /* GPIO pin for MOSI signal */
+    unsigned int mosi_gpio_func;    /* function code for MOSI signal*/
+    int miso_gpio_nr;               /* GPIO pin for MISO signal */
+    unsigned int miso_gpio_func;    /* function code for MISO signal*/
+    int clk_gpio_nr;                /* GPIO pin for CLK signal */
+    unsigned int clk_gpio_func;     /* function code for CLK signal*/
+    int cs_gpio_nr;                 /* GPIO pin for master CS signal */
+    unsigned int cs_gpio_func;      /* function code for master CS signal*/
+    struct fim_spi_cs_list cs[FIM_SPI_MAX_CS];
+};
+
+
+/*
+ * Map GPIO pins to SPI signals.  The FIM uses the signals as follows:
+ *
+ *      MISO pin      PIC_GEN_IO[0]
+ *      CLK pin       PIC_GEN_IO[1]
+ *      MOSI pin      PIC_GEN_IO[2]
+ *      CS pin        PIC_GEN_IO[3]
+ *
+ * The macro is passed the first GPIO pin in the group.  We map the pins
+ * appropriately in the master config record.
+ */
+#define NS921X_FIM_SPI_GPIOS_FIM(first_gpio, func)	\
+		.miso_gpio_nr = first_gpio, \
+		.miso_gpio_func = func, \
+		.clk_gpio_nr = first_gpio+1, \
+		.clk_gpio_func = func, \
+		.mosi_gpio_nr = first_gpio+2, \
+		.mosi_gpio_func = func, \
+		.cs_gpio_nr = first_gpio+3, \
+		.cs_gpio_func = func
+
+#define NS921X_FIM_SPI_CS_GPIOS(idx, is_enabled, gpio_pin) \
+                .cs[idx].enabled = is_enabled, \
+                .cs[idx].gpio = gpio_pin
+
+
 /*
  * Structure for the FIM-devices with CAN-support
  * If a GPIO should not be used, then it's required to disable it by using the

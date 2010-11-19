@@ -279,8 +279,48 @@ static struct fim_usb_platform_data fim_usb_data0 = {
 };
 struct platform_device ns921x_fim_usb0 = {
 	.name              = "fim-usb",
-	.id                = 0,
+	.id                = 2,
 	.dev.platform_data = &fim_usb_data0,
 };
 EXPORT_SYMBOL(ns921x_fim_usb0);
 #endif /* CONFIG_FIM_ZERO_USB */
+
+
+#if defined(CONFIG_FIM_ZERO_SPI)
+static struct spi_ns921x_fim spi_fim0_data = {
+        .fim_nr             = 0,
+#if defined(CONFIG_FIM_ZERO_SPI_WANT_MASTER_CS)
+        .flags              = SPI_NS921X_SUPPORT_MASTER_CS,
+#else
+        .flags              = 0,
+#endif
+        NS921X_FIM_SPI_GPIOS_FIM(0, NS921X_GPIO_FUNC_2),
+#if CONFIG_FIM_ZERO_SPI_CS_0_ENABLED
+        NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ZERO_SPI_CS_0),
+#else
+        NS921X_FIM_SPI_CS_GPIOS(0, false, 0),
+#endif
+#if CONFIG_FIM_ZERO_SPI_CS_1_ENABLED
+        NS921X_FIM_SPI_CS_GPIOS(1, true, CONFIG_FIM_ZERO_SPI_CS_1),
+#else
+        NS921X_FIM_SPI_CS_GPIOS(1, false, 0),
+#endif
+#if CONFIG_FIM_ZERO_SPI_CS_2_ENABLED
+        NS921X_FIM_SPI_CS_GPIOS(2, true, CONFIG_FIM_ZERO_SPI_CS_2),
+#else
+        NS921X_FIM_SPI_CS_GPIOS(2, false, 0),
+#endif
+        NS921X_FIM_SPI_CS_GPIOS(3, false, 0),   /* CS3 can't be supported on the CME because there aren't any free pins*/
+};
+
+struct platform_device ns921x_fim_spi0 = {
+    .name                   = "fim-spi",
+    .id                     = 1,        /* TODO: this determines bus number.  The internal
+                                                 spi port is set up as bus 1.  Is that correct */
+    .dev.platform_data      = &spi_fim0_data
+};
+EXPORT_SYMBOL(ns921x_fim_spi0);
+#endif /* CONFIG_FIM_ZERO_SPI */
+
+
+

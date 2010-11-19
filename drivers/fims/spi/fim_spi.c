@@ -76,13 +76,18 @@
 
 #define MAX_NAME_LENGTH         (40)
 
+
+#define MAX_CS          (4)
+
 struct spi_fim {
         struct spi_ns921x_fim   master_config;
         bool                    gpio_inuse[MAX_MASTER_GPIO];
+        bool                    cs_inuse[MAX_CS];
         struct fim_driver       fim;
 	spinlock_t		lock;
 	struct list_head	message_queue;
-	struct spi_transfer	*current_transfer;
+	unsigned char           *rx_buffer;
+	unsigned int            bytes_to_receive;
 	wait_queue_head_t	wait_q;
 	unsigned long int       q_status;
         unsigned long int       ahb_clock_rate;
@@ -113,6 +118,15 @@ module_param(number_tx_buffers, uint, S_IRUGO);
 #define SPI_TX_IDONE		0x00000002
 
 
+static unsigned int get_max_speed(struct spi_fim *info)
+{
+    unsigned int pic_clock_rate = info->ahb_clock_rate * 4;
+    unsigned int cycles_per_bit = 0;
+
+    fim_get_stat_reg(&info->fim, ONE_BIT_CYCLES, &cycles_per_bit);
+    return (pic_clock_rate / cycles_per_bit);
+}
+
 
 
 
@@ -138,24 +152,30 @@ module_param(number_tx_buffers, uint, S_IRUGO);
 static int spi_fim_setup(struct spi_device *spi)
 {
     int result = 0;
+    struct spi_fim *info = spi_master_get_devdata(spi->master);
 
     if (spi == NULL) {
         result = -EINVAL;
+        printk(KERN_ERR "%s: spi_fim_setup spi_device parameter is NULL\n", info->driver_name);
         goto spi_fim_setup_quit;
     }
 
-    /*
-     * If the user requests a speed faster than we
-     * support, we just set the fastest speed we can support (when it's time to do
-     * the transfer).
-     */
-    if ((spi->mode & (SPI_3WIRE | SPI_LOOP))
-        || ((spi->bits_per_word != 0) && (spi->bits_per_word != 8))) {
+    if (spi->mode & (SPI_3WIRE | SPI_LOOP)) {
+        printk(KERN_ERR "%s: spi_fim_setup unsupported SPI mode\n", info->driver_name);
         result = -EINVAL;
         goto spi_fim_setup_quit;
     }
 
-    if (spi->max_speed_hz < MIN_SPI_CLOCK_RATE) {
+    if ((spi->bits_per_word != 0) && (spi->bits_per_word != 8)) {
+        printk(KERN_ERR "%s: spi_fim_setup unsupported word size\n", info->driver_name);
+        result = -EINVAL;
+        goto spi_fim_setup_quit;
+    }
+
+    spi->max_speed_hz = get_max_speed(info);
+
+    if (spi->chip_select >= MAX_CS) {
+        printk(KERN_ERR "%s: spi_fim_setup chip select is invalid\n", info->driver_name);
         result = -EINVAL;
         goto spi_fim_setup_quit;
     }
@@ -191,12 +211,13 @@ void configure_port(struct spi_fim *info, struct spi_device *dev)
 }
 
 
+
 /*
  * Compute the correct values for the delay loop counter given the user's desired speed
  * and the PIC clock rate.  Configure the FIM by writing the delay loop count into the
  * configuration registers.
  */
-static void set_speed(struct spi_fim *info, unsigned int max_speed, unsigned int speed)
+static void set_speed(struct spi_fim *info, unsigned int speed)
 {
     unsigned int pic_clock_rate = info->ahb_clock_rate * 4;
     unsigned int fim_max_speed = 0;
@@ -211,9 +232,7 @@ static void set_speed(struct spi_fim *info, unsigned int max_speed, unsigned int
 
     fim_max_speed = pic_clock_rate / cycles_per_bit;
 
-    if ((speed == 0) || (speed > max_speed)) {
-        speed = max_speed;
-    }
+printk(KERN_ERR "attempting to set %d.\n", speed);
     if (speed < MIN_SPI_CLOCK_RATE) {           /* should never happen */
         speed = MIN_SPI_CLOCK_RATE;
     }
@@ -244,17 +263,23 @@ static void set_speed(struct spi_fim *info, unsigned int max_speed, unsigned int
          */
         unsigned long accumulator = pic_clock_rate / speed;
 
-        accumulator -= cycles_per_bit;
-        accumulator -= delay_loop_overhead;
-        accumulator *= 100;
-        accumulator /= delay_loop_cycles;
-        accumulator += 99;
-        accumulator /= 100;
-
-        if (accumulator > 0) {
-            lsb = (unsigned int) (accumulator & 0xff);
+        if (accumulator > (cycles_per_bit + delay_loop_overhead)) {
+            accumulator -= cycles_per_bit;
+            accumulator -= delay_loop_overhead;
+            accumulator *= 100;
+            accumulator /= delay_loop_cycles;
+            accumulator += 99;
+            accumulator /= 100;
+            if (accumulator > 0) {
+                lsb = (unsigned int) (accumulator & 0xff);
+            } else {
+                lsb = 1;
+            }
+        } else {
+            lsb = 1;
         }
     }
+else printk(KERN_ERR "setting max speed, lsb set to %d.\n", lsb);
 
     fim_set_ctrl_reg(&info->fim, DELAY_LOOP_REG, lsb);
 }
@@ -270,7 +295,7 @@ static void set_speed(struct spi_fim *info, unsigned int max_speed, unsigned int
  *     the SPI_CS_HIGH bit is set in the mode flag, then CS is inverted.
  * 2.  Write the value to the pin.
  * 3.  Configure the pin.  The pin is configured after the value is set so
- *     that the correct value will be output as when the configuration
+ *     that the correct value will be output when the configuration
  *     is set.
  *
  * We always reconfigure the pin whenever this function is called.  The logical
@@ -279,20 +304,20 @@ static void set_speed(struct spi_fim *info, unsigned int max_speed, unsigned int
  * a SPI transfer is in progress, and setting the GPIO configuration and a
  * default value for the pin could cause errors in the transfer.
  */
-static void assert_chip_select(struct spi_device *spi, bool do_assert)
+static void assert_chip_select(struct spi_fim *info, struct spi_device *spi, bool do_assert)
 {
-    if (spi->chip_select != FIM_SPI_NO_CHIP_SELECT) {
+    if ((spi->chip_select < MAX_CS) && (info->master_config.cs[spi->chip_select].enabled)) {
         int pin_value = do_assert ? 0 : 1;
 
         if (spi->mode & SPI_CS_HIGH) {
             pin_value = 1 - pin_value;
         }
-        gpio_set_value(spi->chip_select, pin_value);
-	gpio_configure_ns921x(spi->chip_select,
-		       NS921X_GPIO_OUTPUT,
-		       NS921X_GPIO_DONT_INVERT,
-		       NS921X_GPIO_FUNC_3,
-		       NS921X_GPIO_DISABLE_PULLUP);
+        gpio_set_value(info->master_config.cs[spi->chip_select].gpio, pin_value);
+        gpio_configure_ns921x_unlocked(info->master_config.cs[spi->chip_select].gpio,
+    			       NS921X_GPIO_OUTPUT,
+		               NS921X_GPIO_DONT_INVERT,
+    			       NS921X_GPIO_FUNC_3,
+    			       NS921X_GPIO_DISABLE_PULLUP);
     }
 }
 
@@ -325,7 +350,7 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
      * let's make sure CS is deasserted before we start the transfer.  It should
      * already be deasserted.
      */
-    assert_chip_select(message->spi, false);
+    assert_chip_select(info, message->spi, false);
     udelay(1);
 
     /*
@@ -334,8 +359,6 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
     list_for_each_entry(transfer, &message->transfers, transfer_list) {
         struct fim_buffer_t fim_dma_buffer;
 
-        info->current_transfer = transfer;
-
         if (transfer->tx_buf == NULL) {
             /*
              * Linux SPI documentation says we must transmit zeroes if no transmit buffer
@@ -343,11 +366,15 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
              */
             memset(transfer->rx_buf, 0, transfer->len);
             fim_dma_buffer.data = transfer->rx_buf;
+            info->rx_buffer = transfer->rx_buf;
+            info->bytes_to_receive = transfer->len;
         } else {
             /*
              * Else if the user is graciously supplying a transmit buffer, then use it.
              */
-             fim_dma_buffer.data = (unsigned char *) transfer->tx_buf;
+            fim_dma_buffer.data = (unsigned char *) transfer->tx_buf;
+            info->rx_buffer = NULL;
+            info->bytes_to_receive = transfer->len;
         }
         fim_dma_buffer.length = transfer->len;
         fim_dma_buffer.private = info;
@@ -357,13 +384,14 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
         info->q_status &= ~Q_TRANSFER_COMPLETE;
         spin_unlock(&info->lock);
         configure_port(info, message->spi);
-        set_speed(info, message->spi->max_speed_hz, transfer->speed_hz);
-        assert_chip_select(message->spi, true);
+        set_speed(info, transfer->speed_hz);
+        assert_chip_select(info, message->spi, true);
 
         /*
          * Start the DMA transfer.  The receive transfer will start also and call rx_isr
          * when we have received a buffer of data.
          */
+/*printk(KERN_ERR "Sending %d bytes.\n", fim_dma_buffer.length); */
         if (fim_send_buffer(&info->fim, &fim_dma_buffer) != 0) {
             message->status = -ENOMEM;
             goto process_message_quit;
@@ -389,7 +417,7 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
          * Toggle CS if the user wants us to.
          */
         if (transfer->cs_change)
-            assert_chip_select(message->spi, false);
+            assert_chip_select(info, message->spi, false);
 
         /*
          * Insert a delay if the user wants us to.
@@ -404,7 +432,7 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
     message->status = 0;
 
 process_message_quit:
-    assert_chip_select(message->spi, false);            /* deassert CS after end of transfer*/
+    assert_chip_select(info, message->spi, false);            /* deassert CS after end of transfer*/
     message->complete(message->context);
 
     if (info->q_status & Q_TIME_TO_DIE) {
@@ -541,6 +569,7 @@ static int spi_fim_transfer(struct spi_device *spi, struct spi_message *msg)
 static void free_gpio_pins(struct spi_fim *info)
 {
     struct spi_ns921x_fim *master_config;
+    int cs_index;
 
     master_config = &info->master_config;               /* avoid some typing*/
 
@@ -560,18 +589,28 @@ static void free_gpio_pins(struct spi_fim *info)
         gpio_free(master_config->clk_gpio_nr);
         info->gpio_inuse[CLK_GPIO_INDEX] = false;
     }
+
+    for (cs_index = 0; cs_index < MAX_CS; cs_index++)
+    {
+        if (info->cs_inuse[cs_index])
+        {
+            gpio_free(master_config->cs[cs_index].gpio);
+            info->cs_inuse[cs_index] = false;
+        }
+    }
 }
 
 
 /*
  * This function gets ownership of the GPIO pins we need and then
- * configures them for the FIM.  The functio returns in error if
+ * configures them for the FIM.  The function returns in error if
  * a GPIO pin is not available.
  */
 static int setup_gpio_pins(struct spi_fim *info)
 {
     struct spi_ns921x_fim *master_config;
     int retval = 0;
+    int cs_index;
 
     master_config = &info->master_config;               /* avoid some typing*/
 
@@ -633,6 +672,31 @@ static int setup_gpio_pins(struct spi_fim *info)
 			       NS921X_GPIO_DISABLE_PULLUP);
     info->gpio_inuse[CLK_GPIO_INDEX] = true;
 
+    for (cs_index = 0; cs_index < MAX_CS; cs_index++)
+    {
+        if (master_config->cs[cs_index].enabled)
+        {
+            /*
+             * At this point we don't know whether the CS is high active or low active,
+             * so we don't know what to do with the pin yet.  IMHO this is a bug in the
+             * design of the Linux SPI API.  Anyway, we just get ownership of the pin
+             * for now.  We will configure it when we send the first message out, because
+             * that is when we are told what the polarity of the pin is.
+             */
+            retval = gpio_request(master_config->cs[cs_index].gpio, info->driver_name);
+            if (retval != 0) {
+                printk(KERN_ERR "%s: setup_gpio_pins unable to allocate GPIO pin %d for chip select %d\n",
+                        info->driver_name, master_config->cs[cs_index].gpio, cs_index);
+                goto setup_gpio_pins_terminate;
+            }
+            info->cs_inuse[cs_index] = true;
+        }
+        else
+        {
+            info->cs_inuse[cs_index] = false;
+        }
+    }
+
 setup_gpio_pins_terminate:
     /*
      * The caller will call free_gpio_pins() to clean up if we return an error.
@@ -651,20 +715,32 @@ void rx_isr(struct fim_driver *fim, int not_used, struct fim_buffer_t *fim_buffe
 
     (void) not_used;
 
-    if (info->current_transfer == NULL) {
-        dev_err(&info->pdev->dev, "%s:  rx_isr called when current_transfer == NULL\n", __func__);
+    if (info->bytes_to_receive == 0) {
+        dev_err(&info->pdev->dev, "%s:  rx_isr called when bytes_to_receive == 0\n", __func__);
         return;
+    } else if (fim_buffer->length > info->bytes_to_receive) {
+        dev_err(&info->pdev->dev, "%s:  received %d bytes, but only expected %d\n", __func__,
+                fim_buffer->length, info->bytes_to_receive);
     }
 
-    if (info->current_transfer->rx_buf != NULL) {
-        memcpy(info->current_transfer->rx_buf, fim_buffer->data, info->current_transfer->len);
+    if (info->rx_buffer != NULL) {
+        memcpy(info->rx_buffer, fim_buffer->data, fim_buffer->length);
+        info->rx_buffer += fim_buffer->length;
     }
 
-    info->current_transfer = NULL;
+    if (fim_buffer->length <= info->bytes_to_receive) {
+        info->bytes_to_receive -= fim_buffer->length;
+    } else {
+        info->bytes_to_receive = 0;
+    }
+
     spin_lock(&info->lock);
-    info->q_status |= Q_TRANSFER_COMPLETE;
+    if (info->bytes_to_receive == 0) {
+        info->q_status |= Q_TRANSFER_COMPLETE;
+        info->rx_buffer = NULL;
+        wake_up_interruptible(&info->wait_q);
+    }
     spin_unlock(&info->lock);
-    wake_up_interruptible(&info->wait_q);
 }
 
 
@@ -779,6 +855,7 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
          * Get a pointer to our real private data.
          */
 	info = spi_master_get_devdata(master);
+	memset(info, 0, sizeof(*info));
         info->master_config = *master_config;
         sprintf(info->driver_name, "%s-%d", DRIVER_NAME, master_config->fim_nr);
 	info->pdev = pdev;          /* save pointer to master device structure*/
