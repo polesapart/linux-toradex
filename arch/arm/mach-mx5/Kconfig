@@ -328,6 +328,7 @@ config I2C_MXC_SELECT1
 	bool "Enable I2C1 module"
 	default y
 	depends on I2C_MXC
+	depends on !MACH_CCWMX51JS
 	help
 	  Enable MX51 I2C1 module.
 

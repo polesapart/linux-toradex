@@ -101,6 +101,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_mmc1_pins[] = {
 #endif
 };
 
+#ifdef CONFIG_MACH_CCWMX51JS
 /* IOMUX settings, for the wireless interface on Wi-i.MX51 module */
 static struct mxc_iomux_pin_cfg ccwmx51_iomux_mmc2_pins[] = {
 	/* SDHC2*/
@@ -135,6 +136,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_mmc2_pins[] = {
 		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
 	},
 };
+#endif
 
 static struct mxc_iomux_pin_cfg ccwmx51_iomux_mmc3_pins[] = {
 	/* SDHC3*/
@@ -499,7 +501,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_video2_pins[] = {
 
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_i2c_pins[] = {
-#ifdef CONFIG_I2C_MXC_SELECT1
+#if defined (CONFIG_I2C_MXC_SELECT1)
 	{
 		MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT1 | IOMUX_CONFIG_SION,
 		(PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_HYS_ENABLE |
