@@ -563,6 +563,7 @@ struct mxc_fb_platform_data mx51_fb_data[2] = {
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata plcd_platform_data[2];
 
+#if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 static u32 ccwmx51_get_max_video_pclk(void)
 {
 	/**
@@ -571,6 +572,7 @@ static u32 ccwmx51_get_max_video_pclk(void)
 	 */
 	return KHZ2PICOS(132000);
 }
+#endif
 
 #if defined(CONFIG_CCWMX51_DISP1)
 static char *video2_options[FB_MAX] __read_mostly;

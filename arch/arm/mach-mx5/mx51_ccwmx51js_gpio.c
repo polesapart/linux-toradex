@@ -196,6 +196,7 @@ void gpio_sdhc_active(int interface)
 		}
 		break;
 	case 1:
+#ifdef CONFIG_MACH_CCWMX51JS
 		for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc2_pins); i++) {
 			mxc_request_iomux(ccwmx51_iomux_mmc2_pins[i].pin,
 					  ccwmx51_iomux_mmc2_pins[i].mux_mode);
@@ -206,6 +207,7 @@ void gpio_sdhc_active(int interface)
 				mxc_iomux_set_input(ccwmx51_iomux_mmc2_pins[i].in_select,
 						    ccwmx51_iomux_mmc2_pins[i].in_mode);
 		}
+#endif
 		break;
 
 	case 2:
