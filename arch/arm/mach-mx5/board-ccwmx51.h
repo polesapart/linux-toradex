@@ -108,9 +108,9 @@
 
 /* framebuffer settings */
 #if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
-#define FB_MEM_SIZE		SZ_16M
+#define FB_MEM_SIZE		SZ_32M
 #else
-#define FB_MEM_SIZE		SZ_8M
+#define FB_MEM_SIZE		SZ_16M
 #endif
 
 void ccwmx51_2nd_touch_gpio_init(void);
