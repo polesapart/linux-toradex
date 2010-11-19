@@ -21,7 +21,7 @@
 
 enum cme9210_variant get_cme9210_variant(void)
 {
-	return __raw_readl(SYS_GENID) & 0x3ff;
+	return __raw_readl(SYS_GENID) & 0x7ff;
 }
 
 #if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)

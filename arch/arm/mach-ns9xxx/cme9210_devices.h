@@ -9,10 +9,15 @@
  * the Free Software Foundation.
  */
 
-/* Digi Connect ME 9210 variants */
+/* Digi Connect ME 9210 variants depending on GENID strapping */
 enum cme9210_variant {
-	CME9210_BASIC = 0x37f,
-	CME9210_CAN = 0x37d ,
+	/* old versions < 30007061-12 */
+	CME9210_OLD_2M_FLASH = 0x77c,
+	CME9210_OLD_4M_FLASH = 0x77f,
+	/* new versions >= 30007061-12 */
+	CME9210_NEW_2M_FLASH = 0x774,
+	CME9210_NEW_4M_FLASH = 0x777,
+	CME9210_NEW_8M_FLASH = 0x775,
 };
 
 enum cme9210_variant get_cme9210_variant(void);

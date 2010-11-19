@@ -149,10 +149,11 @@ static void __init mach_cme9210js_init_machine(void)
 	ns9xxx_add_device_cme9210_uarta_full();
 #endif
 #if defined(CONFIG_CME9210JS_SERIAL_PORT_ON_JTAG_CON)
-	if (variant == CME9210_CAN) {
+	if (CME9210_NEW_8M_FLASH == variant ||
+	    CME9210_NEW_4M_FLASH == variant ||
+	    CME9210_NEW_2M_FLASH == variant) {
 		if (!gpio_request(GPIO_MFGO, "mfgo") &&
 		    !gpio_request(GPIO_CLK, "clk")) {
-
 			gpio_configure_ns921x(GPIO_MFGO, NS921X_GPIO_OUTPUT,
 					      NS921X_GPIO_DONT_INVERT,
 					      NS921X_GPIO_FUNC_GPIO,
@@ -190,7 +191,9 @@ static void __init mach_cme9210js_init_machine(void)
 	netdev_max_backlog = 300;
 
 	/* Select the led activity GPIO acordingly to the module variant */
-	if (variant == CME9210_CAN)
+	if (CME9210_NEW_8M_FLASH == variant ||
+	    CME9210_NEW_4M_FLASH == variant ||
+	    CME9210_NEW_2M_FLASH == variant)
 		ns9xxx_add_device_cme9210_eth(10);
 	else
 		ns9xxx_add_device_cme9210_eth(14);
