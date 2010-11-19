@@ -812,9 +812,9 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 		fb_videomode_to_var(var, fbvmode);
 	}
 
-	/* For HDMI, use external clock by default (except for forced modes) */
+	/* For HDMI, use external clock lat fall by default (except for forced modes) */
 	if (mode != MODE_FORCED)
-		var->sync |= FB_SYNC_EXT | FB_SYNC_CLK_LAT_FALL;
+		var->sync |= FB_SYNC_CLK_LAT_FALL;
 
 	/* Check if clock must be readjusted */
 	if (tpclk != 0)
