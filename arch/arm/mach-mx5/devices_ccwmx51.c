@@ -163,7 +163,33 @@ static int ccwmx51_create_sysfs_entries(void)
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_SYSFS */
+
+#if CONFIG_HAS_EARLY_USER_LEDS
+void ccwmx51_user_led(int led, int val)
+{
+	__iomem void *base;
+	u32 reg, mask;
+
+	if (led == 1)
+		mask = 1 << 10;
+	else if (led == 2)
+		mask = 1 << 9;
+	else
+		return;
+
+	base = ioremap(GPIO3_BASE_ADDR, SZ_4K);
+	reg = __raw_readl(base);
+
+	if (val)
+		reg |= mask;
+	else
+		reg &= ~mask;
+
+	__raw_writel(reg, base);
+	iounmap(base);
+}
+#endif /* CONFIG_HAS_EARLY_USER_LEDS */
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 static int sdhc_write_protect(struct device *dev)
