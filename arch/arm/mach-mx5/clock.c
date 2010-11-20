@@ -4503,7 +4503,10 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	reg |= MXC_CCM_CCDR_HSC_HS_MASK;
 	__raw_writel(reg, MXC_CCM_CCDR);
 
+#ifndef CONFIG_LATE_CPU_CLK_ENABLE
+	/* See comment below where cpu_clk is enabled for further information */
 	clk_enable(&cpu_clk);
+#endif
 
 	/* Set SDHC parents to be PLL2 */
 	clk_set_parent(&esdhc1_clk[0], &pll2_sw_clk);
@@ -4680,6 +4683,15 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 
 	base = ioremap(GPT1_BASE_ADDR, SZ_4K);
 	mxc_timer_init(&gpt_clk[0], base, MXC_INT_GPT);
+#ifdef CONFIG_LATE_CPU_CLK_ENABLE
+	/**
+	 * Late enable of the cpu clock. This is causing a random crash at boot
+	 * time on the ConnectCore Wi-i.MX51. Enabling the cpu clock here seems
+	 * to work around the problem. Must be in order to better understand the
+	 * reason of the problem and the real solution to the problem.
+	 */
+	clk_enable(&cpu_clk);
+#endif
 	return 0;
 }
 

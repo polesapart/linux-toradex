@@ -45,9 +45,13 @@ config MACH_MX51_BABBAGE
 config MODULE_CCXMX51
 	bool
 
+config LATE_CPU_CLK_ENABLE
+	bool
+
  config MACH_CCWMX51JS
 	bool "Support for the ConnectCore Wi-i.MX51 module, on the JSK base board"
 	select MODULE_CCXMX51
+	select LATE_CPU_CLK_ENABLE
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX51 Embedded Module, on the
 	  JumpStart Kit base board. This includes specific configurations for the
@@ -64,6 +68,7 @@ config MODULE_CCXMX51
  config MACH_CCWMX51
 	bool "Support for the ConnectCore Wi-i.MX51 module"
 	select MODULE_CCXMX51
+	select LATE_CPU_CLK_ENABLE
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX51 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
@@ -80,6 +85,7 @@ config MODULE_CCXMX51
 config MACH_CCMX51JS
 	bool "Support for the ConnectCore i.MX51 module, on the JSK base board"
 	select MODULE_CCXMX51
+	select LATE_CPU_CLK_ENABLE
 	help
 	  Include support for the Digi ConnectCore i.MX51 Embedded Module, on the
 	  JumpStart Kit base board. This includes specific configurations for the
@@ -88,6 +94,7 @@ config MACH_CCMX51JS
 config MACH_CCMX51
 	bool "Support for the ConnectCore i.MX51 module"
 	select MODULE_CCXMX51
+	select LATE_CPU_CLK_ENABLE
 	help
 	  Include support for the Digi ConnectCore i.MX51 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
