@@ -53,7 +53,7 @@ static void lcd_bl_enable_lq70(int enable, int vif)
 static void lcd_init(int vif)
 {
 	/* Initialize lcd enable gpio and video interface lines */
-	gpio_video_active(vif, PAD_CTL_DRV_MAX | PAD_CTL_SRE_FAST);
+	gpio_video_active(vif, PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
 }
 
 static struct fb_videomode lq70y3dg3b = {
@@ -61,7 +61,7 @@ static struct fb_videomode lq70y3dg3b = {
 	.refresh	= 60,
 	.xres		= 800,
 	.yres		= 480,
-	.pixclock	= 38000,
+	.pixclock	= 44000,
 	.left_margin	= 0,
 	.right_margin	= 50,
 	.upper_margin	= 25,
