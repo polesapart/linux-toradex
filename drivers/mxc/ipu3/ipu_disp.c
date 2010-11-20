@@ -1492,6 +1492,8 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		/* Configure accordingly to the received configuration */
 		if (sig.clk_pol)
 			di_gen |= 0x00020000;
+		else
+			di_gen &= ~0x00020000;
 	}
 
 	if (!sig.clk_pol)
