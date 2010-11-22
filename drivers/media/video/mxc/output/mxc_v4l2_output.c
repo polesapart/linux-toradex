@@ -1345,11 +1345,14 @@ static int mxc_v4l2out_streamon(vout_data *vout)
 		}
 
 		fbvar.bits_per_pixel = 16;
-		if (format_is_yuv(fb_fmt))
-			fbvar.nonstd = IPU_PIX_FMT_UYVY;
-		else
-			fbvar.nonstd = 0;
 		if (vout->cur_disp_output == 3) {
+			/* Only set YUV for the first display. The second display can
+			 * only work in RGB */
+			if (format_is_yuv(fb_fmt))
+				fbvar.nonstd = IPU_PIX_FMT_UYVY;
+			else
+				fbvar.nonstd = 0;
+
 			fbvar.xres = out_width;
 			fbvar.yres = out_height;
 			vout->xres = fbvar.xres;
