@@ -1148,18 +1148,14 @@ static int ioctl_dev_init(struct v4l2_int_device *s)
 
 /* list of image formats supported by sensor */
 static const struct v4l2_fmtdesc mt9v111_formats[] = {
-#if defined(CONFIG_MXC_CAMERA_MICRON111_RGB565)
 	{
 		.description = "RGB565",
 		.pixelformat = V4L2_PIX_FMT_RGB565,
 	},
-#endif
-#if defined(CONFIG_MXC_CAMERA_MICRON111_UYVY)
 	{
 		.description = "YUV422 UYVY",
 		.pixelformat = V4L2_PIX_FMT_UYVY,
 	},
-#endif
 };
 
 #define MT9V111_NUM_CAPTURE_FORMATS	ARRAY_SIZE(mt9v111_formats)
@@ -1218,7 +1214,6 @@ static int ioctl_s_fmt_cap(struct v4l2_int_device *s,
 		case V4L2_PIX_FMT_UYVY:
 		case V4L2_PIX_FMT_YVU420:
 		case V4L2_PIX_FMT_YUYV:
-
 			/* MT9V111I_FORMAT_CONTROL */
 			reg = mt9v111_read_reg(sensorid,MT9V111I_FORMAT_CONTROL);
 			reg &= ~(1 << 12);
@@ -1405,12 +1400,7 @@ static int mt9v111_probe(struct i2c_client *client,
 	memset(&mt9v111_data[sensorid], 0, sizeof(struct sensor));
 	mt9v111_data[sensorid].i2c_client = client;
 	pr_debug("   client name is %s\n", client->name);
-#if defined(CONFIG_MXC_CAMERA_MICRON111_RGB565)
-	mt9v111_data[sensorid].pix.pixelformat = V4L2_PIX_FMT_RGB565;
-#endif
-#if defined(CONFIG_MXC_CAMERA_MICRON111_UYVY)
 	mt9v111_data[sensorid].pix.pixelformat = V4L2_PIX_FMT_UYVY;
-#endif
 	mt9v111_data[sensorid].pix.width = MT9V111_MAX_WIDTH;
 	mt9v111_data[sensorid].pix.height = MT9V111_MAX_HEIGHT;
 	mt9v111_data[sensorid].streamcap.capability = 0; /* No higher resolution or frame

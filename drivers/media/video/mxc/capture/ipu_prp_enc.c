@@ -81,12 +81,7 @@ static int prp_enc_setup(cam_data *cam)
 	ipu_csi_get_window_size(&enc.csi_prp_enc_mem.in_width,
 				&enc.csi_prp_enc_mem.in_height, cam->csi);
 
-#if defined(CONFIG_MXC_CAMERA_MICRON111_RGB565)
-	enc.csi_prp_enc_mem.in_pixel_fmt = IPU_PIX_FMT_RGB565;
-#endif
-#if defined(CONFIG_MXC_CAMERA_MICRON111_UYVY)
 	enc.csi_prp_enc_mem.in_pixel_fmt = IPU_PIX_FMT_UYVY;
-#endif
 	enc.csi_prp_enc_mem.out_width = cam->v2f.fmt.pix.width;
 	enc.csi_prp_enc_mem.out_height = cam->v2f.fmt.pix.height;
 	enc.csi_prp_enc_mem.csi = cam->csi;

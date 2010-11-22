@@ -1124,63 +1124,10 @@ static int mxc_v4l2_s_ctrl(cam_data *cam, struct v4l2_control *c)
 	return ret;
 }
 
-/*!
- * V4L2 - mxc_v4l2_s_param function
- * Allows setting of capturemode and frame rate.
- *
- * @param cam         structure cam_data *
- * @param parm        structure v4l2_streamparm *
- *
- * @return  status    0 success, EINVAL failed
- */
-static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
-{
-	struct v4l2_ifparm ifparm;
+static int 	mxc_v4l2_init_csi( cam_data *cam ) {
 	struct v4l2_format cam_fmt;
-	struct v4l2_streamparm currentparm;
 	ipu_csi_signal_cfg_t csi_param;
-	int err = 0;
-
-	pr_debug("In mxc_v4l2_s_param\n");
-
-	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		pr_err(KERN_ERR "mxc_v4l2_s_param invalid type\n");
-		return -EINVAL;
-	}
-
-	/* Stop the viewfinder */
-	if (cam->overlay_on == true) {
-		stop_preview(cam);
-	}
-
-	currentparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	/* First check that this device can support the changes requested. */
-	err = vidioc_int_g_parm(cam->sensor, &currentparm);
-	if (err) {
-		pr_err("%s: vidioc_int_g_parm returned an error %d\n",
-			__func__, err);
-		goto exit;
-	}
-
-	pr_debug("   Current capabilities are %x\n",
-			currentparm.parm.capture.capability);
-	pr_debug("   Current capturemode is %d  change to %d\n",
-			currentparm.parm.capture.capturemode,
-			parm->parm.capture.capturemode);
-	pr_debug("   Current framerate is %d  change to %d\n",
-			currentparm.parm.capture.timeperframe.denominator,
-			parm->parm.capture.timeperframe.denominator);
-
-	/* This will change any camera settings needed. */
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
-	err = vidioc_int_s_parm(cam->sensor, parm);
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
-	if (err) {
-		pr_err("%s: vidioc_int_s_parm returned an error %d\n",
-			__func__, err);
-		goto exit;
-	}
+	struct v4l2_ifparm ifparm;
 
 	/* If resolution changed, need to re-program the CSI */
 	/* Get new values. */
@@ -1256,7 +1203,63 @@ static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
 	ipu_csi_init_interface(cam->crop_bounds.width,
 			       cam->crop_bounds.height,
 			       cam_fmt.fmt.pix.pixelformat, csi_param);
+	return 0;
+}
 
+/*!
+ * V4L2 - mxc_v4l2_s_param function
+ * Allows setting of capturemode and frame rate.
+ *
+ * @param cam         structure cam_data *
+ * @param parm        structure v4l2_streamparm *
+ *
+ * @return  status    0 success, EINVAL failed
+ */
+static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
+{
+	struct v4l2_streamparm currentparm;
+	int err = 0;
+
+	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		pr_err(KERN_ERR "mxc_v4l2_s_param invalid type\n");
+		return -EINVAL;
+	}
+
+	/* Stop the viewfinder */
+	if (cam->overlay_on == true) {
+		stop_preview(cam);
+	}
+
+	currentparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+	/* First check that this device can support the changes requested. */
+	err = vidioc_int_g_parm(cam->sensor, &currentparm);
+	if (err) {
+		pr_err("%s: vidioc_int_g_parm returned an error %d\n",
+			__func__, err);
+		goto exit;
+	}
+
+	pr_debug("   Current capabilities are %x\n",
+			currentparm.parm.capture.capability);
+	pr_debug("   Current capturemode is %d  change to %d\n",
+			currentparm.parm.capture.capturemode,
+			parm->parm.capture.capturemode);
+	pr_debug("   Current framerate is %d  change to %d\n",
+			currentparm.parm.capture.timeperframe.denominator,
+			parm->parm.capture.timeperframe.denominator);
+
+	/* This will change any camera settings needed. */
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
+	err = vidioc_int_s_parm(cam->sensor, parm);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
+	if (err) {
+		pr_err("%s: vidioc_int_s_parm returned an error %d\n",
+			__func__, err);
+		goto exit;
+	}
+
+	err = mxc_v4l2_init_csi(cam);
 
 exit:
 	if (cam->overlay_on == true)
@@ -1790,6 +1793,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		struct v4l2_format *sf = arg;
 		pr_debug("   case VIDIOC_S_FMT\n");
 		retval = mxc_v4l2_s_fmt(cam, sf);
+		mxc_v4l2_init_csi(cam);
 		break;
 	}
 

@@ -58,26 +58,11 @@ config MXC_CAMERA_MICRON111
 	---help---
 	  If you plan to use the mt9v111 Camera with your MXC system, say Y here.
 
-config MXC_CAMERA_MICRON111_RGB565
-    bool "Micron mt9v111 RGB565 configuration."
-    default y
-    depends on MXC_CAMERA_MICRON111
-    ---help---
-      Use the raw RGB565 format. If in doubt say Y.
-
-config MXC_CAMERA_MICRON111_UYVY
-    bool "Micron mt9v111 YUV422 UYVY configuration."
-    depends on MXC_CAMERA_MICRON111
-    depends on !MXC_CAMERA_MICRON111_RGB565
-    ---help---
-      Use the raw YUV422 UYVY format.
-
 config MXC_CAMERA_MICRON111_1
     tristate "Micron mt9v111 camera 1 support"
     select I2C_MXC
     depends on ! VIDEO_MXC_EMMA_CAMERA
     depends on MXC_CAMERA_MICRON111
-    depends on MXC_CAMERA_MICRON111_RGB565 || MXC_CAMERA_MICRON111_UYVY
     ---help---
       If you plan to use the mt9v111 Camera 1 with your MXC system, say Y here.
 
@@ -86,7 +71,6 @@ config MXC_CAMERA_MICRON111_2
     select I2C_MXC
     depends on ! VIDEO_MXC_EMMA_CAMERA
     depends on MXC_CAMERA_MICRON111
-    depends on MXC_CAMERA_MICRON111_RGB565 || MXC_CAMERA_MICRON111_UYVY
     ---help---
       If you plan to use the mt9v111 Camera 2 with your MXC system, say Y here.
 
