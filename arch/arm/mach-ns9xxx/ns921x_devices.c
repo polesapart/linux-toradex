@@ -24,6 +24,7 @@
 
 #include "clock.h"
 #include "ns921x_devices.h"
+#include "cme9210_devices.h"
 #include "processor-ns921x.h"
 
 /* Watchdog timer */
@@ -805,16 +806,23 @@ static inline void __init ns9xxx_add_device_ns921x_fim_usb1(void) {}
 void __init ns9xxx_add_device_ns921x_fims(void)
 {
 	/*
-	 * By the CME9210s with the CAN-support the GPIOs 2 and 23 are inter-connected.
-	 * This is just problematic when these modules should use the FIM-serial
-	 * interface, then the GPIO23 is not configured as input GPIO after the resets.
-	 * IMPORTANT: The below code will disappear in one of the next U-Boot releases
-	 * with the FIMs-support.
-	 * (Luis Galdos)
+	 * On the CME9210s with the CAN-support the following GPIOs are inter-connected:
+	 *  - GPIO15 (CAN_TX) with GPIO6
+	 *  - GPIO14 (CAN_RX) with GPIO2
+	 * If the CAN is to be used, GPIO2 and GPIO6 must be tristated before CAN TX and RX
+	 * can be made active.
 	 */
 #if defined(CONFIG_FIM_CORE) && \
 		(defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS))
-	gpio_direction_input_ns921x_unlocked(23);
+	enum cme9210_variant variant;
+
+	variant = get_cme9210_variant();
+	if (CME9210_NEW_8M_FLASH == variant ||
+	    CME9210_NEW_4M_FLASH == variant ||
+	    CME9210_NEW_2M_FLASH == variant) {
+		gpio_direction_input_ns921x_unlocked(6);
+		gpio_direction_input_ns921x_unlocked(2);
+	}
 #endif
 
 	/* FIM 0 */
