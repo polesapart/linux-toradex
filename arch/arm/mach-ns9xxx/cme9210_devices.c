@@ -294,7 +294,7 @@ static struct spi_ns921x_fim spi_fim0_data = {
 #else
         .flags              = 0,
 #endif
-        NS921X_FIM_SPI_GPIOS_FIM(0, NS921X_GPIO_FUNC_2),
+        .gpio_base = 0,
 #if CONFIG_FIM_ZERO_SPI_CS_0_ENABLED
         NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ZERO_SPI_CS_0),
 #else
@@ -315,8 +315,8 @@ static struct spi_ns921x_fim spi_fim0_data = {
 
 struct platform_device ns921x_fim_spi0 = {
     .name                   = "fim-spi",
-    .id                     = 1,        /* TODO: this determines bus number.  The internal
-                                                 spi port is set up as bus 1.  Is that correct */
+    .id                     = 2,        /* The internal SPI ports are numbered 0 and 1, so
+                                           the FIM SPI port is numbered 2 */
     .dev.platform_data      = &spi_fim0_data
 };
 EXPORT_SYMBOL(ns921x_fim_spi0);

@@ -33,6 +33,94 @@ config FIM_APPKIT_BOARD
 
 	  If using a custom board, you can disable this option.
 
+config FIM_MODULES
+	bool "Enable FIM drivers as loadable modules"
+	depends on !FIM_ZERO || !FIM_ONE
+	help
+	  This option allows to build the FIM drivers as loadable modules
+	  rather than as built-in features.
+
+if FIM_MODULES
+
+# -- These are the options for enabling the FIM-drivers as loadable modules
+config FIM_SDIO_MODULE
+	bool "SDIO as loadable module"
+	depends on MMC && MMC_BLOCK && !FIM_ZERO_SDIO_SELECTED && !FIM_ONE_SDIO_SELECTED && (!FIM_ZERO || !FIM_ONE)
+	select FIM_ZERO_SDIO
+	select FIM_ONE_SDIO if !(MACH_CME9210JS || MACH_CME9210)
+	help
+	  Enables the FIM SDIO as loadable module. The number of FIMs to be
+	  handled by this driver can be passed with the module parameter 'fims',
+	  where:
+	  - fims=0 (FIM0)
+	  - fims=1 (FIM1)
+	  - fims=2 (FIM0 and FIM1)
+
+	  If Digi's FIM Application Kit hardware board is selected, SDIO can only
+	  work with one of the FIMs, and the following GPIOs will be used:
+	  - On cc9p9215js platform:
+	  -- GPIO 101 for Card Detect
+	  -- GPIO 100 for Write Protect
+	  - On cme9210js platform:
+	  -- GPIO 9 for Card Detect
+	  -- GPIO 6 for Write Protect
+
+	  If Digi's FIM Application Kit hardware board is disabled because a custom
+	  hardware board is to be used instead, then six new module parameters
+	  are allowed to specify GPIOs for Card Detect and Write Protect
+	  functionality for each FIM:
+	  - 'cd0' for Card Detect on FIM0
+	  - 'cd0_func' for Card Detect GPIO function on FIM0
+	  - 'wp0' for Write Protect on FIM0
+	  - 'cd1' for Card Detect on FIM1
+	  - 'cd1_func' for Card Detect GPIO function on FIM1
+	  - 'wp1' for Write Protect on FIM1
+	  If a parameter is not specified, the corresponding functionality
+	  won't be available for that FIM.
+	  If Card Detect functionality is not available, it is assumed the card is
+	  always plugged. If Write Protect functionality is not available, it is
+	  assumed Write Protect is off.
+
+config FIM_SERIAL_MODULE
+	bool "Serial as loadable module"
+	depends on !FIM_ZERO_SERIAL_SELECTED && !FIM_ONE_SERIAL_SELECTED && (!FIM_ZERO || !FIM_ONE)
+	select FIM_ZERO_SERIAL
+	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210)
+	select SERIAL_CORE
+	help
+          Enables the FIM Serial loadable module. The number of FIMs to be
+	  handled by this driver can be passed with the module parameter 'fims'
+
+config FIM_CAN_MODULE
+	bool "CAN as loadable module"
+	depends on CAN && CAN_DEV && !FIM_ZERO_CAN_SELECTED && !FIM_ONE_CAN_SELECTED && (!FIM_ZERO || !FIM_ONE)
+	select FIM_ZERO_CAN if !(MACH_CME9210JS || MACH_CME9210)
+	select FIM_ONE_CAN
+	help
+          Enables the FIM CAN as loadable module. The number of FIMs to be
+	  handled by this driver can be passed with the module parameter 'fims'
+
+config FIM_USB_MODULE
+        bool "USB serial port driver as loadable module"
+        depends on SERIAL_CORE && !FIM_ZERO_USB_SELECTED && !FIM_ONE_USB_SELECTED
+        select FIM_ZERO_USB
+        select FIM_ONE_USB if !(MACH_CME9210JS || MACH_CME9210)
+        help
+          Enables the FIM USB Device Controller as loadable module.
+          The number of FIMs to be handled by this driver can be passed with the
+          module parameter 'fims'
+
+config FIM_SPI_MODULE
+        bool "SPI port driver as loadable module"
+        depends on !FIM_ZERO_SPI_SELECTED && !FIM_ONE_SPI_SELECTED
+        select FIM_ZERO_SPI
+        select FIM_ONE_SPI if !(MACH_CME9210JS || MACH_CME9210)
+        help
+            Enables the FIM SPI Device controller as a loadable module.
+
+
+endif # FIM_MODULES
+
 config FIM_ZERO
 	bool "FIM 0"
 	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
@@ -138,17 +226,40 @@ config FIM_ZERO_USB_SELECTED
 
 config FIM_ZERO_SPI_SELECTED
         tristate "SPI driver"
+        depends on SPI
         select FIM_ZERO_SPI
         help
           Enables the SPI port driver on FIM 0.
 
 endchoice # FIM_ZERO
 
-
 config FIM_ZERO_SPI
         bool
 
 if FIM_ZERO_SPI
+
+choice
+	prompt "Choose FIM 0 SPI GPIO pins"
+	help
+	  Choose which set of GPIO pins will be used for the standand SPI
+	  signals CS, MISO, MOSI, and CLK.
+
+config FIM_ZERO_SPI_GPIO_0_TO_3
+        bool "Use GPIO pins 0 to 3"
+        help
+          Select this option to configuration FIM SPI port 0 to use
+          GPIO pins 0, 1, 2, and 3.
+
+
+config FIM_ZERO_SPI_GPIO_68_TO_71
+        bool "Use GPIO pins 68 to 71"
+        depends on !FIM_ONE_SPI
+        help
+          Select this option to configuration FIM SPI port 0 to use
+          GPIO pins 68, 69, 70, and 71.  If you select this option then
+          you will not be able to use the second FIM SPI port.
+
+endchoice
 
 config FIM_ZERO_SPI_WANT_MASTER_CS
     bool "Enable master CS signal from FIM SPI port 0"
@@ -246,8 +357,19 @@ config FIM_ZERO_SPI_CS_3
         select 3 on FIM SPI port 0.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ZERO_SPIDEV
+    bool "Create SPIDEV interface for this port"
+    depends on FIM_ZERO_SPI
+    default n
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port which will be visible to user level programs.  Deselect this feature
+        if this device will only be used by another device driver.
 
 endif # FIM_ZERO_SPI
+
+
+
 
 
 config FIM_ONE
@@ -356,15 +478,14 @@ config FIM_ONE_USB_SELECTED
 
 config FIM_ONE_SPI_SELECTED
         tristate "SPI driver"
-        depends on !MACH_CME9210JS
+        depends on SPI && !MACH_CME9210JS
         select FIM_ONE_SPI
         help
-          Enables the SPI port driver on FIM 1.
+          Enables the SPI port driver on FIM 1.  This interface will always
+          use GPIO pins 68, 69, 70, and 71.
+
 
 endchoice # FIM_ONE
-
-config FIM_ONE_SPI
-        bool
 
 if FIM_ONE_SPI
 
@@ -454,6 +575,15 @@ config FIM_ONE_SPI_CS_3
         select 3 on FIM SPI port 1.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ONE_SPIDEV
+    bool "Create SPIDEV interface for this port"
+    depends on FIM_ONE_SPI
+    default n
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port which will be visible to user level programs.  Deselect this feature
+        if this device will only be used by another device driver.
+
 
 endif # FIM_ONE_SPI
 
@@ -467,84 +597,6 @@ config SERIAL_FIM_CONSOLE
         help
           Enables the console functionality on the FIM serial ports.
 
-config FIM_MODULES
-	bool "Enable FIM drivers as loadable modules"
-	depends on !FIM_ZERO || !FIM_ONE
-	help
-	  This option allows to build the FIM drivers as loadable modules
-	  rather than as built-in features.
-
-if FIM_MODULES
-
-# -- These are the options for enabling the FIM-drivers as loadable modules
-config FIM_SDIO_MODULE
-	bool "SDIO as loadable module"
-	depends on MMC && MMC_BLOCK && !FIM_ZERO_SDIO_SELECTED && !FIM_ONE_SDIO_SELECTED && (!FIM_ZERO || !FIM_ONE)
-	select FIM_ZERO_SDIO
-	select FIM_ONE_SDIO if !(MACH_CME9210JS || MACH_CME9210)
-	help
-	  Enables the FIM SDIO as loadable module. The number of FIMs to be
-	  handled by this driver can be passed with the module parameter 'fims',
-	  where:
-	  - fims=0 (FIM0)
-	  - fims=1 (FIM1)
-	  - fims=2 (FIM0 and FIM1)
-
-	  If Digi's FIM Application Kit hardware board is selected, SDIO can only
-	  work with one of the FIMs, and the following GPIOs will be used:
-	  - On cc9p9215js platform:
-	  -- GPIO 101 for Card Detect
-	  -- GPIO 100 for Write Protect
-	  - On cme9210js platform:
-	  -- GPIO 9 for Card Detect
-	  -- GPIO 6 for Write Protect
-
-	  If Digi's FIM Application Kit hardware board is disabled because a custom
-	  hardware board is to be used instead, then six new module parameters
-	  are allowed to specify GPIOs for Card Detect and Write Protect
-	  functionality for each FIM:
-	  - 'cd0' for Card Detect on FIM0
-	  - 'cd0_func' for Card Detect GPIO function on FIM0
-	  - 'wp0' for Write Protect on FIM0
-	  - 'cd1' for Card Detect on FIM1
-	  - 'cd1_func' for Card Detect GPIO function on FIM1
-	  - 'wp1' for Write Protect on FIM1
-	  If a parameter is not specified, the corresponding functionality
-	  won't be available for that FIM.
-	  If Card Detect functionality is not available, it is assumed the card is
-	  always plugged. If Write Protect functionality is not available, it is
-	  assumed Write Protect is off.
-
-config FIM_SERIAL_MODULE
-	bool "Serial as loadable module"
-	depends on !FIM_ZERO_SERIAL_SELECTED && !FIM_ONE_SERIAL_SELECTED && (!FIM_ZERO || !FIM_ONE)
-	select FIM_ZERO_SERIAL
-	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210)
-	select SERIAL_CORE
-	help
-          Enables the FIM Serial loadable module. The number of FIMs to be
-	  handled by this driver can be passed with the module parameter 'fims'
-
-config FIM_CAN_MODULE
-	bool "CAN as loadable module"
-	depends on CAN && CAN_DEV && !FIM_ZERO_CAN_SELECTED && !FIM_ONE_CAN_SELECTED && (!FIM_ZERO || !FIM_ONE)
-	select FIM_ZERO_CAN if !(MACH_CME9210JS || MACH_CME9210)
-	select FIM_ONE_CAN
-	help
-          Enables the FIM CAN as loadable module. The number of FIMs to be
-	  handled by this driver can be passed with the module parameter 'fims'
-
-config FIM_USB_MODULE
-        bool "USB serial port driver as loadable module"
-        depends on SERIAL_CORE && !FIM_ZERO_USB_SELECTED && !FIM_ONE_USB_SELECTED
-        select FIM_ZERO_USB
-        select FIM_ONE_USB if !(MACH_CME9210JS || MACH_CME9210)
-        help
-          Enables the FIM USB Device Controller as loadable module.
-          The number of FIMs to be handled by this driver can be passed with the
-          module parameter 'fims'
-
-endif # FIM_MODULES
 
 # -- Variables for selection the platform devices
 config FIM_ZERO_SDIO
@@ -572,6 +624,8 @@ config FIM_ONE_SERIAL_SELECTED
 config FIM_ZERO_CAN
 	bool
 
+
+
 config FIM_ONE_CAN
 	bool
 
@@ -585,6 +639,9 @@ config FIM_ZERO_USB
         bool
 
 config FIM_ONE_USB
+        bool
+
+config FIM_ONE_SPI
         bool
 
 

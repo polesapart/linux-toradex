@@ -98,6 +98,22 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.platform_data	= &mmc_spi_info,
 	},
 #endif
+#if defined(CONFIG_FIM_ZERO_SPIDEV)
+	{
+		.modalias	= "spidev",
+		.max_speed_hz	= 10000000,
+		.bus_num	= 2,
+		.chip_select	= 0,
+	},
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV)
+	{
+		.modalias	= "spidev",
+		.max_speed_hz	= 10000000,
+		.bus_num	= 3,
+		.chip_select	= 0,
+	},
+#endif
 	/* Add here other SPI devices, if any... */
 };
 

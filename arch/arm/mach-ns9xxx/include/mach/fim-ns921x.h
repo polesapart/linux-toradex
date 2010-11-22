@@ -341,38 +341,11 @@ struct spi_ns921x_fim {
     int fim_nr;                     /* FIM number to use (0 or 1) */
     unsigned flags;
 #define SPI_NS921X_SUPPORT_MASTER_CS    (1)
-    int mosi_gpio_nr;               /* GPIO pin for MOSI signal */
-    unsigned int mosi_gpio_func;    /* function code for MOSI signal*/
-    int miso_gpio_nr;               /* GPIO pin for MISO signal */
-    unsigned int miso_gpio_func;    /* function code for MISO signal*/
-    int clk_gpio_nr;                /* GPIO pin for CLK signal */
-    unsigned int clk_gpio_func;     /* function code for CLK signal*/
-    int cs_gpio_nr;                 /* GPIO pin for master CS signal */
-    unsigned int cs_gpio_func;      /* function code for master CS signal*/
+    int gpio_base;                  /* first of 4 GPIO pins we will use*/
     struct fim_spi_cs_list cs[FIM_SPI_MAX_CS];
 };
 
 
-/*
- * Map GPIO pins to SPI signals.  The FIM uses the signals as follows:
- *
- *      MISO pin      PIC_GEN_IO[0]
- *      CLK pin       PIC_GEN_IO[1]
- *      MOSI pin      PIC_GEN_IO[2]
- *      CS pin        PIC_GEN_IO[3]
- *
- * The macro is passed the first GPIO pin in the group.  We map the pins
- * appropriately in the master config record.
- */
-#define NS921X_FIM_SPI_GPIOS_FIM(first_gpio, func)	\
-		.miso_gpio_nr = first_gpio, \
-		.miso_gpio_func = func, \
-		.clk_gpio_nr = first_gpio+1, \
-		.clk_gpio_func = func, \
-		.mosi_gpio_nr = first_gpio+2, \
-		.mosi_gpio_func = func, \
-		.cs_gpio_nr = first_gpio+3, \
-		.cs_gpio_func = func
 
 #define NS921X_FIM_SPI_CS_GPIOS(idx, is_enabled, gpio_pin) \
                 .cs[idx].enabled = is_enabled, \

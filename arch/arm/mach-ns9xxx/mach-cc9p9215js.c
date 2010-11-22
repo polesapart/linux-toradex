@@ -159,6 +159,22 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.platform_data	= &mmc_spi_info,
 	},
 #endif
+#if defined(CONFIG_FIM_ZERO_SPIDEV)
+	{
+		.modalias	= "spidev",
+		.max_speed_hz	= 10000000,
+		.bus_num	= 2,
+		.chip_select	= 0,
+	},
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV)
+	{
+		.modalias	= "spidev",
+		.max_speed_hz	= 10000000,
+		.bus_num	= 3,
+		.chip_select	= 0,
+	},
+#endif
 	/* Add here other SPI devices, if any... */
 };
 
@@ -176,6 +192,7 @@ static void __init mach_cc9p9215js_init_machine(void)
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTA_FULL)
 	ns9xxx_add_device_cc9p9215_uarta_full();
 #endif
+
 #if defined(CONFIG_CC9P9215JS_SERIAL_PORTB_RXTX)
 	ns9xxx_add_device_cc9p9215_uartb_rxtx();
 #elif defined(CONFIG_CC9P9215JS_SERIAL_PORTB_CTSRTSRXTX) || \

@@ -95,22 +95,60 @@ struct spi_fim {
         ulong                   tx_err;
 	struct task_struct      *transfer_thread;
 	char                    driver_name[MAX_NAME_LENGTH];
-	uint                    rx_buffer_size;
-	uint                    number_rx_buffers;
-	uint                    tx_buffer_size;
-	uint                    number_tx_buffers;
+	uint                    dma_buffer_size;
+	uint                    number_dma_buffers;
 	struct platform_device  *pdev;
 	struct fim_dma_cfg_t    dma_cfg;
 };
 
-static uint rx_buffer_size = 1024;
-static uint number_rx_buffers = 16;
-static uint tx_buffer_size = 1024;
-static uint number_tx_buffers = 16;
-module_param(rx_buffer_size, uint, S_IRUGO);
-module_param(number_rx_buffers, uint, S_IRUGO);
-module_param(tx_buffer_size, uint, S_IRUGO);
-module_param(number_tx_buffers, uint, S_IRUGO);
+#define NOT_SET         (-2)
+#define DISABLE_FEATURE (-1)
+
+static int fim0_load = 1;
+static uint fim0_dma_buffer_size = 1024;
+static uint fim0_number_dma_buffers = 16;
+static int fim0_gpio_base=NOT_SET;
+static int fim0_disable_master_cs=NOT_SET;
+static int fim0_cs0=NOT_SET;
+static int fim0_cs1=NOT_SET;
+static int fim0_cs2=NOT_SET;
+static int fim0_cs3=NOT_SET;
+static int fim0_fim=NOT_SET;
+
+static int fim1_load = 1;
+static uint fim1_dma_buffer_size = 1024;
+static uint fim1_number_dma_buffers = 16;
+static int fim1_gpio_base=NOT_SET;
+static int fim1_disable_master_cs=NOT_SET;
+static int fim1_cs0=NOT_SET;
+static int fim1_cs1=NOT_SET;
+static int fim1_cs2=NOT_SET;
+static int fim1_cs3=NOT_SET;
+static int fim1_fim=NOT_SET;
+
+module_param(fim0_load, int, S_IRUGO);
+module_param(fim0_dma_buffer_size, uint, S_IRUGO);
+module_param(fim0_number_dma_buffers, uint, S_IRUGO);
+module_param(fim0_gpio_base, int, S_IRUGO);
+module_param(fim0_disable_master_cs, int, S_IRUGO);
+module_param(fim0_cs0, int, S_IRUGO);
+module_param(fim0_cs1, int, S_IRUGO);
+module_param(fim0_cs2, int, S_IRUGO);
+module_param(fim0_cs3, int, S_IRUGO);
+module_param(fim0_fim, int, S_IRUGO);
+
+module_param(fim1_load, int, S_IRUGO);
+module_param(fim1_dma_buffer_size, uint, S_IRUGO);
+module_param(fim1_number_dma_buffers, uint, S_IRUGO);
+module_param(fim1_gpio_base, int, S_IRUGO);
+module_param(fim1_disable_master_cs, int, S_IRUGO);
+module_param(fim1_cs0, int, S_IRUGO);
+module_param(fim1_cs1, int, S_IRUGO);
+module_param(fim1_cs2, int, S_IRUGO);
+module_param(fim1_cs3, int, S_IRUGO);
+module_param(fim1_fim, int, S_IRUGO);
+
+
 
 #define BUFFER_SIZE		PAGE_SIZE
 #define INVALID_DMA_ADDRESS	0xffffffff
@@ -232,7 +270,6 @@ static void set_speed(struct spi_fim *info, unsigned int speed)
 
     fim_max_speed = pic_clock_rate / cycles_per_bit;
 
-printk(KERN_ERR "attempting to set %d.\n", speed);
     if (speed < MIN_SPI_CLOCK_RATE) {           /* should never happen */
         speed = MIN_SPI_CLOCK_RATE;
     }
@@ -279,7 +316,6 @@ printk(KERN_ERR "attempting to set %d.\n", speed);
             lsb = 1;
         }
     }
-else printk(KERN_ERR "setting max speed, lsb set to %d.\n", lsb);
 
     fim_set_ctrl_reg(&info->fim, DELAY_LOOP_REG, lsb);
 }
@@ -542,7 +578,7 @@ static int spi_fim_transfer(struct spi_device *spi, struct spi_message *msg)
     		dev_dbg(&spi->dev, "%s:  SPI transfer request is missing rx or tx buf\n", __func__);
     		return -EINVAL;
     	}
-    	if (xfer->len > (info->rx_buffer_size * info->number_rx_buffers))
+    	if (xfer->len > (info->dma_buffer_size * info->number_dma_buffers))
     	{
     	        dev_dbg(&spi->dev, "%s:  SPI tranfer request buffer is too large\n", __func__);
     	        return -EINVAL;
@@ -568,25 +604,29 @@ static int spi_fim_transfer(struct spi_device *spi, struct spi_message *msg)
  */
 static void free_gpio_pins(struct spi_fim *info)
 {
-    struct spi_ns921x_fim *master_config;
+    struct spi_ns921x_fim *master_config = &info->master_config;
+    int miso = master_config->gpio_base;
+    int clk = master_config->gpio_base + 1;
+    int mosi = master_config->gpio_base + 2;
+    int cs = master_config->gpio_base + 3;
     int cs_index;
 
     master_config = &info->master_config;               /* avoid some typing*/
 
     if (info->gpio_inuse[MASTER_CS_GPIO_INDEX]) {
-        gpio_free(master_config->cs_gpio_nr);
+        gpio_free(cs);
         info->gpio_inuse[MASTER_CS_GPIO_INDEX] = false;
     }
     if (info->gpio_inuse[MISO_GPIO_INDEX]) {
-        gpio_free(master_config->miso_gpio_nr);
+        gpio_free(miso);
         info->gpio_inuse[MISO_GPIO_INDEX] = false;
     }
     if (info->gpio_inuse[MOSI_GPIO_INDEX]) {
-        gpio_free(master_config->mosi_gpio_nr);
+        gpio_free(mosi);
         info->gpio_inuse[MOSI_GPIO_INDEX] = false;
     }
     if (info->gpio_inuse[CLK_GPIO_INDEX]) {
-        gpio_free(master_config->clk_gpio_nr);
+        gpio_free(clk);
         info->gpio_inuse[CLK_GPIO_INDEX] = false;
     }
 
@@ -600,6 +640,84 @@ static void free_gpio_pins(struct spi_fim *info)
     }
 }
 
+static int get_gpio_fn(int gpio, int fim)
+{
+#define BAD_CODE    (-1)
+    unsigned int fn_code = BAD_CODE;
+
+    if (fim == 0) {
+        switch(gpio) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+                fn_code = 2;
+                break;
+            case 32:
+            case 33:
+            case 34:
+            case 35:
+                fn_code = 1;
+                break;
+#if defined(CONFIG_PROCESSOR_NS9215)
+            case 68:
+            case 69:
+            case 70:
+            case 71:
+                fn_code = 0;
+                break;
+#endif
+            default:
+                fn_code = BAD_CODE;
+                break;
+        }
+    } else if (fim == 1) {
+        switch(gpio){
+            case 26:
+            case 27:
+            case 28:
+            case 29:
+                fn_code = 2;
+                break;
+            case 40:
+            case 41:
+            case 42:
+            case 43:
+                fn_code = 1;
+                break;
+#if defined(CONFIG_PROCESSOR_NS9215)
+            case 68:
+            case 69:
+            case 70:
+            case 71:
+                fn_code = 1;
+                break;
+#endif
+            default:
+                fn_code = BAD_CODE;
+                break;
+        }
+    }
+
+    return fn_code;
+}
+
+
+static int configure_gpio_pin(int gpio, int fim)
+{
+    int result = get_gpio_fn(gpio, fim);
+
+    if (result != BAD_CODE) {
+	gpio_configure_ns921x_unlocked(gpio,
+				       NS921X_GPIO_OUTPUT,
+				       NS921X_GPIO_DONT_INVERT,
+				       result,
+				       NS921X_GPIO_DISABLE_PULLUP);
+        result = 0;
+    }
+
+    return result;
+}
 
 /*
  * This function gets ownership of the GPIO pins we need and then
@@ -608,69 +726,75 @@ static void free_gpio_pins(struct spi_fim *info)
  */
 static int setup_gpio_pins(struct spi_fim *info)
 {
-    struct spi_ns921x_fim *master_config;
-    int retval = 0;
+    struct spi_ns921x_fim *master_config = &info->master_config;
+    int retval = -1;
     int cs_index;
-
-    master_config = &info->master_config;               /* avoid some typing*/
+    int miso = master_config->gpio_base;
+    int clk = master_config->gpio_base + 1;
+    int mosi = master_config->gpio_base + 2;
+    int cs = master_config->gpio_base + 3;
 
     /*
      * Set up master CS if we are configured to use it.
      */
     if (master_config->flags & SPI_NS921X_SUPPORT_MASTER_CS) {
-        retval = gpio_request(master_config->cs_gpio_nr, info->driver_name);
+        retval = gpio_request(cs, info->driver_name);
         if (retval != 0) {
+            dev_err(&info->pdev->dev, "%s: GPIO pin %d for master CS is not available.\n", __func__, cs);
             goto setup_gpio_pins_terminate;
         }
-	gpio_configure_ns921x_unlocked(master_config->cs_gpio_nr,
-				       NS921X_GPIO_OUTPUT,
-				       NS921X_GPIO_DONT_INVERT,
-				       master_config->cs_gpio_func,
-				       NS921X_GPIO_DISABLE_PULLUP);
         info->gpio_inuse[MASTER_CS_GPIO_INDEX] = true;
+        retval = configure_gpio_pin(cs, master_config->fim_nr);
+        if (retval == -1) {
+            dev_err(&info->pdev->dev, "%s: Unable to configure GPIO pin %d.\n", __func__, cs);
+            goto setup_gpio_pins_terminate;
+        }
     }
 
     /*
      * Set up MISO.
      */
-    retval = gpio_request(master_config->miso_gpio_nr, info->driver_name);
+    retval = gpio_request(miso, info->driver_name);
     if (retval != 0) {
+            dev_err(&info->pdev->dev, "%s: GPIO pin %d for MISO is not available.\n", __func__, miso);
         goto setup_gpio_pins_terminate;
     }
-    gpio_configure_ns921x_unlocked(master_config->miso_gpio_nr,
-			       NS921X_GPIO_INPUT,
-			       NS921X_GPIO_DONT_INVERT,
-			       master_config->miso_gpio_func,
-			       NS921X_GPIO_DISABLE_PULLUP);
     info->gpio_inuse[MISO_GPIO_INDEX] = true;
+    retval = configure_gpio_pin(miso, master_config->fim_nr);
+    if (retval == -1) {
+        dev_err(&info->pdev->dev, "%s: Unable to configure GPIO pin %d.\n", __func__, miso);
+        goto setup_gpio_pins_terminate;
+    }
 
     /*
      * Set up MOSI.
      */
-    retval = gpio_request(master_config->mosi_gpio_nr, info->driver_name);
+    retval = gpio_request(mosi, info->driver_name);
     if (retval != 0) {
+            dev_err(&info->pdev->dev, "%s: GPIO pin %d for MOSI is not available.\n", __func__, mosi);
         goto setup_gpio_pins_terminate;
     }
-    gpio_configure_ns921x_unlocked(master_config->mosi_gpio_nr,
-			       NS921X_GPIO_OUTPUT,
-			       NS921X_GPIO_DONT_INVERT,
-			       master_config->miso_gpio_func,
-			       NS921X_GPIO_DISABLE_PULLUP);
     info->gpio_inuse[MOSI_GPIO_INDEX] = true;
+    retval = configure_gpio_pin(mosi, master_config->fim_nr);
+    if (retval == -1) {
+        dev_err(&info->pdev->dev, "%s: Unable to configure GPIO pin %d.\n", __func__, mosi);
+        goto setup_gpio_pins_terminate;
+    }
 
     /*
      * Set up CLK.
      */
-    retval = gpio_request(master_config->clk_gpio_nr, info->driver_name);
+    retval = gpio_request(clk, info->driver_name);
     if (retval != 0) {
+            dev_err(&info->pdev->dev, "%s: GPIO pin %d for SPI CLK is not available.\n", __func__, clk);
         goto setup_gpio_pins_terminate;
     }
-    gpio_configure_ns921x_unlocked(master_config->clk_gpio_nr,
-			       NS921X_GPIO_OUTPUT,
-			       NS921X_GPIO_DONT_INVERT,
-			       master_config->miso_gpio_func,
-			       NS921X_GPIO_DISABLE_PULLUP);
     info->gpio_inuse[CLK_GPIO_INDEX] = true;
+    retval = configure_gpio_pin(clk, master_config->fim_nr);
+    if (retval == -1) {
+        dev_err(&info->pdev->dev, "%s: Unable to configure GPIO pin %d.\n", __func__, clk);
+        goto setup_gpio_pins_terminate;
+    }
 
     for (cs_index = 0; cs_index < MAX_CS; cs_index++)
     {
@@ -696,6 +820,8 @@ static int setup_gpio_pins(struct spi_fim *info)
             info->cs_inuse[cs_index] = false;
         }
     }
+
+    retval = 0;
 
 setup_gpio_pins_terminate:
     /*
@@ -788,10 +914,10 @@ static int register_with_fim_api(struct spi_fim *info, struct device *dev)
     info->fim.dma_rx_isr = rx_isr;
     info->fim.dma_error_isr = dma_error_isr;
     info->fim.driver_data = info;
-    info->dma_cfg.rxnr = info->number_rx_buffers;
-    info->dma_cfg.txnr = info->number_tx_buffers;
-    info->dma_cfg.rxsz = info->rx_buffer_size;
-    info->dma_cfg.txsz = info->tx_buffer_size;
+    info->dma_cfg.rxnr = info->number_dma_buffers;
+    info->dma_cfg.txnr = info->number_dma_buffers;
+    info->dma_cfg.rxsz = info->dma_buffer_size;
+    info->dma_cfg.txsz = info->dma_buffer_size;
 
     info->fim.dma_cfg = &info->dma_cfg;
     info->fim.verbose = 1;
@@ -816,6 +942,106 @@ register_with_fim_api_register_failed:
     return result;
 }
 
+#if defined(MODULE)
+/*
+ * Process module parameters here.  As a driver, we are handed a set of platform parameters.
+ * If we are loaded as a module, then the user can specify command line parameters
+ * to override the defaults.  The parameters are defined internally as static
+ * variables set to NOT_SET.  The module loader will load values from the command
+ * line to override the NOT_SET value if the user provides any.  We check for that
+ * and update our configuration settings accordingly.
+ */
+static void handle_module_parameters(struct spi_fim *info)
+{
+    struct spi_ns921x_fim *master = &info->master_config;
+
+    if (master->fim_nr == 0) {
+	info->dma_buffer_size = fim0_dma_buffer_size;
+	info->number_dma_buffers = fim0_number_dma_buffers;
+        if (fim0_gpio_base != NOT_SET) {
+            master->gpio_base = fim0_gpio_base;
+        }
+        if (fim0_disable_master_cs != NOT_SET) {
+            master->flags &= ~SPI_NS921X_SUPPORT_MASTER_CS;
+            master->flags |= fim0_disable_master_cs ? 0 : SPI_NS921X_SUPPORT_MASTER_CS;
+        }
+        if (fim0_cs0 != NOT_SET) {
+            if (fim0_cs0 == DISABLE_FEATURE) {
+                master->cs[0].enabled = false;
+            } else {
+                master->cs[0].enabled = true;
+                master->cs[0].gpio = fim0_cs0;
+            }
+        }
+        if (fim0_cs1 != NOT_SET) {
+            if (fim0_cs1 == DISABLE_FEATURE) {
+                master->cs[1].enabled = false;
+            } else {
+                master->cs[1].enabled = true;
+                master->cs[1].gpio = fim0_cs1;
+            }
+        }
+        if (fim0_cs2 != NOT_SET) {
+            if (fim0_cs2 == DISABLE_FEATURE) {
+                master->cs[2].enabled = false;
+            } else {
+                master->cs[2].enabled = true;
+                master->cs[2].gpio = fim0_cs2;
+            }
+        }
+        if (fim0_cs3 != NOT_SET) {
+            if (fim0_cs3 == DISABLE_FEATURE) {
+                master->cs[3].enabled = false;
+            } else {
+                master->cs[3].enabled = true;
+                master->cs[3].gpio = fim0_cs3;
+            }
+        }
+    } else {
+	info->dma_buffer_size = fim1_dma_buffer_size;
+	info->number_dma_buffers = fim1_number_dma_buffers;
+        if (fim1_gpio_base != NOT_SET) {
+            master->gpio_base = fim1_gpio_base;
+        }
+        if (fim1_disable_master_cs != NOT_SET) {
+            master->flags &= ~SPI_NS921X_SUPPORT_MASTER_CS;
+            master->flags |= fim1_disable_master_cs ? 0 : SPI_NS921X_SUPPORT_MASTER_CS;
+        }
+        if (fim1_cs0 != NOT_SET) {
+            if (fim1_cs0 == DISABLE_FEATURE) {
+                master->cs[0].enabled = false;
+            } else {
+                master->cs[0].enabled = true;
+                master->cs[0].gpio = fim1_cs0;
+            }
+        }
+        if (fim1_cs1 != NOT_SET) {
+            if (fim1_cs1 == DISABLE_FEATURE) {
+                master->cs[1].enabled = false;
+            } else {
+                master->cs[1].enabled = true;
+                master->cs[1].gpio = fim1_cs1;
+            }
+        }
+        if (fim1_cs2 != NOT_SET) {
+            if (fim1_cs2 == DISABLE_FEATURE) {
+                master->cs[2].enabled = false;
+            } else {
+                master->cs[2].enabled = true;
+                master->cs[2].gpio = fim1_cs2;
+            }
+        }
+        if (fim1_cs3 != NOT_SET) {
+            if (fim1_cs3 == DISABLE_FEATURE) {
+                master->cs[3].enabled = false;
+            } else {
+                master->cs[3].enabled = true;
+                master->cs[3].gpio = fim1_cs3;
+            }
+        }
+    }
+}
+#endif
 
 
 /*
@@ -827,16 +1053,17 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 	struct spi_master *master;
 	struct spi_fim *info;
 	struct spi_ns921x_fim *master_config;
-	int ret;
+	int ret = -ENOMEM;
         struct clk *ahb_clock;
 
         /*
          * Allocate the spi_master structure as well as our private data
          * structure.
          */
+        printk(KERN_INFO "FIM SPI device driver probe routine called\n");
 	master = spi_alloc_master(&pdev->dev, sizeof(*info));
 	if (!master) {
-		pr_debug(DRIVER_NAME ": cannot allocate spi master\n");
+                printk(KERN_ERR "FIM SPI Probe routine cannot allocate spi master structure\n");
 		return -ENOMEM;
 	}
 
@@ -851,18 +1078,41 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
          */
         master_config = pdev->dev.platform_data;
 
+#if defined(MODULE)
+/*
+ * User can set fimX_load=0 on the command line to stop us from trying to load.
+ */
+        if ((master_config->fim_nr == 0) && (fim0_load == 0)) {
+            printk(KERN_ERR "FIM SPI driver not loading for FIM0 because fim0_load=0 on command line.\n");
+            goto probe_not_wanted;
+        } else if ((master_config->fim_nr == 1) && (fim1_load == 0)) {
+            printk(KERN_ERR "FIM SPI driver not loading for FIM1 because fim1_load=0 on command line.\n");
+            goto probe_not_wanted;
+        }
+#endif
 	/*
          * Get a pointer to our real private data.
          */
 	info = spi_master_get_devdata(master);
 	memset(info, 0, sizeof(*info));
         info->master_config = *master_config;
+#if defined(MODULE)
+        handle_module_parameters(info);
+#else
+        if (master->fim_nr == 0) {
+            info->dma_buffer_size = fim0_dma_buffer_size;
+            info->number_dma_buffers = fim0_number_dma_buffers;
+        } else {
+            info->dma_buffer_size = fim1_dma_buffer_size;
+            info->number_dma_buffers = fim1_number_dma_buffers;
+        }
+#endif
+        if ((master_config->fim_nr != 0) && (master_config->fim_nr != 1)) {
+            printk(KERN_ERR "%s passed invalid fim number %d.\n", __func__, master_config->fim_nr);
+            goto probe_bad_fim_number;
+        }
         sprintf(info->driver_name, "%s-%d", DRIVER_NAME, master_config->fim_nr);
 	info->pdev = pdev;          /* save pointer to master device structure*/
-	info->rx_buffer_size = rx_buffer_size;
-	info->number_rx_buffers = number_rx_buffers;
-	info->tx_buffer_size = tx_buffer_size;
-	info->number_tx_buffers = number_tx_buffers;
 
 
 	/*
@@ -875,7 +1125,7 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 	 */
 	master->bus_num = pdev->id;
 	/* hardware controlled cs */
-	master->num_chipselect = 1;             /* actually we map CS to a GPIO pin */
+	master->num_chipselect = MAX_CS;
 
 	master->setup = spi_fim_setup;
 	master->transfer = spi_fim_transfer;
@@ -946,6 +1196,8 @@ probe_missing_gpio:
     fim_unregister_driver(&info->fim);
 probe_cant_register_with_fim_driver:
 probe_no_clock:
+probe_bad_fim_number:
+probe_not_wanted:
     spi_master_put(master);
 
     return ret;
@@ -963,6 +1215,7 @@ static __devexit int spi_fim_remove(struct platform_device *pdev)
     int result;
     int i;
 
+    printk(KERN_ERR "spi_fim_remove called\n");
     spin_lock(&info->lock);
     info->q_status |= Q_TIME_TO_DIE;
     spin_unlock(&info->lock);
