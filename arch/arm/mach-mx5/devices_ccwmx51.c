@@ -165,7 +165,7 @@ static int ccwmx51_create_sysfs_entries(void)
 }
 #endif /* CONFIG_SYSFS */
 
-#if CONFIG_HAS_EARLY_USER_LEDS
+#if defined(CONFIG_HAS_EARLY_USER_LEDS)
 void ccwmx51_user_led(int led, int val)
 {
 	__iomem void *base;
