@@ -1099,7 +1099,15 @@ int __init ccwmx51_init_fb(void)
 					       sizeof(struct mxc_fb_platform_data));
 				} else {
 					/* Pass the video configuration as mode string */
-					strcpy(mx51_fb_data[0].mode_str, p);
+					pr_info("VGA: string %s", p);
+
+					if (!strcmp(p, "800x600")) {
+						strcpy(mx51_fb_data[0].mode_str, "800x600M-32");
+					} else if (!strcmp(p, "1280x1024")) {
+						strcpy(mx51_fb_data[0].mode_str, "1280x1024M-32");
+					} else {
+						strcpy(mx51_fb_data[0].mode_str, p);
+					}
 				}
 			}
 		}
