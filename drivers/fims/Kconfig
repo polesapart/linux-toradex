@@ -374,7 +374,7 @@ endif # FIM_ZERO_SPI
 
 config FIM_ONE
 	bool "FIM 1"
-	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
+	depends on PROCESSOR_NS9215 && FIM_CORE=y
 	help
 	  Enables FIM 1
 
