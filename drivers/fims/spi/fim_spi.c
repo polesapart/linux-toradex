@@ -427,7 +427,6 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
          * Start the DMA transfer.  The receive transfer will start also and call rx_isr
          * when we have received a buffer of data.
          */
-/*printk(KERN_ERR "Sending %d bytes.\n", fim_dma_buffer.length); */
         if (fim_send_buffer(&info->fim, &fim_dma_buffer) != 0) {
             message->status = -ENOMEM;
             goto process_message_quit;
@@ -552,6 +551,7 @@ transfer_thread_clean_up_and_quit:
         spin_lock(&info->lock);
     }
     spin_unlock(&info->lock);
+    info->q_status |= Q_DEAD;
 
     return 0;
 }
@@ -900,12 +900,17 @@ static int register_with_fim_api(struct spi_fim *info, struct device *dev)
     info->fim.picnr = info->master_config.fim_nr;
 
     /*
-     * The FIM API checks to see if a file named info->fim.fw_name exists, and
-     * if so uses it.  If not, then it uses the default firmware image set point
-     * info->fim.fw_code to.
+     * When loading as a module, download the firmware from a file.  If we are running
+     * as a kernel driver, then use the internal binary image built as part of the
+     * driver.
      */
+#if defined(MODULE)
+    info->fim.fw_code = NULL;
+    info->fim.fw_name = FIM_FIRMWARE_FILENAME;
+#else
     info->fim.fw_code = fim_SPI_firmware;
-    info->fim.fw_name = NULL; /*FIM_FIRMWARE_FILENAME;*/
+    info->fim.fw_name = NULL;
+#endif
 
     info->fim.driver.name = info->driver_name;
     info->fim.dev = dev;
