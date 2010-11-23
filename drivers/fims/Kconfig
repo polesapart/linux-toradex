@@ -219,7 +219,8 @@ config FIM_ZERO_W1_SELECTED
 
 config FIM_ZERO_USB_SELECTED
         tristate "USB serial port driver"
-        select FIM_ZERO_USB
+	depends on !(CME9210JS_SERIAL_PORTA)
+	select FIM_ZERO_USB
 	select SERIAL_CORE
         help
           Enables the USB serial port driver (low speed).
