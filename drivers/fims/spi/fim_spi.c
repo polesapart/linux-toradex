@@ -1104,7 +1104,7 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 #if defined(MODULE)
         handle_module_parameters(info);
 #else
-        if (master->fim_nr == 0) {
+        if (master_config->fim_nr == 0) {
             info->dma_buffer_size = fim0_dma_buffer_size;
             info->number_dma_buffers = fim0_number_dma_buffers;
         } else {
@@ -1202,7 +1202,9 @@ probe_missing_gpio:
 probe_cant_register_with_fim_driver:
 probe_no_clock:
 probe_bad_fim_number:
-probe_not_wanted:
+#if defined(MODULE)
+    probe_not_wanted:
+#endif
     spi_master_put(master);
 
     return ret;
