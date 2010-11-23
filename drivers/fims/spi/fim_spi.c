@@ -104,7 +104,8 @@ struct spi_fim {
 #define NOT_SET         (-2)
 #define DISABLE_FEATURE (-1)
 
-static int fim0_load = 1;
+static int fims = 2;
+
 static uint fim0_dma_buffer_size = 1024;
 static uint fim0_number_dma_buffers = 16;
 static int fim0_gpio_base=NOT_SET;
@@ -126,7 +127,7 @@ static int fim1_cs2=NOT_SET;
 static int fim1_cs3=NOT_SET;
 static int fim1_fim=NOT_SET;
 
-module_param(fim0_load, int, S_IRUGO);
+module_param(fims, int, S_IRUGO);
 module_param(fim0_dma_buffer_size, uint, S_IRUGO);
 module_param(fim0_number_dma_buffers, uint, S_IRUGO);
 module_param(fim0_gpio_base, int, S_IRUGO);
@@ -1085,13 +1086,19 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 
 #if defined(MODULE)
 /*
- * User can set fimX_load=0 on the command line to stop us from trying to load.
+ * User can control which FIM we start through the command line.  I don't really like the syntax
+ * of this parameter, but this is what the other FIM drivers do so we will do the same for
+ * consistency.
+ *
+ *      fims=0      load SPI driver on FIM0
+ *      fims=1      load SPI driver on FIM1
+ *      fims=2      load SPI driver on both FIMs.
  */
-        if ((master_config->fim_nr == 0) && (fim0_load == 0)) {
-            printk(KERN_ERR "FIM SPI driver not loading for FIM0 because fim0_load=0 on command line.\n");
+        if ((master_config->fim_nr == 0) && ((fims != 0) && (fims != 2))) {
+            printk(KERN_ERR "FIM SPI driver not loading for FIM0 because fims=%d on command line.\n", fims);
             goto probe_not_wanted;
-        } else if ((master_config->fim_nr == 1) && (fim1_load == 0)) {
-            printk(KERN_ERR "FIM SPI driver not loading for FIM1 because fim1_load=0 on command line.\n");
+        } else if ((master_config->fim_nr == 1) && ((fims != 1) && (fims != 2))) {
+            printk(KERN_ERR "FIM SPI driver not loading for FIM1 because fims=%d on command line.\n", fims);
             goto probe_not_wanted;
         }
 #endif
@@ -1120,14 +1127,6 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 	info->pdev = pdev;          /* save pointer to master device structure*/
 
 
-	/*
-	 * TODO: The internal SPI port uses bus number 1.  I'm not sure that's correct.
-	 *       Perhaps it should use bus 0.  Anyway, FIM0 port will be 2, and FIM1
-	 *       port will be 3 for now.  Search for ns9xxx_device_ns921x_spi in
-	 *       ns921x_devices.c for the internal SPI definition, and for
-	 *       ns921x_fim_spi0 in cc9p9215_devices.c and cme9210_devices.c for the
-	 *       FIM SPI definitions.
-	 */
 	master->bus_num = pdev->id;
 	/* hardware controlled cs */
 	master->num_chipselect = MAX_CS;
