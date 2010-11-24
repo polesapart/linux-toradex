@@ -169,7 +169,8 @@ struct ads7846 {
 /* Following configuration should be done in the platform configuration */
 #define	SCREEN_LANDSCAPE	1
 #undef	SCREEN_PORTRAIT
-#define MAX_DIFF_BETWEEN_SAMPLES	25
+#define MAX_DIFF_BETWEEN_SAMPLES_X	100
+#define MAX_DIFF_BETWEEN_SAMPLES_Y	100
 
 
 /*--------------------------------------------------------------------------*/
@@ -462,7 +463,7 @@ static inline u16 ad7843_get_sample_val(u32 sample)
 	return (((((sample & 0x00ff0000) >> 8) | (sample >> 24)) >> 3) & 0x0fff);
 }
 
-static u32 ad7843_get_better_values(struct ads7846 *ts, int index)
+static u32 ad7843_get_better_values(struct ads7846 *ts, int index, int skiplimit)
 {
 	u32 diff12, diff23, diff31;
 	u32 vals[3];
@@ -477,19 +478,19 @@ static u32 ad7843_get_better_values(struct ads7846 *ts, int index)
 	}
 
 	diff12 = (vals[0] > vals[1]) ? vals[0] - vals[1] : vals[1] - vals[0];
-	if (diff12 > MAX_DIFF_BETWEEN_SAMPLES) {
+	if (diff12 > skiplimit) {
 		ts->skip_this_sample = 1;
 		return 0;
 	}
 
 	diff23 = (vals[1] > vals[2]) ? vals[1] - vals[2] : vals[2] - vals[1];
-	if (diff23 > MAX_DIFF_BETWEEN_SAMPLES) {
+	if (diff23 > skiplimit) {
 		ts->skip_this_sample = 1;
 		return 0;
 	}
 
 	diff31 = (vals[2] > vals[0]) ? vals[2] - vals[0] : vals[0] - vals[2];
-	if (diff31 > MAX_DIFF_BETWEEN_SAMPLES) {
+	if (diff31 > skiplimit) {
 		ts->skip_this_sample = 1;
 		return 0;
 	}
@@ -514,7 +515,7 @@ static void ads7843_rx_average(void *ads)
 
 	for (i = 0, y = 0, sample_count = 0; i < (ts->buflen * 3 / 2); i+=3) {
 		if (i >= ts->skip_samples*3) {
-			temp = ad7843_get_better_values(ts, i);
+			temp = ad7843_get_better_values(ts, i, MAX_DIFF_BETWEEN_SAMPLES_Y);
 			if (!ts->skip_this_sample) {
 				if (ts->rotate == 180) {
 					y += MAX_12BIT - temp;
@@ -538,7 +539,7 @@ static void ads7843_rx_average(void *ads)
 
 	for (x = 0, sample_count = 0; i < (ts->buflen * 3); i+=3) {
 		if (i >= (ts->skip_samples + ts->buflen / 2)*3) {
-			temp = ad7843_get_better_values(ts, i);
+			temp = ad7843_get_better_values(ts, i, MAX_DIFF_BETWEEN_SAMPLES_X);
 			if (!ts->skip_this_sample) {
 				if (ts->rotate == 180) {
 					x += MAX_12BIT - temp;
@@ -571,10 +572,10 @@ static void ads7843_rx_average(void *ads)
                input_report_abs(input_dev, ABS_PRESSURE, 0);
        }
 
-sample_taken:
        input_sync(input_dev);
-	dev_dbg(&ts->spi->dev, "%d/%d %s\n", x, y, ts->pendown ? "" : " UP");
+       dev_dbg(&ts->spi->dev, "%d/%d %s\n", x, y, ts->pendown ? "" : " UP");
 
+sample_taken:
        if (ts->pendown) {
                spin_lock_irqsave(&ts->lock, flags);
                mod_timer(&ts->timer, jiffies + TS_POLL_PERIOD);

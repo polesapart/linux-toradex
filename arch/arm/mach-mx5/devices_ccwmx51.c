@@ -365,7 +365,7 @@ static struct ads7846_platform_data ccwmx51js_touch_data = {
 	.x_max			= 4095,
 	.y_max			= 4095,
 	.get_pendown_state	= touch_pendown_state,
-	.buflen			= 5,
+	.buflen			= 4,
 	.skip_samples		= 0,
 	.rotate			= 0,
 };
@@ -373,7 +373,7 @@ static struct ads7846_platform_data ccwmx51js_touch_data = {
 static struct spi_board_info ccwmx51_2nd_touch[] = {
 	{
 		.modalias	= "ads7846",
-		.max_speed_hz	= 1000000,
+		.max_speed_hz	= 500000,
 		.irq		= IOMUX_TO_IRQ(SECOND_TS_IRQ_PIN),
 		.bus_num        = 1,
 		.chip_select    = 3,
