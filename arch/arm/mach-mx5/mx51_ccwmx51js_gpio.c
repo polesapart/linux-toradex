@@ -1253,11 +1253,9 @@ void ccwmx51_2nd_touch_gpio_init(void)
 	 * Configure gpio line to detect which touch is connected to each
 	 * display interface
 	 */
-	mxc_request_iomux(MX51_PIN_DI1_D1_CS, IOMUX_CONFIG_GPIO);
+	mxc_config_iomux(MX51_PIN_DI1_D1_CS, IOMUX_CONFIG_GPIO);
 	mxc_iomux_set_pad(MX51_PIN_DI1_D1_CS, PAD_CTL_SRE_FAST | PAD_CTL_HYS_ENABLE);
 	mxc_iomux_set_input(MUX_IN_GPIO3_IPP_IND_G_IN_4_SELECT_INPUT, INPUT_CTL_PATH1);
-	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DI1_D1_CS), "touch_select");
-	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_DI1_D1_CS));
 }
 #else
 void ccwmx51_2nd_touch_gpio_init(void) {}
