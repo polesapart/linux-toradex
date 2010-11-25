@@ -121,7 +121,7 @@ config JSCCWMX51_V2
 	help
 	  Select this option if you are using the development board included in
 	  Digi JumpStart Kit. The Digi part number for this board revision is
-	  30011032-02. It is printed on the top side of the development board,
+	  30011032-03. It is printed on the top side of the development board,
 	  close to the connectors of Signal Rail 1.
 
 config JSCCWMX51_CUSTOM
