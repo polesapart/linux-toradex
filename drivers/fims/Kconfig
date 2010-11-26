@@ -202,7 +202,7 @@ config FIM_ZERO_SERIAL_CTSRTS
 
 config FIM_ZERO_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
+	depends on CAN && CAN_DEV && !CME9210JS_SERIAL_PORTA_FULL
 	select FIM_ZERO_CAN
 	help
 	  Enables the FIM-CAN bus driver.
