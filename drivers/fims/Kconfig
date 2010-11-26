@@ -94,8 +94,8 @@ config FIM_SERIAL_MODULE
 config FIM_CAN_MODULE
 	bool "CAN as loadable module"
 	depends on CAN && CAN_DEV && !FIM_ZERO_CAN_SELECTED && !FIM_ONE_CAN_SELECTED && (!FIM_ZERO || !FIM_ONE)
-	select FIM_ZERO_CAN if !(MACH_CME9210JS || MACH_CME9210)
-	select FIM_ONE_CAN
+	select FIM_ZERO_CAN
+	select FIM_ONE_CAN if !(MACH_CME9210JS || MACH_CME9210)
 	help
           Enables the FIM CAN as loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
@@ -202,7 +202,7 @@ config FIM_ZERO_SERIAL_CTSRTS
 
 config FIM_ZERO_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && !((MACH_CME9210 || MACH_CME9210JS) && CME9210JS_SERIAL_PORTA_FULL)
+	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
 	select FIM_ZERO_CAN
 	help
 	  Enables the FIM-CAN bus driver.
