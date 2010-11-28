@@ -1050,7 +1050,7 @@ struct i2c_board_info ccwmx51_hdmi[] __initdata = {
 int __init ccwmx51_init_fb(void)
 {
 	struct ccwmx51_lcd_pdata *panel;
-	char *p;
+	char *p, *mstr;
 	int i;
 
 	plcd_platform_data[0].vif = -1;
@@ -1093,6 +1093,7 @@ int __init ccwmx51_init_fb(void)
 		} else if ((p = ccwmx51_get_video_cmdline_opt(i, "VGA")) != NULL) {
 			pr_info("VGA interface in DISP%d\n", i);
 			gpio_video_active(i, PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+			mstr = p - 3;
 
 			/* Get the desired configuration provided by the bootloader */
 			if (*p++ != '@') {
@@ -1114,11 +1115,11 @@ int __init ccwmx51_init_fb(void)
 					pr_info("VGA: string %s", p);
 
 					if (!strcmp(p, "800x600")) {
-						strcpy(mx51_fb_data[0].mode_str, "800x600M-32");
+						strcpy(mx51_fb_data[0].mode_str, "VGA@800x600M-32");
 					} else if (!strcmp(p, "1280x1024")) {
-						strcpy(mx51_fb_data[0].mode_str, "1280x1024M-32");
+						strcpy(mx51_fb_data[0].mode_str, "VGA@1280x1024M-32");
 					} else {
-						strcpy(mx51_fb_data[0].mode_str, p);
+						strcpy(mx51_fb_data[0].mode_str, mstr);
 					}
 				}
 			}
