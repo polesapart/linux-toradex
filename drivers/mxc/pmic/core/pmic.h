@@ -58,9 +58,7 @@ static inline int spi_rw(struct spi_device *spi, u8 * buf, size_t len)
 		.delay_usecs = 0,
 	};
 
-	mxc_spi_poll_transfer(spi, &t);
-	return 0;
-#if 0
+#if defined(CONFIG_MODULE_CCXMX51) && defined(CONFIG_CCWMX51_SECOND_TOUCH)
 	struct spi_message m;
 
 	spi_message_init(&m);
@@ -68,6 +66,9 @@ static inline int spi_rw(struct spi_device *spi, u8 * buf, size_t len)
 	if (spi_sync(spi, &m) != 0 || m.status != 0)
 		return PMIC_ERROR;
 	return len - m.actual_length;
+#else
+	mxc_spi_poll_transfer(spi, &t);
+	return 0;
 #endif
 }
 
