@@ -853,8 +853,11 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 		fb_videomode_to_var(var, fbvmode);
 	}
 
-	if (ext_clk)
+#if !defined(CONFIG_CCWMX51_DISP0) || !defined(CONFIG_CCWMX51_DISP1)
+	/* Use external clock by default, if only one display is enabled... */
+	if (mode != MODE_FORCED)
 		var->sync |= FB_SYNC_EXT;
+#endif
 
 	/* Check if clock must be readjusted */
 	if (tpclk != 0)
