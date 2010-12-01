@@ -46,6 +46,9 @@
 #include <linux/uaccess.h>
 #include <linux/fsl_devices.h>
 #include <asm/mach-types.h>
+#include <linux/suspend.h>
+
+static int vt_switch;
 
 /*
  * Driver name
@@ -1736,6 +1739,8 @@ static int mxcfb_probe(struct platform_device *pdev)
 
 	mxcfb_check_var(&fbi->var, fbi);
 
+	pm_set_vt_switch(vt_switch);
+
 	/* Default Y virtual size is 2x panel size */
 	fbi->var.yres_virtual = fbi->var.yres * 3;
 
@@ -1891,6 +1896,9 @@ void mxcfb_exit(void)
 {
 	platform_driver_unregister(&mxcfb_driver);
 }
+
+module_param(vt_switch, int, 0);
+MODULE_PARM_DESC(vt_switch, "enable VT switch during suspend/resume");
 
 module_init(mxcfb_init);
 module_exit(mxcfb_exit);
