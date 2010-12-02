@@ -11,7 +11,7 @@
  *
  *  !Revision:   $Revision: 1.2 $
  *  !Author:     Luis Galdos, Hector Oron
- *  !Descr:      
+ *  !Descr:
  *  !References: Based on the virtual CAN driver (Copyright (c) 2002-2007
  *               Volkswagen Group Electronic Research)
  *               All rights reserved.
@@ -57,7 +57,7 @@ const unsigned char *fim_can_firmware = NULL;
 #endif
 
 /* Driver informations */
-#define DRIVER_VERSION				"1.2"
+#define DRIVER_VERSION				"1.3"
 #define DRIVER_AUTHOR				"Luis Galdos, Hector Oron"
 #define DRIVER_DESC				"FIM CAN bus driver"
 #define FIM_DRIVER_NAME				"fim-can"
@@ -107,11 +107,28 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define CAN_BUS_RECESSIVE			(0xffffffff)
 #define CAN_BUS_DOMINANT			(0x00000000)
 
+/* Control Registers */
+#define FIM_CAN_COMMAND_REG                     (0)
+
+/*
+ * Command codes that can be written into the command register.
+ */
+#define FIM_CAN_NORMAL_OPERATIONS               (0)
+#define FIM_CAN_FLUSH_TX_Q_AND_DIE              (1)
+
+
 /* Status register according to the FIM-firmware specification (page 9) */
 #define FIM_CAN_BUSSTATE_REG			0
 #define FIM_CAN_TXERRCNT_REG			1
 #define FIM_CAN_RXERRCNT_REG			2
 #define FIM_CAN_FATALERR_REG			3
+#define FIM_CAN_REVISION_REG                    4
+
+/*
+ * Expected revision number of the firmware.
+ */
+#define FIM_CAN_FIRMWARE_REV                    (2)
+
 
 /* Control bits of the bus state register */
 #define FIM_CAN_BUSSTATE_ERRPAS			0x01
@@ -141,10 +158,15 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
  * @XXX: Remove this ugly macro and use a structure for the PIC-message according
  * to the specification, page 8 (Transmit message)
  */
-#define FIRST_DATA_BYTE_IN_MESSAGE		(3)
+#define FIRST_DATA_BYTE_IN_MESSAGE		(5)
 
 /*
- * GPIO configuration 
+ * Default number of times we will have FIM retry transmits.
+ */
+#define DEFAULT_MAX_RETRIES         (16)
+
+/*
+ * GPIO configuration
  */
 #define FIM_CAN_MAX_GPIOS			(2)
 
@@ -167,7 +189,7 @@ static struct can_bittiming_const fim_bittiming_const = {
 	.sjw_max = 40,
 	.brp_min = 1,
 	.brp_max = 2048,
-	.brp_inc = 1,	
+	.brp_inc = 1,
 };
 
 /*
@@ -228,6 +250,8 @@ struct fim_can_t {
 	struct clk *cpu_clk;
 	int opened;
 	spinlock_t lock;
+	unsigned char id;
+	unsigned char max_retries;
 };
 
 /* Function prototypes */
@@ -327,7 +351,7 @@ static int fim_can_calculate_latency(u32 bitrate, u16 *rx, u16 *tx)
 
 	if (bitrate <= 0 || bitrate > FIM_CAN_MAX_BITRATE)
 		return -ERANGE;
-	
+
 	/*
 	 * In the future we will probably need different latency times for the
 	 * bitrates. Let us keep this function for this purpose.
@@ -337,7 +361,7 @@ static int fim_can_calculate_latency(u32 bitrate, u16 *rx, u16 *tx)
 	*rx = FIM_CAN_RXIRQ_LATENCY;
 	*tx = FIM_CAN_TXIRQ_LATENCY;
 	ret = 0;
-	
+
 	return ret;
 }
 
@@ -436,10 +460,10 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 
 	if (!bt->phase_seg1)
 		bt->phase_seg1 = FIM_CAN_DEFAULT_PHASE1;
-	
+
 	if (!bt->phase_seg2)
 		bt->phase_seg2 = FIM_CAN_DEFAULT_PHASE2;
-			
+
 	fim_can_fill_timing(port, &cfg,
 			    bt->sjw,
 			    bt->prop_seg + bt->phase_seg1 + 1,
@@ -472,7 +496,7 @@ static int fim_can_set_init_config(struct fim_can_t *port)
  * Implement the interface for chaning the state of the CAN-controller. The user
  * have access to this function over the sysfs attributes:
  * echo 2 > sys/class/net/can0/can_restart : mode = 1 (CAN_MODE_START)
- * 
+ *
  */
 static int fim_can_set_mode(struct net_device *dev, enum can_mode mode)
 {
@@ -612,10 +636,15 @@ static int fim_can_start_fim(struct fim_can_t *port)
 	if (retval)
 		return -EAGAIN;
 
+        /*
+         * Make sure command register is clear.
+         */
+        fim_set_ctrl_reg(&port->fim, FIM_CAN_COMMAND_REG, FIM_CAN_NORMAL_OPERATIONS);
+
 	retval = fim_send_start(fim);
 	if (retval)
 		return -EAGAIN;
-	
+
 	printk_debug("Enable interrupt\n");
 	fim_enable_irq(fim);
 
@@ -1004,10 +1033,12 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	frame.buffer[0] = FIM_CAN_CMD_TX;
 	frame.buffer[1] = ((id & CAN_EFF_FLAG) ? 18 : 11) + 1;
 	frame.buffer[2] = frame.stuffed;
+	frame.buffer[3] = port->id++;
+	frame.buffer[4] = port->max_retries;
 	fim_can_dump_frame(&frame, "END");
 
 	printk_debug("Sending a new SKB %p\n", skb);
-	retval = fim_can_send_skb(port, frame.buffer, 3 + (frame.stuffed + 7) / 8, skb);
+	retval = fim_can_send_skb(port, frame.buffer, 5 + (frame.stuffed + 7) / 8, skb);
 	if (retval) {
 		stats->tx_fifo_errors++;
 		stats->tx_dropped++;
@@ -1141,6 +1172,14 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	port = driver->driver_data;
 	dev = port->dev;
 
+        if (pdata->length == 3) {
+            /*
+             * Ignore transmit result frames for now.
+             */
+            printk_debug("Received CAN transmit result frame.\n");
+            return;
+        }
+
 	printk_debug("New CAN-frame (%i bytes) | ID 0x%02x%02x%02x%02x\n",
 		     pdata->length, rx->id[3], rx->id[2], rx->id[1], rx->id[0]);
 
@@ -1217,7 +1256,7 @@ static int unregister_fim_can(struct fim_can_t *port)
 	/* And free the GPIOs */
 	memcpy(gpios, port->gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
 	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
-		
+
 		if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
 			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
 			gpio_free(gpios[cnt].nr);
@@ -1227,7 +1266,7 @@ static int unregister_fim_can(struct fim_can_t *port)
 	/* Free the obtained clock */
 	if (!IS_ERR(port->cpu_clk))
 		clk_put(port->cpu_clk);
-	
+
 	port->reg = 0;
 
 	return 0;
@@ -1312,6 +1351,9 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 		goto err_free_gpios;
 	}
 
+	port->id = 0;
+	port->max_retries = DEFAULT_MAX_RETRIES;
+
 	/* Stop the FIM then it will be started in the open-function */
 	fim_send_stop(&port->fim);
 
@@ -1366,13 +1408,13 @@ err_unreg_fim:
 
 err_free_gpios:
 	for (cnt = 0; cnt < FIM_CAN_MAX_GPIOS; cnt++) {
-		
+
                 if (gpios[cnt].nr != FIM_GPIO_DONT_USE) {
 			printk_debug("Freeing the GPIO %i\n", gpios[cnt].nr);
 			gpio_free(gpios[cnt].nr);
 		}
 	}
-	
+
 err_free_candev:
 	free_candev(dev);
 
@@ -1425,7 +1467,7 @@ static __init int fim_can_probe(struct platform_device *pdev)
 	gpios[1].func	= pdata->tx_gpio_func;
 	printk_debug("%s: GPIO RX: %d | GPIO TX: %d \n", __func__,
 		     gpios[0].nr, gpios[1].nr );
-	
+
 	/* XXX SDIO code approach */
 	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, bitrate);
 
@@ -1443,7 +1485,7 @@ static __devexit int fim_can_remove(struct platform_device *pdev)
 	}
 
 	unregister_fim_can(port);
-	
+
 	return 0;
 }
 
