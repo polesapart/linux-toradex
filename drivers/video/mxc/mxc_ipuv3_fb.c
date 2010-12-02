@@ -1731,8 +1731,8 @@ static int mxcfb_probe(struct platform_device *pdev)
 			fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, plat_data->mode,
 					plat_data->num_modes, NULL, mxcfbi->default_bpp);
 #ifdef CONFIG_MODULE_CCXMX51
-		/* This improves the VGA modes on the CCWi-i.MX51 */
-		mxcfbi->ipu_ext_clk = true;
+		if(strcmp(mxcfbi->fb_mode_str, "LQ070Y3DG3B"))
+			mxcfbi->ipu_ext_clk = true;
 		fbi->var.sync |= FB_SYNC_CLK_LAT_FALL;
 #endif
 	}
