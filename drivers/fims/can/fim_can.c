@@ -127,7 +127,7 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 /*
  * Expected revision number of the firmware.
  */
-#define FIM_CAN_FIRMWARE_REV                    (2)
+#define FIM_CAN_EXPECTED_FIRMWARE_REV          (2)
 
 
 /* Control bits of the bus state register */
@@ -161,9 +161,12 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIRST_DATA_BYTE_IN_MESSAGE		(5)
 
 /*
- * Default number of times we will have FIM retry transmits.
+ * Default number of times we will have FIM retry transmits.  Note that the spec
+ * actually says we should retry forever.  However, this doesn't work out well
+ * on real networks, so we put a maximum number of retries.  This is our default
+ * which I picked out of thin air.
  */
-#define DEFAULT_MAX_RETRIES         (16)
+#define DEFAULT_MAX_RETRIES         (8)
 
 /*
  * GPIO configuration
@@ -618,6 +621,7 @@ static int fim_can_start_fim(struct fim_can_t *port)
 {
 	struct fim_driver *fim;
 	int retval;
+        unsigned int revision;
 
 	if (!port)
 		return -ENODEV;
@@ -657,6 +661,22 @@ static int fim_can_start_fim(struct fim_can_t *port)
 		printk_debug("%s: Disabling interrupt\n",__func__);
 		fim_disable_irq(fim);
 		return retval;
+	}
+
+        /*
+         * Verify the correct FIM firmware is installed.
+         */
+        msleep(5);                  /* make sure FIM has a chance to start running*/
+	retval = fim_get_exp_reg(fim, FIM_CAN_REVISION_REG, &revision);
+	if (retval) {
+		printk_err("Error reading the revision register (%i)\n", retval);
+		return -EINVAL;
+	}
+
+        if (FIM_CAN_EXPECTED_FIRMWARE_REV != revision) {
+		printk_err("Incorrect FIM firware.\n");
+		printk_err("Revision %d is required, but revision %d was found.\n", FIM_CAN_EXPECTED_FIRMWARE_REV, revision);
+		return -EINVAL;
 	}
 
 	return retval;
@@ -870,7 +890,9 @@ inline static void fim_can_frame_stop(struct fim_can_txframe *frame)
  * If an error is detected, then a error frame will be passed to the socket-layer
  * Return zero if no error was detected, otherwise an value different than zero
  */
-static int fim_can_check_error(struct net_device *dev)
+#define TRANSMIT_FAILURE        (true)
+#define NOT_TRANSMIT_FAILURE    (false)
+static int fim_can_check_error(struct net_device *dev, bool is_transmit_failure)
 {
 	struct sk_buff *skb;
 	struct fim_can_t *port;
@@ -884,17 +906,19 @@ static int fim_can_check_error(struct net_device *dev)
 	fim_get_exp_reg(fim, FIM_CAN_BUSSTATE_REG, &bus);
 	fim_get_exp_reg(fim, FIM_CAN_FATALERR_REG, &fatal);
 
-	if ((!bus) && (!fatal))
+	if ((!bus) && (!fatal) && (!is_transmit_failure))
 		return 0;
 
 	printk_debug("Calling the error handling function (Bus 0x%x)\n", bus);
 
 	/* Stop the FIM if it's running */
-	if (fim_is_running(fim)) {
-		printk_debug("%s: Disabling interrupt\n",__func__);
-		fim_disable_irq(fim);
-		fim_send_reset(fim);
-	}
+        if (fatal) {
+        	if (fim_is_running(fim)) {
+        		printk_debug("%s: Disabling interrupt\n",__func__);
+        		fim_disable_irq(fim);
+        		fim_send_reset(fim);
+        	}
+        }
 
 	skb = dev_alloc_skb(sizeof(struct can_frame));
 	if (!skb) {
@@ -913,8 +937,10 @@ static int fim_can_check_error(struct net_device *dev)
 	 * These are the possible errors defined in the FIM-CAN specification
 	 * The corresponding error flags are under: include/linux/can/error.h
 	 */
-	if (bus & FIM_CAN_BUSSTATE_OFF)
+	if (bus & FIM_CAN_BUSSTATE_OFF) {
 		cf->can_id |= CAN_ERR_BUSOFF;
+		can_bus_off(dev);
+        }
 
 	/* @XXX: This seems to be the correct flags for our controller, or? */
 	if (bus & FIM_CAN_BUSSTATE_ERRPAS) {
@@ -922,6 +948,10 @@ static int fim_can_check_error(struct net_device *dev)
 		cf->data[1] |= CAN_ERR_CRTL_TX_PASSIVE;
 		port->can.can_stats.error_passive++;
 	}
+
+        if (is_transmit_failure) {
+            cf->can_id |= CAN_ERR_ACK;
+        }
 
 	/* Pass the error frame to the socket layer */
 	netif_rx(skb);
@@ -932,7 +962,13 @@ static int fim_can_check_error(struct net_device *dev)
 	stats->rx_bytes += cf->can_dlc;
 
 end_exit:
-	return 1;
+        if (   (bus & FIM_CAN_BUSSTATE_OFF)
+            || (fatal)
+            || (is_transmit_failure)) {
+ 	    return 1;
+ 	} else {
+ 	    return 0;
+ 	}
 }
 
 static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
@@ -960,7 +996,7 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	 * Check for the bus state before sending the data
 	 * @FIXME: The controller fails if its state is the error passive
 	 */
-	if (fim_can_check_error(dev)) {
+	if (fim_can_check_error(dev, NOT_TRANSMIT_FAILURE)) {
 		printk_debug("Bus OFF or unknown error. Aborting Xmit %p\n", skb);
 		stats->tx_dropped++;
 		spin_lock(&port->lock);
@@ -1121,15 +1157,13 @@ static void fim_can_tx_isr(struct fim_driver *driver, int irq,
 	spin_lock_irqsave(&port->lock, flags);
 	printk_debug("TX callback | SKB %p | dev %p\n", skb, dev);
 
-	/*
-	 * @FIXME: If we remove this delay, then we will not catch the errors
-	 * that can ocurrs during the frame transmission
-	 */
-	udelay(200);
-
-	/* Restart the TX-queue if it was stopped for some reason */
-	if (fim_can_check_error(dev))
-		printk_debug("The udelay is working correctly\n");
+        /*
+         * Older versions of this driver used to do an error check here.  This
+         * new version relies on feature in the FIM code which sends a transmit
+         * result message for each transmit frame that tells the driver whether
+         * the frame was successfully transmitted or not.  This message is received
+         * by fim_can_rx_isr and it uses that message to do error checking.
+         */
 
 	/*
 	 * Check if we have a SKB to free
@@ -1166,18 +1200,37 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	struct can_frame *cf;
 	struct net_device_stats *stats;
 	struct fim_can_rxframe *rx;
+	unsigned long flags;
 
 	/* Set our internal data */
 	rx = (struct fim_can_rxframe *)pdata->data;
 	port = driver->driver_data;
 	dev = port->dev;
+	spin_lock_irqsave(&port->lock, flags);
 
-        if (pdata->length == 3) {
-            /*
-             * Ignore transmit result frames for now.
-             */
-            printk_debug("Received CAN transmit result frame.\n");
-            return;
+        /*
+         * The FIM will send a 3 byte message for each transmit frame that
+         * tells us whether the transmit was successful or not.  See if
+         * this is one of those frames.
+         */
+#define TRANSMIT_RESULT_MESSAGE_TYPE_CODE           (1)
+        if ((pdata->length == 3) && (rx->id[2] == TRANSMIT_RESULT_MESSAGE_TYPE_CODE)) {
+#define TRANSMIT_SUCCESS                            (0)
+
+            if (rx->id[0] != TRANSMIT_SUCCESS) {
+                /*
+                 * If we get here, then the transmit has failed.  Tell the
+                 * upper layer driver about it.
+                 */
+	        fim_can_check_error(dev, TRANSMIT_FAILURE);
+	        printk(KERN_ERR "Reported transmit failure to upper layer\n");
+	    }
+	    else {
+	        printk(KERN_ERR "transmit successful\n");
+	        fim_can_check_error(dev, NOT_TRANSMIT_FAILURE);
+	    }
+
+            goto fim_can_rx_isr_exit;
         }
 
 	printk_debug("New CAN-frame (%i bytes) | ID 0x%02x%02x%02x%02x\n",
@@ -1186,7 +1239,7 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	skb = dev_alloc_skb(sizeof(struct can_frame));
 	if (!skb) {
 		printk_err("No memory available? Dropping a CAN-frame!\n");
-		return;
+		goto fim_can_rx_isr_exit;
 	}
 
 	skb->dev = dev;
@@ -1224,6 +1277,9 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	dev->last_rx = jiffies;
 	stats->rx_packets++;
 	stats->rx_bytes += cf->can_dlc;
+
+fim_can_rx_isr_exit:
+	spin_unlock_irqrestore(&port->lock, flags);
 }
 
 static int unregister_fim_can(struct fim_can_t *port)
