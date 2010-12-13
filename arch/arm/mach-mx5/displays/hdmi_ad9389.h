@@ -24,8 +24,6 @@ static struct fb_videomode ad9389_1280x720x24 = {
 	.lower_margin	= 3,
 	.hsync_len	= 32,
 	.vsync_len	= 6,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
 };
 
 static struct fb_videomode ad9389_1360x768x24 = {
@@ -33,15 +31,13 @@ static struct fb_videomode ad9389_1360x768x24 = {
 	.refresh	= 60,
 	.xres		= 1360,
 	.yres		= 768,
-	.pixclock	= 20300,
+	.pixclock	= 16000,
 	.left_margin	= 139,
 	.right_margin	= 256,
 	.upper_margin	= 3,
 	.lower_margin	= 18,
 	.hsync_len	= 76,
 	.vsync_len	= 6,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
 };
 
 
@@ -50,15 +46,13 @@ static struct fb_videomode ad9389_1366x768x24 = {
 	.refresh	= 60,
 	.xres		= 1366,
 	.yres		= 768,
-	.pixclock	= 20100,
+	.pixclock	= 16000,
 	.left_margin	= 139,
 	.right_margin	= 256,
 	.upper_margin	= 3,
 	.lower_margin	= 18,
 	.hsync_len	= 76,
 	.vsync_len	= 6,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
 };
 
 static struct fb_videomode ad9389_1920x1080x24 = {
@@ -66,16 +60,13 @@ static struct fb_videomode ad9389_1920x1080x24 = {
 	.refresh	= 60,
 	.xres 		= 1920,
 	.yres 		= 1080,
-	.pixclock 	= 7518,
-	.left_margin 	= 30,
-	.right_margin 	= 304,
-	.upper_margin	= 3,
-	.lower_margin 	= 46,
-	.hsync_len 	= 64,
-	.vsync_len 	= 3,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.flag		= FB_MODE_IS_VESA,
-	.sync		= FB_SYNC_EXT,
+	.pixclock 	= 7560,
+	.left_margin 	= 148,
+	.right_margin 	= 88,
+	.upper_margin	= 36,
+	.lower_margin 	= 4,
+	.hsync_len 	= 44,
+	.vsync_len 	= 5,
 };
 
 static struct fb_videomode ad9389_1024x768x24 = {
@@ -90,9 +81,6 @@ static struct fb_videomode ad9389_1024x768x24 = {
 	.lower_margin	= 3,
 	.hsync_len	= 136,
 	.vsync_len	= 6,
-	.sync		= FB_SYNC_EXT,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.flag		= FB_MODE_IS_VESA,
 };
 
 static struct fb_videomode ad9389_custom_1 = {
@@ -107,8 +95,7 @@ static struct fb_videomode ad9389_custom_1 = {
 	.lower_margin	= 0,
 	.hsync_len	= 0,
 	.vsync_len	= 0,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
+	.sync		= 0,
 };
 
 static struct fb_videomode ad9389_custom_2 = {
@@ -123,8 +110,7 @@ static struct fb_videomode ad9389_custom_2 = {
 	.lower_margin	= 0,
 	.hsync_len	= 0,
 	.vsync_len	= 0,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
+	.sync		= 0,
 };
 
 struct ccwmx51_lcd_pdata ad9389_panel_list[] = {

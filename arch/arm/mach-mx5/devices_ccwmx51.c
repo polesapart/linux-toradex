@@ -738,7 +738,7 @@ static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
 	printk(KERN_INFO "%d bpp\n", var->bits_per_pixel);
 }
 
-enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str, unsigned int *vpclk)
+enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str, unsigned int *vpclk, int *ext_clk)
 {
 	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
 	struct ccwmx51_lcd_pdata *panel;
@@ -757,6 +757,20 @@ enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm
 					*vpclk = 0;
 			}
 			DBG(AD9389_DBG, "HDMI: using cmdline pclk %d\n", *vpclk);
+		}
+		if (ext_clk != NULL ) {
+			/* For single display, default is internal clk and can be overrided by cmdline */
+#if !defined(CONFIG_CCWMX51_DISP0) || !defined(CONFIG_CCWMX51_DISP1)
+			*ext_clk = 1;
+#else
+			*ext_clk = 0;
+#endif
+			/* Parse ext_clk, it was passed through cmdline */
+			if ((temp = strstr(p, "int_clk")) != NULL)
+				*ext_clk = 0;
+			if ((temp = strstr(p, "ext_clk")) != NULL)
+				*ext_clk = 1;
+			DBG(AD9389_DBG, "HDMI: using %s\n", ext_clk ? "ext_clk" : "int_clk");
 		}
 		if (*p++ != '@') {
 			pr_info("Video resolution for HDMI interface not provided, using auto\n");
@@ -797,13 +811,12 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	const struct fb_videomode *fbvmode = NULL;
 	char *modestr = NULL, str[AD9389_STR_LEN];
 	unsigned int tpclk;
-	int modeidx;
+	int modeidx, ext_clk;
 	enum hdmi_mode mode;
 
 	var->bits_per_pixel = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;	/* Set default bpp  */
-
 	/* First, check if we have a predefined mode through the kernel command line */
-	mode = get_hdmi_mode(ad9389, (struct fb_videomode **)&fbvmode, &modestr, &tpclk);
+	mode = get_hdmi_mode(ad9389, (struct fb_videomode **)&fbvmode, &modestr, &tpclk, &ext_clk);
 	if (mode == MODE_AUTO) {
 		/* auto, or no video mode provided */
 		strncpy(str, "HDMI auto selected mode:", AD9389_STR_LEN - 1);
@@ -840,9 +853,8 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 		fb_videomode_to_var(var, fbvmode);
 	}
 
-	/* For HDMI, use external clock lat fall by default (except for forced modes) */
-	if (mode != MODE_FORCED)
-		var->sync |= FB_SYNC_CLK_LAT_FALL;
+	if (ext_clk)
+		var->sync |= FB_SYNC_EXT;
 
 	/* Check if clock must be readjusted */
 	if (tpclk != 0)
