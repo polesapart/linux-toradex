@@ -24,7 +24,6 @@ static struct fb_videomode ad9389_1280x720x24 = {
 	.lower_margin	= 3,
 	.hsync_len	= 32,
 	.vsync_len	= 6,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
 };
 
 static struct fb_videomode ad9389_1360x768x24 = {
@@ -39,7 +38,6 @@ static struct fb_videomode ad9389_1360x768x24 = {
 	.lower_margin	= 18,
 	.hsync_len	= 76,
 	.vsync_len	= 6,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
 };
 
 
@@ -55,7 +53,6 @@ static struct fb_videomode ad9389_1366x768x24 = {
 	.lower_margin	= 18,
 	.hsync_len	= 76,
 	.vsync_len	= 6,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
 };
 
 static struct fb_videomode ad9389_1920x1080x24 = {
@@ -70,7 +67,6 @@ static struct fb_videomode ad9389_1920x1080x24 = {
 	.lower_margin 	= 4,
 	.hsync_len 	= 44,
 	.vsync_len 	= 5,
-	.sync		= 0,
 };
 
 static struct fb_videomode ad9389_1024x768x24 = {
