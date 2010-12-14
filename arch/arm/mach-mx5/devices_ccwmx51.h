@@ -46,5 +46,6 @@ extern void ccwmx51_set_mod_revision(u8 revision);
 extern void ccwmx51_set_mod_sn(u32 sn);
 extern void ccwmx51_register_sdio(int interface);
 extern void ccwmx51_init_devices(void);
+extern int ccwmx51_create_sysfs_entries(void);
 
 #endif /* DEVICES_CCWMX51_H_ */

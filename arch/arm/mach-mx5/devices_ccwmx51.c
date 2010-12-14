@@ -125,7 +125,7 @@ static struct kobj_attribute ccwmx51_mod_sn_attr =
 static struct kobj_attribute ccwmx51_bb_rev_attr =
 	__ATTR(bb_rev, S_IRUGO, cccwmx51_bb_rev_attr_show, NULL);
 
-static int ccwmx51_create_sysfs_entries(void)
+int ccwmx51_create_sysfs_entries(void)
 {
 	struct kobject *ccwmx51_kobj;
 	int ret;
@@ -1167,9 +1167,6 @@ struct fsl_ata_platform_data ata_data = {
 
 void ccwmx51_init_devices(void)
 {
-#ifdef CONFIG_SYSFS
-	ccwmx51_create_sysfs_entries();
-#endif
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	ccwmx51_init_ext_eth_mac();
 #endif
