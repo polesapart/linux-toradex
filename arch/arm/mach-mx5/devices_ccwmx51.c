@@ -468,9 +468,9 @@ struct platform_device smsc911x_device = {
 #define CSRCR2	0x0C
 #define CSWCR1	0x10
 
-static void __init ccwmx51_init_ext_eth_mac(void)
+static void ccwmx51_init_ext_eth_mac(void)
 {
-	__iomem u32 *weim_vbaddr;
+	__iomem void *weim_vbaddr;
 
 	weim_vbaddr = ioremap(WEIM_BASE_ADDR, SZ_4K);
 	if (weim_vbaddr == 0) {
@@ -483,11 +483,11 @@ static void __init ccwmx51_init_ext_eth_mac(void)
 	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
 	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
 	 */
-	writel(0x00420081, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR1);
-	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSGCR2);
-	writel(0x32260000, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR1);
-	writel(0, (unsigned int)(weim_vbaddr) + 0x78 + CSRCR2);
-	writel(0x72080f00, (unsigned int)(weim_vbaddr) + 0x78 + CSWCR1);
+	__raw_writel(0x00420081, (u32)weim_vbaddr + 0x78 + CSGCR1);
+	__raw_writel(0, (u32)weim_vbaddr + 0x78 + CSGCR2);
+	__raw_writel(0x32260000, (u32)weim_vbaddr + 0x78 + CSRCR1);
+	__raw_writel(0, (u32)weim_vbaddr + 0x78 + CSRCR2);
+	__raw_writel(0x72080f00, (u32)weim_vbaddr + 0x78 + CSWCR1);
 
 	iounmap(weim_vbaddr);
 
@@ -1165,12 +1165,12 @@ struct fsl_ata_platform_data ata_data = {
 };
 #endif
 
-void __init ccwmx51_init_devices ( void )
+void ccwmx51_init_devices(void)
 {
 #ifdef CONFIG_SYSFS
-        ccwmx51_create_sysfs_entries();
+	ccwmx51_create_sysfs_entries();
 #endif
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
-        ccwmx51_init_ext_eth_mac();
+	ccwmx51_init_ext_eth_mac();
 #endif
 }

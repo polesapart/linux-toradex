@@ -279,6 +279,7 @@ static void __init mxc_board_init(void)
 	mxc_cpu_common_init();
 	mxc_register_gpios();
 	ccwmx51_io_init();
+	ccwmx51_init_devices();
 
 	mxc_register_device(&mxc_wdt_device, NULL);
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
