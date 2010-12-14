@@ -70,7 +70,7 @@ static struct fb_videomode ad9389_1920x1080x24 = {
 	.lower_margin 	= 4,
 	.hsync_len 	= 44,
 	.vsync_len 	= 5,
-	.sync		= FB_SYNC_CLK_LAT_FALL,
+	.sync		= 0,
 };
 
 static struct fb_videomode ad9389_1024x768x24 = {
