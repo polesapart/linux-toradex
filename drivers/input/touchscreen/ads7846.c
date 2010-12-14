@@ -471,7 +471,7 @@ static u32 ad7843_get_better_values(struct ads7846 *ts, int index, int skiplimit
 
 	for (i = 0; i < 3; i++) {
 		vals[i] = ad7843_get_sample_val(ts->rxbuf[index+i]);
-		if (vals[i] == 0x0fff) {
+		if (vals[i] == 0x0fff || vals[i] == 0) {
 			ts->skip_this_sample = 1;
 			return 0;
 		}
@@ -513,7 +513,7 @@ static void ads7843_rx_average(void *ads)
 
 	dev_dbg(&ts->spi->dev, "%s\n", __FUNCTION__);
 
-	for (i = 0, y = 0, sample_count = 0; i < (ts->buflen * 3 / 2); i+=3) {
+	for (i = 0, y = 0, x = 0, sample_count = 0; i < (ts->buflen * 3 / 2); i+=3) {
 		if (i >= ts->skip_samples*3) {
 			temp = ad7843_get_better_values(ts, i, MAX_DIFF_BETWEEN_SAMPLES_Y);
 			if (!ts->skip_this_sample) {
@@ -537,7 +537,7 @@ static void ads7843_rx_average(void *ads)
 
 	y /= sample_count;
 
-	for (x = 0, sample_count = 0; i < (ts->buflen * 3); i+=3) {
+	for (sample_count = 0; i < (ts->buflen * 3); i+=3) {
 		if (i >= (ts->skip_samples + ts->buflen / 2)*3) {
 			temp = ad7843_get_better_values(ts, i, MAX_DIFF_BETWEEN_SAMPLES_X);
 			if (!ts->skip_this_sample) {
