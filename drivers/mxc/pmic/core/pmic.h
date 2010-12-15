@@ -57,8 +57,7 @@ static inline int spi_rw(struct spi_device *spi, u8 * buf, size_t len)
 		.cs_change = 0,
 		.delay_usecs = 0,
 	};
-
-#if defined(CONFIG_MODULE_CCXMX51) && defined(CONFIG_CCWMX51_SECOND_TOUCH)
+#if 0
 	struct spi_message m;
 
 	spi_message_init(&m);
