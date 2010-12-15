@@ -365,8 +365,8 @@ static struct ads7846_platform_data ccwmx51js_touch_data = {
 	.x_max			= 4095,
 	.y_max			= 4095,
 	.get_pendown_state	= touch_pendown_state,
-	.buflen			= 4,
-	.skip_samples		= 0,
+	.buflen			= 10,
+	.skip_samples		= 2,
 	.rotate			= 0,
 };
 
