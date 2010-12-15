@@ -23,6 +23,11 @@ config CC9M2443_LQ064V3DG01
 	help
 	  This enables the support for the LQ064V3DG01 TFT display.
 
+config CC9M2443_LQ070Y3DG3B1
+	bool "LQ070Y3DG3B1 TFT LCD support"
+	help
+	  This enables the support for the LQ070Y3DG3B1 TFT display.
+
 config CC9M2443_CUSTOM
 	bool "Custom display support"
 	help

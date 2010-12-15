@@ -23,6 +23,10 @@
 #include "LQ064V3DG01.h"
 #endif
 
+#if defined(CONFIG_CC9M2443_LQ070Y3DG3B1)
+#include "LQ070Y3DG3B1.h"
+#endif
+
 #if defined(CONFIG_CC9M2443_CUSTOM)
 #include "CUSTOM.h"
 #endif
@@ -37,6 +41,9 @@ struct s3c2443fb_display display_list[] = {
 #endif
 #if defined(CONFIG_CC9M2443_LQ064V3DG01)
 	LQ064V3DG01_DISPLAY,
+#endif
+#if defined(CONFIG_CC9M2443_LQ070Y3DG3B1)
+	LQ070Y3DG3B1_DISPLAY,
 #endif
 #if defined(CONFIG_CC9M2443_CUSTOM)
 	CUSTOM_DISPLAY,
