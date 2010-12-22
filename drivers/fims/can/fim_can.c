@@ -1226,7 +1226,7 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	        printk(KERN_ERR "Reported transmit failure to upper layer\n");
 	    }
 	    else {
-	        printk(KERN_ERR "transmit successful\n");
+	        printk_debug("transmit successful\n");
 	        fim_can_check_error(dev, NOT_TRANSMIT_FAILURE);
 	    }
 
