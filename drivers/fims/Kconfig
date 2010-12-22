@@ -154,7 +154,8 @@ config FIM_ZERO_SDIO_CD
 
 config FIM_ZERO_SDIO_CD_GPIO
 	int "GPIO to use for Card Detect on FIM 0"
-	default 101
+	default 101 if !(MACH_CME9210JS || MACH_CME9210)
+	default 9 if (MACH_CME9210JS || MACH_CME9210)
 	depends on FIM_ZERO_SDIO_CD
 	help
 	  Specify the GPIO number to use for the SDIO Card Detect signal.
@@ -180,7 +181,8 @@ config FIM_ZERO_SDIO_WP
 
 config FIM_ZERO_SDIO_WP_GPIO
 	int "GPIO to use for Write Protect on FIM 0"
-	default 100
+	default 100 if !(MACH_CME9210JS || MACH_CME9210)
+	default 6 if (MACH_CME9210JS || MACH_CME9210)
 	depends on FIM_ZERO_SDIO_WP
 	help
 	  Specify the GPIO number to use for the SDIO Write Protect signal.
