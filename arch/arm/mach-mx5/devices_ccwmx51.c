@@ -1168,10 +1168,6 @@ struct fsl_ata_platform_data ata_data = {
 
 void ccwmx51_init_devices(void)
 {
-#ifdef CONFIG_SYSFS
-	ccwmx51_create_sysfs_entries();
-#endif
-
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	ccwmx51_init_ext_eth_mac();
 #endif
