@@ -17,6 +17,7 @@ obj-$(CONFIG_MACH_CCMX51JS) += devices_ccwmx51.o mx51_ccwmx51js.o mx51_ccwmx51js
 obj-$(CONFIG_MXC_PMIC_MC13892) +=  mx51_ccwmx51js_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX53_EVK) += mx53_evk.o mx53_evk_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX53_ARD) += mx53_ard.o mx53_ard_pmic_ltc3589.o
+obj-$(CONFIG_MACH_MX53_SMD) += mx53_smd.o
 obj-$(CONFIG_MACH_MX50_ARM2) += mx50_arm2.o mx50_arm2_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX50_RDP) += mx50_rdp.o mx50_rdp_pmic_mc13892.o
 
