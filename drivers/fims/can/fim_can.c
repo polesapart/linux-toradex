@@ -1013,27 +1013,21 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	fim_can_dump_frame(&frame, "START");
 
 	/* Check for the extended ID (18 bits length) */
-	if (id & CAN_EFF_FLAG)
-		fim_can_frame_write(&frame, id, 18);
-	else
-		fim_can_frame_write(&frame, id, 11);
-
+	if (id & CAN_EFF_FLAG) {
+                fim_can_frame_write(&frame, id >> 18, 11);
+		fim_can_frame_write(&frame, 1, 2);          /* write IDE and RTS as recessive*/
+		fim_can_frame_write(&frame, id, 18);        /* write rest of ID*/
+		fim_can_frame_write(&frame, (id & CAN_RTR_FLAG) != 0, 1);
+		fim_can_frame_write(&frame, 0, 2);          /* write R0 and R1*/
+        } else {
+                fim_can_frame_write(&frame, id, 11);
+		fim_can_frame_write(&frame, (id & CAN_RTR_FLAG) != 0, 1);
+		fim_can_frame_write(&frame, 0, 1);          /* write IDE dominant for standard format*/
+                fim_can_frame_write(&frame, 1, 1);          /* write R0 recessive*/
+        }
 	fim_can_dump_frame(&frame, "ID");
 
-	/* Check if we have a RTR message */
-	if (id & CAN_RTR_FLAG)
-		fim_can_frame_write(&frame, 1, 1);
-	else
-		fim_can_frame_write(&frame, 0, 1);
 	fim_can_dump_frame(&frame, "RTR");
-
-	/* Write the identifier bit which is dominant in the standard frame */
-	fim_can_frame_write(&frame, 0, 1);
-	fim_can_dump_frame(&frame, "IDE");
-
-	/* Write the R0 bit */
-	fim_can_frame_write(&frame, 0, 1);
-	fim_can_dump_frame(&frame, "RESERVE");
 
 	/* Write the control field (data length passed by the user) */
 	fim_can_frame_write(&frame, dlc, 4);
@@ -1067,7 +1061,7 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	 * (see page 8, transmit message structure)
 	 */
 	frame.buffer[0] = FIM_CAN_CMD_TX;
-	frame.buffer[1] = ((id & CAN_EFF_FLAG) ? 18 : 11) + 1;
+	frame.buffer[1] = ((id & CAN_EFF_FLAG) ? 29 : 11) + 1;
 	frame.buffer[2] = frame.stuffed;
 	frame.buffer[3] = port->id++;
 	frame.buffer[4] = port->max_retries;
@@ -1223,7 +1217,7 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
                  * upper layer driver about it.
                  */
 	        fim_can_check_error(dev, TRANSMIT_FAILURE);
-	        printk(KERN_ERR "Reported transmit failure to upper layer\n");
+	        printk_debug("Reported transmit failure to upper layer\n");
 	    }
 	    else {
 	        printk_debug("transmit successful\n");
