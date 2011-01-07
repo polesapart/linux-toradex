@@ -57,7 +57,7 @@ const unsigned char *fim_can_firmware = NULL;
 #endif
 
 /* Driver informations */
-#define DRIVER_VERSION				"1.3"
+#define DRIVER_VERSION				"1.4"
 #define DRIVER_AUTHOR				"Luis Galdos, Hector Oron"
 #define DRIVER_DESC				"FIM CAN bus driver"
 #define FIM_DRIVER_NAME				"fim-can"
