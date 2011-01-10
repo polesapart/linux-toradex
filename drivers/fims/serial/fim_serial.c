@@ -1484,7 +1484,7 @@ static int __devexit fim_serial_remove(struct platform_device *pdev)
 	return retval;
 }
 
-#if defined(CONFIG_PM)
+#if defined(CONFIG_PM) && !defined(CONFIG_FIM_SERIAL_MODULE)
 
 static int fim_serial_suspend(struct platform_device *pdev,
 			      pm_message_t state)
