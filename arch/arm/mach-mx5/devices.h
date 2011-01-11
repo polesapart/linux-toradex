@@ -90,6 +90,8 @@ extern struct platform_device pm_device;
 extern struct platform_device fixed_volt_reg_device;
 extern struct platform_device mxc_zq_calib_device;
 extern struct platform_device mxc_asrc_device;
+extern struct platform_device mxc_perfmon;
+extern struct mxs_platform_perfmon_data mxc_perfmon_data;
 extern int z160_revision;
 extern struct platform_device lcd_pdev[];
 extern struct platform_device mxc_wm8753_device;
