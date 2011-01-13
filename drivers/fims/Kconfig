@@ -243,6 +243,7 @@ if FIM_ZERO_SPI
 
 choice
 	prompt "Choose FIM 0 SPI GPIO pins"
+	depends on (MACH_CC9P9215JS || MACH_CCW9P9215JS) && !FIM_ONE_SPI
 	help
 	  Choose which set of GPIO pins will be used for the standand SPI
 	  signals CS, MISO, MOSI, and CLK.
@@ -253,10 +254,8 @@ config FIM_ZERO_SPI_GPIO_0_TO_3
           Select this option to configuration FIM SPI port 0 to use
           GPIO pins 0, 1, 2, and 3.
 
-
 config FIM_ZERO_SPI_GPIO_68_TO_71
         bool "Use GPIO pins 68 to 71"
-        depends on !FIM_ONE_SPI
         help
           Select this option to configuration FIM SPI port 0 to use
           GPIO pins 68, 69, 70, and 71.  If you select this option then

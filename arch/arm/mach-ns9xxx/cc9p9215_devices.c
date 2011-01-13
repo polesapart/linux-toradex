@@ -310,7 +310,11 @@ static struct spi_ns921x_fim spi_fim0_data = {
 #else
         .flags              = 0,
 #endif
-        .gpio_base = 0,
+#if defined(CONFIG_FIM_ZERO_SPI_GPIO_68_TO_71)
+	.gpio_base = 68,
+#else
+	.gpio_base = 0,
+#endif
 #if CONFIG_FIM_ZERO_SPI_CS_0_ENABLED
         NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ZERO_SPI_CS_0),
 #else
