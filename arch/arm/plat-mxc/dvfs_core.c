@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2008-2011 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -76,6 +76,9 @@
 #define MXC_DVFSCNTR_LTBRSR_OFFSET           3
 #define MXC_DVFSCNTR_DVFEN                   0x00000001
 
+#define CCM_CDCR_SW_DVFS_EN			0x20
+#define CCM_CDCR_ARM_FREQ_SHIFT_DIVIDER		0x4
+
 extern int dvfs_core_is_active;
 extern void setup_pll(void);
 static struct mxc_dvfs_platform_data *dvfs_data;
@@ -117,7 +120,7 @@ enum {
  */
 #define DVFS_LTBRSR		(2 << MXC_DVFSCNTR_LTBRSR_OFFSET)
 
-extern struct dvfs_wp dvfs_core_setpoint[2];
+extern struct dvfs_wp dvfs_core_setpoint[4];
 extern int low_bus_freq_mode;
 extern int high_bus_freq_mode;
 extern int set_low_bus_freq(void);
@@ -163,6 +166,7 @@ static int set_cpu_freq(int wp)
 	int gp_volt = 0;
 	u32 reg;
 	u32 reg1;
+	u32 en_sw_dvfs = 0;
 	unsigned long flags;
 
 	if (cpu_wp_tbl[wp].pll_rate != cpu_wp_tbl[old_wp].pll_rate) {
@@ -189,6 +193,12 @@ static int set_cpu_freq(int wp)
 		spin_lock_irqsave(&mxc_dvfs_core_lock, flags);
 		/* PLL_RELOCK, set ARM_FREQ_SHIFT_DIVIDER */
 		reg = __raw_readl(ccm_base + dvfs_data->ccm_cdcr_offset);
+		/* Check if software_dvfs_en bit set */
+		if ((reg & CCM_CDCR_SW_DVFS_EN) != 0)
+			en_sw_dvfs = CCM_CDCR_SW_DVFS_EN;
+		else
+			en_sw_dvfs = 0x0;
+		reg &= ~(CCM_CDCR_SW_DVFS_EN);
 		reg &= 0xFFFFFFFB;
 		__raw_writel(reg, ccm_base + dvfs_data->ccm_cdcr_offset);
 
@@ -229,6 +239,10 @@ static int set_cpu_freq(int wp)
 			}
 			udelay(dvfs_data->delay_time);
 		}
+		/* set software_dvfs_en bit back to original setting*/
+		reg = __raw_readl(ccm_base + dvfs_data->ccm_cdcr_offset);
+		reg &= ~(CCM_CDCR_SW_DVFS_EN);
+		reg |= en_sw_dvfs;
 		clk_set_rate(cpu_clk, rate);
 	} else {
 		podf = cpu_wp_tbl[wp].cpu_podf;
@@ -237,8 +251,15 @@ static int set_cpu_freq(int wp)
 		/* Change arm_podf only */
 		/* set ARM_FREQ_SHIFT_DIVIDER */
 		reg = __raw_readl(ccm_base + dvfs_data->ccm_cdcr_offset);
-		reg &= 0xFFFFFFFB;
-		reg |= 1 << 2;
+
+		/* Check if software_dvfs_en bit set */
+		if ((reg & CCM_CDCR_SW_DVFS_EN) != 0)
+			en_sw_dvfs = CCM_CDCR_SW_DVFS_EN;
+		else
+			en_sw_dvfs = 0x0;
+
+		reg &= ~(CCM_CDCR_SW_DVFS_EN | CCM_CDCR_ARM_FREQ_SHIFT_DIVIDER);
+		reg |= CCM_CDCR_ARM_FREQ_SHIFT_DIVIDER;
 		__raw_writel(reg, ccm_base + dvfs_data->ccm_cdcr_offset);
 
 		/* Get ARM_PODF */
@@ -319,12 +340,14 @@ static int set_cpu_freq(int wp)
 			udelay(dvfs_data->delay_time);
 		}
 
-		/* Clear the ARM_FREQ_SHIFT_DIVIDER */
+		/* Clear the ARM_FREQ_SHIFT_DIVIDER and */
+		/* set software_dvfs_en bit back to original setting*/
 		reg = __raw_readl(ccm_base + dvfs_data->ccm_cdcr_offset);
-		reg &= 0xFFFFFFFB;
+		reg &= ~(CCM_CDCR_SW_DVFS_EN | CCM_CDCR_ARM_FREQ_SHIFT_DIVIDER);
+		reg |= en_sw_dvfs;
 		__raw_writel(reg, ccm_base + dvfs_data->ccm_cdcr_offset);
 	}
-#if defined(CONFIG_CPU_FREQ_IMX)
+#if defined(CONFIG_CPU_FREQ)
 		cpufreq_trig_needed = 1;
 #endif
 	old_wp = wp;
@@ -333,7 +356,7 @@ static int set_cpu_freq(int wp)
 
 static int start_dvfs(void)
 {
-	u32 reg;
+	u32 reg, cpu_rate;
 	unsigned long flags;
 
 	if (dvfs_core_is_active)
@@ -345,6 +368,14 @@ static int start_dvfs(void)
 
 	dvfs_load_config(0);
 
+	/* get current working point */
+	cpu_rate = clk_get_rate(cpu_clk);
+	curr_wp = cpu_wp_nr - 1;
+	do {
+		if (cpu_rate <= cpu_wp_tbl[curr_wp].cpu_rate)
+			break;
+	} while (--curr_wp >= 0);
+	old_wp = curr_wp;
 	/* config reg GPC_CNTR */
 	reg = __raw_readl(gpc_base + dvfs_data->gpc_cntr_offset);
 
@@ -538,7 +569,7 @@ END:	/* Set MAXF, MINF */
 	reg &= ~MXC_GPCCNTR_GPCIRQM;
 	__raw_writel(reg, gpc_base + dvfs_data->gpc_cntr_offset);
 
-#if defined(CONFIG_CPU_FREQ_IMX)
+#if defined(CONFIG_CPU_FREQ)
 	if (cpufreq_trig_needed == 1) {
 		cpufreq_trig_needed = 0;
 		cpufreq_update_policy(0);
@@ -573,7 +604,7 @@ void stop_dvfs(void)
 		curr_cpu = clk_get_rate(cpu_clk);
 		if (curr_cpu != cpu_wp_tbl[curr_wp].cpu_rate) {
 			set_cpu_freq(curr_wp);
-#if defined(CONFIG_CPU_FREQ_IMX)
+#if defined(CONFIG_CPU_FREQ)
 			if (cpufreq_trig_needed == 1) {
 				cpufreq_trig_needed = 0;
 				cpufreq_update_policy(0);
