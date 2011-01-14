@@ -137,6 +137,17 @@ static struct mmc_spi_platform_data mmc_spi_info = {
 };
 #endif
 
+/* SPIDEV devices for the FIM SPI ports and chip selects.
+ * bus_num = FIM number + 2 (bus_num 1 is native SPI port)
+ */
+#define SPIDEV_FIM_CS(fim, cs)					\
+	{							\
+		.modalias	= "spidev",			\
+		.max_speed_hz	= 10000000,			\
+		.bus_num        = fim + 2,			\
+		.chip_select    = cs,				\
+	}
+
 /* Array of SPI devices (only one device should be enabled at a time) */
 static struct spi_board_info spi_devices[] __initdata = {
 	CC9P9215JS_TOUCH
@@ -159,21 +170,29 @@ static struct spi_board_info spi_devices[] __initdata = {
 		.platform_data	= &mmc_spi_info,
 	},
 #endif
-#if defined(CONFIG_FIM_ZERO_SPIDEV)
-	{
-		.modalias	= "spidev",
-		.max_speed_hz	= 10000000,
-		.bus_num	= 2,
-		.chip_select	= 0,
-	},
+#if defined(CONFIG_FIM_ZERO_SPIDEV_MASTER_CS) || defined(CONFIG_FIM_ZERO_SPIDEV_CS0)
+	SPIDEV_FIM_CS(0, 0),
 #endif
-#if defined(CONFIG_FIM_ONE_SPIDEV)
-	{
-		.modalias	= "spidev",
-		.max_speed_hz	= 10000000,
-		.bus_num	= 3,
-		.chip_select	= 0,
-	},
+#if defined(CONFIG_FIM_ZERO_SPIDEV_CS1)
+	SPIDEV_FIM_CS(0, 1),
+#endif
+#if defined(CONFIG_FIM_ZERO_SPIDEV_CS2)
+	SPIDEV_FIM_CS(0, 2),
+#endif
+#if defined(CONFIG_FIM_ZERO_SPIDEV_CS3)
+	SPIDEV_FIM_CS(0, 3),
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV_MASTER_CS) || defined(CONFIG_FIM_ONE_SPIDEV_CS0)
+	SPIDEV_FIM_CS(1, 0),
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV_CS1)
+	SPIDEV_FIM_CS(1, 1),
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV_CS2)
+	SPIDEV_FIM_CS(1, 2),
+#endif
+#if defined(CONFIG_FIM_ONE_SPIDEV_CS3)
+	SPIDEV_FIM_CS(1, 3),
 #endif
 	/* Add here other SPI devices, if any... */
 };

@@ -234,6 +234,12 @@ config FIM_ZERO_SPI_SELECTED
         help
           Enables the SPI port driver on FIM 0.
 
+	  WARNING: If using cme9210js platform and serial port A, the FIM SPI
+	  port won't generate the SPI chip select signal because this signals
+	  conflicts with serial port A. The alternatives are:
+	  - Disable serial port A
+	  - Use an additional GPIO as chip select signal
+
 endchoice # FIM_ZERO
 
 config FIM_ZERO_SPI
@@ -267,8 +273,8 @@ endchoice
 
 config FIM_ZERO_SPI_WANT_MASTER_CS
     bool "Enable master CS signal from FIM0 SPI port"
-    default n if MACH_CME9210JS
     default y
+	depends on MACH_CC9P9215JS || MACH_CCW9P9215JS || (MACH_CME9210JS && !CME9210JS_SERIAL_PORTA)
     help
         If you are developing for a cme9210js, then you should probably disable this
         feature since it uses the same pin as RX data on the cme9210js serial port A.
@@ -278,9 +284,29 @@ config FIM_ZERO_SPI_WANT_MASTER_CS
         attached, then this signal can be combined with the slave chip selects
         you select below to provide precise timing for the CS signal.
 
+if FIM_ZERO_SPI_WANT_MASTER_CS
+
+config FIM_ZERO_SPIDEV_MASTER_CS
+    bool "Create SPIDEV interface for master chip select (Chip select 0)"
+    depends on FIM_ZERO_SPI && !FIM_ZERO_SPIDEV_CS0 && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
+endif # FIM_ZERO_SPI_WANT_MASTER_CS
+
+config FIM_ZERO_SPI_GPIO_CS
+	bool "Use GPIOs as additional Chip Select signals for FIM0 SPI"
+	help
+	  Enable this option if you need additional SPI Chip Select signals
+	  to control more than one slave device.
+
+if FIM_ZERO_SPI_GPIO_CS
+
 config FIM_ZERO_SPI_CS_0_ENABLED
-    bool "Enable Chip Select 0 for FIM0 SPI port"
-    default y
+    bool "Enable FIM0 SPI Chip Select 0"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -288,7 +314,7 @@ config FIM_ZERO_SPI_CS_0_ENABLED
         driver is loaded.
 
 config FIM_ZERO_SPI_CS_0
-    int "GPIO pin for FIM SPI 0 chip select 0"
+    int "GPIO pin for FIM0 SPI chip select 0"
     depends on FIM_ZERO_SPI_CS_0_ENABLED
     range 5 7 if PROCESSOR_NS9210
     default "5" if PROCESSOR_NS9210
@@ -299,9 +325,17 @@ config FIM_ZERO_SPI_CS_0
         select 0 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ZERO_SPIDEV_CS0
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ZERO_SPI_CS_0_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ZERO_SPI_CS_1_ENABLED
-    bool "Enable Chip Select 1 for FIM0 SPI port"
-    default y
+    bool "Enable FIM0 SPI Chip Select 1"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -309,7 +343,7 @@ config FIM_ZERO_SPI_CS_1_ENABLED
         driver is loaded.
 
 config FIM_ZERO_SPI_CS_1
-    int "GPIO pin for FIM SPI 0 chip select 1"
+    int "GPIO pin for FIM0 SPI chip select 1"
     depends on FIM_ZERO_SPI_CS_1_ENABLED
     range 5 7 if PROCESSOR_NS9210
     default "6" if PROCESSOR_NS9210
@@ -320,9 +354,17 @@ config FIM_ZERO_SPI_CS_1
         select 1 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ZERO_SPIDEV_CS1
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ZERO_SPI_CS_1_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ZERO_SPI_CS_2_ENABLED
-    bool "Enable Chip Select 2 for FIM0 SPI port"
-    default y
+    bool "Enable FIM0 SPI Chip Select 2"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -330,7 +372,7 @@ config FIM_ZERO_SPI_CS_2_ENABLED
         driver is loaded.
 
 config FIM_ZERO_SPI_CS_2
-    int "GPIO pin for FIM SPI 0 chip select 2"
+    int "GPIO pin for FIM0 SPI chip select 2"
     depends on FIM_ZERO_SPI_CS_2_ENABLED
     range 5 7 if PROCESSOR_NS9210
     default "7" if PROCESSOR_NS9210
@@ -341,10 +383,18 @@ config FIM_ZERO_SPI_CS_2
         select 2 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ZERO_SPIDEV_CS2
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ZERO_SPI_CS_2_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ZERO_SPI_CS_3_ENABLED
-    bool "Enable Chip Select 3 for FIM0 SPI port"
+    bool "Enable FIM0 SPI Chip Select 3"
     depends on !MACH_CME9210JS
-    default y
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -352,7 +402,7 @@ config FIM_ZERO_SPI_CS_3_ENABLED
         driver is loaded.
 
 config FIM_ZERO_SPI_CS_3
-    int "GPIO pin for FIM SPI 0 chip select 3"
+    int "GPIO pin for FIM0 SPI chip select 3"
     depends on FIM_ZERO_SPI_CS_3_ENABLED
     range 72 87
     default "75"
@@ -361,14 +411,16 @@ config FIM_ZERO_SPI_CS_3
         select 3 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
-config FIM_ZERO_SPIDEV
-    bool "Create SPIDEV interface for this port"
-    depends on FIM_ZERO_SPI
-    default n
+config FIM_ZERO_SPIDEV_CS3
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ZERO_SPI_CS_3_ENABLED && SPI_SPIDEV
     help
         Select this feature if you want to create a SPIDEV device for this
-        port which will be visible to user level programs.  Deselect this feature
-        if this device will only be used by another device driver.
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
+endif # FIM_ZERO_SPI_GPIO_CS
 
 endif # FIM_ZERO_SPI
 
@@ -498,9 +550,29 @@ config FIM_ONE_SPI_WANT_MASTER_CS
         attached, then this signal can be combined with the slave chip selects
         you select below to provide precise timing for the CS signal.
 
+if FIM_ONE_SPI_WANT_MASTER_CS
+
+config FIM_ONE_SPIDEV_MASTER_CS
+    bool "Create SPIDEV interface for master chip select (Chip select 0)"
+    depends on FIM_ONE_SPI && !FIM_ONE_SPIDEV_CS0 && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
+endif # FIM_ONE_SPI_WANT_MASTER_CS
+
+config FIM_ONE_SPI_GPIO_CS
+	bool "Use GPIOs as additional Chip Select signals for FIM1 SPI"
+	help
+	  Enable this option if you need additional SPI Chip Select signals
+	  to control more than one slave device.
+
+if FIM_ONE_SPI_GPIO_CS
+
 config FIM_ONE_SPI_CS_0_ENABLED
-    bool "Enable Chip Select 0 for FIM1 SPI port"
-    default y
+    bool "Enable FIM1 SPI Chip Select 0"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -508,7 +580,7 @@ config FIM_ONE_SPI_CS_0_ENABLED
         driver is loaded.
 
 config FIM_ONE_SPI_CS_0
-    int "GPIO pin for FIM SPI 1 chip select 0"
+    int "GPIO pin for FIM1 SPI chip select 0"
     depends on FIM_ONE_SPI_CS_0_ENABLED
     range 72 87
     default "76"
@@ -517,9 +589,17 @@ config FIM_ONE_SPI_CS_0
         select 0 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ONE_SPIDEV_CS0
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ONE_SPI_CS_0_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ONE_SPI_CS_1_ENABLED
-    bool "Enable Chip Select 1 for FIM1 SPI port"
-    default y
+    bool "Enable FIM1 SPI Chip Select 1"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -527,7 +607,7 @@ config FIM_ONE_SPI_CS_1_ENABLED
         driver is loaded.
 
 config FIM_ONE_SPI_CS_1
-    int "GPIO pin for FIM SPI 1 chip select 1"
+    int "GPIO pin for FIM1 SPI chip select 1"
     depends on FIM_ONE_SPI_CS_1_ENABLED
     range 72 87
     default "77"
@@ -536,9 +616,17 @@ config FIM_ONE_SPI_CS_1
         select 1 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ONE_SPIDEV_CS1
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ONE_SPI_CS_1_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ONE_SPI_CS_2_ENABLED
-    bool "Enable Chip Select 2 for FIM1 SPI port"
-    default y
+    bool "Enable FIM1 SPI Chip Select 2"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -546,7 +634,7 @@ config FIM_ONE_SPI_CS_2_ENABLED
         driver is loaded.
 
 config FIM_ONE_SPI_CS_2
-    int "GPIO pin for FIM SPI 1 chip select 2"
+    int "GPIO pin for FIM1 SPI chip select 2"
     depends on FIM_ONE_SPI_CS_2_ENABLED
     range 72 87
     default "78"
@@ -555,9 +643,17 @@ config FIM_ONE_SPI_CS_2
         select 2 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
+config FIM_ONE_SPIDEV_CS2
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ONE_SPI_CS_2_ENABLED && SPI_SPIDEV
+    help
+        Select this feature if you want to create a SPIDEV device for this
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
+
 config FIM_ONE_SPI_CS_3_ENABLED
-    bool "Enable Chip Select 3 for FIM1 SPI port"
-    default y
+    bool "Enable FIM1 SPI Chip Select 3"
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -565,7 +661,7 @@ config FIM_ONE_SPI_CS_3_ENABLED
         driver is loaded.
 
 config FIM_ONE_SPI_CS_3
-    int "GPIO pin for FIM SPI 1 chip select 2"
+    int "GPIO pin for FIM1 SPI chip select 2"
     depends on FIM_ONE_SPI_CS_3_ENABLED
     range 72 87
     default "79"
@@ -574,15 +670,16 @@ config FIM_ONE_SPI_CS_3
         select 3 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
-config FIM_ONE_SPIDEV
-    bool "Create SPIDEV interface for this port"
-    depends on FIM_ONE_SPI
-    default n
+config FIM_ONE_SPIDEV_CS3
+    bool "Create SPIDEV interface for this port and chip select"
+    depends on FIM_ONE_SPI_CS_3_ENABLED && SPI_SPIDEV
     help
         Select this feature if you want to create a SPIDEV device for this
-        port which will be visible to user level programs.  Deselect this feature
-        if this device will only be used by another device driver.
+        port and chip select which will be visible to user level programs.
+	Deselect this feature if this port and chip select will be used
+	by a different device driver.
 
+endif # FIM_ONE_SPI_GPIO_CS
 
 endif # FIM_ONE_SPI
 
