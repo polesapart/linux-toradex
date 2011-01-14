@@ -116,7 +116,7 @@ void piper_load_dsp_firmware(struct piper_priv *piperp)
  */
 int piper_spike_suppression(struct piper_priv *piperp, bool retry)
 {
-	int timeout1 = 300, timeout2 = 300;
+	int timeout1 = 300, timeout2 = 30000;
 	int ret = 0;
 
 	/*
@@ -831,8 +831,9 @@ static int __init piper_probe(struct platform_device* pdev)
 	struct piper_priv *piperp;
 	int ret = 0;
 
-	if (!pdata)
+	if (!pdata) {
 		return -EINVAL;
+	}
 
 	ret = piper_alloc_hw(&piperp, sizeof(*piperp));
 	if (ret) {
