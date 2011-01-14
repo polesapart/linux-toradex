@@ -403,16 +403,14 @@ static int process_message(struct spi_fim *info, struct spi_message *message)
              */
             memset(transfer->rx_buf, 0, transfer->len);
             fim_dma_buffer.data = transfer->rx_buf;
-            info->rx_buffer = transfer->rx_buf;
-            info->bytes_to_receive = transfer->len;
         } else {
             /*
              * Else if the user is graciously supplying a transmit buffer, then use it.
              */
             fim_dma_buffer.data = (unsigned char *) transfer->tx_buf;
-            info->rx_buffer = NULL;
-            info->bytes_to_receive = transfer->len;
         }
+        info->rx_buffer = transfer->rx_buf;
+        info->bytes_to_receive = transfer->len;
         fim_dma_buffer.length = transfer->len;
         fim_dma_buffer.private = info;
         fim_dma_buffer.sent = 0;
