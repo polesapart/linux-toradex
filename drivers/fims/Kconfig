@@ -123,7 +123,7 @@ endif # FIM_MODULES
 
 config FIM_ZERO
 	bool "FIM 0"
-	depends on PROCESSOR_NS9210 || PROCESSOR_NS9215 && FIM_CORE=y
+	depends on (PROCESSOR_NS9210 || PROCESSOR_NS9215) && FIM_CORE=y
 	help
 	  Enables FIM 0
 
@@ -220,7 +220,7 @@ config FIM_ZERO_W1_SELECTED
 	  connected slaves you need to enter the config menu of the 1-wire subsystem.
 
 config FIM_ZERO_USB_SELECTED
-        tristate "USB serial port driver"
+        bool "USB serial port driver"
 	depends on !(CME9210JS_SERIAL_PORTA)
 	select FIM_ZERO_USB
 	select SERIAL_CORE
@@ -228,8 +228,8 @@ config FIM_ZERO_USB_SELECTED
           Enables the USB serial port driver (low speed).
 
 config FIM_ZERO_SPI_SELECTED
-        tristate "SPI driver"
-        depends on SPI
+        bool "SPI driver"
+        depends on SPI && !(CC9P9215JS_SERIAL_PORTA || CC9P9215JS_SPI)
         select FIM_ZERO_SPI
         help
           Enables the SPI port driver on FIM 0.
@@ -242,34 +242,36 @@ config FIM_ZERO_SPI
 if FIM_ZERO_SPI
 
 choice
-	prompt "Choose FIM 0 SPI GPIO pins"
-	depends on (MACH_CC9P9215JS || MACH_CCW9P9215JS) && !FIM_ONE_SPI
+	prompt "GPIO pins to use for FIM0 SPI"
+	depends on (MACH_CC9P9215JS || MACH_CCW9P9215JS)
 	help
 	  Choose which set of GPIO pins will be used for the standand SPI
 	  signals CS, MISO, MOSI, and CLK.
 
 config FIM_ZERO_SPI_GPIO_0_TO_3
-        bool "Use GPIO pins 0 to 3"
-        help
-          Select this option to configuration FIM SPI port 0 to use
+	bool "Use GPIO pins 0 to 3"
+	depends on !CC9P9215JS_SERIAL_PORTA && !CC9P9215JS_SPI
+	help
+          Select this option to configuration FIM0 SPI port to use
           GPIO pins 0, 1, 2, and 3.
 
 config FIM_ZERO_SPI_GPIO_68_TO_71
         bool "Use GPIO pins 68 to 71"
+	depends on !FIM_ONE_SPI_SELECTED
         help
-          Select this option to configuration FIM SPI port 0 to use
-          GPIO pins 68, 69, 70, and 71.  If you select this option then
-          you will not be able to use the second FIM SPI port.
+          Select this option to configure FIM0 SPI port to use
+          GPIO pins 68, 69, 70, and 71. If you select this option then
+          you will not be able to use the FIM1 SPI port.
 
 endchoice
 
 config FIM_ZERO_SPI_WANT_MASTER_CS
-    bool "Enable master CS signal from FIM SPI port 0"
+    bool "Enable master CS signal from FIM0 SPI port"
     default n if MACH_CME9210JS
     default y
     help
-        If you are developing for a cme9210, then you should probably disable this
-        feature since it uses the same pin as RX data on the CME's serial port.
+        If you are developing for a cme9210js, then you should probably disable this
+        feature since it uses the same pin as RX data on the cme9210js serial port A.
         Select this feature to enable the master chip select on the FIM SPI port.
         If only one SPI slave device is connected to the bus, then this signal
         can be used as the chip select for it.  If more than one SPI slave is
@@ -277,7 +279,7 @@ config FIM_ZERO_SPI_WANT_MASTER_CS
         you select below to provide precise timing for the CS signal.
 
 config FIM_ZERO_SPI_CS_0_ENABLED
-    bool "Enable Chip Select 0 for FIM SPI port 0"
+    bool "Enable Chip Select 0 for FIM0 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -294,11 +296,11 @@ config FIM_ZERO_SPI_CS_0
     default "72"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 0 on FIM SPI port 0.  This signal is used to select a
+        select 0 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ZERO_SPI_CS_1_ENABLED
-    bool "Enable Chip Select 1 for FIM SPI port 0"
+    bool "Enable Chip Select 1 for FIM0 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -315,11 +317,11 @@ config FIM_ZERO_SPI_CS_1
     default "73"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 1 on FIM SPI port 0.  This signal is used to select a
+        select 1 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ZERO_SPI_CS_2_ENABLED
-    bool "Enable Chip Select 2 for FIM SPI port 0"
+    bool "Enable Chip Select 2 for FIM0 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -336,11 +338,11 @@ config FIM_ZERO_SPI_CS_2
     default "74"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 2 on FIM SPI port 0.  This signal is used to select a
+        select 2 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ZERO_SPI_CS_3_ENABLED
-    bool "Enable Chip Select 3 for FIM SPI port 0"
+    bool "Enable Chip Select 3 for FIM0 SPI port"
     depends on !MACH_CME9210JS
     default y
     help
@@ -356,7 +358,7 @@ config FIM_ZERO_SPI_CS_3
     default "75"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 3 on FIM SPI port 0.  This signal is used to select a
+        select 3 on FIM0 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ZERO_SPIDEV
@@ -369,10 +371,6 @@ config FIM_ZERO_SPIDEV
         if this device will only be used by another device driver.
 
 endif # FIM_ZERO_SPI
-
-
-
-
 
 config FIM_ONE
 	bool "FIM 1"
@@ -471,7 +469,7 @@ config FIM_ONE_W1_SELECTED
 	  connected slaves you need to enter the config menu of the 1-wire subsystem.
 
 config FIM_ONE_USB_SELECTED
-        tristate "USB serial port driver"
+        bool "USB serial port driver"
         depends on !MACH_CME9210JS
         select FIM_ONE_USB
 	select SERIAL_CORE
@@ -479,20 +477,19 @@ config FIM_ONE_USB_SELECTED
           Enables the USB serial port driver (low speed).
 
 config FIM_ONE_SPI_SELECTED
-        tristate "SPI driver"
+        bool "SPI driver"
         depends on SPI && !MACH_CME9210JS
-        select FIM_ONE_SPI
+	select FIM_ONE_SPI
         help
           Enables the SPI port driver on FIM 1.  This interface will always
           use GPIO pins 68, 69, 70, and 71.
-
 
 endchoice # FIM_ONE
 
 if FIM_ONE_SPI
 
 config FIM_ONE_SPI_WANT_MASTER_CS
-    bool "Enable master CS signal from FIM SPI port 1"
+    bool "Enable master CS signal from FIM1 SPI port"
     default y
     help
         Select this feature to enable the master chip select on the FIM SPI port.
@@ -502,7 +499,7 @@ config FIM_ONE_SPI_WANT_MASTER_CS
         you select below to provide precise timing for the CS signal.
 
 config FIM_ONE_SPI_CS_0_ENABLED
-    bool "Enable Chip Select 0 for FIM SPI port 1"
+    bool "Enable Chip Select 0 for FIM1 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -517,11 +514,11 @@ config FIM_ONE_SPI_CS_0
     default "76"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 0 on FIM SPI port 1.  This signal is used to select a
+        select 0 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ONE_SPI_CS_1_ENABLED
-    bool "Enable Chip Select 1 for FIM SPI port 1"
+    bool "Enable Chip Select 1 for FIM1 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -536,11 +533,11 @@ config FIM_ONE_SPI_CS_1
     default "77"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 1 on FIM SPI port 1.  This signal is used to select a
+        select 1 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ONE_SPI_CS_2_ENABLED
-    bool "Enable Chip Select 2 for FIM SPI port 1"
+    bool "Enable Chip Select 2 for FIM1 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -555,11 +552,11 @@ config FIM_ONE_SPI_CS_2
     default "78"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 2 on FIM SPI port 1.  This signal is used to select a
+        select 2 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ONE_SPI_CS_3_ENABLED
-    bool "Enable Chip Select 3 for FIM SPI port 1"
+    bool "Enable Chip Select 3 for FIM1 SPI port"
     default y
     help
         Set this value to y if you intend to use the chip select
@@ -574,7 +571,7 @@ config FIM_ONE_SPI_CS_3
     default "79"
     help
         Set this value to the GPIO pin number you want to use for chip
-        select 3 on FIM SPI port 1.  This signal is used to select a
+        select 3 on FIM1 SPI port.  This signal is used to select a
         particular SPI slave device on the SPI bus.
 
 config FIM_ONE_SPIDEV
