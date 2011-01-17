@@ -95,6 +95,7 @@ struct spi_fim {
 	uint			number_dma_buffers;
 	struct platform_device  *pdev;
 	struct fim_dma_cfg_t	dma_cfg;
+	unsigned int			max_speed;
 };
 
 #define NOT_SET		 (-2)
@@ -201,7 +202,15 @@ static int spi_fim_setup(struct spi_device *spi)
 		goto spi_fim_setup_quit;
 	}
 
-	spi->max_speed_hz = get_max_speed(info);
+	if (spi->max_speed_hz > get_max_speed(info)) {
+		spi->max_speed_hz = get_max_speed(info);
+	}
+
+	if (spi->max_speed_hz < MIN_SPI_CLOCK_RATE) {
+		spi->max_speed_hz = MIN_SPI_CLOCK_RATE;
+	}
+
+	info->max_speed = spi->max_speed_hz;
 
 	if (spi->chip_select >= MAX_CS) {
 		printk(KERN_ERR "%s: spi_fim_setup chip select is invalid\n", info->driver_name);
@@ -255,6 +264,10 @@ static void set_speed(struct spi_fim *info, unsigned int speed)
 	fim_get_stat_reg(&info->fim, LOOP_CYCLES, &delay_loop_cycles);
 
 	fim_max_speed = pic_clock_rate / cycles_per_bit;
+
+	if (speed > info->max_speed) {
+		speed = info->max_speed;
+	}
 
 	if (speed < MIN_SPI_CLOCK_RATE) {		   /* should never happen */
 		speed = MIN_SPI_CLOCK_RATE;
@@ -909,6 +922,7 @@ static int register_with_fim_api(struct spi_fim *info, struct device *dev)
 		goto register_with_fim_api_register_failed;
 	}
 	fim_enable_irq(&info->fim);
+	info->max_speed = get_max_speed(info);
 
 register_with_fim_api_register_failed:
 	return result;
