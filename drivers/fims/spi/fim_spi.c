@@ -94,7 +94,8 @@ struct spi_fim {
 	uint			dma_buffer_size;
 	uint			number_dma_buffers;
 	struct platform_device  *pdev;
-	struct fim_dma_cfg_t	dma_cfg;
+	struct fim_dma_cfg_t    dma_cfg;
+	unsigned int            max_speed;
 };
 
 #define NOT_SET		 (-2)
@@ -180,34 +181,42 @@ static unsigned int get_max_speed(struct spi_fim *info)
  */
 static int spi_fim_setup(struct spi_device *spi)
 {
-	int result = 0;
-	struct spi_fim *info = spi_master_get_devdata(spi->master);
+    int result = 0;
+    struct spi_fim *info = spi_master_get_devdata(spi->master);
 
-	if (spi == NULL) {
-		result = -EINVAL;
-		printk(KERN_ERR "%s: spi_fim_setup spi_device parameter is NULL\n", info->driver_name);
-		goto spi_fim_setup_quit;
-	}
+    if (spi == NULL) {
+        result = -EINVAL;
+        printk(KERN_ERR "%s: spi_fim_setup spi_device parameter is NULL\n", info->driver_name);
+        goto spi_fim_setup_quit;
+    }
 
-	if (spi->mode & (SPI_3WIRE | SPI_LOOP)) {
-		printk(KERN_ERR "%s: spi_fim_setup unsupported SPI mode\n", info->driver_name);
-		result = -EINVAL;
-		goto spi_fim_setup_quit;
-	}
+    if (spi->mode & (SPI_3WIRE | SPI_LOOP)) {
+        printk(KERN_ERR "%s: spi_fim_setup unsupported SPI mode\n", info->driver_name);
+        result = -EINVAL;
+        goto spi_fim_setup_quit;
+    }
 
-	if ((spi->bits_per_word != 0) && (spi->bits_per_word != 8)) {
-		printk(KERN_ERR "%s: spi_fim_setup unsupported word size\n", info->driver_name);
-		result = -EINVAL;
-		goto spi_fim_setup_quit;
-	}
+    if ((spi->bits_per_word != 0) && (spi->bits_per_word != 8)) {
+        printk(KERN_ERR "%s: spi_fim_setup unsupported word size\n", info->driver_name);
+        result = -EINVAL;
+        goto spi_fim_setup_quit;
+    }
 
-	spi->max_speed_hz = get_max_speed(info);
+    if (spi->max_speed_hz > get_max_speed(info)) {
+        spi->max_speed_hz = get_max_speed(info);
+    }
 
-	if (spi->chip_select >= MAX_CS) {
-		printk(KERN_ERR "%s: spi_fim_setup chip select is invalid\n", info->driver_name);
-		result = -EINVAL;
-		goto spi_fim_setup_quit;
-	}
+    if (spi->max_speed_hz < MIN_SPI_CLOCK_RATE) {
+        spi->max_speed_hz = MIN_SPI_CLOCK_RATE;
+    }
+
+    info->max_speed = spi->max_speed_hz;
+
+    if (spi->chip_select >= MAX_CS) {
+        printk(KERN_ERR "%s: spi_fim_setup chip select is invalid\n", info->driver_name);
+        result = -EINVAL;
+        goto spi_fim_setup_quit;
+    }
 
 spi_fim_setup_quit:
 	return result;
@@ -243,67 +252,71 @@ void configure_port(struct spi_fim *info, struct spi_device *dev)
  */
 static void set_speed(struct spi_fim *info, unsigned int speed)
 {
-	unsigned int pic_clock_rate = info->ahb_clock_rate * 4;
-	unsigned int fim_max_speed = 0;
-	unsigned int cycles_per_bit = 0;
-	unsigned int delay_loop_overhead = 0;
-	unsigned int delay_loop_cycles = 0;
-	unsigned int lsb = 0;
+    unsigned int pic_clock_rate = info->ahb_clock_rate * 4;
+    unsigned int fim_max_speed = 0;
+    unsigned int cycles_per_bit = 0;
+    unsigned int delay_loop_overhead = 0;
+    unsigned int delay_loop_cycles = 0;
+    unsigned int lsb = 0;
 
-	fim_get_stat_reg(&info->fim, ONE_BIT_CYCLES, &cycles_per_bit);
-	fim_get_stat_reg(&info->fim, LOOP_OVERHEAD, &delay_loop_overhead);
-	fim_get_stat_reg(&info->fim, LOOP_CYCLES, &delay_loop_cycles);
+    fim_get_stat_reg(&info->fim, ONE_BIT_CYCLES, &cycles_per_bit);
+    fim_get_stat_reg(&info->fim, LOOP_OVERHEAD, &delay_loop_overhead);
+    fim_get_stat_reg(&info->fim, LOOP_CYCLES, &delay_loop_cycles);
 
-	fim_max_speed = pic_clock_rate / cycles_per_bit;
+    fim_max_speed = pic_clock_rate / cycles_per_bit;
 
-	if (speed < MIN_SPI_CLOCK_RATE) {		   /* should never happen */
-		speed = MIN_SPI_CLOCK_RATE;
-	}
+    if (speed > info->max_speed) {
+        speed = info->max_speed;
+    }
 
-	if (speed < fim_max_speed) {
-		/*
-		 * If we come here, then the user selected a speed less than our top
-		 * speed so we'll have to use delay loop counters.  The formula for
-		 * converting a speed into a delay loop count is:
-		 *
-		 *	  count = (pic_rate/rate - cycles_per_bit - delay_loop_overhead) / delay_loop_cycles
-		 *
-		 * That formula has two problems.
-		 *
-		 *  1. It will give us a floating point value for a result, and the
-		 *	 kernel doesn't do floating point.
-		 *  2. When we round it, we want to make sure we always round up so
-		 *	 that we never set a speed that is faster than the user requested.
-		 *	 Larger delay_count values give slower speeds.
-		 *
-		 * To deal with these problems we:
-		 *
-		 *  1. Multiply the numerator by 100 before dividing by delay_loop_cycles.
-		 *  2. Add 99 to the result to round up the delay count.
-		 *  3. Divide back down by 100 to end up with the delay count we want
-		 *	 to use which will never generate a speed greater than the user
-		 *	 requested.
-		 */
-		unsigned long accumulator = pic_clock_rate / speed;
+    if (speed < MIN_SPI_CLOCK_RATE) {           /* should never happen */
+        speed = MIN_SPI_CLOCK_RATE;
+    }
 
-		if (accumulator > (cycles_per_bit + delay_loop_overhead)) {
-			accumulator -= cycles_per_bit;
-			accumulator -= delay_loop_overhead;
-			accumulator *= 100;
-			accumulator /= delay_loop_cycles;
-			accumulator += 99;
-			accumulator /= 100;
-			if (accumulator > 0) {
-				lsb = (unsigned int) (accumulator & 0xff);
-			} else {
-				lsb = 1;
-			}
-		} else {
-			lsb = 1;
-		}
-	}
+    if (speed < fim_max_speed) {
+        /*
+         * If we come here, then the user selected a speed less than our top
+         * speed so we'll have to use delay loop counters.  The formula for
+         * converting a speed into a delay loop count is:
+         *
+         *      count = (pic_rate/rate - cycles_per_bit - delay_loop_overhead) / delay_loop_cycles
+         *
+         * That formula has two problems.
+         *
+         *  1. It will give us a floating point value for a result, and the
+         *     kernel doesn't do floating point.
+         *  2. When we round it, we want to make sure we always round up so
+         *     that we never set a speed that is faster than the user requested.
+         *     Larger delay_count values give slower speeds.
+         *
+         * To deal with these problems we:
+         *
+         *  1. Multiply the numerator by 100 before dividing by delay_loop_cycles.
+         *  2. Add 99 to the result to round up the delay count.
+         *  3. Divide back down by 100 to end up with the delay count we want
+         *     to use which will never generate a speed greater than the user
+         *     requested.
+         */
+        unsigned long accumulator = pic_clock_rate / speed;
 
-	fim_set_ctrl_reg(&info->fim, DELAY_LOOP_REG, lsb);
+        if (accumulator > (cycles_per_bit + delay_loop_overhead)) {
+            accumulator -= cycles_per_bit;
+            accumulator -= delay_loop_overhead;
+            accumulator *= 100;
+            accumulator /= delay_loop_cycles;
+            accumulator += 99;
+            accumulator /= 100;
+            if (accumulator > 0) {
+                lsb = (unsigned int) (accumulator & 0xff);
+            } else {
+                lsb = 1;
+            }
+        } else {
+            lsb = 1;
+        }
+    }
+
+    fim_set_ctrl_reg(&info->fim, DELAY_LOOP_REG, lsb);
 }
 
 /*
@@ -879,36 +892,37 @@ static int register_with_fim_api(struct spi_fim *info, struct device *dev)
 	info->fim.fw_name = NULL;
 #endif
 
-	info->fim.driver.name = info->driver_name;
-	info->fim.dev = dev;
-	info->fim.fim_isr = NULL;
-	info->fim.dma_tx_isr = NULL;
-	info->fim.dma_rx_isr = rx_isr;
-	info->fim.dma_error_isr = dma_error_isr;
-	info->fim.driver_data = info;
-	info->dma_cfg.rxnr = info->number_dma_buffers;
-	info->dma_cfg.txnr = info->number_dma_buffers;
-	info->dma_cfg.rxsz = info->dma_buffer_size;
-	info->dma_cfg.txsz = info->dma_buffer_size;
+    info->fim.driver.name = info->driver_name;
+    info->fim.dev = dev;
+    info->fim.fim_isr = NULL;
+    info->fim.dma_tx_isr = NULL;
+    info->fim.dma_rx_isr = rx_isr;
+    info->fim.dma_error_isr = dma_error_isr;
+    info->fim.driver_data = info;
+    info->dma_cfg.rxnr = info->number_dma_buffers;
+    info->dma_cfg.txnr = info->number_dma_buffers;
+    info->dma_cfg.rxsz = info->dma_buffer_size;
+    info->dma_cfg.txsz = info->dma_buffer_size;
 
-	info->fim.dma_cfg = &info->dma_cfg;
-	info->fim.verbose = 1;
+    info->fim.dma_cfg = &info->dma_cfg;
+    info->fim.verbose = 1;
 
-	result = fim_register_driver(&info->fim);
-	if (result != 0) {
-		dev_err(&info->pdev->dev, "%s:  fim_register_driver returned %d\n", __func__, result);
-		goto register_with_fim_api_register_failed;
-	}
+    result = fim_register_driver(&info->fim);
+    if (result != 0) {
+        dev_err(&info->pdev->dev, "%s:  fim_register_driver returned %d\n", __func__, result);
+        goto register_with_fim_api_register_failed;
+    }
 
-	msleep(100);
+    msleep(100);
 
-	fim_get_stat_reg(&info->fim, FIRMWARE_REVISION, &firmware_rev);
-	if (firmware_rev != EXPECTED_FIRMWARE_REV)
-	{
-		dev_err(&info->pdev->dev, "%s:  fim_send_start got firmware rev %u, expected %u\n", __func__, firmware_rev, EXPECTED_FIRMWARE_REV);
-		goto register_with_fim_api_register_failed;
-	}
-	fim_enable_irq(&info->fim);
+    fim_get_stat_reg(&info->fim, FIRMWARE_REVISION, &firmware_rev);
+    if (firmware_rev != EXPECTED_FIRMWARE_REV)
+    {
+        dev_err(&info->pdev->dev, "%s:  fim_send_start got firmware rev %u, expected %u\n", __func__, firmware_rev, EXPECTED_FIRMWARE_REV);
+        goto register_with_fim_api_register_failed;
+    }
+    fim_enable_irq(&info->fim);
+    info->max_speed = get_max_speed(info);
 
 register_with_fim_api_register_failed:
 	return result;
