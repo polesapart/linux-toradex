@@ -116,7 +116,13 @@ config FIM_SPI_MODULE
         select FIM_ZERO_SPI
         select FIM_ONE_SPI if !(MACH_CME9210JS || MACH_CME9210)
         help
-            Enables the FIM SPI Device controller as a loadable module.
+          Enables the FIM SPI Device controller as a loadable module.
+
+	  WARNING: If using cme9210js platform and serial port A, the FIM SPI
+	  port won't generate the SPI chip select signal because this signal
+	  conflicts with serial port A. The alternatives are:
+	  - Disable serial port A
+	  - Use an additional GPIO as chip select signal
 
 
 endif # FIM_MODULES
@@ -235,7 +241,7 @@ config FIM_ZERO_SPI_SELECTED
           Enables the SPI port driver on FIM 0.
 
 	  WARNING: If using cme9210js platform and serial port A, the FIM SPI
-	  port won't generate the SPI chip select signal because this signals
+	  port won't generate the SPI chip select signal because this signal
 	  conflicts with serial port A. The alternatives are:
 	  - Disable serial port A
 	  - Use an additional GPIO as chip select signal
