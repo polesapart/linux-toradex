@@ -294,6 +294,28 @@ static struct pic_t *get_pic_from_driver(struct fim_driver *driver)
 	return get_pic_by_index(driver->picnr);
 }
 
+int fim_dump_registers(struct fim_driver *driver)
+{
+	struct pic_t *pic;
+
+	if (!(pic = get_pic_from_driver(driver))) {
+            printk(KERN_ERR "fim_driver structure has not been initialized\n");
+		return -ENODEV;
+	}
+
+	printk(KERN_ERR "IOHUB_IFS_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_IFS_REG));
+	printk(KERN_ERR "IOHUB_RX_DMA_CTRL_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_RX_DMA_CTRL_REG));
+	printk(KERN_ERR "IOHUB_RX_DMA_BUFPTR_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_RX_DMA_BUFPTR_REG));
+	printk(KERN_ERR "IOHUB_RX_DMA_ICTRL_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_RX_DMA_ICTRL_REG));
+	printk(KERN_ERR "IOHUB_RX_DIR_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_RX_DIR_REG));
+	printk(KERN_ERR "IOHUB_RX_DIR_FIFO_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_RX_DIR_FIFO_REG));
+	printk(KERN_ERR "IOHUB_TX_DMA_CTRL_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG));
+	printk(KERN_ERR "IOHUB_TX_DMA_BUFPTR_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_DMA_BUFPTR_REG));
+	printk(KERN_ERR "IOHUB_TX_ICTRL_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_ICTRL_REG));
+	printk(KERN_ERR "IOHUB_TX_FIFO_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_FIFO_REG));
+	printk(KERN_ERR "IOHUB_TX_DIR_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_DIR_REG));
+}
+
 static int pic_get_ctrl_reg(struct pic_t *pic, int reg, unsigned int *val)
 {
 	if (NS92XX_FIM_CTRL_REG_CHECK(reg))

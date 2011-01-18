@@ -717,6 +717,7 @@ static int fim_can_open(struct net_device *dev)
 	struct fim_can_t *port;
 	struct fim_driver *fim;
 	int retval;
+	struct fim_dma_cfg_t dma_cfg;
 
 	/* So, lets start the PIC with our default data */
 	port = netdev_priv(dev);
@@ -724,6 +725,18 @@ static int fim_can_open(struct net_device *dev)
 	printk_debug("Open function called (FIM %i)\n", fim->picnr);
 
 	/* Always set the CAN-interface to the active state! */
+	retval = fim_unregister_driver(fim);
+	/* Specific DMA configuration for the CAN-controller */
+	dma_cfg.rxnr = FIM_CAN_DMA_BUFFERS;
+	dma_cfg.txnr = FIM_CAN_DMA_BUFFERS;
+	dma_cfg.rxsz = FIM_CAN_DMA_BUFFER_SIZE;
+	dma_cfg.txsz = FIM_CAN_DMA_BUFFER_SIZE;
+	port->fim.dma_cfg = &dma_cfg;
+	retval = fim_register_driver(&port->fim);
+	if (retval) {
+		printk_err("fim_can_open: Couldn't register the FIM %i CAN driver.\n", fim->picnr);
+		goto fim_can_open_exit;
+	}
 	retval = fim_can_restart_fim(port);
 	if (!retval) {
 		netif_start_queue(dev);
@@ -731,6 +744,7 @@ static int fim_can_open(struct net_device *dev)
 		port->opened = 1;
 	}
 
+fim_can_open_exit:
 	return retval;
 }
 

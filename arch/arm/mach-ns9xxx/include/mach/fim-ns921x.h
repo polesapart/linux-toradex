@@ -494,6 +494,7 @@ int fim_is_running(struct fim_driver *driver);
 
 int fim_dma_stop(struct fim_driver *fim);
 int fim_dma_start(struct fim_driver *fim, struct fim_dma_cfg_t *cfg);
+int fim_dump_registers(struct fim_driver *driver);
 
 #endif /* ifndef _NS921X_FIM_CORE_H */
 
