@@ -42,6 +42,34 @@ config MACH_MX51_BABBAGE
 	  u-boot. This includes specific configurations for the board and its
 	  peripherals.
 
+config MACH_CCWMX51JS
+	bool "Support for the ConnectCore Wi-MX51 module, on the JSK base board"
+	help
+	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on the
+	  JumpStart Kit base board. This includes specific configurations for the
+	  peripherals on that base board.
+
+config MACH_CCMX51JS
+	bool "Support for the ConnectCore MX51 module, on the JSK base board"
+	help
+	  Include support for the Digi ConnectCore MX51 Embedded Module, on the
+	  JumpStart Kit base board. This includes specific configurations for the
+	  peripherals on that base board.
+
+config MACH_CCWMX51
+	bool "Support for the ConnectCore Wi-MX51 module"
+	help
+	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on a
+	  custom board. The machine file should be modified to include support for
+	  the interfaces available in that board.
+
+config MACH_CCMX51
+	bool "Support for the ConnectCore MX51 module"
+	help
+	  Include support for the Digi ConnectCore Wi-MX51 Embedded Module, on a
+	  custom board. The machine file should be modified to include support for
+	  the interfaces available in that board.
+
 config MACH_MX53_EVK
 	bool "Support MX53 EVK platform"
 	select ARCH_MX53
@@ -92,7 +120,7 @@ config ARCH_MXC_HAS_NFC_V3_2
         depends on ARCH_MXC_HAS_NFC_V3
         default y
         help
-           This selects the Freescale MXC Nand Flash Controller Hardware Version 3.1
+           This selects the Freescale MXC Nand Flash Controller Hardware Version 3.2
            If unsure, say N.
 
 config SDMA_IRAM

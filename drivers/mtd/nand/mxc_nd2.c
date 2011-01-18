@@ -1603,6 +1603,10 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 
 	/* Register the partitions */
 #ifdef CONFIG_MTD_PARTITIONS
+#if defined(CONFIG_MACH_CCWMX51JS) || defined(CONFIG_MACH_CCMX51JS) || \
+    defined(CONFIG_MACH_CCWMX51) || defined(CONFIG_MACH_CCMX51)
+	mtd->name= "onboard_boot";
+#endif
 	nr_parts =
 	    parse_mtd_partitions(mtd, part_probes, &mxc_nand_data->parts, 0);
 	if (nr_parts > 0)
