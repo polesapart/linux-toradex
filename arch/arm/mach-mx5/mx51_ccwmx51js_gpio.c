@@ -57,6 +57,84 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_ext_eth_pins[] = {
 };
 #endif
 
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
+	/* SDHC1*/
+	{
+		MX51_PIN_SD1_CMD, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD1_CLK, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD1_DATA0, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD1_DATA1, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD1_DATA2, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_SD1_DATA3, IOMUX_CONFIG_ALT0,
+		(PAD_CTL_PUE_KEEPER | PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH |
+		PAD_CTL_47K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_GPIO1_0, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
+	},
+
+	/* SDHC3*/
+	{
+		MX51_PIN_NANDF_RDY_INT, IOMUX_CONFIG_ALT5 | IOMUX_CONFIG_SION,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+	},
+	{
+		MX51_PIN_NANDF_CS7, IOMUX_CONFIG_ALT5,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+	},
+	{	/* SD3 DATA0 */
+		MX51_PIN_NANDF_D8, IOMUX_CONFIG_ALT5,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+		MUX_IN_ESDHC3_IPP_DAT0_IN_SELECT_INPUT, INPUT_CTL_PATH1
+	},
+	{	/* SD3 DATA1 */
+		MX51_PIN_NANDF_D9, IOMUX_CONFIG_ALT5,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+		MUX_IN_ESDHC3_IPP_DAT1_IN_SELECT_INPUT, INPUT_CTL_PATH1
+	},
+	{	/* SD3 DATA2 */
+		MX51_PIN_NANDF_D10, IOMUX_CONFIG_ALT5,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+		MUX_IN_ESDHC3_IPP_DAT2_IN_SELECT_INPUT, INPUT_CTL_PATH1
+	},
+	{	/* SD3 DATA3 */
+		MX51_PIN_NANDF_D11, IOMUX_CONFIG_ALT5,
+		(PAD_CTL_DRV_MAX | PAD_CTL_22K_PU | PAD_CTL_SRE_FAST),
+		MUX_IN_ESDHC3_IPP_DAT3_IN_SELECT_INPUT, INPUT_CTL_PATH1
+	},
+	{	/* SD3 Card detect */
+		MX51_PIN_GPIO_NAND, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
+	},
+	{	/* SD3 Write protect */
+		MX51_PIN_NANDF_CS1, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
+		(PAD_CTL_HYS_ENABLE | PAD_CTL_100K_PU),
+	},
+};
+#endif
+
 void __init ccwmx51_io_init(void)
 {
 	int i;
@@ -71,6 +149,19 @@ void __init ccwmx51_io_init(void)
 		if (ccwmx51_iomux_ext_eth_pins[i].in_select)
 			mxc_iomux_set_input(ccwmx51_iomux_ext_eth_pins[i].in_select,
 					ccwmx51_iomux_ext_eth_pins[i].in_mode);
+	}
+#endif
+
+#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_mmc_pins[i].pin,
+				  ccwmx51_iomux_mmc_pins[i].mux_mode);
+		if (ccwmx51_iomux_mmc_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_mmc_pins[i].pin,
+					  ccwmx51_iomux_mmc_pins[i].pad_cfg);
+		if (ccwmx51_iomux_mmc_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_mmc_pins[i].in_select,
+					    ccwmx51_iomux_mmc_pins[i].in_mode);
 	}
 #endif
 }
