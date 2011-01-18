@@ -135,6 +135,15 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_mmc_pins[] = {
 };
 #endif
 
+static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
+	{	/* PMIC interrupt line */
+		MX51_PIN_GPIO1_5, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION,
+		(PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM | PAD_CTL_100K_PU |
+		PAD_CTL_HYS_ENABLE | PAD_CTL_DRV_VOT_HIGH),
+	},
+};
+
+
 void __init ccwmx51_io_init(void)
 {
 	int i;
@@ -151,6 +160,21 @@ void __init ccwmx51_io_init(void)
 					ccwmx51_iomux_ext_eth_pins[i].in_mode);
 	}
 #endif
+
+	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_devices_pins); i++) {
+		mxc_request_iomux(ccwmx51_iomux_devices_pins[i].pin,
+				  ccwmx51_iomux_devices_pins[i].mux_mode);
+		if (ccwmx51_iomux_devices_pins[i].pad_cfg)
+			mxc_iomux_set_pad(ccwmx51_iomux_devices_pins[i].pin,
+					  ccwmx51_iomux_devices_pins[i].pad_cfg);
+		if (ccwmx51_iomux_devices_pins[i].in_select)
+			mxc_iomux_set_input(ccwmx51_iomux_devices_pins[i].in_select,
+					    ccwmx51_iomux_devices_pins[i].in_mode);
+	}
+
+	/* PMIC interrupt line */
+	gpio_request(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), "gpio1_5");
+	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5));
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 	for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_mmc_pins); i++) {
