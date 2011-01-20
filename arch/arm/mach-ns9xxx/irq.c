@@ -303,7 +303,7 @@ static void handle_prio_irq(unsigned int irq, struct irq_desc *desc)
 	}
 
 	desc->status &= ~(IRQ_REPLAY | IRQ_WAITING);
-	kstat_cpu(cpu).irqs[irq]++;
+	kstat_incr_irqs_this_cpu(irq, desc);
 
 	action = desc->action;
 	if (unlikely(!action || (desc->status & IRQ_DISABLED))) {
