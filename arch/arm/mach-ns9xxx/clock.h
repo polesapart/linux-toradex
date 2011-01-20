@@ -27,6 +27,9 @@ struct clk {
 	struct list_head node;
 	unsigned long refcount;
 	unsigned long usage;
+
+#define CLK_FLAG_CHANGESTATE 0
+	unsigned long flags;
 };
 
 int clk_register(struct clk *clk);

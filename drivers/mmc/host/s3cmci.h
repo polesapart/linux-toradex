@@ -79,4 +79,6 @@ struct s3cmci_host {
 #ifdef CONFIG_CPU_FREQ
 	struct notifier_block	freq_transition;
 #endif
+
+	int sdio_irq;
 };

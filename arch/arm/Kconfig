@@ -3,7 +3,7 @@
 # see Documentation/kbuild/kconfig-language.txt.
 #
 
-mainmenu "Linux Kernel Configuration"
+#mainmenu "Linux Kernel Configuration"
 
 config ARM
 	bool
@@ -1299,7 +1299,7 @@ config LEDS
 		   ARCH_LUBBOCK || MACH_MAINSTONE || ARCH_NETWINDER || \
 		   ARCH_OMAP || ARCH_P720T || ARCH_PXA_IDP || \
 		   ARCH_SA1100 || ARCH_SHARK || ARCH_VERSATILE || \
-		   ARCH_AT91 || ARCH_DAVINCI || \
+		   ARCH_AT91 || ARCH_DAVINCI || ARCH_NS9XXX || \
 		   ARCH_KS8695 || MACH_RD88F5182 || ARCH_REALVIEW
 	help
 	  If you say Y here, the LEDs on your machine will be used

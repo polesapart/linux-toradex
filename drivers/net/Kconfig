@@ -1010,6 +1010,17 @@ config GRETH
 	help
 	  Say Y here if you want to use the Aeroflex Gaisler GRETH Ethernet MAC.
 
+config NS9XXX_ETH
+	tristate "Digi NS9xxx ethernet support"
+	depends on ARM && ARCH_NS9XXX
+	depends on PHYLIB
+	depends on CRC32
+	help
+	  If you have a Digi NS9xxx based system and wish to use its ethernet
+	  port.
+	  If you choose to build this driver as a module, it will be called
+	  ns9xxx-eth.
+
 config SMC911X
 	tristate "SMSC LAN911[5678] support"
 	select CRC32
@@ -1039,6 +1050,15 @@ config SMSC911X
 	  To compile this driver as a module, choose M here and read
 	  <file:Documentation/networking/net-modules.txt>. The module
 	  will be called smsc911x.
+
+config SMSC9118
+        tristate "SMSC LAN9218 support"
+        depends on NET_ETHERNET && (MACH_CC9M2443JS || MACH_CCW9M2443JS)
+        select CRC32
+        select MII
+        ---help---
+          Say Y here if you want support for SMSC LAN921x families
+          of ethernet controllers.
 
 config NET_VENDOR_RACAL
 	bool "Racal-Interlan (Micom) NI cards"

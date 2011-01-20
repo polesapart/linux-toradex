@@ -213,7 +213,7 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 
 /* frame sending functions */
 
-static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
+void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 					   const u8 *bssid, u16 stype, u16 reason,
 					   void *cookie, bool send_frame)
 {
@@ -258,6 +258,7 @@ static void ieee80211_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
 	else
 		kfree_skb(skb);
 }
+EXPORT_SYMBOL(ieee80211_send_deauth_disassoc);
 
 void ieee80211_send_pspoll(struct ieee80211_local *local,
 			   struct ieee80211_sub_if_data *sdata)

@@ -31,6 +31,11 @@
 		|| machine_is_cc9p9215js()		\
 		)
 
+#define module_is_ccw9p9215()	(0			\
+		|| machine_is_ccw9p9215()		\
+		|| machine_is_ccw9p9215js()		\
+		)
+
 #define module_is_cc9p9360()	(0			\
 		|| machine_is_a9m9360()			\
 		|| machine_is_cc9p9360dev()		\
@@ -47,6 +52,11 @@
 
 #define module_is_ccw9c()	(0			\
 		|| machine_is_ccw9c()			\
+		)
+
+#define module_is_cme9210()	(0			\
+		|| machine_is_cme9210()			\
+		|| machine_is_cme9210js()		\
 		)
 
 #define module_is_inc20otter()	(0			\

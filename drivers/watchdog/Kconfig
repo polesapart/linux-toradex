@@ -253,6 +253,15 @@ config ORION_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called orion_wdt.
 
+config NS9XXX_WATCHDOG
+	tristate "ns9xxx watchdog"
+	depends on PROCESSOR_NS921X || PROCESSOR_NS9360
+	help
+	  Say Y here if to include support for the watchdog timer
+	  in the ns9xxx processor.
+	  This driver can be built as a module by choosing M. The module
+	  will be called ns9xxx_wdt.
+
 config COH901327_WATCHDOG
 	bool "ST-Ericsson COH 901 327 watchdog"
 	depends on ARCH_U300

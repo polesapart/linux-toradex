@@ -905,4 +905,14 @@ config RTC_DRV_MPC5121
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-mpc5121.
 
+config RTC_DRV_NS9XXX
+	tristate "Digi ns9xxx On-Chip RTC"
+	depends on PROCESSOR_NS9215 || PROCESSOR_NS9360
+	help
+	  Driver for the internal RTC (Realtime Clock) module found on
+	  Digi ns9xxx CPUs.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ns9xxx.
+
 endif # RTC_CLASS

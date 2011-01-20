@@ -21,6 +21,7 @@
 #include <linux/sysdev.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/syscalls.h> /* For accessing to the syslog */
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -35,6 +36,9 @@
 #include <plat/s3c2443.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
+
+#include <asm/plat-s3c/regs-watchdog.h>
+#include <linux/delay.h>
 
 static struct map_desc s3c2443_iodesc[] __initdata = {
 	IODESC_ENT(WATCHDOG),
@@ -52,7 +56,11 @@ static struct sys_device s3c2443_sysdev = {
 
 static void s3c2443_hard_reset(void)
 {
-	__raw_writel(S3C2443_SWRST_RESET, S3C2443_SWRST);
+	/* Disable the logs and flush the printk buffers before the reboot command */
+	sys_syslog(5, NULL, 0);
+	sys_syslog(6, NULL, 0);
+	mdelay(100);
+	__raw_writel(0x21, S3C2410_WTCON);
 }
 
 int __init s3c2443_init(void)
