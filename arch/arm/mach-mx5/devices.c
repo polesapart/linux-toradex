@@ -646,6 +646,10 @@ struct platform_device mxcspi3_device = {
 	.resource = mxcspi3_resources,
 };
 
+/* I2C controller and device data */
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+
+#ifdef CONFIG_I2C_MXC_SELECT1
 static struct resource mxci2c1_resources[] = {
 	{
 		.start = I2C1_BASE_ADDR,
@@ -658,7 +662,9 @@ static struct resource mxci2c1_resources[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+#endif
 
+#ifdef CONFIG_I2C_MXC_SELECT2
 static struct resource mxci2c2_resources[] = {
 	{
 		.start = I2C2_BASE_ADDR,
@@ -671,7 +677,9 @@ static struct resource mxci2c2_resources[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
+#endif
 
+#ifdef CONFIG_I2C_MXC_SELECT3
 static struct resource mxci2c3_resources[] = {
 	{
 	       .start = I2C3_BASE_ADDR,
@@ -684,28 +692,36 @@ static struct resource mxci2c3_resources[] = {
 	       .flags = IORESOURCE_IRQ,
 	       },
 };
+#endif
 
 struct platform_device mxci2c_devices[] = {
+#ifdef CONFIG_I2C_MXC_SELECT1
 	{
 		.name = "imx-i2c",
 		.id = 0,
 		.num_resources = ARRAY_SIZE(mxci2c1_resources),
 		.resource = mxci2c1_resources,
 	},
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT2
 	{
 		.name = "imx-i2c",
 		.id = 1,
 		.num_resources = ARRAY_SIZE(mxci2c2_resources),
 		.resource = mxci2c2_resources,
 	},
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT3
 	{
 		.name = "imx-i2c",
 		.id = 2,
 		.num_resources = ARRAY_SIZE(mxci2c3_resources),
 		.resource = mxci2c3_resources,
 	},
+#endif
 };
 
+#if defined(CONFIG_I2C_MXC_HS) || defined(CONFIG_I2C_MXC_HS_MODULE)
 static struct resource mxci2c_hs_resources[] = {
 	{
 		.start = HSI2C_DMA_BASE_ADDR,
@@ -725,6 +741,9 @@ struct platform_device mxci2c_hs_device = {
 	.num_resources = ARRAY_SIZE(mxci2c_hs_resources),
 	.resource = mxci2c_hs_resources
 };
+#endif
+
+#endif // (CONFIG_I2C_MXC) || (CONFIG_I2C_MXC_MODULE)
 
 static struct resource ssi1_resources[] = {
 	{
