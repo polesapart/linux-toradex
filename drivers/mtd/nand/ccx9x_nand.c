@@ -17,6 +17,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 
 #include <mach/gpio.h>
 

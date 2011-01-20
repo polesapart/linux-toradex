@@ -18,6 +18,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <mach/dma-ns921x.h>
+#include <linux/sched.h>
 
 #define DMA_BDPOINTER	0x0
 

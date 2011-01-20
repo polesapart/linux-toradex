@@ -290,7 +290,6 @@ extern int noirqdebug;
  */
 static void handle_prio_irq(unsigned int irq, struct irq_desc *desc)
 {
-	unsigned int cpu = smp_processor_id();
 	struct irqaction *action;
 	irqreturn_t action_ret;
 

@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/i2c-ns9xxx.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
 
 #include <asm/gpio.h>
 #include <asm/io.h>

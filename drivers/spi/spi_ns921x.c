@@ -24,10 +24,7 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/spinlock.h>
-//#include <linux/uaccess.h>
-//#include <linux/workqueue.h>
 
-#include <mach/dma.h>
 #include <mach/gpio.h>
 #include <mach/spi.h>
 

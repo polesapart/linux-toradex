@@ -32,7 +32,7 @@ static inline void arch_idle(void)
 void ns921x_reset(char);
 void ns9360_reset(char);
 
-static inline void arch_reset(char mode)
+static inline void arch_reset(char mode, const char *cmd)
 {
 #ifdef CONFIG_PROCESSOR_NS921X
 	if (processor_is_ns921x())

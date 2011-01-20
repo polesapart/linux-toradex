@@ -21,6 +21,7 @@
 #include <mach/gpio.h>
 #include <mach/ns9360fb.h>
 #include <mach/display/displays.h>
+#include <mach/irqs.h>
 
 #include "clock.h"
 #include "ns9360_devices.h"

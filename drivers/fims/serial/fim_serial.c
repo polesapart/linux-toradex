@@ -24,6 +24,7 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
+#include <linux/slab.h>
 #include <asm/io.h>
 #include <linux/clk.h>
 #include <asm/delay.h>

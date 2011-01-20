@@ -14,6 +14,8 @@
 #include <linux/clk.h>
 #include <linux/bcd.h>
 #include <linux/platform_device.h>
+#include <linux/slab.h>
+#include <linux/device.h>
 
 #include <asm/io.h>
 #include <asm/mach/time.h>

@@ -40,6 +40,7 @@ scm_version()
 	fi
 	if test "$1" = "--short"; then
 		short=true
+	fi
 
 	# Do we have a DEL-tag?
 	if git name-rev --tags HEAD | grep -i "del-" > /dev/null; then

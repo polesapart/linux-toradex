@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/serial_core.h>
 #include <linux/serial.h>
+#include <linux/slab.h>
 
 #include <mach/ns921x-serial.h>
 #include <mach/gpio.h>
@@ -378,7 +379,7 @@ static unsigned int ns921x_uart_check_msr(struct uart_port *port, u32 irqstat)
 	 * register instead of the delta section of the modem status register.
 	 * The interrupt flags are valid in all the cases */
 	if ((irqstat & (UART_IS_DSR|UART_IS_DCD|UART_IS_CTS|UART_IS_RI)) &&
-	     port->info != NULL) {
+	     port->state != NULL) {
 		if (irqstat & UART_IS_RI)
 			port->icount.rng++;
 		if (irqstat & UART_IS_DSR)
@@ -388,7 +389,7 @@ static unsigned int ns921x_uart_check_msr(struct uart_port *port, u32 irqstat)
 		if (irqstat & UART_IS_CTS)
 			uart_handle_cts_change(port, status & UART_MSR_CTS);
 
-		wake_up_interruptible(&port->info->delta_msr_wait);
+		wake_up_interruptible(&port->state->port.delta_msr_wait);
 	}
 
 	return status;
@@ -453,7 +454,7 @@ static void ns921x_uart_stop_tx(struct uart_port *port)
 static void ns921x_uart_tx_chars(struct uart_ns921x_port *unp,
 		unsigned int freebuffers)
 {
-	struct circ_buf *xmit = &unp->port.info->xmit;
+	struct circ_buf *xmit = &unp->port.state->xmit;
 	unsigned long ifs;
 
 	BUG_ON(!freebuffers);
@@ -629,7 +630,7 @@ static void ns921x_uart_rx_char(struct uart_ns921x_port *unp,
 static void ns921x_uart_rx_chars(struct uart_ns921x_port *unp,
 		u32 ifs, u32 is)
 {
-	struct tty_struct *tty = unp->port.info->port.tty;
+	struct tty_struct *tty = unp->port.state->port.tty;
 
 	if (is & (UART_IS_RBC | UIS_RX))
 		ns921x_uart_clear_is(unp, is & (UART_IS_RBC | UIS_RX));

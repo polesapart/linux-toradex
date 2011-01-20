@@ -1067,6 +1067,11 @@ static int __init gpiolib_sysfs_init(void)
 	}
 	spin_unlock_irqrestore(&gpio_lock, flags);
 
+
+	return status;
+}
+postcore_initcall(gpiolib_sysfs_init);
+
 int gpio_wakeup_configure(unsigned gpio, int value)
 {
 	unsigned long		flags;
@@ -1123,10 +1128,6 @@ fail:
 	return status;
 }
 EXPORT_SYMBOL_GPL(gpio_wakeup_configure);
-
-	return status;
-}
-postcore_initcall(gpiolib_sysfs_init);
 
 #else
 static inline int gpiochip_export(struct gpio_chip *chip)
@@ -1649,6 +1650,7 @@ EXPORT_SYMBOL_GPL(__gpio_get_value);
 void __gpio_set_value(unsigned gpio, int value)
 {
 	struct gpio_chip	*chip;
+
 	chip = gpio_to_chip(gpio);
 	WARN_ON(extra_checks && chip->can_sleep);
 	chip->set(chip, gpio - chip->base, value);

@@ -24,7 +24,6 @@
 #include <linux/spinlock.h>
 #include <linux/stat.h>
 #include <linux/kthread.h>
-#include <mach/dma.h>
 #include <mach/gpio.h>
 #include <mach/spi.h>
 #include <mach/fim-ns921x.h>
