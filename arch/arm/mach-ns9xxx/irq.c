@@ -76,7 +76,7 @@ int ns9xxx_is_enabled_irq(unsigned int irq)
 
 	en_bit_mask = 0x80 << ((3 - (prio & 3)) * 8);
 	ic = __raw_readl(SYS_IC(prio / 4));
-	
+
 	return ic & en_bit_mask;
 }
 EXPORT_SYMBOL(ns9xxx_is_enabled_irq);
@@ -293,7 +293,7 @@ static void handle_prio_irq(unsigned int irq, struct irq_desc *desc)
 	struct irqaction *action;
 	irqreturn_t action_ret;
 
-	spin_lock(&desc->lock);
+	raw_spin_lock(&desc->lock);
 
 	desc->chip->ack(irq);
 
@@ -313,13 +313,13 @@ static void handle_prio_irq(unsigned int irq, struct irq_desc *desc)
 
 	desc->status |= IRQ_INPROGRESS;
 	desc->status &= ~IRQ_PENDING;
-	spin_unlock(&desc->lock);
+	raw_spin_unlock(&desc->lock);
 
 	action_ret = handle_IRQ_event(irq, action);
 	if (!noirqdebug)
 		note_interrupt(irq, desc, action_ret);
 
-	spin_lock(&desc->lock);
+	raw_spin_lock(&desc->lock);
 	desc->status &= ~IRQ_INPROGRESS;
 
 	if (desc->status & IRQ_DISABLED)
@@ -329,7 +329,7 @@ out_mask:
 	desc->chip->eoi(irq);
 
 out_unlock:
-	spin_unlock(&desc->lock);
+	raw_spin_unlock(&desc->lock);
 }
 
 void __init ns9xxx_init_irq(void)
