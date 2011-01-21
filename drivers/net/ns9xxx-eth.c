@@ -1185,6 +1185,22 @@ static int ns9xxx_eth_mdiobus_disable(struct net_device *dev)
 	return 0;
 }
 
+static const struct net_device_ops ns9xxx_netdev_ops = {
+	.ndo_open               = ns9xxx_eth_open,
+	.ndo_stop               = ns9xxx_eth_stop,
+	.ndo_start_xmit         = ns9xxx_eth_hard_start_xmit,
+	.ndo_tx_timeout         = ns9xxx_eth_tx_timeout,
+	.ndo_set_multicast_list = ns9xxx_set_multicast_list,
+	.ndo_do_ioctl		= ns9xxx_eth_ioctl,
+	.ndo_get_stats		= ns9xxx_eth_get_stats,
+	.ndo_change_mtu         = eth_change_mtu,
+	.ndo_validate_addr      = eth_validate_addr,
+	.ndo_set_mac_address    = eth_mac_addr,
+#ifdef CONFIG_NET_POLL_CONTROLLER
+	.ndo_poll_controller    = ns9xxx_eth_netpoll,
+#endif
+};
+
 static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 {
 	struct net_device *dev;
@@ -1227,16 +1243,7 @@ static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 	SET_NETDEV_DEV(dev, &pdev->dev);
 	platform_set_drvdata(pdev, dev);
 
-	dev->open = ns9xxx_eth_open;
-	dev->stop = ns9xxx_eth_stop;
-	dev->hard_start_xmit = ns9xxx_eth_hard_start_xmit;
-	dev->tx_timeout = ns9xxx_eth_tx_timeout;
-	dev->get_stats = ns9xxx_eth_get_stats;
-	dev->set_multicast_list = ns9xxx_set_multicast_list;
-	dev->do_ioctl = ns9xxx_eth_ioctl;
-#ifdef CONFIG_NET_POLL_CONTROLLER
-	dev->poll_controller = ns9xxx_eth_netpoll;
-#endif
+	dev->netdev_ops = &ns9xxx_netdev_ops;
 
 	/* TODO: implement VLAN */
 	dev->features = 0;
