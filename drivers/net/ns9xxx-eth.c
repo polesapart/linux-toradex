@@ -250,6 +250,8 @@ struct ns9xxx_eth_priv {
 	unsigned int activityled;
 #endif
 
+	struct net_device *ndev;	/* Parent NET device */
+
 	/* phy management */
 	int lastlink;
 	int lastduplex;
@@ -542,8 +544,7 @@ static void ns9xxx_eth_recover_from_rx_stall(struct work_struct *work)
 	    container_of(work, struct ns9xxx_eth_priv,
 			 recover_from_rx_stall.work);
 
-	struct net_device *dev =
-	    container_of((void *)priv, struct net_device, priv);
+	struct net_device *dev = priv->ndev;
 	unsigned long flags;
 	int i, timeout = 20;
 
@@ -1241,6 +1242,7 @@ static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 	dev->features = 0;
 
 	priv = netdev_priv(dev);
+	priv->ndev = dev;
 
 	spin_lock_init(&priv->lock);
 	INIT_DELAYED_WORK(&priv->recover_from_rx_stall, ns9xxx_eth_recover_from_rx_stall);
