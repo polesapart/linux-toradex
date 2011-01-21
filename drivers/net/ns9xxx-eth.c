@@ -1090,7 +1090,7 @@ static int ns9xxx_eth_mdiobus_init(struct platform_device *pdev)
 	struct ns9xxx_eth_priv *priv = netdev_priv(dev);
 	struct plat_ns9xxx_eth *pdata = pdev->dev.platform_data;
 	int i;
-	char phyid[BUS_ID_SIZE];
+	char phyid[MII_BUS_ID_SIZE + 3];
 	int ret = -ENOMEM;
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
