@@ -1058,18 +1058,18 @@ static void ns9xxx_set_multicast_list(struct net_device *dev)
 		/* get all multicast traffic */
 		saf |= ETH_SAF_PRM;
 
-	else if (dev->mc_count > 0) {
-		struct dev_addr_list *m;
+	else if (!netdev_mc_empty(dev)) {
+		struct netdev_hw_addr *ha;
 		u32 ht[2] = {0, 0};
 
-		for (m = dev->mc_list; m; m = m->next) {
+		netdev_for_each_mc_addr(ha, dev) {
 			/*
 			 * The HRM of ns9360 and ns9215 state that the upper 6
 			 * bits are used to calculate the bit in the hash table,
 			 * but the sample code (and the NET+OS driver) uses bits
 			 * 28:23 ...
 			 */
-			u32 crc = ether_crc(ETH_ALEN, m->dmi_addr) >> 23;
+			u32 crc = ether_crc(ETH_ALEN, ha->addr) >> 23;
 			crc &= 0x3f;
 
 			ht[crc & 0x20 ? 1 : 0] |= 1 << (crc & 0x1f);
