@@ -1289,8 +1289,6 @@ static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 				"00:04:f3:ff:ff:fa\n");
 		memcpy(dev->dev_addr, "\x00\x04\xf3\xff\xff\xfa", ETH_ALEN);
 	} else {
-		DECLARE_MAC_BUF(mac);
-
 		/* assume the bootloader has provided a valid mac address */
 		dev->dev_addr[4] = sa;
 		dev->dev_addr[5] = sa >> 8;
@@ -1300,8 +1298,7 @@ static __devinit int ns9xxx_eth_pdrv_probe(struct platform_device *pdev)
 		sa = ethread32(dev, ETH_SA3);
 		dev->dev_addr[0] = sa;
 		dev->dev_addr[1] = sa >> 8;
-		dev_dbg(&pdev->dev, "mac address: %s\n",
-				print_mac(mac, dev->dev_addr));
+		dev_dbg(&pdev->dev, "mac address: %pM\n", dev->dev_addr);
 	}
 
 	ethwrite32(dev, ETH_EGCR1_PM_MII | ETH_EGCR1_MACHRST, ETH_EGCR1);
