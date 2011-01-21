@@ -215,10 +215,10 @@ inline static struct uart_port *get_uart_from_port(struct fim_serial_t *port)
 
 inline static struct tty_struct *get_tty_from_port(struct fim_serial_t *port)
 {
-	struct uart_info *info;
+	struct uart_state *state;
 
-	info = port->uart.info;
-	return (info) ? info->port.tty : NULL;
+	state = port->uart.state;
+	return (state) ? state->port.tty : NULL;
 }
 
 inline static struct fim_serial_t *get_port_by_index(int index)
@@ -768,7 +768,7 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 
 	spin_lock(&port->tx_lock);
 
-	xmit  = &uart->info->xmit;
+	xmit  = &uart->state->xmit;
 	len = uart_circ_chars_pending(xmit);
 	data = 1;
 	if (port->cflag & CSTOPB)
@@ -843,7 +843,7 @@ static int fim_serial_transmit(struct uart_port *uart)
 
 	port = get_port_from_uart(uart);
 	fim = &port->fim;
-	xmit  = &uart->info->xmit;
+	xmit  = &uart->state->xmit;
 
 	/*
 	 * Check if we have enough space for the request, if not then the tasklet
@@ -955,7 +955,7 @@ static void fim_serial_tasklet_func(unsigned long data)
 	if (!uart)
 		return;
 
-	xmit = &uart->info->xmit;
+	xmit = &uart->state->xmit;
 	if (uart_circ_chars_pending(xmit))
 		fim_serial_transmit(uart);
 }

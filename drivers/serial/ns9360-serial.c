@@ -167,7 +167,7 @@ static void ns9360_uart_stop_tx(struct uart_port *port)
  * This is called with port->lock taken */
 static void ns9360_uart_rx_chars(struct uart_ns9360_port *unp)
 {
-	struct tty_struct *tty = unp->port.info->port.tty;
+	struct tty_struct *tty = unp->port.state->port.tty;
 	u32 status, available, characters, flag;
 
 	/* acknowledge rbc if set */
@@ -223,7 +223,7 @@ static void ns9360_uart_rx_chars(struct uart_ns9360_port *unp)
 /* send out chars in xmit buffer.  This is called with port->lock taken */
 static void ns9360_uart_tx_chars(struct uart_ns9360_port *unp)
 {
-	struct circ_buf *xmit = &unp->port.info->xmit;
+	struct circ_buf *xmit = &unp->port.state->xmit;
 
 	assert_spin_locked(&unp->port.lock);
 

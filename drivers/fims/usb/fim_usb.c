@@ -355,10 +355,10 @@ static inline struct fim_usb_port *port_from_fim(struct fim_driver *fim)
 
 static inline struct tty_struct *tty_from_port(struct fim_usb_port *port)
 {
-        struct uart_info *info;
+        struct uart_state *state;
 
-        info = port->uart.info;
-        return (info) ? info->port.tty : NULL;
+        state = port->uart.state;
+        return (state) ? state->port.tty : NULL;
 }
 
 static inline struct fim_usb_port *port_from_uart(struct uart_port *uart)
@@ -1163,7 +1163,7 @@ static void fim_usb_tx_isr(struct fim_driver *fim, int irq,
 	if (uart) {
 
 		/* The worker will wakeup the device if the circular buffer is empty */
-		xmit = &uart->info->xmit;
+		xmit = &uart->state->xmit;
 		if (xmit && !uart_circ_empty(xmit) && !uart_tx_stopped(uart)) {
 			dbg_uart("EP%02x Scheduling TX work\n", ep->addr);
 			schedule_work(&ep->tx_work);
@@ -1510,7 +1510,7 @@ static void fim_usb_uart_tx_work_func(struct work_struct *work)
 		return;
 
 	uart = ep->tx_uart;
-	xmit  = &uart->info->xmit;
+	xmit  = &uart->state->xmit;
 	tail = xmit->tail;
 	tx = uart->icount.tx;
 	pending = uart_circ_chars_pending(xmit);
@@ -1600,7 +1600,7 @@ static void fim_usb_uart_start_tx(struct uart_port *uart)
 	ep = &port->eps[FIM_USB_NR_EP_IN];
 	ep->tx_uart = uart;
 
-	xmit  = &uart->info->xmit;
+	xmit  = &uart->state->xmit;
 	pending = uart_circ_chars_pending(xmit);
 
 	dbg_uart("Scheduling TX worker | %lu bytes\n", pending);
