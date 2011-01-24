@@ -19,6 +19,8 @@ static void putc_dummy(char c, void __iomem *base)
 	/* nothing */
 }
 
+static int timeout;
+
 #if defined(CONFIG_PROCESSOR_NS9360)
 # define NS9360_UARTA	__REG(0x90200040)
 # define NS9360_UARTB	__REG(0x90200000)
@@ -28,17 +30,16 @@ static void putc_dummy(char c, void __iomem *base)
 		(__raw_readl(NS9360_UARTA) & (1 << 31))
 static void putc_ns9360(char c, void __iomem *base)
 {
-	static int t = 0x10000;
 	do {
-		if (t)
-			--t;
+		if (timeout)
+			--timeout;
 
 		if (__raw_readl(base + 8) & (1 << 3)) {
 			__raw_writeb(c, base + 16);
-			t = 0x10000;
+			timeout = 0x10000;
 			break;
 		}
-	} while (t);
+	} while (timeout);
 }
 #endif
 
@@ -53,17 +54,16 @@ static void putc_ns9360(char c, void __iomem *base)
 
 static void putc_ns921x(char c, void __iomem *base)
 {
-	static int t = 0x10000;
 	do {
-		if (t)
-			--t;
+		if (timeout)
+			--timeout;
 
 		if (!(__raw_readl(base) & (1 << 11))) {
 			__raw_writeb(c, base + 0x0028);
-			t = 0x10000;
+			timeout = 0x10000;
 			break;
 		}
-	} while (t);
+	} while (timeout);
 }
 
 #include "fim-uncompress.h"
