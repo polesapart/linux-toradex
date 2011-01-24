@@ -1688,7 +1688,7 @@ static int fim_probe(struct device *dev)
 	if (!dev)
 		return -EINVAL;
 
-	printk_debug("Starting the FIM-probe of the device `%s'\n", dev->bus_id);
+	printk_debug("Starting the FIM-probe of the device `%s'\n", dev_name(dev));
 
 	/* Use the get_pic_by_index function for verifying that we have a FIM attached */
 	pic = (struct pic_t *)dev->driver_data;
@@ -1761,7 +1761,7 @@ static int fim_remove(struct device *dev)
 	if (!pic)
 		return -EINVAL;
 
-	printk_info("Starting to remove the PIC %s\n", dev->bus_id);
+	printk_info("Starting to remove the PIC %s\n", dev_name(dev));
 
 	if (pic->driver) {
 		retval = fim_unregister_driver(pic->driver);
@@ -1805,7 +1805,6 @@ struct bus_type fim_bus_type = {
  * the sys file is under: /sys/devices/fims/
  */
 struct device fim_bus_dev = {
-	.bus_id = "fims",
 	.release = fim_pic_release
 };
 
@@ -1828,13 +1827,11 @@ static struct device_driver fims_driver = {
  */
 static struct device fim_pics[] = {
 	{
-		.bus_id = "fim0",
 		.release = fim_pic_release,
 		.bus = &fim_bus_type,
 		.parent = &fim_bus_dev,
 	},
 	{
-		.bus_id = "fim1",
 		.release = fim_pic_release,
 		.bus = &fim_bus_type,
 		.parent = &fim_bus_dev,
@@ -2121,6 +2118,7 @@ static int __devinit fim_init_module(void)
 	}
 
 	/* Register the bus parent */
+	dev_set_name(&fim_bus_dev, "fims");
 	ret = device_register(&fim_bus_dev);
 	if (ret) {
 		printk_err( "Couldn't register the parent PIC device, %i\n", ret);
@@ -2135,10 +2133,14 @@ static int __devinit fim_init_module(void)
 
 	/* Start registering the PIC devices */
 	for (i=0; i <= FIM_MAX_PIC_INDEX; i++) {
+		char fim_name[5];
+
 		pic = &the_fims->pics[i];
 		pic->index = i;
 		pic->irq = IRQ_NS921X_PIC0 + i;
 		fim_pics[i].driver_data = pic;
+		sprintf(fim_name, "fim%d", i);
+		dev_set_name(&fim_pics[i], fim_name);
 		ret = device_register(&fim_pics[i]);
 		if (ret) {
 			printk_err("Registering the PIC device %i, %i\n", i, ret);

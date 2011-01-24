@@ -766,7 +766,7 @@ static int __init ns9xxx_rtc_probe(struct platform_device *pdev)
 		goto err_sysfs_bin;
 
 	ret = request_irq(pdata->irq, ns9xxx_rtc_irq_handler, IRQF_SHARED,
-			pdata->rtc->dev.bus_id, pdata);
+			dev_name(&pdata->rtc->dev), pdata);
 	if (ret) {
 		dev_dbg(&pdev->dev, "err_request_irq -> %d\n", ret);
 
