@@ -574,7 +574,7 @@ static irqreturn_t ns9xxx_rtc_irq_handler(int irq, void *irq_data)
 	return IRQ_RETVAL(handled);
 }
 
-static ssize_t ns9xxx_rtc_nvram_read(struct kobject *kobj,
+static ssize_t ns9xxx_rtc_nvram_read(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *bin_attr, char *buf,
 		loff_t pos, size_t size)
 {
@@ -613,7 +613,7 @@ static ssize_t ns9xxx_rtc_nvram_read(struct kobject *kobj,
 	return npos - pos;
 }
 
-static ssize_t ns9xxx_rtc_nvram_write(struct kobject *kobj,
+static ssize_t ns9xxx_rtc_nvram_write(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *bin_attr, char *buf,
 		loff_t pos, size_t size)
 {

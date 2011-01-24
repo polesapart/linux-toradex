@@ -140,8 +140,9 @@ static int fim_start_tx_dma(struct pic_t *pic);
  * the return buffer
  * When the module is unregistered it's NOT required to reset the attributes
  */
-static ssize_t fim_sysfs_attr_read(struct kobject *kobj, struct bin_attribute *attr,
-				   char *buffer, loff_t off, size_t count)
+static ssize_t fim_sysfs_attr_read(struct file *filp, struct kobject *kobj,
+				   struct bin_attribute *attr, char *buffer,
+				   loff_t off, size_t count)
 {
 	int size, cnt;
 	struct device *dev;
