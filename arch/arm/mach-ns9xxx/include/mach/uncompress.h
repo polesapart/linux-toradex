@@ -66,6 +66,7 @@ static void putc_ns921x(char c, void __iomem *base)
 	} while (timeout);
 }
 
+# if defined(CONFIG_SERIAL_FIM_CONSOLE)
 #include "fim-uncompress.h"
 
 static void putc_ns921x_fim(char ch, void __iomem *base)
@@ -89,7 +90,8 @@ static void putc_ns921x_fim(char ch, void __iomem *base)
         fim_set_ctrl_reg(pic, 1, (data >> 8) & 0xFF);
         fim_send_interrupt(pic, FIM_SERIAL_INT_INSERT_CHAR);
 }
-#endif
+#endif /* CONFIG_SERIAL_FIM_CONSOLE */
+#endif /* CONFIG_PROCESSOR_NS921X */
 
 static void autodetect(void (**putc)(char, void __iomem *), void __iomem **base)
 {
