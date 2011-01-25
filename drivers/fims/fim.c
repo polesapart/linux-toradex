@@ -78,7 +78,6 @@ MODULE_VERSION("0.1");
 #  define printk_debug(fmt, args...)
 #endif
 
-
 #define PIC_IS_LOCKED(pic)		(atomic_read(&pic->requested))
 #define PIC_LOCK_REQUEST(pic)		do { atomic_set(&pic->requested, 1); } while (0)
 #define PIC_FREE_REQUEST(pic)		do { atomic_set(&pic->requested, 0); } while (0)
@@ -86,7 +85,6 @@ MODULE_VERSION("0.1");
 #define PIC_TX_LOCK(pic)		do { atomic_set(&pic->tx_tasked, 1); } while (0)
 #define PIC_TX_FREE(pic)		do { atomic_set(&pic->tx_tasked, 0); } while (0)
 #define PIC_TX_IS_FREE(pic)		(!atomic_read(&pic->tx_tasked))
-
 
 /* Use the same function for all the binary attributes */
 #define FIM_SYSFS_ATTR(_name) \
@@ -99,7 +97,6 @@ MODULE_VERSION("0.1");
     .read =  fim_sysfs_attr_read, \
 }
 
-
 struct fims_t {
 	struct pic_t pics[FIM_NR_PICS];
 	struct bus_type *bus_type;
@@ -109,16 +106,13 @@ struct fims_t {
 
 static struct fims_t *the_fims;
 
-
 static int pic_config_output_clock_divisor(struct pic_t *pic,
 					   struct fim_program_t *program);
 static int pic_send_interrupt(struct pic_t *pic, unsigned int code);
 
-
 static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer);
 static int pic_stop_and_reset(struct pic_t *pic);
 static int pic_start_at_zero(struct pic_t *pic);
-
 
 static int fim_remove(struct device *dev);
 static int fim_probe(struct device *dev);
@@ -127,13 +121,11 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg);
 static void pic_dma_stop(struct pic_t *pic);
 static int pic_is_running(struct pic_t *pic);
 
-
 /* Interrupt handlers */
 static void isr_from_pic(struct pic_t *pic, int irqnr);
 static void isr_dma_tx(struct pic_t *pic, int irqnr);
 static void isr_dma_rx(struct pic_t *pic, int irqnr);
 static int fim_start_tx_dma(struct pic_t *pic);
-
 
 /*
  * Be aware with this function, we have max. one PAGE available for writing into
@@ -211,7 +203,6 @@ static ssize_t fim_sysfs_attr_read(struct file *filp, struct kobject *kobj,
 	return size;
 }
 
-
 /* These are the non-default binary attributes for the FIMs */
 static struct bin_attribute fim_sysfs_attrs[] = {
         FIM_SYSFS_ATTR(irq),
@@ -223,8 +214,6 @@ static struct bin_attribute fim_sysfs_attrs[] = {
 	FIM_SYSFS_ATTR(txdma),
 	FIM_SYSFS_ATTR(rxdma),
 };
-
-
 
 /*
  * This tasklet will search for full receive DMA-buffers
@@ -288,8 +277,6 @@ static void pic_rx_tasklet_func(unsigned long data)
 	spin_unlock(&pic->rx_lock);
 }
 
-
-
 inline static struct pic_t *get_pic_by_index(int index)
 {
 	if (index < FIM_MIN_PIC_INDEX || index > FIM_MAX_PIC_INDEX)
@@ -299,7 +286,6 @@ inline static struct pic_t *get_pic_by_index(int index)
 	return &the_fims->pics[index];
 }
 
-
 static struct pic_t *get_pic_from_driver(struct fim_driver *driver)
 {
 	if (!driver)
@@ -307,7 +293,6 @@ static struct pic_t *get_pic_from_driver(struct fim_driver *driver)
 
 	return get_pic_by_index(driver->picnr);
 }
-
 
 static int pic_get_ctrl_reg(struct pic_t *pic, int reg, unsigned int *val)
 {
@@ -318,7 +303,6 @@ static int pic_get_ctrl_reg(struct pic_t *pic, int reg, unsigned int *val)
 	return 0;
 }
 
-
 static void pic_set_ctrl_reg(struct pic_t *pic, int reg, unsigned int val)
 {
 	if (NS92XX_FIM_CTRL_REG_CHECK(reg))
@@ -326,7 +310,6 @@ static void pic_set_ctrl_reg(struct pic_t *pic, int reg, unsigned int val)
 
 	writel(val, pic->reg_addr + NS92XX_FIM_CTRL_REG(reg));
 }
-
 
 static int pic_is_running(struct pic_t *pic)
 {
@@ -349,12 +332,10 @@ int fim_is_running(struct fim_driver *driver)
 	return pic_is_running(pic);
 }
 
-
 static void fim_pic_release(struct device *dev)
 {
 	/* @TODO: Nothing to do here? */
 }
-
 
 /*
  * Returns the number of available bytes that can be theoretically requested
@@ -381,8 +362,6 @@ int fim_tx_buffers_room(struct fim_driver *driver)
 	return retval;
 }
 
-
-
 int fim_tx_buffers_level(struct fim_driver *driver)
 {
 	int retval, cnt;
@@ -402,13 +381,10 @@ int fim_tx_buffers_level(struct fim_driver *driver)
 	return retval;
 }
 
-
 int fim_number_pics(void)
 {
 	return FIM_NR_PICS;
 }
-
-
 
 /*
  * Allocate a new FIM-buffer
@@ -446,7 +422,6 @@ void fim_free_buffer(struct fim_driver *driver, struct fim_buffer_t *buffer)
 	kfree(buffer);
 }
 
-
 /*
  * Be sure that you protect this function correctly.
  * Use the spinlock tx_lock for this purpose.
@@ -466,7 +441,6 @@ inline static void pic_reset_tx_fifo(struct pic_t *pic)
 		atomic_set(&pic_desc->tasked, 0);
 	}
 }
-
 
 /*
  * Check if there are enough buffers for the requested memory size
@@ -560,7 +534,6 @@ int fim_send_buffer(struct fim_driver *driver, const struct fim_buffer_t *bufdes
 	return retval;
 }
 
-
 /* @TODO: Please test this function before using it */
 void fim_flush_rx(struct fim_driver *driver)
 {
@@ -589,7 +562,6 @@ void fim_flush_rx(struct fim_driver *driver)
 	fim_dma_reset_fifo(fifo);
 }
 
-
 /*
  * Drain the TX-buffers by first aborting the DMA-channel. The DMA-descriptors
  * will be reseted inside the interrupt routine
@@ -605,8 +577,6 @@ void fim_flush_tx(struct fim_driver *driver)
 
 	writel(IOHUB_RX_DMA_CTRL_CA, pic->iohub_addr + IOHUB_TX_DMA_CTRL_REG);
 }
-
-
 
 /*
  * This function is responsible for restarting the DMA-channel with the correct index
@@ -698,9 +668,6 @@ static int fim_start_tx_dma(struct pic_t *pic)
 	return retval;
 }
 
-
-
-
 /* DONT poll with this function. We need another function for this purpose. */
 int fim_get_exp_reg(struct fim_driver *driver, int nr, unsigned int *value)
 {
@@ -716,8 +683,6 @@ int fim_get_exp_reg(struct fim_driver *driver, int nr, unsigned int *value)
 
 	return 0;
 }
-
-
 
 /* Called when the PIC interrupts the ARM-processor */
 static void isr_from_pic(struct pic_t *pic, int irqnr)
@@ -755,8 +720,6 @@ static void isr_from_pic(struct pic_t *pic, int irqnr)
 	writel(status & ~NS92XX_FIM_GEN_CTRL_INTACKWR, pic->reg_addr +
 	       NS92XX_FIM_GEN_CTRL_REG);
 }
-
-
 
 static void isr_dma_tx(struct pic_t *pic, int irqnr)
 {
@@ -809,7 +772,6 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 		return;
 	}
 
-
 	/*
 	 * If no NC interrupt pending then return immediately.
 	 * @FIXME: Is possible that a driver is waiting for the TXNCIP on this case?
@@ -842,7 +804,6 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 		desc = fim_dma_get_next(fifo, desc);
 	} while (desc != fim_dma_get_next(fifo, fifo->dma_last));
 
-
 	/* Now give the control to the driver's callback function */
 	if (driver->dma_tx_isr)
 		driver->dma_tx_isr(driver, pic->irq, &buffer);
@@ -854,10 +815,7 @@ static void isr_dma_tx(struct pic_t *pic, int irqnr)
 	/* Check if another descriptors are waiting in the FIFO */
 	if (fifo->dma_next != fifo->dma_last)
 		fim_start_tx_dma(pic);
-
 }
-
-
 
 /* Only check that no errors ocurred by the last buffer descriptor */
 static void isr_dma_rx(struct pic_t *pic, int irqnr)
@@ -919,7 +877,6 @@ static void isr_dma_rx(struct pic_t *pic, int irqnr)
 	tasklet_hi_schedule(&pic->rx_tasklet);
 }
 
-
 /* This is the main ISR for the PIC-interrupts */
 static irqreturn_t pic_irq(int irq, void *tpic)
 {
@@ -942,8 +899,6 @@ static irqreturn_t pic_irq(int irq, void *tpic)
 	return IRQ_HANDLED;
 }
 
-
-
 int fim_enable_irq(struct fim_driver *driver)
 {
 	struct pic_t *pic;
@@ -962,7 +917,6 @@ int fim_enable_irq(struct fim_driver *driver)
 	}
 	return 0;
 }
-
 
 int fim_disable_irq(struct fim_driver *driver)
 {
@@ -1055,7 +1009,6 @@ int fim_download_firmware(struct fim_driver *driver)
  exit_download:
 	return retval;
 }
-
 
 int fim_register_driver(struct fim_driver *driver)
 {
@@ -1172,7 +1125,6 @@ int fim_register_driver(struct fim_driver *driver)
 	return retval;
 }
 
-
 int fim_unregister_driver(struct fim_driver *driver)
 {
 	int ret;
@@ -1210,7 +1162,6 @@ int fim_unregister_driver(struct fim_driver *driver)
 	return 0;
 }
 
-
 /*
  * Return a PIC-pointer for low level operations
  * The driver structure contains the number of the pointer
@@ -1231,7 +1182,6 @@ struct pic_t *fim_request_pic(int picnr)
 	return pic;
 }
 
-
 /*
  * Free the PIC that was requested with the above function fim_request_pic()
  */
@@ -1245,7 +1195,6 @@ void fim_free_pic(struct pic_t *pic)
 
 	PIC_FREE_REQUEST(pic);
 }
-
 
 /*
  * This function can be used for downloading a firmware to the PIC.
@@ -1338,8 +1287,6 @@ static int pic_download_firmware(struct pic_t *pic, const unsigned char *buffer)
 	return 0;
 }
 
-
-
 static int pic_start_at_zero(struct pic_t *pic)
 {
 	unsigned int regval;
@@ -1363,7 +1310,6 @@ static int pic_start_at_zero(struct pic_t *pic)
 
 	return 0;
 }
-
 
 static int pic_stop_and_reset(struct pic_t *pic)
 {
@@ -1467,7 +1413,6 @@ int fim_send_reset(struct fim_driver *driver)
 	return retval;
 }
 
-
 int fim_send_start(struct fim_driver *driver)
 {
 	ulong reg;
@@ -1527,7 +1472,6 @@ int fim_send_interrupt2(struct fim_driver *driver, unsigned int code)
 	return pic_send_interrupt(pic, code);
 }
 
-
 /*
  * This function provides the access to the control registers of the PICs
  * reg : Number of the control register (from 0 to 15)
@@ -1542,7 +1486,6 @@ void fim_set_ctrl_reg(struct fim_driver *driver, int reg, unsigned int val)
 
 	writel(val, pic->reg_addr + NS92XX_FIM_CTRL_REG(reg));
 }
-
 
 /* Provides the read access to the control registers of the PICs */
 int fim_get_ctrl_reg(struct fim_driver *driver, int reg, unsigned int *val)
@@ -1559,8 +1502,6 @@ int fim_get_ctrl_reg(struct fim_driver *driver, int reg, unsigned int *val)
 	return 0;
 }
 
-
-
 int fim_get_stat_reg(struct fim_driver *driver, int reg, unsigned int *val)
 {
 	struct pic_t *pic;
@@ -1574,8 +1515,6 @@ int fim_get_stat_reg(struct fim_driver *driver, int reg, unsigned int *val)
 	*val = readl(pic->reg_addr + NS92XX_FIM_STAT_REG(reg));
 	return 0;
 }
-
-
 
 /* Interrupt the PIC sending the interrput with the number `code' */
 static int pic_send_interrupt(struct pic_t *pic, u32 code)
@@ -1625,7 +1564,6 @@ static int pic_send_interrupt(struct pic_t *pic, u32 code)
 
 	return 0;
 }
-
 
 /* Set the HWA PIC clock (see PIC module specification, page 19) */
 static int pic_config_output_clock_divisor(struct pic_t *pic,
@@ -1679,7 +1617,6 @@ static int pic_config_output_clock_divisor(struct pic_t *pic,
 	writel(val | clkd, pic->hwa_addr + NS92XX_FIM_HWA_GEN_CONF_REG);
 	return 0;
 }
-
 
 static int fim_probe(struct device *dev)
 {
@@ -1749,10 +1686,8 @@ static int fim_probe(struct device *dev)
 	if (pic->iohub_addr) iounmap(pic->iohub_addr);
 	pic->reg_addr = pic->instr_addr = pic->hwa_addr = pic->iohub_addr = NULL;
 
-
 	return retval;
 }
-
 
 /* This function will be called for each PIC-device (but not for the parent device) */
 static int fim_remove(struct device *dev)
@@ -1786,7 +1721,6 @@ static int fim_remove(struct device *dev)
 	return 0;
 }
 
-
 /* This function returns a non-zero value if the device correspond to our fim-bus */
 static int fim_bus_match(struct device *dev, struct device_driver *driver)
 {
@@ -1794,12 +1728,10 @@ static int fim_bus_match(struct device *dev, struct device_driver *driver)
 	return 1;
 }
 
-
 struct bus_type fim_bus_type = {
 	.name = FIM_BUS_TYPE_NAME,
 	.match = fim_bus_match,
 };
-
 
 /*
  * Bus parent that will be registered without calling the probe function
@@ -1809,7 +1741,6 @@ struct device fim_bus_dev = {
 	.release = fim_pic_release
 };
 
-
 static struct device_driver fims_driver = {
 	.probe =  fim_probe,
 	.remove = fim_remove,
@@ -1817,8 +1748,6 @@ static struct device_driver fims_driver = {
 	.owner = THIS_MODULE,
 	.bus = &fim_bus_type,
 };
-
-
 
 /*
  * These are the two PIC devices that we currently have in the NS9215
@@ -1838,7 +1767,6 @@ static struct device fim_pics[] = {
 		.parent = &fim_bus_dev,
 	}
 };
-
 
 /*
  * If no configuration for the DMA-buffer descriptors is passed (cfg = NULL),
@@ -1868,7 +1796,6 @@ inline static int pic_dma_check_config(struct pic_t *pic, struct fim_dma_cfg_t *
 	pic->dma_cfg.txsz = (!cfg) ? PIC_DMA_BUFFER_SIZE : cfg->txsz;
 	return 0;
 }
-
 
 /*
  * This function starts the DMA-buffers and -fifos for the passed PIC
@@ -2011,7 +1938,6 @@ static int pic_dma_init(struct pic_t *pic, struct fim_dma_cfg_t *cfg)
 
 	return retval;
 }
-
 
 static void pic_dma_stop(struct pic_t *pic)
 {
@@ -2171,7 +2097,6 @@ static int __devinit fim_init_module(void)
 	return ret;
 }
 
-
 static void __devexit fim_exit_module(void)
 {
 	int i;
@@ -2189,10 +2114,8 @@ static void __devexit fim_exit_module(void)
 	the_fims = NULL;
 }
 
-
 module_init(fim_init_module);
 module_exit(fim_exit_module);
-
 
 EXPORT_SYMBOL(fim_register_driver);
 EXPORT_SYMBOL(fim_unregister_driver);
