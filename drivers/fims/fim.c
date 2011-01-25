@@ -153,7 +153,7 @@ static ssize_t fim_sysfs_attr_read(struct file *filp, struct kobject *kobj,
 
 	dev = container_of(kobj, struct device, kobj);
 	bin = &attr->attr;
-	pic = (struct pic_t *)dev->driver_data;
+	pic = dev_get_drvdata(dev);
 	if (!pic)
 		return 0;
 
@@ -1692,7 +1692,7 @@ static int fim_probe(struct device *dev)
 	printk_debug("Starting the FIM-probe of the device `%s'\n", dev_name(dev));
 
 	/* Use the get_pic_by_index function for verifying that we have a FIM attached */
-	pic = (struct pic_t *)dev->driver_data;
+	pic = dev_get_drvdata(dev);
 	pic = get_pic_by_index(pic->index);
 	if (!pic) {
 		printk_err("Invalid PIC index %i\n", pic->index);
@@ -1758,7 +1758,7 @@ static int fim_probe(struct device *dev)
 static int fim_remove(struct device *dev)
 {
 	int retval, cnt;
-	struct pic_t *pic = (struct pic_t *)dev->driver_data;
+	struct pic_t *pic = dev_get_drvdata(dev);
 	if (!pic)
 		return -EINVAL;
 
@@ -2139,9 +2139,9 @@ static int __devinit fim_init_module(void)
 		pic = &the_fims->pics[i];
 		pic->index = i;
 		pic->irq = IRQ_NS921X_PIC0 + i;
-		fim_pics[i].driver_data = pic;
 		sprintf(fim_name, "fim%d", i);
 		dev_set_name(&fim_pics[i], fim_name);
+		dev_set_drvdata(&fim_pics[i], pic);
 		ret = device_register(&fim_pics[i]);
 		if (ret) {
 			printk_err("Registering the PIC device %i, %i\n", i, ret);
