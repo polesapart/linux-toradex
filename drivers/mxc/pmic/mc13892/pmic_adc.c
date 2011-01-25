@@ -1349,8 +1349,6 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 rm_dev_file:
 	device_remove_file(&(pdev->dev), &dev_attr_adc);
-rm_dev_file:
- 	device_remove_file(&(pdev->dev), &dev_attr_adc);
 dev_destroy:
 	device_destroy(pmic_adc_class, MKDEV(pmic_adc_major, 0));
 cl_destroy:

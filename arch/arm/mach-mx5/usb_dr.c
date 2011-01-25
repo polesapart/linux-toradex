@@ -261,3 +261,5 @@ void __init mx5_usb_dr_init(void)
 #endif
 	mxc_register_device(&mxc_usbdr_wakeup_device, &dr_wakeup_config);
 }
+
+#endif //defined(CONFIG_USB_OTG) || defined(CONFIG_USB_EHCI_ARC_OTG) || defined(CONFIG_USB_GADGET_ARC)

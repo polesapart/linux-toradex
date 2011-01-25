@@ -303,6 +303,7 @@ static struct clk fpm_clk = {
 	.flags = RATE_PROPAGATES,
 };
 
+#if 0
 static unsigned long _fpm_div2_get_rate(struct clk *clk)
 {
 	return  clk_get_rate(clk->parent) / 2;
@@ -313,6 +314,7 @@ static struct clk fpm_div2_clk = {
 	.get_rate = _fpm_div2_get_rate,
 	.flags = RATE_PROPAGATES,
 };
+#endif
 
 static unsigned long _clk_pll_get_rate(struct clk *clk)
 {
@@ -2335,6 +2337,7 @@ static struct clk hsi2c_serial_clk = {
 	.disable = _clk_disable,
 };
 
+#if 0
 static struct clk hsi2c_clk = {
 	.id = 0,
 	.parent = &ipg_clk,
@@ -2344,6 +2347,7 @@ static struct clk hsi2c_clk = {
 	.disable = _clk_disable,
 	.flags = AHB_HIGH_SET_POINT | CPU_FREQ_TRIG_UPDATE,
 };
+#endif
 
 static unsigned long _clk_cspi_get_rate(struct clk *clk)
 {
@@ -3929,6 +3933,7 @@ static struct clk lpsr_clk = {
 	.set_parent = _clk_lpsr_set_parent,
 };
 
+#if 0
 static unsigned long _clk_pgc_get_rate(struct clk *clk)
 {
 	u32 reg, div;
@@ -3944,6 +3949,7 @@ static struct clk pgc_clk = {
 	.parent = &ipg_clk,
 	.get_rate = _clk_pgc_get_rate,
 };
+#endif
 
 static unsigned long _clk_usb_get_rate(struct clk *clk)
 {

@@ -100,9 +100,10 @@ enum {
 	BOTH_OFF
 };
 
+#define FB_DEVICE_NUM 3
 static bool g_dp_in_use;
 LIST_HEAD(fb_alloc_list);
-static struct fb_info *mxcfb_info[3];
+static struct fb_info *mxcfb_info[FB_DEVICE_NUM];
 
 static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 {
@@ -1737,7 +1738,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 #ifdef CONFIG_MODULE_CCXMX51
 		/* This improves the VGA modes on the CCWi-i.MX51 */
 		if (mstr != NULL) {
-			mxcfbi->ipu_ext_clk = true;
+			mxcfbi->ipu_int_clk = true;
 			fbi->var.sync |= FB_SYNC_CLK_LAT_FALL;
 		}
 #endif

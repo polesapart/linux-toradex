@@ -13,6 +13,7 @@
 #define __ASM_ARCH_MXC_CCWMX51_DISPLAYS_LCD_H__
 
 #include "../iomux.h"
+#include "../mx51_pins.h"
 
 #if defined (CONFIG_JSCCWMX51_V1)
 #include "../drivers/mxc/ipu3/ipu_regs.h"

@@ -692,7 +692,7 @@ void exit_lpapm_mode_mx51()
 	    clk_round_rate(ddr_hf_clk, ddr_normal_rate));
 }
 
-int can_change_ddr_freq()
+int can_change_ddr_freq( void )
 {
 	if (clk_get_usecount(epdc_clk) == 0)
 		return 1;

@@ -25,11 +25,15 @@
 #include <linux/iram_alloc.h>
 #include <linux/gpmi-nfc.h>
 #include <linux/fsl_devices.h>
+#include <linux/ioport.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/gpio.h>
 #include <mach/sdma.h>
 #include "dma-apbh.h"
+#include "mach/mxc_dvfs.h"
+#include "devices_ccwmx51.h"
+#include "crm_regs.h"
 
 /* Flag used to indicate when IRAM has been initialized */
 int iram_ready;
@@ -663,6 +667,11 @@ struct platform_device mxcspi3_device = {
 	.resource = mxcspi3_resources,
 };
 
+static void mxc_nop_release(struct device *dev)
+{
+        /* Nothing */
+}
+
 /* I2C controller and device data */
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
@@ -900,36 +909,6 @@ static struct resource dvfs_core_resources[] = {
 	},
 };
 
-/*! Platform Data for DVFS CORE */
-struct mxc_dvfs_platform_data dvfs_core_data = {
-	.reg_id = "SW1",
-	.clk1_id = "cpu_clk",
-	.clk2_id = "gpc_dvfs_clk",
-	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
-	.gpc_vcr_reg_addr = MXC_GPC_VCR,
-	.ccm_cdcr_reg_addr = (unsigned int)MXC_CCM_CDCR,
-	.ccm_cacrr_reg_addr = (unsigned int)MXC_CCM_CACRR,
-	.ccm_cdhipr_reg_addr = (unsigned int)MXC_CCM_CDHIPR,
-	.dvfs_thrs_reg_addr = MXC_DVFSTHRS,
-	.dvfs_coun_reg_addr = MXC_DVFSCOUN,
-	.dvfs_emac_reg_addr = MXC_DVFSEMAC,
-	.dvfs_cntr_reg_addr = MXC_DVFSCNTR,
-	.prediv_mask = 0x1F800,
-	.prediv_offset = 11,
-	.prediv_val = 3,
-	.div3ck_mask = 0xE0000000,
-	.div3ck_offset = 29,
-	.div3ck_val = 2,
-	.emac_val = 0x08,
-	.upthr_val = 25,
-	.dnthr_val = 9,
-	.pncthr_val = 33,
-	.upcnt_val = 10,
-	.dncnt_val = 10,
-	.delay_time = 30,
-	.num_wp = 3,
-};
-
 struct platform_device mxc_dvfs_core_device = {
 	.name = "mxc_dvfs_core",
 	.id = 0,
@@ -959,24 +938,6 @@ static struct resource dvfs_per_resources[] = {
 		.end = MXC_INT_GPC1,
 		.flags = IORESOURCE_IRQ,
 	},
-};
-
-/*! Platform Data for MXC DVFS PER*/
-struct mxc_dvfsper_data dvfs_per_data = {
-	.reg_id = "SW2",
-	.clk_id = "gpc_dvfs_clk",
-	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
-	.gpc_vcr_reg_addr = MXC_GPC_VCR,
-	.gpc_adu = 0x0,
-	.vai_mask = MXC_DVFSPMCR0_FSVAI_MASK,
-	.vai_offset = MXC_DVFSPMCR0_FSVAI_OFFSET,
-	.dvfs_enable_bit = MXC_DVFSPMCR0_DVFEN,
-	.irq_mask = MXC_DVFSPMCR0_FSVAIM,
-	.div3_offset = 0,
-	.div3_mask = 0x7,
-	.div3_div = 2,
-	.lp_high = 1200000,
-	.lp_low = 1200000,
 };
 
 struct platform_device mxc_dvfs_per_device = {
@@ -1885,12 +1846,18 @@ int __init mxc_init_devices(void)
 		mxcspi2_resources[0].end -= MX53_OFFSET;
 		mxcspi3_resources[0].start -= MX53_OFFSET;
 		mxcspi3_resources[0].end -= MX53_OFFSET;
+#ifdef CONFIG_I2C_MXC_SELECT1
 		mxci2c1_resources[0].start -= MX53_OFFSET;
 		mxci2c1_resources[0].end -= MX53_OFFSET;
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT2
 		mxci2c2_resources[0].start -= MX53_OFFSET;
 		mxci2c2_resources[0].end -= MX53_OFFSET;
+#endif
+#ifdef CONFIG_I2C_MXC_SELECT3
 		mxci2c3_resources[0].start -= MX53_OFFSET;
 		mxci2c3_resources[0].end -= MX53_OFFSET;
+#endif
 		ssi1_resources[0].start -= MX53_OFFSET;
 		ssi1_resources[0].end -= MX53_OFFSET;
 		ssi2_resources[0].start -= MX53_OFFSET;

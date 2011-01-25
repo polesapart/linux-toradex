@@ -48,6 +48,7 @@ struct mxc_pmic {
  *
  * @return   Returns 0 on success -1 on failure.
  */
+int mxc_spi_poll_transfer(struct spi_device *spi, struct spi_transfer *t);
 static inline int spi_rw(struct spi_device *spi, u8 * buf, size_t len)
 {
 	struct spi_transfer t = {

@@ -285,7 +285,9 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
 	mxc_register_device(&mxci2c_devices[1], &mxci2c_data);
+#if defined(CONFIG_I2C_MXC_HS) || defined(CONFIG_I2C_MXC_HS_MODULE)
 	mxc_register_device(&mxci2c_hs_device, &mxci2c_hs_data);
+#endif
 	mxc_register_device(&mxc_rtc_device, &srtc_data);
 	mxc_register_device(&mxc_ssi1_device, NULL);
 	mxc_register_device(&mxc_ssi2_device, NULL);
@@ -310,7 +312,6 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcscc_device, NULL);
 #endif
 	mxc_register_device(&mxc_pwm1_device, NULL);
-	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 
 #ifdef CONFIG_ESDHCI_MXC_SELECT1
 	ccwmx51_register_sdio(0);	/* SDHC1 */

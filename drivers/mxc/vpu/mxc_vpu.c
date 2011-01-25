@@ -43,6 +43,8 @@
 #include <mach/hardware.h>
 
 #include <mach/mxc_vpu.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
 
 struct vpu_priv {
 	struct fasync_struct *async_queue;

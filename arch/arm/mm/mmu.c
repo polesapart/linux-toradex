@@ -700,10 +700,7 @@ early_param("vmalloc", early_vmalloc);
 
 static void __init sanity_check_meminfo(void)
 {
-	int i, j = 0;
-#ifdef CONFIG_HIGHMEM
-	int highmem = 0;
-#endif
+	int i, j, highmem = 0;
 
 	for (i = 0, j = 0; i < meminfo.nr_banks; i++) {
 		struct membank *bank = &meminfo.bank[j];

@@ -293,6 +293,14 @@ struct mxc_fb_platform_data {
 	u32 interface_pix_fmt;
 };
 
+struct ccwmx51_lcd_pdata {
+        int vif;
+        struct mxc_fb_platform_data fb_pdata;
+        void (*init) (int);
+        void (*deinit) (int);
+        void (*bl_enable) (int, int);
+};
+
 struct mxc_lcd_platform_data {
 	char *io_reg;
 	char *core_reg;

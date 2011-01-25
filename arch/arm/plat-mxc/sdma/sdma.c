@@ -37,6 +37,7 @@
 #include <asm/irq.h>
 #include <mach/dma.h>
 #include <mach/hardware.h>
+#include <linux/sched.h>
 
 #include "iapi.h"
 

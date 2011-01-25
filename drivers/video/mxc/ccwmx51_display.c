@@ -21,6 +21,7 @@
 #include <linux/mxcfb.h>
 #include <mach/hardware.h>
 #include <mach/mxc.h>
+#include <linux/fsl_devices.h>
 
 #define MAX_DISPLAYS	2
 #define DISP0_ID	"DISP3 BG"

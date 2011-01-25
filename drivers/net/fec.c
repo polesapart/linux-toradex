@@ -195,7 +195,6 @@ struct fec_enet_private {
 	uint	tx_full;
 	/* hold while accessing the HW like ringbuffer for tx/rx but not MAC */
 	spinlock_t hw_lock;
-	phy_interface_t phy_interface;
 
 	struct  platform_device *pdev;
 
@@ -400,10 +399,6 @@ fec_enet_interrupt(int irq, void * dev_id)
 			ret = IRQ_HANDLED;
 			fec_enet_tx(dev);
 		}
-		if (int_events & FEC_ENET_TS_AVAIL) {
-			ret = IRQ_HANDLED;
-			fec_ptp_store_txstamp(fep->ptp_priv);
-		}
 
 		if (int_events & FEC_ENET_TS_TIMER) {
 			ret = IRQ_HANDLED;
@@ -428,7 +423,9 @@ fec_enet_tx(struct net_device *dev)
 	struct  fec_ptp_private *fpp;
 	struct bufdesc *bdp;
 	unsigned short status;
+#if defined(CONFIG_ENHANCED_BD)
 	unsigned long estatus;
+#endif
 	struct	sk_buff	*skb;
 
 	fep = netdev_priv(dev);
@@ -755,7 +752,6 @@ static int fec_enet_mdio_poll(struct fec_enet_private *fep)
 static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
 	struct fec_enet_private *fep = bus->priv;
-	unsigned long time_left;
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -775,7 +771,6 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
 {
 	struct fec_enet_private *fep = bus->priv;
-	unsigned long time_left;
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -849,7 +844,6 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct fec_enet_private *fep = netdev_priv(dev);
-	struct fec_platform_data *pdata;
 	int err = -ENXIO, i;
 
 	fep->mii_timeout = 0;
@@ -877,8 +871,6 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 	snprintf(fep->mii_bus->id, MII_BUS_ID_SIZE, "%x", pdev->id);
 	fep->mii_bus->priv = fep;
 	fep->mii_bus->parent = &pdev->dev;
-	pdata = pdev->dev.platform_data;
-	fep->mii_bus->phy_mask = pdata->phy_mask;
 
 	fep->mii_bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!fep->mii_bus->irq) {
@@ -1501,7 +1493,6 @@ fec_probe(struct platform_device *pdev)
 	struct net_device *ndev;
 	int i, irq, ret = 0;
 	struct resource *r;
-	struct fec_platform_data *pdata = pdev->dev.platform_data;
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!r)

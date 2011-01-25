@@ -414,7 +414,7 @@
 	(((x) >= (unsigned long)NFC_BASE_ADDR_AXI) && \
 	  ((x) < (unsigned long)NFC_BASE_ADDR_AXI + NFC_AXI_SIZE)) ? \
 	   NFC_AXI_IO_ADDRESS(x) : \
-	(((x) - NFC_BASE_ADDR_AXI) + NFC_BASE_ADDR_AXI_VIRT)
+	0xDEADBEEF)
 
 /*
  * define the address mapping macros: in physical address order
@@ -427,6 +427,9 @@
 
 #define AIPS2_IO_ADDRESS(x)  \
 	(((x) - AIPS2_BASE_ADDR) + AIPS2_BASE_ADDR_VIRT)
+
+#define NFC_AXI_IO_ADDRESS(x)  \
+	(((x) - NFC_BASE_ADDR_AXI) + NFC_BASE_ADDR_AXI_VIRT)
 
 #define MX53_BASE_ADDR(x) (cpu_is_mx53() || cpu_is_mx50() ? (x) - 0x20000000 : (x))
 
