@@ -244,7 +244,7 @@ static struct miscdevice mxc_wdt_miscdev = {
 	.fops = &mxc_wdt_fops
 };
 
-static int __init mxc_wdt_probe(struct platform_device *pdev)
+static int mxc_wdt_probe(struct platform_device *pdev)
 {
 	struct resource *res, *mem;
 	int ret;

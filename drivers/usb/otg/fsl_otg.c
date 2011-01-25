@@ -98,7 +98,9 @@ static struct fsl_otg_config fsl_otg_initdata = {
  */
 static unsigned long last_busy;
 static bool clk_stopped;
+#if 0
 static struct timer_list monitor_timer;
+#endif
 static struct workqueue_struct *otg_queue;
 
 static void schedule_otg_work(struct delayed_work *dwork, unsigned long delay)
@@ -417,6 +419,7 @@ static void fsl_otg_clk_gate(bool on)
 	}
 }
 
+#if 0
 static void fsl_otg_clk_ctl(void)
 {
 	if (clk_stopped) {
@@ -425,6 +428,7 @@ static void fsl_otg_clk_ctl(void)
 	}
 	last_busy = jiffies;
 }
+
 
 static void fsl_otg_loading_monitor(unsigned long data)
 {
@@ -437,6 +441,7 @@ static void fsl_otg_loading_monitor(unsigned long data)
 	}
 	mod_timer(&monitor_timer, jiffies + msecs_to_jiffies(TIMER_FREQ));
 }
+#endif
 
 /**
  * Enable vbus interrupt
@@ -1272,7 +1277,7 @@ static struct file_operations otg_fops = {
 	.release = fsl_otg_release,
 };
 
-static int __init fsl_otg_probe(struct platform_device *pdev)
+static int fsl_otg_probe(struct platform_device *pdev)
 {
 	int status;
 	struct fsl_usb2_platform_data *pdata;

@@ -155,7 +155,7 @@ static struct fsg_common *fsg_common;
 
 #ifdef USB_ETH_RNDIS
 
-static int __init rndis_do_config(struct usb_configuration *c)
+static int rndis_do_config(struct usb_configuration *c)
 {
 	int ret;
 
