@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2010 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2004-2011 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -523,9 +523,11 @@ static int scc_init(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18))
 		mxc_clks_enable(SCC_CLK);
 #else
-		if (scc_clk != ERR_PTR(ENOENT)) {
+		if (IS_ERR(scc_clk)) {
+			return_value = PTR_ERR(scc_clk);
+			goto out;
+		} else
 			clk_enable(scc_clk);
-		}
 #endif
 
 		/* Set up the hardware access locks */
@@ -655,7 +657,7 @@ static int scc_init(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 			mxc_clks_disable(SCC_CLK);
 #else
-			if (scc_clk != ERR_PTR(ENOENT))
+			if (!IS_ERR(scc_clk))
 				clk_disable(scc_clk);
 #endif
 
@@ -734,7 +736,7 @@ static void scc_cleanup(void)
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 			mxc_clks_disable(SCC_CLK);
 #else
-			if (scc_clk != ERR_PTR(ENOENT))
+			if (!IS_ERR(scc_clk))
 				clk_disable(scc_clk);
 			clk_put(scc_clk);
 #endif
@@ -1357,8 +1359,11 @@ scc_encrypt_region(uint32_t part_base, uint32_t offset_bytes,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 				mxc_clks_enable(SCC_CLK);
 #else
-				if (scc_clk != ERR_PTR(ENOENT))
-					clk_enable(scc_clk);
+		if (IS_ERR(scc_clk)) {
+			status = SCC_RET_FAIL;
+			goto out;
+		} else
+			clk_enable(scc_clk);
 #endif
 
 	scm_command = ((offset_blocks << SCM_CCMD_OFFSET_SHIFT) |
@@ -1417,7 +1422,7 @@ out:
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 					mxc_clks_disable(SCC_CLK);
 #else
-					if (scc_clk != ERR_PTR(ENOENT))
+					if (!IS_ERR(scc_clk))
 						clk_disable(scc_clk);
 #endif
 
@@ -1452,8 +1457,11 @@ scc_decrypt_region(uint32_t part_base, uint32_t offset_bytes,
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 			mxc_clks_enable(SCC_CLK);
 #else
-			if (scc_clk != ERR_PTR(ENOENT))
-				clk_enable(scc_clk);
+		if (IS_ERR(scc_clk)) {
+			status = SCC_RET_FAIL;
+			goto out;
+		} else
+			clk_enable(scc_clk);
 #endif
 	scm_command = ((offset_blocks << SCM_CCMD_OFFSET_SHIFT) |
 		       (SCM_PART_NUMBER(part_base) << SCM_CCMD_PART_SHIFT));
@@ -1509,7 +1517,7 @@ out:
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 18))
 			mxc_clks_disable(SCC_CLK);
 #else
-			if (scc_clk != ERR_PTR(ENOENT))
+			if (!IS_ERR(scc_clk))
 				clk_disable(scc_clk);
 #endif
 	return status;
