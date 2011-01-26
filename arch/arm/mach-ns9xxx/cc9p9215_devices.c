@@ -315,22 +315,22 @@ static struct spi_ns921x_fim spi_fim0_data = {
 #else
 	.gpio_base = 0,
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_0_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_0_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ZERO_SPI_CS_0),
 #else
         NS921X_FIM_SPI_CS_GPIOS(0, false, 0),
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_1_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_1_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(1, true, CONFIG_FIM_ZERO_SPI_CS_1),
 #else
         NS921X_FIM_SPI_CS_GPIOS(1, false, 0),
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_2_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_2_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(2, true, CONFIG_FIM_ZERO_SPI_CS_2),
 #else
         NS921X_FIM_SPI_CS_GPIOS(2, false, 0),
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_3_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_3_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(3, true, CONFIG_FIM_ZERO_SPI_CS_3),
 #else
         NS921X_FIM_SPI_CS_GPIOS(3, false, 0),
@@ -355,22 +355,22 @@ static struct spi_ns921x_fim spi_fim1_data = {
         .flags              = 0,
 #endif
         .gpio_base = 68,
-#if CONFIG_FIM_ONE_SPI_CS_0_ENABLED
+#if defined(CONFIG_FIM_ONE_SPI_CS_0_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ONE_SPI_CS_0),
 #else
         NS921X_FIM_SPI_CS_GPIOS(0, false, 0),
 #endif
-#if CONFIG_FIM_ONE_SPI_CS_1_ENABLED
+#if defined(CONFIG_FIM_ONE_SPI_CS_1_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(1, true, CONFIG_FIM_ONE_SPI_CS_1),
 #else
         NS921X_FIM_SPI_CS_GPIOS(1, false, 0),
 #endif
-#if CONFIG_FIM_ONE_SPI_CS_2_ENABLED
+#if defined(CONFIG_FIM_ONE_SPI_CS_2_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(2, true, CONFIG_FIM_ONE_SPI_CS_2),
 #else
         NS921X_FIM_SPI_CS_GPIOS(2, false, 0),
 #endif
-#if CONFIG_FIM_ONE_SPI_CS_3_ENABLED
+#if defined(CONFIG_FIM_ONE_SPI_CS_3_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(3, true, CONFIG_FIM_ONE_SPI_CS_3),
 #else
         NS921X_FIM_SPI_CS_GPIOS(3, false, 0),
@@ -384,11 +384,6 @@ struct platform_device ns921x_fim_spi1 = {
 };
 EXPORT_SYMBOL(ns921x_fim_spi1);
 #endif /* CONFIG_FIM_ONE_SPI */
-
-
-
-
-
 
 #if defined(CONFIG_FIM_ZERO_CAN) || defined(CONFIG_PROCESSOR_NS9215)
 static struct fim_can_platform_data fim_can_data0 = {
@@ -525,7 +520,6 @@ void __init cc9p9215_edt_qvga_lcd_setup_cs(void)
 	writel(readl(SYS_SMCSSMM(0)) | SYS_SMCSSMM_CSEx_EN, SYS_SMCSSMM(0));
 }
 
-
 int cc9p9215_edt_qvga_lcd_register_gpios(struct hx8347fb_pdata *pdata)
 {
 	if (gpio_request(pdata->rst_gpio, "lcd-rst"))
@@ -610,7 +604,6 @@ unsigned char edt_qvga_lcd_init[][3] = {
 	{0x55, 0x00, 0},
 	{0x57, 0x00, 0}
 };
-
 
 static void cc9p9215_lcd_reset(struct hx8347fb_par *par)
 {
@@ -799,4 +792,3 @@ void __init ns9xxx_add_device_cc9p9215_edt_diplay(void)
 #else
 void __init ns9xxx_add_device_cc9p9215_edt_diplay(void) {}
 #endif
-
