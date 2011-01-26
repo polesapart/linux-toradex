@@ -34,11 +34,13 @@
 #include <linux/skbuff.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/semaphore.h>
 
 /* Header files for the CAN-stack */
 #include <linux/can.h>
 #include <linux/can/dev.h>
 #include <linux/can/error.h>
+#include <linux/can/netlink.h>
 
 /* For registering the FIM-driver */
 #include <mach/fim-ns921x.h>
@@ -66,6 +68,9 @@ MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_VERSION(DRIVER_VERSION);
+
+/* Max number of socket buffers for loopback */
+#define TX_ECHO_SKB_MAX	1
 
 /* Module parameter for selection the FIMs */
 NS921X_FIM_NUMBERS_PARAM(fims_number);
@@ -99,7 +104,7 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 #define FIM_CAN_DEFAULT_PROPSEG			(8)
 #define FIM_CAN_DEFAULT_PHASE1			(8)
 #define FIM_CAN_DEFAULT_PHASE2			(8)
-#define FIM_CAN_DEFAULT_BITRATE			CAN_BITRATE_DEFAULT
+#define FIM_CAN_DEFAULT_BITRATE			500000
 
 /* Maximal values from the Net+OS driver */
 #define FIM_CAN_MAX_BITRATE	                (1000000)
@@ -541,7 +546,7 @@ static int fim_can_set_mode(struct net_device *dev, enum can_mode mode)
 /*
  * Read the status registers of the FIM for obtaining the status information.
  */
-static int fim_can_get_state(struct net_device *dev, enum can_state *state)
+static int fim_can_get_state(const struct net_device *dev, enum can_state *state)
 {
 	struct fim_can_t *port;
 	struct fim_driver *fim;
@@ -579,9 +584,9 @@ static int fim_can_get_state(struct net_device *dev, enum can_state *state)
 		*state = CAN_STATE_BUS_OFF;
 	} else if (bus & FIM_CAN_BUSSTATE_ERRPAS) {
 		printk_debug("Bus seems to be in the passive error state\n");
-		*state = CAN_STATE_BUS_PASSIVE;
+		*state = CAN_STATE_ERROR_PASSIVE;
 	} else
-		*state = CAN_STATE_ACTIVE;
+		*state = CAN_STATE_ERROR_ACTIVE;
 
 	retval = 0;
 
@@ -721,7 +726,7 @@ static int fim_can_open(struct net_device *dev)
 	retval = fim_can_restart_fim(port);
 	if (!retval) {
 		netif_start_queue(dev);
-		port->can.state = CAN_STATE_ACTIVE;
+		port->can.state = CAN_STATE_ERROR_ACTIVE;
 		port->opened = 1;
 	}
 
@@ -747,7 +752,7 @@ static int fim_can_stop(struct net_device *dev)
 		return 0;
 
 	netif_stop_queue(dev);
-	can_close_cleanup(dev);
+	close_candev(dev);
 	port->can.state = CAN_STATE_STOPPED;
 	port->opened = 0;
 
@@ -899,7 +904,7 @@ static int fim_can_check_error(struct net_device *dev, bool is_transmit_failure)
 	struct fim_driver *fim;
 	struct can_frame *cf;
 	unsigned int bus, fatal;
-	struct net_device_stats *stats;
+	struct net_device_stats *stats = &dev->stats;
 
 	port = netdev_priv(dev);
 	fim = &port->fim;
@@ -957,7 +962,6 @@ static int fim_can_check_error(struct net_device *dev, bool is_transmit_failure)
 	netif_rx(skb);
 
 	dev->last_rx = jiffies;
-	stats = dev->get_stats(dev);
 	stats->rx_packets++;
 	stats->rx_bytes += cf->can_dlc;
 
@@ -974,7 +978,7 @@ end_exit:
 static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct fim_can_t *port;
-	struct net_device_stats *stats;
+	struct net_device_stats *stats = &dev->stats;
 	struct can_frame *cf;
 	struct fim_can_txframe frame;
 	u8 dlc, cnt;
@@ -986,7 +990,6 @@ static int fim_can_xmit(struct sk_buff *skb, struct net_device *dev)
 	netif_stop_queue(dev);
 	spin_unlock(&port->lock);
 
-	stats = dev->get_stats(dev);
 	cf = (struct can_frame *)skb->data;
 
 	id = cf->can_id;
@@ -1200,6 +1203,7 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	rx = (struct fim_can_rxframe *)pdata->data;
 	port = driver->driver_data;
 	dev = port->dev;
+	stats = &dev->stats;
 	spin_lock_irqsave(&port->lock, flags);
 
         /*
@@ -1267,7 +1271,6 @@ static void fim_can_rx_isr(struct fim_driver *driver, int irq,
 	netif_rx(skb);
 
 	/* Update the device statics */
-	stats = dev->get_stats(dev);
 	dev->last_rx = jiffies;
 	stats->rx_packets++;
 	stats->rx_bytes += cf->can_dlc;
@@ -1322,6 +1325,12 @@ static int unregister_fim_can(struct fim_can_t *port)
 	return 0;
 }
 
+static const struct net_device_ops fim_can_netdev_ops = {
+	.ndo_open = fim_can_open,
+	.ndo_stop = fim_can_stop,
+	.ndo_start_xmit = fim_can_xmit,
+};
+
 /*
  * IMPORTANT: First register the FIM-driver, and at last the CAN-device, then
  * it will automatically start with the bit time configuration.
@@ -1336,7 +1345,7 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	struct fim_dma_cfg_t dma_cfg;
 
 	/* Now create the net device */
-	dev = alloc_candev(sizeof(struct fim_can_t));
+	dev = alloc_candev(sizeof(struct fim_can_t), TX_ECHO_SKB_MAX);
 	if (!dev) {
 		printk_err("Couldn't alloc a new CAN device\n");
 		return -ENOMEM;
@@ -1409,15 +1418,13 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 
 	/* Configure the net device with the default values */
 	dev->flags |= IFF_ECHO;
-	dev->open = fim_can_open;
-	dev->stop = fim_can_stop;
-	dev->hard_start_xmit = fim_can_xmit;
+	dev->netdev_ops = &fim_can_netdev_ops;
 
 	/* Special attributes for the CAN-stack */
 	port->can.do_get_state = fim_can_get_state;
 	port->can.do_set_mode = fim_can_set_mode;
 
- 	port->can.bittiming.clock = clk_get_rate(port->cpu_clk);
+	port->can.clock.freq = clk_get_rate(port->cpu_clk);
  	printk_debug("CPU clock is %luHz\n", clk_get_rate(port->cpu_clk));
 
 	/*
