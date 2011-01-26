@@ -24,6 +24,7 @@
 #define __MXC_BOOT_UNCOMPRESS
 
 #include <asm/mach-types.h>
+#include <mach/hardware.h>
 
 unsigned int system_rev;
 static unsigned long uart_base;
@@ -115,6 +116,17 @@ static __inline__ void __arch_decomp_setup(unsigned long arch_id)
 	case MACH_TYPE_MX50_ARM2:
 	case MACH_TYPE_MX50_RDP:
 		uart_base = MX50_UART1_BASE_ADDR;
+		break;
+	case MACH_TYPE_CCMX51JS:
+	case MACH_TYPE_CCWMX51JS:
+#if defined (CONFIG_UART2_ENABLED)
+		// UART2 is the default console
+		uart_base = UART2_BASE_ADDR;
+#elif defined (CONFIG_UART1_ENABLED)
+		uart_base = UART1_BASE_ADDR;
+#elif defined (CONFIG_UART3_ENABLED)
+		uart_base = UART3_BASE_ADDR;
+#endif
 		break;
 	default:
 		break;
