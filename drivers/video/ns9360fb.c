@@ -99,7 +99,7 @@ static struct fb_ops ns9360fb_ops = {
 	.fb_imageblit = cfb_imageblit,
 };
 
-static int __init ns9360fb_probe(struct platform_device *pdev)
+static int __devinit ns9360fb_probe(struct platform_device *pdev)
 {
 	struct ns9360fb_info *info;
 	struct ns9360fb_display *display;

@@ -678,7 +678,7 @@ static struct bin_attribute ns9xxx_rtc_nvram_attr = {
 	.write = ns9xxx_rtc_nvram_write,
 };
 
-static int __init ns9xxx_rtc_probe(struct platform_device *pdev)
+static int __devinit ns9xxx_rtc_probe(struct platform_device *pdev)
 {
 	struct ns9xxx_rtc_pdata *pdata;
 	int ret;

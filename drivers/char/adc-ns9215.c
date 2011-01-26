@@ -108,7 +108,7 @@ struct file_operations ns9215_adc_fops = {
 	.release = ns9215_adc_release,
 };
 
-static int __init ns9215_adc_probe(struct platform_device *pdev)
+static int __devinit ns9215_adc_probe(struct platform_device *pdev)
 {
 	int i, ret;
 	unsigned int clockn;

@@ -476,7 +476,7 @@ static struct crypto_alg ns921x_aes_algs[] = {
 	},
 };
 
-static int __init ns921x_aes_probe(struct platform_device *pdev)
+static int __devinit ns921x_aes_probe(struct platform_device *pdev)
 {
 	int i, ret = -ENOMEM;
 
