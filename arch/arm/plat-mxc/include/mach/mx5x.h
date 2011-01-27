@@ -20,7 +20,7 @@
 #define __ASM_ARCH_MXC_MX5X_H__
 
 #ifndef __ASM_ARCH_MXC_HARDWARE_H__
-#error "Do not include directly."
+#warning "Do not include directly."
 #endif
 
 /*!

@@ -4378,7 +4378,6 @@ static void clk_tree_init(void)
 	}
 }
 
-
 int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long ckih1, unsigned long ckih2)
 {
 	__iomem void *base;
@@ -4386,6 +4385,7 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	int i = 0, j = 0, reg;
 	int wp_cnt = 0;
 	u32 pll1_rate;
+	u32 ccgr1_mask = 0;
 
 	pll1_base = ioremap(PLL1_BASE_ADDR, SZ_4K);
 	pll2_base = ioremap(PLL2_BASE_ADDR, SZ_4K);
@@ -4414,7 +4414,17 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 			      1 << MXC_CCM_CCGRx_CG13_OFFSET |
 			      3 << MXC_CCM_CCGRx_CG14_OFFSET, MXC_CCM_CCGR0);
 	}
-	__raw_writel(0, MXC_CCM_CCGR1);
+
+#if defined(CONFIG_UART2_ENABLED)
+	ccgr1_mask |= 0x1400;
+#endif
+#if defined(CONFIG_UART1_ENABLED)
+	ccgr1_mask |= 0x140;
+#endif
+#if defined(CONFIG_UART3_ENABLED)
+	ccgr1_mask |= 0x14000;
+#endif
+	__raw_writel(ccgr1_mask, MXC_CCM_CCGR1);
 	__raw_writel(0, MXC_CCM_CCGR2);
 	__raw_writel(0, MXC_CCM_CCGR3);
 	__raw_writel(1 << MXC_CCM_CCGRx_CG8_OFFSET, MXC_CCM_CCGR4);
