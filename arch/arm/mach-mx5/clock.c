@@ -4424,6 +4424,14 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 #if defined(CONFIG_UART3_ENABLED)
 	ccgr1_mask |= 0x14000;
 #endif
+
+#if defined(CONFIG_I2C_MXC_SELECT1)
+	ccgr1_mask |= 0x40000;
+#endif
+#if defined(CONFIG_I2C_MXC_SELECT2)
+	ccgr1_mask |= 0x100000;
+#endif
+
 	__raw_writel(ccgr1_mask, MXC_CCM_CCGR1);
 	__raw_writel(0, MXC_CCM_CCGR2);
 	__raw_writel(0, MXC_CCM_CCGR3);

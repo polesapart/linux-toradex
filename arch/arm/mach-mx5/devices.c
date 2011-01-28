@@ -737,7 +737,7 @@ static struct mxc_i2c_platform_data mxci2c3_data = {
 struct platform_device mxci2c_devices[] = {
 #ifdef CONFIG_I2C_MXC_SELECT1
 	{
-		.name = "imx-i2c",
+		.name = "mxc_i2c",
 		.id = 0,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -749,7 +749,7 @@ struct platform_device mxci2c_devices[] = {
 #endif
 #ifdef CONFIG_I2C_MXC_SELECT2
 	{
-		.name = "imx-i2c",
+		.name = "mxc_i2c",
 		.id = 1,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -761,7 +761,7 @@ struct platform_device mxci2c_devices[] = {
 #endif
 #ifdef CONFIG_I2C_MXC_SELECT3
 	{
-		.name = "imx-i2c",
+		.name = "mxc_i2c",
 		.id = 2,
 		.dev = {
 		    .release = mxc_nop_release,
