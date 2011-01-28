@@ -60,7 +60,6 @@
 #include "fec_1588.h"
 
 #if defined(CONFIG_ARCH_MXC) || defined(CONFIG_ARCH_MXS)
-#include <mach/hardware.h>
 #define FEC_ALIGNMENT	0xf
 #else
 #define FEC_ALIGNMENT	0x3
@@ -118,19 +117,6 @@
 #define FEC_ENET_EBERR	((uint)0x00400000)	/* SDMA bus error */
 #define FEC_ENET_TS_AVAIL	((uint)0x00010000)
 #define FEC_ENET_TS_TIMER	((uint)0x00008000)
-
-/*
- * RMII mode to be configured via a gasket
- */
-#define FEC_MIIGSK_CFGR_FRCONT		(1 << 6)
-#define FEC_MIIGSK_CFGR_LBMODE		(1 << 4)
-#define FEC_MIIGSK_CFGR_EMODE		(1 << 3)
-#define FEC_MIIGSK_CFGR_IF_MODE_MASK	(3 << 0)
-#define FEC_MIIGSK_CFGR_IF_MODE_MII	(0 << 0)
-#define FEC_MIIGSK_CFGR_IF_MODE_RMII	(1 << 0)
-
-#define FEC_MIIGSK_ENR_READY		(1 << 2)
-#define FEC_MIIGSK_ENR_EN		(1 << 1)
 
 #if defined(CONFIG_FEC_1588) && defined(CONFIG_ARCH_MX28)
 #define FEC_DEFAULT_IMASK (FEC_ENET_TXF | FEC_ENET_RXF | FEC_ENET_MII | \
@@ -237,7 +223,7 @@ static void fec_stop(struct net_device *dev);
 #define FEC_MMFR_TA		(2 << 16)
 #define FEC_MMFR_DATA(v)	(v & 0xffff)
 
-#define FEC_MII_TIMEOUT		10
+#define FEC_MII_TIMEOUT		1000
 
 /* Transmitter timeout */
 #define TX_TIMEOUT (2 * HZ)
@@ -338,8 +324,6 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	status |= (BD_ENET_TX_READY | BD_ENET_TX_INTR
 			| BD_ENET_TX_LAST | BD_ENET_TX_TC);
 	bdp->cbd_sc = status;
-
-	dev->trans_start = jiffies;
 
 	/* Trigger transmission start */
 	writel(0, fep->hwp + FEC_X_DES_ACTIVE);
@@ -728,30 +712,10 @@ spin_unlock:
 		phy_print_status(phy_dev);
 }
 
-/*
- * NOTE: a MII transaction is during around 25 us, so polling it...
- */
-static int fec_enet_mdio_poll(struct fec_enet_private *fep)
- {
-	int timeout = FEC_MII_TIMEOUT;
-
-	fep->mii_timeout = 0;
-
-	/* wait for end of transfer */
-	while (!(readl(fep->hwp + FEC_IEVENT) & FEC_ENET_MII)) {
-		msleep(1);
-		if (timeout-- < 0) {
-			fep->mii_timeout = 1;
-			break;
-		}
-	}
-
-	return 0;
-}
-
 static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 {
 	struct fec_enet_private *fep = bus->priv;
+	unsigned long time_left;
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -761,8 +725,14 @@ static int fec_enet_mdio_read(struct mii_bus *bus, int mii_id, int regnum)
 		FEC_MMFR_PA(mii_id) | FEC_MMFR_RA(regnum) |
 		FEC_MMFR_TA, fep->hwp + FEC_MII_DATA);
 
-	fec_enet_mdio_poll(fep);
-
+	/* wait for end of transfer */
+	time_left = wait_for_completion_timeout(&fep->mdio_done,
+		usecs_to_jiffies(FEC_MII_TIMEOUT));
+	if (time_left == 0) {
+		fep->mii_timeout = 1;
+		printk(KERN_ERR "FEC: MDIO read timeout\n");
+		return -ETIMEDOUT;
+	}
 	/* return value */
 	return FEC_MMFR_DATA(readl(fep->hwp + FEC_MII_DATA));
 }
@@ -771,6 +741,7 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 			   u16 value)
 {
 	struct fec_enet_private *fep = bus->priv;
+	unsigned long time_left;
 
 	fep->mii_timeout = 0;
 	init_completion(&fep->mdio_done);
@@ -781,7 +752,14 @@ static int fec_enet_mdio_write(struct mii_bus *bus, int mii_id, int regnum,
 		FEC_MMFR_TA | FEC_MMFR_DATA(value),
 		fep->hwp + FEC_MII_DATA);
 
-	fec_enet_mdio_poll(fep);
+	/* wait for end of transfer */
+	time_left = wait_for_completion_timeout(&fep->mdio_done,
+		usecs_to_jiffies(FEC_MII_TIMEOUT));
+	if (time_left == 0) {
+		fep->mii_timeout = 1;
+		printk(KERN_ERR "FEC: MDIO write timeout\n");
+		return -ETIMEDOUT;
+	}
 
 	return 0;
 }
@@ -1054,7 +1032,6 @@ fec_enet_open(struct net_device *dev)
 	}
 	phy_start(fep->phy_dev);
 	fec_restart(dev, fep->phy_dev->duplex);
-	netif_start_queue(dev);
 	fep->opened = 1;
 	return 0;
 }
@@ -1066,7 +1043,6 @@ fec_enet_close(struct net_device *dev)
 
 	/* Don't know what to do yet. */
 	fep->opened = 0;
-	netif_stop_queue(dev);
 	fec_stop(dev);
 
 	if (fep->phy_dev) {
@@ -1321,30 +1297,6 @@ fec_restart(struct net_device *dev, int duplex)
 #endif
 #endif /* !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS) */
 
-#ifndef CONFIG_ARCH_MXS
-	if (fep->phy_interface == PHY_INTERFACE_MODE_RMII) {
-		unsigned int val;
-		/*
-		 * Set up the MII gasket for RMII mode
-		 */
-
-		/* disable the gasket and wait */
-		__raw_writel(0, fep->hwp + FEC_MIIGSK_ENR);
-		while (__raw_readl(fep->hwp + FEC_MIIGSK_ENR) & FEC_MIIGSK_ENR_READY)
-			udelay(1);
-
-		val = FEC_MIIGSK_CFGR_IF_MODE_RMII;
-		if (fep->phy_dev && fep->phy_dev->speed == SPEED_10)
-			val |= FEC_MIIGSK_CFGR_FRCONT;
-		__raw_writel(val, fep->hwp + FEC_MIIGSK_CFGR);
-
-		/* re-enable the gasket */
-		__raw_writel(FEC_MIIGSK_ENR_EN, fep->hwp + FEC_MIIGSK_ENR);
-		while (!(__raw_readl(fep->hwp + FEC_MIIGSK_ENR)
-			& FEC_MIIGSK_ENR_READY))
-			udelay(1);
-	}
-#endif
 	/* Set maximum receive buffer size. */
 	writel(PKT_MAXBLR_SIZE, fep->hwp + FEC_R_BUFF_SIZE);
 
@@ -1441,11 +1393,7 @@ fec_restart(struct net_device *dev, int duplex)
 	writel(0, fep->hwp + FEC_R_DES_ACTIVE);
 
 	/* Enable interrupts we wish to service */
-	if (fep->ptimer_present)
-		writel(FEC_ENET_TXF | FEC_ENET_RXF | FEC_ENET_TS_AVAIL |
-				FEC_ENET_TS_TIMER, fep->hwp + FEC_IMASK);
-	else
-		writel(FEC_ENET_TXF | FEC_ENET_RXF, fep->hwp + FEC_IMASK);
+	writel(FEC_DEFAULT_IMASK, fep->hwp + FEC_IMASK);
 }
 
 static void
