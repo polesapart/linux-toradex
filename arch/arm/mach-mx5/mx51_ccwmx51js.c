@@ -277,7 +277,6 @@ static void __init mxc_board_init(void)
 	clk_put(mxc_spdif_data.spdif_core_clk);
 
 	mxc_cpu_common_init();
-	mxc_register_gpios();
 	ccwmx51_io_init();
 	ccwmx51_init_devices();
 
