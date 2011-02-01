@@ -259,6 +259,7 @@ obj-$(CONFIG_MLX4_CORE) += mlx4/
 obj-$(CONFIG_ENC28J60) += enc28j60.o
 obj-$(CONFIG_ETHOC) += ethoc.o
 obj-$(CONFIG_GRETH) += greth.o
+obj-$(CONFIG_NS9XXX_ETH) += ns9xxx-eth.o
 
 obj-$(CONFIG_XTENSA_XT2000_SONIC) += xtsonic.o
 
@@ -267,6 +268,7 @@ obj-$(CONFIG_MACB) += macb.o
 obj-$(CONFIG_S6GMAC) += s6gmac.o
 
 obj-$(CONFIG_ARM) += arm/
+obj-$(CONFIG_SMSC9118) += smsc9118/
 obj-$(CONFIG_DEV_APPLETALK) += appletalk/
 obj-$(CONFIG_TR) += tokenring/
 obj-$(CONFIG_WAN) += wan/

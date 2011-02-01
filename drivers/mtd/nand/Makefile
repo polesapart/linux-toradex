@@ -43,6 +43,7 @@ obj-$(CONFIG_MTD_NAND_MXC)		+= mxc_nand.o
 obj-$(CONFIG_MTD_NAND_MXC_V2)		+= mxc_nd2.o nand_device_info.o
 obj-$(CONFIG_MTD_NAND_MXC_V3)		+= mxc_nd2.o nand_device_info.o
 obj-$(CONFIG_MTD_NAND_GPMI_NFC)		+= gpmi-nfc/ nand_device_info.o
+obj-$(CONFIG_MTD_NAND_CCX9X)		+= ccx9x_nand.o
 obj-$(CONFIG_MTD_NAND_SOCRATES)		+= socrates_nand.o
 obj-$(CONFIG_MTD_NAND_TXX9NDFMC)	+= txx9ndfmc.o
 obj-$(CONFIG_MTD_NAND_NUC900)		+= nuc900_nand.o

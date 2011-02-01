@@ -15,11 +15,12 @@
 #include <linux/clocksource.h>
 #include <linux/clockchips.h>
 
-#include <mach/processor-ns9360.h>
 #include <mach/regs-sys-ns9360.h>
 #include <mach/irqs.h>
 #include <mach/system.h>
-#include "generic.h"
+
+#include "irq.h"
+#include "processor-ns9360.h"
 
 #define TIMER_CLOCKSOURCE 0
 #define TIMER_CLOCKEVENT 1

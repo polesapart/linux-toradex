@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-ns9xxx/include/mach/regs-sys-ns9360.h
  *
- * Copyright (C) 2006,2007 by Digi International Inc.
+ * Copyright (C) 2006-2008 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -29,6 +29,12 @@
 
 /* Timer Interrupt Status register */
 #define SYS_TIS		__REG(0xa0900170)
+
+#define SYS_CLOCK	__REG(0xa090017c)
+#define SYS_CLOCK_LPCSEXT	__REGBIT(9)
+
+#define SYS_RESET	__REG(0xa0900180)
+#define SYS_RESET_LCDC		__REGBIT(5)
 
 /* PLL Configuration register */
 #define SYS_PLL		__REG(0xa0900188)
@@ -100,32 +106,6 @@
 #define SYS_TCx_REN_DIS			__REGVAL(SYS_TCx_REN, 0)
 #define SYS_TCx_REN_EN			__REGVAL(SYS_TCx_REN, 1)
 
-/* System Memory Chip Select x Dynamic Memory Base */
-#define SYS_SMCSDMB(x)	__REG2(0xa09001d0, (x) << 1)
-
-/* System Memory Chip Select x Dynamic Memory Mask */
-#define SYS_SMCSDMM(x)	__REG2(0xa09001d4, (x) << 1)
-
-/* System Memory Chip Select x Static Memory Base */
-#define SYS_SMCSSMB(x)	__REG2(0xa09001f0, (x) << 1)
-
-/* System Memory Chip Select x Static Memory Base: Chip select x base */
-#define SYS_SMCSSMB_CSxB	__REGBITS(31, 12)
-
-/* System Memory Chip Select x Static Memory Mask */
-#define SYS_SMCSSMM(x)	__REG2(0xa09001f4, (x) << 1)
-
-/* System Memory Chip Select x Static Memory Mask: Chip select x mask */
-#define SYS_SMCSSMM_CSxM	__REGBITS(31, 12)
-
-/* System Memory Chip Select x Static Memory Mask: Chip select x enable */
-#define SYS_SMCSSMM_CSEx	__REGBIT(0)
-#define SYS_SMCSSMM_CSEx_DIS		__REGVAL(SYS_SMCSSMM_CSEx, 0)
-#define SYS_SMCSSMM_CSEx_EN		__REGVAL(SYS_SMCSSMM_CSEx, 1)
-
-/* General purpose, user-defined ID register */
-#define SYS_GENID	__REG(0xa0900210)
-
 /* External Interrupt x Control register */
 #define SYS_EIC(x)	__REG2(0xa0900214, (x))
 
@@ -144,5 +124,8 @@
 #define SYS_EIC_LVEDG		__REGBIT(0)
 #define SYS_EIC_LVEDG_LEVEL		__REGVAL(SYS_EIC_LVEDG, 0)
 #define SYS_EIC_LVEDG_EDGE		__REGVAL(SYS_EIC_LVEDG, 1)
+
+/* RTC Clock Control register */
+#define SYS_RTCCC		__REG(0xa0900224)
 
 #endif /* ifndef __ASM_ARCH_REGSSYSNS9360_H */

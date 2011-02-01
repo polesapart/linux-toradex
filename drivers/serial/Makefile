@@ -88,3 +88,5 @@ obj-$(CONFIG_SERIAL_TIMBERDALE)	+= timbuart.o
 obj-$(CONFIG_SERIAL_GRLIB_GAISLER_APBUART) += apbuart.o
 obj-$(CONFIG_SERIAL_ALTERA_JTAGUART) += altera_jtaguart.o
 obj-$(CONFIG_SERIAL_ALTERA_UART) += altera_uart.o
+obj-$(CONFIG_SERIAL_NS921X) += ns921x-serial.o
+obj-$(CONFIG_SERIAL_NS9360) += ns9360-serial.o

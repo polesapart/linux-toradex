@@ -1168,5 +1168,25 @@ config RAMOOPS
 	  This enables panic and oops messages to be logged to a circular
 	  buffer in RAM where it can be read back at some later point.
 
+config ADC_NS9215
+	tristate "Digi ns9215 On-Chip ADC"
+	depends on PROCESSOR_NS9215
+	help
+	  Driver for the internal ADC (Analog Digital Converter) module
+	  found on Digi ns9215 CPUs.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adc-ns9215.
+
+config ADC_S3C2443
+	tristate "ADC driver for S3C2443 SoC, internal ADC"
+	depends on CPU_S3C2443
+	help
+	  Driver for the internal ADC (Analog Digital Converter) module
+	  found on S3C2443 CPU.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called adc-s3c2443.
+
 endmenu
 

@@ -55,6 +55,7 @@ struct gpio_desc {
 #define FLAG_TRIG_FALL	5	/* trigger on falling edge */
 #define FLAG_TRIG_RISE	6	/* trigger on rising edge */
 #define FLAG_ACTIVE_LOW	7	/* sysfs value has active low */
+#define FLAG_IS_WAKEUP	8
 
 #define PDESC_ID_SHIFT	16	/* add new flags before this one */
 
@@ -264,6 +265,52 @@ static ssize_t gpio_direction_store(struct device *dev,
 
 static /* const */ DEVICE_ATTR(direction, 0644,
 		gpio_direction_show, gpio_direction_store);
+
+static ssize_t gpio_wakeup_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	const struct gpio_desc	*desc = dev_get_drvdata(dev);
+	ssize_t			status;
+
+	mutex_lock(&sysfs_lock);
+
+	if (!test_bit(FLAG_EXPORT, &desc->flags))
+		status = -EIO;
+	else {
+		status = sprintf(buf, "%s\n",
+			test_bit(FLAG_IS_WAKEUP, &desc->flags)
+				? "[enabled] disabled" : "enabled [disabled]");
+	}
+
+	mutex_unlock(&sysfs_lock);
+	return status;
+}
+
+/* Enables the wakeup-capability on one GPIO */
+static ssize_t gpio_wakeup_store(struct device *dev, struct device_attribute *attr,
+				 const char *buf, size_t size)
+{
+	const struct gpio_desc	*desc = dev_get_drvdata(dev);
+	unsigned		gpio = desc - gpio_desc;
+	ssize_t			status;
+
+	mutex_lock(&sysfs_lock);
+
+	if (!test_bit(FLAG_EXPORT, &desc->flags))
+		status = -EIO;
+	else if (sysfs_streq(buf, "enabled"))
+		status = gpio_wakeup_configure(gpio, 1);
+	else if (sysfs_streq(buf, "disabled"))
+		status = gpio_wakeup_configure(gpio, 0);
+	else
+		status = -EINVAL;
+
+	mutex_unlock(&sysfs_lock);
+	return status ? : size;
+}
+
+static const DEVICE_ATTR(wakeup, 0644,
+			 gpio_wakeup_show, gpio_wakeup_store);
 
 static ssize_t gpio_value_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -567,6 +614,7 @@ static const DEVICE_ATTR(active_low, 0644,
 static const struct attribute *gpio_attrs[] = {
 	&dev_attr_value.attr,
 	&dev_attr_active_low.attr,
+	&dev_attr_wakeup.attr,
 	NULL,
 };
 
@@ -1028,6 +1076,63 @@ static int __init gpiolib_sysfs_init(void)
 	return status;
 }
 postcore_initcall(gpiolib_sysfs_init);
+
+int gpio_wakeup_configure(unsigned gpio, int value)
+{
+	unsigned long		flags;
+	struct gpio_chip	*chip;
+	struct gpio_desc	*desc = &gpio_desc[gpio];
+	int			status = -EINVAL;
+
+	spin_lock_irqsave(&gpio_lock, flags);
+
+	if (!gpio_is_valid(gpio))
+		goto fail;
+	chip = desc->chip;
+	if (!chip || !chip->set || !chip->wakeup_configure)
+		goto fail;
+	gpio -= chip->base;
+	if (gpio >= chip->ngpio)
+		goto fail;
+	status = gpio_ensure_requested(desc, gpio);
+	if (status < 0)
+		goto fail;
+
+	/* now we know the gpio is valid and chip won't vanish */
+
+	spin_unlock_irqrestore(&gpio_lock, flags);
+
+	might_sleep_if(extra_checks && chip->can_sleep);
+
+	if (status) {
+		status = chip->request(chip, gpio);
+		if (status < 0) {
+			pr_debug("GPIO-%d: chip request fail, %d\n",
+				chip->base + gpio, status);
+			/* and it's not available to anyone else ...
+			 * gpio_request() is the fully clean solution.
+			 */
+			goto lose;
+		}
+	}
+
+	status = chip->wakeup_configure(chip, gpio, value);
+	if (status == 0) {
+		if (value)
+			set_bit(FLAG_IS_WAKEUP, &desc->flags);
+		else
+			clear_bit(FLAG_IS_WAKEUP, &desc->flags);
+	}
+lose:
+	return status;
+fail:
+	spin_unlock_irqrestore(&gpio_lock, flags);
+	if (status)
+		pr_debug("%s: gpio-%d status %d\n",
+			__func__, gpio, status);
+	return status;
+}
+EXPORT_SYMBOL_GPL(gpio_wakeup_configure);
 
 #else
 static inline int gpiochip_export(struct gpio_chip *chip)
@@ -1594,7 +1699,21 @@ int __gpio_to_irq(unsigned gpio)
 }
 EXPORT_SYMBOL_GPL(__gpio_to_irq);
 
+/**
+ * __gpio_set_pullupdown() - set pull up/down resistor
+ * Context: any
+ *
+ * This is used, where available, to set the internal
+ * GPIO pull up/down resistor.
+ */
+void __gpio_set_pullupdown(unsigned gpio, int value)
+{
+	struct gpio_chip	*chip;
 
+	chip = gpio_to_chip(gpio);
+	chip->pullupdown(chip, gpio - chip->base, value);
+}
+EXPORT_SYMBOL_GPL(__gpio_set_pullupdown);
 
 /* There's no value in making it easy to inline GPIO calls that may sleep.
  * Common examples include ones connected to I2C or SPI chips.

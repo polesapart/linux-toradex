@@ -1982,6 +1982,16 @@ config FB_S3C2410_DEBUG
 	help
 	  Turn on debugging messages. Note that you can set/unset at run time
 	  through sysfs
+	  
+config FB_S3C2443_TFT
+        tristate "S3C2443 TFT LCD framebuffer support"
+        depends on FB && CPU_S3C2443
+        select FB_CFB_FILLRECT
+        select FB_CFB_COPYAREA
+        select FB_CFB_IMAGEBLIT	
+        default y
+        ---help---
+          Add the support for TFT-LCD displays on the Samsung S3C2443 platforms
 
 config FB_NUC900
         bool "NUC900 LCD framebuffer support"
@@ -2108,6 +2118,29 @@ config FB_DA8XX
 	  This is the frame buffer device driver for the TI LCD controller
 	  found on DA8xx/OMAP-L1xx SoCs.
 	  If unsure, say N.
+
+config FB_NS9360
+	tristate "NS9360 LCD framebuffer support"
+	depends on FB && PROCESSOR_NS9360
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  This enables support for the display controller inside the
+	  Digi ns9360 CPUs.
+
+config FB_HX8347
+	tristate "HX8347 LCD framebuffer support"
+	depends on FB
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
+
+	help
+	  This enables support for the HX8347 display controller.
+	  Only the register interface mode is supported.
 
 config FB_VIRTUAL
 	tristate "Virtual Frame Buffer support (ONLY FOR TESTING!)"

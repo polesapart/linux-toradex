@@ -12,7 +12,7 @@
 #define __ASM_ARCH_TIMEX_H
 
 /*
- * value for CLOCK_TICK_RATE stolen from arch/arm/mach-s3c2410/include/mach/timex.h.
+ * value for CLOCK_TICK_RATE stolen from include/asm-arm/arch-s3c2410/timex.h.
  * See there for an explanation.
  */
 #define CLOCK_TICK_RATE         12000000

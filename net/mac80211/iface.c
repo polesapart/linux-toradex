@@ -189,6 +189,12 @@ static int ieee80211_open(struct net_device *dev)
 			goto err_del_bss;
 		/* we're brought up, everything changes */
 		hw_reconf_flags = ~0;
+                /*
+                 * If we are going to change everything, then make sure we
+                 * set a valid default power level;
+                 */
+#define DEFAULT_WIFI_TX_POWER_LEVEL         (8)
+               local->hw.conf.power_level = DEFAULT_WIFI_TX_POWER_LEVEL;
 		ieee80211_led_radio(local, true);
 	}
 

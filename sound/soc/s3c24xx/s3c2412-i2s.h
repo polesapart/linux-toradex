@@ -25,5 +25,6 @@
 #define S3C2412_CLKSRC_I2SCLK	S3C_I2SV2_CLKSRC_AUDIOBUS
 
 extern struct snd_soc_dai s3c2412_i2s_dai;
+extern struct snd_soc_dai s3c2443_i2s_dai;
 
 #endif /* __SND_SOC_S3C24XX_S3C2412_I2S_H */

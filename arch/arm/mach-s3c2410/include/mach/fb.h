@@ -46,6 +46,56 @@ struct s3c2410fb_display {
 
 	/* lcd configuration registers */
 	unsigned long	lcdcon5;
+
+        /* Additional registers for the TFT-LCD (Luis Galdos) */
+        int frame_rate;
+        unsigned long vidcon0;
+        unsigned long vidcon1;
+        unsigned long vidtcon0;
+        unsigned long vidtcon1;
+        unsigned long vidtcon2;
+        unsigned long wincon0;
+        unsigned long wincon1;
+        unsigned long vidosd0a;
+        unsigned long vidosd0b;
+        unsigned long vidosd0c;
+        unsigned long vidosd1a;
+        unsigned long vidosd1b;
+        unsigned long vidosd1c;
+
+        unsigned long vidw00add0b0;
+        unsigned long vidw00add0b1;
+        unsigned long vidw01add0;
+
+        unsigned long vidw00add1b0;
+        unsigned long vidw00add1b1;
+        unsigned long vidw01add1;
+
+        unsigned long vidw00add2b0;
+        unsigned long vidw00add2b1;
+        unsigned long vidw01add2;
+
+        unsigned long vidintcon;
+        unsigned long w1keycon0;
+        unsigned long w1keycon1;
+        unsigned long w2keycon0;
+        unsigned long w2keycon1;
+        unsigned long w3keycon0;
+        unsigned long w3keycon1;
+        unsigned long w4keycon0;
+        unsigned long w4keycon1;
+
+        unsigned long win0map;
+        unsigned long win1map;
+
+        unsigned long wpalcon;
+        unsigned long dithmode;
+        unsigned long intclr0;
+        unsigned long intclr1;
+        unsigned long intclr2;
+
+        unsigned long win0pal;
+        unsigned long win1pal;
 };
 
 struct s3c2410fb_mach_info {

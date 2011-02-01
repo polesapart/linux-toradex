@@ -973,6 +973,17 @@ static int hub_configure(struct usb_hub *hub,
 		goto fail;
 	}
 
+	/*
+	 * The second USB-port of the S3C2443 is generating interrupts, although
+	 * it's configured for the USB-device controller, and not for the USB-host.
+	 * This seems to be a hardware BUG.
+	 * (Luis Galdos)
+	 */
+#if (defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)) && defined(CONFIG_USB_GADGET_S3C2443)
+	/* Only use one port by the internal Root-Hub (devnum = 1) */
+	if (hdev->devnum == 1)
+		hub->descriptor->bNbrPorts = 1;
+#endif
 	hdev->maxchild = hub->descriptor->bNbrPorts;
 	dev_info (hub_dev, "%d port%s detected\n", hdev->maxchild,
 		(hdev->maxchild == 1) ? "" : "s");

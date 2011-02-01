@@ -32,6 +32,7 @@ ifeq ($(CONFIG_OF),y)
 obj-$(CONFIG_MMC_SPI)		+= of_mmc_spi.o
 endif
 obj-$(CONFIG_MMC_S3C)   	+= s3cmci.o
+obj-$(CONFIG_HSMMC_S3C)         += s3c-hsmmc.o
 obj-$(CONFIG_MMC_SDRICOH_CS)	+= sdricoh_cs.o
 obj-$(CONFIG_MMC_TMIO)		+= tmio_mmc.o
 obj-$(CONFIG_MMC_CB710)	+= cb710-mmc.o

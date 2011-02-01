@@ -62,7 +62,7 @@ config SERIAL_8250_CONSOLE
 	  You can set that using a kernel command line option such as
 	  "console=uart8250,io,0x3f8,9600n8"
 	  "console=uart8250,mmio,0xff5e0000,115200n8".
-	  and it will switch to normal serial console when the corresponding 
+	  and it will switch to normal serial console when the corresponding
 	  port is ready.
 	  "earlycon=uart8250,io,0x3f8,9600n8"
 	  "earlycon=uart8250,mmio,0xff5e0000,115200n8".
@@ -575,7 +575,7 @@ config SERIAL_SAMSUNG_UARTS
 	help
 	  Select the number of available UART ports for the Samsung S3C
 	  serial driver
-	
+
 config SERIAL_SAMSUNG_DEBUG
 	bool "Samsung SoC serial debug"
 	depends on SERIAL_SAMSUNG && DEBUG_LL
@@ -629,6 +629,63 @@ config SERIAL_S3C2440
 	select SERIAL_SAMSUNG_UARTS_4 if CPU_S3C2416
 	help
 	  Serial port support for the Samsung S3C2440, S3C2416 and S3C2442 SoC
+
+config SERIAL_S3C2410_ENABLE_PORTA
+	bool "Enable the port A support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port A of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTB
+       	bool "Enable the port B support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port B of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTC
+	bool "Enable the port C support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+	  Enable the serial port C of the S3C24XX
+
+config SERIAL_S3C2410_ENABLE_PORTD
+	bool "Enable the port D support on the S3C24XX"
+	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        default y
+	help
+          Enable the serial port D of the S3C24XX. Enabling this option will
+	  disable the HW flow control of the port C.
+
+config SERIAL_S3C2410_HWCTRL
+        bool "Enable the HW flow control on the S3C24XX ports"
+        depends on SERIAL_S3C2410 || SERIAL_S3C2440
+        help
+          Enables the support for the hardware handshake on the S3C24XX
+
+config SERIAL_S3C2410_PORTA_HWCTRL
+	bool "Enable HW flow control of the port A"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTA
+        default n
+	help
+          Enable the HW flow control on the port A of the S3C24XX
+
+config SERIAL_S3C2410_PORTB_HWCTRL
+	bool "Enable HW flow control of the port B"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTB
+        default n
+	help
+          Enable the HW flow control on the port B of the S3C24XX
+
+config SERIAL_S3C2410_PORTC_HWCTRL
+	bool "Enable HW flow control of the port C"
+	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && \
+	SERIAL_S3C2410_ENABLE_PORTC && !SERIAL_S3C2410_ENABLE_PORTD
+        default n
+	help
+          Enable the HW flow control on the port C of the S3C24XX
 
 config SERIAL_S3C24A0
 	tristate "Samsung S3C24A0 Serial port support"
@@ -1061,8 +1118,8 @@ config PDC_CONSOLE
 	depends on PARISC && !SERIAL_MUX && VT
 	default n
 	help
-	  Saying Y here will enable the software based PDC console to be 
-	  used as the system console.  This is useful for machines in 
+	  Saying Y here will enable the software based PDC console to be
+	  used as the system console.  This is useful for machines in
 	  which the hardware based console has not been written yet.  The
 	  following steps must be competed to use the PDC console:
 
@@ -1274,7 +1331,7 @@ config SERIAL_CPM
 	depends on CPM2 || 8xx
 	select SERIAL_CORE
 	help
-	  This driver supports the SCC and SMC serial ports on Motorola 
+	  This driver supports the SCC and SMC serial ports on Motorola
 	  embedded PowerPC that contain a CPM1 (8xx) or CPM2 (8xxx)
 
 config SERIAL_CPM_CONSOLE
@@ -1678,5 +1735,47 @@ config SERIAL_ALTERA_UART_CONSOLE
 	select SERIAL_CORE_CONSOLE
 	help
 	  Enable a Altera UART port to be the system console.
+
+config SERIAL_NS921X
+	tristate "Digi NS921x serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS921X
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS921x based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS921X_CONSOLE
+	bool "Console on Digi NS921x serial"
+	depends on SERIAL_NS921X=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS921x based systems
+
+config SERIAL_NS9360
+	tristate "Digi NS9360 serial port support"
+	depends on ARM && ARCH_NS9XXX && PROCESSOR_NS9360
+	select SERIAL_CORE
+	help
+	  If you have a Digi NS9360 based system and wish to use its serial
+	  ports, say Y or M here
+
+config SERIAL_NS9360_CONSOLE
+	bool "Console on Digi NS9360 serial"
+	depends on SERIAL_NS9360=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Console support for serial ports of Digi NS9360 based systems
+
+config SERIAL_NS9360_COMPAT
+	bool "Keep backward compatility"
+	depends on SERIAL_NS9360
+	default y
+	help
+	  The serial driver for ns9360 used ttyS device node in the past
+	  which leads to problems, if there are also 8215 compatible serial
+	  ports in the system. In newer versions this changed to ttyNS.
+	  Keep this config enabled to still get the old device names.
+	  If you are sure your bootloader can handle this feel free
+	  to dectivate this.
 
 endmenu

@@ -159,6 +159,12 @@
 
 #define PORT_SC26XX	82
 
+/* NetSilicon 921x */
+#define PORT_NS921X	83
+
+/* Digi ns9360 */
+#define PORT_NS9360	84
+
 /* SH-SCI */
 #define PORT_SCIFA	83
 

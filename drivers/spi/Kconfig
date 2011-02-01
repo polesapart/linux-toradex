@@ -285,6 +285,12 @@ config SPI_SH_MSIOF
 	help
 	  SPI driver for SuperH MSIOF blocks.
 
+config SPI_S3C2443
+        tristate "Samsung S3C2443 High Speed SPI"
+        depends on SPI_MASTER && CPU_S3C2443
+        help
+          High Speed SPI driver for Samsung S3C2443
+
 config SPI_SH_SCI
 	tristate "SuperH SCI SPI controller"
 	depends on SUPERH
@@ -348,6 +354,24 @@ config SPI_MXS
 	depends on ARCH_MXS && SPI_MASTER
 	help
 	  SPI driver for Freescale MXS SoC SSP interface
+
+config SPI_NS921X
+	tristate "Digi ns921x SPI controller"
+	depends on PROCESSOR_NS921X
+	help
+	  Driver for SPI controller in Digi ns921x CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns921x.
+
+config SPI_NS9360
+	tristate "Digi ns9360 SPI controller"
+	depends on PROCESSOR_NS9360
+	help
+	  Driver for SPI controller in Digi ns9360 CPUs
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called spi_ns9360.
 
 #
 # Add new SPI master controllers in alphabetical order above this line

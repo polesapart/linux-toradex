@@ -93,3 +93,8 @@ obj-$(CONFIG_CRYPTO_CRYPTODEV) += cryptodev.o
 #
 obj-$(CONFIG_XOR_BLOCKS) += xor.o
 obj-$(CONFIG_ASYNC_CORE) += async_tx/
+
+#
+# OCF layer
+#
+obj-$(CONFIG_OCF_OCF) += ocf/
