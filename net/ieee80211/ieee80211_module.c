@@ -131,6 +131,12 @@ static struct net_device_stats *ieee80211_generic_get_stats(
 	return &ieee->stats;
 }
 
+static const struct net_device_ops ieee80211_netdev_ops = {
+	.ndo_start_xmit         = ieee80211_xmit,
+	.ndo_get_stats		= ieee80211_generic_get_stats,
+	.ndo_change_mtu         = ieee80211_change_mtu,
+};
+
 struct net_device *alloc_ieee80211(int sizeof_priv)
 {
 	struct ieee80211_device *ieee;
@@ -145,12 +151,7 @@ struct net_device *alloc_ieee80211(int sizeof_priv)
 		goto failed;
 	}
 	ieee = netdev_priv(dev);
-	dev->hard_start_xmit = ieee80211_xmit;
-	dev->change_mtu = ieee80211_change_mtu;
-
-	/* Drivers are free to override this if the generic implementation
-	 * does not meet their needs. */
-	dev->get_stats = ieee80211_generic_get_stats;
+	dev->netdev_ops = &ieee80211_netdev_ops;
 
 	ieee->dev = dev;
 
