@@ -17,6 +17,15 @@ menuconfig WLAN
 
 if WLAN
 
+config WLAN_80211
+	bool "Wireless LAN (IEEE 802.11)"
+	depends on NETDEVICES
+	---help---
+	  Say Y if you have any 802.11 wireless LAN hardware.
+
+	  This option does not affect the kernel build, it only
+	  lets you choose drivers.
+
 config PCMCIA_RAYCS
 	tristate "Aviator/Raytheon 2.4GHz wireless support"
 	depends on PCMCIA
