@@ -253,7 +253,7 @@ typedef int dw_rate_index_t;
 /* separate maintained static because of polling performance */
 static void* __iomem vbase = NULL;
 
-static void dw_cw_set(const dw_priv_t* priv, u16 fc);
+static void dw_cw_set(dw_priv_t* priv, u16 fc);
 static void dw_rx_fifo_error(dw_priv_t* priv);
 static int  dw_rx_frame_get_length(const dw_frame_rx_t* frame);
 static int  dw_rx_frame_is_duplicate(dw_priv_t* priv,
@@ -486,7 +486,7 @@ static inline void dw_iowrite32(u32 val, u32 offs)
 /**
  * dw_hw_get_status - returns the FPGA's status
  */
-static inline u32 dw_hw_get_status(const dw_priv_t* priv)
+static inline u32 dw_hw_get_status(dw_priv_t* priv)
 {
 	REQUIRE_LOCKED(priv);
 
@@ -1037,7 +1037,7 @@ static int dw_plcp_get_ratecode_ofdm(int bitrate)
 /**
  * dw_cw_set - updates the contention window depending on the frame type
  */
-static void dw_cw_set(const dw_priv_t* priv, u16 fc)
+static void dw_cw_set(dw_priv_t* priv, u16 fc)
 {
 	int cw;
 
@@ -1357,6 +1357,7 @@ static void dw_rx_frame_give_to_stack(dw_priv_t* priv, dw_frame_rx_t* frame)
         }
 }
 
+#define SPYBUF_SIZE	2312
 /**
  * dw_rx_frame_fetch - Copies a frame from FIFO
  */
@@ -1367,7 +1368,7 @@ static void dw_rx_frame_fetch(dw_priv_t* priv)
         int len;
         int ignore_frame = 0;
         u16 fc;
-	char spy_buf[2312];
+	char *spy_buf;
 	unsigned int spy_len = 0;
 
         DBG_FN(DBG_RX | DBG_INT);
@@ -1390,6 +1391,7 @@ static void dw_rx_frame_fetch(dw_priv_t* priv)
         element = priv->rx.queue.free.list.next;
         frame   = list_entry(element, dw_frame_rx_t, list);
 
+        spy_buf = kmalloc(SPYBUF_SIZE, GFP_KERNEL);
 	memset(spy_buf, 0, sizeof(spy_buf)); spy_len = 0;
 
         /* copy frame header, swapped, we need it's header for length */
@@ -1515,6 +1517,7 @@ static void dw_rx_frame_fetch(dw_priv_t* priv)
 
                 ignore_frame = 1;
         }
+        kfree(spy_buf);
 
         if (!ignore_frame) {
                 /* process frame */
@@ -4828,12 +4831,20 @@ static struct net_device_stats * dw_net_get_stats(struct net_device *dev)
 	return &priv->ieee->stats;
 }
 
+static const struct net_device_ops dw_netdev_ops = {
+	.ndo_open               = dw_open,
+	.ndo_stop               = dw_close,
+	.ndo_start_xmit		= ieee80211_xmit,
+	.ndo_set_multicast_list = dw_set_multicast_list,
+	.ndo_get_stats		= dw_net_get_stats,
+};
+
 /**
  * dw_probe - probe for resources and for chip being present
  *
  * @return <0 on failure
  */
-static int __init dw_probe(struct platform_device* pdev)
+static int __devinit dw_probe(struct platform_device* pdev)
 {
 	struct net_device* dev = NULL;
 	int err = -ENODEV;
@@ -4892,11 +4903,8 @@ static int __init dw_probe(struct platform_device* pdev)
         }
 
         /* all resources available, initializw remaining stuff */
-        dev->open               = dw_open;
-        dev->stop               = dw_close;
-        dev->set_multicast_list = dw_set_multicast_list;
         dev->wireless_handlers  = &dw_wx_handlers_def;
-        dev->get_stats          = dw_net_get_stats;
+        dev->netdev_ops = &dw_netdev_ops;
 
         /* initialize hardware/private stuff */
         err = dw_start_dev(pdev);

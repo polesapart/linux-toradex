@@ -34,6 +34,7 @@
 #ifndef FS_DIGI_WI_G_DRIVER_H
 #define FS_DIGI_WI_G_DRIVER_H
 
+#include <linux/netdevice.h>
 #include <net/ieee80211.h>
 #include <net/ieee80211softmac.h>
 #include <net/ieee80211softmac_wx.h>
@@ -43,6 +44,7 @@
 #include <mach/hardware.h>	/* BBUS_CLK_FREQ */
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
+#include <linux/semaphore.h>
 
 #ifdef dprintkl
 #undef dprintkl
