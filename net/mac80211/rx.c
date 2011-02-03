@@ -758,79 +758,6 @@ static void ieee80211_rx_reorder_ampdu(struct ieee80211_rx_data *rx,
 	__skb_queue_tail(frames, skb);
 }
 
-#define FRAME_CLASS_1		(1)
-#define FRAME_CLASS_2		(2)
-#define FRAME_CLASS_3		(3)
-
-static unsigned int debug_noinline frame_class_type(struct ieee80211_hdr *hdr, bool is_ibss)
-{
-	unsigned result = FRAME_CLASS_3;
-
-	if (ieee80211_is_mgmt(hdr->frame_control)) {
-		if ((ieee80211_is_assoc_req(hdr->frame_control))
-			|| (ieee80211_is_assoc_resp(hdr->frame_control))
-			|| (ieee80211_is_reassoc_req(hdr->frame_control))
-			|| (ieee80211_is_reassoc_resp(hdr->frame_control))
-			|| (ieee80211_is_disassoc(hdr->frame_control))) {
-			result = FRAME_CLASS_2;
-		} else if ((ieee80211_is_probe_req(hdr->frame_control))
-			|| (ieee80211_is_probe_resp(hdr->frame_control))
-			|| (ieee80211_is_beacon(hdr->frame_control))
-			|| (ieee80211_is_auth(hdr->frame_control))
-			|| (ieee80211_is_deauth(hdr->frame_control))
-			|| (ieee80211_is_atim(hdr->frame_control))
-			|| (ieee80211_is_cfend(hdr->frame_control))
-			|| ((ieee80211_is_action(hdr->frame_control)) && (is_ibss))) {
-			result = FRAME_CLASS_1;
-		}
-	} else if (ieee80211_is_ctl(hdr->frame_control)) {
-		if ((ieee80211_is_rts(hdr->frame_control))
-			|| (ieee80211_is_cts(hdr->frame_control))
-			|| (ieee80211_is_ack(hdr->frame_control))
-			|| (ieee80211_is_cfend(hdr->frame_control))
-			|| (ieee80211_is_cfendack(hdr->frame_control))) {
-			result = FRAME_CLASS_1;
-		}
-	} else if (ieee80211_is_data(hdr->frame_control)) {
-		if ((!ieee80211_has_fromds(hdr->frame_control))
-		     && (!ieee80211_has_tods(hdr->frame_control))) {
-			result = FRAME_CLASS_1;
-		}
-	}
-
-	return result;
-}
-
-static void private_send_deauth_disassoc(struct ieee80211_sub_if_data *sdata,
-					   u16 stype, u16 reason, u8 *destination)
-{
-	struct ieee80211_local *local = sdata->local;
-	struct ieee80211_if_sta *ifsta = &sdata->u.sta;
-	struct sk_buff *skb;
-	struct ieee80211_mgmt *mgmt;
-
-	skb = dev_alloc_skb(local->hw.extra_tx_headroom + sizeof(*mgmt));
-	if (!skb) {
-		printk(KERN_DEBUG "%s: failed to allocate buffer for "
-		       "deauth/disassoc frame\n", sdata->dev->name);
-		return;
-	}
-	skb_reserve(skb, local->hw.extra_tx_headroom);
-
-	mgmt = (struct ieee80211_mgmt *) skb_put(skb, 24);
-	memset(mgmt, 0, 24);
-	memcpy(mgmt->da, ifsta->bssid, ETH_ALEN);
-	memcpy(mgmt->sa, sdata->dev->dev_addr, ETH_ALEN);
-	memcpy(mgmt->bssid, ifsta->bssid, ETH_ALEN);
-	mgmt->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT | stype);
-	skb_put(skb, 2);
-	/* u.deauth.reason_code == u.disassoc.reason_code */
-	mgmt->u.deauth.reason_code = cpu_to_le16(reason);
-
-	ieee80211_tx_skb(sdata, skb, 0);
-}
-
-
 static ieee80211_rx_result debug_noinline
 ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 {
@@ -866,37 +793,6 @@ ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 
 	if (ieee80211_vif_is_mesh(&rx->sdata->vif))
 		return ieee80211_rx_mesh_check(rx);
-
-	if ((rx->sdata)
-	    && !is_multicast_ether_addr(hdr->addr1)
-		&& (rx->sdata->vif.type != NL80211_IFTYPE_ADHOC)
-		&& (rx->flags & IEEE80211_RX_RA_MATCH)) {
-		unsigned class_type = frame_class_type(hdr, false);
-
-		switch(class_type) {
-			case FRAME_CLASS_1:
-			default:
-				break;
-			case FRAME_CLASS_2:
-				if ((rx->sta != NULL) && (!test_sta_flags(rx->sta, WLAN_STA_AUTH))) {
-					private_send_deauth_disassoc(rx->sdata,
-					   IEEE80211_STYPE_DEAUTH,
-					   WLAN_REASON_CLASS2_FRAME_FROM_NONAUTH_STA,
-						   hdr->addr1);
-				}
-				break;
-			case FRAME_CLASS_3:
-				if ((rx->sta == NULL) || (!test_sta_flags(rx->sta, WLAN_STA_ASSOC))) {
-					if ((rx->sta != NULL) && (test_sta_flags(rx->sta, WLAN_STA_AUTH))) {
-						private_send_deauth_disassoc(rx->sdata,
-						   IEEE80211_STYPE_DISASSOC,
-						   WLAN_REASON_CLASS3_FRAME_FROM_NONASSOC_STA,
-						   hdr->addr1);
-					}
-				}
-				break;
-		}
-	}
 
 	if (unlikely((ieee80211_is_data(hdr->frame_control) ||
 		      ieee80211_is_pspoll(hdr->frame_control)) &&
@@ -1085,7 +981,6 @@ ieee80211_rx_h_decrypt(struct ieee80211_rx_data *rx)
 
 static ieee80211_rx_result debug_noinline
 ieee80211_rx_h_check_more_data(struct ieee80211_rx_data *rx)
-
 {
 	struct ieee80211_local *local;
 	struct ieee80211_hdr *hdr;

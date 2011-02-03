@@ -928,6 +928,7 @@ static int fec_enet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
 	struct fec_enet_private *fep = netdev_priv(dev);
 	struct phy_device *phydev = fep->phy_dev;
+	struct mii_ioctl_data *data = if_mii(rq);
 
 	if (!netif_running(dev))
 		return -EINVAL;
@@ -935,7 +936,7 @@ static int fec_enet_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	if (!phydev)
 		return -ENODEV;
 
-	return phy_mii_ioctl(phydev, rq, cmd);
+	return phy_mii_ioctl(phydev, data, cmd);
 }
 
 static void fec_enet_free_buffers(struct net_device *dev)

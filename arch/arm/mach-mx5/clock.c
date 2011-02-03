@@ -5038,12 +5038,14 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	 */
 	pll1_rate = clk_get_rate(&pll1_main_clk);
 
+#if defined(CONFIG_ARCH_MX53)
 	if (pll1_rate > 1000000000)
 		mx53_set_cpu_part_number(IMX53_CEC_1_2G);
 	else if (pll1_rate > 800000000)
 		mx53_set_cpu_part_number(IMX53_CEC);
 	else
 		mx53_set_cpu_part_number(IMX53_AEC);
+#endif
 
 	/* Set the current working point. */
 	cpu_wp_tbl = get_cpu_wp(&cpu_wp_nr);

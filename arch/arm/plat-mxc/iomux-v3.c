@@ -51,7 +51,6 @@ int mxc_iomux_v3_get_multiple_pads(struct pad_desc *pad_list, unsigned count)
 {
 	struct pad_desc *p = pad_list;
 	int i;
-	int ret;
 
 	for (i = 0; i < count; i++) {
 		mxc_iomux_v3_get_pad(p);

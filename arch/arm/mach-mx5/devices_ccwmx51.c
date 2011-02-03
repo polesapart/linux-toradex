@@ -422,12 +422,6 @@ struct mxc_spi_master mxcspi1_data = {
 	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
 };
 
-struct mxc_srtc_platform_data srtc_data = {
-	.srtc_sec_mode_addr = 0x83F98840,
-};
-
-
-
 struct mxc_ipu_config mxc_ipu_data = {
 	.rev = 2,
 };
@@ -540,6 +534,11 @@ struct mxc_dvfs_platform_data dvfs_core_data = {
 	.dncnt_val = 10,
 	.delay_time = 30,
 	.num_wp = 3,
+};
+
+struct mxc_bus_freq_platform_data bus_freq_data = {
+	.gp_reg_id = "SW1",
+	.lp_reg_id = "SW2",
 };
 
 struct mxc_dvfsper_data dvfs_per_data = {

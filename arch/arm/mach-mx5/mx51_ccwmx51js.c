@@ -272,6 +272,8 @@ static void __init mxc_board_init(void)
 
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
+	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "csi_mclk1");
+	mxc_ipu_data.csi_clk[1] = clk_get(NULL, "csi_mclk2");
 
 	mxc_spdif_data.spdif_core_clk = clk_get(NULL, "spdif_xtal_clk");
 	clk_put(mxc_spdif_data.spdif_core_clk);
@@ -287,7 +289,7 @@ static void __init mxc_board_init(void)
 #if defined(CONFIG_I2C_MXC_HS) || defined(CONFIG_I2C_MXC_HS_MODULE)
 	mxc_register_device(&mxci2c_hs_device, &mxci2c_hs_data);
 #endif
-	mxc_register_device(&mxc_rtc_device, &srtc_data);
+	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ssi1_device, NULL);
 	mxc_register_device(&mxc_ssi2_device, NULL);
 	mxc_register_device(&mxc_dma_device, NULL);
@@ -301,7 +303,7 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
 	mxc_register_device(&mxc_tve_device, &tve_data);
 	mxc_register_device(&mx51_lpmode_device, NULL);
-	mxc_register_device(&busfreq_device, NULL);
+	mxc_register_device(&busfreq_device, &bus_freq_data);
 	mxc_register_device(&sdram_autogating_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);

@@ -336,7 +336,7 @@ static void dr_phy_low_power_mode(struct fsl_udc *udc, bool enable)
 	pdata->lowpower = enable;
 }
 
-
+#if 0
 /* workaroud for some boards, maybe there is a large capacitor between the ground and the Vbus
  * that will cause the vbus dropping very slowly when device is detached,
  * may cost 2-3 seconds to below 0.8V */
@@ -367,6 +367,7 @@ static void udc_wait_b_session_low(void)
 	temp |= OTGSC_B_SESSION_VALID_IRQ_EN;
 	fsl_writel(temp, &dr_regs->otgsc);
 }
+#endif
 
 static int dr_controller_setup(struct fsl_udc *udc)
 {
