@@ -1627,11 +1627,13 @@ static int smsc911x_set_mac_address(struct net_device *dev, void *p)
 static int smsc911x_do_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
 	struct smsc911x_data *pdata = netdev_priv(dev);
+	struct mii_ioctl_data *data = if_mii(ifr);
+
 
 	if (!netif_running(dev) || !pdata->phy_dev)
 		return -EINVAL;
 
-	return phy_mii_ioctl(pdata->phy_dev, ifr, cmd);
+	return phy_mii_ioctl(pdata->phy_dev, data, cmd);
 }
 
 static int
