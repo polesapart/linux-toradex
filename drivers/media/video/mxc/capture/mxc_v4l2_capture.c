@@ -42,7 +42,7 @@
 #include "ipu_prp_sw.h"
 #include "asm/delay.h"
 
-static int video_nr = -1;
+static int video_nr = -1, local_buf_num;
 
 /*! This data is used for the output to the display. */
 #define MXC_V4L2_CAPTURE_NUM_OUTPUTS	3
@@ -641,10 +641,12 @@ static int stop_preview(cam_data *cam)
 			return err;
 	}
 
+	if (cam->output == 0 || cam->output == 2) {
 	if (cam->v4l2_fb.flags == V4L2_FBUF_FLAG_OVERLAY)
 		err = prp_vf_sdc_deselect(cam);
 	else if (cam->v4l2_fb.flags == V4L2_FBUF_FLAG_PRIMARY)
 		err = prp_vf_sdc_deselect_bg(cam);
+	}
 
 	return err;
 }
@@ -1404,11 +1406,11 @@ static int mxc_v4l2_s_std(cam_data *cam, v4l2_std_id e)
  */
 static int mxc_v4l2_g_std(cam_data *cam, v4l2_std_id *e)
 {
+#if 0
 	struct v4l2_format tv_fmt;
 
 	pr_debug("In mxc_v4l2_g_std\n");
 
-#if 0
 	if (cam->device_type == 1) {
 		/* Use this function to get what the TV-In device detects the
 		 * format to be. pixelformat is used to return the std value
@@ -1429,8 +1431,8 @@ static int mxc_v4l2_g_std(cam_data *cam, v4l2_std_id *e)
 		*e = tv_fmt.fmt.pix.pixelformat;
 	}
 
-	return 0;
 #endif
+	return 0;
 }
 
 
@@ -1879,11 +1881,9 @@ static long mxc_v4l_do_ioctl(struct file *file,
 	}
 
 	case VIDIOC_ENUM_FMT: {
-		struct v4l2_fmtdesc *f = arg;
+		struct v4l2_fmtdesc *fd = arg;
 		if (cam->sensor)
-			retval = vidioc_int_enum_fmt_cap(cam->sensor, f);
-#warning AG to review camera
-		//retval = mxc_v4l2_enum_fmt(cam, fd);
+			retval = mxc_v4l2_enum_fmt(cam, fd);
 		else {
 			pr_err("ERROR: v4l2 capture: slave not found!\n");
 			retval = -ENODEV;
@@ -2304,8 +2304,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 	case VIDIOC_TRY_FMT: {
 		struct v4l2_format * f = arg;
 		pr_debug("   case VIDIOC_TRY_FMT\n");
-		if (cam->sensor)
-		  vidioc_int_s_power(cam->sensor, 0);
+		retval = vidioc_int_try_fmt_cap(cam->sensor,f);
 		break;
 	}
 
@@ -2604,116 +2603,6 @@ static void init_camera_struct(cam_data *cam,unsigned int csi)
 	init_waitqueue_head(&cam->power_queue);
 	spin_lock_init(&cam->queue_int_lock);
 	spin_lock_init(&cam->dqueue_int_lock);
-}
-
-static ssize_t show_streaming(struct device *dev,
-			struct device_attribute *attr, char *buf)
-{
-	struct video_device *video_dev = container_of(dev,
-						struct video_device, dev);
-	cam_data *g_cam = video_get_drvdata(video_dev);
-
-	if (g_cam->capture_on)
-		return sprintf(buf, "stream on\n");
-	else
-		return sprintf(buf, "stream off\n");
-}
-static DEVICE_ATTR(fsl_v4l2_capture_property, S_IRUGO, show_streaming, NULL);
-
-static ssize_t show_overlay(struct device *dev,
-			struct device_attribute *attr, char *buf)
-{
-	struct video_device *video_dev = container_of(dev,
-						struct video_device, dev);
-	cam_data *g_cam = video_get_drvdata(video_dev);
-
-	if (g_cam->overlay_on)
-		return sprintf(buf, "overlay on\n");
-	else
-		return sprintf(buf, "overlay off\n");
-}
-static DEVICE_ATTR(fsl_v4l2_overlay_property, S_IRUGO, show_overlay, NULL);
-
-/*!
- * This function is called to probe the devices if registered.
- *
- * @param   pdev  the device structure used to give information on which device
- *                to probe
- *
- * @return  The function returns 0 on success and -1 on failure.
- */
-static int mxc_v4l2_probe(struct platform_device *pdev)
-{
-	/* Create g_cam and initialize it. */
-	g_cam = kmalloc(sizeof(cam_data), GFP_KERNEL);
-	if (g_cam == NULL) {
-		pr_err("ERROR: v4l2 capture: failed to register camera\n");
-		return -1;
-	}
-	init_camera_struct(g_cam, pdev);
-	pdev->dev.release = camera_platform_release;
-
-	/* Set up the v4l2 device and register it*/
-	mxc_v4l2_int_device.priv = g_cam;
-	/* This function contains a bug that won't let this be rmmod'd. */
-	v4l2_int_device_register(&mxc_v4l2_int_device);
-
-	/* register v4l video device */
-	if (video_register_device(g_cam->video_dev, VFL_TYPE_GRABBER, video_nr)
-	    == -1) {
-		kfree(g_cam);
-		g_cam = NULL;
-		pr_err("ERROR: v4l2 capture: video_register_device failed\n");
-		return -1;
-	}
-	pr_debug("   Video device registered: %s #%d\n",
-		 g_cam->video_dev->name, g_cam->video_dev->minor);
-
-	if (device_create_file(&g_cam->video_dev->dev,
-			&dev_attr_fsl_v4l2_capture_property))
-		dev_err(&pdev->dev, "Error on creating sysfs file"
-			" for capture\n");
-
-	if (device_create_file(&g_cam->video_dev->dev,
-			&dev_attr_fsl_v4l2_overlay_property))
-		dev_err(&pdev->dev, "Error on creating sysfs file"
-			" for overlay\n");
-
-	return 0;
-}
-
-/*!
- * This function is called to remove the devices when device unregistered.
- *
- * @param   pdev  the device structure used to give information on which device
- *                to remove
- *
- * @return  The function returns 0 on success and -1 on failure.
- */
-static int mxc_v4l2_remove(struct platform_device *pdev)
-{
-
-	if (g_cam->open_count) {
-		pr_err("ERROR: v4l2 capture:camera open "
-			"-- setting ops to NULL\n");
-		return -EBUSY;
-	} else {
-		device_remove_file(&g_cam->video_dev->dev,
-			&dev_attr_fsl_v4l2_capture_property);
-		device_remove_file(&g_cam->video_dev->dev,
-			&dev_attr_fsl_v4l2_overlay_property);
-
-		pr_info("V4L2 freeing image input device\n");
-		v4l2_int_device_unregister(&mxc_v4l2_int_device);
-		video_unregister_device(g_cam->video_dev);
-
-		mxc_free_frame_buf(g_cam);
-		kfree(g_cam);
-		g_cam = NULL;
-	}
-
-	pr_info("V4L2 unregistering video\n");
-	return 0;
 }
 
 /*!
