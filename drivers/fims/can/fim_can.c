@@ -1478,7 +1478,7 @@ err_free_candev:
  	return -EINVAL;
 }
 
-static __init int fim_can_probe(struct platform_device *pdev)
+static __devinit int fim_can_probe(struct platform_device *pdev)
 {
 	int nrpics;
 	int retval;
