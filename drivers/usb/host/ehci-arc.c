@@ -381,7 +381,10 @@ static int ehci_fsl_bus_suspend(struct usb_hcd *hcd)
 	if (pdata->platform_suspend)
 		pdata->platform_suspend(pdata);
 
+#if defined(CONFIG_MACH_CCMX51JS) || defined(CONFIG_MACH_CCWMX51JS)
+	// USB wake up not supported
 	usb_host_set_wakeup(hcd->self.controller, true);
+#endif
 	fsl_usb_lowpower_mode(pdata, true);
 	fsl_usb_clk_gate(hcd->self.controller->platform_data, false);
 	clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);

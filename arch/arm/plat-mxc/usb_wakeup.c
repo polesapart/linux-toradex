@@ -77,7 +77,7 @@ static irqreturn_t usb_wakeup_handler(int irq, void *_dev)
 	irqreturn_t ret = IRQ_NONE;
 
 	if (usb2_is_in_lowpower(ctrl)) {
-		printk(KERN_INFO "usb wakeup is here\n");
+		printk(KERN_INFO "USB in low power mode\n");
 		delay_process_wakeup(ctrl);
 		ret = IRQ_HANDLED;
 	}

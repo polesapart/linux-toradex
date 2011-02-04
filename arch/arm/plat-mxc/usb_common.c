@@ -501,8 +501,11 @@ int fsl_usb_host_init(struct platform_device *pdev)
 	if (xops->init)
 		xops->init(xops);
 
+#if defined(CONFIG_MACH_CCMX51JS) || defined(CONFIG_MACH_CCWMX51JS)
+	// USB wakeup not currently supported
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("%s port is not a wakeup source.\n", pdata->name);
+#endif
 
 	if (xops->xcvr_type == PORTSC_PTS_SERIAL) {
 		if (cpu_is_mx35()) {
@@ -836,8 +839,11 @@ int usbotg_init(struct platform_device *pdev)
 		}
 	}
 
+#if defined(CONFIG_MACH_CCMX51JS) || defined(CONFIG_MACH_CCWMX51JS)
+	// USB wakeup not currently supported
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("DR is not a wakeup source.\n");
+#endif
 
 	mxc_otg_used++;
 	pr_debug("%s: success\n", __func__);
