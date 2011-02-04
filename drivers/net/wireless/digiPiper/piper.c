@@ -825,7 +825,7 @@ static int piper_resume(struct platform_device *dev)
 #define piper_resume	NULL
 #endif
 
-static int __init piper_probe(struct platform_device* pdev)
+static int __devinit piper_probe(struct platform_device* pdev)
 {
 	struct piper_pdata *pdata = pdev->dev.platform_data;
 	struct piper_priv *piperp;
@@ -929,7 +929,7 @@ static int __init piper_probe(struct platform_device* pdev)
 
 	ret = piper_register_hw(piperp, &pdev->dev, &al7230_rf_ops);
 	if (ret) {
-		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv\n");
+		printk(KERN_ERR PIPER_DRIVER_NAME ": failed to register priv, ret=%d\n", ret);
 		goto error_reg_hw;
 	}
 
@@ -979,7 +979,7 @@ error_alloc:
 	return ret;
 }
 
-static int piper_remove(struct platform_device *pdev)
+static int __devexit piper_remove(struct platform_device *pdev)
 {
 	struct piper_priv *piperp = dev_get_drvdata(&pdev->dev);
 
@@ -1006,7 +1006,7 @@ static int piper_remove(struct platform_device *pdev)
 /* describes the driver */
 static struct platform_driver piper_driver = {
 	.probe		= piper_probe,
-	.remove		= piper_remove,
+	.remove		= __devexit_p(piper_remove),
 	.suspend 	= piper_suspend,
 	.resume		= piper_resume,
 	.driver 	= {
