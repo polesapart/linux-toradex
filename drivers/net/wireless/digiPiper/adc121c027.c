@@ -26,12 +26,6 @@
 static const unsigned short normal_i2c[] = { ADC_I2C_ADDR, I2C_CLIENT_END };
 static const unsigned short dummy_i2c_addrlist[] = { I2C_CLIENT_END };
 
-static struct i2c_client_address_data addr = {
-	.normal_i2c = normal_i2c,
-	.probe = dummy_i2c_addrlist,
-	.ignore = dummy_i2c_addrlist,
-};
-
 enum adc121C027_cmd {
         ADC_RESULT              = 0,
         ADC_ALERT_STATUS        = 1,
@@ -87,7 +81,6 @@ static struct i2c_driver adc121C027_driver = {
 	.probe          = adc121C027_probe,
 	.remove         =  __devexit_p(adc121C027_remove),
 	.id_table       = adc121C027_id,
-	.address_data   = &addr,
 };
 
 /* Turn on automatic A/D process by setting a non zero cycle time */
@@ -132,7 +125,7 @@ int adc121C027_init(struct airohaCalibrationData *cal, int i2cadapter)
 			": error getting i2c adapter\n");
 		return -EINVAL;
 	}
-    
+
 	adc_i2c_client = i2c_new_device(adapter, &board_info);
 	if (!adc_i2c_client) {
 		printk(KERN_WARNING PIPER_DRIVER_NAME
@@ -153,9 +146,9 @@ int adc121C027_init(struct airohaCalibrationData *cal, int i2cadapter)
 	cal->cops->adc_clear_peak = adc121C027_clear_peak;
 	cal->cops->adc_read_last_val = adc121C027_read_last_sample;
 	cal->cops->adc_shutdown = adc121C027_shutdown;
-    
+
 	return 0;
-}    
+}
 EXPORT_SYMBOL_GPL(adc121C027_init);
 
 
