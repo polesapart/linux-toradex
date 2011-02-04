@@ -177,7 +177,10 @@ static int get_signal(struct rx_frame_hdr *hdr, enum ieee80211_band rf_band, int
 /* FIXME, following limtis should depend on the platform */
 #define PIPER_MAX_SIGNAL_DBM		(-30)
 #define PIPER_MIN_SIGNAL_DBM		(-90)
-
+#if 0
+/*
+ * Latest version of mac80211 doesn't seem to be interested in link quality????
+ */
 static int calculate_link_quality(int signal)
 {
 	int quality;
@@ -194,6 +197,7 @@ static int calculate_link_quality(int signal)
 
 	return quality;
 }
+#endif
 
 unsigned int phy_determine_rssi(struct rx_frame_hdr *hdr)
 {
@@ -214,7 +218,6 @@ void phy_process_plcp(struct piper_priv *piper, struct rx_frame_hdr *hdr,
 	status->signal = get_signal(hdr, status->band, piper->pdata->rf_transceiver);
 	status->antenna = hdr->antenna;
 	status->freq = piper->rf->getFrequency(piper->channel);
-	status->qual = calculate_link_quality(status->signal);
 
 	if (hdr->modulation_type == MOD_TYPE_OFDM) {
 		/* OFDM */

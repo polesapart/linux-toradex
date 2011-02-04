@@ -425,7 +425,7 @@ void packet_tx_done(struct piper_priv *piperp, tx_result_t result,
 		info->status.ack_signal = signal_strength;
 		info->flags |= (result == RECEIVED_ACK) ? IEEE80211_TX_STAT_ACK : 0;
 		piperp->pstats.tx_complete_count++;
-		piperp->pstats.tx_queue.len--;
+//		piperp->pstats.tx_queue.len--;
 		if (piperp->tx_rts)
 			piperp->pstats.ll_stats.dot11RTSSuccessCount++;
 

@@ -388,10 +388,11 @@ void piper_rx_tasklet(unsigned long context)
 					}
 
 				piper_ps_process_receive_frame(piperp, skb);
+				memcpy(IEEE80211_SKB_RXCB(skb), &status, sizeof(status));
 #if WANT_TO_RECEIVE_FRAMES_IN_ISR
-					ieee80211_rx_irqsafe(piperp->hw, skb, &status);
+					ieee80211_rx_irqsafe(piperp->hw, skb);
 #else
-					ieee80211_rx(piperp->hw, skb, &status);
+					ieee80211_rx(piperp->hw, skb);
 #endif
 				}
 			} else {

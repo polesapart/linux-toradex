@@ -293,11 +293,6 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 
 	dprintk(DVVERBOSE, "\n");
 
-	if (piperp->is_radio_on == false) {
-		dprintk(DERROR, "called with radio off\n");
-		return -EBUSY;
-	}
-
 	/*
 	 * Our H/W can only transmit a single packet at a time.  mac80211
 	 * already maintains a queue of packets, so there is no reason
@@ -339,8 +334,8 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 			   IEEE80211_TX_STAT_ACK |
 			   IEEE80211_TX_STAT_AMPDU |
 			   IEEE80211_TX_STAT_AMPDU_NO_BACK);
-	piperp->pstats.tx_queue.len++;
-	piperp->pstats.tx_queue.count++;
+//	piperp->pstats.tx_queue.len++;
+//	piperp->pstats.tx_queue.count++;
 
 	if (piper_tx_enqueue(piperp, skb, skb_return_cb) == -1) {
 		skb_pull(skb, TX_HEADER_LENGTH);		/* undo the skb_push above */
@@ -385,10 +380,8 @@ static int piper_hw_start(struct ieee80211_hw *hw)
 		return ret;
 	}
 
-	piperp->is_radio_on = true;
-
 	/*
-	 * Initialize the antenna with the defualt setting defined in the
+	 * Initialize the antenna with the default setting defined in the
 	 * probe function. This can be changed, currently, through a sysfs
 	 * entry in the device directory
 	 */
@@ -459,32 +452,32 @@ static void piper_hw_stop(struct ieee80211_hw *hw)
  * The device type is also set here.
  */
 static int piper_hw_add_intf(struct ieee80211_hw *hw,
-		struct ieee80211_if_init_conf *conf)
+		struct ieee80211_vif *vif)
 {
 	struct piper_priv *piperp = hw->priv;
 
-	dprintk(DVVERBOSE, "if type: %x\n", conf->type);
+	dprintk(DVVERBOSE, "if type: %x\n", vif->type);
 
 	/* __NL80211_IFTYPE_AFTER_LAST means no mode selected */
 	if (piperp->if_type != __NL80211_IFTYPE_AFTER_LAST) {
 		dprintk(DERROR, "unsupported interface type %x, expected %x\n",
-			conf->type, __NL80211_IFTYPE_AFTER_LAST);
+			vif->type, __NL80211_IFTYPE_AFTER_LAST);
 		return -EOPNOTSUPP;
 	}
 
-	switch (conf->type) {
+	switch (vif->type) {
 	case NL80211_IFTYPE_ADHOC:
 		piper_set_status_led(piperp->hw, led_adhoc);
-		piperp->if_type = conf->type;
+		piperp->if_type = vif->type;
 		break;
 
 	case NL80211_IFTYPE_STATION:
 		piper_set_status_led(hw, led_not_associated);
-		piperp->if_type = conf->type;
+		piperp->if_type = vif->type;
 		break;
 
 	case NL80211_IFTYPE_MESH_POINT:
-		piperp->if_type = conf->type;
+		piperp->if_type = vif->type;
 		break;
 	default:
 		return -EOPNOTSUPP;
@@ -497,7 +490,7 @@ static int piper_hw_add_intf(struct ieee80211_hw *hw,
  * mac80211 calls this function to shut down us down.
  */
 static void piper_hw_rm_intf(struct ieee80211_hw *hw,
-		struct ieee80211_if_init_conf *conf)
+		struct ieee80211_vif *vif)
 {
 	struct piper_priv *digi = hw->priv;
 
@@ -527,25 +520,13 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
 							  && (piperp->if_type == NL80211_IFTYPE_STATION)
 							  && (piperp->areWeAssociated)));
 	}
-	/* Should we turn the radio off? */
-	if ((piperp->is_radio_on = (conf->radio_enabled != 0)) != 0) {
-		piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-				  BB_GENERAL_CTL_RX_EN, op_or);
-	} else {
-		dprintk(DNORMAL, "Turning radio off\n");
-		return piperp->ac->wr_reg(piperp, BB_GENERAL_CTL,
-					~BB_GENERAL_CTL_RX_EN, op_and);
+
+	/* Adjust the listen interval */
+	if (IEEE80211_CONF_CHANGE_LISTEN_INTERVAL & changed) {
+		tempval = piperp->ac->rd_reg(piperp, MAC_DTIM_PERIOD) & ~MAC_LISTEN_INTERVAL_MASK;
+		tempval |= conf->listen_interval;
+		piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, tempval, op_write);
 	}
-
-	/* Adjust the beacon interval and listen interval */
-	tempval = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_BEACON_INTERVAL_MASK;
-	tempval |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
-	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, tempval, op_write);
-
-	tempval = piperp->ac->rd_reg(piperp, MAC_DTIM_PERIOD) & ~MAC_LISTEN_INTERVAL_MASK;
-	tempval |= conf->listen_interval;
-	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, tempval, op_write);
-
 	/* Adjust the power level */
 	if ((err = piper_set_tx_power(hw, conf->power_level)) != 0) {
 		dprintk(DERROR, "unable to set tx power to %d\n",
@@ -567,84 +548,13 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
 	return 0;
 }
 
-/*
- * mac80211 calls this routine to set BSS related configuration settings.
- */
-static int piper_hw_config_intf(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-		struct ieee80211_if_conf *conf)
-{
-	struct piper_priv *piperp = hw->priv;
-	u32 bssid[2];
-
-	dprintk(DVVERBOSE, "\n");
-
-	if (conf->changed & IEEE80211_IFCC_BSSID &&
-	    !is_zero_ether_addr(conf->bssid) &&
-	    !is_multicast_ether_addr(conf->bssid)) {
-
-		piper_ps_scan_event(piperp);
-		switch (vif->type) {
-		case NL80211_IFTYPE_STATION:
-		case NL80211_IFTYPE_ADHOC:
-			dprintk(DVERBOSE, "BSSID: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
-				conf->bssid[0], conf->bssid[1], conf->bssid[2],
-				conf->bssid[3],	conf->bssid[4], conf->bssid[5]);
-
-			bssid[0] = conf->bssid[3] | conf->bssid[2] << 8 |
-				  conf->bssid[1] << 16 | conf->bssid[0] << 24;
-			bssid[1] = conf->bssid[5] << 16 | conf->bssid[4] << 24;
-
-			if ((bssid[0] == 0) && (bssid[1] == 0)) {
-				/*
-				* If we come here, then the MAC layer is telling us to set a 0
-				* SSID.  In this case, we really want to set the SSID to the
-				* broadcast address so that we receive broadcasts.
-				*/
-				bssid[0] = 0xffffffff;
-				bssid[1] = 0xffffffff;
-			}
-			piperp->ac->wr_reg(piperp, MAC_BSS_ID0, bssid[0], op_write);
-			piperp->ac->wr_reg(piperp, MAC_BSS_ID1, bssid[1], op_write);
-			memcpy(piperp->bssid, conf->bssid, ETH_ALEN);
-			break;
-		default:
-			break;
-		}
-	}
-
-	if ((conf->changed & IEEE80211_IFCC_BEACON) &&
-	    (piperp->if_type == NL80211_IFTYPE_ADHOC)) {
-		struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
-		struct ieee80211_rate rate;
-
-		if (!beacon)
-			return -ENOMEM;
-
-		rate.bitrate = 10;	/* beacons always sent at 1 Megabit*/
-		skb_push(beacon, TX_HEADER_LENGTH);
-		phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate,
-		            piperp->rf->getMaxRate(piperp->rf->hw_platform,
-		                piperp->rf->hw_revision, piperp->channel), 0);
-		piperp->ac->wr_reg(piperp, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
-		piperp->load_beacon(piperp, beacon->data, beacon->len);
-
-		/* TODO: digi->beacon.enabled should be set by IEEE80211_IFCC_BEACON_ENABLED
-                 when we update to latest mac80211 */
-		piperp->beacon.enabled = true;
-		piper_enable_ibss(piperp, vif->type);
-		dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
-	}
-
-	return 0;
-}
 
 /*
  * mac80211 wants to change our frame filtering settings.  We don't
  * actually support this.
  */
 static void piper_hw_config_filter(struct ieee80211_hw *hw,
-		unsigned int changed_flags, unsigned int *total_flags,
-		int mc_count, struct dev_addr_list *mclist)
+		unsigned int changed_flags, unsigned int *total_flags)
 {
 	dprintk(DVVERBOSE, "\n");
 
@@ -734,14 +644,78 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 		}
 	}
 
+	/* Adjust the beacon interval*/
+	if (BSS_CHANGED_BEACON_INT & changed) {
+		reg = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_BEACON_INTERVAL_MASK;
+		reg |= conf->beacon_int << MAC_BEACON_INTERVAL_SHIFT;
+		piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, reg, op_write);
+		piperp->ps.beacon_int = conf->beacon_int;
+	}
+	if (BSS_CHANGED_BSSID & changed
+	   && !is_zero_ether_addr(conf->bssid)
+	   && !is_multicast_ether_addr(conf->bssid)) {
+		unsigned int bssid[2];
+
+		piper_ps_scan_event(piperp);
+		switch (vif->type) {
+		case NL80211_IFTYPE_STATION:
+		case NL80211_IFTYPE_ADHOC:
+			dprintk(DVERBOSE, "BSSID: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X\n",
+				conf->bssid[0], conf->bssid[1], conf->bssid[2],
+				conf->bssid[3],	conf->bssid[4], conf->bssid[5]);
+
+			bssid[0] = conf->bssid[3] | conf->bssid[2] << 8 |
+				  conf->bssid[1] << 16 | conf->bssid[0] << 24;
+			bssid[1] = conf->bssid[5] << 16 | conf->bssid[4] << 24;
+
+			if ((bssid[0] == 0) && (bssid[1] == 0)) {
+				/*
+				* If we come here, then the MAC layer is telling us to set a 0
+				* SSID.  In this case, we really want to set the SSID to the
+				* broadcast address so that we receive broadcasts.
+				*/
+				bssid[0] = 0xffffffff;
+				bssid[1] = 0xffffffff;
+			}
+			piperp->ac->wr_reg(piperp, MAC_BSS_ID0, bssid[0], op_write);
+			piperp->ac->wr_reg(piperp, MAC_BSS_ID1, bssid[1], op_write);
+			memcpy(piperp->bssid, conf->bssid, ETH_ALEN);
+			break;
+		default:
+			break;
+		}
+	}
+	if (   (BSS_CHANGED_BEACON & changed)
+	    && (piperp->if_type == NL80211_IFTYPE_ADHOC)) {
+		struct sk_buff *beacon = ieee80211_beacon_get(hw, vif);
+		struct ieee80211_rate rate;
+
+		if (!beacon)
+			return;
+
+		rate.bitrate = 10;	/* beacons always sent at 1 Megabit*/
+		skb_push(beacon, TX_HEADER_LENGTH);
+		phy_set_plcp(beacon->data, beacon->len - TX_HEADER_LENGTH, &rate,
+		            piperp->rf->getMaxRate(piperp->rf->hw_platform,
+		                piperp->rf->hw_revision, piperp->channel), 0);
+		piperp->ac->wr_reg(piperp, MAC_CTL, ~MAC_CTL_BEACON_TX, op_and);
+		piperp->load_beacon(piperp, beacon->data, beacon->len);
+
+		dev_kfree_skb(beacon);          /* we are responsible for freeing this buffer*/
+	}
+	if (   (BSS_CHANGED_BEACON_ENABLED & changed)
+	    && (piperp->if_type == NL80211_IFTYPE_ADHOC)) {
+		piperp->beacon.enabled = conf->enable_beacon;
+		/*
+		 * This function looks at piperp->beacon.enabled and will enable
+		 * or disable the automatic beacon as necessary.
+		 */
+		piper_enable_ibss(piperp, vif->type);
+	}
 	/* Save new DTIM period */
 	reg = piperp->ac->rd_reg(piperp, MAC_DTIM_PERIOD) & ~MAC_DTIM_PERIOD_MASK;
 	reg |= conf->dtim_period << MAC_DTIM_PERIOD_SHIFT;
 	piperp->ac->wr_reg(piperp, MAC_DTIM_PERIOD, reg, op_write);
-	reg = piperp->ac->rd_reg(piperp, MAC_CFP_ATIM) & ~MAC_DTIM_CFP_MASK;
-	piperp->ps.beacon_int = conf->beacon_int;
-	reg |= conf->beacon_int << 16;
-	piperp->ac->wr_reg(piperp, MAC_CFP_ATIM, reg, op_write);
 }
 
 /*
@@ -773,7 +747,7 @@ static int piper_expand_aes_key(struct ieee80211_key_conf *key,
  * save the AES related keys.
  */
 static int piper_hw_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
-			    const u8 *local_address, const u8 *address,
+			    struct ieee80211_vif *vif, struct ieee80211_sta *sta,
 			    struct ieee80211_key_conf *key)
 {
 	struct piper_priv *piperp = hw->priv;
@@ -835,6 +809,7 @@ static int piper_hw_tx_last_beacon(struct ieee80211_hw *hw)
 	return piperp->beacon.weSentLastOne ? 1 : 0;
 }
 
+#if 0
 static int piper_get_tx_stats(struct ieee80211_hw *hw,
 			      struct ieee80211_tx_queue_stats *stats)
 {
@@ -846,6 +821,7 @@ static int piper_get_tx_stats(struct ieee80211_hw *hw,
 
 	return 0;
 }
+#endif
 
 static int piper_get_stats(struct ieee80211_hw *hw,
 			   struct ieee80211_low_level_stats *stats)
@@ -866,12 +842,11 @@ const struct ieee80211_ops hw_ops = {
 	.add_interface		= piper_hw_add_intf,
 	.remove_interface	= piper_hw_rm_intf,
 	.config			= piper_config,
-	.config_interface	= piper_hw_config_intf,
 	.configure_filter 	= piper_hw_config_filter,
 	.bss_info_changed 	= piper_hw_bss_changed,
 	.tx_last_beacon		= piper_hw_tx_last_beacon,
 	.set_key		= piper_hw_set_key,
-	.get_tx_stats 		= piper_get_tx_stats,
+//	.get_tx_stats 		= piper_get_tx_stats,
 	.get_stats 		= piper_get_stats,
 };
 
@@ -890,22 +865,21 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 
 	hw->flags |= IEEE80211_HW_RX_INCLUDES_FCS
 		  | IEEE80211_HW_SIGNAL_DBM
-		  | IEEE80211_HW_NOISE_DBM
 		  | IEEE80211_HW_SPECTRUM_MGMT
-		  | IEEE80211_HW_NO_STACK_DYNAMIC_PS
+		  | IEEE80211_HW_REPORTS_TX_ACK_STATUS
+		  | IEEE80211_HW_BEACON_FILTER
 #if !WANT_SHORT_PREAMBLE_SUPPORT
 		  | IEEE80211_HW_2GHZ_SHORT_SLOT_INCAPABLE
 #endif
 	             /* | IEEE80211_HW_SPECTRUM_MGMT TODO:  Turn this on when we are ready*/;
 
 	hw->queues = 1;
-	hw->ampdu_queues = 0;
 	hw->extra_tx_headroom = 4 + sizeof(struct ofdm_hdr);
 	piperp = hw->priv;
 	*priv = piperp;
-	piperp->pstats.tx_queue.len = 0;
-	piperp->pstats.tx_queue.limit = 1;
-	piperp->pstats.tx_queue.count = 0;
+//	piperp->pstats.tx_queue.len = 0;
+//	piperp->pstats.tx_queue.limit = 1;
+//	piperp->pstats.tx_queue.count = 0;
 	piperp->areWeAssociated = false;
 	memset(&piperp->pstats.ll_stats, 0, sizeof(piperp->pstats.ll_stats));
 	piperp->hw = hw;

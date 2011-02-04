@@ -13,12 +13,12 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <net/mac80211.h>
-#include <net/wireless.h>
 
 #include "pipermain.h"
 #include "mac.h"
-#include "airohaCalibration.h"
+#include "net/cfg80211.h"
 #include "airoha.h"
+#include "airohaCalibration.h"
 
 /*
  * Number of us to change channels.  I counted the number of udelays once

@@ -185,7 +185,7 @@ struct piper_stats {
     u32 tx_total_tetries;
     u32 tx_retry_count[IEEE80211_TX_MAX_RATES];
     u32 tx_retry_index;
-    struct ieee80211_tx_queue_stats tx_queue;
+//    struct ieee80211_tx_queue_stats tx_queue;
     struct ieee80211_low_level_stats ll_stats;
     spinlock_t lock;
 };
