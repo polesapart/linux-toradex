@@ -554,7 +554,8 @@ static int piper_config(struct ieee80211_hw *hw, u32 changed)
  * actually support this.
  */
 static void piper_hw_config_filter(struct ieee80211_hw *hw,
-		unsigned int changed_flags, unsigned int *total_flags)
+		unsigned int changed_flags, unsigned int *total_flags,
+		u64 multicast)
 {
 	dprintk(DVVERBOSE, "\n");
 
@@ -936,9 +937,10 @@ int piper_register_hw(struct piper_priv *priv, struct device *dev,
 	temp = cpu_to_be32(priv->ac->rd_reg(priv, MAC_STA_ID1));
 	memcpy(&macaddr[4], &temp, sizeof(temp));
 	SET_IEEE80211_PERM_ADDR(hw, macaddr);
+	hw->rate_control_algorithm = NULL;
 
 	if ((ret = ieee80211_register_hw(hw)) != 0) {
-		dprintk(DERROR, "unable to register ieee80211 hw\n");
+		dprintk(DERROR, "unable to register ieee80211 hw, ret = %d\n", ret);
 		goto error;
 	}
 
