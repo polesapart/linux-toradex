@@ -432,7 +432,7 @@ static int __init ns9xxx_pwmc_probe(struct platform_device *pdev)
 	/* @XXX: Probably not the best place for this assignment */
 	np->pdata = pdata;
 
-	np->pwm.bus_id = pdev->dev.bus_id;
+	np->pwm.bus_id = dev_name(&pdev->dev);
 	np->pwm.nchan = pdata->number_channels;
 
 	/* Copy the external platform data to our internal structure */
