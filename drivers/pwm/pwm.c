@@ -28,6 +28,7 @@
 #include <linux/device.h>
 #include <linux/spinlock.h>
 #include <linux/fs.h>
+#include <linux/slab.h>
 #include <linux/completion.h>
 #include <linux/workqueue.h>
 #include <linux/pwm.h>
