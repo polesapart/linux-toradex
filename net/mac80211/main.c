@@ -708,6 +708,10 @@ static int __init ieee80211_init(void)
 	if (ret)
 		goto err_pid;
 
+	ret = rc80211_multirate_pid_init();
+	if (ret)
+		goto err_multirate_pid;
+
 	ret = ieee80211_iface_init();
 	if (ret)
 		goto err_netdev;
@@ -715,6 +719,8 @@ static int __init ieee80211_init(void)
 	return 0;
  err_netdev:
 	rc80211_pid_exit();
+ err_multirate_pid:
+ 	rc80211_pid_exit();
  err_pid:
 	rc80211_minstrel_exit();
 
