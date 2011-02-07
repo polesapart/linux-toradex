@@ -759,7 +759,7 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 	int len, chars_to_send;
 	struct circ_buf *xmit;
 	unsigned char buf_data[FIM_SERIAL_TX_DMA_BUFFER_SIZE];
-	int retval;
+	int retval = 0;
 
 	if (!port || !uart) {
 		printk_err("NULL pointer passed (port %p | uart %p)\n", port, uart);
@@ -812,6 +812,7 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
         /* Check a last time if we need to send the data */
 	if (uart_tx_stopped(uart) || !chars_to_send) {
 		printk_debug("Aborting TX due a stopped queue!\n");
+		retval = -EIO;
 		goto exit_unlock;
 	}
 
@@ -819,15 +820,14 @@ static int fim_serial_send_buffer(struct fim_serial_t *port,
 	 * Setup the FIM-buffer with the information that we have a private
 	 * buffer and don't want to free it inside the TX-callback
 	 */
-	retval = 0;
 	buf.private = FIM_SERIAL_BUF_PRIVATE;
 	buf.length = chars_to_send * bytes_per_char;
 	buf.data = buf_data;
 	if (fim_send_buffer(fim, &buf)) {
 		printk_err("FIM send buffer request failed (len %i)\n", buf.length);
 		retval = -ENOMEM;
+		goto exit_unlock;
 	}
-
 
  exit_unlock:
 	spin_unlock(&port->tx_lock);
