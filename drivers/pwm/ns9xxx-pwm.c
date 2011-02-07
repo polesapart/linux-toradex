@@ -398,7 +398,7 @@ static void ns9xxx_pwm_free(struct pwm_channel *p)
 	gpio_free(chi->gpio);
 }
 
-static int __init ns9xxx_pwmc_probe(struct platform_device *pdev)
+static int __devinit ns9xxx_pwmc_probe(struct platform_device *pdev)
 {
 	struct ns9xxx_pwm *np;
 	struct ns9xxx_pwm_pdata *pdata;
