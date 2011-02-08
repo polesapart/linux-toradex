@@ -220,55 +220,6 @@ struct platform_device ns921x_fim_sdio0 = {
 EXPORT_SYMBOL(ns921x_fim_sdio0);
 #endif /* CONFIG_FIM_ZERO_SDIO */
 
-/* The second SDIO-port will be available by the CC9P9210JS first */
-#if defined(CONFIG_FIM_ONE_SDIO)
-static struct fim_sdio_platform_data fim_sdio_data1 = {
-	.fim_nr        = 1,
-	.host_caps     = 0,
-
-	.d0_gpio_nr    = 26,
-	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
-	.d1_gpio_nr    = FIM_GPIO_DONT_USE,
-	.d2_gpio_nr    = FIM_GPIO_DONT_USE,
-	.d3_gpio_nr    = FIM_GPIO_DONT_USE,
-
-	.clk_gpio_nr   = 27,
-	.clk_gpio_func = NS921X_GPIO_FUNC_2,
-
-	.cmd_gpio_nr   = 28,
-	.cmd_gpio_func = NS921X_GPIO_FUNC_2,
-
-#if defined(CONFIG_FIM_APPKIT_BOARD)
-	.cd_gpio_nr    = 9,
-	.cd_gpio_func  = NS921X_GPIO_FUNC_2,
-
-	.wp_gpio_nr    = 6,
-	.wp_gpio_func  = NS921X_GPIO_FUNC_GPIO,
-#else
-#if defined(CONFIG_FIM_ZERO_SDIO_CD)
-	/* CD GPIO and function provided by config */
-	.cd_gpio_nr   = CONFIG_FIM_ZERO_SDIO_CD_GPIO,
-	.cd_gpio_func = CONFIG_FIM_ZERO_SDIO_CD_GPIO_FUNC,
-#else
-	.cd_gpio_nr   = FIM_GPIO_DONT_USE,
-#endif
-#if defined(CONFIG_FIM_ZERO_SDIO_WP)
-	/* WP GPIO provided by config. Assume standard GPIO function */
-	.wp_gpio_nr   = CONFIG_FIM_ZERO_SDIO_CD_GPIO,
-	.wp_gpio_func = NS921X_GPIO_FUNC_GPIO,
-#else
-	.wp_gpio_nr   = FIM_GPIO_DONT_USE,
-#endif
-#endif /* CONFIG_FIM_APPKIT_BOARD */
-};
-struct platform_device ns921x_fim_sdio1 = {
-	.name              = "fim-sdio",
-	.id                = 1,
-	.dev.platform_data = &fim_sdio_data1,
-};
-EXPORT_SYMBOL(ns921x_fim_sdio1);
-#endif /* CONFIG_FIM_ONE_SDIO */
-
 #if defined(CONFIG_FIM_ZERO_W1)
 static struct w1_gpio_platform_data fim_w1_data0 = {
 	.pin           = 1,
