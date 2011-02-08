@@ -203,6 +203,12 @@ void piper_sendNullDataFrame(struct piper_priv *piperp, bool is_power_management
 	_80211HeaderType *header;
 	struct ieee80211_tx_info *tx_info;
 
+	if ((piperp->bssid[0] == 0) && (piperp->bssid[1] == 0)
+	    && (piperp->bssid[2] == 0) && (piperp->bssid[3] == 0)
+	    && (piperp->bssid[4] == 0) && (piperp->bssid[5] == 0)) {
+		goto piper_sendNullDataFrame_Exit;
+	}
+
 	skb =
 	    __dev_alloc_skb(sizeof(_80211HeaderType) +
 			    piperp->hw->extra_tx_headroom, GFP_ATOMIC);
