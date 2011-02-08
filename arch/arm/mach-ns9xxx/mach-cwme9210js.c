@@ -1,7 +1,5 @@
 /*
- * arch/arm/mach-ns9xxx/mach-cme9210js.c
- *
- * Copyright (C) 2008 by Digi International Inc.
+ * Copyright (C) 2011 by Digi International Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,7 +24,6 @@
 
 #define GPIO_MFGO		12
 #define GPIO_CLK		8
-
 
 #if defined(CONFIG_MMC_SPI) || defined(CONFIG_MMC_SPI_MODULE)
 /* Define here the GPIO that will be used for Card Detection */
@@ -134,7 +131,7 @@ static struct i2c_board_info i2c_devices[] __initdata = {
 };
 */
 
-static void __init mach_cme9210js_init_machine(void)
+static void __init mach_cwme9210js_init_machine(void)
 {
 	enum cme9210_variant variant;
 
@@ -187,21 +184,6 @@ static void __init mach_cme9210js_init_machine(void)
 	}
 #endif
 
-	/* Ethernet */
-	/* Adjust the netdev_max_backlog to a lower value. A big queue
-	 * of incoming packets in the kernel can exhaust the kernel memory
-	 * and trigger the OOM killer. This value can be tuned later in
-	 * user space throught proc fs and with sysctl */
-	netdev_max_backlog = 300;
-
-	/* Select the led activity GPIO acordingly to the module variant */
-	if (CME9210_NEW_8M_FLASH == variant ||
-	    CME9210_NEW_4M_FLASH == variant ||
-	    CME9210_NEW_2M_FLASH == variant)
-		ns9xxx_add_device_cme9210_eth(10);
-	else
-		ns9xxx_add_device_cme9210_eth(14);
-
 	/* Watchdog timer */
 	ns9xxx_add_device_ns921x_wdt();
 
@@ -239,10 +221,10 @@ static void __init mach_cme9210js_init_machine(void)
 #endif
 }
 
-MACHINE_START(CME9210JS, "Digi Connect ME 9210 on Devboard")
+MACHINE_START(CWME9210JS, "Digi Connect Wi-ME 9210 on Devboard")
 	.map_io = ns921x_map_io,
 	.init_irq = ns9xxx_init_irq,
-	.init_machine = mach_cme9210js_init_machine,
+	.init_machine = mach_cwme9210js_init_machine,
 	.timer = &ns921x_timer,
 	.boot_params = 0x100,
 MACHINE_END

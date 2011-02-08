@@ -59,6 +59,11 @@
 		|| machine_is_cme9210js()		\
 		)
 
+#define module_is_cwme9210()	(0			\
+		|| machine_is_cwme9210()		\
+		|| machine_is_cwme9210js()		\
+		)
+
 #define module_is_inc20otter()	(0			\
 		|| machine_is_inc20otter()		\
 		)

@@ -56,6 +56,10 @@ config MODULE_CME9210
 	bool
 	select PROCESSOR_NS9210
 
+config MODULE_CWME9210
+	bool
+	select PROCESSOR_NS9210
+
 config MODULE_CCW9C
 	bool
 	select PROCESSOR_NS9360
@@ -77,6 +81,9 @@ config BOARD_JSCC9P9360
 	bool
 
 config BOARD_JSCME9210
+	bool
+
+config BOARD_JSCWME9210
 	bool
 
 config BOARD_UNCBAS
@@ -163,6 +170,11 @@ config MACH_CME9210JS
 	bool "Digi Connect ME 9210 on Devboard"
 	select MODULE_CME9210
 	select BOARD_JSCME9210
+
+config MACH_CWME9210JS
+	bool "Digi Connect Wi-ME 9210 on Devboard"
+	select MODULE_CWME9210
+	select BOARD_JSCWME9210
 
 config MACH_INC20OTTER
 	bool "Inc20-Otter"
@@ -641,9 +653,9 @@ config CC9P9360JS_TOUCH
 endif	## if MACH_CC9P9360JS
 
 
-if MACH_CME9210JS
+if (MACH_CME9210JS || MACH_CWME9210JS)
 
-comment "Digi Connect ME 9210 configuration"
+comment "Digi Connect ME/Wi-ME 9210 configuration"
 
 config CME9210JS_SERIAL_PORTA
 	bool "Serial port A"
@@ -705,6 +717,10 @@ config CME9210JS_SERIAL_PORT_ON_JTAG_CON
 config CME9210JS_SPI
 	bool "SPI port"
 	depends on !CME9210JS_SERIAL_PORTA
+
+endif	## if MACH_CME9210JS || MACH_CWME9210JS
+
+if MACH_CME9210JS
 
 config GPIO_ETH_ACTIVITY_LED
 	bool "Ethernet activity LED"

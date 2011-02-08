@@ -17,6 +17,7 @@
 		|| module_is_cc7ucamry()		\
 		|| module_is_cc9p9210()			\
 		|| module_is_cme9210()			\
+		|| module_is_cwme9210()			\
 		|| module_is_inc20otter()		\
 		|| module_is_otter()			\
 		)
