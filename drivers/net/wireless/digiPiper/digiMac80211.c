@@ -292,7 +292,6 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 	unsigned long flags;
 
 	dprintk(DVVERBOSE, "\n");
-
 	/*
 	 * Our H/W can only transmit a single packet at a time.  mac80211
 	 * already maintains a queue of packets, so there is no reason
@@ -334,8 +333,6 @@ int piper_hw_tx_private(struct ieee80211_hw *hw, struct sk_buff *skb, tx_skb_ret
 			   IEEE80211_TX_STAT_ACK |
 			   IEEE80211_TX_STAT_AMPDU |
 			   IEEE80211_TX_STAT_AMPDU_NO_BACK);
-//	piperp->pstats.tx_queue.len++;
-//	piperp->pstats.tx_queue.count++;
 
 	if (piper_tx_enqueue(piperp, skb, skb_return_cb) == -1) {
 		skb_pull(skb, TX_HEADER_LENGTH);		/* undo the skb_push above */
@@ -634,15 +631,6 @@ static void piper_hw_bss_changed(struct ieee80211_hw *hw, struct ieee80211_vif *
 
 		dprintk(DVERBOSE, "BRS mask set to 0x%8.8X\n", reg);
 
-		if (ofdm == 0) {
-			/* Disable ofdm receiver if no ofdm rates supported */
-			piperp->ac->wr_reg(piperp, BB_GENERAL_STAT,
-					   ~BB_GENERAL_STAT_A_EN, op_and);
-		} else {
-			/* Enable ofdm receiver if any ofdm rates supported */
-			piperp->ac->wr_reg(piperp, BB_GENERAL_STAT,
-					   BB_GENERAL_STAT_A_EN, op_or);
-		}
 	}
 
 	/* Adjust the beacon interval*/
@@ -810,19 +798,6 @@ static int piper_hw_tx_last_beacon(struct ieee80211_hw *hw)
 	return piperp->beacon.weSentLastOne ? 1 : 0;
 }
 
-#if 0
-static int piper_get_tx_stats(struct ieee80211_hw *hw,
-			      struct ieee80211_tx_queue_stats *stats)
-{
-	struct piper_priv *piperp = hw->priv;
-
-	dprintk(DVVERBOSE, "\n");
-	if (stats)
-		memcpy(stats, &piperp->pstats.tx_queue, sizeof(piperp->pstats.tx_queue));
-
-	return 0;
-}
-#endif
 
 static int piper_get_stats(struct ieee80211_hw *hw,
 			   struct ieee80211_low_level_stats *stats)
@@ -847,7 +822,6 @@ const struct ieee80211_ops hw_ops = {
 	.bss_info_changed 	= piper_hw_bss_changed,
 	.tx_last_beacon		= piper_hw_tx_last_beacon,
 	.set_key		= piper_hw_set_key,
-//	.get_tx_stats 		= piper_get_tx_stats,
 	.get_stats 		= piper_get_stats,
 };
 
@@ -878,9 +852,6 @@ int piper_alloc_hw(struct piper_priv **priv, size_t priv_sz)
 	hw->extra_tx_headroom = 4 + sizeof(struct ofdm_hdr);
 	piperp = hw->priv;
 	*priv = piperp;
-//	piperp->pstats.tx_queue.len = 0;
-//	piperp->pstats.tx_queue.limit = 1;
-//	piperp->pstats.tx_queue.count = 0;
 	piperp->areWeAssociated = false;
 	memset(&piperp->pstats.ll_stats, 0, sizeof(piperp->pstats.ll_stats));
 	piperp->hw = hw;
