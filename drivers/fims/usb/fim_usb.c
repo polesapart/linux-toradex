@@ -1819,7 +1819,7 @@ static int fim_usb_register_port(struct device *dev, int picnr, struct fim_gpio_
 	return ret;
 }
 
-static int __init fim_usb_probe(struct platform_device *pdev)
+static int __devinit fim_usb_probe(struct platform_device *pdev)
 {
         int nrpics;
 	struct fim_usb_platform_data *pdata;
@@ -1867,7 +1867,7 @@ static int __init fim_usb_probe(struct platform_device *pdev)
 	return fim_usb_register_port(&pdev->dev, pdata->fim_nr, gpios);
 }
 
-static int __exit fim_usb_remove(struct platform_device *pdev)
+static int __devexit fim_usb_remove(struct platform_device *pdev)
 {
 	struct fim_usb_port *port;
 	struct fim_usb_platform_data *pdata;
@@ -1938,7 +1938,7 @@ static struct platform_driver fim_usb_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe          = fim_usb_probe,
-	.remove		= __exit_p(fim_usb_remove),
+	.remove		= __devexit_p(fim_usb_remove),
 	.suspend	= fim_usb_suspend,
 	.resume		= fim_usb_resume,
 };
