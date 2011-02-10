@@ -28,6 +28,7 @@
 #include <linux/mmc/host.h>
 #include <linux/phy.h>
 #include <linux/fec.h>
+#include <linux/gpmi-nfc.h>
 
 #include <asm/mach/map.h>
 
@@ -43,6 +44,7 @@
 
 #include "device.h"
 #include "mx23_pins.h"
+#include "mx23evk.h"
 #include "mach/mx23.h"
 
 #if defined(CONFIG_SERIAL_MXS_DUART) || \
@@ -510,69 +512,97 @@ static void __init mx23_init_dcp(void)
 }
 #endif
 
-#if defined(CONFIG_MMC_MXS) || defined(CONFIG_MMC_MXS_MODULE)
-#define MMC0_POWER	MXS_PIN_TO_GPIO(PINID_PWM3)
-#define MMC0_WP		MXS_PIN_TO_GPIO(PINID_PWM4)
+#if defined(CONFIG_MTD_NAND_GPMI_NFC)
 
-static int mxs_mmc_get_wp_mmc0(void)
+static int gpmi_nfc_platform_init(unsigned int max_chip_count)
 {
-	return gpio_get_value(MMC0_WP);
-}
-
-static int mxs_mmc_hw_init_mmc0(void)
-{
-	int ret = 0;
-
-	/* Configure write protect GPIO pin */
-	ret = gpio_request(MMC0_WP, "mmc0_wp");
-	if (ret) {
-		pr_err("wp\r\n");
-		goto out_wp;
-	}
-	gpio_set_value(MMC0_WP, 0);
-	gpio_direction_input(MMC0_WP);
-
-	/* Configure POWER pin as gpio to drive power to MMC slot */
-	ret = gpio_request(MMC0_POWER, "mmc0_power");
-	if (ret) {
-		pr_err("power\r\n");
-		goto out_power;
-	}
-	gpio_direction_output(MMC0_POWER, 0);
-	mdelay(100);
-
 	return 0;
-
-out_power:
-	gpio_free(MMC0_WP);
-out_wp:
-	return ret;
 }
 
-static void mxs_mmc_hw_release_mmc0(void)
+static void gpmi_nfc_platform_exit(unsigned int max_chip_count)
 {
-	gpio_free(MMC0_POWER);
-	gpio_free(MMC0_WP);
-
 }
 
-static void mxs_mmc_cmd_pullup_mmc0(int enable)
+static const char *gpmi_nfc_partition_source_types[] = { "cmdlinepart", 0 };
+
+static struct gpmi_nfc_platform_data  gpmi_nfc_platform_data = {
+	.nfc_version             = 0,
+	.boot_rom_version        = 0,
+	.clock_name              = "gpmi",
+	.platform_init           = gpmi_nfc_platform_init,
+	.platform_exit           = gpmi_nfc_platform_exit,
+	.min_prop_delay_in_ns    = 5,
+	.max_prop_delay_in_ns    = 9,
+	.max_chip_count          = 2,
+	.boot_area_size_in_bytes = 20 * SZ_1M,
+	.partition_source_types  = gpmi_nfc_partition_source_types,
+	.partitions              = 0,
+	.partition_count         = 0,
+};
+
+static struct resource gpmi_nfc_resources[] = {
+	{
+	 .name  = GPMI_NFC_GPMI_REGS_ADDR_RES_NAME,
+	 .flags = IORESOURCE_MEM,
+	 .start = GPMI_PHYS_ADDR,
+	 .end   = GPMI_PHYS_ADDR + SZ_8K - 1,
+	 },
+	{
+	 .name  = GPMI_NFC_GPMI_INTERRUPT_RES_NAME,
+	 .flags = IORESOURCE_IRQ,
+	 .start = IRQ_GPMI_ATTENTION,
+	 .end   = IRQ_GPMI_ATTENTION,
+	},
+	{
+	 .name  = GPMI_NFC_BCH_REGS_ADDR_RES_NAME,
+	 .flags = IORESOURCE_MEM,
+	 .start = BCH_PHYS_ADDR,
+	 .end   = BCH_PHYS_ADDR + SZ_8K - 1,
+	 },
+	{
+	 .name  = GPMI_NFC_BCH_INTERRUPT_RES_NAME,
+	 .flags = IORESOURCE_IRQ,
+	 .start = IRQ_BCH,
+	 .end   = IRQ_BCH,
+	 },
+	{
+	 .name  = GPMI_NFC_DMA_CHANNELS_RES_NAME,
+	 .flags = IORESOURCE_DMA,
+	 .start	= MXS_DMA_CHANNEL_AHB_APBH_GPMI0,
+	 .end	= MXS_DMA_CHANNEL_AHB_APBH_GPMI3,
+	 },
+	{
+	 .name  = GPMI_NFC_DMA_INTERRUPT_RES_NAME,
+	 .flags = IORESOURCE_IRQ,
+	 .start = IRQ_GPMI_DMA,
+	 .end   = IRQ_GPMI_DMA,
+	},
+};
+
+static void __init mx23_init_gpmi_nfc(void)
 {
-	mxs_set_pullup(PINID_SSP1_CMD, enable, "mmc0_cmd");
-}
+	struct platform_device  *pdev;
 
+	pdev = mxs_get_device(GPMI_NFC_DRIVER_NAME, 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+	pdev->dev.platform_data = &gpmi_nfc_platform_data;
+	pdev->resource          =  gpmi_nfc_resources;
+	pdev->num_resources     = ARRAY_SIZE(gpmi_nfc_resources);
+	mxs_add_device(pdev, 1);
+}
+#else
+static void mx23_init_gpmi_nfc(void)
+{
+}
+#endif
+
+#if defined(CONFIG_MMC_MXS) || defined(CONFIG_MMC_MXS_MODULE)
 static unsigned long mxs_mmc_setclock_mmc0(unsigned long hz)
 {
-	struct clk *ssp = clk_get(NULL, "ssp.0"), *parent;
+	struct clk *ssp = clk_get(NULL, "ssp.0");
 
-	if (hz > 1000000)
-		parent = clk_get(NULL, "ref_io.0");
-	else
-		parent = clk_get(NULL, "xtal.0");
-
-	clk_set_parent(ssp, parent);
 	clk_set_rate(ssp, 2 * hz);
-	clk_put(parent);
 	clk_put(ssp);
 
 	return hz;
@@ -583,7 +613,11 @@ static struct mxs_mmc_platform_data mx23_mmc0_data = {
 	.hw_release	= mxs_mmc_hw_release_mmc0,
 	.get_wp		= mxs_mmc_get_wp_mmc0,
 	.cmd_pullup	= mxs_mmc_cmd_pullup_mmc0,
-	.setclock	= mxs_mmc_setclock_mmc0,
+	 /*
+	 Don't change ssp clock because ssp1 and ssp2 share one ssp clock source
+	 ssp module have own divider.
+	 .setclock	= mxs_mmc_setclock_mmc0,
+	 */
 	.caps 		= MMC_CAP_4_BIT_DATA,
 	.min_clk	= 400000,
 	.max_clk	= 48000000,
@@ -635,6 +669,68 @@ static void mx23_init_mmc(void)
 	;
 }
 #endif
+
+#if defined(CONFIG_SPI_MXS) || defined(CONFIG_SPI_MXS_MODULE)
+static struct resource ssp1_resources[] = {
+	{
+		.start	= SSP1_PHYS_ADDR,
+		.end	= SSP1_PHYS_ADDR + 0x1FFF,
+		.flags	= IORESOURCE_MEM,
+	}, {
+		.start	= IRQ_SSP1_DMA,
+		.end	= IRQ_SSP1_DMA,
+		.flags	= IORESOURCE_IRQ,
+	}, {
+		.start	= IRQ_SSP_ERROR,
+		.end	= IRQ_SSP_ERROR,
+		.flags	= IORESOURCE_IRQ,
+	}, {
+		.start	= MXS_DMA_CHANNEL_AHB_APBH_SSP1,
+		.end	= MXS_DMA_CHANNEL_AHB_APBH_SSP1,
+		.flags	= IORESOURCE_DMA,
+	},
+};
+
+static void __init mx23_init_spi1(void)
+{
+	struct platform_device *pdev;
+
+	pdev = mxs_get_device("mxs-spi", 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+	pdev->resource = ssp1_resources;
+	pdev->num_resources = ARRAY_SIZE(ssp1_resources);
+
+	mxs_add_device(pdev, 3);
+}
+#else
+static void mx23_init_spi1(void)
+{
+	;
+}
+#endif
+
+#define CMDLINE_DEVICE_CHOOSE(name, dev1, dev2)			\
+	static char *cmdline_device_##name;			\
+	static int cmdline_device_##name##_setup(char *dev)	\
+	{							\
+		cmdline_device_##name = dev + 1;		\
+		return 0;					\
+	}							\
+	__setup(#name, cmdline_device_##name##_setup);		\
+	void mx23_init_##name(void)				\
+	{							\
+		if (!cmdline_device_##name ||			\
+			!strcmp(cmdline_device_##name, #dev1))	\
+				mx23_init_##dev1();		\
+		else if (!strcmp(cmdline_device_##name, #dev2))	\
+				mx23_init_##dev2();		\
+		else						\
+			pr_err("Unknown %s assignment '%s'.\n",	\
+				#name, cmdline_device_##name);	\
+	}
+
+CMDLINE_DEVICE_CHOOSE(ssp1, mmc, spi1)
 
 #if defined(CONFIG_BATTERY_MXS)
 /* battery info data */
@@ -729,7 +825,7 @@ void __init mx23_init_spdif(void)
 	mxs_add_device(pdev, 3);
 }
 #else
-static inline mx23_init_spdif(void)
+static inline void mx23_init_spdif(void)
 {
 }
 #endif
@@ -835,6 +931,49 @@ static void mx23_init_persistent()
 }
 #endif
 
+#if defined(CONFIG_FSL_OTP)
+/* Building up eight registers's names of a bank */
+#define BANK(a, b, c, d, e, f, g, h)	\
+	{\
+	("HW_OCOTP_"#a), ("HW_OCOTP_"#b), ("HW_OCOTP_"#c), ("HW_OCOTP_"#d), \
+	("HW_OCOTP_"#e), ("HW_OCOTP_"#f), ("HW_OCOTP_"#g), ("HW_OCOTP_"#h) \
+	}
+
+#define BANKS		(4)
+#define BANK_ITEMS	(8)
+static const char *bank_reg_desc[BANKS][BANK_ITEMS] = {
+	BANK(CUST0, CUST1, CUST2, CUST3, CRYPTO0, CRYPTO1, CRYPTO2, CRYPTO3),
+	BANK(HWCAP0, HWCAP1, HWCAP2, HWCAP3, HWCAP4, HWCAP5, SWCAP, CUSTCAP),
+	BANK(LOCK, OPS0, OPS1, OPS2, OPS3, UN0, UN1, UN2),
+	BANK(ROM0, ROM1, ROM2, ROM3, ROM4, ROM5, ROM6, ROM7),
+};
+
+static struct fsl_otp_data otp_data = {
+	.fuse_name	= (char **)bank_reg_desc,
+	.regulator_name	= "vddio",
+	.fuse_num	= BANKS * BANK_ITEMS,
+};
+#undef BANK
+#undef BANKS
+#undef BANK_ITEMS
+
+static void mx23_init_otp(void)
+{
+	struct platform_device *pdev;
+	pdev = mxs_get_device("ocotp", 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+	pdev->dev.platform_data = &otp_data;
+	pdev->resource = NULL;
+	pdev->num_resources = 0;
+	mxs_add_device(pdev, 3);
+}
+#else
+static void mx23_init_otp(void)
+{
+}
+#endif
+
 int __init mx23_device_init(void)
 {
 	mx23_init_dma();
@@ -848,12 +987,14 @@ int __init mx23_device_init(void)
 	mx23_init_ts();
 	mx23_init_rtc();
 	mx23_init_dcp();
-	mx23_init_mmc();
+	mx23_init_ssp1();
+	mx23_init_gpmi_nfc();
 	mx23_init_spdif();
 	mx23_init_lcdif();
 	mx23_init_pxp();
 	mx23_init_battery();
 	mx23_init_persistent();
+	mx23_init_otp();
 
 	return 0;
 }

@@ -18,6 +18,9 @@
 #include <linux/mm.h>
 #include <linux/oom.h>
 #include <linux/sched.h>
+#include <linux/nodemask.h>
+#include <linux/vmstat.h>
+#include <linux/notifier.h>
 
 static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask);
 
@@ -41,6 +44,8 @@ static size_t lowmem_minfree[6] = {
 };
 static int lowmem_minfree_size = 4;
 
+static struct task_struct *lowmem_deathpending;
+
 #define lowmem_print(level, x...)			\
 	do {						\
 		if (lowmem_debug_level >= (level))	\
@@ -53,6 +58,24 @@ module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
+
+static int
+task_notify_func(struct notifier_block *self, unsigned long val, void *data);
+
+static struct notifier_block task_nb = {
+	.notifier_call  = task_notify_func,
+};
+
+static int
+task_notify_func(struct notifier_block *self, unsigned long val, void *data)
+{
+	struct task_struct *task = data;
+	if (task == lowmem_deathpending) {
+		lowmem_deathpending = NULL;
+		task_free_unregister(&task_nb);
+	}
+	return NOTIFY_OK;
+}
 
 static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 {
@@ -67,6 +90,24 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free = global_page_state(NR_FREE_PAGES);
 	int other_file = global_page_state(NR_FILE_PAGES);
+	int node;
+
+	/*
+	* If we already have a death outstanding, then
+	* bail out right away; indicating to vmscan
+	* that we have nothing further to offer on
+	* this pass.
+	*/
+	if (lowmem_deathpending)
+		return 0;
+
+	for_each_node_state(node, N_HIGH_MEMORY) {
+		struct zone *z =
+			&NODE_DATA(node)->node_zones[ZONE_DMA];
+
+		other_free -= zone_page_state(z, NR_FREE_PAGES);
+		other_file -= zone_page_state(z, NR_FILE_PAGES);
+	}
 
 	if (lowmem_adj_size < array_size)
 		array_size = lowmem_adj_size;
@@ -128,9 +169,19 @@ static int lowmem_shrink(int nr_to_scan, gfp_t gfp_mask)
 			     p->pid, p->comm, oom_adj, tasksize);
 	}
 	if (selected) {
+		if (fatal_signal_pending(selected)) {
+			pr_warning("process %d is suffering a slow death\n",
+				   selected->pid);
+			read_unlock(&tasklist_lock);
+			return rem;
+		}
 		lowmem_print(1, "send sigkill to %d (%s), adj %d, size %d\n",
 			     selected->pid, selected->comm,
 			     selected_oom_adj, selected_tasksize);
+
+		lowmem_deathpending = selected;
+		task_free_register(&task_nb);
+
 		force_sig(SIGKILL, selected);
 		rem -= selected_tasksize;
 	}

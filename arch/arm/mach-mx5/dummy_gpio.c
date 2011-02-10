@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2007-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -53,12 +53,6 @@ EXPORT_SYMBOL(gpio_pmic_active);
 void gpio_activate_audio_ports(void) {}
 EXPORT_SYMBOL(gpio_activate_audio_ports);
 
-void gpio_sdhc_active(int module) {}
-EXPORT_SYMBOL(gpio_sdhc_active);
-
-void gpio_sdhc_inactive(int module) {}
-EXPORT_SYMBOL(gpio_sdhc_inactive);
-
 void gpio_sensor_select(int sensor) {}
 
 void gpio_sensor_active(unsigned int csi) {}
@@ -66,12 +60,6 @@ EXPORT_SYMBOL(gpio_sensor_active);
 
 void gpio_sensor_inactive(unsigned int csi) {}
 EXPORT_SYMBOL(gpio_sensor_inactive);
-
-void gpio_ata_active(void) {}
-EXPORT_SYMBOL(gpio_ata_active);
-
-void gpio_ata_inactive(void) {}
-EXPORT_SYMBOL(gpio_ata_inactive);
 
 void gpio_nand_active(void) {}
 EXPORT_SYMBOL(gpio_nand_active);
@@ -105,3 +93,9 @@ EXPORT_SYMBOL(gpio_spdif_active);
 
 void gpio_spdif_inactive(void) {}
 EXPORT_SYMBOL(gpio_spdif_inactive);
+
+void gpio_mlb_active(void) {}
+EXPORT_SYMBOL(gpio_mlb_active);
+
+void gpio_mlb_inactive(void) {}
+EXPORT_SYMBOL(gpio_mlb_inactive);

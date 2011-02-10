@@ -186,6 +186,8 @@ enum v4l2_int_ioctl_num {
 	vidioc_int_querystd_num,
 	vidioc_int_s_std_num,
 	vidioc_int_s_video_routing_num,
+	vidioc_int_g_register_num,
+	vidioc_int_s_register_num,
 
 	/*
 	 *
@@ -290,6 +292,8 @@ V4L2_INT_WRAPPER_1(s_parm, struct v4l2_streamparm, *);
 V4L2_INT_WRAPPER_1(querystd, v4l2_std_id, *);
 V4L2_INT_WRAPPER_1(s_std, v4l2_std_id, *);
 V4L2_INT_WRAPPER_1(s_video_routing, struct v4l2_routing, *);
+V4L2_INT_WRAPPER_1(g_register, struct v4l2_dbg_register , *);
+V4L2_INT_WRAPPER_1(s_register, struct v4l2_dbg_register , *);
 
 V4L2_INT_WRAPPER_0(dev_init);
 V4L2_INT_WRAPPER_0(dev_exit);

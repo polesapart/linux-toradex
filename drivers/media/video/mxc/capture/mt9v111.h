@@ -111,11 +111,14 @@
 #define MT9V111I_GAMMA_KNEE_Y90           0x57
 #define MT9V111I_GAMMA_VALUE_Y0           0x58
 #define MT9V111I_SHUTTER_60               0x59
+#define MT9V111I_AUTO_EXPOSURE_17         0x5A
 #define MT9V111I_SEARCH_FLICK_60          0x5c
+#define MT9V111I_RESERVED93	    	      0x5d
 #define MT9V111I_RATIO_IMAGE_GAIN_BASE    0x5e
 #define MT9V111I_RATIO_IMAGE_GAIN_DELTA   0x5f
 #define MT9V111I_SIGN_VALUE_REG5F         0x60
 #define MT9V111I_AE_GAIN                  0x62
+#define MT9V111I_RESERVED100              0x64
 #define MT9V111I_MAX_GAIN_AE              0x67
 #define MT9V111I_LENS_CORRECT_CTRL        0x80
 #define MT9V111I_SHADING_PARAMETER1       0x81
@@ -173,6 +176,7 @@
 #define MT9V111S_ROW_START_IN_ZOOM        0x13
 #define MT9V111S_DIGITAL_ZOOM             0x1e
 #define MT9V111S_READ_MODE                0x20
+#define MT9V111S_RESERVED33               0x21
 #define MT9V111S_DAC_CTRL                 0x27
 #define MT9V111S_GREEN1_GAIN              0x2b
 #define MT9V111S_BLUE_GAIN                0x2c
@@ -278,6 +282,7 @@ typedef struct {
 	u32 rowNoiseControl;
 	u32 darkTargetwNC;
 	u32 testData;		/*!< test mode */
+	u32 reserved33;
 	u32 globalGain;
 	u32 chipVersion;
 	u32 darkTargetwoNC;
@@ -375,11 +380,14 @@ typedef struct {
 	u32 gammaKneeY90;	/*!< Gamma knee points Y9 and Y10 */
 	u32 gammaKneeY0;	/*!< Gamma knee point Y0 */
 	u32 shutter_width_60;
+	u32 auto_exposure_17;
 	u32 search_flicker_60;
+	u32 reserved93;
 	u32 ratioImageGainBase;
 	u32 ratioImageGainDelta;
 	u32 signValueReg5F;
 	u32 aeGain;
+	u32 reserved100;
 	u32 maxGainAE;
 	u32 lensCorrectCtrl;
 	u32 shadingParameter1;	/*!< Shade Parameters */

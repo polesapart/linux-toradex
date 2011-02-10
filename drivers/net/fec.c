@@ -296,6 +296,17 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		bufaddr = fep->tx_bounce[index];
 	}
 
+	if (fep->ptimer_present) {
+		if (fec_ptp_do_txstamp(skb))
+			estatus = BD_ENET_TX_TS;
+		else
+			estatus = 0;
+#ifdef CONFIG_FEC_1588
+		bdp->cbd_esc = (estatus | BD_ENET_TX_INT);
+		bdp->cbd_bdu = 0;
+#endif
+	}
+
 #ifdef CONFIG_ARCH_MXS
 	swap_buffer(bufaddr, skb->len);
 #endif
@@ -318,16 +329,6 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 			| BD_ENET_TX_LAST | BD_ENET_TX_TC);
 	bdp->cbd_sc = status;
 
-	if (fep->ptimer_present) {
-		if (fec_ptp_do_txstamp(skb))
-			estatus = BD_ENET_TX_TS;
-		else
-			estatus = 0;
-#ifdef CONFIG_FEC_1588
-		bdp->cbd_esc = (estatus | BD_ENET_TX_INT);
-		bdp->cbd_bdu = 0;
-#endif
-	}
 	dev->trans_start = jiffies;
 
 	/* Trigger transmission start */
@@ -807,7 +808,7 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct fec_enet_private *fep = netdev_priv(dev);
-	struct fec_enet_platform_data *pdata;
+	struct fec_platform_data *pdata;
 	int err = -ENXIO, i;
 
 	fep->mii_timeout = 0;
@@ -836,6 +837,7 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 	fep->mii_bus->priv = fep;
 	fep->mii_bus->parent = &pdev->dev;
 	pdata = pdev->dev.platform_data;
+	fep->mii_bus->phy_mask = pdata->phy_mask;
 
 	fep->mii_bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!fep->mii_bus->irq) {
@@ -1131,17 +1133,18 @@ fec_set_mac_address(struct net_device *dev, void *p)
 {
 	struct fec_enet_private *fep = netdev_priv(dev);
 	struct sockaddr *addr = p;
+	u32 temp_mac[2];
 
 	if (!is_valid_ether_addr(addr->sa_data))
 		return -EADDRNOTAVAIL;
 
 	memcpy(dev->dev_addr, addr->sa_data, dev->addr_len);
 
-	writel(dev->dev_addr[3] | (dev->dev_addr[2] << 8) |
-		(dev->dev_addr[1] << 16) | (dev->dev_addr[0] << 24),
-		fep->hwp + FEC_ADDR_LOW);
-	writel((dev->dev_addr[5] << 16) | (dev->dev_addr[4] << 24),
-		fep + FEC_ADDR_HIGH);
+	memcpy(&temp_mac, dev->dev_addr, ETH_ALEN);
+
+	writel(cpu_to_be32(temp_mac[0]), fep->hwp + FEC_ADDR_LOW);
+	writel(cpu_to_be32(temp_mac[1]), fep->hwp + FEC_ADDR_HIGH);
+
 	return 0;
 }
 
@@ -1277,6 +1280,7 @@ fec_restart(struct net_device *dev, int duplex)
 	/* Clear any outstanding interrupt. */
 	writel(0xffc00000, fep->hwp + FEC_IEVENT);
 
+#if !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS)
 	/* Reset all multicast.	*/
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_LOW);
@@ -1284,6 +1288,7 @@ fec_restart(struct net_device *dev, int duplex)
 	writel(0, fep->hwp + FEC_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_HASH_TABLE_LOW);
 #endif
+#endif /* !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS) */
 
 #ifndef CONFIG_ARCH_MXS
 	if (fep->phy_interface == PHY_INTERFACE_MODE_RMII) {
@@ -1407,6 +1412,15 @@ fec_stop(struct net_device *dev)
 	writel(1, fep->hwp + FEC_ECNTRL);
 	udelay(10);
 
+#ifdef CONFIG_ARCH_MXS
+	/* Check MII or RMII */
+	if (fep->phy_interface == PHY_INTERFACE_MODE_RMII)
+		writel(readl(fep->hwp + FEC_R_CNTRL) | 0x100,
+					fep->hwp + FEC_R_CNTRL);
+	else
+		writel(readl(fep->hwp + FEC_R_CNTRL) & ~0x100,
+					fep->hwp + FEC_R_CNTRL);
+#endif
 	/* Clear outstanding MII command interrupts. */
 	writel(FEC_ENET_MII, fep->hwp + FEC_IEVENT);
 
@@ -1482,6 +1496,18 @@ fec_probe(struct platform_device *pdev)
 		fep->phy_interface = pdata->phy;
 		if (pdata->init && pdata->init())
 			goto failed_platform_init;
+
+		/*
+		 * The priority for getting MAC address is:
+		 * (1) kernel command line fec_mac = xx:xx:xx...
+		 * (2) platform data mac field got from fuse etc
+		 * (3) bootloader set the FEC mac register
+		 */
+
+		if (!is_valid_ether_addr(fec_mac_default) &&
+			pdata->mac && is_valid_ether_addr(pdata->mac))
+			memcpy(fec_mac_default, pdata->mac,
+						sizeof(fec_mac_default));
 	} else
 		fep->phy_interface = PHY_INTERFACE_MODE_MII;
 
@@ -1499,10 +1525,10 @@ fec_probe(struct platform_device *pdev)
 		fep->mii_bus = fec_mii_bus;
 	}
 
-	fep->ptp_priv = kmalloc(sizeof(struct fec_ptp_private), GFP_KERNEL);
+	fep->ptp_priv = kzalloc(sizeof(struct fec_ptp_private), GFP_KERNEL);
 	if (fep->ptp_priv) {
 		fep->ptp_priv->hwp = fep->hwp;
-		ret = fec_ptp_init(fep->ptp_priv);
+		ret = fec_ptp_init(fep->ptp_priv, pdev->id);
 		if (ret)
 			printk(KERN_WARNING
 					"IEEE1588: ptp-timer is unavailable\n");

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2010 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright (C) 2004-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -37,6 +37,10 @@
 #include <linux/uaccess.h>
 #include <mach/hardware.h>
 #include <asm/io.h>
+#include <linux/mxc_srtc.h>
+
+
+#define SRTC_LPSCLR_LLPSC_LSH	17	 /* start bit for LSB time value */
 
 #define SRTC_LPPDR_INIT       0x41736166	/* init for glitch detect */
 
@@ -146,6 +150,12 @@ struct rtc_drv_data {
 	struct clk *clk;
 	bool irq_enable;
 };
+
+
+/* completion event for implementing RTC_WAIT_FOR_TIME_SET ioctl */
+DECLARE_COMPLETION(srtc_completion);
+/* global to save difference of 47-bit counter value */
+static int64_t time_diff;
 
 /*!
  * @defgroup RTC Real Time Clock (RTC) Driver
@@ -313,6 +323,8 @@ static int mxc_rtc_ioctl(struct device *dev, unsigned int cmd,
 	void __iomem *ioaddr = pdata->ioaddr;
 	unsigned long lock_flags = 0;
 	u32 lp_cr;
+	u64 time_47bit;
+	int retVal;
 
 	switch (cmd) {
 	case RTC_AIE_OFF:
@@ -339,6 +351,36 @@ static int mxc_rtc_ioctl(struct device *dev, unsigned int cmd,
 		__raw_writel(lp_cr, ioaddr + SRTC_LPCR);
 		spin_unlock_irqrestore(&rtc_lock, lock_flags);
 		return 0;
+
+	case RTC_READ_TIME_47BIT:
+		time_47bit = (((u64) __raw_readl(ioaddr + SRTC_LPSCMR)) << 32 |
+			((u64) __raw_readl(ioaddr + SRTC_LPSCLR)));
+		time_47bit >>= SRTC_LPSCLR_LLPSC_LSH;
+
+		if (arg && copy_to_user((u64 *) arg, &time_47bit, sizeof(u64)))
+			return -EFAULT;
+
+		return 0;
+
+	case RTC_WAIT_TIME_SET:
+
+		/* don't block without releasing mutex first */
+		mutex_unlock(&pdata->rtc->ops_lock);
+
+		/* sleep until awakened by SRTC driver when LPSCMR is changed */
+		wait_for_completion(&srtc_completion);
+
+		/* relock mutex because rtc_dev_ioctl will unlock again */
+		retVal = mutex_lock_interruptible(&pdata->rtc->ops_lock);
+
+		/* copy the new time difference = new time - previous time
+		  * to the user param. The difference is a signed value */
+		if (arg && copy_to_user((int64_t *) arg, &time_diff,
+			sizeof(int64_t)))
+			return -EFAULT;
+
+		return retVal;
+
 	}
 
 	return -ENOIOCTLCMD;
@@ -372,13 +414,30 @@ static int mxc_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	struct rtc_drv_data *pdata = dev_get_drvdata(dev);
 	void __iomem *ioaddr = pdata->ioaddr;
 	unsigned long time;
+	u64 old_time_47bit, new_time_47bit;
 	int ret;
 	ret = rtc_tm_to_time(tm, &time);
 	if (ret != 0)
 		return ret;
 
+	old_time_47bit = (((u64) __raw_readl(ioaddr + SRTC_LPSCMR)) << 32 |
+			((u64) __raw_readl(ioaddr + SRTC_LPSCLR)));
+	old_time_47bit >>= SRTC_LPSCLR_LLPSC_LSH;
+
 	__raw_writel(time, ioaddr + SRTC_LPSCMR);
 	rtc_write_sync_lp(ioaddr);
+
+	new_time_47bit = (((u64) __raw_readl(ioaddr + SRTC_LPSCMR)) << 32 |
+			((u64) __raw_readl(ioaddr + SRTC_LPSCLR)));
+	new_time_47bit >>= SRTC_LPSCLR_LLPSC_LSH;
+
+	/* update the difference between previous time and new time */
+	time_diff = new_time_47bit - old_time_47bit;
+
+	/* signal all waiting threads that time changed */
+	complete_all(&srtc_completion);
+	/* reinitialize completion variable */
+	INIT_COMPLETION(srtc_completion);
 
 	return 0;
 }
@@ -549,41 +608,30 @@ static int mxc_rtc_probe(struct platform_device *pdev)
 
 	/* clear lp interrupt status */
 	__raw_writel(0xFFFFFFFF, ioaddr + SRTC_LPSR);
-	udelay(100);;
+	udelay(100);
 
 	plat_data = (struct mxc_srtc_platform_data *)pdev->dev.platform_data;
-	clk = clk_get(NULL, "iim_clk");
-	clk_enable(clk);
-	srtc_secmode_addr = ioremap(plat_data->srtc_sec_mode_addr, 1);
 
-	/* Check SRTC security mode */
-	if (((__raw_readl(srtc_secmode_addr) & SRTC_SECMODE_MASK) ==
-	    SRTC_SECMODE_LOW) && (cpu_is_mx51_rev(CHIP_REV_1_0) == 1)) {
-		/* Workaround for MX51 TO1 due to inaccurate CKIL clock */
-		__raw_writel(SRTC_LPCR_EN_LP, ioaddr + SRTC_LPCR);
-		udelay(100);
-	} else {
-		/* move out of init state */
-		__raw_writel((SRTC_LPCR_IE | SRTC_LPCR_NSA),
-			     ioaddr + SRTC_LPCR);
+	/* move out of init state */
+	__raw_writel((SRTC_LPCR_IE | SRTC_LPCR_NSA),
+		     ioaddr + SRTC_LPCR);
 
-		udelay(100);
+	udelay(100);
 
-		while ((__raw_readl(ioaddr + SRTC_LPSR) & SRTC_LPSR_IES) == 0);
+	while ((__raw_readl(ioaddr + SRTC_LPSR) & SRTC_LPSR_IES) == 0)
+		;
 
-		/* move out of non-valid state */
-		__raw_writel((SRTC_LPCR_IE | SRTC_LPCR_NVE | SRTC_LPCR_NSA |
-			      SRTC_LPCR_EN_LP), ioaddr + SRTC_LPCR);
+	/* move out of non-valid state */
+	__raw_writel((SRTC_LPCR_IE | SRTC_LPCR_NVE | SRTC_LPCR_NSA |
+		      SRTC_LPCR_EN_LP), ioaddr + SRTC_LPCR);
 
-		udelay(100);
+	udelay(100);
 
-		while ((__raw_readl(ioaddr + SRTC_LPSR) & SRTC_LPSR_NVES) == 0);
+	while ((__raw_readl(ioaddr + SRTC_LPSR) & SRTC_LPSR_NVES) == 0)
+		;
 
-		__raw_writel(0xFFFFFFFF, ioaddr + SRTC_LPSR);
-		udelay(100);
-	}
-	clk_disable(clk);
-	clk_put(clk);
+	__raw_writel(0xFFFFFFFF, ioaddr + SRTC_LPSR);
+	udelay(100);
 
 	rtc = rtc_device_register(pdev->name, &pdev->dev,
 				  &mxc_rtc_ops, THIS_MODULE);

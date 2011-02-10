@@ -71,8 +71,7 @@ void _ipu_ic_enable_task(ipu_channel_t channel)
 	case MEM_ROT_PP_MEM:
 		ic_conf |= IC_CONF_PP_ROT_EN;
 		break;
-	case CSI_MEM:
-		// ???
+	case CSI_MEM1:
 		ic_conf |= IC_CONF_RWS_EN | IC_CONF_PRPENC_EN;
 		break;
 	default:
@@ -110,8 +109,7 @@ void _ipu_ic_disable_task(ipu_channel_t channel)
 	case MEM_ROT_PP_MEM:
 		ic_conf &= ~IC_CONF_PP_ROT_EN;
 		break;
-	case CSI_MEM:
-		// ???
+	case CSI_MEM1:
 		ic_conf &= ~(IC_CONF_RWS_EN | IC_CONF_PRPENC_EN);
 		break;
 	default:

@@ -789,6 +789,7 @@ static void smsc911x_phy_adjust_link(struct net_device *dev)
 		}
 		pdata->last_carrier = carrier;
 	}
+	udelay(10);
 }
 
 static int smsc911x_mii_probe(struct net_device *dev)
@@ -1011,7 +1012,7 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 	struct net_device *dev = pdata->dev;
 	int npackets = 0;
 
-	while (likely(netif_running(dev)) && (npackets < budget)) {
+	while (npackets < budget) {
 		unsigned int pktlength;
 		unsigned int pktwords;
 		struct sk_buff *skb;
@@ -1584,7 +1585,7 @@ static irqreturn_t smsc911x_irqhandler(int irq, void *dev_id)
 	if (unlikely(intsts & inten & INT_STS_PHY_INT_)) {
 		smsc911x_reg_write( pdata, INT_STS , INT_STS_PHY_INT_);
 		temp = smsc911x_mii_read(phy_dev->bus, phy_dev->addr, MII_INTSTS);
-		SMSC_TRACE("PHY interrupt, sts 0x%04X", (u16)temp);
+		SMSC_TRACE(DRV,"PHY interrupt, sts 0x%04X", (u16)temp);
 		smsc911x_phy_adjust_link(dev);
 		serviced = IRQ_HANDLED;
 	}

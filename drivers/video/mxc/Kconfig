@@ -26,12 +26,21 @@ config FB_MXC_EPSON_VGA_SYNC_PANEL
 
 config FB_MXC_TVOUT_TVE
 	tristate "MXC TVE TV Out Encoder"
-	depends on FB_MXC_SYNC_PANEL
-	depends on MXC_IPU_V3
+        depends on FB_MXC_SYNC_PANEL
+        depends on MXC_IPU_V3
+
+config FB_MXC_LDB
+        tristate "MXC LDB"
+        depends on FB_MXC_SYNC_PANEL
+        depends on MXC_IPU_V3
 
 config FB_MXC_CLAA_WVGA_SYNC_PANEL
+        depends on FB_MXC_SYNC_PANEL
+        tristate "CLAA WVGA Panel"
+
+config FB_MXC_SII9022
 	depends on FB_MXC_SYNC_PANEL
-	tristate "CLAA WVGA Panel"
+	tristate "Si Image SII9022 DVI/HDMI Interface Chip"
 
 config FB_MXC_CH7026
 	depends on FB_MXC_SYNC_PANEL
@@ -43,12 +52,21 @@ config FB_MXC_TVOUT_CH7024
 
 config FB_MXC_LOW_PWR_DISPLAY
 	bool "Low Power Display Refresh Mode"
-	depends on FB_MXC_SYNC_PANEL && MXC_FB_IRAM
-	default y
+        depends on FB_MXC_SYNC_PANEL && MXC_FB_IRAM
+        default y
+
+config VIDEO_AD9389
+        tristate "Analog Devices AD9389/AD9889 digital video encoders"
+        depends on I2C && FB_MXC_SYNC_PANEL
+        ---help---
+          Support for the AD9389/AD9889 HDMI/DVI Video transmiter.
+
+          To compile this driver as a module, choose M here: the
+          module will be called ad9389.
 
 config FB_MXC_INTERNAL_MEM
-	bool "Framebuffer in Internal RAM"
-	depends on FB_MXC_SYNC_PANEL && MXC_FB_IRAM
+        bool "Framebuffer in Internal RAM"
+        depends on FB_MXC_SYNC_PANEL && MXC_FB_IRAM
 	default y
 
 config FB_MXC_ASYNC_PANEL
@@ -66,9 +84,24 @@ config FB_MXC_EPSON_PANEL
 
 endmenu
 
+config FB_MXC_EINK_PANEL
+        depends on FB_MXC
+        depends on DMA_ENGINE
+        select FB_DEFERRED_IO
+        tristate "E-Ink Panel Framebuffer"
+
+config FB_MXC_EINK_AUTO_UPDATE_MODE
+    bool "E-Ink Auto-update Mode Support"
+    default n
+    depends on FB_MXC_EINK_PANEL
+
+config FB_MXC_ELCDIF_FB
+        depends on FB && ARCH_MXC
+        tristate "Support MXC ELCDIF framebuffer"
+
 choice
-	prompt "Async Panel Interface Type"
-	depends on FB_MXC_ASYNC_PANEL && FB_MXC
+        prompt "Async Panel Interface Type"
+        depends on FB_MXC_ASYNC_PANEL && FB_MXC
 	default FB_MXC_ASYNC_PANEL_IFC_16_BIT
 
 config FB_MXC_ASYNC_PANEL_IFC_8_BIT

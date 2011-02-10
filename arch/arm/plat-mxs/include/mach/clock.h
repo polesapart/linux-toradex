@@ -30,11 +30,12 @@ struct clk {
 	struct clk *secondary;
 	unsigned long flags;
 
-	__s8 ref;
+	int ref;
 	unsigned int scale_bits;
 	unsigned int enable_bits;
 	unsigned int bypass_bits;
 	unsigned int busy_bits;
+	unsigned int xtal_busy_bits;
 
 	unsigned int wait:1;
 	unsigned int invert:1;
@@ -71,16 +72,24 @@ struct clk {
 	void (*disable) (struct clk *);
 	/* Function ptr to set the parent clock of the clock. */
 	int (*set_parent) (struct clk *, struct clk *);
+
+	/* Function ptr to change the parent clock depending
+	 * the system configuration at that time.  Will only
+	 * change the parent clock if the ref count is 0 (the clock
+	 * is not being used)
+	 */
+	int (*set_sys_dependent_parent) (struct clk *);
+
 };
 
 int clk_get_usecount(struct clk *clk);
 extern int clk_register(struct clk_lookup *lookup);
 extern void clk_unregister(struct clk_lookup *lookup);
 
-static inline int clk_is_busy(struct clk *clk)
-{
-	return __raw_readl(clk->busy_reg) & (1 << clk->busy_bits);
-}
+bool clk_enable_h_autoslow(bool enable);
+void clk_set_h_autoslow_flags(u16 mask);
+void clk_en_public_h_asm_ctrl(bool (*enable_func)(bool),
+	void (*set_func)(u16));
 
 struct mxs_emi_scaling_data {
 	u32 emi_div;
@@ -88,6 +97,8 @@ struct mxs_emi_scaling_data {
 	u32 cur_freq;
 	u32 new_freq;
 };
+
+
 
 #ifdef CONFIG_MXS_RAM_FREQ_SCALING
 extern int mxs_ram_freq_scale(struct mxs_emi_scaling_data *);

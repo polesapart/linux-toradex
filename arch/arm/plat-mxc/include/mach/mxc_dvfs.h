@@ -35,6 +35,7 @@
 #include <linux/device.h>
 
 extern void __iomem *gpc_base;
+extern void __iomem *ccm_base;
 
 #define MXC_GPCCNTR_GPCIRQ2M		(1 << 25)
 #define MXC_GPCCNTR_GPCIRQ2		(1 << 24)
@@ -101,6 +102,25 @@ extern void __iomem *gpc_base;
 #define MXC_DVFSPMCR1_P4PM		0x00020000
 #define MXC_DVFSPMCR1_P2PM		0x00010000
 
+/* DVFS CORE register offsets*/
+#define MXC_DVFSCORE_THRS		0x00
+#define MXC_DVFSCORE_COUN		0x04
+#define MXC_DVFSCORE_SIG1		0x08
+#define MXC_DVFSCORE_SIG0		0x0C
+#define MXC_DVFSCORE_GPC0		0x10
+#define MXC_DVFSCORE_GPC1		0x14
+#define MXC_DVFSCORE_GPBT		0x18
+#define MXC_DVFSCORE_EMAC		0x1C
+#define MXC_DVFSCORE_CNTR		0x20
+#define MXC_DVFSCORE_LTR0_0		0x24
+#define MXC_DVFSCORE_LTR0_1		0x28
+#define MXC_DVFSCORE_LTR1_0		0x2C
+#define MXC_DVFSCORE_LTR1_1		0x30
+#define MXC_DVFSCORE_PT0 		0x34
+#define MXC_DVFSCORE_PT1 		0x38
+#define MXC_DVFSCORE_PT2 		0x3C
+#define MXC_DVFSCORE_PT3 		0x40
+
 /*
  * DVFS structure
  */
@@ -120,24 +140,20 @@ struct mxc_dvfs_platform_data {
 	char *clk1_id;
 	/* DVFS clock name string */
 	char *clk2_id;
-	/* GPC control reg address */
-	void __iomem *gpc_cntr_reg_addr;
-	/* GPC voltage counter reg address */
-	void __iomem *gpc_vcr_reg_addr;
-	/* CCM DVFS control reg address */
-	void __iomem *ccm_cdcr_reg_addr;
-	/* CCM ARM clock root reg address */
-	void __iomem *ccm_cacrr_reg_addr;
-	/* CCM divider handshake in-progree reg address */
-	void __iomem *ccm_cdhipr_reg_addr;
-	/* DVFS threshold reg address */
-	void __iomem *dvfs_thrs_reg_addr;
-	/* DVFS counters reg address */
-	void __iomem *dvfs_coun_reg_addr;
-	/* DVFS EMAC reg address */
-	void __iomem *dvfs_emac_reg_addr;
-	/* DVFS control reg address */
-	void __iomem *dvfs_cntr_reg_addr;
+	/* The base address of the DVFS core */
+	void __iomem *membase;
+	/* The interrupt number used by the DVFS core */
+	int irq;
+	/* GPC control reg offset */
+	int gpc_cntr_offset;
+	/* GPC voltage counter reg offset */
+	int gpc_vcr_offset;
+	/* CCM DVFS control reg offset */
+	int ccm_cdcr_offset;
+	/* CCM ARM clock root reg offset */
+	int ccm_cacrr_offset;
+	/* CCM divider handshake in-progress reg offset */
+	int ccm_cdhipr_offset;
 	/* PREDIV mask */
 	u32 prediv_mask;
 	/* PREDIV offset */
@@ -182,6 +198,8 @@ struct mxc_dvfsper_data {
 	char *reg_id;
 	/* DVFS clock name string */
 	char *clk_id;
+	/* The base address of the DVFS per */
+	void __iomem *membase;
 	/* GPC control reg address */
 	void __iomem *gpc_cntr_reg_addr;
 	/* GPC VCR reg address */

@@ -18,6 +18,8 @@
  *
  * @ingroup MXC_V4L2_CAPTURE
  */
+
+
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -37,9 +39,9 @@
 #include <media/v4l2-int-device.h>
 #include "mxc_v4l2_capture.h"
 #include "ipu_prp_sw.h"
+#include "asm/delay.h"
 
 static int video_nr = -1;
-static cam_data *g_cam;
 
 /*! This data is used for the output to the display. */
 #define MXC_V4L2_CAPTURE_NUM_OUTPUTS	3
@@ -74,21 +76,23 @@ static struct v4l2_output mxc_capture_outputs[MXC_V4L2_CAPTURE_NUM_OUTPUTS] = {
 static struct v4l2_input mxc_capture_inputs[MXC_V4L2_CAPTURE_NUM_INPUTS] = {
 	{
 	 .index = 0,
-	 .name = "CSI IC MEM",
-	 .type = V4L2_INPUT_TYPE_CAMERA,
-	 .audioset = 0,
-	 .tuner = 0,
-	 .std = V4L2_STD_UNKNOWN,
-	 .status = 0,
-	 },
-	{
-	 .index = 1,
 	 .name = "CSI MEM",
 	 .type = V4L2_INPUT_TYPE_CAMERA,
 	 .audioset = 0,
 	 .tuner = 0,
 	 .std = V4L2_STD_UNKNOWN,
 	 .status = V4L2_IN_ST_NO_POWER,
+	 },
+	{
+	 .index = 1,
+// AG: CSI IC MEM works but has problems
+//	 .name = "CSI IC MEM",
+	 .name = "CSI MEM",
+	 .type = V4L2_INPUT_TYPE_CAMERA,
+	 .audioset = 0,
+	 .tuner = 0,
+	 .std = V4L2_STD_UNKNOWN,
+	 .status = 0,
 	 },
 };
 
@@ -118,6 +122,7 @@ typedef struct {
 	u16 active_left;	/*!< Active left. */
 } video_fmt_t;
 
+#if 0
 /*!
  * Description of video formats supported.
  *
@@ -128,37 +133,39 @@ static video_fmt_t video_fmts[] = {
 	{			/*! NTSC */
 	 .v4l2_id = V4L2_STD_NTSC,
 	 .name = "NTSC",
-	 .raw_width = 720 - 1,		/* SENS_FRM_WIDTH */
-	 .raw_height = 288 - 1,		/* SENS_FRM_HEIGHT */
-	 .active_width = 720,		/* ACT_FRM_WIDTH plus 1 */
-	 .active_height = (480 / 2),	/* ACT_FRM_HEIGHT plus 1 */
-	 .active_top = 12,
+	 .raw_width = 720,		/* SENS_FRM_WIDTH */
+	 .raw_height = 525,		/* SENS_FRM_HEIGHT */
+	 .active_width = 720,		/* ACT_FRM_WIDTH */
+	 .active_height = 240,		/* ACT_FRM_HEIGHT */
+	 .active_top = 0,
 	 .active_left = 0,
 	 },
 	{			/*! (B, G, H, I, N) PAL */
 	 .v4l2_id = V4L2_STD_PAL,
 	 .name = "PAL",
-	 .raw_width = 720 - 1,
-	 .raw_height = (576 / 2) + 24 * 2 - 1,
+	 .raw_width = 720,
+	 .raw_height = 625,
 	 .active_width = 720,
-	 .active_height = (576 / 2),
+	 .active_height = 288,
 	 .active_top = 0,
 	 .active_left = 0,
 	 },
 	{			/*! Unlocked standard */
 	 .v4l2_id = V4L2_STD_ALL,
 	 .name = "Autodetect",
-	 .raw_width = 720 - 1,
-	 .raw_height = (576 / 2) + 24 * 2 - 1,
+	 .raw_width = 720,
+	 .raw_height = 625,
 	 .active_width = 720,
-	 .active_height = (576 / 2),
+	 .active_height = 288,
 	 .active_top = 0,
 	 .active_left = 0,
 	 },
 };
 
+
 /*!* Standard index of TV. */
 static video_fmt_idx video_index = TV_NOT_LOCKED;
+#endif
 
 static int mxc_v4l2_master_attach(struct v4l2_int_device *slave);
 static void mxc_v4l2_master_detach(struct v4l2_int_device *slave);
@@ -172,14 +179,26 @@ static struct v4l2_int_master mxc_v4l2_master = {
 	.detach = mxc_v4l2_master_detach,
 };
 
-static struct v4l2_int_device mxc_v4l2_int_device = {
+static struct v4l2_int_device mxc_v4l2_int_device [] = {
+	{
 	.module = THIS_MODULE,
-	.name = "mxc_v4l2_cap",
+	.name = "mxc_v4l2_cap_1",
 	.type = v4l2_int_type_master,
 	.u = {
 		.master = &mxc_v4l2_master,
 		},
+	},
+	{
+	.module = THIS_MODULE,
+	.name = "mxc_v4l2_cap_2",
+	.type = v4l2_int_type_master,
+	.u = {
+		.master = &mxc_v4l2_master,
+		},
+	},
 };
+
+static cam_data *g_cam[ARRAY_SIZE(mxc_v4l2_int_device)];
 
 /***************************************************************************
  * Functions for handling Frame buffers.
@@ -260,6 +279,7 @@ static int mxc_allocate_frame_buf(cam_data *cam, int count)
 static void mxc_free_frames(cam_data *cam)
 {
 	int i;
+	unsigned long lock_flags;
 
 	pr_debug("In MVC:mxc_free_frames\n");
 
@@ -269,9 +289,11 @@ static void mxc_free_frames(cam_data *cam)
 
 	cam->enc_counter = 0;
 	cam->skip_frame = 0;
+	spin_lock_irqsave(&cam->dqueue_int_lock, lock_flags);
 	INIT_LIST_HEAD(&cam->ready_q);
 	INIT_LIST_HEAD(&cam->working_q);
 	INIT_LIST_HEAD(&cam->done_q);
+	spin_unlock_irqrestore(&cam->dqueue_int_lock, lock_flags);
 }
 
 /*!
@@ -331,8 +353,7 @@ static int mxc_streamon(cam_data *cam)
 {
 	struct mxc_v4l_frame *frame;
 	int err = 0;
-
-	pr_debug("In MVC:mxc_streamon\n");
+	unsigned long lock_flags;
 
 	if (NULL == cam) {
 		pr_err("ERROR! cam parameter is NULL\n");
@@ -363,23 +384,27 @@ static int mxc_streamon(cam_data *cam)
 		}
 	}
 
+	spin_lock_irqsave(&cam->queue_int_lock, lock_flags);
 	cam->ping_pong_csi = 0;
 	if (cam->enc_update_eba) {
-		frame =
-		    list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
-		list_del(cam->ready_q.next);
-		list_add_tail(&frame->queue, &cam->working_q);
-		err = cam->enc_update_eba(frame->buffer.m.offset,
-					  &cam->ping_pong_csi);
 
 		frame =
 		    list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
 		list_del(cam->ready_q.next);
 		list_add_tail(&frame->queue, &cam->working_q);
-		err |= cam->enc_update_eba(frame->buffer.m.offset,
-					   &cam->ping_pong_csi);
+		err = cam->enc_update_eba(cam->csi,frame->buffer.m.offset,
+					  &cam->ping_pong_csi);
+		if (!list_empty(&cam->ready_q)) {
+			frame =
+				list_entry(cam->ready_q.next, struct mxc_v4l_frame, queue);
+			list_del(cam->ready_q.next);
+			list_add_tail(&frame->queue, &cam->working_q);
+			err |= cam->enc_update_eba(cam->csi,frame->buffer.m.offset,
+						   &cam->ping_pong_csi);
+		}
+		cam->capture_on = true;
 	} else {
-		return -EINVAL;
+		err = -EINVAL;
 	}
 
 	if (cam->overlay_on == true)
@@ -387,11 +412,9 @@ static int mxc_streamon(cam_data *cam)
 
 	if (cam->enc_enable_csi) {
 		err = cam->enc_enable_csi(cam);
-		if (err != 0)
-			return err;
 	}
 
-	cam->capture_on = true;
+	spin_unlock_irqrestore(&cam->queue_int_lock, lock_flags);
 
 	return err;
 }
@@ -543,8 +566,6 @@ static int start_preview(cam_data *cam)
 {
 	int err = 0;
 
-	pr_debug("MVC: start_preview\n");
-
 #if defined(CONFIG_MXC_IPU_PRP_VF_SDC) || defined(CONFIG_MXC_IPU_PRP_VF_SDC_MODULE)
 	pr_debug("   This is an SDC display\n");
 	if (cam->output == 0 || cam->output == 2) {
@@ -601,8 +622,6 @@ static int start_preview(cam_data *cam)
 static int stop_preview(cam_data *cam)
 {
 	int err = 0;
-
-	pr_debug("MVC: stop preview\n");
 
 #if defined(CONFIG_MXC_IPU_PRP_VF_ADC) || defined(CONFIG_MXC_IPU_PRP_VF_ADC_MODULE)
 	if (cam->output == 1) {
@@ -674,6 +693,29 @@ static int mxc_v4l2_g_fmt(cam_data *cam, struct v4l2_format *f)
 		 __func__,
 		 cam->crop_current.width, cam->crop_current.height);
 
+	retval = vidioc_int_g_fmt_cap(cam->sensor,f);
+	return retval;
+}
+
+/*!
+ * V4L2 - mxc_v4l2_enum_fmt function
+ *
+ * @param cam         structure cam_data *
+ *
+ * @param f           structure v4l2_fmtdesc *
+ *
+ * @return  status    0 success, EINVAL failed
+ */
+static int mxc_v4l2_enum_fmt(cam_data *cam, struct v4l2_fmtdesc *f)
+{
+	int retval = 0;
+
+	pr_debug("In MVC: mxc_v4l2_enum_fmt\n");
+
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
+	retval = vidioc_int_enum_fmt_cap(cam->sensor,f);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
+
 	return retval;
 }
 
@@ -709,9 +751,13 @@ static int mxc_v4l2_s_fmt(cam_data *cam, struct v4l2_format *f)
 		 * for CSI MEM input mode.
 		 */
 		if (strcmp(mxc_capture_inputs[cam->current_input].name,
-			   "CSI MEM") == 0) {
+			   "CSI MEM") == 0 || strcmp(mxc_capture_inputs[cam->current_input].name,
+					   "CSI IC MEM") == 0) {
 			f->fmt.pix.width = cam->crop_current.width;
 			f->fmt.pix.height = cam->crop_current.height;
+		}
+		else {
+			printk("Error no match %s\n",mxc_capture_inputs[cam->current_input].name);
 		}
 
 		if (cam->rotation >= IPU_ROTATE_90_RIGHT) {
@@ -811,6 +857,13 @@ static int mxc_v4l2_s_fmt(cam_data *cam, struct v4l2_format *f)
 				break;
 			}
 		}
+
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
+				       true, true);
+		vidioc_int_s_fmt_cap(cam->sensor, f);
+		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
+				       false, false);
+
 		break;
 	case V4L2_BUF_TYPE_VIDEO_OVERLAY:
 		pr_debug("   type=V4L2_BUF_TYPE_VIDEO_OVERLAY\n");
@@ -1057,63 +1110,10 @@ static int mxc_v4l2_s_ctrl(cam_data *cam, struct v4l2_control *c)
 	return ret;
 }
 
-/*!
- * V4L2 - mxc_v4l2_s_param function
- * Allows setting of capturemode and frame rate.
- *
- * @param cam         structure cam_data *
- * @param parm        structure v4l2_streamparm *
- *
- * @return  status    0 success, EINVAL failed
- */
-static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
-{
-	struct v4l2_ifparm ifparm;
+static int 	mxc_v4l2_init_csi( cam_data *cam ) {
 	struct v4l2_format cam_fmt;
-	struct v4l2_streamparm currentparm;
 	ipu_csi_signal_cfg_t csi_param;
-	int err = 0;
-
-	pr_debug("In mxc_v4l2_s_param\n");
-
-	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		pr_err(KERN_ERR "mxc_v4l2_s_param invalid type\n");
-		return -EINVAL;
-	}
-
-	/* Stop the viewfinder */
-	if (cam->overlay_on == true) {
-		stop_preview(cam);
-	}
-
-	currentparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	/* First check that this device can support the changes requested. */
-	err = vidioc_int_g_parm(cam->sensor, &currentparm);
-	if (err) {
-		pr_err("%s: vidioc_int_g_parm returned an error %d\n",
-			__func__, err);
-		goto exit;
-	}
-
-	pr_debug("   Current capabilities are %x\n",
-			currentparm.parm.capture.capability);
-	pr_debug("   Current capturemode is %d  change to %d\n",
-			currentparm.parm.capture.capturemode,
-			parm->parm.capture.capturemode);
-	pr_debug("   Current framerate is %d  change to %d\n",
-			currentparm.parm.capture.timeperframe.denominator,
-			parm->parm.capture.timeperframe.denominator);
-
-	/* This will change any camera settings needed. */
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
-	err = vidioc_int_s_parm(cam->sensor, parm);
-	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
-	if (err) {
-		pr_err("%s: vidioc_int_s_parm returned an error %d\n",
-			__func__, err);
-		goto exit;
-	}
+	struct v4l2_ifparm ifparm;
 
 	/* If resolution changed, need to re-program the CSI */
 	/* Get new values. */
@@ -1131,13 +1131,13 @@ static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
 	csi_param.force_eof = 0;
 	csi_param.data_en_pol = 0;
 	csi_param.data_fmt = 0;
-	csi_param.csi = 0;
+	csi_param.csi = cam->csi;
 	csi_param.mclk = 0;
 
 	/* This may not work on other platforms. Check when adding a new one.*/
 	pr_debug("   clock_curr=mclk=%d\n", ifparm.u.bt656.clock_curr);
 	if (ifparm.u.bt656.clock_curr == 0) {
-		csi_param.clk_mode = IPU_CSI_CLK_MODE_CCIR656_PROGRESSIVE;
+		csi_param.clk_mode = IPU_CSI_CLK_MODE_CCIR656_INTERLACED;
 	} else {
 		csi_param.clk_mode = IPU_CSI_CLK_MODE_GATED_CLK;
 	}
@@ -1189,7 +1189,63 @@ static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
 	ipu_csi_init_interface(cam->crop_bounds.width,
 			       cam->crop_bounds.height,
 			       cam_fmt.fmt.pix.pixelformat, csi_param);
+	return 0;
+}
 
+/*!
+ * V4L2 - mxc_v4l2_s_param function
+ * Allows setting of capturemode and frame rate.
+ *
+ * @param cam         structure cam_data *
+ * @param parm        structure v4l2_streamparm *
+ *
+ * @return  status    0 success, EINVAL failed
+ */
+static int mxc_v4l2_s_param(cam_data *cam, struct v4l2_streamparm *parm)
+{
+	struct v4l2_streamparm currentparm;
+	int err = 0;
+
+	if (parm->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		pr_err(KERN_ERR "mxc_v4l2_s_param invalid type\n");
+		return -EINVAL;
+	}
+
+	/* Stop the viewfinder */
+	if (cam->overlay_on == true) {
+		stop_preview(cam);
+	}
+
+	currentparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+	/* First check that this device can support the changes requested. */
+	err = vidioc_int_g_parm(cam->sensor, &currentparm);
+	if (err) {
+		pr_err("%s: vidioc_int_g_parm returned an error %d\n",
+			__func__, err);
+		goto exit;
+	}
+
+	pr_debug("   Current capabilities are %x\n",
+			currentparm.parm.capture.capability);
+	pr_debug("   Current capturemode is %d  change to %d\n",
+			currentparm.parm.capture.capturemode,
+			parm->parm.capture.capturemode);
+	pr_debug("   Current framerate is %d  change to %d\n",
+			currentparm.parm.capture.timeperframe.denominator,
+			parm->parm.capture.timeperframe.denominator);
+
+	/* This will change any camera settings needed. */
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
+	err = vidioc_int_s_parm(cam->sensor, parm);
+	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
+	if (err) {
+		pr_err("%s: vidioc_int_s_parm returned an error %d\n",
+			__func__, err);
+		goto exit;
+	}
+
+	err = mxc_v4l2_init_csi(cam);
 
 exit:
 	if (cam->overlay_on == true)
@@ -1198,6 +1254,7 @@ exit:
 	return err;
 }
 
+#if 0
 /*!
  * V4L2 - mxc_v4l2_s_std function
  *
@@ -1287,6 +1344,7 @@ static int mxc_v4l2_g_std(cam_data *cam, v4l2_std_id *e)
 
 	return 0;
 }
+#endif
 
 /*!
  * Dequeue one V4L capture buffer
@@ -1372,6 +1430,11 @@ static int mxc_v4l_open(struct file *file)
 		return -EBADF;
 	}
 
+	if(!cam->sensor) {
+		pr_err("ERROR: v4l2 capture: Unattached sensor!\n");
+		return -EBADF;
+	}
+
 	down(&cam->busy_lock);
 	err = 0;
 	if (signal_pending(current))
@@ -1411,11 +1474,8 @@ static int mxc_v4l_open(struct file *file)
 		csi_param.force_eof = 0;
 		csi_param.data_en_pol = 0;
 		csi_param.mclk = ifparm.u.bt656.clock_curr;
-
+		csi_param.ext_vsync = ifparm.u.bt656.bt_sync_correct;
 		csi_param.pixclk_pol = ifparm.u.bt656.latch_clk_inv;
-
-		/* Once we handle multiple inputs this will need to change. */
-		csi_param.csi = 0;
 
 		if (ifparm.u.bt656.mode
 				== V4L2_IF_TYPE_BT656_MODE_NOBT_8BIT)
@@ -1464,11 +1524,13 @@ static int mxc_v4l_open(struct file *file)
 			__func__,
 			cam->crop_current.width, cam->crop_current.height);
 
+		udelay(100);
+
 		csi_param.data_fmt = cam_fmt.fmt.pix.pixelformat;
 		pr_debug("On Open: Input to ipu size is %d x %d\n",
 				cam_fmt.fmt.pix.width, cam_fmt.fmt.pix.height);
 		ipu_csi_set_window_size(cam->crop_current.width,
-					cam->crop_current.width,
+					cam->crop_current.height,
 					cam->csi);
 		ipu_csi_set_window_pos(cam->crop_current.left,
 					cam->crop_current.top,
@@ -1478,12 +1540,16 @@ static int mxc_v4l_open(struct file *file)
 					cam_fmt.fmt.pix.pixelformat,
 					csi_param);
 
+		udelay(100);
+
 		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
 				       true, true);
 		vidioc_int_init(cam->sensor);
 
 		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi,
 				       false, false);
+
+		udelay(100);
 }
 
 	file->private_data = dev;
@@ -1519,7 +1585,7 @@ static int mxc_v4l_close(struct file *file)
 		err = stop_preview(cam);
 		cam->overlay_on = false;
 	}
-	if (cam->capture_pid == current->pid) {
+	if (cam->capture_pid == current->tgid) {
 		err |= mxc_streamoff(cam);
 		wake_up_interruptible(&cam->enc_queue);
 	}
@@ -1570,7 +1636,7 @@ static ssize_t mxc_v4l_read(struct file *file, char *buf, size_t count,
 			    loff_t *ppos)
 {
 	int err = 0;
-	u8 *v_address;
+	u8 *v_address[2];
 	struct video_device *dev = video_devdata(file);
 	cam_data *cam = video_get_drvdata(dev);
 
@@ -1581,11 +1647,17 @@ static ssize_t mxc_v4l_read(struct file *file, char *buf, size_t count,
 	if (cam->overlay_on == true)
 		stop_preview(cam);
 
-	v_address = dma_alloc_coherent(0,
+	v_address[0] = dma_alloc_coherent(0,
 				       PAGE_ALIGN(cam->v2f.fmt.pix.sizeimage),
-				       &cam->still_buf, GFP_DMA | GFP_KERNEL);
+				       &cam->still_buf[0],
+				       GFP_DMA | GFP_KERNEL);
 
-	if (!v_address) {
+	v_address[1] = dma_alloc_coherent(0,
+				       PAGE_ALIGN(cam->v2f.fmt.pix.sizeimage),
+				       &cam->still_buf[1],
+				       GFP_DMA | GFP_KERNEL);
+
+	if (!v_address[0] || !v_address[1]) {
 		err = -ENOBUFS;
 		goto exit0;
 	}
@@ -1593,14 +1665,14 @@ static ssize_t mxc_v4l_read(struct file *file, char *buf, size_t count,
 	err = prp_still_select(cam);
 	if (err != 0) {
 		err = -EIO;
-		goto exit1;
+		goto exit0;
 	}
 
 	cam->still_counter = 0;
 	err = cam->csi_start(cam);
 	if (err != 0) {
 		err = -EIO;
-		goto exit2;
+		goto exit1;
 	}
 
 	if (!wait_event_interruptible_timeout(cam->still_queue,
@@ -1609,19 +1681,23 @@ static ssize_t mxc_v4l_read(struct file *file, char *buf, size_t count,
 		pr_err("ERROR: v4l2 capture: mxc_v4l_read timeout counter %x\n",
 		       cam->still_counter);
 		err = -ETIME;
-		goto exit2;
+		goto exit1;
 	}
-	err = copy_to_user(buf, v_address, cam->v2f.fmt.pix.sizeimage);
-
-      exit2:
-	prp_still_deselect(cam);
+	err = copy_to_user(buf, v_address[1], cam->v2f.fmt.pix.sizeimage);
 
       exit1:
-	dma_free_coherent(0, cam->v2f.fmt.pix.sizeimage, v_address,
-			  cam->still_buf);
-	cam->still_buf = 0;
+	prp_still_deselect(cam);
 
       exit0:
+	if (v_address[0] != 0)
+		dma_free_coherent(0, cam->v2f.fmt.pix.sizeimage, v_address[0],
+				  cam->still_buf[0]);
+	if (v_address[1] != 0)
+		dma_free_coherent(0, cam->v2f.fmt.pix.sizeimage, v_address[1],
+				  cam->still_buf[1]);
+
+	cam->still_buf[0] = cam->still_buf[1] = 0;
+
 	if (cam->overlay_on == true) {
 		start_preview(cam);
 	}
@@ -1661,6 +1737,21 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		return -EBUSY;
 
 	switch (ioctlnr) {
+
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	case VIDIOC_DBG_S_REGISTER: {
+		struct v4l2_dbg_register * dreg = arg;
+		vidioc_int_s_register(cam->sensor,dreg);
+		break;
+	}
+
+	case VIDIOC_DBG_G_REGISTER: {
+		struct v4l2_dbg_register * dreg = arg;
+		vidioc_int_g_register(cam->sensor,dreg);
+		break;
+	}
+#endif
+
 	/*!
 	 * V4l2 VIDIOC_QUERYCAP ioctl
 	 */
@@ -1695,6 +1786,14 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		struct v4l2_format *sf = arg;
 		pr_debug("   case VIDIOC_S_FMT\n");
 		retval = mxc_v4l2_s_fmt(cam, sf);
+		mxc_v4l2_init_csi(cam);
+		break;
+	}
+
+	case VIDIOC_ENUM_FMT: {
+		struct v4l2_fmtdesc *fd = arg;
+		pr_debug("   case VIDIOC_ENUM_FMT\n");
+		retval = mxc_v4l2_enum_fmt(cam, fd);
 		break;
 	}
 
@@ -1775,9 +1874,8 @@ static long mxc_v4l_do_ioctl(struct file *file,
 				if (cam->skip_frame > 0) {
 					list_add_tail(&cam->frame[index].queue,
 						      &cam->working_q);
-
 					retval =
-					   cam->enc_update_eba(cam->
+					   cam->enc_update_eba(cam->csi,cam->
 							       frame[index].
 							       buffer.m.offset,
 							       &cam->
@@ -1999,28 +2097,6 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		break;
 	}
 
-	/* linux v4l2 bug, kernel c0485619 user c0405619 */
-	case VIDIOC_ENUMSTD: {
-		struct v4l2_standard *e = arg;
-		pr_debug("   case VIDIOC_ENUMSTD\n");
-		*e = cam->standard;
-		break;
-	}
-
-	case VIDIOC_G_STD: {
-		v4l2_std_id *e = arg;
-		pr_debug("   case VIDIOC_G_STD\n");
-		retval = mxc_v4l2_g_std(cam, e);
-		break;
-	}
-
-	case VIDIOC_S_STD: {
-		v4l2_std_id *e = arg;
-		pr_debug("   case VIDIOC_S_STD\n");
-		retval = mxc_v4l2_s_std(cam, *e);
-
-		break;
-	}
 
 	case VIDIOC_ENUMOUTPUT: {
 		struct v4l2_output *output = arg;
@@ -2109,8 +2185,13 @@ static long mxc_v4l_do_ioctl(struct file *file,
 		break;
 	}
 
-	case VIDIOC_ENUM_FMT:
-	case VIDIOC_TRY_FMT:
+	case VIDIOC_TRY_FMT: {
+		struct v4l2_format * f = arg;
+		pr_debug("   case VIDIOC_TRY_FMT\n");
+		retval = vidioc_int_try_fmt_cap(cam->sensor,f);
+		break;
+	}
+
 	case VIDIOC_QUERYCTRL:
 	case VIDIOC_G_TUNER:
 	case VIDIOC_S_TUNER:
@@ -2163,7 +2244,7 @@ static int mxc_mmap(struct file *file, struct vm_area_struct *vma)
 		return -EINTR;
 
 	size = vma->vm_end - vma->vm_start;
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 
 	if (remap_pfn_range(vma, vma->vm_start,
 			    vma->vm_pgoff, size, vma->vm_page_prot)) {
@@ -2236,12 +2317,21 @@ static void camera_platform_release(struct device *device)
 }
 
 /*! Device Definition for Mt9v111 devices */
-static struct platform_device mxc_v4l2_devices = {
-	.name = "mxc_v4l2",
-	.dev = {
-		.release = camera_platform_release,
-		},
-	.id = 0,
+static struct platform_device mxc_v4l2_devices[] = {
+	{
+		.name = "mxc_v4l2_1",
+		.dev = {
+			.release = camera_platform_release,
+			},
+		.id = 0,
+	},
+	{
+		.name = "mxc_v4l2_2",
+		.dev = {
+			.release = camera_platform_release,
+			},
+		.id = 1,
+	}
 };
 
 /*!
@@ -2302,7 +2392,7 @@ static void camera_callback(u32 mask, void *dev)
 							 struct mxc_v4l_frame,
 							 queue);
 
-				if (cam->enc_update_eba(
+				if (cam->enc_update_eba(cam->csi,
 						ready_frame->buffer.m.offset,
 						&cam->ping_pong_csi) == 0) {
 					list_del(cam->ready_q.next);
@@ -2354,7 +2444,7 @@ static void camera_callback(u32 mask, void *dev)
 			ready_frame = list_entry(cam->ready_q.next,
 						 struct mxc_v4l_frame,
 						 queue);
-			if (cam->enc_update_eba(ready_frame->buffer.m.offset,
+			if (cam->enc_update_eba(cam->csi,ready_frame->buffer.m.offset,
 						&cam->ping_pong_csi) == 0) {
 				list_del(cam->ready_q.next);
 				list_add_tail(&ready_frame->queue,
@@ -2362,7 +2452,7 @@ static void camera_callback(u32 mask, void *dev)
 			} else
 				return;
 		} else {
-			if (cam->enc_update_eba(
+			if (cam->enc_update_eba(cam->csi,
 				cam->dummy_frame.buffer.m.offset,
 				&cam->ping_pong_csi) == -EACCES)
 				return;
@@ -2379,12 +2469,14 @@ static void camera_callback(u32 mask, void *dev)
  *
  * @return status  0 Success
  */
-static void init_camera_struct(cam_data *cam)
+static void init_camera_struct(cam_data *cam,unsigned int csi)
 {
-	pr_debug("In MVC: init_camera_struct\n");
+	pr_debug("In MVC: init_camera_struct for csi %d\n",csi);
 
 	/* Default everything to 0 */
 	memset(cam, 0, sizeof(cam_data));
+
+	cam->csi = csi;
 
 	init_MUTEX(&cam->param_lock);
 	init_MUTEX(&cam->busy_lock);
@@ -2396,7 +2488,7 @@ static void init_camera_struct(cam_data *cam)
 	*(cam->video_dev) = mxc_v4l_template;
 
 	video_set_drvdata(cam->video_dev, cam);
-	dev_set_drvdata(&mxc_v4l2_devices.dev, (void *)cam);
+	dev_set_drvdata(&mxc_v4l2_devices[csi].dev, (void *)cam);
 	cam->video_dev->minor = -1;
 
 	init_waitqueue_head(&cam->enc_queue);
@@ -2428,6 +2520,8 @@ static void init_camera_struct(cam_data *cam)
 	cam->skip_frame = 0;
 	cam->v4l2_fb.flags = V4L2_FBUF_FLAG_OVERLAY;
 
+	cam->current_input = cam->csi;
+
 	cam->v2f.fmt.pix.sizeimage = 352 * 288 * 3 / 2;
 	cam->v2f.fmt.pix.bytesperline = 288 * 3 / 2;
 	cam->v2f.fmt.pix.width = 288;
@@ -2437,9 +2531,6 @@ static void init_camera_struct(cam_data *cam)
 	cam->win.w.height = 160;
 	cam->win.w.left = 0;
 	cam->win.w.top = 0;
-
-	cam->csi = 0;  /* Need to determine how to set this correctly with
-			* multiple video input devices. */
 
 	cam->enc_callback = camera_callback;
 	init_waitqueue_head(&cam->power_queue);
@@ -2460,11 +2551,12 @@ static u8 camera_power(cam_data *cam, bool cameraOn)
 {
 	pr_debug("In MVC:camera_power on=%d\n", cameraOn);
 
+	if( !cam->open_count )
+		return 0;
+
 	if (cameraOn == true) {
-		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
 		vidioc_int_s_power(cam->sensor, 1);
 	} else {
-		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
 		vidioc_int_s_power(cam->sensor, 0);
 	}
 	return 0;
@@ -2491,15 +2583,15 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 		return -1;
 	}
 
+	if (!cam->open_count) {
+		return 0;
+	}
+
 	cam->low_power = true;
 
 	if (cam->overlay_on == true)
 		stop_preview(cam);
-	if ((cam->capture_on == true) && cam->enc_disable) {
-		cam->enc_disable(cam);
-	}
 	camera_power(cam, false);
-
 	return 0;
 }
 
@@ -2522,14 +2614,19 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 		return -1;
 	}
 
+	if( !cam->open_count )
+		return 0;
+
 	cam->low_power = false;
 	wake_up_interruptible(&cam->power_queue);
+
 	camera_power(cam, true);
 
 	if (cam->overlay_on == true)
 		start_preview(cam);
+
 	if (cam->capture_on == true)
-		mxc_streamon(cam);
+	    mxc_streamon(cam);
 
 	return 0;
 }
@@ -2537,15 +2634,27 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 /*!
  * This structure contains pointers to the power management callback functions.
  */
-static struct platform_driver mxc_v4l2_driver = {
-	.driver = {
-		   .name = "mxc_v4l2",
-		   },
-	.probe = NULL,
-	.remove = NULL,
-	.suspend = mxc_v4l2_suspend,
-	.resume = mxc_v4l2_resume,
-	.shutdown = NULL,
+static struct platform_driver mxc_v4l2_driver[] = {
+	{
+		.driver = {
+			   .name = "mxc_v4l2_1",
+			   },
+		.probe = NULL,
+		.remove = NULL,
+		.suspend = mxc_v4l2_suspend,
+		.resume = mxc_v4l2_resume,
+		.shutdown = NULL,
+	},
+	{
+		.driver = {
+			   .name = "mxc_v4l2_2",
+			   },
+		.probe = NULL,
+		.remove = NULL,
+		.suspend = mxc_v4l2_suspend,
+		.resume = mxc_v4l2_resume,
+		.shutdown = NULL,
+	},
 };
 
 /*!
@@ -2567,6 +2676,7 @@ static int mxc_v4l2_master_attach(struct v4l2_int_device *slave)
 	}
 
 	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, true, true);
+	vidioc_int_s_power(cam->sensor, 1);
 	vidioc_int_dev_init(slave);
 	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, cam->csi, false, false);
 	cam_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -2623,53 +2733,55 @@ static void mxc_v4l2_master_detach(struct v4l2_int_device *slave)
 static __init int camera_init(void)
 {
 	u8 err = 0;
+	int i;
 
 	pr_debug("In MVC:camera_init\n");
 
-	/* Register the device driver structure. */
-	err = platform_driver_register(&mxc_v4l2_driver);
-	if (err != 0) {
-		pr_err("ERROR: v4l2 capture:camera_init: "
-			"platform_driver_register failed.\n");
-		return err;
-	}
+	for (i = 0; i < ARRAY_SIZE(mxc_v4l2_int_device); i++) {
+		/* Register the device driver structure. */
+		err = platform_driver_register(&mxc_v4l2_driver[i]);
+		if (err != 0) {
+			pr_err("ERROR: v4l2 capture:camera_init: "
+				"platform_driver_register failed.\n");
+			return err;
+		}
 
-	/* Create g_cam and initialize it. */
-	if ((g_cam = kmalloc(sizeof(cam_data), GFP_KERNEL)) == NULL) {
-		pr_err("ERROR: v4l2 capture: failed to register camera\n");
-		platform_driver_unregister(&mxc_v4l2_driver);
-		return -1;
-	}
-	init_camera_struct(g_cam);
+		/* Create g_cam and initialize it. */
+		if ((g_cam [i] = kmalloc(sizeof(cam_data), GFP_KERNEL)) == NULL) {
+			pr_err("ERROR: v4l2 capture: failed to register camera\n");
+			platform_driver_unregister(&mxc_v4l2_driver[i]);
+			return -1;
+		}
+		init_camera_struct(g_cam [i], i);
 
-	/* Set up the v4l2 device and register it*/
-	mxc_v4l2_int_device.priv = g_cam;
-	/* This function contains a bug that won't let this be rmmod'd. */
-	v4l2_int_device_register(&mxc_v4l2_int_device);
+		/* Set up the v4l2 device and register it*/
+		mxc_v4l2_int_device[i].priv = g_cam [i];
+		/* This function contains a bug that won't let this be rmmod'd. */
+		v4l2_int_device_register(&mxc_v4l2_int_device[i]);
 
-	/* Register the I2C device */
-	err = platform_device_register(&mxc_v4l2_devices);
-	if (err != 0) {
-		pr_err("ERROR: v4l2 capture: camera_init: "
-		       "platform_device_register failed.\n");
-		platform_driver_unregister(&mxc_v4l2_driver);
-		kfree(g_cam);
-		g_cam = NULL;
-		return err;
-	}
+		/* Register the I2C device */
+		err = platform_device_register(&mxc_v4l2_devices[i]);
+		if (err != 0) {
+			pr_err("ERROR: v4l2 capture: camera_init: "
+				   "platform_device_register failed.\n");
+					platform_driver_unregister(&mxc_v4l2_driver[i]);
+					kfree(g_cam [i]);
+					g_cam [i] = NULL;
+			return err;
+		}
 
-	/* register v4l video device */
-	if (video_register_device(g_cam->video_dev, VFL_TYPE_GRABBER, video_nr)
-	    == -1) {
-		platform_device_unregister(&mxc_v4l2_devices);
-		platform_driver_unregister(&mxc_v4l2_driver);
-		kfree(g_cam);
-		g_cam = NULL;
-		pr_err("ERROR: v4l2 capture: video_register_device failed\n");
-		return -1;
+		/* register v4l video device */
+		if (video_register_device(g_cam[i]->video_dev, VFL_TYPE_GRABBER, video_nr)== -1) {
+			platform_device_unregister(&mxc_v4l2_devices[i]);
+			platform_driver_unregister(&mxc_v4l2_driver[i]);
+			kfree(g_cam[i]);
+			g_cam [i] = NULL;
+			pr_err("ERROR: v4l2 capture: video_register_device failed\n");
+			return -1;
+		}
+		pr_debug("   Video device registered: %s #%d\n",
+			g_cam[i]->video_dev->name, g_cam[i]->video_dev->minor);
 	}
-	pr_debug("   Video device registered: %s #%d\n",
-		 g_cam->video_dev->name, g_cam->video_dev->minor);
 
 	return err;
 }
@@ -2683,19 +2795,34 @@ static void __exit camera_exit(void)
 
 	pr_info("V4L2 unregistering video\n");
 
-	if (g_cam->open_count) {
+	if (g_cam[0]->open_count) {
 		pr_err("ERROR: v4l2 capture:camera open "
 			"-- setting ops to NULL\n");
 	} else {
 		pr_info("V4L2 freeing image input device\n");
-		v4l2_int_device_unregister(&mxc_v4l2_int_device);
-		video_unregister_device(g_cam->video_dev);
-		platform_driver_unregister(&mxc_v4l2_driver);
-		platform_device_unregister(&mxc_v4l2_devices);
+		v4l2_int_device_unregister(&mxc_v4l2_int_device[0]);
+		video_unregister_device(g_cam[0]->video_dev);
+		platform_driver_unregister(&mxc_v4l2_driver[0]);
+		platform_device_unregister(&mxc_v4l2_devices[0]);
 
-		mxc_free_frame_buf(g_cam);
-		kfree(g_cam);
-		g_cam = NULL;
+		mxc_free_frame_buf(g_cam[0]);
+		kfree(g_cam[0]);
+		g_cam[0] = NULL;
+	}
+
+	if (g_cam[1]->open_count) {
+		pr_err("ERROR: v4l2 capture:camera open "
+			"-- setting ops to NULL\n");
+	} else {
+		pr_info("V4L2 freeing image input device\n");
+		v4l2_int_device_unregister(&mxc_v4l2_int_device[1]);
+		video_unregister_device(g_cam[1]->video_dev);
+		platform_driver_unregister(&mxc_v4l2_driver[1]);
+		platform_device_unregister(&mxc_v4l2_devices[1]);
+
+		mxc_free_frame_buf(g_cam[1]);
+		kfree(g_cam[1]);
+		g_cam[1] = NULL;
 	}
 }
 

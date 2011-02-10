@@ -92,13 +92,17 @@ static struct resource mxc_kpp_resources[] = {
 	       .start = MXC_INT_KPP,
 	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
-	       }
+	       },
+	[1] = {
+		.start = KPP_BASE_ADDR,
+		.end = KPP_BASE_ADDR + SZ_4K - 1,
+		.flags = IORESOURCE_MEM,
+		},
 };
 
 static struct keypad_data keypad_plat_data = {
 	.rowmax = 3,
 	.colmax = 4,
-	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = keymapping,
@@ -168,6 +172,20 @@ static struct platform_device mxc_nand_mtd_device = {
 		},
 };
 
+static struct resource mxc_nand_resources[] = {
+	{
+		.flags = IORESOURCE_MEM,
+		.name  = "NFC_AXI_BASE",
+		.start = NFC_BASE_ADDR,
+		.end   = NFC_BASE_ADDR + SZ_4K - 1,
+	},
+	{
+		.flags = IORESOURCE_IRQ,
+		.start = MXC_INT_NANDFC,
+		.end   = MXC_INT_NANDFC,
+	},
+};
+
 static struct platform_device mxc_nandv2_mtd_device = {
 	.name = "mxc_nandv2_flash",
 	.id = 0,
@@ -175,6 +193,8 @@ static struct platform_device mxc_nandv2_mtd_device = {
 		.release = mxc_nop_release,
 		.platform_data = &mxc_nand_data,
 		},
+	.resource = mxc_nand_resources,
+	.num_resources = ARRAY_SIZE(mxc_nand_resources),
 };
 
 static void mxc_init_nand_mtd(void)
@@ -835,16 +855,16 @@ static struct fsl_ata_platform_data ata_data = {
 };
 
 static struct resource pata_fsl_resources[] = {
-	[0] = {			/* I/O */
-	       .start = ATA_BASE_ADDR + 0x00,
-	       .end = ATA_BASE_ADDR + 0xD8,
-	       .flags = IORESOURCE_MEM,
-	       },
-	[2] = {			/* IRQ */
-	       .start = MXC_INT_ATA,
-	       .end = MXC_INT_ATA,
-	       .flags = IORESOURCE_IRQ,
-	       },
+	{
+		.start = ATA_BASE_ADDR,
+		.end = ATA_BASE_ADDR + 0x000000D8,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = MXC_INT_ATA,
+		.end = MXC_INT_ATA,
+		.flags = IORESOURCE_IRQ,
+	},
 };
 
 static struct platform_device pata_fsl_device = {

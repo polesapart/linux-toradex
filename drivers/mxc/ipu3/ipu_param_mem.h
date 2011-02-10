@@ -155,8 +155,15 @@ static inline void _ipu_ch_param_init(int ch,
 		ipu_ch_param_set_field(&params, 1, 102, 14, stride - 1);
 	}
 
+	/* EBA is 8-byte aligned */
 	ipu_ch_param_set_field(&params, 1, 0, 29, addr0 >> 3);
 	ipu_ch_param_set_field(&params, 1, 29, 29, addr1 >> 3);
+	if (addr0%8)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's EBA0 is not 8-byte aligned\n", ch);
+	if (addr1%8)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's EBA1 is not 8-byte aligned\n", ch);
 
 	switch (pixel_fmt) {
 	case IPU_PIX_FMT_GENERIC:
@@ -210,13 +217,14 @@ static inline void _ipu_ch_param_init(int ch,
 	case IPU_PIX_FMT_ABGR32:
 		ipu_ch_param_set_field(&params, 0, 107, 3, 0);	/* bits/pixel */
 		ipu_ch_param_set_field(&params, 1, 85, 4, 7);	/* pix format */
+		ipu_ch_param_set_field(&params, 1, 78, 7, 15);	/* burst size */
 
 		_ipu_ch_params_set_packing(&params, 8, 0, 8, 8, 8, 16, 8, 24);
 		break;
 	case IPU_PIX_FMT_UYVY:
 		ipu_ch_param_set_field(&params, 0, 107, 3, 3);	/* bits/pixel */
 		ipu_ch_param_set_field(&params, 1, 85, 4, 0xA);	/* pix format */
-		ipu_ch_param_set_field(&params, 1, 78, 7, 15);	/* burst size */
+		ipu_ch_param_set_field(&params, 1, 78, 7, 31);	/* burst size */
 		break;
 	case IPU_PIX_FMT_YUYV:
 		ipu_ch_param_set_field(&params, 0, 107, 3, 3);	/* bits/pixel */
@@ -289,13 +297,19 @@ static inline void _ipu_ch_param_init(int ch,
 		v_offset = v;
 	}
 
-	/* UBO and VBO are 22-bit */
+	/* UBO and VBO are 22-bit and 8-byte aligned */
 	if (u_offset/8 > 0x3fffff)
-		dev_err(g_ipu_dev,
-			"The value of U offset exceeds IPU limitation\n");
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's U offset exceeds IPU limitation\n", ch);
 	if (v_offset/8 > 0x3fffff)
-		dev_err(g_ipu_dev,
-			"The value of V offset exceeds IPU limitation\n");
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's V offset exceeds IPU limitation\n", ch);
+	if (u_offset%8)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's U offset is not 8-byte aligned\n", ch);
+	if (v_offset%8)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's V offset is not 8-byte aligned\n", ch);
 
 	ipu_ch_param_set_field(&params, 0, 46, 22, u_offset / 8);
 	ipu_ch_param_set_field(&params, 0, 68, 22, v_offset / 8);
@@ -386,6 +400,13 @@ static inline void _ipu_ch_param_set_interlaced_scan(uint32_t ch)
 	u32 stride;
 	ipu_ch_param_set_field(ipu_ch_param_addr(ch), 0, 113, 1, 1);
 	stride = ipu_ch_param_read_field(ipu_ch_param_addr(ch), 1, 102, 14) + 1;
+	/* ILO is 20-bit and 8-byte aligned */
+	if (stride/8 > 0xfffff)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's ILO exceeds IPU limitation\n", ch);
+	if (stride%8)
+		dev_warn(g_ipu_dev,
+			 "IDMAC%d's ILO is not 8-byte aligned\n", ch);
 	ipu_ch_param_mod_field(ipu_ch_param_addr(ch), 1, 58, 20, stride / 8);
 	stride *= 2;
 	ipu_ch_param_mod_field(ipu_ch_param_addr(ch), 1, 102, 14, stride - 1);
@@ -442,7 +463,7 @@ static inline void _ipu_ch_offset_update(int ch,
 					(uv_stride * vertical_offset / 2) +
 					horizontal_offset / 2;
 		v_offset = u_offset + (uv_stride * height / 2);
-		u_fix = u ? (u + (uv_stride * vertical_offset) +
+		u_fix = u ? (u + (uv_stride * vertical_offset / 2) +
 					(horizontal_offset / 2) -
 					(stride * vertical_offset) - (horizontal_offset)) :
 					u_offset;
@@ -493,9 +514,9 @@ static inline void _ipu_ch_offset_update(int ch,
 		uv_stride = stride;
 		u_offset = stride * (height - vertical_offset - 1) +
 					(stride - horizontal_offset) +
-					(uv_stride * vertical_offset) +
+					(uv_stride * vertical_offset / 2) +
 					horizontal_offset;
-		u_fix = u ? (u + (uv_stride * vertical_offset) +
+		u_fix = u ? (u + (uv_stride * vertical_offset / 2) +
 					horizontal_offset -
 					(stride * vertical_offset) - (horizontal_offset)) :
 					u_offset;
@@ -514,13 +535,19 @@ static inline void _ipu_ch_offset_update(int ch,
 	if (v_fix > v_offset)
 		v_offset = v_fix;
 
-	/* UBO and VBO are 22-bit */
+	/* UBO and VBO are 22-bit and 8-byte aligned */
 	if (u_offset/8 > 0x3fffff)
-		dev_err(g_ipu_dev,
-			"The value of U offset exceeds IPU limitation\n");
+		dev_warn(g_ipu_dev,
+			"IDMAC%d's U offset exceeds IPU limitation\n", ch);
 	if (v_offset/8 > 0x3fffff)
-		dev_err(g_ipu_dev,
-			"The value of V offset exceeds IPU limitation\n");
+		dev_warn(g_ipu_dev,
+			"IDMAC%d's V offset exceeds IPU limitation\n", ch);
+	if (u_offset%8)
+		dev_warn(g_ipu_dev,
+			"IDMAC%d's U offset is not 8-byte aligned\n", ch);
+	if (v_offset%8)
+		dev_warn(g_ipu_dev,
+			"IDMAC%d's V offset is not 8-byte aligned\n", ch);
 
 	ipu_ch_param_mod_field(ipu_ch_param_addr(ch), 0, 46, 22, u_offset / 8);
 	ipu_ch_param_mod_field(ipu_ch_param_addr(ch), 0, 68, 22, v_offset / 8);

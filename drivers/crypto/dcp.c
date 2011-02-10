@@ -17,10 +17,16 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/errno.h>
+#include <linux/sysdev.h>
+#include <linux/bitops.h>
 #include <linux/crypto.h>
 #include <linux/spinlock.h>
+#include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <linux/err.h>
+#include <linux/sysfs.h>
+#include <linux/fs.h>
 #include <crypto/algapi.h>
 #include <crypto/aes.h>
 #include <crypto/sha.h>
@@ -29,13 +35,21 @@
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
-
+#include <linux/uaccess.h>
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/delay.h>
 
 #include <asm/cacheflush.h>
 #include <mach/hardware.h>
 #include "dcp.h"
+#include "dcp_bootstream_ioctl.h"
+
+/* Following data only used by DCP bootstream interface */
+struct dcpboot_dma_area {
+	struct dcp_hw_packet hw_packet;
+	uint16_t block[16];
+};
 
 struct dcp {
 	struct device *dev;
@@ -46,6 +60,8 @@ struct dcp {
 	int dcp_vmi_irq;
 	int dcp_irq;
 	u32 dcp_regs_base;
+	ulong clock_state;
+	bool chan_in_use[DCP_NUM_CHANNELS];
 
 	/* Following buffers used in hashing to meet 64-byte len alignment */
 	char *buf1;
@@ -55,6 +71,10 @@ struct dcp {
 	struct dcp_hash_coherent_block *buf1_desc;
 	struct dcp_hash_coherent_block *buf2_desc;
 	struct dcp_hash_coherent_block *user_buf_desc;
+
+	/* Following data only used by DCP bootstream interface */
+	struct dcpboot_dma_area *dcpboot_dma_area;
+	dma_addr_t dcpboot_dma_area_phys;
 };
 
 /* cipher flags */
@@ -76,6 +96,10 @@ struct dcp {
 #define DCP_COPY	0x4000
 #define DCP_FILL	0x5000
 #define DCP_MODE_MASK	0xf000
+
+/* clock defines */
+#define CLOCK_ON	1
+#define CLOCK_OFF	0
 
 struct dcp_op {
 
@@ -158,6 +182,45 @@ struct dcp_hash_op {
 
 /* only one */
 static struct dcp *global_sdcp;
+
+static void dcp_clock(struct dcp *sdcp,  ulong state, bool force)
+{
+	u32 chan;
+	struct clk *clk = clk_get(sdcp->dev, "dcp_clk");
+
+	/* unless force is true (used during suspend/resume), if any
+	  * channel is running, then clk is already on, and must stay on */
+	if (!force)
+		for (chan = 0; chan < DCP_NUM_CHANNELS; chan++)
+			if (sdcp->chan_in_use[chan])
+				goto exit;
+
+	if (state == CLOCK_OFF) {
+		/* gate at clock source */
+		if (!IS_ERR(clk))
+			clk_disable(clk);
+		/* gate at DCP */
+		else
+			__raw_writel(BM_DCP_CTRL_CLKGATE,
+				sdcp->dcp_regs_base + HW_DCP_CTRL_SET);
+
+		sdcp->clock_state = CLOCK_OFF;
+
+	} else {
+		/* ungate at clock source */
+		if (!IS_ERR(clk))
+			clk_enable(clk);
+		/* ungate at DCP */
+		else
+			__raw_writel(BM_DCP_CTRL_CLKGATE,
+				sdcp->dcp_regs_base + HW_DCP_CTRL_CLR);
+
+		sdcp->clock_state = CLOCK_ON;
+	}
+
+exit:
+	return;
+}
 
 static void dcp_perform_op(struct dcp_op *op)
 {
@@ -244,6 +307,8 @@ static void dcp_perform_op(struct dcp_op *op)
 
 	/* submit the work */
 	mutex_lock(mutex);
+	dcp_clock(sdcp, CLOCK_ON, false);
+	sdcp->chan_in_use[chan] = true;
 
 	__raw_writel(-1, sdcp->dcp_regs_base + HW_DCP_CHnSTAT_CLR(chan));
 
@@ -272,8 +337,9 @@ static void dcp_perform_op(struct dcp_op *op)
 				__raw_readl(sdcp->dcp_regs_base +
 				HW_DCP_CHnSTAT(chan)) & 0xff);
 out:
+	sdcp->chan_in_use[chan] = false;
+	dcp_clock(sdcp, CLOCK_OFF, false);
 	mutex_unlock(mutex);
-
 	dma_unmap_single(sdcp->dev, pkt_phys, sizeof(*pkt), DMA_TO_DEVICE);
 }
 
@@ -1043,6 +1109,8 @@ static int dcp_sha_init(struct shash_desc *desc)
 	struct mutex *mutex = &sdcp->op_mutex[HASH_CHAN];
 
 	mutex_lock(mutex);
+	dcp_clock(sdcp, CLOCK_ON, false);
+	sdcp->chan_in_use[HASH_CHAN] = true;
 
 	op->length = 0;
 
@@ -1172,6 +1240,8 @@ static int dcp_sha_final(struct shash_desc *desc, u8 *out)
 	for (i = 0; i < digest_len; i++)
 		*out++ = *--digest;
 
+	sdcp->chan_in_use[HASH_CHAN] = false;
+	dcp_clock(sdcp, CLOCK_OFF, false);
 	mutex_unlock(mutex);
 
 	return ret;
@@ -1245,6 +1315,110 @@ static irqreturn_t dcp_irq(int irq, void *context)
 	return dcp_common_irq(irq, context);
 }
 
+/* DCP bootstream verification interface: uses OTP key for crypto */
+static int dcp_bootstream_ioctl(struct inode *inode, struct file *file,
+					 unsigned int cmd, unsigned long arg)
+{
+	struct dcp *sdcp = global_sdcp;
+	struct dcpboot_dma_area *da = sdcp->dcpboot_dma_area;
+	void __user *argp = (void __user *)arg;
+	int chan = ROM_DCP_CHAN;
+	unsigned long timeout;
+	struct mutex *mutex;
+	int retVal;
+
+	/* be paranoid */
+	if (sdcp == NULL)
+		return -EBADF;
+
+	if (cmd != DBS_ENC && cmd != DBS_DEC)
+		return -EINVAL;
+
+	/* copy to (aligned) block */
+	if (copy_from_user(da->block, argp, 16))
+		return -EFAULT;
+
+	mutex = &sdcp->op_mutex[chan];
+	mutex_lock(mutex);
+	dcp_clock(sdcp, CLOCK_ON, false);
+	sdcp->chan_in_use[chan] = true;
+
+	__raw_writel(-1, sdcp->dcp_regs_base +
+		HW_DCP_CHnSTAT_CLR(ROM_DCP_CHAN));
+	__raw_writel(BF(ROM_DCP_CHAN_MASK, DCP_STAT_IRQ),
+		sdcp->dcp_regs_base + HW_DCP_STAT_CLR);
+
+	da->hw_packet.pNext = 0;
+	da->hw_packet.pkt1 = BM_DCP_PACKET1_DECR_SEMAPHORE |
+	    BM_DCP_PACKET1_ENABLE_CIPHER | BM_DCP_PACKET1_OTP_KEY |
+	    BM_DCP_PACKET1_INTERRUPT |
+	    (cmd == DBS_ENC ? BM_DCP_PACKET1_CIPHER_ENCRYPT : 0);
+	da->hw_packet.pkt2 = BF(0, DCP_PACKET2_CIPHER_CFG) |
+	    BF(0, DCP_PACKET2_KEY_SELECT) |
+	    BF(BV_DCP_PACKET2_CIPHER_MODE__ECB, DCP_PACKET2_CIPHER_MODE) |
+	    BF(BV_DCP_PACKET2_CIPHER_SELECT__AES128, DCP_PACKET2_CIPHER_SELECT);
+	da->hw_packet.pSrc = sdcp->dcpboot_dma_area_phys +
+	    offsetof(struct dcpboot_dma_area, block);
+	da->hw_packet.pDst = da->hw_packet.pSrc;	/* in-place */
+	da->hw_packet.size = 16;
+	da->hw_packet.pPayload = 0;
+	da->hw_packet.stat = 0;
+
+	/* Load the work packet pointer and bump the channel semaphore */
+	__raw_writel(sdcp->dcpboot_dma_area_phys +
+		     offsetof(struct dcpboot_dma_area, hw_packet),
+		     sdcp->dcp_regs_base + HW_DCP_CHnCMDPTR(ROM_DCP_CHAN));
+
+	sdcp->wait[chan] = 0;
+	__raw_writel(BF(1, DCP_CHnSEMA_INCREMENT),
+		     sdcp->dcp_regs_base + HW_DCP_CHnSEMA(ROM_DCP_CHAN));
+
+	timeout = jiffies + msecs_to_jiffies(100);
+
+	while (time_before(jiffies, timeout) && sdcp->wait[chan] == 0)
+		cpu_relax();
+
+	if (!time_before(jiffies, timeout)) {
+		dev_err(sdcp->dev,
+			"Timeout while waiting for operation to complete\n");
+		retVal = -ETIMEDOUT;
+		goto exit;
+	}
+
+	if ((__raw_readl(sdcp->dcp_regs_base + HW_DCP_CHnSTAT(ROM_DCP_CHAN))
+			& 0xff) != 0) {
+		dev_err(sdcp->dev, "Channel stat error 0x%02x\n",
+			__raw_readl(sdcp->dcp_regs_base +
+				    HW_DCP_CHnSTAT(ROM_DCP_CHAN)) & 0xff);
+		retVal = -EFAULT;
+		goto exit;
+	}
+
+	if (copy_to_user(argp, da->block, 16)) {
+		retVal =  -EFAULT;
+		goto exit;
+	}
+
+	retVal = 0;
+
+exit:
+	sdcp->chan_in_use[chan] = false;
+	dcp_clock(sdcp, CLOCK_OFF, false);
+	mutex_unlock(mutex);
+	return retVal;
+}
+
+static const struct file_operations dcp_bootstream_fops = {
+	.owner =	THIS_MODULE,
+	.ioctl =	dcp_bootstream_ioctl,
+};
+
+static struct miscdevice dcp_bootstream_misc = {
+	.minor	= MISC_DYNAMIC_MINOR,
+	.name	= "dcpboot",
+	.fops = &dcp_bootstream_fops,
+};
+
 static int dcp_probe(struct platform_device *pdev)
 {
 	struct dcp *sdcp = NULL;
@@ -1272,6 +1446,7 @@ static int dcp_probe(struct platform_device *pdev)
 	for (i = 0; i < DCP_NUM_CHANNELS; i++) {
 		mutex_init(&sdcp->op_mutex[i]);
 		init_completion(&sdcp->op_wait[i]);
+		sdcp->chan_in_use[i] = false;
 	}
 
 	platform_set_drvdata(pdev, sdcp);
@@ -1282,7 +1457,8 @@ static int dcp_probe(struct platform_device *pdev)
 		ret = -ENXIO;
 		goto err_kfree;
 	}
-	sdcp->dcp_regs_base = (u32) IO_ADDRESS(r->start);
+	sdcp->dcp_regs_base = (u32) ioremap(r->start, r->end - r->start + 1);
+	dcp_clock(sdcp, CLOCK_ON, true);
 
 	/* Soft reset and remove the clock gate */
 	__raw_writel(BM_DCP_CTRL_SFTRST, sdcp->dcp_regs_base + HW_DCP_CTRL_SET);
@@ -1318,14 +1494,14 @@ static int dcp_probe(struct platform_device *pdev)
 	if (!r) {
 		dev_err(&pdev->dev, "can't get IRQ resource (0)\n");
 		ret = -EIO;
-		goto err_kfree;
+		goto err_gate_clk;
 	}
 	sdcp->dcp_vmi_irq = r->start;
 	ret = request_irq(sdcp->dcp_vmi_irq, dcp_vmi_irq, 0, "dcp",
 				sdcp);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "can't request_irq (0)\n");
-		goto err_kfree;
+		goto err_gate_clk;
 	}
 
 	r = platform_get_resource(pdev, IORESOURCE_IRQ, 1);
@@ -1346,7 +1522,7 @@ static int dcp_probe(struct platform_device *pdev)
 	ret = crypto_register_alg(&dcp_aes_alg);
 	if (ret != 0)  {
 		dev_err(&pdev->dev, "Failed to register aes crypto\n");
-		goto err_kfree;
+		goto err_free_irq1;
 	}
 
 	ret = crypto_register_alg(&dcp_aes_ecb_alg);
@@ -1439,9 +1615,30 @@ static int dcp_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* register dcpboot interface to allow apps (such as kobs-ng) to
+	 * verify files (such as the bootstream) using the OTP key for crypto */
+	ret = misc_register(&dcp_bootstream_misc);
+	if (ret != 0) {
+		dev_err(&pdev->dev, "Unable to register misc device\n");
+		goto err_unregister_sha1;
+	}
+
+	sdcp->dcpboot_dma_area = dma_alloc_coherent(&pdev->dev,
+		sizeof(*sdcp->dcpboot_dma_area), &sdcp->dcpboot_dma_area_phys,
+		GFP_KERNEL);
+	if (sdcp->dcpboot_dma_area == NULL) {
+		dev_err(&pdev->dev,
+			"Unable to allocate DMAable memory \
+			 for dcpboot interface\n");
+		goto err_dereg;
+	}
+
+	dcp_clock(sdcp, CLOCK_OFF, false);
 	dev_notice(&pdev->dev, "DCP crypto enabled.!\n");
 	return 0;
 
+err_dereg:
+	misc_deregister(&dcp_bootstream_misc);
 err_unregister_sha1:
 	crypto_unregister_shash(&dcp_sha1_alg);
 err_unregister_aes_cbc:
@@ -1450,8 +1647,12 @@ err_unregister_aes_ecb:
 	crypto_unregister_alg(&dcp_aes_ecb_alg);
 err_unregister_aes:
 	crypto_unregister_alg(&dcp_aes_alg);
+err_free_irq1:
+	free_irq(sdcp->dcp_irq, sdcp);
 err_free_irq0:
 	free_irq(sdcp->dcp_vmi_irq, sdcp);
+err_gate_clk:
+	dcp_clock(sdcp, CLOCK_OFF, false);
 err_kfree:
 	kfree(sdcp);
 err:
@@ -1465,6 +1666,8 @@ static int dcp_remove(struct platform_device *pdev)
 
 	sdcp = platform_get_drvdata(pdev);
 	platform_set_drvdata(pdev, NULL);
+
+	dcp_clock(sdcp, CLOCK_ON, false);
 
 	free_irq(sdcp->dcp_irq, sdcp);
 	free_irq(sdcp->dcp_vmi_irq, sdcp);
@@ -1487,34 +1690,58 @@ static int dcp_remove(struct platform_device *pdev)
 			sdcp->user_buf_desc, sdcp->user_buf_desc->my_phys);
 	}
 
+	if (sdcp->dcpboot_dma_area) {
+		dma_free_coherent(&pdev->dev, sizeof(*sdcp->dcpboot_dma_area),
+			  sdcp->dcpboot_dma_area, sdcp->dcpboot_dma_area_phys);
+		misc_deregister(&dcp_bootstream_misc);
+	}
+
+
 	crypto_unregister_shash(&dcp_sha1_alg);
-	crypto_unregister_shash(&dcp_sha256_alg);
+
+	if (__raw_readl(sdcp->dcp_regs_base + HW_DCP_CAPABILITY1) &
+		BF_DCP_CAPABILITY1_HASH_ALGORITHMS(
+		BV_DCP_CAPABILITY1_HASH_ALGORITHMS__SHA256))
+		crypto_unregister_shash(&dcp_sha256_alg);
 
 	crypto_unregister_alg(&dcp_aes_cbc_alg);
 	crypto_unregister_alg(&dcp_aes_ecb_alg);
 	crypto_unregister_alg(&dcp_aes_alg);
+
+	dcp_clock(sdcp, CLOCK_OFF, true);
+	iounmap((void *) sdcp->dcp_regs_base);
 	kfree(sdcp);
 	global_sdcp = NULL;
 
 	return 0;
 }
 
-
-#ifdef CONFIG_PM
 static int dcp_suspend(struct platform_device *pdev,
 		pm_message_t state)
 {
+#ifdef CONFIG_PM
+	struct dcp *sdcp = platform_get_drvdata(pdev);
+
+	if (sdcp->clock_state == CLOCK_ON) {
+		dcp_clock(sdcp, CLOCK_OFF, true);
+		/* indicate that clock needs to be turned on upon resume */
+		sdcp->clock_state = CLOCK_ON;
+	}
+#endif
 	return 0;
 }
 
 static int dcp_resume(struct platform_device *pdev)
 {
+#ifdef CONFIG_PM
+	struct dcp *sdcp = platform_get_drvdata(pdev);
+
+	/* if clock was on prior to suspend, turn it back on */
+	if (sdcp->clock_state == CLOCK_ON)
+		dcp_clock(sdcp, CLOCK_ON, true);
+#endif
 	return 0;
 }
-#else
-#define dcp_suspend	NULL
-#define	dcp_resume	NULL
-#endif
 
 static struct platform_driver dcp_driver = {
 	.probe		= dcp_probe,

@@ -54,14 +54,47 @@ static int imx_ccwmx51_audio_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai_link *machine = rtd->dai;
 	struct snd_soc_dai *cpu_dai = machine->cpu_dai;
 	struct snd_soc_dai *codec_dai = machine->codec_dai;
+	unsigned int rate = params_rate(params);
 	struct imx_ccwmx51_priv *priv = &card_priv;
 	struct imx_ssi *ssi_mode = (struct imx_ssi *)cpu_dai->private_data;
 	int ret = 0;
+	unsigned int pll_out = 0;
 
 	unsigned int channels = params_channels(params);
 	u32 dai_format;
 
-	snd_soc_dai_set_sysclk(codec_dai, WM8753_MCLK, priv->sysclk, 0);
+	switch (rate) {
+	case 8000:
+		pll_out = 12288000;
+		break;
+	case 11025:
+		pll_out = 11289600;
+		break;
+	case 16000:
+		pll_out = 12288000;
+		break;
+	case 22050:
+		pll_out = 11289600;
+		break;
+	case 32000:
+		pll_out = 12288000;
+		break;
+	case 44100:
+		pll_out = 11289600;
+		break;
+	case 48000:
+		pll_out = 12288000;
+		break;
+	case 88200:
+		pll_out = 11289600;
+		break;
+	case 96000:
+		pll_out = 12288000;
+		break;
+	default:
+		pr_info("Rate not supported.\n");
+		return -EINVAL;;
+	}
 
 #if WM8753_SSI_MASTER
 	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
@@ -94,6 +127,9 @@ static int imx_ccwmx51_audio_hw_params(struct snd_pcm_substream *substream,
 	/* set the SSI system clock as input (unused) */
 	snd_soc_dai_set_sysclk(cpu_dai, IMX_SSP_SYS_CLK, 0, SND_SOC_CLOCK_IN);
 
+	priv->sysclk = pll_out;
+	snd_soc_dai_set_sysclk(codec_dai, WM8753_MCLK, priv->sysclk, 0);
+	snd_soc_dai_set_pll(codec_dai, WM8753_MCLK, 13000000, pll_out);
 	return 0;
 }
 

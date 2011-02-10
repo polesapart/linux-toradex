@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 
 #include <mach/pinctrl.h>
 
@@ -530,104 +531,11 @@ static struct pin_desc mx28evk_fixed_pins[] = {
 	 .name	= "SSP0_SCK",
 	 .id	= PINID_SSP0_SCK,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_12MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 0,
-	 .drive 	= 1,
+	 .drive 	= 2,
 	 .pull 		= 0,
-	 },
-#endif
-
-#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
-	{
-	 .name = "ENET0_MDC",
-	 .id = PINID_ENET0_MDC,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_MDIO",
-	 .id = PINID_ENET0_MDIO,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_RX_EN",
-	 .id = PINID_ENET0_RX_EN,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_RXD0",
-	 .id = PINID_ENET0_RXD0,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_RXD1",
-	 .id = PINID_ENET0_RXD1,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_TX_EN",
-	 .id = PINID_ENET0_TX_EN,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_TXD0",
-	 .id = PINID_ENET0_TXD0,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET0_TXD1",
-	 .id = PINID_ENET0_TXD1,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
-	 },
-	{
-	 .name = "ENET_CLK",
-	 .id = PINID_ENET_CLK,
-	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
-	 .pull = 1,
-	 .pullup = 1,
-	 .voltage = PAD_3_3V,
-	 .drive	= 1,
 	 },
 #endif
 #if defined(CONFIG_LEDS_MXS) || defined(CONFIG_LEDS_MXS_MODULE)
@@ -720,6 +628,161 @@ static struct pin_desc mx28evk_fixed_pins[] = {
 #endif
 };
 
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)\
+	|| defined(CONFIG_FEC_L2SWITCH)
+static struct pin_desc mx28evk_eth_pins[] = {
+	{
+	 .name = "ENET0_MDC",
+	 .id = PINID_ENET0_MDC,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_MDIO",
+	 .id = PINID_ENET0_MDIO,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_RX_EN",
+	 .id = PINID_ENET0_RX_EN,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_RXD0",
+	 .id = PINID_ENET0_RXD0,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_RXD1",
+	 .id = PINID_ENET0_RXD1,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_TX_EN",
+	 .id = PINID_ENET0_TX_EN,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_TXD0",
+	 .id = PINID_ENET0_TXD0,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET0_TXD1",
+	 .id = PINID_ENET0_TXD1,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET1_RX_EN",
+	 .id = PINID_ENET0_CRS,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_RXD0",
+	 .id = PINID_ENET0_RXD2,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_RXD1",
+	 .id = PINID_ENET0_RXD3,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TX_EN",
+	 .id = PINID_ENET0_COL,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TXD0",
+	 .id = PINID_ENET0_TXD2,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TXD1",
+	 .id = PINID_ENET0_TXD3,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET_CLK",
+	 .id = PINID_ENET_CLK,
+	 .fun = PIN_FUN1,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
+};
+#endif
 
 static int __initdata enable_ssp1 = { 0 };
 static int __init ssp1_setup(char *__unused)
@@ -835,16 +898,16 @@ static struct pin_desc mx28evk_ssp1_pins[] = {
 	 .name	= "SSP1_SCK",
 	 .id	= PINID_GPMI_WRN,
 	 .fun	= PIN_FUN2,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_12MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 0,
-	 .drive 	= 1,
+	 .drive 	= 2,
 	 .pull 		= 0,
 	 },
 };
 
 
-int __initdata enable_gpmi = { 0 };
+int enable_gpmi = { 0 };
 static int __init gpmi_setup(char *__unused)
 {
 	enable_gpmi = 1;
@@ -1009,7 +1072,8 @@ static struct pin_desc mx28evk_gpmi_pins[] = {
 	 },
 };
 
-#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)\
+	|| defined(CONFIG_FEC_L2SWITCH)
 int mx28evk_enet_gpio_init(void)
 {
 	/* pwr */
@@ -1019,15 +1083,54 @@ int mx28evk_enet_gpio_init(void)
 	/* reset phy */
 	gpio_request(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), "PHY_RESET");
 	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 0);
+	mdelay(10);
 	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 1);
 
 	return 0;
 }
+
+void mx28evk_enet_io_lowerpower_enter(void)
+{
+	int i;
+	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_SSP1_DATA3), 1);
+	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 0);
+	gpio_request(MXS_PIN_TO_GPIO(PINID_ENET0_TX_CLK), "ETH_INT");
+	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_TX_CLK), 0);
+
+	for (i = 0; i < ARRAY_SIZE(mx28evk_eth_pins); i++) {
+		mxs_release_pin(mx28evk_eth_pins[i].id,
+			mx28evk_eth_pins[i].name);
+		gpio_request(MXS_PIN_TO_GPIO(mx28evk_eth_pins[i].id),
+			mx28evk_eth_pins[i].name);
+		gpio_direction_output(
+			MXS_PIN_TO_GPIO(mx28evk_eth_pins[i].id), 0);
+	}
+
+}
+
+void mx28evk_enet_io_lowerpower_exit(void)
+{
+	int i;
+	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_SSP1_DATA3), 0);
+	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 1);
+	gpio_free(MXS_PIN_TO_GPIO(PINID_ENET0_TX_CLK));
+	for (i = 0; i < ARRAY_SIZE(mx28evk_eth_pins); i++) {
+		gpio_free(MXS_PIN_TO_GPIO(mx28evk_eth_pins[i].id));
+		mxs_request_pin(mx28evk_eth_pins[i].id,
+			mx28evk_eth_pins[i].fun,
+			mx28evk_eth_pins[i].name);
+	}
+}
+
 #else
 int mx28evk_enet_gpio_init(void)
 {
 	return 0;
 }
+void mx28evk_enet_io_lowerpower_enter(void)
+{}
+void mx28evk_enet_io_lowerpower_exit(void)
+{}
 #endif
 
 void __init mx28evk_init_pin_group(struct pin_desc *pins, unsigned count)
@@ -1071,5 +1174,9 @@ void __init mx28evk_pins_init(void)
 		mx28evk_init_pin_group(mx28evk_gpmi_pins,
 						ARRAY_SIZE(mx28evk_gpmi_pins));
 	}
-
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)\
+	|| defined(CONFIG_FEC_L2SWITCH)
+		mx28evk_init_pin_group(mx28evk_eth_pins,
+						ARRAY_SIZE(mx28evk_eth_pins));
+#endif
 }

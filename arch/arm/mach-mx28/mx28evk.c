@@ -39,7 +39,7 @@ static struct i2c_board_info __initdata mxs_i2c_device[] = {
 	{ I2C_BOARD_INFO("sgtl5000-i2c", 0x14), .flags = I2C_M_TEN }
 };
 
-static void i2c_device_init(void)
+static void __init i2c_device_init(void)
 {
 	i2c_register_board_info(0, mxs_i2c_device, ARRAY_SIZE(mxs_i2c_device));
 }
@@ -104,7 +104,12 @@ static void __init mx28evk_init_machine(void)
 {
 	mx28_pinctrl_init();
 	/* Init iram allocate */
+#ifdef CONFIG_VECTORS_PHY_ADDR
+	/* reserve the first page for irq vector table*/
+	iram_init(MX28_OCRAM_PHBASE + PAGE_SIZE, MX28_OCRAM_SIZE - PAGE_SIZE);
+#else
 	iram_init(MX28_OCRAM_PHBASE, MX28_OCRAM_SIZE);
+#endif
 
 	mx28_gpio_init();
 	mx28evk_pins_init();

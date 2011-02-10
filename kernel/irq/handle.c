@@ -274,6 +274,7 @@ struct irq_desc *irq_to_desc(unsigned int irq)
 {
 	return (irq < NR_IRQS) ? irq_desc + irq : NULL;
 }
+EXPORT_SYMBOL(irq_to_desc);
 
 struct irq_desc *irq_to_desc_alloc_node(unsigned int irq, int node)
 {
@@ -367,9 +368,6 @@ irqreturn_t handle_IRQ_event(unsigned int irq, struct irqaction *action)
 {
 	irqreturn_t ret, retval = IRQ_NONE;
 	unsigned int status = 0;
-
-	if (!(action->flags & IRQF_DISABLED))
-		local_irq_enable_in_hardirq();
 
 	do {
 		trace_irq_handler_entry(irq, action);

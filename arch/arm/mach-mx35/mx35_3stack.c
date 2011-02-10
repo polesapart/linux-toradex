@@ -171,6 +171,20 @@ static struct mtd_partition mxc_nand_partitions[] = {
 	 .size = MTDPART_SIZ_FULL},
 };
 
+static struct resource mxc_nand_resources[] = {
+	{
+		.flags = IORESOURCE_MEM,
+		.name  = "NFC_AXI_BASE",
+		.start = NFC_BASE_ADDR,
+		.end   = NFC_BASE_ADDR + SZ_8K - 1,
+	},
+	{
+		.flags = IORESOURCE_IRQ,
+		.start = MXC_INT_NANDFC,
+		.end   = MXC_INT_NANDFC,
+	},
+};
+
 static struct flash_platform_data mxc_nand_data = {
 	.parts = mxc_nand_partitions,
 	.nr_parts = ARRAY_SIZE(mxc_nand_partitions),
@@ -184,6 +198,8 @@ static struct platform_device mxc_nand_mtd_device = {
 		.release = mxc_nop_release,
 		.platform_data = &mxc_nand_data,
 		},
+	.resource = mxc_nand_resources,
+	.num_resources = ARRAY_SIZE(mxc_nand_resources),
 };
 
 static void mxc_init_nand_mtd(void)
@@ -402,7 +418,7 @@ static struct mxc_fm_platform_data si4702_data = {
 
 static void adv7180_pwdn(int pwdn)
 {
-	pmic_gpio_set_bit_val(MCU_GPIO_REG_GPIO_CONTROL_1, 1, pwdn);
+	pmic_gpio_set_bit_val(MCU_GPIO_REG_GPIO_CONTROL_1, 1, ~pwdn);
 }
 
 static void adv7180_reset(void)
@@ -589,6 +605,13 @@ static struct mxc_mmc_platform_data mmc1_data = {
 #endif
 	.min_clk = 150000,
 	.max_clk = 52000000,
+	/* Do not disable the eSDHC clk on MX35 3DS board,
+	* since SYSTEM can't boot up after the reset key
+	* is pressed when the SD/MMC boot mode is used.
+	* The root cause is that the ROM code don't ensure
+	* the SD/MMC clk is running when boot system.
+	* */
+	.clk_always_on = 1,
 	.card_inserted_state = 0,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
@@ -635,6 +658,7 @@ static struct mxc_mmc_platform_data mmc2_data = {
 	.caps = MMC_CAP_4_BIT_DATA,
 	.min_clk = 150000,
 	.max_clk = 50000000,
+	.clk_always_on = 1,
 	.card_inserted_state = 0,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
@@ -765,16 +789,16 @@ static struct fsl_ata_platform_data ata_data = {
 };
 
 static struct resource pata_fsl_resources[] = {
-	[0] = {			/* I/O */
-	       .start = ATA_BASE_ADDR,
-	       .end = ATA_BASE_ADDR + 0x000000C8,
-	       .flags = IORESOURCE_MEM,
-	       },
-	[2] = {			/* IRQ */
-	       .start = MXC_INT_ATA,
-	       .end = MXC_INT_ATA,
-	       .flags = IORESOURCE_IRQ,
-	       },
+	{
+		.start = ATA_BASE_ADDR,
+		.end = ATA_BASE_ADDR + 0x000000C8,
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = MXC_INT_ATA,
+		.end = MXC_INT_ATA,
+		.flags = IORESOURCE_IRQ,
+	},
 };
 
 static struct platform_device pata_fsl_device = {
