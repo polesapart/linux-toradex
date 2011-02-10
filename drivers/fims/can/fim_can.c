@@ -452,6 +452,7 @@ static int fim_can_set_init_config(struct fim_can_t *port)
 	struct can_bittiming *bt;
 
 	/* Init the timing parameters */
+	memset(&cfg, 0, sizeof(cfg));
 	cfg.code = FIM_CAN_CMD_CONFIG;
 	bt = &port->can.bittiming;
 
