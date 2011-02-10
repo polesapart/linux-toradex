@@ -112,7 +112,7 @@ config FIM_USB_MODULE
 
 config FIM_SPI_MODULE
         bool "SPI port driver as loadable module"
-        depends on !FIM_ZERO_SPI_SELECTED && !FIM_ONE_SPI_SELECTED
+        depends on SPI && !FIM_ZERO_SPI_SELECTED && !FIM_ONE_SPI_SELECTED
         select FIM_ZERO_SPI
         select FIM_ONE_SPI if !(MACH_CME9210JS || MACH_CME9210)
         help
