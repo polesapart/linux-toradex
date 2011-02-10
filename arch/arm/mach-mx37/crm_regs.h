@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -10,6 +10,7 @@
  * http://www.opensource.org/licenses/gpl-license.html
  * http://www.gnu.org/copyleft/gpl.html
  */
+
 #ifndef __ARCH_ARM_MACH_MX37_CRM_REGS_H__
 #define __ARCH_ARM_MACH_MX37_CRM_REGS_H__
 
@@ -501,6 +502,11 @@
 #define MXC_CCM_CCGR5_CG1_OFFSET			2
 #define MXC_CCM_CCGR5_CG0_OFFSET			0
 
+/* CCM Register Offsets. */
+#define MXC_CCM_CDCR_OFFSET		0x6C
+#define MXC_CCM_CACRR_OFFSET		0x10
+#define MXC_CCM_CDHIPR_OFFSET	0x68
+
 #define MXC_ARM1176_BASE	IO_ADDRESS(ARM1176_BASE_ADDR)
 #define MXC_GPC_BASE		IO_ADDRESS(GPC_BASE_ADDR)
 #define MXC_DPTC_LP_BASE	IO_ADDRESS(GPC_BASE_ADDR + 0x80)
@@ -529,6 +535,11 @@
 #define MXC_GPC_PGR		(MXC_GPC_BASE + 0x4)
 #define MXC_GPC_VCR			(MXC_GPC_BASE + 0x8)
 
+/*GPC OFFSETS */
+#define MXC_GPC_CNTR_OFFSET		0x0
+#define MXC_GPC_PGR_OFFSET		0x4
+#define MXC_GPC_VCR_OFFSET		0x8
+
 /* DVFS CORE */
 #define MXC_DVFSTHRS		(MXC_DVFS_CORE_BASE + 0x00)
 #define MXC_DVFSCOUN		(MXC_DVFS_CORE_BASE + 0x04)
@@ -548,21 +559,13 @@
 #define MXC_DVFSPT2 		(MXC_DVFS_CORE_BASE + 0x3C)
 #define MXC_DVFSPT3 		(MXC_DVFS_CORE_BASE + 0x40)
 
-/* DPTC GP */
-#define MXC_GP_DPTCCR		(MXC_DPTC_GP_BASE + 0x00)
-#define MXC_GP_DPTCDBG		(MXC_DPTC_GP_BASE + 0x04)
-#define MXC_GP_DCVR0		(MXC_DPTC_GP_BASE + 0x08)
-#define MXC_GP_DCVR1		(MXC_DPTC_GP_BASE + 0x0C)
-#define MXC_GP_DCVR2		(MXC_DPTC_GP_BASE + 0x10)
-#define MXC_GP_DCVR3		(MXC_DPTC_GP_BASE + 0x14)
-
-/* DPTC LP */
-#define MXC_LP_DPTCCR		(MXC_DPTC_LP_BASE + 0x00)
-#define MXC_LP_DPTCDBG		(MXC_DPTC_LP_BASE + 0x04)
-#define MXC_LP_DCVR0		(MXC_DPTC_LP_BASE + 0x08)
-#define MXC_LP_DCVR1		(MXC_DPTC_LP_BASE + 0x0C)
-#define MXC_LP_DCVR2		(MXC_DPTC_LP_BASE + 0x10)
-#define MXC_LP_DCVR3		(MXC_DPTC_LP_BASE + 0x14)
+/* DPTC register offset */
+#define MXC_DPTCCR		0x00
+#define MXC_DPTCDBG		0x04
+#define MXC_DCVR0		0x08
+#define MXC_DCVR1		0x0C
+#define MXC_DCVR2		0x10
+#define MXC_DCVR3		0x14
 
 #define MXC_DPTCCR_DRCE3                     0x00400000
 #define MXC_DPTCCR_DRCE2                     0x00200000

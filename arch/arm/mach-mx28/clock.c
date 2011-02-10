@@ -22,6 +22,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/iram_alloc.h>
 #include <linux/platform_device.h>
 
 #include <mach/clock.h>
@@ -46,6 +47,41 @@ static struct clk xtal_clk[];
 static unsigned long xtal_clk_rate[3] = { 24000000, 24000000, 32000 };
 
 static unsigned long enet_mii_phy_rate;
+
+static inline int clk_is_busy(struct clk *clk)
+{
+	return __raw_readl(clk->busy_reg) & (1 << clk->busy_bits);
+}
+
+static bool mx28_enable_h_autoslow(bool enable)
+{
+	bool currently_enabled;
+
+	if (__raw_readl(CLKCTRL_BASE_ADDR+HW_CLKCTRL_HBUS) &
+		BM_CLKCTRL_HBUS_ASM_ENABLE)
+		currently_enabled = true;
+	else
+		currently_enabled = false;
+
+	if (enable)
+		__raw_writel(BM_CLKCTRL_HBUS_ASM_ENABLE,
+			CLKCTRL_BASE_ADDR + HW_CLKCTRL_HBUS_SET);
+	else
+		__raw_writel(BM_CLKCTRL_HBUS_ASM_ENABLE,
+			CLKCTRL_BASE_ADDR + HW_CLKCTRL_HBUS_CLR);
+	return currently_enabled;
+}
+
+
+static void mx28_set_hbus_autoslow_flags(u16 mask)
+{
+	u32 reg;
+
+	reg = __raw_readl(CLKCTRL_BASE_ADDR + HW_CLKCTRL_HBUS);
+	reg &= 0xFFFF;
+	reg |= mask << 16;
+	__raw_writel(reg, CLKCTRL_BASE_ADDR + HW_CLKCTRL_HBUS);
+}
 
 static int mx28_raw_enable(struct clk *clk)
 {
@@ -460,6 +496,7 @@ static unsigned long cpu_round_rate(struct clk *clk, unsigned long rate)
 	return rate;
 }
 
+static struct clk  h_clk;
 static int cpu_set_rate(struct clk *clk, unsigned long rate)
 {
 	unsigned long root_rate =
@@ -469,7 +506,7 @@ static int cpu_set_rate(struct clk *clk, unsigned long rate)
 	u32 c = clkctrl_cpu;
 	u32 clkctrl_frac = 1;
 	u32 val;
-	u32 reg_val;
+	u32 reg_val, hclk_reg;
 
 	if (rate < 24000)
 		return -EINVAL;
@@ -500,7 +537,31 @@ static int cpu_set_rate(struct clk *clk, unsigned long rate)
 			if ((abs(d) > 100) || (clkctrl_frac < 18) ||
 				(clkctrl_frac > 35))
 				return -EINVAL;
-	}
+		}
+
+		/* Set safe hbus clock divider. A divider of 3 ensure that
+		 * the Vddd voltage required for the cpuclk is sufficiently
+		 * high for the hbus clock.
+		 */
+		hclk_reg = __raw_readl(CLKCTRL_BASE_ADDR + HW_CLKCTRL_HBUS);
+		if ((hclk_reg & BP_CLKCTRL_HBUS_DIV) != 3) {
+			hclk_reg &= ~(BM_CLKCTRL_HBUS_DIV);
+			hclk_reg |= BF_CLKCTRL_HBUS_DIV(3);
+
+			/* change hclk divider to safe value for any ref_cpu
+			 * value.
+			 */
+			__raw_writel(hclk_reg, CLKCTRL_BASE_ADDR +
+				     HW_CLKCTRL_HBUS);
+		}
+
+		for (i = 10000; i; i--)
+			if (!clk_is_busy(&h_clk))
+				break;
+		if (!i) {
+			printk(KERN_ERR "couldn't set up HCLK divisor\n");
+			return -ETIMEDOUT;
+		}
 
 		/* Set Frac div */
 		val = __raw_readl(CLKCTRL_BASE_ADDR + HW_CLKCTRL_FRAC0);
@@ -510,6 +571,7 @@ static int cpu_set_rate(struct clk *clk, unsigned long rate)
 		/* Do not gate */
 		__raw_writel(BM_CLKCTRL_FRAC0_CLKGATECPU, CLKCTRL_BASE_ADDR +
 			     HW_CLKCTRL_FRAC0_CLR);
+
 		/* write clkctrl_cpu */
 		reg_val = __raw_readl(CLKCTRL_BASE_ADDR + HW_CLKCTRL_CPU);
 		reg_val &= ~0x3F;
@@ -824,8 +886,14 @@ static int emi_set_rate(struct clk *clk, unsigned long rate)
 {
 	int i;
 	struct mxs_emi_scaling_data emi;
+	unsigned long iram_phy;
 	void (*f) (struct mxs_emi_scaling_data *, unsigned int *);
-	f = (void *)MX28_OCRAM_BASE;
+	f = iram_alloc((unsigned int)mxs_ram_freq_scale_end -
+		(unsigned int)mxs_ram_freq_scale, &iram_phy);
+	if (NULL == f) {
+		pr_err("%s Not enough iram\n", __func__);
+		return -ENOMEM;
+	}
 	memcpy(f, mxs_ram_freq_scale,
 	       (unsigned int)mxs_ram_freq_scale_end -
 	       (unsigned int)mxs_ram_freq_scale);
@@ -852,6 +920,9 @@ static int emi_set_rate(struct clk *clk, unsigned long rate)
 	f(&emi, get_current_emidata());
 	local_fiq_enable();
 	local_irq_enable();
+	iram_free(iram_phy,
+		(unsigned int)mxs_ram_freq_scale_end -
+	       (unsigned int)mxs_ram_freq_scale);
 
 	for (i = 10000; i; i--)
 		if (!clk_is_busy(clk))
@@ -1681,6 +1752,8 @@ void  mx28_enet_clk_hook(void)
 
 	reg &= ~BM_CLKCTRL_ENET_SLEEP;
 	reg |= BM_CLKCTRL_ENET_CLK_OUT_EN;
+	/* select clock for 1588 module */
+	reg |= BM_CLKCTRL_ENET_1588_40MHZ;
 
 	__raw_writel(reg, CLKCTRL_BASE_ADDR + HW_CLKCTRL_ENET);
 }
@@ -1695,4 +1768,7 @@ void __init mx28_clock_init(void)
 
 	clk_enable(&cpu_clk);
 	clk_enable(&emi_clk);
+
+	clk_en_public_h_asm_ctrl(mx28_enable_h_autoslow,
+		mx28_set_hbus_autoslow_flags);
 }

@@ -34,6 +34,7 @@
 #define MXC_CPU_MX37		37
 #define MXC_CPU_MX51		51
 #define MXC_CPU_MX53		53
+#define MXC_CPU_MX50		50
 
 #ifndef __ASSEMBLY__
 extern unsigned int __mxc_cpu_type;
@@ -147,6 +148,18 @@ extern unsigned int __mxc_cpu_type;
 # define cpu_is_mx53()		(0)
 #endif
 
+#ifdef CONFIG_ARCH_MX50
+# ifdef mxc_cpu_type
+#  undef mxc_cpu_type
+#  define mxc_cpu_type __mxc_cpu_type
+# else
+#  define mxc_cpu_type MXC_CPU_MX50
+# endif
+# define cpu_is_mx50()		(mxc_cpu_type == MXC_CPU_MX50)
+#else
+# define cpu_is_mx50()		(0)
+#endif
+
 #define cpu_is_mx32()		(0)
 
 /*
@@ -222,6 +235,7 @@ struct mxc_ipu_config {
 	int rev;
 	void (*reset) (void);
 	struct clk *di_clk[2];
+	struct clk *csi_clk[2];
 };
 
 struct mxc_ir_platform_data {
@@ -292,6 +306,7 @@ struct mxc_lightsensor_platform_data {
 
 struct mxc_fb_platform_data {
 	struct fb_videomode *mode;
+	int num_modes;
 	char *mode_str;
 	u32 interface_pix_fmt;
 };
@@ -306,8 +321,32 @@ struct mxc_lcd_platform_data {
 struct ccwmx51_lcd_pdata {
 	int vif;
 	struct mxc_fb_platform_data fb_pdata;
-	void (*reset) (void);
-	void (*bl_enable) (int);
+	void (*init) (int);
+	void (*deinit) (int);
+	void (*bl_enable) (int, int);
+};
+
+struct mxc_epdc_fb_mode {
+	struct fb_videomode *vmode;
+	int vscan_holdoff;
+	int sdoed_width;
+	int sdoed_delay;
+	int sdoez_width;
+	int sdoez_delay;
+	int gdclk_hp_offs;
+	int gdsp_offs;
+	int gdoe_offs;
+	int gdclk_offs;
+	int num_ce;
+};
+
+struct mxc_epdc_fb_platform_data {
+	struct mxc_epdc_fb_mode *epdc_mode;
+	int num_modes;
+	void (*get_pins) (void);
+	void (*put_pins) (void);
+	void (*enable_pins) (void);
+	void (*disable_pins) (void);
 };
 
 struct mxc_tsc_platform_data {
@@ -346,6 +385,7 @@ struct mxc_camera_platform_data {
 	char *gpo_regulator;
 	u32 mclk;
 	u32 csi;
+	void (*pwdn) (int pwdn);
 };
 
 /*gpo1-3 is in fixed state by hardware design,
@@ -465,8 +505,18 @@ struct tve_platform_data {
 	char *dig_reg;
 };
 
+struct ldb_platform_data {
+	char *lvds_bg_reg;
+	u32 ext_ref;
+};
+
 struct mxc_vpu_platform_data {
 	void (*reset) (void);
+};
+
+struct mxc_esai_platform_data {
+	void (*activate_esai_ports) (void);
+	void (*deactivate_esai_ports) (void);
 };
 
 /* The name that links the i.MX NAND Flash Controller driver to its devices. */
@@ -584,6 +634,18 @@ struct mxc_sim_platform_data {
 	unsigned int detect; /* 1 have detect pin, 0 not */
 };
 
+struct fsl_otp_data {
+	char 		**fuse_name;
+	char		*regulator_name;
+	unsigned int 	fuse_num;
+};
+
+struct mxs_dma_plat_data {
+	unsigned int burst8:1;
+	unsigned int burst:1;
+	unsigned int chan_base;
+	unsigned int chan_num;
+};
 #endif				/* __ASSEMBLY__ */
 
 #define MUX_IO_P		29
@@ -649,7 +711,7 @@ void gpio_deactivate_esai_ports(void);
 #define CSCR_A(n) (IO_ADDRESS(WEIM_BASE_ADDR) + n * 0x10 + 0x8)
 #endif
 
-#define cpu_is_mx5()	(cpu_is_mx51() || cpu_is_mx53())
+#define cpu_is_mx5()	(cpu_is_mx51() || cpu_is_mx53() || cpu_is_mx50())
 #define cpu_is_mx3()	(cpu_is_mx31() || cpu_is_mx35())
 #define cpu_is_mx2()	(cpu_is_mx21() || cpu_is_mx27())
 

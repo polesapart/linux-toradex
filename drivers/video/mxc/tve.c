@@ -68,6 +68,8 @@ static int enabled;		/* enable power on or not */
 DEFINE_SPINLOCK(tve_lock);
 
 static struct fb_info *tve_fbi;
+static struct fb_modelist tve_modelist;
+static bool g_enable_tve;
 
 struct tve_data {
 	struct platform_device *pdev;
@@ -77,6 +79,7 @@ struct tve_data {
 	int detect;
 	void *base;
 	int irq;
+	int blank;
 	struct clk *clk;
 	struct regulator *dac_reg;
 	struct regulator *dig_reg;
@@ -221,40 +224,50 @@ static int _is_tvout_mode_hd_compatible(void)
 static int tve_setup(int mode)
 {
 	u32 reg;
-	struct clk *pll3_clk;
-	unsigned long pll3_clock_rate = 216000000, di1_clock_rate = 27000000;
+	struct clk *tve_parent_clk;
+	unsigned long parent_clock_rate = 216000000, di1_clock_rate = 27000000;
+	unsigned long tve_clock_rate = 216000000;
 	struct clk *ipu_di1_clk;
 	unsigned long lock_flags;
 
-	if (tve.cur_mode == mode)
-		return 0;
-
 	spin_lock_irqsave(&tve_lock, lock_flags);
-
-	tve.cur_mode = mode;
 
 	switch (mode) {
 	case TVOUT_FMT_PAL:
 	case TVOUT_FMT_NTSC:
-		pll3_clock_rate = 216000000;
+		parent_clock_rate = 216000000;
 		di1_clock_rate = 27000000;
 		break;
 	case TVOUT_FMT_720P60:
-		pll3_clock_rate = 297000000;
+		parent_clock_rate = 297000000;
+		if (cpu_is_mx53())
+			tve_clock_rate = 297000000;
 		di1_clock_rate = 74250000;
 		break;
 	}
 	if (enabled)
 		clk_disable(tve.clk);
 
-	pll3_clk = clk_get(NULL, "pll3");
+	tve_parent_clk = clk_get_parent(tve.clk);
 	ipu_di1_clk = clk_get(NULL, "ipu_di1_clk");
 
-	clk_disable(pll3_clk);
-	clk_set_rate(pll3_clk, pll3_clock_rate);
-	clk_set_rate(ipu_di1_clk, di1_clock_rate);
+	clk_disable(tve_parent_clk);
+	clk_set_rate(tve_parent_clk, parent_clock_rate);
+
+	if (cpu_is_mx53())
+		clk_set_rate(tve.clk, tve_clock_rate);
 
 	clk_enable(tve.clk);
+	clk_set_rate(ipu_di1_clk, di1_clock_rate);
+
+	if (tve.cur_mode == mode) {
+		if (!enabled)
+			clk_disable(tve.clk);
+		spin_unlock_irqrestore(&tve_lock, lock_flags);
+		return 0;
+	}
+
+	tve.cur_mode = mode;
 
 	/* select output video format */
 	if (mode == TVOUT_FMT_PAL) {
@@ -497,6 +510,14 @@ static irqreturn_t tve_detect_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/* Re-construct clk for tve display */
+static inline void tve_recfg_fb(struct fb_info *fbi)
+{
+	fbi->flags &= ~FBINFO_MISC_USEREVENT;
+	fbi->var.activate |= FB_ACTIVATE_FORCE;
+	fb_set_var(fbi, &fbi->var);
+}
+
 int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 {
 	struct fb_event *event = v;
@@ -509,9 +530,9 @@ int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 			break;
 
 		tve_fbi = fbi;
-		fb_add_videomode(&video_modes[0], &tve_fbi->modelist);
-		fb_add_videomode(&video_modes[1], &tve_fbi->modelist);
-		fb_add_videomode(&video_modes[2], &tve_fbi->modelist);
+		fb_add_videomode(&video_modes[0], &tve_modelist.list);
+		fb_add_videomode(&video_modes[1], &tve_modelist.list);
+		fb_add_videomode(&video_modes[2], &tve_modelist.list);
 		break;
 	case FB_EVENT_MODE_CHANGE:
 	{
@@ -525,7 +546,7 @@ int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 
 		fb_var_to_videomode(&cur_mode, &fbi->var);
 
-		list_for_each(pos, &tve_fbi->modelist) {
+		list_for_each(pos, &tve_modelist.list) {
 			modelist = list_entry(pos, struct fb_modelist, list);
 			mode = &modelist->mode;
 			if (fb_mode_is_equal(&cur_mode, mode)) {
@@ -564,31 +585,33 @@ int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 			return 0;
 
 		if (*((int *)event->data) == FB_BLANK_UNBLANK) {
-			if (fb_mode_is_equal(fbi->mode, &video_modes[0])) {
-				if (tve.cur_mode != TVOUT_FMT_NTSC) {
+			if (tve.blank != FB_BLANK_UNBLANK) {
+				if (fb_mode_is_equal(fbi->mode, &video_modes[0])) {
 					tve_disable();
 					tve_setup(TVOUT_FMT_NTSC);
-				}
-				tve_enable();
-			} else if (fb_mode_is_equal(fbi->mode,
-					&video_modes[1])) {
-				if (tve.cur_mode != TVOUT_FMT_PAL) {
+					tve_enable();
+					tve_recfg_fb(fbi);
+				} else if (fb_mode_is_equal(fbi->mode,
+							&video_modes[1])) {
 					tve_disable();
 					tve_setup(TVOUT_FMT_PAL);
-				}
-				tve_enable();
-			} else if (fb_mode_is_equal(fbi->mode,
-					&video_modes[2])) {
-				if (tve.cur_mode != TVOUT_FMT_720P60) {
+					tve_enable();
+					tve_recfg_fb(fbi);
+				} else if (fb_mode_is_equal(fbi->mode,
+							&video_modes[2])) {
 					tve_disable();
 					tve_setup(TVOUT_FMT_720P60);
+					tve_enable();
+					tve_recfg_fb(fbi);
+				} else {
+					tve_setup(TVOUT_FMT_OFF);
 				}
-				tve_enable();
-			} else {
-				tve_setup(TVOUT_FMT_OFF);
+				tve.blank = FB_BLANK_UNBLANK;
 			}
-		} else
+		} else {
 			tve_disable();
+			tve.blank = FB_BLANK_POWERDOWN;
+		}
 		break;
 	}
 	return 0;
@@ -652,6 +675,11 @@ static int tve_probe(struct platform_device *pdev)
 	struct tve_platform_data *plat_data = pdev->dev.platform_data;
 	u32 conf_reg;
 
+	if (g_enable_tve == false)
+		return -ENODEV;
+
+	INIT_LIST_HEAD(&tve_modelist.list);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL)
 		return -ENOMEM;
@@ -699,9 +727,9 @@ static int tve_probe(struct platform_device *pdev)
 	}
 
 	if (tve_fbi != NULL) {
-		fb_add_videomode(&video_modes[0], &tve_fbi->modelist);
-		fb_add_videomode(&video_modes[1], &tve_fbi->modelist);
-		fb_add_videomode(&video_modes[2], &tve_fbi->modelist);
+		fb_add_videomode(&video_modes[0], &tve_modelist.list);
+		fb_add_videomode(&video_modes[1], &tve_modelist.list);
+		fb_add_videomode(&video_modes[2], &tve_modelist.list);
 	}
 
 	tve.dac_reg = regulator_get(&pdev->dev, plat_data->dac_reg);
@@ -748,22 +776,40 @@ static int tve_probe(struct platform_device *pdev)
 
 	clk_disable(tve.clk);
 
-	/* is primary display? */
-	if (primary) {
-		struct fb_event event;
-
-		event.info = tve_fbi;
-		tve_fb_event(NULL, FB_EVENT_MODE_CHANGE, &event);
-		acquire_console_sem();
-		fb_blank(tve_fbi, FB_BLANK_UNBLANK);
-		release_console_sem();
-		fb_show_logo(tve_fbi, 0);
-	}
-
 	ret = fb_register_client(&nb);
 	if (ret < 0)
 		goto err2;
 
+	tve.blank = -1;
+
+	/* is primary display? */
+	if (primary) {
+		struct fb_var_screeninfo var;
+		const struct fb_videomode *mode;
+
+		memset(&var, 0, sizeof(var));
+		mode = fb_match_mode(&tve_fbi->var, &tve_modelist.list);
+		if (mode) {
+			pr_debug("TVE: fb mode found\n");
+			fb_videomode_to_var(&var, mode);
+		} else {
+			pr_warning("TVE: can not find video mode\n");
+			goto done;
+		}
+		acquire_console_sem();
+		tve_fbi->flags |= FBINFO_MISC_USEREVENT;
+		fb_set_var(tve_fbi, &var);
+		tve_fbi->flags &= ~FBINFO_MISC_USEREVENT;
+		release_console_sem();
+
+		acquire_console_sem();
+		fb_blank(tve_fbi, FB_BLANK_UNBLANK);
+		release_console_sem();
+
+		fb_show_logo(tve_fbi, 0);
+	}
+
+done:
 	return 0;
 err2:
 	device_remove_file(&pdev->dev, &dev_attr_headphone);
@@ -841,6 +887,14 @@ static struct platform_driver tve_driver = {
 	.suspend = tve_suspend,
 	.resume = tve_resume,
 };
+
+static int __init enable_tve_setup(char *options)
+{
+	g_enable_tve = true;
+
+	return 1;
+}
+__setup("tve", enable_tve_setup);
 
 static int __init tve_init(void)
 {

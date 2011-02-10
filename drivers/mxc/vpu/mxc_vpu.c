@@ -73,6 +73,7 @@ static struct vpu_mem_desc user_data_mem = { 0 };
 static struct vpu_mem_desc share_mem = { 0 };
 
 static void __iomem *vpu_base;
+static int vpu_irq;
 static u32 phy_vpu_base_addr;
 static struct mxc_vpu_platform_data *vpu_plat;
 
@@ -539,7 +540,7 @@ static int vpu_map_mem(struct file *fp, struct vm_area_struct *vm)
 		 request_size);
 
 	vm->vm_flags |= VM_IO | VM_RESERVED;
-	vm->vm_page_prot = pgprot_noncached(vm->vm_page_prot);
+	vm->vm_page_prot = pgprot_writecombine(vm->vm_page_prot);
 
 	return remap_pfn_range(vm, vm->vm_start, vm->vm_pgoff,
 			       request_size, vm->vm_page_prot) ? -EAGAIN : 0;
@@ -635,8 +636,9 @@ static int vpu_dev_probe(struct platform_device *pdev)
 		err = -ENXIO;
 		goto err_out_class;
 	}
+	vpu_irq = res->start;
 
-	err = request_irq(res->start, vpu_irq_handler, 0, "VPU_CODEC_IRQ",
+	err = request_irq(vpu_irq, vpu_irq_handler, 0, "VPU_CODEC_IRQ",
 			  (void *)(&vpu_data));
 	if (err)
 		goto err_out_class;
@@ -660,6 +662,7 @@ static int vpu_dev_probe(struct platform_device *pdev)
 
 static int vpu_dev_remove(struct platform_device *pdev)
 {
+	free_irq(vpu_irq, &vpu_data);
 	iounmap(vpu_base);
 	iram_free(iram.start, VPU_IRAM_SIZE);
 
@@ -690,22 +693,25 @@ static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
 	for (i = 0; i < vpu_clk_usercount; i++)
 		clk_disable(vpu_clk);
 
-	clk_enable(vpu_clk);
-	if (bitwork_mem.cpu_addr != 0) {
-		SAVE_WORK_REGS;
-		SAVE_CTRL_REGS;
-		SAVE_RDWR_PTR_REGS;
-		SAVE_DIS_FLAG_REGS;
+	if (!cpu_is_mx37())
+	    return 0;
+	else {
+		clk_enable(vpu_clk);
+		if (bitwork_mem.cpu_addr != 0) {
+			SAVE_WORK_REGS;
+			SAVE_CTRL_REGS;
+			SAVE_RDWR_PTR_REGS;
+			SAVE_DIS_FLAG_REGS;
 
-		WRITE_REG(0x1, BIT_BUSY_FLAG);
-		WRITE_REG(VPU_SLEEP_REG_VALUE, BIT_RUN_COMMAND);
-		while (READ_REG(BIT_BUSY_FLAG)) ;
+			WRITE_REG(0x1, BIT_BUSY_FLAG);
+			WRITE_REG(VPU_SLEEP_REG_VALUE, BIT_RUN_COMMAND);
+			while (READ_REG(BIT_BUSY_FLAG))
+				;
+		}
+		clk_disable(vpu_clk);
 	}
 
-	clk_disable(vpu_clk);
-
-	if (cpu_is_mx37() || cpu_is_mx51())
-		mxc_pg_enable(pdev);
+	mxc_pg_enable(pdev);
 
 	return 0;
 
@@ -719,11 +725,12 @@ static int vpu_resume(struct platform_device *pdev)
 {
 	int i;
 
-	if (cpu_is_mx37() || cpu_is_mx51())
+	if (cpu_is_mx37())
 		mxc_pg_disable(pdev);
+	else
+	    goto recover_clk;
 
 	clk_enable(vpu_clk);
-
 	if (bitwork_mem.cpu_addr != 0) {
 		u32 *p = (u32 *) bitwork_mem.cpu_addr;
 		u32 data;
@@ -786,12 +793,13 @@ static int vpu_resume(struct platform_device *pdev)
 		WRITE_REG(VPU_WAKE_REG_VALUE, BIT_RUN_COMMAND);
 		while (READ_REG(BIT_BUSY_FLAG)) ;
 	}
-
 	clk_disable(vpu_clk);
 
+recover_clk:
 	/* Recover vpu clock */
 	for (i = 0; i < vpu_clk_usercount; i++)
 		clk_enable(vpu_clk);
+	printk("vpu_resume end\n");
 
 	return 0;
 }
@@ -824,7 +832,6 @@ static int __init vpu_init(void)
 
 static void __exit vpu_exit(void)
 {
-	free_irq(MXC_INT_VPU, (void *)(&vpu_data));
 	if (vpu_major > 0) {
 		device_destroy(vpu_class, MKDEV(vpu_major, 0));
 		class_destroy(vpu_class);

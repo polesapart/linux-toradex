@@ -9,4 +9,14 @@ config MACH_MX28EVK
 config MXS_TIMER_WITH_MACH
 	bool "Timer with architecture."
 
+config MXS_TIMER_WITH_MACH
+	bool "System Timer support Compare Match interrupt"
+
 endchoice
+
+config VECTORS_PHY_ADDR
+	int "vectors address"
+	default 0
+	help
+	  This config set vectors table is located which physical address
+

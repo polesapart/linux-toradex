@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -32,16 +32,37 @@
 #define IS_LARGE_PAGE_NAND      ((mtd->writesize / num_of_interleave) > 512)
 
 #define GET_NAND_OOB_SIZE	(mtd->oobsize / num_of_interleave)
+#define GET_NAND_PAGE_SIZE      (mtd->writesize / num_of_interleave)
 
 #define NAND_PAGESIZE_2KB	2048
 #define NAND_PAGESIZE_4KB	4096
+
+/*
+ * main area for bad block marker is in the last data section
+ * the spare area for swapped bad block marker is the second
+ * byte of last spare section
+ */
+#define NAND_SECTIONS        (GET_NAND_PAGE_SIZE >> 9)
+#define NAND_OOB_PER_SECTION (((GET_NAND_OOB_SIZE / NAND_SECTIONS) >> 1) << 1)
+#define NAND_CHUNKS	     (GET_NAND_PAGE_SIZE / (512 + NAND_OOB_PER_SECTION))
+
+#define BAD_BLK_MARKER_MAIN_OFFS \
+	(GET_NAND_PAGE_SIZE - NAND_CHUNKS * NAND_OOB_PER_SECTION)
+
+#define BAD_BLK_MARKER_SP_OFFS (NAND_CHUNKS * SPARE_LEN)
+
+#define BAD_BLK_MARKER_OOB_OFFS (NAND_CHUNKS * NAND_OOB_PER_SECTION)
+
+#define BAD_BLK_MARKER_MAIN  \
+	((u32)MAIN_AREA0 + BAD_BLK_MARKER_MAIN_OFFS)
+
+#define BAD_BLK_MARKER_SP  \
+	((u32)SPARE_AREA0 + BAD_BLK_MARKER_SP_OFFS)
 
 #ifdef CONFIG_ARCH_MXC_HAS_NFC_V3
 /*
  * For V3 NFC registers Definition
  */
-/* AXI Bus Mapped */
-#define NFC_AXI_BASE_ADDR		MX51_NFC_BASE_ADDR_AXI
 
 #if defined(CONFIG_ARCH_MXC_HAS_NFC_V3_1)	/* mx37 */
 #define MXC_INT_NANDFC			MXC_INT_EMI
@@ -106,13 +127,6 @@
 #define NFC_SPAS_WIDTH 8
 #define NFC_SPAS_SHIFT 16
 
-#define IS_4BIT_ECC \
-( \
-	cpu_is_mx51_rev(CHIP_REV_2_0) > 0 ? \
-		!((raw_read(NFC_CONFIG2) & NFC_ECC_MODE_4) >> 6) : \
-		((raw_read(NFC_CONFIG2) & NFC_ECC_MODE_4) >> 6) \
-)
-
 #define NFC_SET_SPAS(v)			\
 	raw_write((((raw_read(NFC_CONFIG2) & \
 	NFC_FIELD_RESET(NFC_SPAS_WIDTH, NFC_SPAS_SHIFT)) | ((v) << 16))), \
@@ -120,24 +134,32 @@
 
 #define NFC_SET_ECC_MODE(v)		\
 do { \
-	if (cpu_is_mx51_rev(CHIP_REV_2_0) > 0) { \
+	if (cpu_is_mx53() > 0) { \
 		if ((v) == NFC_SPAS_218 || (v) == NFC_SPAS_112) \
 			raw_write(((raw_read(NFC_CONFIG2) & \
-					NFC_ECC_MODE_MASK) | \
-					NFC_ECC_MODE_4), NFC_CONFIG2); \
+					~(3 << 6)) | \
+					NFC_ECC_MODE_16), NFC_CONFIG2); \
 		else \
 			raw_write(((raw_read(NFC_CONFIG2) & \
-					NFC_ECC_MODE_MASK) & \
+					~(3 << 6)) & \
+					NFC_ECC_MODE_4), NFC_CONFIG2); \
+	} else if (cpu_is_mx51_rev(CHIP_REV_2_0) > 0) { \
+		if ((v) == NFC_SPAS_218 || (v) == NFC_SPAS_112) \
+			raw_write(((raw_read(NFC_CONFIG2) & \
+					~(1 << 6)) | \
 					NFC_ECC_MODE_8), NFC_CONFIG2); \
+		else \
+			raw_write(((raw_read(NFC_CONFIG2) & \
+					~(1 << 6)) & \
+                                        ~NFC_ECC_MODE_8), NFC_CONFIG2); \
 	} else { \
 		if ((v) == NFC_SPAS_218 || (v) == NFC_SPAS_112) \
 			raw_write(((raw_read(NFC_CONFIG2) & \
-					NFC_ECC_MODE_MASK) & \
-					NFC_ECC_MODE_8), NFC_CONFIG2); \
+					~(1 << 6))), NFC_CONFIG2); \
 		else \
 			raw_write(((raw_read(NFC_CONFIG2) & \
-					NFC_ECC_MODE_MASK) | \
-					NFC_ECC_MODE_4), NFC_CONFIG2); \
+					~(1 << 6)) | \
+                                        NFC_ECC_MODE_8), NFC_CONFIG2); \
 	} \
 } while (0)
 
@@ -151,7 +173,6 @@ do { \
 	} while(0)
 
 #else
-#define IS_4BIT_ECC			1
 #define NFC_SET_SPAS(v)
 #define NFC_SET_ECC_MODE(v)
 #define NFC_SET_NFMS(v)	(NFMS |= (v))
@@ -292,9 +313,10 @@ do { \
 #define NFC_WPC_RESET			~(7)
 #if defined(CONFIG_ARCH_MXC_HAS_NFC_V3_1) || \
     defined(CONFIG_ARCH_MXC_HAS_NFC_V3_2)
-#define NFC_ECC_MODE_4    		(1 << 6)
-#define NFC_ECC_MODE_8			~(1 << 6)
-#define NFC_ECC_MODE_MASK 		~(1 << 6)
+#define NFC_ECC_MODE_4    		(0x0 << 6)
+#define NFC_ECC_MODE_8			(0x1 << 6)
+#define NFC_ECC_MODE_14                 (0x3 << 6)
+#define NFC_ECC_MODE_16                 (0x3 << 6)
 #define NFC_SPAS_16			8
 #define NFC_SPAS_64		 	32
 #define NFC_SPAS_128			64
@@ -454,7 +476,8 @@ do {	\
 		NFC_SET_ST_CMD(0x70); \
 		raw_write(raw_read(NFC_CONFIG3) | NFC_NO_SDMA, NFC_CONFIG3); \
 		raw_write(raw_read(NFC_CONFIG3) | NFC_RBB_MODE, NFC_CONFIG3); \
-		SET_NFC_DELAY_LINE(0); \
+		if (cpu_is_mx51()) \
+			SET_NFC_DELAY_LINE(0); \
 	} \
 } while (0)
 #endif
@@ -472,14 +495,13 @@ do {	\
  * For V1/V2 NFC registers Definition
  */
 
-#define NFC_AXI_BASE_ADDR      		0x00
 /*
  * Addresses for NFC registers
  */
 #ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
-#define NFC_REG_BASE			(nfc_ip_base + 0x1000)
+#define NFC_REG_BASE			(nfc_axi_base + 0x1000)
 #else
-#define NFC_REG_BASE			nfc_ip_base
+#define NFC_REG_BASE			nfc_axi_base
 #endif
 #define NFC_BUF_SIZE            	(NFC_REG_BASE + 0xE00)
 #define NFC_BUF_ADDR            	(NFC_REG_BASE + 0xE04)
@@ -517,18 +539,18 @@ do {	\
 /*!
  * Addresses for NFC RAM BUFFER Main area 0
  */
-#define MAIN_AREA0      		(u16 *)(nfc_ip_base + 0x000)
-#define MAIN_AREA1      		(u16 *)(nfc_ip_base + 0x200)
+#define MAIN_AREA0      		(u16 *)(nfc_axi_base + 0x000)
+#define MAIN_AREA1      		(u16 *)(nfc_axi_base + 0x200)
 
 /*!
  * Addresses for NFC SPARE BUFFER Spare area 0
  */
 #ifdef CONFIG_ARCH_MXC_HAS_NFC_V2_1
-#define SPARE_AREA0     		(u16 *)(nfc_ip_base + 0x1000)
+#define SPARE_AREA0     		(u16 *)(nfc_axi_base + 0x1000)
 #define SPARE_LEN			64
 #define SPARE_COUNT			8
 #else
-#define SPARE_AREA0     		(u16 *)(nfc_ip_base + 0x800)
+#define SPARE_AREA0     		(u16 *)(nfc_axi_base + 0x800)
 #define SPARE_LEN       		16
 #define SPARE_COUNT     		4
 #endif
@@ -539,8 +561,6 @@ do {	\
 #define SPAS_SHIFT		(0)
 #define REG_NFC_SPAS NFC_SPAS
 #define SPAS_MASK	(0xFF00)
-#define IS_4BIT_ECC			\
-	((raw_read(REG_NFC_ECC_MODE) & NFC_ECC_MODE_4) >> 0)
 
 #define NFC_SET_SPAS(v)			\
 	raw_write(((raw_read(REG_NFC_SPAS) & SPAS_MASK) | ((v<<SPAS_SHIFT))), \
@@ -578,7 +598,6 @@ do { \
 	} \
 } while (0)
 #else
-#define IS_4BIT_ECC			(1)
 #define NFC_SET_SPAS(v)
 #define NFC_SET_ECC_MODE(v)
 #define GET_ECC_STATUS()  raw_read(REG_NFC_ECC_STATUS_RESULT);

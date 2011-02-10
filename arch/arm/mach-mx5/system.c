@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <asm/io.h>
 #include <mach/hardware.h>
+#include <mach/clock.h>
 #include <asm/proc-fns.h>
 #include <asm/system.h>
 #include "crm_regs.h"
@@ -33,10 +34,13 @@
 
 extern int mxc_jtag_enabled;
 extern int iram_ready;
+extern void __iomem *ccm_base;
+extern void __iomem *databahn_base;
+extern void (*wait_in_iram)(void *ccm_addr, void *databahn_addr);
+extern void *wait_in_iram_base;
+extern void mx50_wait(u32 ccm_base, u32 databahn_addr);
+
 static struct clk *gpc_dvfs_clk;
-
-extern void cpu_cortexa8_do_idle(void *addr);
-
 
 /* set cpu low power mode before WFI instruction */
 void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
@@ -66,6 +70,7 @@ void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
 		if (mode == WAIT_UNCLOCKED_POWER_OFF) {
 			ccm_clpcr |= (0x1 << MXC_CCM_CLPCR_LPM_OFFSET);
 			ccm_clpcr &= ~MXC_CCM_CLPCR_VSTBY;
+			ccm_clpcr &= ~MXC_CCM_CLPCR_SBYOS;
 			stop_mode = 0;
 		} else {
 			ccm_clpcr |= (0x2 << MXC_CCM_CLPCR_LPM_OFFSET);
@@ -96,7 +101,8 @@ void mxc_cpu_lp_set(enum mxc_cpu_pwr_mode mode)
 	__raw_writel(ccm_clpcr, MXC_CCM_CLPCR);
 	if (cpu_is_mx51())
 		__raw_writel(arm_srpgcr, MXC_SRPG_ARM_SRPGCR);
-	__raw_writel(arm_srpgcr, MXC_SRPG_NEON_SRPGCR);
+	if (!cpu_is_mx50())
+		__raw_writel(arm_srpgcr, MXC_SRPG_NEON_SRPGCR);
 	if (stop_mode) {
 		__raw_writel(empgc0, MXC_SRPG_EMPGC0_SRPGCR);
 		__raw_writel(empgc1, MXC_SRPG_EMPGC1_SRPGCR);
@@ -150,14 +156,21 @@ static int arch_idle_mode = WAIT_UNCLOCKED_POWER_OFF;
  */
 void arch_idle(void)
 {
-	if (likely(!mxc_jtag_enabled)) {
+/*	if (likely(!mxc_jtag_enabled)) */{
+		struct clk *ddr_clk = clk_get(NULL, "ddr_clk");
 		if (gpc_dvfs_clk == NULL)
 			gpc_dvfs_clk = clk_get(NULL, "gpc_dvfs_clk");
 		/* gpc clock is needed for SRPG */
 		clk_enable(gpc_dvfs_clk);
 		mxc_cpu_lp_set(arch_idle_mode);
-		cpu_do_idle();
+		if (cpu_is_mx50() && (clk_get_usecount(ddr_clk) == 0)) {
+			memcpy(wait_in_iram_base, mx50_wait, SZ_4K);
+			wait_in_iram = (void *)wait_in_iram_base;
+			wait_in_iram(ccm_base, databahn_base);
+		} else
+			cpu_do_idle();
 		clk_disable(gpc_dvfs_clk);
+		clk_put(ddr_clk);
 	}
 }
 
@@ -171,8 +184,99 @@ void arch_reset(char mode)
 	/* Workaround to reset NFC_CONFIG3 register
 	 * due to the chip warm reset does not reset it
 	 */
-	__raw_writel(0x20600, IO_ADDRESS(NFC_BASE_ADDR) + 0x28);
+	if (cpu_is_mx51() || cpu_is_mx53())
+		__raw_writel(0x20600, IO_ADDRESS(NFC_BASE_ADDR) + 0x28);
 
 	/* Assert SRS signal */
 	mxc_wd_reset();
+}
+
+
+static int __mxs_reset_block(void __iomem *hwreg, int just_enable)
+{
+	u32 c;
+	int timeout;
+
+	/* the process of software reset of IP block is done
+	   in several steps:
+
+	   - clear SFTRST and wait for block is enabled;
+	   - clear clock gating (CLKGATE bit);
+	   - set the SFTRST again and wait for block is in reset;
+	   - clear SFTRST and wait for reset completion.
+	 */
+	c = __raw_readl(hwreg);
+	c &= ~(1 << 31);	/* clear SFTRST */
+	__raw_writel(c, hwreg);
+	for (timeout = 1000000; timeout > 0; timeout--)
+		/* still in SFTRST state ? */
+		if ((__raw_readl(hwreg) & (1 << 31)) == 0)
+			break;
+	if (timeout <= 0) {
+		printk(KERN_ERR "%s(%p): timeout when enabling\n",
+		       __func__, hwreg);
+		return -ETIME;
+	}
+
+	c = __raw_readl(hwreg);
+	c &= ~(1 << 30);	/* clear CLKGATE */
+	__raw_writel(c, hwreg);
+
+	if (!just_enable) {
+		c = __raw_readl(hwreg);
+		c |= (1 << 31);	/* now again set SFTRST */
+		__raw_writel(c, hwreg);
+		for (timeout = 1000000; timeout > 0; timeout--)
+			/* poll until CLKGATE set */
+			if (__raw_readl(hwreg) & (1 << 30))
+				break;
+		if (timeout <= 0) {
+			printk(KERN_ERR "%s(%p): timeout when resetting\n",
+			       __func__, hwreg);
+			return -ETIME;
+		}
+
+		c = __raw_readl(hwreg);
+		c &= ~(1 << 31);	/* clear SFTRST */
+		__raw_writel(c, hwreg);
+		for (timeout = 1000000; timeout > 0; timeout--)
+			/* still in SFTRST state ? */
+			if ((__raw_readl(hwreg) & (1 << 31)) == 0)
+				break;
+		if (timeout <= 0) {
+			printk(KERN_ERR "%s(%p): timeout when enabling "
+			       "after reset\n", __func__, hwreg);
+			return -ETIME;
+		}
+
+		c = __raw_readl(hwreg);
+		c &= ~(1 << 30);	/* clear CLKGATE */
+		__raw_writel(c, hwreg);
+	}
+	for (timeout = 1000000; timeout > 0; timeout--)
+		/* still in SFTRST state ? */
+		if ((__raw_readl(hwreg) & (1 << 30)) == 0)
+			break;
+
+	if (timeout <= 0) {
+		printk(KERN_ERR "%s(%p): timeout when unclockgating\n",
+		       __func__, hwreg);
+		return -ETIME;
+	}
+
+	return 0;
+}
+
+int mxs_reset_block(void __iomem *hwreg, int just_enable)
+{
+	int try = 10;
+	int r;
+
+	while (try--) {
+		r = __mxs_reset_block(hwreg, just_enable);
+		if (!r)
+			break;
+		pr_debug("%s: try %d failed\n", __func__, 10 - try);
+	}
+	return r;
 }

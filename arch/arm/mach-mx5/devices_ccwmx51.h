@@ -28,17 +28,29 @@ extern struct mxc_w1_config mxc_w1_data;
 extern struct mxc_spdif_platform_data mxc_spdif_data;
 extern struct tve_platform_data tve_data;
 extern struct mxc_dvfs_platform_data dvfs_core_data;
+extern struct fec_platform_data fec_data;
 extern struct mxc_dvfsper_data dvfs_per_data;
 extern struct platform_pwm_backlight_data mxc_pwm_backlight_data;
 extern struct mxc_audio_platform_data wm8753_data;
 extern struct mxc_fb_platform_data mx51_fb_data[];
 extern struct uio_info gpu2d_platform_data;
-extern struct ccwmx51_lcd_pdata * plcd_platform_data;
+extern struct ccwmx51_lcd_pdata plcd_platform_data[2];
+extern struct fsl_ata_platform_data ata_data;
 extern int __init ccwmx51_init_i2c2(void);
 extern void ccwmx51_init_spidevices(void);
 extern int __init ccwmx51_init_fb(void);
 extern void __init ccwmx51_io_init(void);
 extern int __init ccwmx51_init_mc13892(void);
 extern struct platform_device smsc911x_device;
+extern void ccwmx51_set_mod_variant(u8 variant);
+extern void ccwmx51_set_mod_revision(u8 revision);
+extern void ccwmx51_set_mod_sn(u32 sn);
+extern void ccwmx51_register_sdio(int interface);
+extern void ccwmx51_init_devices(void);
+extern int ccwmx51_create_sysfs_entries(void);
+extern struct gpio_keys_platform_data ccwmx51js_gpio_key_info;
+extern void ccwmx51_init_devices(void);
+extern int ccwmx51_create_sysfs_entries(void);
+
 
 #endif /* DEVICES_CCWMX51_H_ */

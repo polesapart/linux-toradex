@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -32,12 +32,15 @@
 
 /* Global address Variables */
 static void __iomem *nfc_axi_base, *nfc_ip_base;
+static int nfc_irq;
 
 struct mxc_mtd_s {
 	struct mtd_info mtd;
 	struct nand_chip nand;
 	struct mtd_partition *parts;
 	struct device *dev;
+	int disable_bi_swap; /* disable bi swap */
+	int clk_active;
 };
 
 static struct mxc_mtd_s *mxc_nand_data;
@@ -117,6 +120,49 @@ static const char *part_probes[] = {
 
 static wait_queue_head_t irq_waitq;
 
+#if 0
+static void nand_page_dump(struct mtd_info *mtd, u8 *dbuf, u8* obuf)
+{
+        int i;
+
+        if (dbuf != NULL) {
+                printk("\nData buffer:");
+                for (i = 0; i < mtd->writesize; i++) {
+                        if (!(i % 8))   printk("\n%03x: ", i);
+                        printk("%02x ", dbuf[i]);
+                }
+        }
+        printk("\n");
+        if (obuf != NULL) {
+                printk("\nOOB buffer:");
+                for (i = 0; i < mtd->oobsize; i++) {
+                        if (!(i % 8))   printk("\n%02x: ", i);
+                        printk("%02x ", obuf[i]);
+                }
+        }
+        printk("\n");
+}
+#endif
+
+#ifdef CONFIG_MXC_NAND_SWAP_BI
+#define PART_UBOOT_SIZE         0xc0000
+#define SKIP_SWAP_BI_MAX_PAGE           (PART_UBOOT_SIZE / 0x800)
+inline int skip_swap_bi(int page)
+{
+        /**
+         * Seems that the boot code of the i.mx515 rom is not able to
+         * boot from a nand flash when the data has been written swapping
+	 * the bad block byte. Avoid doing that (the swapping) when
+	 * programming U-Boot into the flash.
+         */
+        if (page < SKIP_SWAP_BI_MAX_PAGE)
+                return 1;
+        return 0;
+}
+#else
+inline int skip_swap_bi(int page_addr) { return 1; }
+#endif
+
 static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 {
 	/* Disable Interuupt */
@@ -124,6 +170,30 @@ static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 	wake_up(&irq_waitq);
 
 	return IRQ_HANDLED;
+}
+
+static void mxc_nand_bi_swap(struct mtd_info *mtd, int page_addr)
+{
+	u16 ma, sa, nma, nsa;
+
+	if (!IS_LARGE_PAGE_NAND)
+		return;
+
+	/* Disable bi swap if the user set disable_bi_swap at sys entry */
+	if (mxc_nand_data->disable_bi_swap)
+		return;
+
+        if (skip_swap_bi(page_addr))
+                return;
+
+	ma = __raw_readw(BAD_BLK_MARKER_MAIN);
+	sa = __raw_readw(BAD_BLK_MARKER_SP);
+
+	nma = (ma & 0xFF00) | (sa >> 8);
+	nsa = (sa & 0x00FF) | (ma << 8);
+
+	__raw_writew(nma, BAD_BLK_MARKER_MAIN);
+	__raw_writew(nsa, BAD_BLK_MARKER_SP);
 }
 
 static void nfc_memcpy(void *dest, void *src, int len)
@@ -287,6 +357,7 @@ static void auto_cmd_interleave(struct mtd_info *mtd, u16 cmd)
 			/* data transfer */
 			memcpy(MAIN_AREA0, dbuf, dlen);
 			copy_spare(mtd, obuf, SPARE_AREA0, olen, false);
+                        mxc_nand_bi_swap(mtd, page_addr - 1);
 
 			/* update the value */
 			dbuf += dlen;
@@ -316,6 +387,7 @@ static void auto_cmd_interleave(struct mtd_info *mtd, u16 cmd)
 			mxc_check_ecc_status(mtd);
 
 			/* data transfer */
+                        mxc_nand_bi_swap(mtd, page_addr - 1);
 			memcpy(dbuf, MAIN_AREA0, dlen);
 			copy_spare(mtd, obuf, SPARE_AREA0, olen, true);
 
@@ -558,10 +630,7 @@ static int mxc_check_ecc_status(struct mtd_info *mtd)
 	u32 ecc_stat, err;
 	int no_subpages = 1;
 	int ret = 0;
-	u8 ecc_bit_mask, err_limit;
-
-	ecc_bit_mask = (IS_4BIT_ECC ? 0x7 : 0xf);
-	err_limit = (IS_4BIT_ECC ? 0x4 : 0x8);
+	u8 ecc_bit_mask = 0xf;
 
 	no_subpages = mtd->writesize >> 9;
 
@@ -570,7 +639,7 @@ static int mxc_check_ecc_status(struct mtd_info *mtd)
 	ecc_stat = GET_NFC_ECC_STATUS();
 	do {
 		err = ecc_stat & ecc_bit_mask;
-		if (err > err_limit) {
+		if (err == ecc_bit_mask) {
 			mtd->ecc_stats.failed++;
 			printk(KERN_WARNING "UnCorrectable RS-ECC Error\n");
 			return -1;
@@ -580,8 +649,7 @@ static int mxc_check_ecc_status(struct mtd_info *mtd)
 		ecc_stat >>= 4;
 	} while (--no_subpages);
 
-	mtd->ecc_stats.corrected += ret;
-	pr_debug("%d Symbol Correctable RS-ECC Error\n", ret);
+	pr_debug("Correctable ECC Error(%d)\n", ret);
 
 	return ret;
 }
@@ -774,6 +842,30 @@ static int mxc_nand_verify_buf(struct mtd_info *mtd, const u_char * buf,
 }
 
 /*!
+ * This function will enable NFC clock
+ *
+ */
+static inline void mxc_nand_clk_enable(void)
+{
+	if (!mxc_nand_data->clk_active) {
+		clk_enable(nfc_clk);
+		mxc_nand_data->clk_active = 1;
+	}
+}
+
+/*!
+ * This function will disable NFC clock
+ *
+ */
+static inline void mxc_nand_clk_disable(void)
+{
+	if (mxc_nand_data->clk_active) {
+		clk_disable(nfc_clk);
+		mxc_nand_data->clk_active = 0;
+	}
+}
+
+/*!
  * This function is used by upper layer for select and deselect of the NAND
  * chip
  *
@@ -786,13 +878,14 @@ static void mxc_nand_select_chip(struct mtd_info *mtd, int chip)
 	switch (chip) {
 	case -1:
 		/* Disable the NFC clock */
-		clk_disable(nfc_clk);
-		break;
-	case 0 ... 7:
-		/* Enable the NFC clock */
-		clk_enable(nfc_clk);
+		mxc_nand_clk_disable();
 
+		break;
+	case 0 ... NFC_GET_MAXCHIP_SP():
+		/* Enable the NFC clock */
+		mxc_nand_clk_enable();
 		NFC_SET_NFC_ACTIVE_CS(chip);
+
 		break;
 
 	default:
@@ -930,6 +1023,7 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		 */
 		nfc_memcpy(MAIN_AREA0, data_buf, mtd->writesize);
 		copy_spare(mtd, oob_buf, SPARE_AREA0, mtd->oobsize, false);
+                mxc_nand_bi_swap(mtd, page_addr);
 #endif
 
 		if (IS_LARGE_PAGE_NAND)
@@ -980,10 +1074,10 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		 * byte alignment, so we can use
 		 * memcpy safely
 		 */
+                mxc_nand_bi_swap(mtd, page_addr);
 		nfc_memcpy(data_buf, MAIN_AREA0, mtd->writesize);
 		copy_spare(mtd, oob_buf, SPARE_AREA0, mtd->oobsize, true);
 #endif
-
 		break;
 
 	case NAND_CMD_READID:
@@ -1096,6 +1190,14 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	/* jffs2 not write oob */
 	mtd->flags &= ~MTD_OOB_WRITEABLE;
 
+	/* fix up the offset */
+	largepage_memorybased.offs = BAD_BLK_MARKER_OOB_OFFS;
+	/* keep compatible for bbt table with old soc */
+	if (cpu_is_mx53()) {
+		bbt_mirror_descr.offs = BAD_BLK_MARKER_OOB_OFFS + 2;
+		bbt_main_descr.offs = BAD_BLK_MARKER_OOB_OFFS + 2;
+	}
+
 	/* use flash based bbt */
 	this->bbt_td = &bbt_main_descr;
 	this->bbt_md = &bbt_mirror_descr;
@@ -1126,6 +1228,53 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 	return nand_scan_bbt(mtd, this->badblock_pattern);
 }
 
+static int mxc_get_resources(struct platform_device *pdev)
+{
+	struct resource *r;
+	int error = 0;
+
+#define	MXC_NFC_NO_IP_REG \
+	(cpu_is_mx25() || cpu_is_mx31() || cpu_is_mx32() || cpu_is_mx35())
+
+	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!r) {
+		error = -ENXIO;
+		goto out_0;
+	}
+	nfc_axi_base = ioremap(r->start, resource_size(r));
+
+	if (!MXC_NFC_NO_IP_REG) {
+		r = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		if (!r) {
+			error = -ENXIO;
+			goto out_1;
+		}
+	}
+	nfc_ip_base = ioremap(r->start, resource_size(r));
+
+	r = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!r) {
+		error = -ENXIO;
+		goto out_2;
+	}
+	nfc_irq = r->start;
+
+	init_waitqueue_head(&irq_waitq);
+	error = request_irq(nfc_irq, mxc_nfc_irq, 0, "mxc_nd", NULL);
+	if (error)
+		goto out_3;
+
+	return 0;
+out_3:
+out_2:
+	if (!MXC_NFC_NO_IP_REG)
+		iounmap(nfc_ip_base);
+out_1:
+	iounmap(nfc_axi_base);
+out_0:
+	return error;
+}
+
 static void mxc_nfc_init(void)
 {
 	/* Disable interrupt */
@@ -1137,11 +1286,13 @@ static void mxc_nfc_init(void)
 	/* Unlock the internal RAM Buffer */
 	raw_write(NFC_SET_BLS(NFC_BLS_UNLCOKED), REG_NFC_BLS);
 
-	/* Blocks to be unlocked */
-	UNLOCK_ADDR(0x0, 0xFFFF);
+	if (!(cpu_is_mx53())) {
+		/* Blocks to be unlocked */
+		UNLOCK_ADDR(0x0, 0xFFFF);
 
-	/* Unlock Block Command for given address range */
-	raw_write(NFC_SET_WPC(NFC_WPC_UNLOCK), REG_NFC_WPC);
+		/* Unlock Block Command for given address range */
+		raw_write(NFC_SET_WPC(NFC_WPC_UNLOCK), REG_NFC_WPC);
+	}
 
 	/* Enable symetric mode by default except mx37TO1.0 */
 	if (!(cpu_is_mx37_rev(CHIP_REV_1_0) == 1))
@@ -1232,6 +1383,81 @@ int nand_scan_mid(struct mtd_info *mtd)
 	return 0;
 }
 
+/*!
+ * show_device_disable_bi_swap()
+ * Shows the value of the 'disable_bi_swap' flag.
+ *
+ * @dev:   The device of interest.
+ * @attr:  The attribute of interest.
+ * @buf:   A buffer that will receive a representation of the attribute.
+ */
+static ssize_t show_device_disable_bi_swap(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", mxc_nand_data->disable_bi_swap);
+}
+
+/*!
+ * store_device_disable_bi_swap()
+ * Sets the value of the 'disable_bi_swap' flag.
+ *
+ * @dev:   The device of interest.
+ * @attr:  The attribute of interest.
+ * @buf:   A buffer containing a new attribute value.
+ * @size:  The size of the buffer.
+ */
+static ssize_t store_device_disable_bi_swap(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	const char *p = buf;
+	unsigned long v;
+
+	/* Try to make sense of what arrived from user space. */
+
+	if (strict_strtoul(p, 0, &v) < 0)
+		return size;
+
+	if (v > 0)
+		v = 1;
+	mxc_nand_data->disable_bi_swap = v;
+	return size;
+
+}
+
+static DEVICE_ATTR(disable_bi_swap, 0644,
+	show_device_disable_bi_swap, store_device_disable_bi_swap);
+static struct device_attribute *device_attributes[] = {
+	&dev_attr_disable_bi_swap,
+};
+/*!
+ * manage_sysfs_files() - Creates/removes sysfs files for this device.
+ *
+ * @create: create/remove the sys entry.
+ */
+static void manage_sysfs_files(int create)
+{
+	struct device *dev = mxc_nand_data->dev;
+	int error;
+	unsigned int i;
+	struct device_attribute **attr;
+
+	for (i = 0, attr = device_attributes;
+			i < ARRAY_SIZE(device_attributes); i++, attr++) {
+
+		if (create) {
+			error = device_create_file(dev, *attr);
+			if (error) {
+				while (--attr >= device_attributes)
+					device_remove_file(dev, *attr);
+				return;
+			}
+		} else {
+			device_remove_file(dev, *attr);
+		}
+	}
+
+}
+
 
 /*!
  * This function is called during the driver binding process.
@@ -1249,8 +1475,10 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 	struct flash_platform_data *flash = pdev->dev.platform_data;
 	int nr_parts = 0, err = 0;
 
-	nfc_axi_base = IO_ADDRESS(NFC_AXI_BASE_ADDR);
-	nfc_ip_base = IO_ADDRESS(NFC_BASE_ADDR);
+	/* get the resource */
+	err = mxc_get_resources(pdev);
+	if (err)
+		goto out;
 
 	/* init the nfc */
 	mxc_nfc_init();
@@ -1298,12 +1526,7 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 
 	nfc_clk = clk_get(&pdev->dev, "nfc_clk");
 	clk_enable(nfc_clk);
-
-	init_waitqueue_head(&irq_waitq);
-	err = request_irq(MXC_INT_NANDFC, mxc_nfc_irq, 0, "mxc_nd", NULL);
-	if (err) {
-		goto out_1;
-	}
+	mxc_nand_data->clk_active = 1;
 
 	if (hardware_ecc) {
 		this->ecc.read_page = mxc_nand_read_page;
@@ -1359,6 +1582,16 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 		add_mtd_device(mtd);
 	}
 
+#ifdef CONFIG_MODULE_CCXMX51
+        {
+                extern u8 ccwmx51_swap_bi;
+                mxc_nand_data->disable_bi_swap = !ccwmx51_swap_bi;
+                pr_info("%sUsing swap BI (%x)\n", ccwmx51_swap_bi ? "" : "No ", ccwmx51_swap_bi);
+        }
+#endif
+	/* Create sysfs entries for this device. */
+	manage_sysfs_files(true);
+
 	platform_set_drvdata(pdev, mtd);
 
 	return 0;
@@ -1386,15 +1619,16 @@ static int __exit mxcnd_remove(struct platform_device *pdev)
 	if (flash->exit)
 		flash->exit();
 
+	manage_sysfs_files(false);
 	mxc_free_buf();
 
-	clk_disable(nfc_clk);
+	mxc_nand_clk_disable();
 	clk_put(nfc_clk);
 	platform_set_drvdata(pdev, NULL);
 
 	if (mxc_nand_data) {
 		nand_release(mtd);
-		free_irq(MXC_INT_NANDFC, NULL);
+		free_irq(nfc_irq, NULL);
 		kfree(mxc_nand_data);
 	}
 
@@ -1419,7 +1653,7 @@ static int mxcnd_suspend(struct platform_device *pdev, pm_message_t state)
 	DEBUG(MTD_DEBUG_LEVEL0, "MXC_ND2 : NAND suspend\n");
 
 	/* Disable the NFC clock */
-	clk_disable(nfc_clk);
+	mxc_nand_clk_disable();
 
 	return 0;
 }
@@ -1438,7 +1672,7 @@ static int mxcnd_resume(struct platform_device *pdev)
 	DEBUG(MTD_DEBUG_LEVEL0, "MXC_ND2 : NAND resume\n");
 
 	/* Enable the NFC clock */
-	clk_enable(nfc_clk);
+	mxc_nand_clk_enable();
 
 	return 0;
 }

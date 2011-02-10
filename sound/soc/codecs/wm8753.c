@@ -595,6 +595,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* Mono Capture mixer-mux */
 	{"Capture Right Mixer", "Stereo", "Capture Right Mux"},
+	{"Capture Left Mixer", "Stereo", "Capture Left Mux"},
 	{"Capture Left Mixer", "Analogue Mix Left", "Capture Left Mux"},
 	{"Capture Left Mixer", "Analogue Mix Left", "Capture Right Mux"},
 	{"Capture Right Mixer", "Analogue Mix Right", "Capture Left Mux"},
@@ -1265,6 +1266,13 @@ static int wm8753_set_bias_level(struct snd_soc_codec *codec,
 	case SND_SOC_BIAS_ON:
 		/* set vmid to 50k and unmute dac */
 		wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0);
+
+		/* wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0); */
+		/*
+		* Force the enable of the MICBIAS, otherwise the microphone will not
+		* work.
+		*/
+		wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00e0);
 		break;
 	case SND_SOC_BIAS_PREPARE:
 		/* set vmid to 5k for quick power up */
@@ -1701,6 +1709,12 @@ static int wm8753_register(struct wm8753_priv *wm8753)
 	wm8753_write(codec, WM8753_RINVOL, reg | 0x0100);
 
 	wm8753_codec = codec;
+
+	/* Configure bclk as mclk/4 */
+	reg = wm8753_read_reg_cache(codec, WM8753_SRATE2);
+	reg &= ~WM8753_BCLK_DIV_MASK;
+	reg |= WM8753_BCLK_DIV_4;
+	wm8753_write(codec, WM8753_SRATE2, reg);
 
 	for (i = 0; i < ARRAY_SIZE(wm8753_dai); i++)
 		wm8753_dai[i].dev = codec->dev;

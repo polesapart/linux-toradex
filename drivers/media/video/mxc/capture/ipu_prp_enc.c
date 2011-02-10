@@ -19,12 +19,14 @@
  * @ingroup IPU
  */
 
+#include <linux/types.h>
 #include <linux/dma-mapping.h>
 #include <linux/ipu.h>
 #include "mxc_v4l2_capture.h"
 #include "ipu_prp_sw.h"
 
 #ifdef CAMERA_DBG
+	extern void ipu_dump_registers(void);
 	#define CAMERA_TRACE(x) (printk)x
 #else
 	#define CAMERA_TRACE(x)
@@ -266,11 +268,10 @@ static int prp_enc_setup(cam_data * cam)
  *
  * @return  status
  */
-static int prp_enc_eba_update(dma_addr_t eba, int *buffer_num)
+static int prp_enc_eba_update(int csi, dma_addr_t eba, int *buffer_num)
 {
 	int err = 0;
 
-	pr_debug("eba %x\n", eba);
 	if (grotation >= IPU_ROTATE_90_RIGHT) {
 		err = ipu_update_channel_buffer(MEM_ROT_ENC_MEM,
 						IPU_OUTPUT_BUFFER, *buffer_num,
@@ -294,6 +295,11 @@ static int prp_enc_eba_update(dma_addr_t eba, int *buffer_num)
 	}
 
 	*buffer_num = (*buffer_num == 0) ? 1 : 0;
+
+#ifdef CAMERA_DBG
+	ipu_dump_registers ();
+#endif
+
 	return 0;
 }
 
@@ -350,7 +356,6 @@ static int prp_enc_disabling_tasks(void *private)
 	if (cam->rotation >= IPU_ROTATE_90_RIGHT) {
 		ipu_unlink_channels(CSI_PRP_ENC_MEM, MEM_ROT_ENC_MEM);
 	}
-
 	err = ipu_disable_channel(CSI_PRP_ENC_MEM, true);
 	if (cam->rotation >= IPU_ROTATE_90_RIGHT) {
 		err |= ipu_disable_channel(MEM_ROT_ENC_MEM, true);

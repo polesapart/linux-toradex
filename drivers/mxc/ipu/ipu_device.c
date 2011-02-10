@@ -169,6 +169,7 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 			     sizeof(ipu_channel_buf_parm))) {
 				return -EFAULT;
 			}
+
 			ret =
 			    ipu_init_channel_buffer(parm.channel, parm.type,
 						    parm.pixel_fmt,

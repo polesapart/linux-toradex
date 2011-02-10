@@ -466,7 +466,6 @@ config USB_GOKU
 config USB_GADGET_ARC
 	boolean "Freescale USB Device Controller"
 	depends on ARCH_MXC || ARCH_STMP3XXX || ARCH_MXS
-	depends on !USB_EHCI_ARC_OTG
 	select USB_GADGET_DUALSPEED
 	select USB_OTG_UTILS
 	select USB_GADGET_DUALSPEED if USB_GADGET_FSL_1504 || USB_GADGET_FSL_UTMI
@@ -791,6 +790,15 @@ config USB_G_PRINTER
 
 	  For more information, see Documentation/usb/gadget_printer.txt
 	  which includes sample code for accessing the device file.
+
+config USB_ANDROID
+	tristate "Android Gadget"
+	depends on SWITCH
+	help
+	  The Android gadget provides mass storage and adb transport.
+
+	  Say "y" to link the driver statically, or "m" to build a
+	  dynamically linked module called "g_android".
 
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"

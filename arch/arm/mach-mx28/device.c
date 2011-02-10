@@ -27,13 +27,16 @@
 #include <linux/platform_device.h>
 #include <linux/mmc/host.h>
 #include <linux/phy.h>
+#include <linux/etherdevice.h>
 #include <linux/fec.h>
+#include <linux/gpmi-nfc.h>
 
 #include <asm/mach/map.h>
 
 #include <mach/hardware.h>
 #include <mach/regs-timrot.h>
 #include <mach/regs-lradc.h>
+#include <mach/regs-ocotp.h>
 #include <mach/device.h>
 #include <mach/dma.h>
 #include <mach/lradc.h>
@@ -43,6 +46,7 @@
 
 #include "regs-digctl.h"
 #include "device.h"
+#include "mx28evk.h"
 #include "mx28_pins.h"
 
 #if defined(CONFIG_SERIAL_MXS_DUART) || \
@@ -328,75 +332,92 @@ static void __init mx28_init_i2c(void)
 }
 #endif
 
-
-#if defined(CONFIG_MTD_NAND_GPMI1)
+#if defined(CONFIG_MTD_NAND_GPMI_NFC)
 
 extern int enable_gpmi;
 
-static int gpmi_pinmux_handler(void)
+static int gpmi_nfc_platform_init(unsigned int max_chip_count)
 {
 	return !enable_gpmi;
 }
 
-static const char *gpmi_partition_source_types[] = { "cmdlinepart", 0 };
+static void gpmi_nfc_platform_exit(unsigned int max_chip_count)
+{
+}
 
-static struct gpmi_platform_data  gpmi_platform_data = {
-	.io_uA                   = 70000,
+static const char *gpmi_nfc_partition_source_types[] = { "cmdlinepart", 0 };
+
+static struct gpmi_nfc_platform_data  gpmi_nfc_platform_data = {
+	.nfc_version             = 1,
+	.boot_rom_version        = 1,
+	.clock_name              = "gpmi",
+	.platform_init           = gpmi_nfc_platform_init,
+	.platform_exit           = gpmi_nfc_platform_exit,
 	.min_prop_delay_in_ns    = 5,
 	.max_prop_delay_in_ns    = 9,
-	.pinmux_handler          = gpmi_pinmux_handler,
+	.max_chip_count          = 2,
 	.boot_area_size_in_bytes = 20 * SZ_1M,
+	.partition_source_types  = gpmi_nfc_partition_source_types,
 	.partitions              = 0,
 	.partition_count         = 0,
-	.partition_source_types  = gpmi_partition_source_types,
 };
 
-static struct resource gpmi_resources[] = {
+static struct resource gpmi_nfc_resources[] = {
 	{
+	 .name  = GPMI_NFC_GPMI_REGS_ADDR_RES_NAME,
 	 .flags = IORESOURCE_MEM,
 	 .start = GPMI_PHYS_ADDR,
 	 .end   = GPMI_PHYS_ADDR + SZ_8K - 1,
 	 },
 	{
+	 .name  = GPMI_NFC_GPMI_INTERRUPT_RES_NAME,
 	 .flags = IORESOURCE_IRQ,
-	 .start = IRQ_GPMI_DMA,
-	 .end   = IRQ_GPMI_DMA,
-	 },
+	 .start = IRQ_GPMI,
+	 .end   = IRQ_GPMI,
+	},
 	{
-	 .flags = IORESOURCE_DMA,
-	 .start	= MXS_DMA_CHANNEL_AHB_APBH_GPMI0,
-	 .end	= MXS_DMA_CHANNEL_AHB_APBH_GPMI7,
-	 },
-	{
+	 .name  = GPMI_NFC_BCH_REGS_ADDR_RES_NAME,
 	 .flags = IORESOURCE_MEM,
 	 .start = BCH_PHYS_ADDR,
 	 .end   = BCH_PHYS_ADDR + SZ_8K - 1,
 	 },
 	{
+	 .name  = GPMI_NFC_BCH_INTERRUPT_RES_NAME,
 	 .flags = IORESOURCE_IRQ,
 	 .start = IRQ_BCH,
 	 .end   = IRQ_BCH,
 	 },
+	{
+	 .name  = GPMI_NFC_DMA_CHANNELS_RES_NAME,
+	 .flags = IORESOURCE_DMA,
+	 .start	= MXS_DMA_CHANNEL_AHB_APBH_GPMI0,
+	 .end	= MXS_DMA_CHANNEL_AHB_APBH_GPMI7,
+	 },
+	{
+	 .name  = GPMI_NFC_DMA_INTERRUPT_RES_NAME,
+	 .flags = IORESOURCE_IRQ,
+	 .start = IRQ_GPMI_DMA,
+	 .end   = IRQ_GPMI_DMA,
+	},
 };
 
-static void __init mx28_init_gpmi(void)
+static void __init mx28_init_gpmi_nfc(void)
 {
 	struct platform_device  *pdev;
 
-	pdev = mxs_get_device("gpmi", 0);
+	pdev = mxs_get_device(GPMI_NFC_DRIVER_NAME, 0);
 	if (pdev == NULL || IS_ERR(pdev))
 		return;
-	pdev->dev.platform_data = &gpmi_platform_data;
-	pdev->resource          = gpmi_resources;
-	pdev->num_resources     = ARRAY_SIZE(gpmi_resources);
+	pdev->dev.platform_data = &gpmi_nfc_platform_data;
+	pdev->resource          =  gpmi_nfc_resources;
+	pdev->num_resources     = ARRAY_SIZE(gpmi_nfc_resources);
 	mxs_add_device(pdev, 1);
 }
 #else
-static void mx28_init_gpmi(void)
+static void mx28_init_gpmi_nfc(void)
 {
 }
 #endif
-
 
 #if defined(CONFIG_MMC_MXS) || defined(CONFIG_MMC_MXS_MODULE)
 #if defined(CONFIG_MACH_MX28EVK)
@@ -535,9 +556,10 @@ static struct mxs_mmc_platform_data mmc0_data = {
 	.get_wp		= mxs_mmc_get_wp_ssp0,
 	.cmd_pullup	= mxs_mmc_cmd_pullup_ssp0,
 	.setclock	= mxs_mmc_setclock_ssp0,
-	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
+	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
+				| MMC_CAP_DATA_DDR,
 	.min_clk	= 400000,
-	.max_clk	= 52000000,
+	.max_clk	= 48000000,
 	.read_uA        = 50000,
 	.write_uA       = 70000,
 	.clock_mmc = "ssp.0",
@@ -573,9 +595,10 @@ static struct mxs_mmc_platform_data mmc1_data = {
 	.get_wp		= mxs_mmc_get_wp_ssp1,
 	.cmd_pullup	= mxs_mmc_cmd_pullup_ssp1,
 	.setclock	= mxs_mmc_setclock_ssp1,
-	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
+	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
+				| MMC_CAP_DATA_DDR,
 	.min_clk	= 400000,
-	.max_clk	= 52000000,
+	.max_clk	= 48000000,
 	.read_uA        = 50000,
 	.write_uA       = 70000,
 	.clock_mmc = "ssp.1",
@@ -697,21 +720,24 @@ static void __init mx28_init_rtc(void)
 #endif
 
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
-static struct resource fec_resources[] = {
+static struct resource fec0_resource[] = {
 	{
 		.start  = ENET_PHYS_ADDR,
-		.end    = ENET_PHYS_ADDR + 0xffff,
+		.end    = ENET_PHYS_ADDR + 0x3fff,
 		.flags  = IORESOURCE_MEM
-	},
-	{
-		.start  = IRQ_ENET_SWI,
-		.end    = IRQ_ENET_SWI,
-		.flags  = IORESOURCE_IRQ
 	},
 	{
 		.start  = IRQ_ENET_MAC0,
 		.end    = IRQ_ENET_MAC0,
 		.flags  = IORESOURCE_IRQ
+	},
+};
+
+static struct resource fec1_resource[] = {
+	{
+		.start  = ENET_PHYS_ADDR + 0x4000,
+		.end    = ENET_PHYS_ADDR + 0x7fff,
+		.flags  = IORESOURCE_MEM
 	},
 	{
 		.start  = IRQ_ENET_MAC1,
@@ -721,7 +747,12 @@ static struct resource fec_resources[] = {
 };
 
 extern int mx28evk_enet_gpio_init(void);
-static struct fec_platform_data fec_pdata = {
+static struct fec_platform_data fec_pdata0 = {
+	.phy = PHY_INTERFACE_MODE_RMII,
+	.init = mx28evk_enet_gpio_init,
+};
+
+static struct fec_platform_data fec_pdata1 = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 	.init = mx28evk_enet_gpio_init,
 };
@@ -729,15 +760,51 @@ static struct fec_platform_data fec_pdata = {
 static void __init mx28_init_fec(void)
 {
 	struct platform_device *pdev;
+	struct mxs_dev_lookup *lookup;
+	struct fec_platform_data *pfec;
+	int i;
+	u32 val;
 
-	pdev = mxs_get_device("mxs-fec", 0);
-	if (pdev == NULL || IS_ERR(pdev))
+	__raw_writel(BM_OCOTP_CTRL_RD_BANK_OPEN,
+			IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL_SET);
+
+	while (BM_OCOTP_CTRL_BUSY &
+		__raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL))
+		udelay(10);
+
+	lookup = mxs_get_devices("mxs-fec");
+	if (lookup == NULL || IS_ERR(lookup))
 		return;
 
-	pdev->resource = fec_resources;
-	pdev->num_resources = ARRAY_SIZE(fec_resources);
-	pdev->dev.platform_data = &fec_pdata;
-	mxs_add_device(pdev, 2);
+	for (i = 0; i < lookup->size; i++) {
+		pdev = lookup->pdev + i;
+		val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
+						HW_OCOTP_CUSTn(pdev->id));
+		switch (pdev->id) {
+		case 0:
+			pdev->resource = fec0_resource;
+			pdev->num_resources = ARRAY_SIZE(fec0_resource);
+			pdev->dev.platform_data = &fec_pdata0;
+			break;
+		case 1:
+			pdev->resource = fec1_resource;
+			pdev->num_resources = ARRAY_SIZE(fec1_resource);
+			pdev->dev.platform_data = &fec_pdata1;
+			break;
+		default:
+			return;
+		}
+
+		pfec = (struct fec_platform_data *)pdev->dev.platform_data;
+		pfec->mac[0] = 0x00;
+		pfec->mac[1] = 0x04;
+		pfec->mac[2] = (val >> 24) & 0xFF;
+		pfec->mac[3] = (val >> 16) & 0xFF;
+		pfec->mac[4] = (val >> 8) & 0xFF;
+		pfec->mac[5] = (val >> 0) & 0xFF;
+
+		mxs_add_device(pdev, 2);
+	}
 }
 #else
 static void __init mx28_init_fec(void)
@@ -745,6 +812,81 @@ static void __init mx28_init_fec(void)
 	;
 }
 #endif
+
+#if defined(CONFIG_FEC_L2SWITCH)
+static struct resource l2switch_resources[] = {
+	{
+		.start  = ENET_PHYS_ADDR,
+		.end    = ENET_PHYS_ADDR + 0x17FFC,
+		.flags  = IORESOURCE_MEM
+	},
+	{
+		.start  = IRQ_ENET_SWI,
+		.end    = IRQ_ENET_SWI,
+		.flags  = IORESOURCE_IRQ
+	},
+};
+
+/* Define the fixed address of the L2 Switch hardware. */
+static unsigned int switch_platform_hw[2] = {
+	(0x800F8000),
+	(0x800FC000),
+};
+
+static struct fec_platform_data fec_enet = {
+	.phy = PHY_INTERFACE_MODE_RMII,
+	.init = mx28evk_enet_gpio_init,
+};
+
+static struct switch_platform_data l2switch_data = {
+	.id 		= 0,
+	.fec_enet	= &fec_enet,
+	.hash_table	= 0,
+	.switch_hw	= switch_platform_hw,
+};
+
+static void __init mx28_init_l2switch(void)
+{
+	struct platform_device *pdev;
+	struct switch_platform_data *pswitch;
+	struct fec_platform_data *pfec;
+	u32 val;
+
+	__raw_writel(BM_OCOTP_CTRL_RD_BANK_OPEN,
+			IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL_SET);
+
+	while (BM_OCOTP_CTRL_BUSY &
+		__raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL))
+		udelay(10);
+
+	pdev = mxs_get_device("mxs-l2switch", 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+
+	val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
+					HW_OCOTP_CUSTn(pdev->id));
+	pdev->resource = l2switch_resources;
+	pdev->num_resources = ARRAY_SIZE(l2switch_resources);
+	pdev->dev.platform_data = &l2switch_data;
+
+	pswitch = (struct switch_platform_data *)pdev->dev.platform_data;
+	pfec = pswitch->fec_enet;
+	pfec->mac[0] = 0x00;
+	pfec->mac[1] = 0x04;
+	pfec->mac[2] = (val >> 24) & 0xFF;
+	pfec->mac[3] = (val >> 16) & 0xFF;
+	pfec->mac[4] = (val >> 8) & 0xFF;
+	pfec->mac[5] = (val >> 0) & 0xFF;
+
+	mxs_add_device(pdev, 2);
+}
+#else
+static void __init mx28_init_l2switch(void)
+{
+	;
+}
+#endif
+
 #ifdef CONFIG_MXS_LRADC
 struct mxs_lradc_plat_data mx28_lradc_data = {
 	.vddio_voltage = BV_LRADC_CTRL4_LRADC6SELECT__CHANNEL10,
@@ -1211,6 +1353,156 @@ static inline mx28_init_spdif(void)
 }
 #endif
 
+#if defined(CONFIG_MXS_PERSISTENT)
+static const struct mxs_persistent_bit_config
+mx28_persistent_bit_config[] = {
+	{ .reg = 0, .start =  0, .width =  1,
+		.name = "CLOCKSOURCE" },
+	{ .reg = 0, .start =  1, .width =  1,
+		.name = "ALARM_WAKE_EN" },
+	{ .reg = 0, .start =  2, .width =  1,
+		.name = "ALARM_EN" },
+	{ .reg = 0, .start =  3, .width =  1,
+		.name = "CLK_SECS" },
+	{ .reg = 0, .start =  4, .width =  1,
+		.name = "XTAL24MHZ_PWRUP" },
+	{ .reg = 0, .start =  5, .width =  1,
+		.name = "XTAL32MHZ_PWRUP" },
+	{ .reg = 0, .start =  6, .width =  1,
+		.name = "XTAL32_FREQ" },
+	{ .reg = 0, .start =  7, .width =  1,
+		.name = "ALARM_WAKE" },
+	{ .reg = 0, .start =  8, .width =  5,
+		.name = "MSEC_RES" },
+	{ .reg = 0, .start = 13, .width =  1,
+		.name = "DISABLE_XTALOK" },
+	{ .reg = 0, .start = 14, .width =  2,
+		.name = "LOWERBIAS" },
+	{ .reg = 0, .start = 16, .width =  1,
+		.name = "DISABLE_PSWITCH" },
+	{ .reg = 0, .start = 17, .width =  1,
+		.name = "AUTO_RESTART" },
+	{ .reg = 0, .start = 18, .width = 1,
+		.name = "ENABLE_LRADC_PWRUP" },
+	{ .reg = 0, .start = 20, .width = 1,
+		.name = "THERMAL_RESET" },
+	{ .reg = 0, .start = 21, .width = 1,
+		.name = "EXTERNAL_RESET" },
+	{ .reg = 0, .start = 28, .width = 4,
+		.name = "ADJ_POSLIMITBUCK" },
+	{ .reg = 1, .start =  0, .width =  1,
+		.name = "FORCE_RECOVERY" },
+	{ .reg = 1, .start =  1, .width =  1,
+		.name = "ROM_REDUNDANT_BOOT" },
+	{ .reg = 1, .start =  2, .width =  1,
+		.name = "NAND_SDK_BLOCK_REWRITE" },
+	{ .reg = 1, .start =  3, .width =  1,
+		.name = "SD_SPEED_ENABLE" },
+	{ .reg = 1, .start =  4, .width =  1,
+		.name = "SD_INIT_SEQ_1_DISABLE" },
+	{ .reg = 1, .start =  5, .width =  1,
+		.name = "SD_CMD0_DISABLE" },
+	{ .reg = 1, .start =  6, .width =  1,
+		.name = "SD_INIT_SEQ_2_ENABLE" },
+	{ .reg = 1, .start =  7, .width =  1,
+		.name = "OTG_ATL_ROLE_BIT" },
+	{ .reg = 1, .start =  8, .width =  1,
+		.name = "OTG_HNP_BIT" },
+	{ .reg = 1, .start =  9, .width =  1,
+		.name = "USB_LOW_POWER_MODE" },
+	{ .reg = 1, .start = 10, .width =  1,
+		.name = "SKIP_CHECKDISK" },
+	{ .reg = 1, .start = 11, .width =  1,
+		.name = "USB_BOOT_PLAYER_MODE" },
+	{ .reg = 1, .start = 12, .width =  1,
+		.name = "ENUMERATE_500MA_TWICE" },
+	{ .reg = 1, .start = 13, .width = 19,
+		.name = "SPARE_GENERAL" },
+
+	{ .reg = 2, .start =  0, .width = 32,
+		.name = "SPARE_2" },
+	{ .reg = 3, .start =  0, .width = 32,
+		.name = "SPARE_3" },
+	{ .reg = 4, .start =  0, .width = 32,
+		.name = "SPARE_4" },
+	{ .reg = 5, .start =  0, .width = 32,
+		.name = "SPARE_5" },
+};
+
+static struct mxs_platform_persistent_data mx28_persistent_data = {
+	.bit_config_tab = mx28_persistent_bit_config,
+	.bit_config_cnt = ARRAY_SIZE(mx28_persistent_bit_config),
+};
+
+static struct resource mx28_persistent_res[] = {
+	{
+	 .flags = IORESOURCE_MEM,
+	 .start = RTC_PHYS_ADDR,
+	 .end   = RTC_PHYS_ADDR + 0x2000 - 1,
+	 },
+};
+
+static void mx28_init_persistent(void)
+{
+	struct platform_device *pdev;
+	pdev = mxs_get_device("mxs-persistent", 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+	pdev->dev.platform_data = &mx28_persistent_data;
+	pdev->resource = mx28_persistent_res,
+	pdev->num_resources = ARRAY_SIZE(mx28_persistent_res),
+	mxs_add_device(pdev, 3);
+}
+#else
+static void mx28_init_persistent()
+{
+}
+#endif
+
+#if defined(CONFIG_FSL_OTP)
+/* Building up eight registers's names of a bank */
+#define BANK(a, b, c, d, e, f, g, h)	\
+	{\
+	("HW_OCOTP_"#a), ("HW_OCOTP_"#b), ("HW_OCOTP_"#c), ("HW_OCOTP_"#d), \
+	("HW_OCOTP_"#e), ("HW_OCOTP_"#f), ("HW_OCOTP_"#g), ("HW_OCOTP_"#h) \
+	}
+
+#define BANKS		(5)
+#define BANK_ITEMS	(8)
+static const char *bank_reg_desc[BANKS][BANK_ITEMS] = {
+	BANK(CUST0, CUST1, CUST2, CUST3, CRYPTO0, CRYPTO1, CRYPTO2, CRYPTO3),
+	BANK(HWCAP0, HWCAP1, HWCAP2, HWCAP3, HWCAP4, HWCAP5, SWCAP, CUSTCAP),
+	BANK(LOCK, OPS0, OPS1, OPS2, OPS3, UN0, UN1, UN2),
+	BANK(ROM0, ROM1, ROM2, ROM3, ROM4, ROM5, ROM6, ROM7),
+	BANK(SRK0, SRK1, SRK2, SRK3, SRK4, SRK5, SRK6, SRK7),
+};
+
+static struct fsl_otp_data otp_data = {
+	.fuse_name	= (char **)bank_reg_desc,
+	.regulator_name	= "vddio",
+	.fuse_num	= BANKS * BANK_ITEMS,
+};
+#undef BANK
+#undef BANKS
+#undef BANK_ITEMS
+
+static void __init mx28_init_otp(void)
+{
+	struct platform_device *pdev;
+	pdev = mxs_get_device("ocotp", 0);
+	if (pdev == NULL || IS_ERR(pdev))
+		return;
+	pdev->dev.platform_data = &otp_data;
+	pdev->resource = NULL;
+	pdev->num_resources = 0;
+	mxs_add_device(pdev, 3);
+}
+#else
+static void mx28_init_otp(void)
+{
+}
+#endif
+
 int __init mx28_device_init(void)
 {
 	mx28_init_dma();
@@ -1220,10 +1512,11 @@ int __init mx28_device_init(void)
 	mx28_init_lradc();
 	mx28_init_auart();
 	mx28_init_mmc();
-	mx28_init_gpmi();
+	mx28_init_gpmi_nfc();
 	mx28_init_wdt();
 	mx28_init_rtc();
 	mx28_init_fec();
+	mx28_init_l2switch();
 	mx28_init_flexcan();
 	mx28_init_kbd();
 	mx28_init_ts();
@@ -1233,7 +1526,8 @@ int __init mx28_device_init(void)
 	mx28_init_pxp();
 	mx28_init_dcp();
 	mx28_init_battery();
-
+	mx28_init_persistent();
+	mx28_init_otp();
 	return 0;
 }
 

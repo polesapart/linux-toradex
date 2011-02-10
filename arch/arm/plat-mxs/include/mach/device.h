@@ -54,6 +54,12 @@ struct mxs_dma_plat_data {
 	unsigned int chan_num;
 };
 
+struct fsl_otp_data {
+	char 		**fuse_name;
+	char		*regulator_name;
+	unsigned int 	fuse_num;
+};
+
 struct mxs_i2c_plat_data {
 	unsigned int pioqueue_mode:1;
 };
@@ -119,6 +125,11 @@ struct mxs_mma7450_platform_data {
 	int int2;
 };
 
+struct mxs_spi_platform_data {
+	int (*hw_pin_init)(void);
+	int (*hw_pin_release)(void);
+};
+
 struct flexcan_platform_data {
 	char *core_reg;
 	char *io_reg;
@@ -167,57 +178,6 @@ struct mxs_audio_platform_data {
 	int (*amp_enable) (int enable);
 	int (*finit) (void);	/* board specific finit */
 	void *priv;		/* used by board specific functions */
-};
-
-/**
- * struct gpmi_platform_data - GPMI driver platform data.
- *
- * This structure communicates platform-specific information to the GPMI driver
- * that can't be expressed as resources.
- *
- * @io_uA:                   The current limit, in uA.
- * @min_prop_delay_in_ns:    Minimum propagation delay of GPMI signals to and
- *                           from the NAND Flash device, in nanoseconds.
- * @max_prop_delay_in_ns:    Maximum propagation delay of GPMI signals to and
- *                           from the NAND Flash device, in nanoseconds.
- * @pinmux_handler:          A pointer to a function the driver will call to
- *                           request the pins it needs.
- * @boot_area_size_in_bytes: The amount of space reserved for use by the boot
- *                           ROM on the first and second chips. If this value is
- *                           zero, it indicates we're not reserving any space
- *                           for the boot area.
- * @partition_source_types:  An array of strings that name sources of
- *                           partitioning information (e.g., the boot loader,
- *                           the kernel command line, etc.). The function
- *                           parse_mtd_partitions() recognizes these names and
- *                           applies the appropriate "plugins" to discover
- *                           partitioning information. If any is found, it will
- *                           be applied to the "general use" MTD (it will NOT
- *                           override the boot area protection mechanism).
- * @partitions:              An optional pointer to an array of partition
- *                           descriptions. If the driver finds no partitioning
- *                           information elsewhere, it will apply these to the
- *                           "general use" MTD (they do NOT override the boot
- *                           area protection mechanism).
- * @partition_count:         The number of elements in the partitions array.
- */
-
-struct gpmi_platform_data {
-
-	int                   io_uA;
-
-	unsigned              min_prop_delay_in_ns;
-	unsigned              max_prop_delay_in_ns;
-
-	int                   (*pinmux_handler)(void);
-
-	uint32_t              boot_area_size_in_bytes;
-
-	const char            **partition_source_types;
-
-	struct mtd_partition  *partitions;
-	unsigned              partition_count;
-
 };
 
 struct mxs_persistent_bit_config {

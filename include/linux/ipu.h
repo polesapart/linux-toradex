@@ -121,6 +121,8 @@ typedef enum {
 /*! @{ */
 #define IPU_PIX_FMT_YUYV    fourcc('Y', 'U', 'Y', 'V')	/*!< 16 YUV 4:2:2 */
 #define IPU_PIX_FMT_UYVY    fourcc('U', 'Y', 'V', 'Y')	/*!< 16 YUV 4:2:2 */
+#define IPU_PIX_FMT_YVYU    fourcc('Y', 'V', 'Y', 'U')  /*!< 16 YVYU 4:2:2 */
+#define IPU_PIX_FMT_VYUY    fourcc('V', 'Y', 'U', 'Y')  /*!< 16 VYYU 4:2:2 */
 #define IPU_PIX_FMT_Y41P    fourcc('Y', '4', '1', 'P')	/*!< 12 YUV 4:1:1 */
 #define IPU_PIX_FMT_YUV444  fourcc('Y', '4', '4', '4')	/*!< 24 YUV 4:4:4 */
 /* two planes -- one Y, one Cb + Cr interleaved  */
@@ -321,7 +323,8 @@ typedef union {
 		uint32_t out_width;
 		uint32_t out_height;
 		uint32_t out_pixel_fmt;
-		uint32_t out_resize_ratio;
+		uint32_t outh_resize_ratio;
+		uint32_t outv_resize_ratio;
 	} mem_prp_enc_mem;
 	struct {
 		uint32_t in_width;
@@ -364,7 +367,8 @@ typedef union {
 		uint32_t out_width;
 		uint32_t out_height;
 		uint32_t out_pixel_fmt;
-		uint32_t out_resize_ratio;
+		uint32_t outh_resize_ratio;
+		uint32_t outv_resize_ratio;
 		bool graphics_combine_en;
 		bool global_alpha_en;
 		bool key_color_en;
@@ -388,7 +392,8 @@ typedef union {
 		uint32_t out_width;
 		uint32_t out_height;
 		uint32_t out_pixel_fmt;
-		uint32_t out_resize_ratio;
+		uint32_t outh_resize_ratio;
+		uint32_t outv_resize_ratio;
 		bool graphics_combine_en;
 		bool global_alpha_en;
 		bool key_color_en;
@@ -420,6 +425,8 @@ typedef union {
 	struct {
 		uint32_t di;
 		bool interlaced;
+		uint32_t in_pixel_fmt;
+		uint32_t out_pixel_fmt;
 	} mem_dc_sync;
 	struct {
 		uint32_t temp;
@@ -604,6 +611,9 @@ enum ipu_irq_line {
 	IPU_IRQ_CSI1_OUT_EOF = 1,
 	IPU_IRQ_CSI2_OUT_EOF = 2,
 	IPU_IRQ_CSI3_OUT_EOF = 3,
+	IPU_IRQ_VDI_P_IN_EOF = 8,
+	IPU_IRQ_VDI_C_IN_EOF = 9,
+	IPU_IRQ_VDI_N_IN_EOF = 10,
 	IPU_IRQ_PP_IN_EOF = 11,
 	IPU_IRQ_PRP_IN_EOF = 12,
 	IPU_IRQ_PRP_GRAPH_IN_EOF = 14,
@@ -895,6 +905,8 @@ int32_t ipu_link_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch);
 int32_t ipu_unlink_channels(ipu_channel_t src_ch, ipu_channel_t dest_ch);
 
 int32_t ipu_is_channel_busy(ipu_channel_t channel);
+int32_t ipu_check_buffer_busy(ipu_channel_t channel, ipu_buffer_t type,
+		uint32_t bufNum);
 void ipu_clear_buffer_ready(ipu_channel_t channel, ipu_buffer_t type,
 		uint32_t bufNum);
 uint32_t ipu_get_cur_buffer_idx(ipu_channel_t channel, ipu_buffer_t type);
@@ -944,6 +956,8 @@ int32_t ipu_init_sync_panel(int disp,
 
 int32_t ipu_disp_set_window_pos(ipu_channel_t channel, int16_t x_pos,
 				int16_t y_pos);
+int32_t ipu_disp_get_window_pos(ipu_channel_t channel, int16_t *x_pos,
+				int16_t *y_pos);
 int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, bool enable,
 				  uint8_t alpha);
 int32_t ipu_disp_set_color_key(ipu_channel_t channel, bool enable,
@@ -1260,6 +1274,7 @@ typedef struct _ipu_csc_update {
 #define IPU_CALC_STRIPES_SIZE	      _IOWR('I', 0x27, ipu_stripe_parm)
 #define IPU_UPDATE_BUF_OFFSET         _IOW('I', 0x28, ipu_buf_offset_parm)
 #define IPU_CSC_UPDATE                _IOW('I', 0x29, ipu_csc_update)
+#define IPU_SELECT_MULTI_VDI_BUFFER   _IOW('I', 0x2A, uint32_t)
 
 int ipu_calc_stripes_sizes(const unsigned int input_frame_width,
 				unsigned int output_frame_width,

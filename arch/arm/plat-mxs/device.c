@@ -24,6 +24,7 @@
 #include <linux/bitops.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
+#include <linux/gpmi-nfc.h>
 
 #include <mach/device.h>
 
@@ -138,10 +139,10 @@ static struct platform_device mxs_i2c[] = {
 };
 #endif
 
-#if defined(CONFIG_MTD_NAND_GPMI1) || \
-	defined(CONFIG_MTD_NAND_GPMI1_MODULE)
-static struct platform_device mxs_gpmi = {
-	.name = "gpmi",
+#if defined(CONFIG_MTD_NAND_GPMI_NFC) || \
+	defined(CONFIG_MTD_NAND_GPMI_NFC_MODULE)
+static struct platform_device gpmi_nfc = {
+	.name = GPMI_NFC_DRIVER_NAME,
 	.id = 0,
 	.dev = {
 		.dma_mask          = &common_dmamask,
@@ -175,6 +176,20 @@ static struct platform_device mxs_mmc[] = {
 };
 #endif
 
+#if defined(CONFIG_SPI_MXS) || defined(CONFIG_SPI_MXS_MODULE)
+static struct platform_device mxs_spi[] = {
+	{
+	 .name	= "mxs-spi",
+	 .id	= 0,
+	 .dev = {
+		.dma_mask	       = &common_dmamask,
+		.coherent_dma_mask      = DMA_BIT_MASK(32),
+		.release = mxs_nop_release,
+		},
+	 },
+};
+#endif
+
 #if defined(CONFIG_MXS_WATCHDOG) || defined(CONFIG_MXS_WATCHDOG_MODULE)
 static struct platform_device mxs_wdt = {
 	.name = "mxs-wdt",
@@ -190,6 +205,25 @@ static struct platform_device mxs_wdt = {
 static struct platform_device mxs_fec[] = {
 	{
 	.name = "fec",
+	.id = 0,
+	.dev = {
+		.release = mxs_nop_release,
+		},
+	},
+	{
+	.name = "fec",
+	.id = 1,
+	.dev = {
+		.release = mxs_nop_release,
+		},
+	},
+};
+#endif
+
+#if defined(CONFIG_FEC_L2SWITCH)
+static struct platform_device mxs_l2switch[] = {
+	{
+	.name = "mxs-l2switch",
 	.id = 0,
 	.dev = {
 		.release = mxs_nop_release,
@@ -451,6 +485,16 @@ static struct platform_device mxs_persistent = {
 };
 #endif
 
+#ifdef CONFIG_FSL_OTP
+static struct platform_device otp_device = {
+	.name			= "ocotp",
+	.id			= 0,
+	.dev = {
+		.release = mxs_nop_release,
+		},
+};
+#endif
+
 static inline void mxs_init_busfreq(void)
 {
 	(void)platform_device_register(&busfreq_device);
@@ -482,12 +526,12 @@ static struct mxs_dev_lookup dev_lookup[] = {
 	 },
 #endif
 
-#if defined(CONFIG_MTD_NAND_GPMI1) || \
-	defined(CONFIG_MTD_NAND_GPMI1_MODULE)
+#if defined(CONFIG_MTD_NAND_GPMI_NFC) || \
+	defined(CONFIG_MTD_NAND_GPMI_NFC_MODULE)
 	{
-	.name = "gpmi",
+	.name = GPMI_NFC_DRIVER_NAME,
 	.size = 1,
-	.pdev = &mxs_gpmi,
+	.pdev = &gpmi_nfc,
 	},
 #endif
 
@@ -497,6 +541,14 @@ static struct mxs_dev_lookup dev_lookup[] = {
 	.name = "mxs-mmc",
 	.size = ARRAY_SIZE(mxs_mmc),
 	.pdev = mxs_mmc,
+	},
+#endif
+
+#if defined(CONFIG_SPI_MXS) || defined(CONFIG_SPI_MXS_MODULE)
+	{
+	.name = "mxs-spi",
+	.size = ARRAY_SIZE(mxs_spi),
+	.pdev = mxs_spi,
 	},
 #endif
 
@@ -521,6 +573,14 @@ static struct mxs_dev_lookup dev_lookup[] = {
 	.name = "mxs-persistent",
 	.size = 1,
 	.pdev = &mxs_persistent,
+	},
+#endif
+
+#if defined(CONFIG_FSL_OTP)
+	{
+	.name = "ocotp",
+	.size = 1,
+	.pdev = &otp_device,
 	},
 #endif
 
@@ -562,6 +622,14 @@ static struct mxs_dev_lookup dev_lookup[] = {
 	.name = "mxs-fec",
 	.size = ARRAY_SIZE(mxs_fec),
 	.pdev = mxs_fec,
+	},
+#endif
+
+#if defined(CONFIG_FEC_L2SWITCH)
+	{
+	.name = "mxs-l2switch",
+	.size = ARRAY_SIZE(mxs_l2switch),
+	.pdev = mxs_l2switch,
 	},
 #endif
 
