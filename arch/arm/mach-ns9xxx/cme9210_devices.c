@@ -310,17 +310,17 @@ static struct spi_ns921x_fim spi_fim0_data = {
         .flags              = 0,
 #endif
         .gpio_base = 0,
-#if CONFIG_FIM_ZERO_SPI_CS_0_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_0_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(0, true, CONFIG_FIM_ZERO_SPI_CS_0),
 #else
         NS921X_FIM_SPI_CS_GPIOS(0, false, 0),
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_1_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_1_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(1, true, CONFIG_FIM_ZERO_SPI_CS_1),
 #else
         NS921X_FIM_SPI_CS_GPIOS(1, false, 0),
 #endif
-#if CONFIG_FIM_ZERO_SPI_CS_2_ENABLED
+#if defined(CONFIG_FIM_ZERO_SPI_CS_2_ENABLED)
         NS921X_FIM_SPI_CS_GPIOS(2, true, CONFIG_FIM_ZERO_SPI_CS_2),
 #else
         NS921X_FIM_SPI_CS_GPIOS(2, false, 0),
