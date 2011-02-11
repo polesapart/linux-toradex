@@ -1607,7 +1607,10 @@ static int mxcfb_probe(struct platform_device *pdev)
 	struct mxcfb_info *mxcfbi;
 	struct mxc_fb_platform_data *plat_data = pdev->dev.platform_data;
 	struct resource *res;
-	char *options, *mstr;
+	char *options;
+#ifdef CONFIG_MODULE_CCXMX51
+	char *mstr;
+#endif
 	char name[] = "mxcdi0fb";
 	int ret = 0;
 

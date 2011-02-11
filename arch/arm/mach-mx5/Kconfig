@@ -145,6 +145,61 @@ config MACH_MX53_LOCO
 	  Include support for MX53 LOCO platform. This includes specific
 	  configurations for the board and its peripherals.
 
+config MODULE_CCXMX53
+	bool
+
+config MACH_CCWMX53JS
+	bool "Support for the ConnectCore Wi-i.MX53 module, on the JSK base board"
+	select MODULE_CCXMX53
+	help
+	  Include support for the Digi ConnectCore Wi-i.MX53 Embedded Module, on the
+	  JumpStart Kit base board. This includes specific configurations for the
+	  peripherals on that base board.
+
+config MACH_CCWMX53
+	bool "Support for the ConnectCore Wi-i.MX53 module"
+	select MODULE_CCXMX53
+	help
+	  Include support for the Digi ConnectCore Wi-i.MX53 Embedded Module, on a
+	  custom board. The machine file should be modified to include support for
+	  the interfaces available in that board.
+
+config MACH_CCMX53JS
+	bool "Support for the ConnectCore i.MX53 module, on the JSK base board"
+	select MODULE_CCXMX53
+	help
+	  Include support for the Digi ConnectCore i.MX53 Embedded Module, on the
+	  JumpStart Kit base board. This includes specific configurations for the
+	  peripherals on that base board.
+
+config MACH_CCMX53
+	bool "Support for the ConnectCore i.MX53 module"
+	select MODULE_CCXMX53
+	help
+	  Include support for the Digi ConnectCore i.MX53 Embedded Module, on a
+	  custom board. The machine file should be modified to include support for
+	  the interfaces available in that board.
+
+choice
+	prompt "Select development board variant:"
+	default JSCCWMX53
+
+config JSCCWMX53
+	bool "ConnectCore for i.MX53 JumpStart Kit Development Board"
+	depends on MODULE_CCXMX53
+	help
+	  Select this option if you are using the development board included in
+	  Digi JumpStart Kit.
+
+config JSCCWMX53_CUSTOM
+	bool "Custom ConnectCore for i.MX53 Carrier Board"
+	depends on MODULE_CCXMX53
+	help
+	  Select this option if you are using your own custom-designed carrier
+	  board.
+
+endchoice
+
 config MACH_MX50_ARM2
 	bool "Support MX50 Armadillo2 platform"
 	select ARCH_MX50
@@ -223,9 +278,10 @@ menu "Serial Port Options"
 config UART1_ENABLED
 	bool "Enable UART1"
 	default y
-	depends on SERIAL_MXC && MODULE_CCXMX51
+	depends on SERIAL_MXC
+	depends on MODULE_CCXMX53 || MODULE_CCXMX51
 	help
-	  Enable the MX51 UART1 interface
+	  Enable the MX5X UART1 interface
 
 choice
 	prompt "Select the configuration for the UART lines:"
@@ -249,25 +305,26 @@ config UART1_IRDA_ENABLED
 	help
 	  Enable IRDA mode
 
+comment "UART2 CTS/RTS is not available on the ConnectCore Wi-i.MX51 JumpStart board if"
+	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
+comment "the support for Host1 of the Freescale USB controller is enabled."
+	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
+
 config UART2_ENABLED
 	bool "Enable UART2"
 	default y
-	depends on SERIAL_MXC && MODULE_CCXMX51
+	depends on SERIAL_MXC
+	depends on MODULE_CCXMX53 || MODULE_CCXMX51
 	help
-	  Enable the MX51 UART2 interface
+	  Enable the MX5X UART2 interface
 
 config UART2_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART2 hardware flow control"
 	default n
 	depends on UART2_ENABLED
-	depends on !USB_EHCI_ARC_H1
+	depends on (MODULE_CCXMX51 && !USB_EHCI_ARC_H1) || MODULE_CCXMX53
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
-
-comment "UART2 CTS/RTS is not available on the ConnectCore Wi-i.MX51 JumpStart board if"
-	  depends on USB_EHCI_ARC_H1
-comment "the support for Host1 of the Freescale USB controller is enabled."
-	  depends on USB_EHCI_ARC_H1
 
 config UART2_IRDA_ENABLED
 	bool "Enable IRDA mode"
@@ -277,14 +334,15 @@ config UART2_IRDA_ENABLED
 	  Enable IRDA mode
 
 comment "UART3 is not available on the ConnectCore Wi-i.MX51 JumpStart board if UART1"
-	  depends on UART1_FULL_UART_ENABLED
+	  depends on MODULE_CCXMX51 && UART1_FULL_UART_ENABLED
 comment "is configured as full UART. This may not be the case in a custom base board."
-	  depends on UART1_FULL_UART_ENABLED
+	  depends on MODULE_CCXMX51 && UART1_FULL_UART_ENABLED
 
 config UART3_ENABLED
 	bool "Enable UART3"
 	default y
-	depends on SERIAL_MXC && MODULE_CCXMX51 && !UART1_FULL_UART_ENABLED
+	depends on SERIAL_MXC
+	depends on (MODULE_CCXMX51 && !UART1_FULL_UART_ENABLED) || MODULE_CCXMX53
 	help
 	  Enable the MX51 UART3 interface
 
@@ -301,6 +359,48 @@ config UART3_CTS_RTS_ENABLED
 	depends on UART3_ENABLED
 	help
 	  Configure the UART3 RTS/CTS lines for hardware flow control operation
+
+config UART4_ENABLED
+	bool "Enable UART4"
+	default y
+	depends on SERIAL_MXC && MODULE_CCXMX53
+	help
+	  Enable the MX53 UART4 interface
+
+config UART4_IRDA_ENABLED
+	bool "Enable IRDA mode"
+	default n
+	depends on UART4_ENABLED
+	help
+	  Enable IRDA mode
+
+config UART4_CTS_RTS_ENABLED
+	bool "Configure RTS/CTS lines for UART4 hardware flow control"
+	default n
+	depends on UART4_ENABLED
+	help
+	  Configure the UART4 RTS/CTS lines for hardware flow control operation
+
+config UART5_ENABLED
+	bool "Enable UART5"
+	default y
+	depends on SERIAL_MXC && MODULE_CCXMX53
+	help
+	  Enable the MX53 UART5 interface
+
+config UART5_IRDA_ENABLED
+	bool "Enable IRDA mode"
+	default n
+	depends on UART5_ENABLED
+	help
+	  Enable IRDA mode
+
+config UART5_CTS_RTS_ENABLED
+	bool "Configure RTS/CTS lines for UART5 hardware flow control"
+	default n
+	depends on UART5_ENABLED
+	help
+	  Configure the UART5 RTS/CTS lines for hardware flow control operation
 
 endmenu
 

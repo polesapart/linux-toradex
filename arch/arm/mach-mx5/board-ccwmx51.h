@@ -12,58 +12,7 @@
 #ifndef __ASM_ARCH_MXC_BOARD_CCWMX51_H__
 #define __ASM_ARCH_MXC_BOARD_CCWMX51_H__
 
-#include <mach/mxc_uart.h>
-
-/* UART 1 configuration */
-#if defined CONFIG_UART1_ENABLED
-#define UART1_ENABLED		1
-#else
-#define UART1_ENABLED		0
-#endif
-#if defined CONFIG_UART1_IRDA_ENABLED
-#define UART1_IR		IRDA
-#else
-#define UART1_IR		NO_IRDA
-#endif
-#define UART1_MODE		MODE_DCE
-#define UART1_DMA_ENABLED	0
-
-
-/* UART 2 configuration */
-#if defined CONFIG_UART2_ENABLED
-#define UART2_ENABLED		1
-#else
-#define UART2_ENABLED		0
-#endif
-#if defined CONFIG_UART2_IRDA_ENABLED
-#define UART2_IR		IRDA
-#else
-#define UART2_IR		NO_IRDA
-#endif
-#define UART2_MODE		MODE_DCE
-#define UART2_DMA_ENABLED	0
-
-/* UART 3 configuration */
-#if defined CONFIG_UART3_ENABLED
-#define UART3_ENABLED		1
-#else
-#define UART3_ENABLED		0
-#endif
-#if defined CONFIG_UART3_IRDA_ENABLED
-#define UART3_IR		IRDA
-#else
-#define UART3_IR		NO_IRDA
-#endif
-#define UART3_MODE		MODE_DCE
-#define UART3_DMA_ENABLED	0
-
-/*!
- * Specifies if the Irda transmit path is inverting
- */
-#define MXC_IRDA_TX_INV	0
-
-#define MXC_LL_UART_PADDR	UART1_BASE_ADDR
-#define MXC_LL_UART_VADDR	AIPS1_IO_ADDRESS(UART1_BASE_ADDR)
+#include <board-ccwmx5x.h>
 
 /* Second touch interface configuration */
 #ifdef CONFIG_CCWMX51_SECOND_TOUCH

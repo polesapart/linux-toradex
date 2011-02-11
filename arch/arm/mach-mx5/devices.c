@@ -909,6 +909,31 @@ static struct resource dvfs_core_resources[] = {
 	},
 };
 
+struct mxc_dvfs_platform_data dvfs_core_data = {
+	.reg_id = "SW1",
+	.clk1_id = "cpu_clk",
+	.clk2_id = "gpc_dvfs_clk",
+	.gpc_cntr_offset = MXC_GPC_CNTR_OFFSET,
+	.gpc_vcr_offset = MXC_GPC_VCR_OFFSET,
+	.ccm_cdcr_offset = MXC_CCM_CDCR_OFFSET,
+	.ccm_cacrr_offset = MXC_CCM_CACRR_OFFSET,
+	.ccm_cdhipr_offset = MXC_CCM_CDHIPR_OFFSET,
+	.prediv_mask = 0x1F800,
+	.prediv_offset = 11,
+	.prediv_val = 3,
+	.div3ck_mask = 0xE0000000,
+	.div3ck_offset = 29,
+	.div3ck_val = 2,
+	.emac_val = 0x08,
+	.upthr_val = 25,
+	.dnthr_val = 9,
+	.pncthr_val = 33,
+	.upcnt_val = 10,
+	.dncnt_val = 10,
+	.delay_time = 30,
+	.num_wp = 3,
+};
+
 struct platform_device mxc_dvfs_core_device = {
 	.name = "mxc_dvfs_core",
 	.id = 0,
@@ -919,13 +944,6 @@ struct platform_device mxc_dvfs_core_device = {
 	.num_resources = ARRAY_SIZE(dvfs_core_resources),
 	.resource = dvfs_core_resources,
 };
-
-static inline void mxc_init_dvfs_core(void)
-{
-	if (platform_device_register(&mxc_dvfs_core_device) < 0)
-		dev_err(&mxc_dvfs_core_device.dev,
-			"Unable to register DVFS core device\n");
-}
 
 static struct resource dvfs_per_resources[] = {
 	{
@@ -938,6 +956,23 @@ static struct resource dvfs_per_resources[] = {
 		.end = MXC_INT_GPC1,
 		.flags = IORESOURCE_IRQ,
 	},
+};
+
+struct mxc_dvfsper_data dvfs_per_data = {
+	.reg_id = "SW2",
+	.clk_id = "gpc_dvfs_clk",
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.gpc_adu = 0x0,
+	.vai_mask = MXC_DVFSPMCR0_FSVAI_MASK,
+	.vai_offset = MXC_DVFSPMCR0_FSVAI_OFFSET,
+	.dvfs_enable_bit = MXC_DVFSPMCR0_DVFEN,
+	.irq_mask = MXC_DVFSPMCR0_FSVAIM,
+	.div3_offset = 0,
+	.div3_mask = 0x7,
+	.div3_div = 2,
+	.lp_high = 1200000,
+	.lp_low = 1200000,
 };
 
 struct platform_device mxc_dvfs_per_device = {

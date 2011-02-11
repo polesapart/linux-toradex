@@ -72,4 +72,9 @@
 #include "board-ccwmx51.h"
 #endif
 
+#ifdef CONFIG_MODULE_CCXMX53
+#include "board-ccwmx53.h"
+#endif
+
+
 #endif				/* __ARCH_ARM_MACH_MX51_SERIAL_H__ */

@@ -305,8 +305,8 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mx51_lpmode_device, NULL);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
 	mxc_register_device(&sdram_autogating_device, NULL);
-	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
-	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);
+	mxc_register_device(&mxc_dvfs_core_device, NULL);
+	mxc_register_device(&mxc_dvfs_per_device, NULL);
 	mxc_register_device(&mxc_iim_device, NULL);
 	mxc_register_device(&gpu_device, NULL);
 #if defined (CONFIG_MXC_SECURITY_SCC2)

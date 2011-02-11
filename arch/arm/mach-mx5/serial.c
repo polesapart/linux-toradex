@@ -208,6 +208,7 @@ static struct platform_device mxc_uart_device3 = {
 		},
 };
 
+#if defined (CONFIG_MODULE_CCXMX53)
 static struct resource mxc_uart_resources4[] = {
 	{
 		.start = UART4_BASE_ADDR,
@@ -251,20 +252,31 @@ static struct platform_device mxc_uart_device5 = {
 		.platform_data = &mxc_ports[4],
 		},
 };
+#endif
 
 static int __init mxc_init_uart(void)
 {
 	if (cpu_is_mx53() || cpu_is_mx50()) {
+#if defined CONFIG_UART1_ENABLED
 		mxc_uart_resources1[0].start -= 0x20000000;
 		mxc_uart_resources1[0].end -= 0x20000000;
+#endif
+#if defined CONFIG_UART2_ENABLED
 		mxc_uart_resources2[0].start -= 0x20000000;
 		mxc_uart_resources2[0].end -= 0x20000000;
+#endif
+#if defined CONFIG_UART3ENABLED
 		mxc_uart_resources3[0].start -= 0x20000000;
 		mxc_uart_resources3[0].end -= 0x20000000;
+#endif
+#if defined CONFIG_UART4_ENABLED
 		mxc_uart_resources4[0].start -= 0x20000000;
 		mxc_uart_resources4[0].end -= 0x20000000;
+#endif
+#if defined CONFIG_UART5_ENABLED
 		mxc_uart_resources5[0].start -= 0x20000000;
 		mxc_uart_resources5[0].end -= 0x20000000;
+#endif
 	}
 
 	/* Register all the MXC UART platform device structures */
@@ -278,8 +290,12 @@ static int __init mxc_init_uart(void)
 	platform_device_register(&mxc_uart_device3);
 #endif
 	if (cpu_is_mx53()) {
+#if defined CONFIG_UART4_ENABLED
 		platform_device_register(&mxc_uart_device4);
+#endif
+#if defined CONFIG_UART5_ENABLED
 		platform_device_register(&mxc_uart_device5);
+#endif
 	}
 	return 0;
 }
