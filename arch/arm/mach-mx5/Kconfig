@@ -42,7 +42,11 @@ config MACH_MX51_BABBAGE
 	  u-boot. This includes specific configurations for the board and its
 	  peripherals.
 
+config MODULE_CCXMX5X
+	bool
+
 config MODULE_CCXMX51
+	select MODULE_CCXMX5X
 	bool
 
 config LATE_CPU_CLK_ENABLE
@@ -147,6 +151,7 @@ config MACH_MX53_LOCO
 
 config MODULE_CCXMX53
 	bool
+	select MODULE_CCXMX5X
 
 config MACH_CCWMX53JS
 	bool "Support for the ConnectCore Wi-i.MX53 module, on the JSK base board"
