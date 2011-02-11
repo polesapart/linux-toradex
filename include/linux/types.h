@@ -204,6 +204,23 @@ struct ustat {
 	char			f_fpack[6];
 };
 
+
+#define AG_DEBUG
+#ifdef AG_DEBUG
+
+#define FTRACE_START() tracing_on()
+#define FTRACE_END() tracing_on()
+
+#define STRAIL( fmt, arg...)\
+	do { \
+		printk(KERN_INFO "AG [%s:%d]"fmt , __FUNCTION__,__LINE__, ## arg);\
+	} while (0)
+
+
+#else
+#define STRAIL(msg,args...) do {} while (0)
+#endif
+
 #endif	/* __KERNEL__ */
 #endif /*  __ASSEMBLY__ */
 #endif /* _LINUX_TYPES_H */

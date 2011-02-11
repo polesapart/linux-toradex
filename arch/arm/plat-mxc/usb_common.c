@@ -427,6 +427,7 @@ static void usbh2_set_serial_xcvr(void)
 	msleep(100);
 }
 
+#if !defined(CONFIG_MODULE_CCXMX5X)
 /*!
  * Register remote wakeup by this usb controller
  *
@@ -457,6 +458,7 @@ static int usb_register_remote_wakeup(struct platform_device *pdev)
 
 	return 0;
 }
+#endif
 
 int fsl_usb_host_init(struct platform_device *pdev)
 {
@@ -501,8 +503,11 @@ int fsl_usb_host_init(struct platform_device *pdev)
 	if (xops->init)
 		xops->init(xops);
 
+#if !defined(CONFIG_MODULE_CCXMX5X)
+	// USB wakeup not currently supported
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("%s port is not a wakeup source.\n", pdata->name);
+#endif
 
 	if (xops->xcvr_type == PORTSC_PTS_SERIAL) {
 		if (cpu_is_mx35()) {
@@ -836,8 +841,12 @@ int usbotg_init(struct platform_device *pdev)
 		}
 	}
 
+
+#if !defined(CONFIG_MODULE_CCXMX5X)
+	// USB wakeup not currently supported
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("DR is not a wakeup source.\n");
+#endif
 
 	mxc_otg_used++;
 	pr_debug("%s: success\n", __func__);
@@ -915,8 +924,11 @@ EXPORT_SYMBOL(usb_event_is_otg_wakeup);
 
 void usb_host_set_wakeup(struct device *wkup_dev, bool para)
 {
+#if !defined(CONFIG_MODULE_CCXMX5X)
+	// USB host wakeup not supported
 	struct fsl_usb2_platform_data *pdata = wkup_dev->platform_data;
 	if (pdata->wake_up_enable)
 		pdata->wake_up_enable(pdata, para);
+#endif
 }
 EXPORT_SYMBOL(usb_host_set_wakeup);
