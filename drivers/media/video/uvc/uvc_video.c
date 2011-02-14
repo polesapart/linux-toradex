@@ -130,7 +130,7 @@ static int uvc_get_video_ctrl(struct uvc_video_device *video,
 
 	ret = __uvc_query_ctrl(video->dev, query, 0, video->streaming->intfnum,
 		probe ? VS_PROBE_CONTROL : VS_COMMIT_CONTROL, data, size,
-		UVC_CTRL_STREAMING_TIMEOUT);
+		uvc_timeout_param);
 
 	if ((query == GET_MIN || query == GET_MAX) && ret == 2) {
 		/* Some cameras, mostly based on Bison Electronics chipsets,
@@ -235,7 +235,7 @@ static int uvc_set_video_ctrl(struct uvc_video_device *video,
 	ret = __uvc_query_ctrl(video->dev, SET_CUR, 0,
 		video->streaming->intfnum,
 		probe ? VS_PROBE_CONTROL : VS_COMMIT_CONTROL, data, size,
-		UVC_CTRL_STREAMING_TIMEOUT);
+		uvc_timeout_param);
 	if (ret != size) {
 		uvc_printk(KERN_ERR, "Failed to set UVC %s control : "
 			"%d (exp. %u).\n", probe ? "probe" : "commit",
@@ -707,10 +707,6 @@ static void uvc_video_complete(struct urb *urb)
 	if ((ret = usb_submit_urb(urb, GFP_ATOMIC)) < 0) {
 		uvc_printk(KERN_ERR, "Failed to resubmit video URB (%d).\n",
 			ret);
-		if (ret == -ENODEV) {
-			uvc_queue_cancel(queue, 1);
-			return;
-		}
 	}
 }
 

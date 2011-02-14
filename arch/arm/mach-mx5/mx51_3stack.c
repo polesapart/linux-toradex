@@ -184,77 +184,15 @@ static struct mxc_vpu_platform_data mxc_vpu_data = {
 	.reset = mx5_vpu_reset,
 };
 
-/* workaround for ecspi chipselect pin may not keep correct level when idle */
-static void mx51_3ds_gpio_spi_chipselect_active(int cspi_mode, int status,
-					     int chipselect)
-{
-	u32 gpio;
-
-	switch (cspi_mode) {
-	case 1:
-		switch (chipselect) {
-		case 0x1:
-			mxc_request_iomux(MX51_PIN_CSPI1_SS0,
-					  IOMUX_CONFIG_ALT0);
-			mxc_iomux_set_pad(MX51_PIN_CSPI1_SS0,
-					  PAD_CTL_HYS_ENABLE |
-					  PAD_CTL_PKE_ENABLE |
-					  PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
-			break;
-		case 0x2:
-			gpio = IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0);
-			mxc_request_iomux(MX51_PIN_CSPI1_SS0,
-					  IOMUX_CONFIG_GPIO);
-			gpio_request(gpio, "cspi1_ss0");
-			gpio_direction_output(gpio, 0);
-			gpio_set_value(gpio, 1 & (~status));
-			break;
-		default:
-			break;
-		}
-		break;
-	case 2:
-		break;
-	case 3:
-		break;
-	default:
-		break;
-	}
-}
-
-static void mx51_3ds_gpio_spi_chipselect_inactive(int cspi_mode, int status,
-					       int chipselect)
-{
-	switch (cspi_mode) {
-	case 1:
-		switch (chipselect) {
-		case 0x1:
-			mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_ALT0);
-			mxc_request_iomux(MX51_PIN_CSPI1_SS0,
-					  IOMUX_CONFIG_GPIO);
-			mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
-			break;
-		case 0x2:
-			mxc_free_iomux(MX51_PIN_CSPI1_SS0, IOMUX_CONFIG_GPIO);
-			break;
-		default:
-			break;
-		}
-		break;
-	case 2:
-		break;
-	case 3:
-		break;
-	default:
-		break;
-	}
-}
-
+extern void mx51_babbage_gpio_spi_chipselect_active(int cspi_mode, int status,
+						    int chipselect);
+extern void mx51_babbage_gpio_spi_chipselect_inactive(int cspi_mode, int status,
+						      int chipselect);
 static struct mxc_spi_master mxcspi1_data = {
 	.maxchipselect = 4,
 	.spi_version = 23,
-	.chipselect_active = mx51_3ds_gpio_spi_chipselect_active,
-	.chipselect_inactive = mx51_3ds_gpio_spi_chipselect_inactive,
+	.chipselect_active = mx51_babbage_gpio_spi_chipselect_active,
+	.chipselect_inactive = mx51_babbage_gpio_spi_chipselect_inactive,
 };
 
 static struct mxc_i2c_platform_data mxci2c_data = {
@@ -278,11 +216,11 @@ static struct mxc_dvfs_platform_data dvfs_core_data = {
 	.reg_id = "SW1",
 	.clk1_id = "cpu_clk",
 	.clk2_id = "gpc_dvfs_clk",
-	.gpc_cntr_offset = MXC_GPC_CNTR_OFFSET,
-	.gpc_vcr_offset = MXC_GPC_VCR_OFFSET,
-	.ccm_cdcr_offset = MXC_CCM_CDCR_OFFSET,
-	.ccm_cacrr_offset = MXC_CCM_CACRR_OFFSET,
-	.ccm_cdhipr_offset = MXC_CCM_CDHIPR_OFFSET,
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.ccm_cdcr_reg_addr = MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = MXC_CCM_CDHIPR,
 	.prediv_mask = 0x1F800,
 	.prediv_offset = 11,
 	.prediv_val = 3,
@@ -950,8 +888,6 @@ static void __init mxc_board_init(void)
 
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
-	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "csi_mclk1");
-	mxc_ipu_data.csi_clk[1] = clk_get(NULL, "csi_mclk2");
 
 	mxc_spdif_data.spdif_core_clk = clk_get(NULL, "spdif_xtal_clk");
 	clk_put(mxc_spdif_data.spdif_core_clk);
@@ -1020,8 +956,6 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
 	mxc_register_device(&mxc_bt_device, &mxc_bt_data);
 	mxc_register_device(&mxc_gps_device, &gps_data);
-	mxc_register_device(&mxc_v4l2_device, NULL);
-	mxc_register_device(&mxc_v4l2out_device, NULL);
 
 	mx5_usb_dr_init();
 	mx5_usbh1_init();

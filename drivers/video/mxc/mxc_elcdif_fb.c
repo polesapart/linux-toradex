@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -64,8 +64,7 @@
 #define ELCDIF_PIX_FMT_ABGR32  fourcc('A', 'B', 'G', 'R')
 
 struct mxc_elcdif_fb_data {
-	int cur_blank;
-	int next_blank;
+	int is_blank;
 	int output_pix_fmt;
 	int elcdif_mode;
 	ssize_t mem_size;
@@ -518,7 +517,7 @@ static inline void mxc_init_elcdif(void)
 	return;
 }
 
-int mxc_elcdif_frame_addr_setup(dma_addr_t phys)
+static inline int mxc_elcdif_dma_init(dma_addr_t phys)
 {
 	int ret = 0;
 
@@ -807,7 +806,7 @@ static int mxc_elcdif_fb_set_par(struct fb_info *fbi)
 			return -ENOMEM;
 	}
 
-	if (data->next_blank != FB_BLANK_UNBLANK)
+	if (data->is_blank)
 		return 0;
 
 	/* init next panel */
@@ -846,7 +845,7 @@ static int mxc_elcdif_fb_set_par(struct fb_info *fbi)
 			   data->output_pix_fmt,
 			   sig_cfg,
 			   1);
-	mxc_elcdif_frame_addr_setup(fbi->fix.smem_start);
+	mxc_elcdif_dma_init(fbi->fix.smem_start);
 	mxc_elcdif_run();
 	mxc_elcdif_blank_panel(FB_BLANK_UNBLANK);
 
@@ -951,7 +950,7 @@ static int mxc_elcdif_fb_wait_for_vsync(u32 channel, struct fb_info *info)
 				(struct mxc_elcdif_fb_data *)info->par;
 	int ret = 0;
 
-	if (data->cur_blank != FB_BLANK_UNBLANK) {
+	if (data->is_blank) {
 		dev_err(info->device, "can't wait for VSYNC when fb "
 			"is blank\n");
 		return -EINVAL;
@@ -991,15 +990,6 @@ static int mxc_elcdif_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (!get_user(channel, (__u32 __user *) arg))
 			ret = mxc_elcdif_fb_wait_for_vsync(channel, info);
 		break;
-	case MXCFB_GET_FB_BLANK:
-		{
-			struct mxc_elcdif_fb_data *data =
-				(struct mxc_elcdif_fb_data *)info->par;
-
-			if (put_user(data->cur_blank, (__u32 __user *)arg))
-				return -EFAULT;
-			break;
-		}
 	default:
 		break;
 	}
@@ -1012,28 +1002,22 @@ static int mxc_elcdif_fb_blank(int blank, struct fb_info *info)
 				(struct mxc_elcdif_fb_data *)info->par;
 	int ret = 0;
 
-	if (data->cur_blank == blank)
-		return ret;
-
-	data->next_blank = blank;
-
-	if (!g_elcdif_pix_clk_enable) {
-		clk_enable(g_elcdif_pix_clk);
-		g_elcdif_pix_clk_enable = true;
-	}
-	ret = mxc_elcdif_blank_panel(blank);
-	if (ret == 0)
-		data->cur_blank = blank;
-	else
+	if (data->is_blank == (blank != FB_BLANK_UNBLANK))
 		return ret;
 
 	if (blank == FB_BLANK_UNBLANK) {
-		ret = mxc_elcdif_fb_set_par(info);
-		if (ret)
-			return ret;
+		if (!g_elcdif_pix_clk_enable) {
+			clk_enable(g_elcdif_pix_clk);
+			g_elcdif_pix_clk_enable = true;
+		}
 	}
+	ret = mxc_elcdif_blank_panel(blank);
+	if (ret == 0)
+		data->is_blank = (blank != FB_BLANK_UNBLANK);
+	else
+		return ret;
 
-	if (data->cur_blank != FB_BLANK_UNBLANK) {
+	if (data->is_blank) {
 		if (g_elcdif_axi_clk_enable) {
 			clk_disable(g_elcdif_axi_clk);
 			g_elcdif_axi_clk_enable = false;
@@ -1064,7 +1048,7 @@ static int mxc_elcdif_fb_pan_display(struct fb_var_screeninfo *var,
 	int ret = 0;
 	unsigned long base;
 
-	if (data->cur_blank != FB_BLANK_UNBLANK) {
+	if (data->is_blank) {
 		dev_err(info->device, "can't do pan display when fb "
 			"is blank\n");
 		return -EINVAL;
@@ -1187,7 +1171,7 @@ static int mxc_elcdif_fb_probe(struct platform_device *pdev)
 	}
 
 	data = (struct mxc_elcdif_fb_data *)fbi->par;
-	data->cur_blank = data->next_blank = FB_BLANK_UNBLANK;
+	data->is_blank = false;
 
 	fbi->var.activate = FB_ACTIVATE_NOW;
 	fbi->fbops = &mxc_elcdif_fb_ops;
@@ -1350,9 +1334,9 @@ static int mxc_elcdif_fb_suspend(struct platform_device *pdev,
 
 	acquire_console_sem();
 	fb_set_suspend(fbi, 1);
-	saved_blank = data->cur_blank;
+	saved_blank = data->is_blank;
 	mxc_elcdif_fb_blank(FB_BLANK_POWERDOWN, fbi);
-	data->next_blank = saved_blank;
+	data->is_blank = saved_blank;
 	if (!g_elcdif_pix_clk_enable) {
 		clk_enable(g_elcdif_pix_clk);
 		g_elcdif_pix_clk_enable = true;
@@ -1363,11 +1347,7 @@ static int mxc_elcdif_fb_suspend(struct platform_device *pdev,
 		clk_disable(g_elcdif_pix_clk);
 		g_elcdif_pix_clk_enable = false;
 	}
-	if (g_elcdif_axi_clk_enable) {
-		clk_disable(g_elcdif_axi_clk);
-		g_elcdif_axi_clk_enable = false;
-	}
-	release_console_sem();
+
 	return 0;
 }
 
@@ -1377,7 +1357,20 @@ static int mxc_elcdif_fb_resume(struct platform_device *pdev)
 	struct mxc_elcdif_fb_data *data = (struct mxc_elcdif_fb_data *)fbi->par;
 
 	acquire_console_sem();
-	mxc_elcdif_fb_blank(data->next_blank, fbi);
+	if (!g_elcdif_pix_clk_enable) {
+		clk_enable(g_elcdif_pix_clk);
+		g_elcdif_pix_clk_enable = true;
+	}
+	mxc_init_elcdif();
+	mxc_elcdif_init_panel();
+	mxc_elcdif_dma_init(fbi->fix.smem_start);
+	mxc_elcdif_run();
+	if (g_elcdif_pix_clk_enable) {
+		clk_disable(g_elcdif_pix_clk);
+		g_elcdif_pix_clk_enable = false;
+	}
+	if (!data->is_blank)
+		mxc_elcdif_fb_blank(FB_BLANK_UNBLANK, fbi);
 	fb_set_suspend(fbi, 0);
 	release_console_sem();
 

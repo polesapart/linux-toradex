@@ -235,7 +235,6 @@ struct mxc_ipu_config {
 	int rev;
 	void (*reset) (void);
 	struct clk *di_clk[2];
-	struct clk *csi_clk[2];
 };
 
 struct mxc_ir_platform_data {
@@ -324,29 +323,6 @@ struct ccwmx51_lcd_pdata {
 	void (*init) (int);
 	void (*deinit) (int);
 	void (*bl_enable) (int, int);
-};
-
-struct mxc_epdc_fb_mode {
-	struct fb_videomode *vmode;
-	int vscan_holdoff;
-	int sdoed_width;
-	int sdoed_delay;
-	int sdoez_width;
-	int sdoez_delay;
-	int gdclk_hp_offs;
-	int gdsp_offs;
-	int gdoe_offs;
-	int gdclk_offs;
-	int num_ce;
-};
-
-struct mxc_epdc_fb_platform_data {
-	struct mxc_epdc_fb_mode *epdc_mode;
-	int num_modes;
-	void (*get_pins) (void);
-	void (*put_pins) (void);
-	void (*enable_pins) (void);
-	void (*disable_pins) (void);
 };
 
 struct mxc_tsc_platform_data {
@@ -634,18 +610,6 @@ struct mxc_sim_platform_data {
 	unsigned int detect; /* 1 have detect pin, 0 not */
 };
 
-struct fsl_otp_data {
-	char 		**fuse_name;
-	char		*regulator_name;
-	unsigned int 	fuse_num;
-};
-
-struct mxs_dma_plat_data {
-	unsigned int burst8:1;
-	unsigned int burst:1;
-	unsigned int chan_base;
-	unsigned int chan_num;
-};
 #endif				/* __ASSEMBLY__ */
 
 #define MUX_IO_P		29

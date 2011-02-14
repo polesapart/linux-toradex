@@ -318,34 +318,22 @@ static void _ipu_dc_map_clear(int map)
 }
 
 static void _ipu_dc_write_tmpl(int word, u32 opcode, u32 operand, int map,
-			       int wave, int glue, int sync, int stop)
+			       int wave, int glue, int sync)
 {
 	u32 reg;
+	int stop = 1;
 
-	if (opcode == WRG) {
-		reg = sync;
-		reg |= (glue << 4);
-		reg |= (++wave << 11);
-		reg |= ((operand & 0x1FFFF) << 15);
-		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2);
+	reg = sync;
+	reg |= (glue << 4);
+	reg |= (++wave << 11);
+	reg |= (++map << 15);
+	reg |= (operand << 20) & 0xFFF00000;
+	__raw_writel(reg, ipu_dc_tmpl_reg + word * 2);
 
-		reg = (operand >> 17);
-		reg |= opcode << 7;
-		reg |= (stop << 9);
-		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2 + 1);
-	} else {
-		reg = sync;
-		reg |= (glue << 4);
-		reg |= (++wave << 11);
-		reg |= (++map << 15);
-		reg |= (operand << 20) & 0xFFF00000;
-		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2);
-
-		reg = (operand >> 12);
-		reg |= opcode << 4;
-		reg |= (stop << 9);
-		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2 + 1);
-	}
+	reg = (operand >> 12);
+	reg |= opcode << 4;
+	reg |= (stop << 9);
+	__raw_writel(reg, ipu_dc_tmpl_reg + word * 2 + 1);
 }
 
 static void _ipu_dc_link_event(int chan, int event, int addr, int priority)
@@ -735,26 +723,6 @@ static bool dc_swap;
 static irqreturn_t dc_irq_handler(int irq, void *dev_id)
 {
 	struct completion *comp = dev_id;
-	uint32_t reg;
-	uint32_t dc_chan;
-
-	if (irq == IPU_IRQ_DC_FC_1)
-		dc_chan = 1;
-	else
-		dc_chan = 5;
-
-	if (!dc_swap) {
-		reg = __raw_readl(DC_WR_CH_CONF(dc_chan));
-		reg &= ~DC_WR_CH_CONF_PROG_TYPE_MASK;
-		__raw_writel(reg, DC_WR_CH_CONF(dc_chan));
-
-		reg = __raw_readl(IPU_DISP_GEN);
-		if (g_dc_di_assignment[dc_chan])
-			reg &= ~DI1_COUNTER_RELEASE;
-		else
-			reg &= ~DI0_COUNTER_RELEASE;
-		__raw_writel(reg, IPU_DISP_GEN);
-	}
 
 	complete(comp);
 	return IRQ_HANDLED;
@@ -838,6 +806,19 @@ void _ipu_dp_dc_disable(ipu_channel_t channel, bool swap)
 		__raw_writel(reg, DC_WR_CH_CONF(dc_chan));
 		spin_unlock_irqrestore(&ipu_lock, lock_flags);
 	} else {
+		spin_lock_irqsave(&ipu_lock, lock_flags);
+		reg = __raw_readl(DC_WR_CH_CONF(dc_chan));
+		reg &= ~DC_WR_CH_CONF_PROG_TYPE_MASK;
+		__raw_writel(reg, DC_WR_CH_CONF(dc_chan));
+
+		reg = __raw_readl(IPU_DISP_GEN);
+		if (g_dc_di_assignment[dc_chan])
+			reg &= ~DI1_COUNTER_RELEASE;
+		else
+			reg &= ~DI0_COUNTER_RELEASE;
+		__raw_writel(reg, IPU_DISP_GEN);
+
+		spin_unlock_irqrestore(&ipu_lock, lock_flags);
 		/* Clock is already off because it must be done quickly, but
 		   we need to fix the ref count */
 		clk_disable(g_pixel_clk[g_dc_di_assignment[dc_chan]]);
@@ -1062,13 +1043,9 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	dev_dbg(g_ipu_dev, "pixel clk = %d\n", pixel_clk);
 
 	if (sig.ext_clk) {
-		/*
-		 * Set the  PLL to be an even multiple of the pixel clock.
-		 * Not round div for tvout and ldb.
-		 * Did not consider both DI come from the same ext clk, if
-		 * meet such case, ext clk rate should be set specially.
-		 */
-		if (clk_get_usecount(g_pixel_clk[disp]) == 0) {
+		/* Set the  PLL to be an even multiple of the pixel clock. not round div for tvout*/
+		if ((clk_get_usecount(g_pixel_clk[0]) == 0) &&
+				(clk_get_usecount(g_pixel_clk[1]) == 0)) {
 			di_parent = clk_get_parent(g_di_clk[disp]);
 			if (strcmp(di_parent->name, "tve_clk") != 0 &&
 			    strcmp(di_parent->name, "ldb_di0_clk") != 0 &&
@@ -1117,7 +1094,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	di_gen = __raw_readl(DI_GENERAL(disp));
 
 	if (sig.interlaced) {
-		if (g_ipu_hw_rev >= 2) {
+		if (cpu_is_mx51_rev(CHIP_REV_2_0)) {
 			/* Setup internal HSYNC waveform */
 			_ipu_di_sync_config(
 					disp, 			/* display */
@@ -1357,7 +1334,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		}
 
 		/* Init template microcode */
-		_ipu_dc_write_tmpl(0, WROD(0), 0, map, SYNC_WAVE, 0, 8, 1);
+		_ipu_dc_write_tmpl(0, WROD(0), 0, map, SYNC_WAVE, 0, 8);
 
 		if (sig.Hsync_pol)
 			di_gen |= DI_GEN_POLARITY_3;
@@ -1424,27 +1401,27 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				(pixel_fmt == IPU_PIX_FMT_UYVY) ||
 				(pixel_fmt == IPU_PIX_FMT_YVYU) ||
 				(pixel_fmt == IPU_PIX_FMT_VYUY)) {
-				_ipu_dc_write_tmpl(8, WROD(0), 0, (map - 1), SYNC_WAVE, 0, 5, 1);
-				_ipu_dc_write_tmpl(9, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+				_ipu_dc_write_tmpl(8, WROD(0), 0, (map - 1), SYNC_WAVE, 0, 5);
+				_ipu_dc_write_tmpl(9, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 				/* configure user events according to DISP NUM */
 				__raw_writel((width - 1), DC_UGDE_3(disp));
 			}
-		   _ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
-		   _ipu_dc_write_tmpl(3, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
-		   _ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+		   _ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+		   _ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+		   _ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		} else {
 			if ((pixel_fmt == IPU_PIX_FMT_YUYV) ||
 				(pixel_fmt == IPU_PIX_FMT_UYVY) ||
 				(pixel_fmt == IPU_PIX_FMT_YVYU) ||
 				(pixel_fmt == IPU_PIX_FMT_VYUY)) {
-				_ipu_dc_write_tmpl(10, WROD(0), 0, (map - 1), SYNC_WAVE, 0, 5, 1);
-				_ipu_dc_write_tmpl(11, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+				_ipu_dc_write_tmpl(10, WROD(0), 0, (map - 1), SYNC_WAVE, 0, 5);
+				_ipu_dc_write_tmpl(11, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 				/* configure user events according to DISP NUM */
 				__raw_writel(width - 1, DC_UGDE_3(disp));
 			}
-		   _ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
-		   _ipu_dc_write_tmpl(6, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
-		   _ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+		   _ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5);
+		   _ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5);
+		   _ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5);
 		}
 
 		if (sig.Hsync_pol)
@@ -1531,7 +1508,7 @@ int ipu_init_async_panel(int disp, int type, uint32_t cycle_time,
 		_ipu_di_data_pin_config(disp, ASYNC_SER_WAVE, DI_PIN_SER_RS,
 					2, 0, 0);
 
-		_ipu_dc_write_tmpl(0x64, WROD(0), 0, map, ASYNC_SER_WAVE, 0, 0, 1);
+		_ipu_dc_write_tmpl(0x64, WROD(0), 0, map, ASYNC_SER_WAVE, 0, 0);
 
 		/* Configure DC for serial panel */
 		__raw_writel(0x14, DC_DISP_CONF1(DC_DISP_ID_SERIAL));
@@ -1807,39 +1784,6 @@ int32_t ipu_disp_set_window_pos(ipu_channel_t channel, int16_t x_pos,
 	return 0;
 }
 EXPORT_SYMBOL(ipu_disp_set_window_pos);
-
-int32_t ipu_disp_get_window_pos(ipu_channel_t channel, int16_t *x_pos,
-				int16_t *y_pos)
-{
-	u32 reg;
-	unsigned long lock_flags;
-	uint32_t flow = 0;
-
-	if (channel == MEM_FG_SYNC)
-		flow = DP_SYNC;
-	else if (channel == MEM_FG_ASYNC0)
-		flow = DP_ASYNC0;
-	else if (channel == MEM_FG_ASYNC1)
-		flow = DP_ASYNC1;
-	else
-		return -EINVAL;
-
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
-	spin_lock_irqsave(&ipu_lock, lock_flags);
-
-	reg = __raw_readl(DP_FG_POS(flow));
-
-	*x_pos = (reg >> 16) & 0x7FF;
-	*y_pos = reg & 0x7FF;
-
-	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
-
-	return 0;
-}
-EXPORT_SYMBOL(ipu_disp_get_window_pos);
 
 void ipu_disp_direct_write(ipu_channel_t channel, u32 value, u32 offset)
 {

@@ -25,7 +25,6 @@
 #include <mach/hardware.h>
 #include <mach/regs-power.h>
 #include <mach/regs-rtc.h>
-#include "regs-pinctrl.h"
 #include "regs-clkctrl.h"
 #include "regs-dram.h"
 #include "sleep.h"
@@ -40,103 +39,10 @@
 
 #define HW_DRAM_CTL17_ADDR \
 	(MX28_SOC_IO_ADDRESS(DRAM_PHYS_ADDR) + HW_DRAM_CTL17)
-#define HW_DRAM_CTL22_ADDR \
-	(MX28_SOC_IO_ADDRESS(DRAM_PHYS_ADDR) + HW_DRAM_CTL22)
-
 #define HW_RTC_PERSISTENT0_ADDR \
 	(MX28_SOC_IO_ADDRESS(RTC_PHYS_ADDR) + HW_RTC_PERSISTENT0)
-#define HW_CLKCTRL_EMI_ADDR \
-	(MX28_SOC_IO_ADDRESS(CLKCTRL_PHYS_ADDR) + HW_CLKCTRL_EMI)
-#define HW_CLKCTRL_PLL0CTRL0_ADDR \
-	(MX28_SOC_IO_ADDRESS(CLKCTRL_PHYS_ADDR) + HW_CLKCTRL_PLL0CTRL0)
-#define HW_POWER_VDDIOCTRL_ADDR \
-	(MX28_SOC_IO_ADDRESS(POWER_PHYS_ADDR) + HW_POWER_VDDIOCTRL)
-#define HW_POWER_VDDDCTRL_ADDR \
-	(MX28_SOC_IO_ADDRESS(POWER_PHYS_ADDR) + HW_POWER_VDDDCTRL)
-#define HW_POWER_VDDACTRL_ADDR \
-	(MX28_SOC_IO_ADDRESS(POWER_PHYS_ADDR) + HW_POWER_VDDACTRL)
-#define HW_PINCTRL_EMI_DS_CTRL_ADDR \
-	(MX28_SOC_IO_ADDRESS(PINCTRL_PHYS_ADDR) + HW_PINCTRL_EMI_DS_CTRL)
-
-#define HW_POWER_LOOPCTRL_ADDR \
-	(MX28_SOC_IO_ADDRESS(POWER_PHYS_ADDR) + HW_POWER_LOOPCTRL)
-
-#define HW_POWER_MINPWR_ADDR \
-	(MX28_SOC_IO_ADDRESS(POWER_PHYS_ADDR) + HW_POWER_MINPWR)
 
 #define PHYS_RAM_START		0x40000000
-
-#define LOWER_VDDIO 6
-#define LOWER_VDDA 9
-#define LOWER_VDDD 0x16
-
-#define VDDIOCTRL_BACKUP 0
-#define VDDACTRL_BACKUP 1
-#define VDDDCTRL_BACKUP 2
-#define POWER_LOOPCTRL_BACKUP 3
-#define POWER_MINPWR_BACKUP 4
-
-.macro PM_BITS_SET, addr, val
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr	r1, [r0]
-	orr	r1, r1, #(\val)
-	str r1, [r0]
-.endm
-
-.macro PM_BITS_CLR, addr, val
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr	r1, [r0]
-	bic	r1, r1, #(\val)
-	str r1, [r0]
-.endm
-
-.macro PM_BACKUP_REG, addr, num
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr	r1, [r0]
-	str r1, __mx28_temp_stack + \num * 4
-.endm
-
-.macro PM_WRITE_REG_MASK, addr, bitmask, val
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr	r1, [r0]
-	bic r1, r1, #(\bitmask)
-	orr r1, r1, #(\val)
-	str r1, [r0]
-.endm
-
-.macro PM_SET_AND_BACKUP_REG, addr, bitmask, val, num
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr	r1, [r0]
-	str r1, __mx28_temp_stack + \num * 4
-	bic r1, r1, #(\bitmask)
-	orr r1, r1, #(\val)
-	str r1, [r0]
-.endm
-
-.macro PM_SET_RESTORE_REG, addr, num
-	mov	r0, #(\addr & 0x000000FF)
-	orr	r0, r0, #(\addr & 0x0000FF00)
-	orr	r0, r0, #(\addr & 0x00FF0000)
-	orr	r0, r0, #(\addr & 0xFF000000)
-	ldr r1, __mx28_temp_stack + \num * 4
-	str r1, [r0]
-.endm
-
 
 .global cpu_arm926_switch_mm
 
@@ -153,6 +59,7 @@ ENTRY(mx28_cpu_standby)
 	ldr	r1, __mx28_flush_cache_addr
 	mov	lr, pc
 	mov	pc, r1
+
 	@ put DRAM into self refresh
 	mov	r0, #(HW_DRAM_CTL17_ADDR & 0x000000FF)
 	orr	r0, r0, #(HW_DRAM_CTL17_ADDR & 0x0000FF00)
@@ -162,67 +69,6 @@ ENTRY(mx28_cpu_standby)
 	orr	r1, r1, #(BM_DRAM_CTL17_SREFRESH)
 	str	r1, [r0]
 	@ wait for it to actually happen
-	mov	r0, #24 << 5
-11:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	11b
-
-	@ gate clk
-	mov	r0, #(HW_CLKCTRL_EMI_ADDR & 0x000000FF)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0x0000FF00)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0x00FF0000)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0xFF000000)
-	ldr	r1, [r0]
-	orr	r1, r1, #(BM_CLKCTRL_EMI_CLKGATE)
-	str	r1, [r0]
-
-//	PM_SET_AND_BACKUP_REG HW_PINCTRL_EMI_DS_CTRL_ADDR,\
-//	BM_PINCTRL_EMI_DS_CTRL_DDR_MODE,\
-//	BF_PINCTRL_EMI_DS_CTRL_DDR_MODE(0x1), 4
-
-	// vddio
-	PM_SET_AND_BACKUP_REG HW_POWER_VDDIOCTRL_ADDR,\
-	BM_POWER_VDDIOCTRL_TRG, LOWER_VDDIO, VDDIOCTRL_BACKUP
-	mov	r0, #24 << 10
-1:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	1b
-
-	PM_SET_AND_BACKUP_REG HW_POWER_VDDACTRL_ADDR,\
-	BM_POWER_VDDACTRL_TRG, LOWER_VDDA, VDDACTRL_BACKUP
-	mov	r0, #24 << 10
-2:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	2b
-
-	PM_SET_AND_BACKUP_REG HW_POWER_VDDDCTRL_ADDR,\
-	BM_POWER_VDDDCTRL_TRG, LOWER_VDDD, VDDDCTRL_BACKUP
-	mov	r0, #24 << 10
-3:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	3b
-
-	PM_BACKUP_REG HW_POWER_LOOPCTRL_ADDR, POWER_LOOPCTRL_BACKUP
-	PM_BACKUP_REG HW_POWER_MINPWR_ADDR, POWER_MINPWR_BACKUP
-
-//	PM_BITS_CLR	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_EN_RCSCALE
-//	PM_WRITE_REG_MASK	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_DC_R,\
-//		(2<<BP_POWER_LOOPCTRL_DC_R)
-
-	// half fets
-	PM_BITS_SET HW_POWER_MINPWR_ADDR, BM_POWER_MINPWR_HALF_FETS
-
-	PM_BITS_CLR	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_CM_HYST_THRESH
-	PM_BITS_CLR	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_EN_CM_HYST
-	PM_BITS_CLR	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_EN_DF_HYST
-
-	// enable PFM
-	PM_BITS_SET	HW_POWER_LOOPCTRL_ADDR, BM_POWER_LOOPCTRL_HYST_SIGN
-	PM_BITS_SET HW_POWER_MINPWR_ADDR, BM_POWER_MINPWR_EN_DC_PFM
-
-
-    //Gated PLL0
-	PM_BITS_CLR	HW_CLKCTRL_PLL0CTRL0_ADDR, BM_CLKCTRL_PLL0CTRL0_POWER
 
 	@ do enter standby
 	mov	r0, #(HW_CLKCTRL_CPU_ADDR & 0x000000FF)
@@ -243,39 +89,6 @@ ENTRY(mx28_cpu_standby)
 	nop
 	nop
 
-	PM_BITS_SET	HW_CLKCTRL_PLL0CTRL0_ADDR, BM_CLKCTRL_PLL0CTRL0_POWER
-
-	PM_SET_RESTORE_REG HW_POWER_MINPWR_ADDR, POWER_MINPWR_BACKUP
-
-	PM_SET_RESTORE_REG HW_POWER_LOOPCTRL_ADDR, POWER_LOOPCTRL_BACKUP
-
-	// vddio
-	PM_SET_RESTORE_REG HW_POWER_VDDIOCTRL_ADDR, VDDIOCTRL_BACKUP
-	mov	r0, #24 << 10
-10:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	10b
-	PM_SET_RESTORE_REG HW_POWER_VDDACTRL_ADDR, VDDACTRL_BACKUP
-	mov	r0, #24 << 10
-20:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	20b
-	PM_SET_RESTORE_REG HW_POWER_VDDDCTRL_ADDR, VDDDCTRL_BACKUP
-	mov	r0, #24 << 10
-30:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	30b
-
-	@ ungate clk
-	mov	r0, #(HW_CLKCTRL_EMI_ADDR & 0x000000FF)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0x0000FF00)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0x00FF0000)
-	orr	r0, r0, #(HW_CLKCTRL_EMI_ADDR & 0xFF000000)
-	ldr	r1, [r0]
-	bic	r1, r1, #(BM_CLKCTRL_EMI_CLKGATE)
-	str	r1, [r0]
-
-//	PM_SET_RESTORE_REG HW_PINCTRL_EMI_DS_CTRL_ADDR, 4
 	@ restore normal DRAM mode
 	mov	r0, #(HW_DRAM_CTL17_ADDR & 0x000000FF)
 	orr	r0, r0, #(HW_DRAM_CTL17_ADDR & 0x0000FF00)
@@ -285,10 +98,6 @@ ENTRY(mx28_cpu_standby)
 	bic	r1, r1, #BM_DRAM_CTL17_SREFRESH
 	str	r1, [r0]
 	@ wait for it to actually happen
-	mov	r0, #24 << 5
-12:	sub	r0, r0, #1
-	cmp	r0, #0
-	bne	12b
 
 	nop
 	nop
@@ -299,7 +108,7 @@ ENTRY(mx28_cpu_standby)
 
 	.space	0x100
 __mx28_temp_stack:
-	.space	128
+	.word	0
 
 #ifdef CONFIG_STMP378X_RAM_FREQ_SCALING
 #include "emi.inc"

@@ -513,9 +513,12 @@ static irqreturn_t tve_detect_handler(int irq, void *data)
 /* Re-construct clk for tve display */
 static inline void tve_recfg_fb(struct fb_info *fbi)
 {
+	struct fb_var_screeninfo var;
+
+	memset(&var, 0, sizeof(var));
+	fb_videomode_to_var(&var, fbi->mode);
 	fbi->flags &= ~FBINFO_MISC_USEREVENT;
-	fbi->var.activate |= FB_ACTIVATE_FORCE;
-	fb_set_var(fbi, &fbi->var);
+	fb_set_var(fbi, &var);
 }
 
 int tve_fb_event(struct notifier_block *nb, unsigned long val, void *v)

@@ -132,6 +132,8 @@ static int pxp_ioc_config_chan(unsigned long arg)
 
 	init_waitqueue_head(&(irq_info[chan_id].waitq));
 
+	/* Fixme */
+	mdelay(100);
 	/* find the channel */
 	spin_lock(&pxp_chan_lock);
 	list_for_each_entry(info, &list, list) {
@@ -484,7 +486,7 @@ static int __devexit pxp_device_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver pxp_client_driver = {
+static struct platform_driver pxp_device = {
 	.probe = pxp_device_probe,
 	.remove = __exit_p(pxp_device_remove),
 	.driver = {
@@ -495,12 +497,12 @@ static struct platform_driver pxp_client_driver = {
 
 static int __init pxp_device_init(void)
 {
-	return platform_driver_register(&pxp_client_driver);
+	return platform_driver_register(&pxp_device);
 }
 
 static void __exit pxp_device_exit(void)
 {
-	platform_driver_unregister(&pxp_client_driver);
+	platform_driver_unregister(&pxp_device);
 }
 
 module_init(pxp_device_init);

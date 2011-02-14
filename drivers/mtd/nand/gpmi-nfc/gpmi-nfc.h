@@ -44,6 +44,7 @@
 
 #include <mach/system.h>
 #include <mach/dmaengine.h>
+#include <mach/device.h>
 #include <mach/clock.h>
 
 /* Driver header files. */
@@ -85,12 +86,10 @@
 struct resources {
 	void          *gpmi_regs;
 	void          *bch_regs;
-	unsigned int  bch_low_interrupt;
-	unsigned int  bch_high_interrupt;
+	unsigned int  bch_interrupt;
 	unsigned int  dma_low_channel;
 	unsigned int  dma_high_channel;
-	unsigned int  dma_low_interrupt;
-	unsigned int  dma_high_interrupt;
+	unsigned int  dma_interrupt;
 	struct clk    *clock;
 };
 
@@ -626,7 +625,6 @@ extern int gpmi_nfc_compute_hardware_timing(struct gpmi_nfc_data *this,
 
 extern struct nfc_hal  gpmi_nfc_hal_v0;
 extern struct nfc_hal  gpmi_nfc_hal_v1;
-extern struct nfc_hal  gpmi_nfc_hal_v2;
 
 /* Boot ROM Helper Common Services */
 

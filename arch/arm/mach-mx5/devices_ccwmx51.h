@@ -28,7 +28,6 @@ extern struct mxc_w1_config mxc_w1_data;
 extern struct mxc_spdif_platform_data mxc_spdif_data;
 extern struct tve_platform_data tve_data;
 extern struct mxc_dvfs_platform_data dvfs_core_data;
-extern struct fec_platform_data fec_data;
 extern struct mxc_dvfsper_data dvfs_per_data;
 extern struct platform_pwm_backlight_data mxc_pwm_backlight_data;
 extern struct mxc_audio_platform_data wm8753_data;
@@ -48,9 +47,5 @@ extern void ccwmx51_set_mod_sn(u32 sn);
 extern void ccwmx51_register_sdio(int interface);
 extern void ccwmx51_init_devices(void);
 extern int ccwmx51_create_sysfs_entries(void);
-extern struct gpio_keys_platform_data ccwmx51js_gpio_key_info;
-extern void ccwmx51_init_devices(void);
-extern int ccwmx51_create_sysfs_entries(void);
-
 
 #endif /* DEVICES_CCWMX51_H_ */

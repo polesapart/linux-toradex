@@ -79,9 +79,7 @@ typedef struct _vout_data {
 
 	struct timer_list output_timer;
 	struct workqueue_struct *v4l_wq;
-	struct work_struct icbypass_work;
-	int disp_buf_num;
-	int fb_blank;
+	struct work_struct timer_work;
 	unsigned long start_jiffies;
 	u32 frame_count;
 
@@ -90,7 +88,6 @@ typedef struct _vout_data {
 
 	s8 next_rdy_ipu_buf;
 	s8 next_done_ipu_buf;
-	s8 next_disp_ipu_buf;
 	s8 ipu_buf[2];
 	s8 ipu_buf_p[2];
 	s8 ipu_buf_n[2];

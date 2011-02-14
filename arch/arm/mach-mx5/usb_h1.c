@@ -17,15 +17,13 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/fsl_devices.h>
-#include <asm/delay.h>
 #include <mach/arc_otg.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include "usb.h"
 #include "iomux.h"
 #include "mx51_pins.h"
-//#undef pr_debug
-//#define pr_debug printk
+
 /*
  * USB Host1 HS port
  */
@@ -71,49 +69,13 @@ static void _wake_up_enable(struct fsl_usb2_platform_data *pdata, bool enable)
 {
 	if (enable)
 		USBCTRL |= UCTRL_H1WIE;
-	else {
+	else
 		USBCTRL &= ~UCTRL_H1WIE;
-		/* The interrupt must be disabled for at least 3
-		* cycles of the standby clock(32k Hz) , that is 0.094 ms*/
-		udelay(100);
-	}
-}
-
-static void _phy_lowpower_suspend(bool enable)
-{
-	if (enable) {
-		UH1_PORTSC1 |= PORTSC_PHCD;
-	}else {
-		UH1_PORTSC1 &= ~PORTSC_PHCD;
-	}
 }
 
 static void usbotg_clock_gate(bool on)
 {
 	struct clk *usb_clk;
-	if (cpu_is_mx50()) {
-		if (on) {
-			usb_clk = clk_get(NULL, "usb_ahb_clk");
-			clk_enable(usb_clk);
-			clk_put(usb_clk);
-
-		} else {
-			usb_clk = clk_get(NULL, "usb_ahb_clk");
-			clk_disable(usb_clk);
-			clk_put(usb_clk);
-		}
-		return;
-	}
-	if (cpu_is_mx53()) {
-		usb_clk = clk_get(NULL, "usb_phy2_clk");
-		if (on) {
-			clk_enable(usb_clk);
-		} else {
-			clk_disable(usb_clk);
-		}
-		clk_put(usb_clk);
-	}
-
 	if (on) {
 		usb_clk = clk_get(NULL, "usb_ahb_clk");
 		clk_enable(usb_clk);
@@ -153,7 +115,7 @@ static int fsl_usb_host_init_ext(struct platform_device *pdev)
 		clk_disable(usb_clk);
 		clk_put(usb_clk);
 	} else if (cpu_is_mx50()) {
-		usb_clk = clk_get(NULL, "usb_phy2_clk");
+		usb_clk = clk_get(&pdev->dev, "usb_phy2_clk");
 		clk_enable(usb_clk);
 		clk_put(usb_clk);
 	}
@@ -191,7 +153,7 @@ static void fsl_usb_host_uninit_ext(struct fsl_usb2_platform_data *pdata)
 		clk_disable(usb_clk);
 		clk_put(usb_clk);
 	} else if (cpu_is_mx50()) {
-		usb_clk = clk_get(NULL, "usb_phy2_clk");
+		usb_clk = clk_get(&pdata->pdev->dev, "usb_phy2_clk");
 		clk_disable(usb_clk);
 		clk_put(usb_clk);
 	}
@@ -208,7 +170,6 @@ static struct fsl_usb2_platform_data usbh1_config = {
 	.power_budget = 500,	/* 500 mA max power */
 	.wake_up_enable = _wake_up_enable,
 	.usb_clock_for_pm  = usbotg_clock_gate,
-	.phy_lowpower_suspend = _phy_lowpower_suspend,
 	.transceiver = "utmi",
 };
 

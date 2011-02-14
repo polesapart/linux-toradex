@@ -814,7 +814,6 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 			host->plat_data->clk_flg = 1;
 		}
 	}
-
 	if (clock == host->clock && !(ios.bus_width & MMC_BUS_WIDTH_DDR))
 		return;
 
@@ -854,20 +853,85 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	DBG("prescaler = 0x%x, divider = 0x%x\n", prescaler, div);
 	clk |= (prescaler << 8) | (div << 4);
 
-	if (host->plat_data->clk_always_on
-		| (host->mmc->card && mmc_card_sdio(host->mmc->card)))
-		clk |= SDHCI_CLOCK_PER_EN | SDHCI_CLOCK_HLK_EN
-			| SDHCI_CLOCK_IPG_EN;
-	else
-		clk &= ~(SDHCI_CLOCK_PER_EN | SDHCI_CLOCK_HLK_EN
-			| SDHCI_CLOCK_IPG_EN);
+	/* Configure the DLL when DDR mode is enabled */
+	if (ios.bus_width & MMC_BUS_WIDTH_DDR) {
+		/* Make sure that the PER, HLK, IPG are all enabled */
+		writel(readl(host->ioaddr + SDHCI_CLOCK_CONTROL)
+				| SDHCI_CLOCK_IPG_EN
+				| SDHCI_CLOCK_HLK_EN
+				| SDHCI_CLOCK_PER_EN,
+				host->ioaddr + SDHCI_CLOCK_CONTROL);
 
-	/* Configure the clock delay line */
-	if ((host->plat_data->vendor_ver >= ESDHC_VENDOR_V3)
-		&& host->plat_data->dll_override_en)
-		writel((host->plat_data->dll_delay_cells << 10)
-			| DLL_CTRL_SLV_OVERRIDE,
-			host->ioaddr + SDHCI_DLL_CONTROL);
+		/* Enable the DLL and delay chain */
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_ENABLE,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_REF_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL REF LOCK Timeout!\n");
+		};
+		DBG("dll stat: 0x%x\n", readl(host->ioaddr + SDHCI_DLL_STATUS));
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_SLV_UP_INT | DLL_CTRL_REF_UP_INT
+				| DLL_CTRL_SLV_DLY_TAR,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_SLV_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL SLV LOCK Timeout!\n");
+		};
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_SLV_FORCE_UPD,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				& (~DLL_CTRL_SLV_FORCE_UPD),
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_REF_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL REF LOCK Timeout!\n");
+		};
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_SLV_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL SLV LOCK Timeout!\n");
+		};
+		DBG("dll stat: 0x%x\n", readl(host->ioaddr + SDHCI_DLL_STATUS));
+
+		/* Let the PER, HLK, IPG to be auto-gate */
+		writel(readl(host->ioaddr + SDHCI_CLOCK_CONTROL)
+				& ~(SDHCI_CLOCK_IPG_EN | SDHCI_CLOCK_HLK_EN
+					| SDHCI_CLOCK_PER_EN),
+				host->ioaddr + SDHCI_CLOCK_CONTROL);
+
+	} else if (readl(host->ioaddr + SDHCI_DLL_STATUS) & DLL_STS_SLV_LOCK) {
+		/* reset DLL CTRL */
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL) | DLL_CTRL_RESET,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+	}
 
 	/* Configure the clock control register */
 	clk |=
@@ -1093,7 +1157,7 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct sdhci_host *host;
 	unsigned long flags;
-	u32 ier, prot, present;
+	u32 ier, prot, clk, present;
 
 	host = mmc_priv(mmc);
 
@@ -1106,12 +1170,19 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 		if (--(host->sdio_enable))
 			goto exit_unlock;
 	}
-
-	ier = readl(host->ioaddr + SDHCI_INT_ENABLE);
+	/* Enable the clock */
+	if (!host->plat_data->clk_flg) {
+		clk_enable(host->clk);
+		host->plat_data->clk_flg = 1;
+	}
+	ier = readl(host->ioaddr + SDHCI_SIGNAL_ENABLE);
 	prot = readl(host->ioaddr + SDHCI_HOST_CONTROL);
+	clk = readl(host->ioaddr + SDHCI_CLOCK_CONTROL);
 
 	if (enable) {
 		ier |= SDHCI_INT_CARD_INT;
+		prot |= SDHCI_CTRL_D3CD;
+		clk |= SDHCI_CLOCK_PER_EN | SDHCI_CLOCK_IPG_EN;
 		present = readl(host->ioaddr + SDHCI_PRESENT_STATE);
 		if ((present & SDHCI_CARD_INT_MASK) != SDHCI_CARD_INT_ID)
 			writel(SDHCI_INT_CARD_INT,
@@ -1119,24 +1190,12 @@ static void sdhci_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	} else {
 		ier &= ~SDHCI_INT_CARD_INT;
 		prot &= ~SDHCI_CTRL_D3CD;
+		clk &= ~(SDHCI_CLOCK_PER_EN | SDHCI_CLOCK_IPG_EN);
 	}
 
 	writel(prot, host->ioaddr + SDHCI_HOST_CONTROL);
-	writel(ier, host->ioaddr + SDHCI_INT_ENABLE);
 	writel(ier, host->ioaddr + SDHCI_SIGNAL_ENABLE);
-
-	/*
-	 * Using D3CD to manually driver the HW to re-sample the SDIO interrupt
-	 * on bus one more time to guarantee the SDIO interrupt signal sent
-	 * from card during the interrupt signal disabled period will not
-	 * be lost.
-	 */
-	prot |= SDHCI_CTRL_CDSS;
-	writel(prot, host->ioaddr + SDHCI_HOST_CONTROL);
-	prot &= ~SDHCI_CTRL_D3CD;
-	writel(prot, host->ioaddr + SDHCI_HOST_CONTROL);
-	prot |= SDHCI_CTRL_D3CD;
-	writel(prot, host->ioaddr + SDHCI_HOST_CONTROL);
+	writel(clk, host->ioaddr + SDHCI_CLOCK_CONTROL);
 
 	mmiowb();
       exit_unlock:
@@ -1262,7 +1321,7 @@ static void sdhci_tasklet_finish(unsigned long param)
 	 * The root cause is that the ROM code don't ensure
 	 * the SD/MMC clk is running when boot system.
 	 * */
-	if (req_done && host->plat_data->clk_flg &&
+	if (!machine_is_mx35_3ds() && req_done && host->plat_data->clk_flg &&
 	    !(host->mmc && host->mmc->card && mmc_card_sdio(host->mmc->card))) {
 		clk_disable(host->clk);
 		host->plat_data->clk_flg = 0;
@@ -1840,10 +1899,8 @@ static int __devinit sdhci_probe_slot(struct platform_device
 
 	/* Get the SDHC clock from clock system APIs */
 	host->clk = clk_get(&pdev->dev, mmc_plat->clock_mmc);
-	if (NULL == host->clk) {
+	if (NULL == host->clk)
 		printk(KERN_ERR "MXC MMC can't get clock.\n");
-		goto out1;
-	}
 	DBG("SDHC:%d clock:%lu\n", pdev->id, clk_get_rate(host->clk));
 
 	host->res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -2057,6 +2114,9 @@ static int __devinit sdhci_probe_slot(struct platform_device
 		}
 		mxc_dma_callback_set(host->dma, sdhci_dma_irq, (void *)host);
 	}
+#ifdef CONFIG_MMC_DEBUG
+	sdhci_dumpregs(host);
+#endif
 
 	mmiowb();
 
