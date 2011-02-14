@@ -76,5 +76,8 @@
 #include "board-ccwmx53.h"
 #endif
 
+#ifdef CONFIG_MACH_MX53_EVK
+#include "board-mx53-evk.h"
+#endif
 
 #endif				/* __ARCH_ARM_MACH_MX51_SERIAL_H__ */
