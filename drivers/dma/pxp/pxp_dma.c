@@ -31,7 +31,6 @@
 #include <linux/vmalloc.h>
 #include <linux/dmaengine.h>
 #include <linux/pxp_dma.h>
-#include <linux/timer.h>
 #include <linux/clk.h>
 
 #include "regs-pxp.h"
@@ -51,23 +50,16 @@ struct pxps {
 	int irq;		/* PXP IRQ to the CPU */
 
 	spinlock_t lock;
-	struct mutex mutex_clk;
-	int clk_stat;
-#define	CLK_STAT_OFF		0
-#define	CLK_STAT_ON		1
+	struct mutex mutex;
 
 	struct device *dev;
 	struct pxp_dma pxp_dma;
 	struct pxp_channel channel[NR_PXP_VIRT_CHANNEL];
 	struct work_struct work;
 	struct workqueue_struct *workqueue;
-	wait_queue_head_t done;
 
 	/* describes most recent processing configuration */
 	struct pxp_config_data pxp_conf_state;
-
-	/* to turn clock off when pxp is inactive */
-	struct timer_list clk_timer;
 };
 
 #define to_pxp_dma(d) container_of(d, struct pxp_dma, dma)
@@ -77,9 +69,6 @@ struct pxps {
 
 #define PXP_DEF_BUFS	2
 #define PXP_MIN_PIX	8
-
-#define PXP_WAITCON	((__raw_readl(pxp->base + HW_PXP_STAT) & \
-				BM_PXP_STAT_IRQ) != BM_PXP_STAT_IRQ)
 
 static uint32_t pxp_s0_formats[] = {
 	PXP_PIX_FMT_RGB24,
@@ -94,76 +83,72 @@ static uint32_t pxp_s0_formats[] = {
  */
 static void dump_pxp_reg(struct pxps *pxp)
 {
-	dev_dbg(pxp->dev, "PXP_CTRL 0x%x",
+	dev_err(pxp->dev, "PXP_CTRL 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CTRL));
-	dev_dbg(pxp->dev, "PXP_STAT 0x%x",
+	dev_err(pxp->dev, "PXP_STAT 0x%x",
 		__raw_readl(pxp->base + HW_PXP_STAT));
-	dev_dbg(pxp->dev, "PXP_OUTBUF 0x%x",
+	dev_err(pxp->dev, "PXP_OUTBUF 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OUTBUF));
-	dev_dbg(pxp->dev, "PXP_OUTBUF2 0x%x",
+	dev_err(pxp->dev, "PXP_OUTBUF2 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OUTBUF2));
-	dev_dbg(pxp->dev, "PXP_OUTSIZE 0x%x",
+	dev_err(pxp->dev, "PXP_OUTSIZE 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OUTSIZE));
-	dev_dbg(pxp->dev, "PXP_S0BUF 0x%x",
+	dev_err(pxp->dev, "PXP_S0BUF 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0BUF));
-	dev_dbg(pxp->dev, "PXP_S0UBUF 0x%x",
+	dev_err(pxp->dev, "PXP_S0UBUF 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0UBUF));
-	dev_dbg(pxp->dev, "PXP_S0VBUF 0x%x",
+	dev_err(pxp->dev, "PXP_S0VBUF 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0VBUF));
-	dev_dbg(pxp->dev, "PXP_S0PARAM 0x%x",
+	dev_err(pxp->dev, "PXP_S0PARAM 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0PARAM));
-	dev_dbg(pxp->dev, "PXP_S0BACKGROUND 0x%x",
+	dev_err(pxp->dev, "PXP_S0BACKGROUND 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0BACKGROUND));
-	dev_dbg(pxp->dev, "PXP_S0CROP 0x%x",
+	dev_err(pxp->dev, "PXP_S0CROP 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0CROP));
-	dev_dbg(pxp->dev, "PXP_S0SCALE 0x%x",
+	dev_err(pxp->dev, "PXP_S0SCALE 0x%x",
 		__raw_readl(pxp->base + HW_PXP_S0SCALE));
-	dev_dbg(pxp->dev, "PXP_OLn 0x%x",
+	dev_err(pxp->dev, "PXP_OLn 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OLn(0)));
-	dev_dbg(pxp->dev, "PXP_OLnSIZE 0x%x",
+	dev_err(pxp->dev, "PXP_OLnSIZE 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OLnSIZE(0)));
-	dev_dbg(pxp->dev, "PXP_OLnPARAM 0x%x",
+	dev_err(pxp->dev, "PXP_OLnPARAM 0x%x",
 		__raw_readl(pxp->base + HW_PXP_OLnPARAM(0)));
-	dev_dbg(pxp->dev, "PXP_CSCCOEF0 0x%x",
+	dev_err(pxp->dev, "PXP_CSCCOEF0 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSCCOEF0));
-	dev_dbg(pxp->dev, "PXP_CSCCOEF1 0x%x",
-		__raw_readl(pxp->base + HW_PXP_CSCCOEF1));
-	dev_dbg(pxp->dev, "PXP_CSCCOEF2 0x%x",
-		__raw_readl(pxp->base + HW_PXP_CSCCOEF2));
-	dev_dbg(pxp->dev, "PXP_CSC2CTRL 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2CTRL 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2CTRL));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF0 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF0 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF0));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF1 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF1 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF1));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF2 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF2 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF2));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF3 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF3 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF3));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF4 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF4 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF4));
-	dev_dbg(pxp->dev, "PXP_CSC2COEF5 0x%x",
+	dev_err(pxp->dev, "PXP_CSC2COEF5 0x%x",
 		__raw_readl(pxp->base + HW_PXP_CSC2COEF5));
-	dev_dbg(pxp->dev, "PXP_LUT_CTRL 0x%x",
+	dev_err(pxp->dev, "PXP_LUT_CTRL 0x%x",
 		__raw_readl(pxp->base + HW_PXP_LUT_CTRL));
-	dev_dbg(pxp->dev, "PXP_LUT 0x%x", __raw_readl(pxp->base + HW_PXP_LUT));
-	dev_dbg(pxp->dev, "PXP_HIST_CTRL 0x%x",
+	dev_err(pxp->dev, "PXP_LUT 0x%x", __raw_readl(pxp->base + HW_PXP_LUT));
+	dev_err(pxp->dev, "PXP_HIST_CTRL 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST_CTRL));
-	dev_dbg(pxp->dev, "PXP_HIST2_PARAM 0x%x",
+	dev_err(pxp->dev, "PXP_HIST2_PARAM 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST2_PARAM));
-	dev_dbg(pxp->dev, "PXP_HIST4_PARAM 0x%x",
+	dev_err(pxp->dev, "PXP_HIST4_PARAM 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST4_PARAM));
-	dev_dbg(pxp->dev, "PXP_HIST8_PARAM0 0x%x",
+	dev_err(pxp->dev, "PXP_HIST8_PARAM0 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST8_PARAM0));
-	dev_dbg(pxp->dev, "PXP_HIST8_PARAM1 0x%x",
+	dev_err(pxp->dev, "PXP_HIST8_PARAM1 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST8_PARAM1));
-	dev_dbg(pxp->dev, "PXP_HIST16_PARAM0 0x%x",
+	dev_err(pxp->dev, "PXP_HIST16_PARAM0 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST16_PARAM0));
-	dev_dbg(pxp->dev, "PXP_HIST16_PARAM1 0x%x",
+	dev_err(pxp->dev, "PXP_HIST16_PARAM1 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST16_PARAM1));
-	dev_dbg(pxp->dev, "PXP_HIST16_PARAM2 0x%x",
+	dev_err(pxp->dev, "PXP_HIST16_PARAM2 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST16_PARAM2));
-	dev_dbg(pxp->dev, "PXP_HIST16_PARAM3 0x%x",
+	dev_err(pxp->dev, "PXP_HIST16_PARAM3 0x%x",
 		__raw_readl(pxp->base + HW_PXP_HIST16_PARAM3));
 }
 
@@ -268,7 +253,6 @@ static int pxp_start(struct pxps *pxp)
 static void pxp_set_outbuf(struct pxps *pxp)
 {
 	struct pxp_config_data *pxp_conf = &pxp->pxp_conf_state;
-	struct pxp_proc_data *proc_data = &pxp_conf->proc_data;
 	struct pxp_layer_param *out_params = &pxp_conf->out_param;
 
 	__raw_writel(out_params->paddr, pxp->base + HW_PXP_OUTBUF);
@@ -340,7 +324,7 @@ static void pxp_set_olparam(int layer_no, struct pxps *pxp)
 	else
 		olparam |=
 		    BF_PXP_OLnPARAM_FORMAT(BV_PXP_OLnPARAM_FORMAT__RGB565);
-	if (olparams_data->global_alpha_enable)
+	if (olparams_data->global_alpha)
 		olparam |=
 		    BF_PXP_OLnPARAM_ALPHA_CNTL
 		    (BV_PXP_OLnPARAM_ALPHA_CNTL__Override);
@@ -493,9 +477,9 @@ static void pxp_set_csc(struct pxps *pxp)
 		 */
 
 		/* CSC1 - YUV->RGB */
-		__raw_writel(0x84ab01f0, pxp->base + HW_PXP_CSCCOEF0);
-		__raw_writel(0x01230204, pxp->base + HW_PXP_CSCCOEF1);
-		__raw_writel(0x0730079c, pxp->base + HW_PXP_CSCCOEF2);
+		__raw_writel(0x04030000, pxp->base + HW_PXP_CSCCOEF0);
+		__raw_writel(0x01230208, pxp->base + HW_PXP_CSCCOEF1);
+		__raw_writel(0x076b079c, pxp->base + HW_PXP_CSCCOEF2);
 
 		/* CSC2 - Bypass */
 		__raw_writel(0x1, pxp->base + HW_PXP_CSC2CTRL);
@@ -596,43 +580,6 @@ static int pxp_config(struct pxps *pxp, struct pxp_channel *pxp_chan)
 	return 0;
 }
 
-static void pxp_clk_enable(struct pxps *pxp)
-{
-	mutex_lock(&pxp->mutex_clk);
-
-	if (pxp->clk_stat == CLK_STAT_ON) {
-		mutex_unlock(&pxp->mutex_clk);
-		return;
-	}
-
-	clk_enable(pxp->clk);
-	pxp->clk_stat = CLK_STAT_ON;
-
-	mutex_unlock(&pxp->mutex_clk);
-}
-
-static void pxp_clk_disable(struct pxps *pxp)
-{
-	mutex_lock(&pxp->mutex_clk);
-
-	if (pxp->clk_stat == CLK_STAT_OFF) {
-		mutex_unlock(&pxp->mutex_clk);
-		return;
-	}
-
-	clk_disable(pxp->clk);
-	pxp->clk_stat = CLK_STAT_OFF;
-
-	mutex_unlock(&pxp->mutex_clk);
-}
-
-static void pxp_clkoff_timer(unsigned long arg)
-{
-	struct pxps *pxp = (struct pxps *)arg;
-
-	pxp_clk_disable(pxp);
-}
-
 static struct pxp_tx_desc *pxpdma_first_active(struct pxp_channel *pxp_chan)
 {
 	return list_entry(pxp_chan->active_list.next, struct pxp_tx_desc, list);
@@ -689,9 +636,13 @@ static void pxpdma_dostart_work(struct work_struct *w)
 	struct pxps *pxp = container_of(w, struct pxps, work);
 	struct pxp_channel *pxp_chan = NULL;
 	unsigned long flags, flags1;
+	int val;
 
-	while (__raw_readl(pxp->base + HW_PXP_CTRL) & BM_PXP_CTRL_ENABLE)
-		;
+	val = __raw_readl(pxp->base + HW_PXP_CTRL);
+	if (val & BM_PXP_CTRL_ENABLE) {
+		pr_warning("pxp is active, quit.\n");
+		return;
+	}
 
 	spin_lock_irqsave(&pxp->lock, flags);
 	if (list_empty(&head)) {
@@ -813,7 +764,7 @@ static int pxp_init_channel(struct pxp_dma *pxp_dma,
 	spin_lock_irqsave(&pxp->lock, flags);
 
 	/* max desc nr: S0+OL+OUT = 1+8+1 */
-	n_desc = 16;
+	n_desc = 10;
 
 	spin_unlock_irqrestore(&pxp->lock, flags);
 
@@ -844,38 +795,25 @@ static int pxp_uninit_channel(struct pxp_dma *pxp_dma,
 
 static irqreturn_t pxp_irq(int irq, void *dev_id)
 {
-	struct pxps *pxp = dev_id;
-	struct pxp_channel *pxp_chan;
+	struct pxp_channel *pxp_chan = dev_id;
+	struct pxp_dma *pxp_dma = to_pxp_dma(pxp_chan->dma_chan.device);
+	struct pxps *pxp = to_pxp(pxp_dma);
 	struct pxp_tx_desc *desc;
 	dma_async_tx_callback callback;
 	void *callback_param;
-	unsigned long flags, flags1;
+	unsigned long flags;
 	u32 hist_status;
-
-	dump_pxp_reg(pxp);
 
 	hist_status =
 	    __raw_readl(pxp->base + HW_PXP_HIST_CTRL) & BM_PXP_HIST_CTRL_STATUS;
 
 	__raw_writel(BM_PXP_STAT_IRQ, pxp->base + HW_PXP_STAT_CLR);
 
-	mod_timer(&pxp->clk_timer, jiffies + msecs_to_jiffies(4000));
-
 	spin_lock_irqsave(&pxp->lock, flags);
-
-	if (list_empty(&head)) {
-		spin_unlock_irqrestore(&pxp->lock, flags);
-		return IRQ_NONE;
-	}
-
-	spin_lock_irqsave(&pxp_chan->lock, flags1);
-	pxp_chan = list_entry(head.next, struct pxp_channel, list);
-	list_del_init(&pxp_chan->list);
 
 	if (list_empty(&pxp_chan->active_list)) {
 		pr_debug("PXP_IRQ pxp_chan->active_list empty. chan_id %d\n",
 			 pxp_chan->dma_chan.chan_id);
-		spin_unlock_irqrestore(&pxp_chan->lock, flags1);
 		spin_unlock_irqrestore(&pxp->lock, flags);
 		return IRQ_NONE;
 	}
@@ -901,10 +839,9 @@ static irqreturn_t pxp_irq(int irq, void *dev_id)
 
 	list_del(&pxp_chan->list);
 
-	wake_up(&pxp->done);
-
-	spin_unlock_irqrestore(&pxp_chan->lock, flags1);
 	spin_unlock_irqrestore(&pxp->lock, flags);
+
+	queue_work(pxp->workqueue, &pxp->work);
 
 	return IRQ_HANDLED;
 }
@@ -1021,27 +958,17 @@ static void pxp_issue_pending(struct dma_chan *chan)
 
 	spin_lock_irqsave(&pxp->lock, flags0);
 	spin_lock_irqsave(&pxp_chan->lock, flags);
+	if (!list_empty(&pxp_chan->active_list))
+		queue_work(pxp->workqueue, &pxp->work);
 
 	if (!list_empty(&pxp_chan->queue)) {
 		pxpdma_dequeue(pxp_chan, &pxp_chan->active_list);
 		pxp_chan->status = PXP_CHANNEL_READY;
 		list_add_tail(&pxp_chan->list, &head);
-	} else {
-		spin_unlock_irqrestore(&pxp_chan->lock, flags);
-		spin_unlock_irqrestore(&pxp->lock, flags0);
-		return;
+		queue_work(pxp->workqueue, &pxp->work);
 	}
 	spin_unlock_irqrestore(&pxp_chan->lock, flags);
 	spin_unlock_irqrestore(&pxp->lock, flags0);
-
-	pxp_clk_enable(pxp);
-	if (!wait_event_interruptible_timeout(pxp->done, PXP_WAITCON, 2 * HZ) ||
-		signal_pending(current)) {
-		pxp_clk_disable(pxp);
-		return;
-	}
-
-	queue_work(pxp->workqueue, &pxp->work);
 }
 
 static void __pxp_terminate_all(struct dma_chan *chan)
@@ -1089,6 +1016,11 @@ static int pxp_alloc_chan_resources(struct dma_chan *chan)
 	if (ret < 0)
 		goto err_chan;
 
+	ret = request_irq(pxp_chan->eof_irq, pxp_irq, IRQF_SHARED,
+			  "pxp-irq", pxp_chan);
+	if (ret < 0)
+		goto err_irq;
+
 	pxp_chan->status = PXP_CHANNEL_INITIALIZED;
 
 	dev_dbg(&chan->dev->device, "Found channel 0x%x, irq %d\n",
@@ -1096,6 +1028,8 @@ static int pxp_alloc_chan_resources(struct dma_chan *chan)
 
 	return ret;
 
+err_irq:
+	pxp_uninit_channel(pxp_dma, pxp_chan);
 err_chan:
 	return ret;
 }
@@ -1112,6 +1046,8 @@ static void pxp_free_chan_resources(struct dma_chan *chan)
 	pxp_chan->status = PXP_CHANNEL_FREE;
 
 	pxp_uninit_channel(pxp_dma, pxp_chan);
+
+	free_irq(pxp_chan->eof_irq, pxp_chan);
 
 	mutex_unlock(&pxp_chan->chan_mutex);
 }
@@ -1315,7 +1251,7 @@ static int pxp_probe(struct platform_device *pdev)
 	pxp->irq = irq;
 
 	spin_lock_init(&pxp->lock);
-	mutex_init(&pxp->mutex_clk);
+	mutex_init(&pxp->mutex);
 
 	if (!request_mem_region(res->start, resource_size(res), "pxp-mem")) {
 		err = -EBUSY;
@@ -1333,26 +1269,19 @@ static int pxp_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to initialize hardware\n");
 		goto release;
 	}
-	clk_disable(pxp->clk);
 
-	err = request_irq(pxp->irq, pxp_irq, 0, "pxp-irq", pxp);
-	if (err)
-		goto release;
 	/* Initialize DMA engine */
 	err = pxp_dma_init(pxp);
 	if (err < 0)
 		goto err_dma_init;
 
-	init_waitqueue_head(&pxp->done);
 	INIT_WORK(&pxp->work, pxpdma_dostart_work);
 	pxp->workqueue = create_singlethread_workqueue("pxp_dma");
-	init_timer(&pxp->clk_timer);
-	pxp->clk_timer.function = pxp_clkoff_timer;
-	pxp->clk_timer.data = (unsigned long)pxp;
 exit:
 	return err;
 err_dma_init:
 	free_irq(pxp->irq, pxp);
+	clk_disable(pxp->clk);
 release:
 	release_mem_region(res->start, resource_size(res));
 freepxp:
@@ -1366,8 +1295,8 @@ static int __devexit pxp_remove(struct platform_device *pdev)
 	struct pxps *pxp = platform_get_drvdata(pdev);
 
 	cancel_work_sync(&pxp->work);
+	kfree(pxp);
 
-	del_timer_sync(&pxp->clk_timer);
 	free_irq(pxp->irq, pxp);
 	clk_disable(pxp->clk);
 	clk_put(pxp->clk);
@@ -1383,12 +1312,11 @@ static int pxp_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct pxps *pxp = platform_get_drvdata(pdev);
 
-	pxp_clk_enable(pxp);
 	while (__raw_readl(pxp->base + HW_PXP_CTRL) & BM_PXP_CTRL_ENABLE)
 		;
 
 	__raw_writel(BM_PXP_CTRL_SFTRST, pxp->base + HW_PXP_CTRL);
-	pxp_clk_disable(pxp);
+	clk_disable(pxp->clk);
 
 	return 0;
 }
@@ -1397,10 +1325,9 @@ static int pxp_resume(struct platform_device *pdev)
 {
 	struct pxps *pxp = platform_get_drvdata(pdev);
 
-	pxp_clk_enable(pxp);
+	clk_enable(pxp->clk);
 	/* Pull PxP out of reset */
 	__raw_writel(0, pxp->base + HW_PXP_CTRL);
-	pxp_clk_disable(pxp);
 
 	return 0;
 }

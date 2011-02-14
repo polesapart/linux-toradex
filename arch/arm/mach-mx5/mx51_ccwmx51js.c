@@ -51,8 +51,6 @@
 #include "mx51_pins.h"
 #include "devices_ccwmx51.h"
 #include "usb.h"
-#include "linux/android_pmem.h"
-#include "linux/usb/android.h"
 
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
@@ -145,36 +143,6 @@ void mx51_set_num_cpu_wp(int num)
 	return;
 }
 
-#if defined CONFIG_ANDROID_PMEM
-static struct android_pmem_platform_data android_pmem_pdata = {
-	.name = "pmem_adsp",
-	.start = 0,
-	.size = SZ_32M,
-	.no_allocator = 0,
-	.cached = PMEM_NONCACHE_NORMAL,
-};
-
-static struct android_pmem_platform_data android_pmem_gpu_pdata = {
-	.name = "pmem_gpu",
-	.start = 0,
-	.size = SZ_32M,
-	.no_allocator = 0,
-	.cached = PMEM_CACHE_ENABLE,
-};
-#endif
-
-#ifdef CONFIG_USB_ANDROID
-static struct android_usb_platform_data android_usb_pdata = {
-	.vendor_id      = 0x0bb4,
-	.product_id     = 0x0c01,
-	.adb_product_id = 0x0c02,
-	.version        = 0x0100,
-	.product_name   = "Android Phone",
-	.manufacturer_name = "Freescale",
-	.nluns = 3,
-};
-#endif
-
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -189,48 +157,19 @@ static struct android_usb_platform_data android_usb_pdata = {
 static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				   char **cmdline, struct meminfo *mi)
 {
-	struct tag *t;
-#ifdef CONFIG_ANDROID
-	int size;
-#else
 	char *str;
+	struct tag *t;
 	struct tag *mem_tag = 0;
 	int total_mem = SZ_512M;
 	int left_mem = 0;
 	int gpu_mem = SZ_64M;
 	int fb_mem = FB_MEM_SIZE;
-#endif
 
 	mxc_set_cpu_type(MXC_CPU_MX51);
 
 	get_cpu_wp = mx51_get_cpu_wp;
 	set_num_cpu_wp = mx51_set_num_cpu_wp;
 
-#ifdef CONFIG_ANDROID
-	// TODO: Dual head support for Android.
-	// See commit 358e938e78b3380357f8f0c6dd54fa9fe4cc84c5
-	// This commit removes Digi's dual display customizations
-
-	for_each_tag(t, tags) {
-		if (t->hdr.tag != ATAG_MEM)
-			continue;
-		size = t->u.mem.size;
-
-		android_pmem_pdata.start =
-				PHYS_OFFSET + size - android_pmem_pdata.size;
-		android_pmem_gpu_pdata.start =
-				android_pmem_pdata.start - android_pmem_gpu_pdata.size;
-		gpu_device.resource[5].start =
-				android_pmem_gpu_pdata.start - SZ_16M;
-		gpu_device.resource[5].end =
-				gpu_device.resource[5].start + SZ_16M - 1;
-		size -= android_pmem_pdata.size;
-		size -= android_pmem_gpu_pdata.size;
-		size -= SZ_16M;
-		t->u.mem.size = size;
-	}
-
-#else
 	for_each_tag(mem_tag, tags) {
 		if (mem_tag->hdr.tag == ATAG_MEM) {
 			total_mem = mem_tag->u.mem.size;
@@ -268,7 +207,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-
 #if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
 		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
 #endif
@@ -298,9 +236,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		}
 #endif
 	}
-#endif
-
-
 }
 
 #define PWGT1SPIEN (1<<15)
@@ -376,13 +311,6 @@ static void __init mxc_board_init(void)
 #endif
 	mxc_register_device(&mxc_pwm1_device, NULL);
 	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
-#ifdef CONFIG_ANDROID_PMEM
-	mxc_register_device(&mxc_android_pmem_device, &android_pmem_pdata);
-	mxc_register_device(&mxc_android_pmem_gpu_device, &android_pmem_gpu_pdata);
-#endif
-#ifdef CONFIG_USB_ANDROID
-	mxc_register_device(&android_usb_device, &android_usb_pdata);
-#endif
 
 #ifdef CONFIG_ESDHCI_MXC_SELECT1
 	ccwmx51_register_sdio(0);	/* SDHC1 */
@@ -393,7 +321,7 @@ static void __init mxc_board_init(void)
 #endif /* CONFIG_ESDHCI_MXC_SELECT3 && !CONFIG_PATA_FSL && !CONFIG_PATA_FSL_MODULE */
 
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
-	mxc_register_device(&mxc_fec_device, &fec_data);
+	mxc_register_device(&mxc_fec_device, NULL);
 #endif
 #if defined(CONFIG_MTD_NAND_MXC) \
 	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \
@@ -434,9 +362,6 @@ static void __init mxc_board_init(void)
 
 #ifdef CONFIG_CCWMX51_SECOND_TOUCH
 	ccwmx51_init_2nd_touch();
-#endif
-#if defined(CONFIG_KEYBOARD_GPIO)
-	mxc_register_device(&ccwmx51js_keys_gpio, &ccwmx51js_gpio_key_info);
 #endif
 	pm_power_off = mxc_power_off;
 }

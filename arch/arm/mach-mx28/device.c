@@ -27,7 +27,6 @@
 #include <linux/platform_device.h>
 #include <linux/mmc/host.h>
 #include <linux/phy.h>
-#include <linux/etherdevice.h>
 #include <linux/fec.h>
 #include <linux/gpmi-nfc.h>
 
@@ -36,7 +35,6 @@
 #include <mach/hardware.h>
 #include <mach/regs-timrot.h>
 #include <mach/regs-lradc.h>
-#include <mach/regs-ocotp.h>
 #include <mach/device.h>
 #include <mach/dma.h>
 #include <mach/lradc.h>
@@ -556,10 +554,9 @@ static struct mxs_mmc_platform_data mmc0_data = {
 	.get_wp		= mxs_mmc_get_wp_ssp0,
 	.cmd_pullup	= mxs_mmc_cmd_pullup_ssp0,
 	.setclock	= mxs_mmc_setclock_ssp0,
-	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
-				| MMC_CAP_DATA_DDR,
+	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
 	.min_clk	= 400000,
-	.max_clk	= 48000000,
+	.max_clk	= 52000000,
 	.read_uA        = 50000,
 	.write_uA       = 70000,
 	.clock_mmc = "ssp.0",
@@ -595,10 +592,9 @@ static struct mxs_mmc_platform_data mmc1_data = {
 	.get_wp		= mxs_mmc_get_wp_ssp1,
 	.cmd_pullup	= mxs_mmc_cmd_pullup_ssp1,
 	.setclock	= mxs_mmc_setclock_ssp1,
-	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
-				| MMC_CAP_DATA_DDR,
+	.caps 		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
 	.min_clk	= 400000,
-	.max_clk	= 48000000,
+	.max_clk	= 52000000,
 	.read_uA        = 50000,
 	.write_uA       = 70000,
 	.clock_mmc = "ssp.1",
@@ -761,16 +757,7 @@ static void __init mx28_init_fec(void)
 {
 	struct platform_device *pdev;
 	struct mxs_dev_lookup *lookup;
-	struct fec_platform_data *pfec;
 	int i;
-	u32 val;
-
-	__raw_writel(BM_OCOTP_CTRL_RD_BANK_OPEN,
-			IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL_SET);
-
-	while (BM_OCOTP_CTRL_BUSY &
-		__raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL))
-		udelay(10);
 
 	lookup = mxs_get_devices("mxs-fec");
 	if (lookup == NULL || IS_ERR(lookup))
@@ -778,8 +765,6 @@ static void __init mx28_init_fec(void)
 
 	for (i = 0; i < lookup->size; i++) {
 		pdev = lookup->pdev + i;
-		val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
-						HW_OCOTP_CUSTn(pdev->id));
 		switch (pdev->id) {
 		case 0:
 			pdev->resource = fec0_resource;
@@ -794,15 +779,6 @@ static void __init mx28_init_fec(void)
 		default:
 			return;
 		}
-
-		pfec = (struct fec_platform_data *)pdev->dev.platform_data;
-		pfec->mac[0] = 0x00;
-		pfec->mac[1] = 0x04;
-		pfec->mac[2] = (val >> 24) & 0xFF;
-		pfec->mac[3] = (val >> 16) & 0xFF;
-		pfec->mac[4] = (val >> 8) & 0xFF;
-		pfec->mac[5] = (val >> 0) & 0xFF;
-
 		mxs_add_device(pdev, 2);
 	}
 }
@@ -848,36 +824,13 @@ static struct switch_platform_data l2switch_data = {
 static void __init mx28_init_l2switch(void)
 {
 	struct platform_device *pdev;
-	struct switch_platform_data *pswitch;
-	struct fec_platform_data *pfec;
-	u32 val;
-
-	__raw_writel(BM_OCOTP_CTRL_RD_BANK_OPEN,
-			IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL_SET);
-
-	while (BM_OCOTP_CTRL_BUSY &
-		__raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL))
-		udelay(10);
-
 	pdev = mxs_get_device("mxs-l2switch", 0);
 	if (pdev == NULL || IS_ERR(pdev))
 		return;
 
-	val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
-					HW_OCOTP_CUSTn(pdev->id));
 	pdev->resource = l2switch_resources;
 	pdev->num_resources = ARRAY_SIZE(l2switch_resources);
 	pdev->dev.platform_data = &l2switch_data;
-
-	pswitch = (struct switch_platform_data *)pdev->dev.platform_data;
-	pfec = pswitch->fec_enet;
-	pfec->mac[0] = 0x00;
-	pfec->mac[1] = 0x04;
-	pfec->mac[2] = (val >> 24) & 0xFF;
-	pfec->mac[3] = (val >> 16) & 0xFF;
-	pfec->mac[4] = (val >> 8) & 0xFF;
-	pfec->mac[5] = (val >> 0) & 0xFF;
-
 	mxs_add_device(pdev, 2);
 }
 #else
@@ -1459,50 +1412,6 @@ static void mx28_init_persistent()
 }
 #endif
 
-#if defined(CONFIG_FSL_OTP)
-/* Building up eight registers's names of a bank */
-#define BANK(a, b, c, d, e, f, g, h)	\
-	{\
-	("HW_OCOTP_"#a), ("HW_OCOTP_"#b), ("HW_OCOTP_"#c), ("HW_OCOTP_"#d), \
-	("HW_OCOTP_"#e), ("HW_OCOTP_"#f), ("HW_OCOTP_"#g), ("HW_OCOTP_"#h) \
-	}
-
-#define BANKS		(5)
-#define BANK_ITEMS	(8)
-static const char *bank_reg_desc[BANKS][BANK_ITEMS] = {
-	BANK(CUST0, CUST1, CUST2, CUST3, CRYPTO0, CRYPTO1, CRYPTO2, CRYPTO3),
-	BANK(HWCAP0, HWCAP1, HWCAP2, HWCAP3, HWCAP4, HWCAP5, SWCAP, CUSTCAP),
-	BANK(LOCK, OPS0, OPS1, OPS2, OPS3, UN0, UN1, UN2),
-	BANK(ROM0, ROM1, ROM2, ROM3, ROM4, ROM5, ROM6, ROM7),
-	BANK(SRK0, SRK1, SRK2, SRK3, SRK4, SRK5, SRK6, SRK7),
-};
-
-static struct fsl_otp_data otp_data = {
-	.fuse_name	= (char **)bank_reg_desc,
-	.regulator_name	= "vddio",
-	.fuse_num	= BANKS * BANK_ITEMS,
-};
-#undef BANK
-#undef BANKS
-#undef BANK_ITEMS
-
-static void __init mx28_init_otp(void)
-{
-	struct platform_device *pdev;
-	pdev = mxs_get_device("ocotp", 0);
-	if (pdev == NULL || IS_ERR(pdev))
-		return;
-	pdev->dev.platform_data = &otp_data;
-	pdev->resource = NULL;
-	pdev->num_resources = 0;
-	mxs_add_device(pdev, 3);
-}
-#else
-static void mx28_init_otp(void)
-{
-}
-#endif
-
 int __init mx28_device_init(void)
 {
 	mx28_init_dma();
@@ -1527,7 +1436,6 @@ int __init mx28_device_init(void)
 	mx28_init_dcp();
 	mx28_init_battery();
 	mx28_init_persistent();
-	mx28_init_otp();
 	return 0;
 }
 

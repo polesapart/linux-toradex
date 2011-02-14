@@ -21,4 +21,3 @@ obj-$(CONFIG_FB_MXC_TVOUT_TVE)              += tve.o
 obj-$(CONFIG_FB_MXC_CH7026)                             += mxcfb_ch7026.o
 #obj-$(CONFIG_FB_MODE_HELPERS)                           += mxc_edid.o
 obj-$(CONFIG_VIDEO_AD9389)                      += ad9389.o
-obj-$(CONFIG_FB_MXC_SII9022)                            += mxcfb_sii9022.o

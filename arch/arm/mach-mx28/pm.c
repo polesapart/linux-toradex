@@ -36,13 +36,12 @@
 #include <mach/dma.h>
 #include <mach/regs-rtc.h>
 #include "regs-clkctrl.h"
+#include "regs-pinctrl.h"
 #include <mach/regs-power.h>
 #include <mach/regs-pwm.h>
 #include <mach/regs-rtc.h>
 #include <mach/../../regs-icoll.h>
 #include "regs-dram.h"
-#include "mx28_pins.h"
-#include "mx28evk.h"
 
 #include "sleep.h"
 
@@ -80,8 +79,7 @@ static inline void do_standby(void)
 	u32 reg_clkctrl_clkseq, reg_clkctrl_xtal;
 	unsigned long iram_phy_addr;
 	void *iram_virtual_addr;
-	int wakeupirq;
-	mx28evk_enet_io_lowerpower_enter();
+
 	/*
 	 * 1) switch clock domains from PLL to 24MHz
 	 * 2) lower voltage (TODO)
@@ -112,8 +110,7 @@ static inline void do_standby(void)
 		cpu_parent = clk_get_parent(cpu_clk);
 		hbus_rate = clk_get_rate(hbus_clk);
 		clk_set_parent(cpu_clk, osc_clk);
-	} else
-		pr_err("fail to get cpu clk\n");
+	}
 
 	local_fiq_disable();
 
@@ -125,18 +122,15 @@ static inline void do_standby(void)
 
 	reg_clkctrl_xtal = __raw_readl(REGS_CLKCTRL_BASE + HW_CLKCTRL_XTAL);
 
-
 	/* do suspend */
 	mx28_cpu_standby_ptr = iram_virtual_addr;
 
 	mx28_cpu_standby_ptr();
 
-	wakeupirq = __raw_readl(IO_ADDRESS(ICOLL_PHYS_ADDR) + HW_ICOLL_STAT);
-
-	pr_info("wakeup irq = %d\n", wakeupirq);
 
 	__raw_writel(reg_clkctrl_clkseq, REGS_CLKCTRL_BASE + HW_CLKCTRL_CLKSEQ);
 	__raw_writel(reg_clkctrl_xtal, REGS_CLKCTRL_BASE + HW_CLKCTRL_XTAL);
+
 	saved_sleep_state = 0;  /* waking from standby */
 	__raw_writel(BM_POWER_CTRL_PSWITCH_IRQ,
 		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
@@ -155,7 +149,6 @@ static inline void do_standby(void)
 	clk_put(cpu_clk);
 
 	iram_free(iram_phy_addr, MAX_POWEROFF_CODE_SIZE);
-	mx28evk_enet_io_lowerpower_exit();
 }
 
 static noinline void do_mem(void)
@@ -262,52 +255,38 @@ static struct mx28_pswitch_state pswitch_state = {
 	.dev_running = 0,
 };
 
-#define PSWITCH_POWER_DOWN_DELAY 30
-static 	struct delayed_work pswitch_work;
-static void pswitch_check_work(struct work_struct *work)
+static irqreturn_t pswitch_interrupt(int irq, void *dev)
 {
 	int pin_value, i;
-	for (i = 0; i < PSWITCH_POWER_DOWN_DELAY; i++) {
+
+	/* check if irq by pswitch */
+	if (!(__raw_readl(REGS_POWER_BASE + HW_POWER_CTRL) &
+		BM_POWER_CTRL_PSWITCH_IRQ))
+		return IRQ_HANDLED;
+	for (i = 0; i < 3000; i++) {
 		pin_value = __raw_readl(REGS_POWER_BASE + HW_POWER_STS) &
 			BF_POWER_STS_PSWITCH(0x1);
 		if (pin_value == 0)
 			break;
-		msleep(100);
+		mdelay(1);
 	}
-	if (i < PSWITCH_POWER_DOWN_DELAY) {
+	if (i < 3000) {
 		pr_info("pswitch goto suspend\n");
 		complete(&suspend_request);
 	} else {
 		pr_info("release pswitch to power down\n");
-		for (i = 0; i < 500; i++) {
+		for (i = 0; i < 5000; i++) {
 			pin_value = __raw_readl(REGS_POWER_BASE + HW_POWER_STS)
 				& BF_POWER_STS_PSWITCH(0x1);
 			if (pin_value == 0)
 				break;
-			msleep(10);
+			mdelay(1);
 		}
 		pr_info("pswitch power down\n");
 		mx28_pm_power_off();
 	}
 	__raw_writel(BM_POWER_CTRL_PSWITCH_IRQ,
 		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
-	__raw_writel(BM_POWER_CTRL_ENIRQ_PSWITCH,
-		REGS_POWER_BASE + HW_POWER_CTRL_SET);
-	__raw_writel(BM_POWER_CTRL_PSWITCH_IRQ,
-		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
-}
-
-
-static irqreturn_t pswitch_interrupt(int irq, void *dev)
-{
-
-	/* check if irq by pswitch */
-	if (!(__raw_readl(REGS_POWER_BASE + HW_POWER_CTRL) &
-		BM_POWER_CTRL_PSWITCH_IRQ))
-		return IRQ_HANDLED;
-	__raw_writel(BM_POWER_CTRL_ENIRQ_PSWITCH,
-		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
-	schedule_delayed_work(&pswitch_work, 1);
 	return IRQ_HANDLED;
 }
 
@@ -320,7 +299,6 @@ static struct irqaction pswitch_irq = {
 
 static void init_pswitch(void)
 {
-	INIT_DELAYED_WORK(&pswitch_work, pswitch_check_work);
 	kthread_run(suspend_thread_fn, NULL, "pswitch");
 	__raw_writel(BM_POWER_CTRL_PSWITCH_IRQ,
 		REGS_POWER_BASE + HW_POWER_CTRL_CLR);

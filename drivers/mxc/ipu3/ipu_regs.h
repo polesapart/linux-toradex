@@ -664,6 +664,5 @@ enum di_sync_wave {
 
 /* DC template opcodes */
 #define WROD(lf)		(0x18 | (lf << 1))
-#define WRG	        	(0x01)
 
 #endif

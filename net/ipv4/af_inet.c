@@ -257,7 +257,6 @@ static inline int inet_netns_ok(struct net *net, int protocol)
 	return ipprot->netns_ok;
 }
 
-
 /*
  *	Create an inet socket.
  */
@@ -826,7 +825,6 @@ int inet_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		case SIOCSIFPFLAGS:
 		case SIOCGIFPFLAGS:
 		case SIOCSIFFLAGS:
-		case SIOCKILLADDR:
 			err = devinet_ioctl(net, cmd, (void __user *)arg);
 			break;
 		default:

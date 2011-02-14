@@ -323,7 +323,7 @@ config SPECIALIX
 
 config SX
 	tristate "Specialix SX (and SI) card support"
-	depends on SERIAL_NONSTANDARD && (PCI || EISA || ISA)
+	depends on SERIAL_NONSTANDARD && (PCI || EISA || ISA) && BROKEN
 	help
 	  This is a driver for the SX and SI multiport serial cards.
 	  Please read the file <file:Documentation/serial/sx.txt> for details.
@@ -334,7 +334,7 @@ config SX
 
 config RIO
 	tristate "Specialix RIO system support"
-	depends on SERIAL_NONSTANDARD
+	depends on SERIAL_NONSTANDARD && BROKEN
 	help
 	  This is a driver for the Specialix RIO, a smart serial card which
 	  drives an outboard box that can support up to 128 ports.  Product
@@ -395,7 +395,7 @@ config NOZOMI
 
 config A2232
 	tristate "Commodore A2232 serial support (EXPERIMENTAL)"
-	depends on EXPERIMENTAL && ZORRO && BROKEN_ON_SMP
+	depends on EXPERIMENTAL && ZORRO && BROKEN
 	---help---
 	  This option supports the 2232 7-port serial card shipped with the
 	  Amiga 2000 and other Zorro-bus machines, dating from 1989.  At
@@ -444,7 +444,7 @@ config MXC_IIM
 
 config MXS_VIIM
 	tristate "MXS Virtual IIM device driver"
-	depends on (ARCH_STMP3XXX || ARCH_MXS || ARCH_MX5)
+	depends on (ARCH_STMP3XXX || ARCH_MXS)
 	help
 	  Support for access to MXS Virtual IIM device, most people should say N here.
 
@@ -563,22 +563,6 @@ config BFIN_OTP_WRITE_ENABLE
 	  need it so as to not inadvertently clobber data.
 
 	  If unsure, say N.
-
-config FSL_OTP
-	tristate "Freescale On-Chip OTP Memory Support"
-	depends on (ARCH_MX23 || ARCH_MX28 || ARCH_MX50)
-	default n
-	help
-	  If you say Y here, you will get support for a character device
-	  interface into the One Time Programmable memory pages that are
-	  stored on the iMX23/28/50 processor.  This will not get you access
-	  to the secure memory pages however.  You will need to write your
-	  own secure code and reader for that.
-
-	  To compile this driver as a module, choose M here: the module
-	  will be called fsl_otp.
-
-	  If unsure, it is safe to say Y.
 
 config PRINTER
 	tristate "Parallel printer support"

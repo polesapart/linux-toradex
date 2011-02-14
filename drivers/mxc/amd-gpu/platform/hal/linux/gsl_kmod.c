@@ -39,7 +39,7 @@
 #include <linux/platform_device.h>
 #include <linux/vmalloc.h>
 
-int gpu_2d_irq, gpu_3d_irq;
+static int gpu_2d_irq, gpu_3d_irq;
 
 phys_addr_t gpu_2d_regbase;
 int gpu_2d_regsize;
@@ -48,7 +48,6 @@ int gpu_3d_regsize;
 int gmem_size;
 phys_addr_t gpu_reserved_mem;
 int gpu_reserved_mem_size;
-int z160_version;
 
 static ssize_t gsl_kmod_read(struct file *fd, char __user *buf, size_t len, loff_t *ptr);
 static ssize_t gsl_kmod_write(struct file *fd, const char __user *buf, size_t len, loff_t *ptr);
@@ -58,7 +57,9 @@ static int gsl_kmod_fault(struct vm_area_struct *vma, struct vm_fault *vmf);
 static int gsl_kmod_open(struct inode *inode, struct file *fd);
 static int gsl_kmod_release(struct inode *inode, struct file *fd);
 static irqreturn_t z160_irq_handler(int irq, void *dev_id);
+#if defined(MX51)
 static irqreturn_t z430_irq_handler(int irq, void *dev_id);
+#endif
 
 static int gsl_kmod_major;
 static struct class *gsl_kmod_class;
@@ -633,24 +634,34 @@ static int gsl_kmod_mmap(struct file *fd, struct vm_area_struct *vma)
     unsigned long pfn = vma->vm_pgoff;
     unsigned long size = vma->vm_end - vma->vm_start;
     unsigned long prot = pgprot_writecombine(vma->vm_page_prot);
-    unsigned long addr = vma->vm_pgoff << PAGE_SHIFT;
-    void *va = NULL;
+#ifdef GSL_MMU_TRANSLATION_ENABLED
+	unsigned long addr = vma->vm_pgoff << PAGE_SHIFT;
+	void *va;
+#endif
 
-    if (gsl_driver.enable_mmu && (addr < GSL_LINUX_MAP_RANGE_END) && (addr >= GSL_LINUX_MAP_RANGE_START)) {
-	va = gsl_linux_map_find(addr);
-	while (size > 0) {
-	    if (remap_pfn_range(vma, start, vmalloc_to_pfn(va), PAGE_SIZE, prot)) {
-		return -EAGAIN;
-	    }
-	    start += PAGE_SIZE;
-	    va += PAGE_SIZE;
-	    size -= PAGE_SIZE;
+#ifdef GSL_MMU_TRANSLATION_ENABLED
+	if (addr < GSL_LINUX_MAP_RANGE_END && addr >= GSL_LINUX_MAP_RANGE_START)
+	{
+		va = gsl_linux_map_find(addr);
+		while (size > 0)
+		{
+			if (remap_pfn_range(vma, start, vmalloc_to_pfn(va), PAGE_SIZE, prot))
+			{
+				return -EAGAIN;
+			}
+			start += PAGE_SIZE;
+			va += PAGE_SIZE;
+			size -= PAGE_SIZE;
+		}
 	}
-    } else {
-	if (remap_pfn_range(vma, start, pfn, size, prot)) {
-	    status = -EAGAIN;
+	else
+#endif
+	{
+		if (remap_pfn_range(vma, start, pfn, size, prot))
+		{
+			status = -EAGAIN;
+		}
 	}
-    }
 
     vma->vm_ops = &gsl_kmod_vmops;
 
@@ -742,22 +753,19 @@ static irqreturn_t z160_irq_handler(int irq, void *dev_id)
     return IRQ_HANDLED;
 }
 
+#if defined(MX51)
 static irqreturn_t z430_irq_handler(int irq, void *dev_id)
 {
     kgsl_intr_isr();
     return IRQ_HANDLED;
 }
+#endif
 
 static int gpu_probe(struct platform_device *pdev)
 {
     int i;
     struct resource *res;
     struct device *dev;
-
-    if (pdev->dev.platform_data)
-	z160_version = *((int *)(pdev->dev.platform_data));
-    else
-	z160_version = 0;
 
     for(i = 0; i < 2; i++){
         res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
@@ -803,26 +811,24 @@ static int gpu_probe(struct platform_device *pdev)
         }
     }
 
-    if (gpu_3d_irq > 0)
+    if (kgsl_driver_init() != GSL_SUCCESS)
     {
-	if (request_irq(gpu_3d_irq, z430_irq_handler, 0, "ydx", NULL) < 0) {
-	    printk(KERN_ERR "%s: request_irq error\n", __func__);
-	    gpu_3d_irq = 0;
-	    goto request_irq_error;
-	}
+        printk(KERN_ERR "%s: kgsl_driver_init error\n", __func__);
+        goto kgsl_driver_init_error;
     }
 
-    if (gpu_2d_irq > 0)
+#if defined(MX51)
+    if (request_irq(gpu_3d_irq, z430_irq_handler, 0, "ydx", NULL) < 0)
     {
-	if (request_irq(gpu_2d_irq, z160_irq_handler, 0, "g12", NULL) < 0) {
-	    printk(KERN_ERR "2D Acceleration Enabled, OpenVG Disabled!\n");
-	    gpu_2d_irq = 0;
-	}
+        printk(KERN_ERR "%s: request_irq error\n", __func__);
+        goto request_irq_error;
     }
+#endif
 
-    if (kgsl_driver_init() != GSL_SUCCESS) {
-	printk(KERN_ERR "%s: kgsl_driver_init error\n", __func__);
-	goto kgsl_driver_init_error;
+    if (request_irq(gpu_2d_irq, z160_irq_handler, 0, "g12", NULL) < 0)
+    {
+        printk(KERN_ERR "2D Acceleration Enabled, OpenVG Disabled!\n");
+        gpu_2d_irq = 0;
     }
 
     gsl_kmod_major = register_chrdev(0, "gsl_kmod", &gsl_kmod_fops);
@@ -862,15 +868,9 @@ class_create_error:
 register_chrdev_error:
     unregister_chrdev(gsl_kmod_major, "gsl_kmod");
 
+request_irq_error:
 kgsl_driver_init_error:
     kgsl_driver_close();
-    if (gpu_2d_irq > 0) {
-	free_irq(gpu_2d_irq, NULL);
-    }
-    if (gpu_3d_irq > 0) {
-	free_irq(gpu_3d_irq, NULL);
-    }
-request_irq_error:
     return 0;   // TODO: return proper error code
 }
 
@@ -879,7 +879,7 @@ static int gpu_remove(struct platform_device *pdev)
     device_destroy(gsl_kmod_class, MKDEV(gsl_kmod_major, 0));
     class_destroy(gsl_kmod_class);
     unregister_chrdev(gsl_kmod_major, "gsl_kmod");
-
+#if defined(MX51)
     if (gpu_3d_irq)
     {
         free_irq(gpu_3d_irq, NULL);
@@ -889,7 +889,12 @@ static int gpu_remove(struct platform_device *pdev)
     {
         free_irq(gpu_2d_irq, NULL);
     }
-
+#elif defined(MX35)
+    if (gpu_2d_irq)
+    {
+        free_irq(gpu_2d_irq, NULL);
+    }
+#endif	
     kgsl_driver_close();
     return 0;
 }
@@ -960,5 +965,9 @@ static void __exit gsl_kmod_exit(void)
 module_init(gsl_kmod_init);
 module_exit(gsl_kmod_exit);
 MODULE_AUTHOR("Advanced Micro Devices");
-MODULE_DESCRIPTION("AMD graphics core driver for i.MX");
+#if defined(MX51)
+MODULE_DESCRIPTION("AMD 2D/3D graphics core driver for i.MX51");
+#elif defined(MX35)
+MODULE_DESCRIPTION("AMD 2D graphics core driver for i.MX35");
+#endif
 MODULE_LICENSE("GPL v2");

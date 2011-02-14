@@ -35,11 +35,6 @@ EXPORT_SYMBOL_GPL(fb_mode_option);
      */
 
 static const struct fb_videomode modedb[] = {
-	    {
-		/* 800x480 @ 60 Hz, 31.5 kHz hsync */
-	    "LQ070Y3DG3B", 60, 800, 480, 44000, 0, 50, 25, 10, 128, 10,
-	    FB_SYNC_EXT,FB_VMODE_NONINTERLACED
-	    },
     {
 	/* 640x400 @ 70 Hz, 31.5 kHz hsync */
 	NULL, 70, 640, 400, 39721, 40, 24, 39, 9, 96, 2,

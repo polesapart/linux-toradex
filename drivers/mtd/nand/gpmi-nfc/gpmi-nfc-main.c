@@ -42,12 +42,8 @@ static struct gpmi_nfc_timing  safe_timing = {
  */
 
 static struct nfc_hal  *(nfc_hals[]) = {
-	/* i.mx23 */
 	&gpmi_nfc_hal_v0,
-	/* i.mx28 */
 	&gpmi_nfc_hal_v1,
-	/* i.mx50 */
-	&gpmi_nfc_hal_v2,
 };
 
 /*
@@ -1255,54 +1251,40 @@ static void release_register_block(struct gpmi_nfc_data *this,
  * @resource_name:     The name of the resource.
  * @interrupt_handler: A pointer to the function that will handle interrupts
  *                     from this interrupt number.
- * @lno:               A pointer to a variable that will receive the acquired
- *                     interrupt number(low part).
- * @hno:               A pointer to a variable that will receive the acquired
- *                     interrupt number(high part).
+ * @interrupt_number:  A pointer to a variable that will receive the acquired
+ *                     interrupt number.
  */
 static int acquire_interrupt(
 			struct gpmi_nfc_data *this, const char *resource_name,
-			irq_handler_t interrupt_handler, int *lno, int *hno)
+			irq_handler_t interrupt_handler, int *interrupt_number)
 {
 	struct platform_device  *pdev = this->pdev;
 	struct device           *dev  = this->dev;
 	int                     error = 0;
-	struct resource         *r;
 	int                     i;
 
 	/* Attempt to get information about the given resource. */
 
-	r = platform_get_resource_byname(pdev, IORESOURCE_IRQ, resource_name);
+	i = platform_get_irq_byname(pdev, resource_name);
 
-	if (!r) {
+	if (i < 0) {
 		dev_err(dev, "Can't get resource information for '%s'\n",
 								resource_name);
 		return -ENXIO;
 	}
 
 	/* Attempt to own the interrupt. */
-	for (i = r->start; i <= r->end; i++) {
-		error = request_irq(i, interrupt_handler, 0,
-						resource_name, this);
 
-		if (error) {
-			dev_err(dev, "Can't own %s\n", resource_name);
+	error = request_irq(i, interrupt_handler, 0, resource_name, this);
 
-			/* Free all the irq's we've already acquired. */
-
-			while ((i - r->start) >= 0) {
-				free_irq(i, this);
-				i--;
-			}
-
-			return -EIO;
-		}
+	if (error) {
+		dev_err(dev, "Can't own %s\n", resource_name);
+		return -EIO;
 	}
 
 	/* If control arrives here, everything went fine. */
 
-	*lno = r->start;
-	*hno = r->end;
+	*interrupt_number = i;
 
 	return 0;
 
@@ -1314,12 +1296,9 @@ static int acquire_interrupt(
  * @this:              Per-device data.
  * @interrupt_number:  The interrupt number.
  */
-static void release_interrupt(struct gpmi_nfc_data *this,
-			int low_interrupt_number, int high_interrupt_number)
+static void release_interrupt(struct gpmi_nfc_data *this, int interrupt_number)
 {
-	int i;
-	for (i = low_interrupt_number; i <= high_interrupt_number; i++)
-		free_irq(i, this);
+	free_irq(interrupt_number, this);
 }
 
 /**
@@ -1488,9 +1467,7 @@ static int acquire_resources(struct gpmi_nfc_data *this)
 
 	error = acquire_interrupt(this,
 		GPMI_NFC_BCH_INTERRUPT_RES_NAME,
-		gpmi_nfc_bch_isr,
-		&(resources->bch_low_interrupt),
-		&(resources->bch_high_interrupt));
+		gpmi_nfc_bch_isr, &(resources->bch_interrupt));
 
 	if (error)
 		goto exit_bch_interrupt;
@@ -1508,9 +1485,7 @@ static int acquire_resources(struct gpmi_nfc_data *this)
 
 	error = acquire_interrupt(this,
 		GPMI_NFC_DMA_INTERRUPT_RES_NAME,
-		gpmi_nfc_dma_isr,
-		&(resources->dma_low_interrupt),
-		&(resources->dma_high_interrupt));
+		gpmi_nfc_dma_isr, &(resources->dma_interrupt));
 
 	if (error)
 		goto exit_dma_interrupt;
@@ -1529,14 +1504,12 @@ static int acquire_resources(struct gpmi_nfc_data *this)
 	/* Control arrives here if something went wrong. */
 
 exit_clock:
-	release_interrupt(this,
-		resources->dma_low_interrupt, resources->dma_high_interrupt);
+	release_interrupt(this, resources->dma_interrupt);
 exit_dma_interrupt:
 	release_dma_channels(this,
 		resources->dma_low_channel, resources->dma_high_channel);
 exit_dma_channels:
-	release_interrupt(this,
-		resources->bch_low_interrupt, resources->bch_high_interrupt);
+	release_interrupt(this, resources->bch_interrupt);
 exit_bch_interrupt:
 	release_register_block(this, resources->bch_regs);
 exit_bch_regs:
@@ -1559,12 +1532,10 @@ static void release_resources(struct gpmi_nfc_data *this)
 	release_clock(this, resources->clock);
 	release_register_block(this, resources->gpmi_regs);
 	release_register_block(this, resources->bch_regs);
-	release_interrupt(this,
-		resources->bch_low_interrupt, resources->bch_low_interrupt);
+	release_interrupt(this, resources->bch_interrupt);
 	release_dma_channels(this,
 		resources->dma_low_channel, resources->dma_high_channel);
-	release_interrupt(this,
-		resources->dma_low_interrupt, resources->dma_high_interrupt);
+	release_interrupt(this, resources->dma_interrupt);
 }
 
 /**

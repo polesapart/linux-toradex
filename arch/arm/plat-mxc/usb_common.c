@@ -432,7 +432,14 @@ static int usb_register_remote_wakeup(struct platform_device *pdev)
 	int irq;
 
 	pr_debug("%s: pdev=0x%p \n", __func__, pdev);
-	if (!(pdata->wake_up_enable))
+	if (!cpu_is_mx51() && !cpu_is_mx25())
+		return -ECANCELED;
+
+	/* The Host2 USB controller On mx25 platform
+	 * is no path available from internal USB FS
+	 * PHY to FS PHY wake up interrupt, So to
+	 * remove the function of USB Remote Wakeup on Host2 */
+	if (cpu_is_mx25() && (!strcmp("Host 2", pdata->name)))
 		return -ECANCELED;
 
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -800,9 +807,9 @@ int usbotg_init(struct platform_device *pdev)
 	pdata->xcvr_type = xops->xcvr_type;
 	pdata->pdev = pdev;
 
-	if (fsl_check_usbclk() != 0)
-		return -EINVAL;
 	if (!otg_used) {
+		if (fsl_check_usbclk() != 0)
+			return -EINVAL;
 		if (cpu_is_mx50())
 			/* Turn on AHB CLK for OTG*/
 			USB_CLKONOFF_CTRL &= ~OTG_AHBCLK_OFF;
@@ -881,8 +888,8 @@ int usb_host_wakeup_irq(struct device *wkup_dev)
 		wakeup_req = USBCTRL & UCTRL_H1WIR;
 	} else if (!strcmp("DR", pdata->name)) {
 		wakeup_req = USBCTRL & UCTRL_OWIR;
-		/* If not ID wakeup, let udc handle it */
-		if (wakeup_req && (UOG_OTGSC & OTGSC_STS_USB_ID))
+		/* If DR is in device mode, let udc handle it */
+		if (wakeup_req && ((UOG_USBMODE & 0x3) == 0x2))
 			wakeup_req = 0;
 	}
 

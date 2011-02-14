@@ -405,12 +405,7 @@ static int _clk_pll_enable(struct clk *clk)
 	struct timespec curtime;
 
 	pllbase = _get_pll_base(clk);
-	reg = __raw_readl(pllbase + MXC_PLL_DP_CTL);
-
-	if (reg & MXC_PLL_DP_CTL_UPEN)
-		return 0;
-
-	reg |=  MXC_PLL_DP_CTL_UPEN;
+	reg = __raw_readl(pllbase + MXC_PLL_DP_CTL) | MXC_PLL_DP_CTL_UPEN;
 	__raw_writel(reg, pllbase + MXC_PLL_DP_CTL);
 
 	/* Wait for lock */
@@ -4742,15 +4737,15 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 		     1 << MXC_CCM_CCGR5_CG6_OFFSET |
 		     3 << MXC_CCM_CCGR5_CG7_OFFSET |
 		     1 << MXC_CCM_CCGR5_CG8_OFFSET |
-		     1 << MXC_CCM_CCGR5_CG9_OFFSET |
+		     3 << MXC_CCM_CCGR5_CG9_OFFSET |
 		     1 << MXC_CCM_CCGR5_CG10_OFFSET |
 		     3 << MXC_CCM_CCGR5_CG11_OFFSET, MXC_CCM_CCGR5);
 
-	__raw_writel(1 << MXC_CCM_CCGR6_CG0_OFFSET |
+	__raw_writel(3 << MXC_CCM_CCGR6_CG0_OFFSET |
 				3 << MXC_CCM_CCGR6_CG1_OFFSET |
-				1 << MXC_CCM_CCGR6_CG4_OFFSET |
-				1 << MXC_CCM_CCGR6_CG8_OFFSET |
-				1 << MXC_CCM_CCGR6_CG9_OFFSET |
+				3 << MXC_CCM_CCGR6_CG4_OFFSET |
+				3 << MXC_CCM_CCGR6_CG8_OFFSET |
+				3 << MXC_CCM_CCGR6_CG9_OFFSET |
 				3 << MXC_CCM_CCGR6_CG12_OFFSET |
 				3 << MXC_CCM_CCGR6_CG13_OFFSET , MXC_CCM_CCGR6);
 

@@ -37,6 +37,5 @@ struct mxs_i2c_dev {
 	struct i2c_adapter	adapter;
 	spinlock_t		lock;
 	wait_queue_head_t	queue;
-	struct work_struct 	work;
 };
 #endif

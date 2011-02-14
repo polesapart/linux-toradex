@@ -296,17 +296,6 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		bufaddr = fep->tx_bounce[index];
 	}
 
-	if (fep->ptimer_present) {
-		if (fec_ptp_do_txstamp(skb))
-			estatus = BD_ENET_TX_TS;
-		else
-			estatus = 0;
-#ifdef CONFIG_FEC_1588
-		bdp->cbd_esc = (estatus | BD_ENET_TX_INT);
-		bdp->cbd_bdu = 0;
-#endif
-	}
-
 #ifdef CONFIG_ARCH_MXS
 	swap_buffer(bufaddr, skb->len);
 #endif
@@ -329,6 +318,16 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 			| BD_ENET_TX_LAST | BD_ENET_TX_TC);
 	bdp->cbd_sc = status;
 
+	if (fep->ptimer_present) {
+		if (fec_ptp_do_txstamp(skb))
+			estatus = BD_ENET_TX_TS;
+		else
+			estatus = 0;
+#ifdef CONFIG_FEC_1588
+		bdp->cbd_esc = (estatus | BD_ENET_TX_INT);
+		bdp->cbd_bdu = 0;
+#endif
+	}
 	dev->trans_start = jiffies;
 
 	/* Trigger transmission start */
@@ -808,7 +807,7 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 {
 	struct net_device *dev = platform_get_drvdata(pdev);
 	struct fec_enet_private *fep = netdev_priv(dev);
-	struct fec_platform_data *pdata;
+	struct fec_enet_platform_data *pdata;
 	int err = -ENXIO, i;
 
 	fep->mii_timeout = 0;
@@ -837,7 +836,6 @@ static struct mii_bus *fec_enet_mii_init(struct platform_device *pdev)
 	fep->mii_bus->priv = fep;
 	fep->mii_bus->parent = &pdev->dev;
 	pdata = pdev->dev.platform_data;
-	fep->mii_bus->phy_mask = pdata->phy_mask;
 
 	fep->mii_bus->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!fep->mii_bus->irq) {
@@ -1412,15 +1410,6 @@ fec_stop(struct net_device *dev)
 	writel(1, fep->hwp + FEC_ECNTRL);
 	udelay(10);
 
-#ifdef CONFIG_ARCH_MXS
-	/* Check MII or RMII */
-	if (fep->phy_interface == PHY_INTERFACE_MODE_RMII)
-		writel(readl(fep->hwp + FEC_R_CNTRL) | 0x100,
-					fep->hwp + FEC_R_CNTRL);
-	else
-		writel(readl(fep->hwp + FEC_R_CNTRL) & ~0x100,
-					fep->hwp + FEC_R_CNTRL);
-#endif
 	/* Clear outstanding MII command interrupts. */
 	writel(FEC_ENET_MII, fep->hwp + FEC_IEVENT);
 
@@ -1496,18 +1485,6 @@ fec_probe(struct platform_device *pdev)
 		fep->phy_interface = pdata->phy;
 		if (pdata->init && pdata->init())
 			goto failed_platform_init;
-
-		/*
-		 * The priority for getting MAC address is:
-		 * (1) kernel command line fec_mac = xx:xx:xx...
-		 * (2) platform data mac field got from fuse etc
-		 * (3) bootloader set the FEC mac register
-		 */
-
-		if (!is_valid_ether_addr(fec_mac_default) &&
-			pdata->mac && is_valid_ether_addr(pdata->mac))
-			memcpy(fec_mac_default, pdata->mac,
-						sizeof(fec_mac_default));
 	} else
 		fep->phy_interface = PHY_INTERFACE_MODE_MII;
 

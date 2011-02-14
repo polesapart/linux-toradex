@@ -55,8 +55,6 @@
 #include "mx51_pins.h"
 #include "displays/displays.h"
 #include <linux/smc911x.h>
-#include <linux/fec.h>
-#include <linux/gpio_keys.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -523,11 +521,11 @@ struct mxc_dvfs_platform_data dvfs_core_data = {
 	.reg_id = "SW1",
 	.clk1_id = "cpu_clk",
 	.clk2_id = "gpc_dvfs_clk",
-	.gpc_cntr_offset = MXC_GPC_CNTR_OFFSET,
-	.gpc_vcr_offset = MXC_GPC_VCR_OFFSET,
-	.ccm_cdcr_offset = MXC_CCM_CDCR_OFFSET,
-	.ccm_cacrr_offset = MXC_CCM_CACRR_OFFSET,
-	.ccm_cdhipr_offset = MXC_CCM_CDHIPR_OFFSET,
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.ccm_cdcr_reg_addr = MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = MXC_CCM_CDHIPR,
 	.prediv_mask = 0x1F800,
 	.prediv_offset = 11,
 	.prediv_val = 3,
@@ -561,11 +559,6 @@ struct mxc_dvfsper_data dvfs_per_data = {
 	.lp_low = 1200000,
 };
 
-struct fec_platform_data fec_data = {
-	.phy = PHY_INTERFACE_MODE_MII,
-	.phy_mask = ~1UL,
-};
-
 struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
 	.pwm_id = 0,
 	.max_brightness = 255,
@@ -592,49 +585,6 @@ struct mxc_fb_platform_data mx51_fb_data[2] = {
 		.mode_str = "800x480-16@60",    /* Default */
 	}
 };
-
-#if defined(CONFIG_KEYBOARD_GPIO)
-
-#define GPIO_BUTTON(gpio_num, ev_type, ev_code, act_low, descr)	\
-{								\
-	.gpio		= gpio_num,				\
-	.type		= ev_type,				\
-	.code		= ev_code,				\
-	.active_low	= act_low,				\
-	.desc		= "btn " descr,				\
-}
-
-#define GPIO_BUTTON_LOW(gpio_num, event_code, description)	\
-	GPIO_BUTTON(gpio_num, EV_KEY, event_code, 1, description)
-
-// user key 1
-#if defined(CONFIG_JSCCWMX51_V2)
-#define USER_KEY2_GPIO_NR 70
-#else
-#define USER_KEY2_GPIO_NR 8
-#endif
-// user key 2
-#define USER_KEY1_GPIO_NR 1
-
-static struct gpio_keys_button ccwmx51js_gpio_keys[] = {
-		GPIO_BUTTON_LOW(USER_KEY1_GPIO_NR,	KEY_MENU,	"menu"),
-		GPIO_BUTTON_LOW(USER_KEY2_GPIO_NR,	KEY_HOME,	"home"),
-};
-
-
-struct gpio_keys_platform_data ccwmx51js_gpio_key_info = {
-	.buttons	= ccwmx51js_gpio_keys,
-	.nbuttons	= ARRAY_SIZE(ccwmx51js_gpio_keys),
-};
-
-struct platform_device ccwmx51js_keys_gpio = {
-	.name	= "gpio-keys",
-	.id	= -1,
-	.dev	= {
-		.platform_data	= &ccwmx51js_gpio_key_info,
-	},
-};
-#endif // KEYBOARD_GPIO
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 struct ccwmx51_lcd_pdata plcd_platform_data[2];

@@ -32,7 +32,6 @@
 
 /* Global address Variables */
 static void __iomem *nfc_axi_base, *nfc_ip_base;
-static int nfc_irq;
 
 struct mxc_mtd_s {
 	struct mtd_info mtd;
@@ -40,7 +39,6 @@ struct mxc_mtd_s {
 	struct mtd_partition *parts;
 	struct device *dev;
 	int disable_bi_swap; /* disable bi swap */
-	int clk_active;
 };
 
 static struct mxc_mtd_s *mxc_nand_data;
@@ -842,30 +840,6 @@ static int mxc_nand_verify_buf(struct mtd_info *mtd, const u_char * buf,
 }
 
 /*!
- * This function will enable NFC clock
- *
- */
-static inline void mxc_nand_clk_enable(void)
-{
-	if (!mxc_nand_data->clk_active) {
-		clk_enable(nfc_clk);
-		mxc_nand_data->clk_active = 1;
-	}
-}
-
-/*!
- * This function will disable NFC clock
- *
- */
-static inline void mxc_nand_clk_disable(void)
-{
-	if (mxc_nand_data->clk_active) {
-		clk_disable(nfc_clk);
-		mxc_nand_data->clk_active = 0;
-	}
-}
-
-/*!
  * This function is used by upper layer for select and deselect of the NAND
  * chip
  *
@@ -878,14 +852,13 @@ static void mxc_nand_select_chip(struct mtd_info *mtd, int chip)
 	switch (chip) {
 	case -1:
 		/* Disable the NFC clock */
-		mxc_nand_clk_disable();
-
+		clk_disable(nfc_clk);
 		break;
-	case 0 ... NFC_GET_MAXCHIP_SP():
+	case 0 ... 7:
 		/* Enable the NFC clock */
-		mxc_nand_clk_enable();
-		NFC_SET_NFC_ACTIVE_CS(chip);
+		clk_enable(nfc_clk);
 
+		NFC_SET_NFC_ACTIVE_CS(chip);
 		break;
 
 	default:
@@ -1257,10 +1230,9 @@ static int mxc_get_resources(struct platform_device *pdev)
 		error = -ENXIO;
 		goto out_2;
 	}
-	nfc_irq = r->start;
 
 	init_waitqueue_head(&irq_waitq);
-	error = request_irq(nfc_irq, mxc_nfc_irq, 0, "mxc_nd", NULL);
+	error = request_irq(r->start, mxc_nfc_irq, 0, "mxc_nd", NULL);
 	if (error)
 		goto out_3;
 
@@ -1526,7 +1498,6 @@ static int __init mxcnd_probe(struct platform_device *pdev)
 
 	nfc_clk = clk_get(&pdev->dev, "nfc_clk");
 	clk_enable(nfc_clk);
-	mxc_nand_data->clk_active = 1;
 
 	if (hardware_ecc) {
 		this->ecc.read_page = mxc_nand_read_page;
@@ -1622,13 +1593,13 @@ static int __exit mxcnd_remove(struct platform_device *pdev)
 	manage_sysfs_files(false);
 	mxc_free_buf();
 
-	mxc_nand_clk_disable();
+	clk_disable(nfc_clk);
 	clk_put(nfc_clk);
 	platform_set_drvdata(pdev, NULL);
 
 	if (mxc_nand_data) {
 		nand_release(mtd);
-		free_irq(nfc_irq, NULL);
+		free_irq(MXC_INT_NANDFC, NULL);
 		kfree(mxc_nand_data);
 	}
 
@@ -1653,7 +1624,7 @@ static int mxcnd_suspend(struct platform_device *pdev, pm_message_t state)
 	DEBUG(MTD_DEBUG_LEVEL0, "MXC_ND2 : NAND suspend\n");
 
 	/* Disable the NFC clock */
-	mxc_nand_clk_disable();
+	clk_disable(nfc_clk);
 
 	return 0;
 }
@@ -1672,7 +1643,7 @@ static int mxcnd_resume(struct platform_device *pdev)
 	DEBUG(MTD_DEBUG_LEVEL0, "MXC_ND2 : NAND resume\n");
 
 	/* Enable the NFC clock */
-	mxc_nand_clk_enable();
+	clk_enable(nfc_clk);
 
 	return 0;
 }
