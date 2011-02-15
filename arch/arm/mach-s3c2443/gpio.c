@@ -207,10 +207,13 @@ int s3c2443_gpio_getirq(unsigned gpio)
 static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	int pin = s3c2410_gpio_num(chip, gpio);
+
+	if (pin < S3C2410_GPIO_BANKB)
+		return -EINVAL;	/* only configurable as outputs */
 
 	if ((1 << gpio) & port->in_mask) {
-		s3c2410_gpio_cfgpin(s3c2410_gpio_num(chip, gpio),
-				    S3C2410_GPIO_INPUT);
+		s3c2410_gpio_cfgpin(pin, S3C2410_GPIO_INPUT);
 		return 0;
 	}
 
@@ -220,11 +223,16 @@ static int s3c2443_gpio_dir_input(struct gpio_chip *chip, unsigned gpio)
 static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int value)
 {
 	struct s3c2443_gpio_chip *port = to_s3c2443_gpio_chip(chip);
+	int pin = s3c2410_gpio_num(chip, gpio);
 
 	if ((1 << gpio) & port->out_mask) {
-		s3c2410_gpio_cfgpin(s3c2410_gpio_num(chip, gpio),
-				    S3C2410_GPIO_OUTPUT);
-		s3c2410_gpio_setpin(s3c2410_gpio_num(chip, gpio), value);
+		if (pin < S3C2410_GPIO_BANKB) {
+			s3c2443_gpio_cfgpin(pin, S3C2410_GPA0_OUT << pin);
+		}
+		else {
+			s3c2410_gpio_cfgpin(pin, S3C2410_GPIO_OUTPUT);
+		}
+		s3c2443_gpio_setpin(pin, value);
 		return 0;
 	}
 
@@ -233,12 +241,25 @@ static int s3c2443_gpio_dir_output(struct gpio_chip *chip, unsigned gpio, int va
 
 static int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio)
 {
-	return s3c2410_gpio_getpin(s3c2410_gpio_num(chip, gpio)) ? 1 : 0;
+	int pin = s3c2410_gpio_num(chip, gpio);
+	unsigned long dat;
+	unsigned long offs =  S3C2410_GPIO_OFFSET(pin);
+
+	if (pin < S3C2410_GPIO_BANKB) {
+		dat = s3c2443_gpio_read_porta(pin);
+		if (pin > S3C2410_GPA7)
+			return (dat & (1 << ((offs - S3C2410_GPA7 - 1) * 2)));
+		else
+			return dat & (1 << (offs * 2));
+	}
+	else {
+		return s3c2410_gpio_getpin(pin);
+	}
 }
 
 static void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
 {
-	s3c2410_gpio_setpin(s3c2410_gpio_num(chip, gpio), value);
+	s3c2443_gpio_setpin(s3c2410_gpio_num(chip, gpio), value);
 }
 
 static irqreturn_t s3c2443_wakeup_irq(int irq, void *data)
