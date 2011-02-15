@@ -140,6 +140,13 @@ static void usbotg_clock_gate(bool on)
 }
 #endif
 
+void mx5_set_otghost_vbus_func(driver_vbus_func driver_vbus)
+{
+#if defined(CONFIG_USB_OTG) || defined(CONFIG_USB_EHCI_ARC_OTG) || defined(CONFIG_USB_GADGET_ARC)
+       dr_utmi_config.platform_driver_vbus = driver_vbus;
+#endif
+}
+
 void __init mx5_usb_dr_init(void)
 {
 #ifdef CONFIG_USB_OTG

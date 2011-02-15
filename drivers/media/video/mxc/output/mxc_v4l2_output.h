@@ -39,7 +39,6 @@
 
 #define MXC_V4L2_OUT_NUM_OUTPUTS        6
 #define MXC_V4L2_OUT_2_SDC              0
-#define MXC_V4L2_OUT_2_ADC              1
 
 
 typedef struct {
@@ -141,8 +140,10 @@ typedef struct _vout_data {
 	int pp_split; /* 0,1 */
 	struct stripe_param pp_left_stripe;
 	struct stripe_param pp_right_stripe; /* struct for split parameters */
-	/* IC ouput buffer number. Counting from 0 to 3 */
-	int pp_split_buf_num; /*  0..3 */
+	struct stripe_param pp_up_stripe;
+	struct stripe_param pp_down_stripe;
+	/* IC ouput buffer number. Counting from 0 to 7 */
+	int pp_split_buf_num; /*  0..7 */
 	u16 bpp ; /* bit per pixel */
 	u16 xres; /* width of physical frame (BGs) */
 	u16 yres; /* heigth of physical frame (BGs)*/

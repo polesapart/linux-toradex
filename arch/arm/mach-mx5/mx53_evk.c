@@ -36,13 +36,14 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
-#include <linux/spi/flash.h>
 #include <linux/regulator/consumer.h>
 #include <linux/pmic_external.h>
 #include <linux/pmic_status.h>
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
+#include <linux/fec.h>
+#include <linux/ahci_platform.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -51,11 +52,11 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <asm/mach/keypad.h>
+#include <asm/mach/flash.h>
 #include <mach/memory.h>
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
-#include "board-mx53_evk.h"
 #include "iomux.h"
 #include "mx53_pins.h"
 #include "crm_regs.h"
@@ -69,6 +70,7 @@
  *
  * @ingroup MSL_MX53
  */
+extern int __init mx53_evk_init_mc13892(void);
 extern void __init mx53_evk_io_init(void);
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
@@ -84,7 +86,7 @@ static struct cpu_wp cpu_wp_auto[] = {
 	 .mfd = 11,
 	 .mfn = 5,
 	 .cpu_podf = 0,
-	 .cpu_voltage = 1175000,},
+	 .cpu_voltage = 1150000,},
 	{
 	 .pll_rate = 800000000,
 	 .cpu_rate = 800000000,
@@ -93,10 +95,10 @@ static struct cpu_wp cpu_wp_auto[] = {
 	 .mfd = 2,
 	 .mfn = 1,
 	 .cpu_podf = 0,
-	 .cpu_voltage = 1100000,},
+	 .cpu_voltage = 1050000,},
 	{
 	 .pll_rate = 800000000,
-	 .cpu_rate = 166250000,
+	 .cpu_rate = 160000000,
 	 .pdf = 4,
 	 .mfi = 8,
 	 .mfd = 2,
@@ -107,7 +109,24 @@ static struct cpu_wp cpu_wp_auto[] = {
 
 static struct fb_videomode video_modes[] = {
 	{
-	 /* 720p60 TV output */
+	 /* NTSC TV output */
+	 "TV-NTSC", 60, 720, 480, 74074,
+	 122, 15,
+	 18, 26,
+	 1, 1,
+	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT | FB_SYNC_EXT,
+	 FB_VMODE_INTERLACED,
+	 0,},
+	{
+	 /* PAL TV output */
+	 "TV-PAL", 50, 720, 576, 74074,
+	 132, 11,
+	 22, 26,
+	 1, 1,
+	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT | FB_SYNC_EXT,
+	 FB_VMODE_INTERLACED | FB_VMODE_ODD_FLD_FIRST,
+	 0,},
+	{
 	 "720P60", 60, 1280, 720, 13468,
 	 260, 109,
 	 25, 4,
@@ -117,12 +136,35 @@ static struct fb_videomode video_modes[] = {
 	 FB_VMODE_NONINTERLACED,
 	 0,},
 	{
-	 /* MITSUBISHI LVDS panel */
+	 /* 800x480 @ 57 Hz , pixel clk @ 27MHz */
+	 "CLAA-WVGA", 57, 800, 480, 37037, 40, 60, 10, 10, 20, 10,
+	 FB_SYNC_CLK_LAT_FALL,
+	 FB_VMODE_NONINTERLACED,
+	 0,},
+	{
+	/* 1600x1200 @ 60 Hz 162M pixel clk*/
+	"UXGA", 60, 1600, 1200, 6172,
+	304, 64,
+	1, 46,
+	192, 3,
+	FB_SYNC_HOR_HIGH_ACT|FB_SYNC_VERT_HIGH_ACT |
+	FB_SYNC_EXT,
+	FB_VMODE_NONINTERLACED,
+	0,},
+	{
+	 "1080P60", 60, 1920, 1080, 7692,
+	 100, 40,
+	 30, 3,
+	 10, 2,
+	 FB_SYNC_EXT,
+	 FB_VMODE_NONINTERLACED,
+	 0,},
+	{
 	 "XGA", 60, 1024, 768, 15385,
 	 220, 40,
 	 21, 7,
 	 60, 10,
-	 0,
+	 FB_SYNC_EXT,
 	 FB_VMODE_NONINTERLACED,
 	 0,},
 };
@@ -150,6 +192,43 @@ static struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
 	.pwm_period_ns = 78770,
 };
 
+extern void flexcan_xcvr_enable(int id, int en);
+
+static struct flexcan_platform_data flexcan0_data = {
+	.core_reg = NULL,
+	.io_reg = NULL,
+	.xcvr_enable = flexcan_xcvr_enable,
+	.br_clksrc = 1,
+	.br_rjw = 2,
+	.br_presdiv = 5,
+	.br_propseg = 5,
+	.br_pseg1 = 4,
+	.br_pseg2 = 7,
+	.bcc = 1,
+	.srx_dis = 1,
+	.smp = 1,
+	.boff_rec = 1,
+	.ext_msg = 1,
+	.std_msg = 1,
+};
+static struct flexcan_platform_data flexcan1_data = {
+	.core_reg = NULL,
+	.io_reg = NULL,
+	.xcvr_enable = flexcan_xcvr_enable,
+	.br_clksrc = 1,
+	.br_rjw = 2,
+	.br_presdiv = 5,
+	.br_propseg = 5,
+	.br_pseg1 = 4,
+	.br_pseg2 = 7,
+	.bcc = 1,
+	.srx_dis = 1,
+	.boff_rec = 1,
+	.ext_msg = 1,
+	.std_msg = 1,
+};
+
+
 extern void mx5_ipu_reset(void);
 static struct mxc_ipu_config mxc_ipu_data = {
 	.rev = 3,
@@ -159,6 +238,10 @@ static struct mxc_ipu_config mxc_ipu_data = {
 extern void mx5_vpu_reset(void);
 static struct mxc_vpu_platform_data mxc_vpu_data = {
 	.reset = mx5_vpu_reset,
+};
+
+static struct fec_platform_data fec_data = {
+	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
 extern void mx53_evk_gpio_spi_chipselect_active(int cspi_mode, int status,
@@ -180,8 +263,61 @@ static struct mxc_srtc_platform_data srtc_data = {
 	.srtc_sec_mode_addr = 0x83F98840,
 };
 
+static struct mxc_dvfs_platform_data dvfs_core_data = {
+	.reg_id = "SW1",
+	.clk1_id = "cpu_clk",
+	.clk2_id = "gpc_dvfs_clk",
+	.gpc_cntr_reg_addr = MXC_GPC_CNTR,
+	.gpc_vcr_reg_addr = MXC_GPC_VCR,
+	.ccm_cdcr_reg_addr = MXC_CCM_CDCR,
+	.ccm_cacrr_reg_addr = MXC_CCM_CACRR,
+	.ccm_cdhipr_reg_addr = MXC_CCM_CDHIPR,
+	.prediv_mask = 0x1F800,
+	.prediv_offset = 11,
+	.prediv_val = 3,
+	.div3ck_mask = 0xE0000000,
+	.div3ck_offset = 29,
+	.div3ck_val = 2,
+	.emac_val = 0x08,
+	.upthr_val = 25,
+	.dnthr_val = 9,
+	.pncthr_val = 33,
+	.upcnt_val = 10,
+	.dncnt_val = 10,
+	.delay_time = 30,
+	.num_wp = 3,
+};
+
 static struct tve_platform_data tve_data = {
 	.dac_reg = "VVIDEO",
+};
+
+static struct ldb_platform_data ldb_data = {
+	.lvds_bg_reg = "VAUDIO",
+	.ext_ref = 1,
+};
+
+static struct mxc_esai_platform_data esai_data = {
+	.activate_esai_ports = gpio_activate_esai_ports,
+};
+
+static void adv7180_pwdn(int pwdn)
+{
+	gpio_request(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), "gpio5_23");
+	gpio_direction_output(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), 0);
+	if (pwdn)
+		gpio_set_value(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), 0);
+	else
+		gpio_set_value(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), 1);
+}
+
+static struct mxc_tvin_platform_data adv7180_data = {
+	.dvddio_reg = NULL,
+	.dvdd_reg = NULL,
+	.avdd_reg = NULL,
+	.pvdd_reg = NULL,
+	.pwdn = adv7180_pwdn,
+	.reset = NULL,
 };
 
 static struct resource mxcfb_resources[] = {
@@ -193,101 +329,43 @@ static struct resource mxcfb_resources[] = {
 static struct mxc_fb_platform_data fb_data[] = {
 	{
 	 .interface_pix_fmt = IPU_PIX_FMT_RGB565,
-	 .mode_str = "800x480M-16@55",
+	 .mode_str = "CLAA-WVGA",
+	 .mode = video_modes,
+	 .num_modes = ARRAY_SIZE(video_modes),
 	 },
 	{
-	 .interface_pix_fmt = IPU_PIX_FMT_RGB24,
+	 .interface_pix_fmt = IPU_PIX_FMT_BGR24,
 	 .mode_str = "1024x768M-16@60",
+	 .mode = video_modes,
+	 .num_modes = ARRAY_SIZE(video_modes),
 	 },
 };
 
-static int __initdata enable_vga = { 0 };
-static int __initdata enable_tv = { 0 };
-static int __initdata enable_dvi = { 0 };
-
-static void wvga_reset(void)
-{
-}
-
-static struct mxc_lcd_platform_data lcd_wvga_data = {
-	.reset = wvga_reset,
-};
-
-static struct platform_device lcd_wvga_device = {
-	.name = "lcd_claa",
-};
-
+extern int primary_di;
 static int __init mxc_init_fb(void)
 {
 	if (!machine_is_mx53_evk())
 		return 0;
 
-	/* by default, fb0 is wvga, fb1 is vga or tv */
-	if (enable_vga) {
-		printk(KERN_INFO "VGA monitor is primary\n");
-	} else if (enable_tv == 2)
-		printk(KERN_INFO "HDTV is primary\n");
-	else if (enable_dvi)
-		printk(KERN_INFO "DVI is primary\n");
-	else
-		printk(KERN_INFO "WVGA LCD panel is primary\n");
-
-	if (enable_tv) {
-		printk(KERN_INFO "HDTV is specified as %d\n", enable_tv);
-		fb_data[1].interface_pix_fmt = IPU_PIX_FMT_YUV444;
-		fb_data[1].mode = &(video_modes[0]);
-	}
-
-	if (enable_dvi) {
-		fb_data[0].mode_str = "1024x768M-16@60";
-		fb_data[0].interface_pix_fmt = IPU_PIX_FMT_RGB24;
-	}
-
-	/* Once a customer knows the platform configuration,
-	   this should be simplified to what is desired.
-	 */
-	if (enable_vga || enable_tv == 2) {
-		/*
-		 * DI1 -> DP-BG channel:
-		 *
-		 *    dev    di-out-fmt    default-videmode
-		 *
-		 * 1. VGA       RGB 	   1024x768M-16@60
-		 * 2. TVE       YUV	   video_modes[0]
-		 */
+	if (primary_di) {
+		printk(KERN_INFO "DI1 is primary\n");
+		/* DI1 -> DP-BG channel: */
 		mxc_fb_devices[1].num_resources = ARRAY_SIZE(mxcfb_resources);
 		mxc_fb_devices[1].resource = mxcfb_resources;
 		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
-		if (fb_data[0].mode_str || fb_data[0].mode)
-			/*
-			 * DI0 -> DC channel:
-			 *
-			 *    dev    di-out-fmt    default-videmode
-			 *
-			 * 1. WVGA      RGB 	   800x480M-16@55
-			 */
-			mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
+
+		/* DI0 -> DC channel: */
+		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
 	} else {
-		/*
-		 * DI0 -> DP-BG channel:
-		 *
-		 *    dev    di-out-fmt    default-videmode
-		 *
-		 * 1. WVGA      RGB 	   800x480M-16@55
-		 */
+		printk(KERN_INFO "DI0 is primary\n");
+
+		/* DI0 -> DP-BG channel: */
 		mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
 		mxc_fb_devices[0].resource = mxcfb_resources;
 		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
-		if (fb_data[1].mode_str || fb_data[1].mode)
-			/*
-			 * DI1 -> DC channel:
-			 *
-			 *    dev    di-out-fmt    default-videmode
-			 *
-			 * 1. VGA       RGB 	   1024x768M-16@60
-			 * 2. TVE       YUV	   video_modes[0]
-			 */
-			mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
+
+		/* DI1 -> DC channel: */
+		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
 	}
 
 	/*
@@ -299,33 +377,18 @@ static int __init mxc_init_fb(void)
 }
 device_initcall(mxc_init_fb);
 
-static int __init dvi_setup(char *s)
+static void camera_pwdn(int pwdn)
 {
-	enable_dvi = 1;
-	return 1;
+	gpio_request(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), "gpio5_23");
+	gpio_direction_output(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), 0);
+	gpio_set_value(IOMUX_TO_GPIO(MX53_PIN_CSI0_D5), pwdn);
 }
-__setup("dvi", dvi_setup);
-
-static int __init vga_setup(char *__unused)
-{
-	enable_vga = 1;
-	return 1;
-}
-__setup("vga", vga_setup);
-
-static int __init tv_setup(char *s)
-{
-	enable_tv = 1;
-	if (strcmp(s, "2") == 0 || strcmp(s, "=2") == 0)
-		enable_tv = 2;
-	return 1;
-}
-__setup("hdtv", tv_setup);
 
 static struct mxc_camera_platform_data camera_data = {
 	.analog_regulator = "VSD",
 	.mclk = 24000000,
 	.csi = 0,
+	.pwdn = camera_pwdn,
 };
 
 static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
@@ -333,6 +396,15 @@ static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
 	.type = "ov3640",
 	.addr = 0x3C,
 	.platform_data = (void *)&camera_data,
+	 },
+	{
+	.type = "adv7180",
+	.addr = 0x21,
+	.platform_data = (void *)&adv7180_data,
+	 },
+	{
+	 .type = "cs42888",
+	 .addr = 0x48,
 	 },
 };
 
@@ -359,6 +431,35 @@ static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
 	 .type = "eeprom",
 	 .addr = 0x50,
 	 },
+};
+
+static struct mtd_partition mxc_dataflash_partitions[] = {
+	{
+	 .name = "bootloader",
+	 .offset = 0,
+	 .size = 0x000100000,},
+	{
+	 .name = "kernel",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = MTDPART_SIZ_FULL,},
+};
+
+static struct flash_platform_data mxc_spi_flash_data[] = {
+	{
+	 .name = "mxc_dataflash",
+	 .parts = mxc_dataflash_partitions,
+	 .nr_parts = ARRAY_SIZE(mxc_dataflash_partitions),
+	 .type = "at45db321d",}
+};
+
+
+static struct spi_board_info mxc_dataflash_device[] __initdata = {
+	{
+	 .modalias = "mxc_dataflash",
+	 .max_speed_hz = 25000000,	/* max spi clock (SCK) speed in HZ */
+	 .bus_num = 1,
+	 .chip_select = 1,
+	 .platform_data = &mxc_spi_flash_data[0],},
 };
 
 static int sdhc_write_protect(struct device *dev)
@@ -410,13 +511,169 @@ static struct mxc_mmc_platform_data mmc1_data = {
 static struct mxc_mmc_platform_data mmc3_data = {
 	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
 		| MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
+	.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
+		| MMC_CAP_DATA_DDR,
 	.min_clk = 400000,
 	.max_clk = 50000000,
 	.card_inserted_state = 0,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
 	.clock_mmc = "esdhc_clk",
+};
+
+/* return value 1 failure, 0 success */
+static int write_phy_ctl_ack_polling(u32 data, void __iomem *mmio,
+		int max_iterations, u32 exp_val)
+{
+	enum {
+		PORT_PHY_CTL 		= 0x178, /* Port0 PHY Control */
+		PORT_PHY_SR 		= 0x17c, /* Port0 PHY Status */
+		/* PORT_PHY_SR */
+		PORT_PHY_STAT_DATA_LOC 	= 0,
+		PORT_PHY_STAT_ACK_LOC 	= 18,
+	};
+	int i;
+	u32 val;
+
+	writel(data, mmio + PORT_PHY_CTL);
+
+	for (i = 0; i < max_iterations + 1; i++) {
+		val = readl(mmio + PORT_PHY_SR);
+		val =  (val >> PORT_PHY_STAT_ACK_LOC) & 0x1;
+		if (val == exp_val)
+			return 0;
+		if (i == max_iterations) {
+			printk(KERN_ERR "Wait for CR ACK error!\n");
+			return 1;
+		}
+		msleep(1);
+	}
+	return 0;
+}
+
+/* HW Initialization, if return 1, initialization is failed. */
+static int sata_init(struct device *dev)
+{
+	enum {
+		HOST_CAP		= 0x00,
+		HOST_CAP_SSS		= (1 << 27), /* Staggered Spin-up */
+		HOST_PORTS_IMPL		= 0x0c,
+		HOST_TIMER1MS 		= 0xe0, /* Timer 1-ms */
+		/* Offest used to control the MPLL input clk */
+		PHY_CR_CLOCK_FREQ_OVRD 	= 0x12,
+
+		PORT_PHY_CTL 		= 0x178, /* Port0 PHY Control */
+		/* PORT_PHY_CTL bits */
+		PORT_PHY_CTL_CAP_ADR_LOC 	= 0x10000,
+		PORT_PHY_CTL_CAP_DAT_LOC 	= 0x20000,
+		PORT_PHY_CTL_WRITE_LOC 		= 0x40000,
+	};
+	void __iomem *mmio;
+	struct clk *clk;
+	int rc = 0;
+	u32 tmpdata;
+
+	clk = clk_get(dev, "sata_clk");
+	clk_enable(clk);
+
+	mmio = ioremap(MX53_SATA_BASE_ADDR, SZ_4K);
+
+	tmpdata = readl(mmio + HOST_CAP);
+	if (!(tmpdata & HOST_CAP_SSS)) {
+		tmpdata |= HOST_CAP_SSS;
+		writel(tmpdata, mmio + HOST_CAP);
+	}
+
+	if (!(readl(mmio + HOST_PORTS_IMPL) & 0x1))
+		writel((readl(mmio + HOST_PORTS_IMPL) | 0x1),
+			mmio + HOST_PORTS_IMPL);
+
+	/* Get the AHB clock rate, and configure the TIMER1MS reg */
+	clk = clk_get(NULL, "ahb_clk");
+	tmpdata = clk_get_rate(clk) / 1000;
+	writel(tmpdata, mmio + HOST_TIMER1MS);
+
+	/* write addr */
+	tmpdata = PHY_CR_CLOCK_FREQ_OVRD;
+	writel(tmpdata, mmio + PORT_PHY_CTL);
+	/* capture addr */
+	tmpdata |= PORT_PHY_CTL_CAP_ADR_LOC;
+	/* Wait for ack */
+	if (write_phy_ctl_ack_polling(tmpdata, mmio, 100, 1)) {
+		rc = 1;
+		goto err0;
+	}
+
+	/* deassert cap data */
+	tmpdata &= 0xFFFF;
+	/* wait for ack de-assertion */
+	if (write_phy_ctl_ack_polling(tmpdata, mmio, 100, 0)) {
+		rc = 1;
+		goto err0;
+	}
+
+	/* write data */
+	/* Configure the PHY CLK input refer to different OSC
+	 * For 25MHz, pre[13,14]:01, ncy[12,8]:06,
+	 * ncy5[7,6]:02, int_ctl[5,3]:0, prop_ctl[2,0]:7.
+	 * For 50MHz, pre:00, ncy:06, ncy5:02, int_ctl:0, prop_ctl:7.
+	 */
+	/* EVK revA */
+	if (board_is_mx53_evk_a())
+		tmpdata = (0x1 << 15) | (0x1 << 13) | (0x6 << 8)
+			| (0x2 << 6) | 0x7;
+	/* EVK revB */
+	else if (board_is_mx53_evk_b())
+		tmpdata = (0x1 << 15) | (0x0 << 13) | (0x6 << 8)
+			| (0x2 << 6) | 0x7;
+
+	writel(tmpdata, mmio + PORT_PHY_CTL);
+	/* capture data */
+	tmpdata |= PORT_PHY_CTL_CAP_DAT_LOC;
+	/* wait for ack */
+	if (write_phy_ctl_ack_polling(tmpdata, mmio, 100, 1)) {
+		rc = 1;
+		goto err0;
+	}
+
+	/* deassert cap data */
+	tmpdata &= 0xFFFF;
+	/* wait for ack de-assertion */
+	if (write_phy_ctl_ack_polling(tmpdata, mmio, 100, 0)) {
+		rc = 1;
+		goto err0;
+	}
+
+	/* assert wr signal and wait for ack */
+	if (write_phy_ctl_ack_polling(PORT_PHY_CTL_WRITE_LOC, mmio, 100, 1)) {
+		rc = 1;
+		goto err0;
+	}
+	/* deassert rd _signal and wait for ack de-assertion */
+	if (write_phy_ctl_ack_polling(0, mmio, 100, 0)) {
+		rc = 1;
+		goto err0;
+	}
+
+	msleep(10);
+
+err0:
+	iounmap(mmio);
+	return rc;
+}
+
+static void sata_exit(struct device *dev)
+{
+	struct clk *clk;
+
+	clk = clk_get(dev, "sata_clk");
+	clk_disable(clk);
+	clk_put(clk);
+}
+
+static struct ahci_platform_data sata_data = {
+	.init = sata_init,
+	.exit = sata_exit,
 };
 
 static int mxc_sgtl5000_amp_enable(int enable)
@@ -473,6 +730,102 @@ static int mxc_sgtl5000_init(void)
 static struct platform_device mxc_sgtl5000_device = {
 	.name = "imx-3stack-sgtl5000",
 };
+
+static struct mxc_mlb_platform_data mlb_data = {
+	.reg_nvcc = "VCAM",
+	.mlb_clk = "mlb_clk",
+};
+
+/* NAND Flash Partitions */
+#ifdef CONFIG_MTD_PARTITIONS
+static struct mtd_partition nand_flash_partitions[] = {
+	{
+	 .name = "bootloader",
+	 .offset = 0,
+	 .size = 3 * 1024 * 1024},
+	{
+	 .name = "nand.kernel",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 5 * 1024 * 1024},
+	{
+	 .name = "nand.rootfs",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 256 * 1024 * 1024},
+	{
+	 .name = "nand.userfs1",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = 256 * 1024 * 1024},
+	{
+	 .name = "nand.userfs2",
+	 .offset = MTDPART_OFS_APPEND,
+	 .size = MTDPART_SIZ_FULL},
+};
+#endif
+
+static int nand_init(void)
+{
+	u32 i, reg;
+	void __iomem *base;
+
+	#define M4IF_GENP_WEIM_MM_MASK          0x00000001
+	#define WEIM_GCR2_MUX16_BYP_GRANT_MASK  0x00001000
+
+	base = ioremap(MX53_BASE_ADDR(M4IF_BASE_ADDR), SZ_4K);
+	reg = __raw_readl(base + 0xc);
+	reg &= ~M4IF_GENP_WEIM_MM_MASK;
+	__raw_writel(reg, base + 0xc);
+
+	iounmap(base);
+
+	base = ioremap(MX53_BASE_ADDR(WEIM_BASE_ADDR), SZ_4K);
+	for (i = 0x4; i < 0x94; i += 0x18) {
+		reg = __raw_readl((u32)base + i);
+		reg &= ~WEIM_GCR2_MUX16_BYP_GRANT_MASK;
+		__raw_writel(reg, (u32)base + i);
+	}
+
+	iounmap(base);
+
+	return 0;
+}
+
+static struct flash_platform_data mxc_nand_data = {
+#ifdef CONFIG_MTD_PARTITIONS
+	.parts = nand_flash_partitions,
+	.nr_parts = ARRAY_SIZE(nand_flash_partitions),
+#endif
+	.width = 1,
+	.init = nand_init,
+};
+
+static struct mxc_spdif_platform_data mxc_spdif_data = {
+	.spdif_tx = 1,
+	.spdif_rx = 0,
+	.spdif_clk_44100 = 0,	/* Souce from CKIH1 for 44.1K */
+	.spdif_clk_48000 = 7,	/* Source from CKIH2 for 48k and 32k */
+	.spdif_clkid = 0,
+	.spdif_clk = NULL,	/* spdif bus clk */
+};
+
+static struct mxc_audio_platform_data mxc_surround_audio_data = {
+	.ext_ram = 1,
+};
+
+
+static struct platform_device mxc_alsa_surround_device = {
+	.name = "imx-3stack-cs42888",
+};
+
+static int __initdata mxc_apc_on = { 0 };	/* OFF: 0 (default), ON: 1 */
+
+static int __init apc_setup(char *__unused)
+{
+	mxc_apc_on = 1;
+	printk(KERN_INFO "Automotive Port Card is Plugged on\n");
+	return 1;
+}
+__setup("apc", apc_setup);
+
 
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
@@ -558,7 +911,8 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 #endif
 	}
 }
-
+extern void mx53_gpio_usbotg_driver_vbus(bool on);
+extern void mx53_gpio_host1_driver_vbus(bool on);
 /*!
  * Board specific initialization.
  */
@@ -566,6 +920,8 @@ static void __init mxc_board_init(void)
 {
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
+	mxc_spdif_data.spdif_core_clk = clk_get(NULL, "spdif_xtal_clk");
+	clk_put(mxc_spdif_data.spdif_core_clk);
 
 	/* SD card detect irqs */
 	if (board_is_mx53_arm2()) {
@@ -596,7 +952,7 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_rtc_device, &srtc_data);
 	mxc_register_device(&mxc_w1_master_device, &mxc_w1_data);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
-	mxc_register_device(&lcd_wvga_device, &lcd_wvga_data);
+	mxc_register_device(&mxc_ldb_device, &ldb_data);
 	mxc_register_device(&mxc_tve_device, &tve_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&gpu_device, NULL);
@@ -605,29 +961,34 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mx53_lpmode_device, NULL);
 	mxc_register_device(&busfreq_device, NULL);
 	mxc_register_device(&sdram_autogating_device, NULL);
+	*/
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
+	mxc_register_device(&busfreq_device, NULL);
+
+	/*
 	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);
 	*/
+
 	mxc_register_device(&mxc_iim_device, NULL);
 	if (!board_is_mx53_arm2()) {
 		mxc_register_device(&mxc_pwm2_device, NULL);
 		mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 	}
+	mxc_register_device(&mxc_flexcan0_device, &flexcan0_data);
+	mxc_register_device(&mxc_flexcan1_device, &flexcan1_data);
+
 /*	mxc_register_device(&mxc_keypad_device, &keypad_plat_data); */
 
 	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
 	mxc_register_device(&mxcsdhc3_device, &mmc3_data);
 	mxc_register_device(&mxc_ssi1_device, NULL);
 	mxc_register_device(&mxc_ssi2_device, NULL);
-	/*
+	mxc_register_device(&ahci_fsl_device, &sata_data);
 	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
-	*/
-	mxc_register_device(&mxc_fec_device, NULL);
-/*
-	spi_register_board_info(mxc_spi_nor_device,
-					ARRAY_SIZE(mxc_spi_nor_device));
-*/
-
+	if (!mxc_apc_on)
+		mxc_register_device(&mxc_fec_device, &fec_data);
+	spi_register_board_info(mxc_dataflash_device,
+				ARRAY_SIZE(mxc_dataflash_device));
 	i2c_register_board_info(0, mxc_i2c0_board_info,
 				ARRAY_SIZE(mxc_i2c0_board_info));
 	i2c_register_board_info(1, mxc_i2c1_board_info,
@@ -638,8 +999,17 @@ static void __init mxc_board_init(void)
 	pm_power_off = mxc_power_off;
 	*/
 	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
+	mxc_register_device(&mxc_mlb_device, &mlb_data);
+	mx5_set_otghost_vbus_func(mx53_gpio_usbotg_driver_vbus);
 	mx5_usb_dr_init();
+	mx5_set_host1_vbus_func(mx53_gpio_host1_driver_vbus);
 	mx5_usbh1_init();
+	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
+	if (mxc_apc_on) {
+		mxc_register_device(&mxc_esai_device, &esai_data);
+		mxc_register_device(&mxc_alsa_surround_device,
+			&mxc_surround_audio_data);
+	}
 }
 
 static void __init mx53_evk_timer_init(void)

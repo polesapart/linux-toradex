@@ -76,8 +76,7 @@ static int ts_thread(void *arg)
 			msleep(20);
 			continue;
 		}
-		if (!(ts_sample.contact_resistance || wait))
-		{
+		if (!(ts_sample.contact_resistance || wait)) {
 			msleep(20);
 			continue;
 		}

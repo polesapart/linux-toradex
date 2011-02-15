@@ -55,6 +55,14 @@ config SATA_AHCI
 
 	  If unsure, say N.
 
+config SATA_AHCI_PLATFORM
+	tristate "Platform AHCI SATA support"
+	help
+	  This option enables support for Platform AHCI Serial ATA
+	  controllers.
+
+	  If unsure, say N.
+
 config SATA_SIL24
 	tristate "Silicon Image 3124/3132 SATA support"
 	depends on PCI
@@ -71,6 +79,7 @@ config SATA_FSL
 	  It can be found on MPC837x and MPC8315.
 
 	  If unsure, say N.
+
 
 config ATA_SFF
 	bool "ATA SFF support"
@@ -758,6 +767,14 @@ config PATA_FSL
          On Freescale processors, say Y here if you wish to use the on-chip
          ATA interface.
          If you are unsure, say N to this.
+
+config PATA_FSL_DISABLE_DMA
+	bool "Disable DMA on Freescale on-chip PATA devices"
+	depends on PATA_FSL
+	default y
+	help
+	  Say yes to disable the Ultra DMA and Multi Word DMA transfers on
+	  Freescale PATA SoC interface.
 
 endif # ATA_SFF
 

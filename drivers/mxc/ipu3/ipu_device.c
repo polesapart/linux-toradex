@@ -124,7 +124,6 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 				(&parm, (ipu_channel_buf_parm *) arg,
 				sizeof(ipu_channel_buf_parm)))
 				return -EFAULT;
-
 			ret =
 				ipu_init_channel_buffer(
 						parm.channel, parm.type,
@@ -183,6 +182,17 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 
 		}
 		break;
+	case IPU_SELECT_MULTI_VDI_BUFFER:
+		{
+			uint32_t parm;
+			if (copy_from_user
+				(&parm, (uint32_t *) arg,
+				sizeof(uint32_t)))
+				return -EFAULT;
+
+			ret = ipu_select_multi_vdi_buffer(parm);
+		}
+		break;
 	case IPU_LINK_CHANNELS:
 		{
 			ipu_channel_link link;
@@ -225,7 +235,6 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 				(&info, (ipu_channel_info *) arg,
 				 sizeof(ipu_channel_info)))
 				return -EFAULT;
-
 			ret = ipu_disable_channel(info.channel,
 				info.stop);
 		}
@@ -435,7 +444,7 @@ static int mxc_ipu_ioctl(struct inode *inode, struct file *file,
 
 static int mxc_ipu_mmap(struct file *file, struct vm_area_struct *vma)
 {
-//	vma->vm_page_prot = pgprot_writethru(vma->vm_page_prot);
+	vma->vm_page_prot = pgprot_writethru(vma->vm_page_prot);
 
 	if (remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
 				vma->vm_end - vma->vm_start,
@@ -452,12 +461,20 @@ static int mxc_ipu_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
+int mxc_ipu_fsync(struct file *filp, struct dentry *dentry, int datasync)
+{
+	flush_cache_all();
+	outer_flush_all();
+	return 0;
+}
+
 static struct file_operations mxc_ipu_fops = {
 	.owner = THIS_MODULE,
 	.open = mxc_ipu_open,
 	.mmap = mxc_ipu_mmap,
 	.release = mxc_ipu_release,
-	.ioctl = mxc_ipu_ioctl
+	.ioctl = mxc_ipu_ioctl,
+	.fsync = mxc_ipu_fsync
 };
 
 int register_ipu_device()

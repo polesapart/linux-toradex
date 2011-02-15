@@ -177,6 +177,25 @@ static inline void dump_ep_queue(struct fsl_ep *ep)
 }
 #endif
 
+#if (defined CONFIG_ARCH_MX35 || defined CONFIG_ARCH_MX25)
+/*
+ * The Phy at MX35 and MX25 have bugs, it must disable, and re-eable phy
+ * if the phy clock is disabled before
+ */
+static void reset_phy(void)
+{
+	u32 phyctrl;
+	phyctrl = fsl_readl(&dr_regs->phyctrl1);
+	phyctrl &= ~PHY_CTRL0_USBEN;
+	fsl_writel(phyctrl, &dr_regs->phyctrl1);
+
+	phyctrl = fsl_readl(&dr_regs->phyctrl1);
+	phyctrl |= PHY_CTRL0_USBEN;
+	fsl_writel(phyctrl, &dr_regs->phyctrl1);
+}
+#else
+static void reset_phy(void){; }
+#endif
 /*-----------------------------------------------------------------
  * done() - retire a request; caller blocked irqs
  * @status : request status to be set, only works when
@@ -300,6 +319,8 @@ static void dr_phy_low_power_mode(struct fsl_udc *udc, bool enable)
 		if (udc_controller->pdata->usb_clock_for_pm)
 			udc_controller->pdata->usb_clock_for_pm(true);
 
+		/* Due to mx35/mx25's phy's bug */
+		reset_phy();
 		temp = fsl_readl(&dr_regs->portsc1);
 		temp &= ~PORTSCX_PHY_LOW_POWER_SPD;
 		fsl_writel(temp, &dr_regs->portsc1);
@@ -445,12 +466,14 @@ static void dr_controller_run(struct fsl_udc *udc)
 		dr_phy_low_power_mode(udc, true);
 		printk(KERN_INFO "udc enter low power mode \n");
 	} else {
+#ifdef CONFIG_ARCH_MX37
 		/*
 		 add some delay for USB timing issue. USB may be
 		 recognize as FS device
 		 during USB gadget remote wake up function
 		*/
 		mdelay(100);
+#endif
 		/* Clear stopped bit */
 		udc->stopped = 0;
 		/* Set controller to Run */
@@ -680,7 +703,7 @@ static int fsl_ep_enable(struct usb_ep *_ep,
 	case USB_ENDPOINT_XFER_ISOC:
 		/* Calculate transactions needed for high bandwidth iso */
 		mult = (unsigned char)(1 + ((max >> 11) & 0x03));
-		max = max & 0x8ff;	/* bit 0~10 */
+		max = max & 0x7ff;	/* bit 0~10 */
 		/* 3 transactions at most */
 		if (mult > 3)
 			goto en_done;
@@ -2018,29 +2041,12 @@ static void reset_irq(struct fsl_udc *udc)
 	/* Write 1s to the flush register */
 	fsl_writel(0xffffffff, &dr_regs->endptflush);
 
-	if (fsl_readl(&dr_regs->portsc1) & PORTSCX_PORT_RESET) {
-		VDBG("Bus reset");
-		/* Bus is reseting */
-		udc->bus_reset = 1;
-		/* Reset all the queues, include XD, dTD, EP queue
-		 * head and TR Queue */
-		reset_queues(udc);
-		udc->usb_state = USB_STATE_DEFAULT;
-	} else {
-		VDBG("Controller reset");
-		/* initialize usb hw reg except for regs for EP, not
-		 * touch usbintr reg */
-		dr_controller_setup(udc);
-
-		/* Reset all internal used Queues */
-		reset_queues(udc);
-
-		ep0_setup(udc);
-
-		/* Enable DR IRQ reg, Set Run bit, change udc state */
-		dr_controller_run(udc);
-		udc->usb_state = USB_STATE_ATTACHED;
-	}
+	/* Bus is reseting */
+	udc->bus_reset = 1;
+	/* Reset all the queues, include XD, dTD, EP queue
+	 * head and TR Queue */
+	reset_queues(udc);
+	udc->usb_state = USB_STATE_DEFAULT;
 }
 
 /* if wakup udc, return true; else return false*/
@@ -2176,9 +2182,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 {
 	int retval = -ENODEV;
 	unsigned long flags = 0;
-#ifndef CONFIG_USB_OTG
 	u32 portsc;
-#endif
 
 	if (!udc_controller)
 		return -ENODEV;
@@ -2200,14 +2204,14 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 	udc_controller->driver = driver;
 	udc_controller->gadget.dev.driver = &driver->driver;
 	spin_unlock_irqrestore(&udc_controller->lock, flags);
-#ifndef CONFIG_USB_OTG
+
 	if (udc_controller->pdata->usb_clock_for_pm)
 		udc_controller->pdata->usb_clock_for_pm(true);
 
 	portsc = fsl_readl(&dr_regs->portsc1);
 	portsc &= ~PORTSCX_PHY_LOW_POWER_SPD;
 	fsl_writel(portsc, &dr_regs->portsc1);
-#endif
+
 	/* bind udc driver to gadget driver */
 	retval = driver->bind(&udc_controller->gadget);
 	if (retval) {
@@ -2705,14 +2709,6 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	int ret = -ENODEV;
 	unsigned int i;
 	u32 dccparams;
-#ifndef CONFIG_USB_OTG
-	u32 portsc;
-#endif
-
-	if (strcmp(pdev->name, driver_name)) {
-		VDBG("Wrong device\n");
-		return -ENODEV;
-	}
 
 	udc_controller = kzalloc(sizeof(struct fsl_udc), GFP_KERNEL);
 	if (udc_controller == NULL) {
@@ -2767,6 +2763,9 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto err2a;
 	}
+
+	/* Due to mx35/mx25's phy's bug */
+	reset_phy();
 
 	if (pdata->have_sysif_regs)
 		usb_sys_regs = (struct usb_sys_interface *)
@@ -2881,10 +2880,14 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	dr_wake_up_enable(udc_controller, false);
 	udc_controller->stopped = 1;
 
+#if !(defined CONFIG_ARCH_MX35 || defined CONFIG_ARCH_MX25)
+{
+	u32 portsc;
 	portsc = fsl_readl(&dr_regs->portsc1);
 	portsc |= PORTSCX_PHY_LOW_POWER_SPD;
 	fsl_writel(portsc, &dr_regs->portsc1);
-
+}
+#endif
 	if (udc_controller->pdata->usb_clock_for_pm)
 		udc_controller->pdata->usb_clock_for_pm(false);
 #endif

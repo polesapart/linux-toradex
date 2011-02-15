@@ -36,6 +36,7 @@
 #include <media/v4l2-dev.h>
 
 #define FRAME_NUM 3
+//#define FRAME_NUM 4
 
 /*!
  * v4l2 frame structure.
@@ -123,7 +124,7 @@ typedef struct _cam_data {
 	/* still image capture */
 	wait_queue_head_t still_queue;
 	int still_counter;
-	dma_addr_t still_buf;
+	dma_addr_t still_buf[2];
 	void *still_buf_vaddr;
 
 	/* overlay */
@@ -166,7 +167,7 @@ typedef struct _cam_data {
 	struct v4l2_rect crop_defrect;
 	struct v4l2_rect crop_current;
 
-	int (*enc_update_eba) (dma_addr_t eba, int *bufferNum);
+	int (*enc_update_eba) (int csi,dma_addr_t eba, int *bufferNum);
 	int (*enc_enable) (void *private);
 	int (*enc_disable) (void *private);
 	int (*enc_enable_csi) (void *private);
@@ -194,6 +195,7 @@ typedef struct _cam_data {
 	/* camera sensor interface */
 	struct camera_sensor *cam_sensor; 	/* old version */
 	struct v4l2_int_device *sensor;
+	struct timeval tv_wakeup; // TODO - for testing. Remove later
 } cam_data;
 
 #if defined(CONFIG_MXC_IPU_V1) || defined(CONFIG_VIDEO_MXC_EMMA_CAMERA) \

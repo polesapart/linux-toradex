@@ -47,7 +47,6 @@
 #include <mach/mxc_dvfs.h>
 
 #include "devices.h"
-#include "board-mx51_3stack.h"
 #include "iomux.h"
 #include "mx51_pins.h"
 #include "crm_regs.h"
@@ -60,6 +59,44 @@
  *
  * @ingroup MSL_MX51
  */
+#define DEBUG_BOARD_BASE_ADDRESS(n)	(n)
+/* LAN9217 ethernet base address */
+#define LAN9217_BASE_ADDR(n)	(DEBUG_BOARD_BASE_ADDRESS(n))
+
+#define BOARD_IO_ADDR(n)	(DEBUG_BOARD_BASE_ADDRESS(n) + 0x20000)
+/* LED switchs */
+#define LED_SWITCH_REG		0x00
+/* buttons */
+#define SWITCH_BUTTONS_REG	0x08
+/* status, interrupt */
+#define INTR_STATUS_REG	0x10
+#define INTR_MASK_REG		0x38
+#define INTR_RESET_REG		0x20
+/* magic word for debug CPLD */
+#define MAGIC_NUMBER1_REG	0x40
+#define MAGIC_NUMBER2_REG	0x48
+/* CPLD code version */
+#define CPLD_CODE_VER_REG	0x50
+/* magic word for debug CPLD */
+#define MAGIC_NUMBER3_REG	0x58
+/* module reset register*/
+#define MODULE_RESET_REG	0x60
+/* CPU ID and Personality ID */
+#define MCU_BOARD_ID_REG	0x68
+
+/* interrupts like external uart , external ethernet etc*/
+#define EXPIO_PARENT_INT	IOMUX_TO_IRQ(MX51_PIN_GPIO1_6)
+
+#define EXPIO_INT_ENET		(MXC_BOARD_IRQ_START + 0)
+#define EXPIO_INT_XUART_A 	(MXC_BOARD_IRQ_START + 1)
+#define EXPIO_INT_XUART_B 	(MXC_BOARD_IRQ_START + 2)
+#define EXPIO_INT_BUTTON_A 	(MXC_BOARD_IRQ_START + 3)
+#define EXPIO_INT_BUTTON_B 	(MXC_BOARD_IRQ_START + 4)
+
+/*! This is System IRQ used by LAN9217 */
+#define LAN9217_IRQ	EXPIO_INT_ENET
+
+extern int __init mx51_3stack_init_mc13892(void);
 extern void __init mx51_3stack_io_init(void);
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
@@ -184,10 +221,6 @@ static struct mxc_dvfs_platform_data dvfs_core_data = {
 	.ccm_cdcr_reg_addr = MXC_CCM_CDCR,
 	.ccm_cacrr_reg_addr = MXC_CCM_CACRR,
 	.ccm_cdhipr_reg_addr = MXC_CCM_CDHIPR,
-	.dvfs_thrs_reg_addr = MXC_DVFSTHRS,
-	.dvfs_coun_reg_addr = MXC_DVFSCOUN,
-	.dvfs_emac_reg_addr = MXC_DVFSEMAC,
-	.dvfs_cntr_reg_addr = MXC_DVFSCNTR,
 	.prediv_mask = 0x1F800,
 	.prediv_offset = 11,
 	.prediv_val = 3,
@@ -685,30 +718,6 @@ static struct fsl_ata_platform_data ata_data = {
 	.io_reg = NULL,
 };
 
-static int __init mxc_init_srpgconfig(void)
-{
-	struct clk *gpcclk = clk_get(NULL, "gpc_dvfs_clk");
-	clk_enable(gpcclk);
-
-	/* Setup the number of clock cycles to wait for SRPG
-	 * power up and power down requests.
-	 */
-	__raw_writel(0x010F0201, MXC_SRPG_ARM_PUPSCR);
-	__raw_writel(0x010F0201, MXC_SRPG_NEON_PUPSCR);
-	__raw_writel(0x00000008, MXC_SRPG_EMPGC0_PUPSCR);
-	__raw_writel(0x00000008, MXC_SRPG_EMPGC1_PUPSCR);
-
-	__raw_writel(0x01010101, MXC_SRPG_ARM_PDNSCR);
-	__raw_writel(0x01010101, MXC_SRPG_NEON_PDNSCR);
-	__raw_writel(0x00000018, MXC_SRPG_EMPGC0_PDNSCR);
-	__raw_writel(0x00000018, MXC_SRPG_EMPGC1_PDNSCR);
-
-	clk_disable(gpcclk);
-	clk_put(gpcclk);
-
-	return 0;
-}
-
 static struct platform_device mxc_wm8903_device = {
 	.name = "imx-3stack-wm8903",
 	.id = 0,
@@ -909,8 +918,8 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_pwm1_device, NULL);
 	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 	mxc_register_device(&mxc_keypad_device, &keypad_plat_data);
-	mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0),
-	mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0),
+	mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
+	mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
 	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
 	mxc_register_device(&mxcsdhc2_device, &mmc2_data);
 	mxc_register_device(&mxc_sim_device, &sim_data);
@@ -936,7 +945,6 @@ static void __init mxc_board_init(void)
 #else
 	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
 #endif
-	mxc_init_srpgconfig();
 	mx51_3stack_init_mc13892();
 
 	i2c_register_board_info(1, mxc_i2c1_board_info,

@@ -22,6 +22,7 @@
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/smsc911x.h>
+#include <linux/fec.h>
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -100,13 +101,17 @@ static struct resource mxc_kpp_resources[] = {
 	       .start = MXC_INT_KPP,
 	       .end = MXC_INT_KPP,
 	       .flags = IORESOURCE_IRQ,
-	       }
+	       },
+	[1] = {
+		.start = KPP_BASE_ADDR,
+		.end = KPP_BASE_ADDR + SZ_4K - 1,
+		.flags = IORESOURCE_MEM,
+		},
 };
 
 static struct keypad_data keypad_plat_data = {
 	.rowmax = 4,
 	.colmax = 4,
-	.irq = MXC_INT_KPP,
 	.learning = 0,
 	.delay = 2,
 	.matrix = keymapping,
@@ -161,6 +166,21 @@ static struct mtd_partition mxc_nand_partitions[] = {
 	 .size = MTDPART_SIZ_FULL},
 };
 
+static struct resource mxc_nand_resources[] = {
+	{
+		.flags = IORESOURCE_MEM,
+		.name  = "NFC_AXI_BASE",
+		.start = NFC_BASE_ADDR,
+		.end   = NFC_BASE_ADDR + SZ_8K - 1,
+	},
+	{
+		.flags = IORESOURCE_IRQ,
+		.start = MXC_INT_NANDFC,
+		.end   = MXC_INT_NANDFC,
+	},
+};
+
+
 static struct flash_platform_data mxc_nand_data = {
 	.parts = mxc_nand_partitions,
 	.nr_parts = ARRAY_SIZE(mxc_nand_partitions),
@@ -174,6 +194,8 @@ static struct platform_device mxc_nand_mtd_device = {
 		.release = mxc_nop_release,
 		.platform_data = &mxc_nand_data,
 		},
+	.resource = mxc_nand_resources,
+	.num_resources = ARRAY_SIZE(mxc_nand_resources),
 };
 
 static void mxc_init_nand_mtd(void)
@@ -458,9 +480,16 @@ static struct resource mxc_fec_resources[] = {
 	},
 };
 
+static struct fec_platform_data fec_data = {
+	.phy = PHY_INTERFACE_MODE_RMII,
+};
+
 struct platform_device mxc_fec_device = {
 	.name = "fec",
 	.id = 0,
+	.dev = {
+		.platform_data = &fec_data,
+	},
 	.num_resources = ARRAY_SIZE(mxc_fec_resources),
 	.resource = mxc_fec_resources,
 };

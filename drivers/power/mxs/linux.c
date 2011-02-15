@@ -102,7 +102,7 @@ struct mxs_info {
 #define IRQ_DCDC4P2_BRNOUT IRQ_DCDC4P2_BO
 #endif
 
-/* #define  POWER_FIQ */
+#define  POWER_FIQ
 
 /* #define DEBUG_IRQS */
 
@@ -129,9 +129,7 @@ void init_protection(struct mxs_info *info)
 	battery_voltage = ddi_power_GetBattery();
 
 	/* InitializeFiqSystem(); */
-#ifdef CONFIG_ARCH_MX23
 	ddi_power_InitOutputBrownouts();
-#endif
 
 
 	/* if we start the kernel with 4p2 already started
@@ -238,12 +236,12 @@ static void check_and_handle_5v_connection(struct mxs_info *info)
 		*/
 		if ((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL)
 			& BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT) ==
-			(0x8 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT)) {
+			(0x20 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT)) {
 			dev_info(info->dev, "waiting USB enum done...\r\n");
 		}
 		while ((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL)
 			& BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT)
-			== (0x8 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT)) {
+			== (0x20 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT)) {
 			msleep(50);
 		}
 	#endif
@@ -299,7 +297,7 @@ static void check_and_handle_5v_connection(struct mxs_info *info)
 				__raw_writel(__raw_readl(REGS_POWER_BASE +
 				HW_POWER_5VCTRL) &
 				(~BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT)
-				| (0x8 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT),
+				| (0x20 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT),
 				REGS_POWER_BASE + HW_POWER_5VCTRL);
 
 			}
@@ -659,6 +657,8 @@ static irqreturn_t mxs_irq_batt_brnout(int irq, void *cookie)
 #endif
 	return IRQ_HANDLED;
 }
+
+
 static irqreturn_t mxs_irq_vddd_brnout(int irq, void *cookie)
 {
 #ifdef DEBUG_IRQS
@@ -1144,13 +1144,13 @@ static int __init mxs_bat_init(void)
 
 #ifdef CONFIG_MXS_VBUS_CURRENT_DRAW
 	if (((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL) &
-		BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT) == 0x8000)
+		BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT) == 0x20000)
 		&& ((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL) &
 		BM_POWER_5VCTRL_PWD_CHARGE_4P2) == 0)) {
 #ifdef CONFIG_USB_GADGET
 		printk(KERN_INFO "USB GADGET exist,wait USB enum done...\r\n");
 		while (((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL)
-			& BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT) == 0x8000) &&
+			& BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT) == 0x20000) &&
 			((__raw_readl(REGS_POWER_BASE + HW_POWER_5VCTRL) &
 			BM_POWER_5VCTRL_PWD_CHARGE_4P2) == 0))
 			;
@@ -1161,8 +1161,7 @@ static int __init mxs_bat_init(void)
 	}
 	cpu = clk_get(NULL, "cpu");
 	pll0 = clk_get(NULL, "ref_cpu");
-	if (cpu->set_parent)
-		cpu->set_parent(cpu, pll0);
+	clk_set_parent(cpu, pll0);
 #endif
 	return platform_driver_register(&mxs_batdrv);
 }

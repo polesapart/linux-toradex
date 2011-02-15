@@ -1,5 +1,5 @@
 /*
- * Copyright 2005-2009 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2005-2010 Freescale Semiconductor, Inc. All Rights Reserved.
  */
 
 /*
@@ -157,7 +157,6 @@ void _ipu_vdi_init(ipu_channel_t channel, ipu_channel_params_t *params)
 {
 	uint32_t reg;
 	uint32_t pixel_fmt;
-	bool top_field_0;
 
 	reg = ((params->mem_prp_vf_mem.in_height-1) << 16) |
 	  (params->mem_prp_vf_mem.in_width-1);
@@ -186,19 +185,7 @@ void _ipu_vdi_init(ipu_channel_t channel, ipu_channel_params_t *params)
 	}
 	__raw_writel(reg, VDI_C);
 
-	/* MED_MOTION and LOW_MOTION algorithm that are using 3 fields
-	 * should start presenting using the 2nd field.
-	 */
-	if (((params->mem_prp_vf_mem.field_fmt == V4L2_FIELD_INTERLACED_TB) &&
-	     (params->mem_prp_vf_mem.motion_sel != HIGH_MOTION)) ||
-	    ((params->mem_prp_vf_mem.field_fmt == V4L2_FIELD_INTERLACED_BT) &&
-	     (params->mem_prp_vf_mem.motion_sel == HIGH_MOTION)))
-		top_field_0 = false;
-	else
-		top_field_0 = true;
-
-	/* Buffer selection toggle the value therefore init val is inverted. */
-	_ipu_vdi_set_top_field_man(!top_field_0);
+	_ipu_vdi_set_top_field_man(false);
 
 	_ipu_vdi_set_motion(params->mem_prp_vf_mem.motion_sel);
 
@@ -227,13 +214,13 @@ void _ipu_ic_init_prpvf(ipu_channel_params_t *params, bool src_is_csi)
 
 	/* Setup horizontal resizing */
 	/* Upadeted for IC split case */
-	if (!(params->mem_prp_vf_mem.out_resize_ratio)) {
+	if (!(params->mem_prp_vf_mem.outh_resize_ratio)) {
 		_calc_resize_coeffs(params->mem_prp_vf_mem.in_width,
 				params->mem_prp_vf_mem.out_width,
 				&resizeCoeff, &downsizeCoeff);
 		reg |= (downsizeCoeff << 14) | resizeCoeff;
 	} else
-		reg |= params->mem_prp_vf_mem.out_resize_ratio;
+		reg |= params->mem_prp_vf_mem.outh_resize_ratio;
 
 	__raw_writel(reg, IC_PRP_VF_RSC);
 
@@ -349,13 +336,13 @@ void _ipu_ic_init_prpenc(ipu_channel_params_t *params, bool src_is_csi)
 
 	/* Setup horizontal resizing */
 	/* Upadeted for IC split case */
-	if (!(params->mem_prp_enc_mem.out_resize_ratio)) {
+	if (!(params->mem_prp_enc_mem.outh_resize_ratio)) {
 		_calc_resize_coeffs(params->mem_prp_enc_mem.in_width,
 				params->mem_prp_enc_mem.out_width,
 				&resizeCoeff, &downsizeCoeff);
 		reg |= (downsizeCoeff << 14) | resizeCoeff;
 	} else
-		reg |= params->mem_prp_enc_mem.out_resize_ratio;
+		reg |= params->mem_prp_enc_mem.outh_resize_ratio;
 
 	__raw_writel(reg, IC_PRP_ENC_RSC);
 
@@ -387,6 +374,8 @@ void _ipu_ic_init_prpenc(ipu_channel_params_t *params, bool src_is_csi)
 		ic_conf |= IC_CONF_RWS_EN;
 
 	__raw_writel(ic_conf, IC_CONF);
+
+//	ic_dump_register();
 }
 
 void _ipu_ic_uninit_prpenc(void)
@@ -418,20 +407,24 @@ void _ipu_ic_init_pp(ipu_channel_params_t *params)
 	ipu_color_space_t in_fmt, out_fmt;
 
 	/* Setup vertical resizing */
-	_calc_resize_coeffs(params->mem_pp_mem.in_height,
+	if (!(params->mem_pp_mem.outv_resize_ratio)) {
+		_calc_resize_coeffs(params->mem_pp_mem.in_height,
 			    params->mem_pp_mem.out_height,
 			    &resizeCoeff, &downsizeCoeff);
-	reg = (downsizeCoeff << 30) | (resizeCoeff << 16);
+		reg = (downsizeCoeff << 30) | (resizeCoeff << 16);
+	} else {
+		reg = (params->mem_pp_mem.outv_resize_ratio) << 16;
+	}
 
 	/* Setup horizontal resizing */
 	/* Upadeted for IC split case */
-	if (!(params->mem_pp_mem.out_resize_ratio)) {
+	if (!(params->mem_pp_mem.outh_resize_ratio)) {
 		_calc_resize_coeffs(params->mem_pp_mem.in_width,
 							params->mem_pp_mem.out_width,
 							&resizeCoeff, &downsizeCoeff);
 		reg |= (downsizeCoeff << 14) | resizeCoeff;
 	} else {
-		reg |= params->mem_pp_mem.out_resize_ratio;
+		reg |= params->mem_pp_mem.outh_resize_ratio;
 	}
 
 	__raw_writel(reg, IC_PP_RSC);

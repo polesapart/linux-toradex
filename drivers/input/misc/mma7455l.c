@@ -583,6 +583,8 @@ static int __devexit mma7455l_remove(struct i2c_client *client)
 {
 	struct mma7455l_info *mma = dev_get_drvdata(&client->dev);
 
+	free_irq(client->irq, mma);
+
 	sysfs_remove_group(&client->dev.kobj, &mma7455l_attr_group);
 	input_unregister_device(mma->input_dev);
 	dev_set_drvdata(&client->dev, NULL);

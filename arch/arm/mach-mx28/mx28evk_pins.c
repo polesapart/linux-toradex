@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/irq.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 
 #include <mach/pinctrl.h>
 
@@ -538,7 +539,8 @@ static struct pin_desc mx28evk_fixed_pins[] = {
 	 },
 #endif
 
-#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)\
+	|| defined(CONFIG_FEC_L2SWITCH)
 	{
 	 .name = "ENET0_MDC",
 	 .id = PINID_ENET0_MDC,
@@ -618,6 +620,66 @@ static struct pin_desc mx28evk_fixed_pins[] = {
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
 	 .drive	= 1,
+	 },
+	{
+	 .name = "ENET1_RX_EN",
+	 .id = PINID_ENET0_CRS,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_RXD0",
+	 .id = PINID_ENET0_RXD2,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_RXD1",
+	 .id = PINID_ENET0_RXD3,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TX_EN",
+	 .id = PINID_ENET0_COL,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TXD0",
+	 .id = PINID_ENET0_TXD2,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
+	 },
+	{
+	 .name = "ENET1_TXD1",
+	 .id = PINID_ENET0_TXD3,
+	 .fun = PIN_FUN2,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive = 1,
 	 },
 	{
 	 .name = "ENET_CLK",
@@ -844,7 +906,7 @@ static struct pin_desc mx28evk_ssp1_pins[] = {
 };
 
 
-int __initdata enable_gpmi = { 0 };
+int enable_gpmi = { 0 };
 static int __init gpmi_setup(char *__unused)
 {
 	enable_gpmi = 1;
@@ -1009,7 +1071,8 @@ static struct pin_desc mx28evk_gpmi_pins[] = {
 	 },
 };
 
-#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)\
+	|| defined(CONFIG_FEC_L2SWITCH)
 int mx28evk_enet_gpio_init(void)
 {
 	/* pwr */
@@ -1019,6 +1082,7 @@ int mx28evk_enet_gpio_init(void)
 	/* reset phy */
 	gpio_request(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), "PHY_RESET");
 	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 0);
+	mdelay(10);
 	gpio_direction_output(MXS_PIN_TO_GPIO(PINID_ENET0_RX_CLK), 1);
 
 	return 0;

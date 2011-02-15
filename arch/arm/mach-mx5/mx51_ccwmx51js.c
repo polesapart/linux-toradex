@@ -41,8 +41,6 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <mach/memory.h>
-#include <linux/input.h>
-#include <linux/gpio_keys.h>
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
@@ -57,9 +55,10 @@
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
 static int num_cpu_wp = 3;
+u8 ccwmx51_swap_bi = 0;
 
 /* working point(wp): 0 - 800MHz; 1 - 166.25MHz; */
-static struct cpu_wp cpu_wp_auto[] = {
+static struct cpu_wp cpu_wp_auto_800[] = {
 	{
 	 .pll_rate = 1000000000,
 	 .cpu_rate = 1000000000,
@@ -86,13 +85,56 @@ static struct cpu_wp cpu_wp_auto[] = {
 	 .mfd = 2,
 	 .mfn = 1,
 	 .cpu_podf = 4,
-	 .cpu_voltage = 850000,},
+	 .cpu_voltage = 900000,},
 };
+
+static struct cpu_wp cpu_wp_auto_600[] = {
+	{
+	 .pll_rate = 600000000,
+	 .cpu_rate = 600000000,
+	 .pdf = 0,
+	 .mfi = 6,
+	 .mfd = 3,
+	 .mfn = 1,
+	 .cpu_podf = 0,
+	 .cpu_voltage = 1000000,},
+	{
+	 .pll_rate = 600000000,
+	 .cpu_rate = 150000000,
+	 .pdf = 3,
+	 .mfi = 6,
+	 .mfd = 3,
+	 .mfn = 1,
+	 .cpu_podf = 3,
+	 .cpu_voltage = 950000,},
+};
+
+static u32 ccwmx51_get_cpu_freq(void)
+{
+	u32 cpu_freq = 800000000;
+
+	switch (system_serial_low & 0xff) {
+	case 4:
+	case 5:	cpu_freq = 600000000;
+		num_cpu_wp = 2;
+		break;
+	}
+
+	return cpu_freq;
+}
 
 struct cpu_wp *mx51_get_cpu_wp(int *wp)
 {
+	u32 cpu_clk_rate = ccwmx51_get_cpu_freq();
+
 	*wp = num_cpu_wp;
-	return cpu_wp_auto;
+
+	if (cpu_clk_rate == 800000000) {
+		return cpu_wp_auto_800;
+	} else if (cpu_clk_rate == 600000000) {
+		return cpu_wp_auto_600;
+	}
+	return NULL;
 }
 
 void mx51_set_num_cpu_wp(int num)
@@ -121,7 +163,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	int total_mem = SZ_512M;
 	int left_mem = 0;
 	int gpu_mem = SZ_64M;
-	int fb_mem = SZ_32M;
+	int fb_mem = FB_MEM_SIZE;
 
 	mxc_set_cpu_type(MXC_CPU_MX51);
 
@@ -165,7 +207,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-
+#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
+#endif
 		/*reserve memory for gpu*/
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
@@ -178,9 +222,17 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
+#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+			mxcfb_resources[1].start =
+				mxcfb_resources[0].end + 1;
+			mxcfb_resources[1].end =
+				mxcfb_resources[1].start + fb_mem - 1;
+#endif
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;
+			mxcfb_resources[1].start = 0;
+			mxcfb_resources[1].end = 0;
 		}
 #endif
 	}
@@ -203,97 +255,20 @@ static void mxc_power_off(void)
 #endif
 }
 
-/*
- * GPIO Buttons
- */
-#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
-static struct gpio_keys_button ccwmx51js_buttons[] = {
-	{
-		.gpio		= IOMUX_TO_GPIO(MX51_PIN_GPIO1_8),
-		.code		= BTN_1,
-		.desc		= "Button 1",
-		.active_low	= 1,
-		.wakeup		= 1,
-	},
-	{
-		.gpio		= IOMUX_TO_GPIO(MX51_PIN_GPIO1_1),
-		.code		= BTN_2,
-		.desc		= "Button 2",
-		.active_low	= 1,
-		.wakeup		= 1,
-	}
-};
-
-static struct gpio_keys_platform_data ccwmx51js_button_data = {
-	.buttons	= ccwmx51js_buttons,
-	.nbuttons	= ARRAY_SIZE(ccwmx51js_buttons),
-};
-
-static struct platform_device ccwmx51js_button_device = {
-	.name		= "gpio-keys",
-	.id		= -1,
-	.num_resources	= 0,
-	.dev		= {
-		.platform_data	= &ccwmx51js_button_data,
-	}
-};
-
-static void __init ccwmx51js_add_device_buttons(void)
-{
-	platform_device_register(&ccwmx51js_button_device);
-}
-#else
-static void __init ek_add_device_buttons(void) {}
-#endif
-
-
-#if defined(CONFIG_NEW_LEDS)
-
-/*
- * GPIO LEDs
- */
-static struct gpio_led_platform_data led_data;
-
-static struct gpio_led ccwmx51js_leds[] = {
-	{
-		.name			= "LED1",
-		.gpio			= IOMUX_TO_GPIO(MX51_PIN_NANDF_RB2),
-		.active_low		= 1,
-		.default_trigger	= "none",
-	},
-	{
-		.name			= "LED2",
-		.gpio			= IOMUX_TO_GPIO(MX51_PIN_NANDF_RB1),
-		.active_low		= 1,
-		.default_trigger	= "none",
-	}
-};
-
-static struct platform_device ccwmx51js_gpio_leds_device = {
-	.name			= "leds-gpio",
-	.id			= -1,
-	.dev.platform_data	= &led_data,
-};
-
-void __init ccwmx51js_gpio_leds(struct gpio_led *leds, int nr)
-{
-	if (!nr)
-		return;
-
-	led_data.leds = leds;
-	led_data.num_leds = nr;
-	platform_device_register(&ccwmx51js_gpio_leds_device);
-}
-
-#else
-void __init at91_gpio_leds(struct gpio_led *leds, int nr) {}
-#endif
-
 /*!
  * Board specific initialization.
  */
 static void __init mxc_board_init(void)
 {
+	/* Setup hwid information, passed through Serial ATAG */
+	ccwmx51_set_mod_variant(system_serial_low & 0xff);
+	ccwmx51_set_mod_revision((system_serial_low >> 8) & 0xff);
+	ccwmx51_set_mod_sn(((system_serial_low << 8) & 0xff000000) |
+			   ((system_serial_low >> 8) & 0x00ff0000) |
+			   ((system_serial_high << 8) & 0x0000ff00) |
+			   ((system_serial_high >> 8) & 0xff));
+
+	ccwmx51_swap_bi = system_serial_high >> 16;
 
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
@@ -304,6 +279,7 @@ static void __init mxc_board_init(void)
 	mxc_cpu_common_init();
 	mxc_register_gpios();
 	ccwmx51_io_init();
+	ccwmx51_init_devices();
 
 	mxc_register_device(&mxc_wdt_device, NULL);
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
@@ -330,21 +306,20 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);
 	mxc_register_device(&mxc_iim_device, NULL);
 	mxc_register_device(&gpu_device, NULL);
-#if defined(CONFIG_UIO_PDRV_GENIRQ) || defined(CONFIG_UIO_PDRV_GENIRQ_MODULE)
-	mxc_register_device(&mxc_gpu2d_device, &gpu2d_platform_data);
+#if defined (CONFIG_MXC_SECURITY_SCC2)
+	mxc_register_device(&mxcscc_device, NULL);
 #endif
 	mxc_register_device(&mxc_pwm1_device, NULL);
 	mxc_register_device(&mxc_pwm_backlight_device, &mxc_pwm_backlight_data);
 
-#if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
-	/* SD card detect irqs */
-	mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
-	mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO1_0);
-	mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
-	mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);
-	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
-	mxc_register_device(&mxcsdhc3_device, &mmc3_data);
-#endif
+#ifdef CONFIG_ESDHCI_MXC_SELECT1
+	ccwmx51_register_sdio(0);	/* SDHC1 */
+#endif /* CONFIG_ESDHCI_MXC_SELECT1 */
+#if defined(CONFIG_ESDHCI_MXC_SELECT3) && \
+    (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
+	ccwmx51_register_sdio(2);	/* SDHC3 */
+#endif /* CONFIG_ESDHCI_MXC_SELECT3 && !CONFIG_PATA_FSL && !CONFIG_PATA_FSL_MODULE */
+
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 	mxc_register_device(&mxc_fec_device, NULL);
 #endif
@@ -355,6 +330,9 @@ static void __init mxc_board_init(void)
 	|| defined(CONFIG_MTD_NAND_MXC_V3) \
 	|| defined(CONFIG_MTD_NAND_MXC_V3_MODULE)
 	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
+#endif
+#if defined(CONFIG_PATA_FSL) || defined(CONFIG_PATA_FSL_MODULE)
+	mxc_register_device(&pata_fsl_device, &ata_data);
 #endif
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	mxc_register_device(&smsc911x_device, &ccwmx51_smsc9118);
@@ -368,23 +346,23 @@ static void __init mxc_board_init(void)
 	mx5_usbh1_init();
 #endif
 	mx5_usb_dr_init();
-#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-	mxc_register_device(&lcd_pdev, plcd_platform_data);
-	mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
-	mxc_fb_devices[0].resource = mxcfb_resources;
-	mxc_register_device(&mxc_fb_devices[0], &mx51_fb_data[0]);
-//	mxc_register_device(&mxc_fb_devices[1], &mx51_fb_data[1]);
-//	mxc_register_device(&mxc_fb_devices[2], NULL);
-#endif
+#if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE) && \
+   (defined(CONFIG_CCWMX51_DISP0) || defined(CONFIG_CCWMX51_DISP1))
+	ccwmx51_init_fb();
+#endif /* defined(CONFIG_FB_MXC_SYNC_PANEL) || ... */
 
 #ifdef CONFIG_MXC_PMIC_MC13892
 	ccwmx51_init_mc13892();
 	/* Configure PMIC irq line */
 	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
-	ccwmx51js_add_device_buttons();
-	ccwmx51js_gpio_leds(ccwmx51js_leds, ARRAY_SIZE(ccwmx51js_leds));
+#ifdef CONFIG_SYSFS
+	ccwmx51_create_sysfs_entries();
+#endif
 
+#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+	ccwmx51_init_2nd_touch();
+#endif
 	pm_power_off = mxc_power_off;
 }
 
@@ -394,9 +372,9 @@ static void __init ccwmx51_timer_init(void)
 
 	/* Change the CPU voltages for TO2*/
 	if (cpu_is_mx51_rev(CHIP_REV_2_0) <= 1) {
-		cpu_wp_auto[0].cpu_voltage = 1175000;
-		cpu_wp_auto[1].cpu_voltage = 1100000;
-		cpu_wp_auto[2].cpu_voltage = 1000000;
+		cpu_wp_auto_800[0].cpu_voltage = 1175000;
+		cpu_wp_auto_800[1].cpu_voltage = 1100000;
+		cpu_wp_auto_800[2].cpu_voltage = 1000000;
 	}
 
 	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
@@ -409,14 +387,30 @@ static struct sys_timer mxc_timer = {
 	.init	= ccwmx51_timer_init,
 };
 
-MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51 on a JSK board")
+#if defined(CONFIG_MACH_CCWMX51JS)
+MACHINE_START(CCWMX51JS, "ConnectCore Wi-i.MX51"BOARD_NAME)
 	/* Maintainer: Digi International, Inc. */
-	.phys_io = AIPS1_BASE_ADDR,
-	.io_pg_offst = ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
-	.boot_params = PHYS_OFFSET + 0x100,
-	.fixup = fixup_mxc_board,
-	.map_io = mx5_map_io,
-	.init_irq = mx5_init_irq,
-	.init_machine = mxc_board_init,
-	.timer = &mxc_timer,
+	.phys_io	= AIPS1_BASE_ADDR,
+	.io_pg_offst	= ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.fixup		= fixup_mxc_board,
+	.map_io		= mx5_map_io,
+	.init_irq	= mx5_init_irq,
+	.init_machine	= mxc_board_init,
+	.timer		= &mxc_timer,
 MACHINE_END
+#endif /* CONFIG_MACH_CCWMX51JS */
+
+#if defined(CONFIG_MACH_CCMX51JS)
+MACHINE_START(CCMX51JS, "ConnectCore i.MX51"BOARD_NAME)
+	/* Maintainer: Digi International, Inc. */
+	.phys_io	= AIPS1_BASE_ADDR,
+	.io_pg_offst	= ((AIPS1_BASE_ADDR_VIRT) >> 18) & 0xfffc,
+	.boot_params	= PHYS_OFFSET + 0x100,
+	.fixup		= fixup_mxc_board,
+	.map_io		= mx5_map_io,
+	.init_irq	= mx5_init_irq,
+	.init_machine	= mxc_board_init,
+	.timer		= &mxc_timer,
+MACHINE_END
+#endif /* CONFIG_MACH_CCMX51JS */

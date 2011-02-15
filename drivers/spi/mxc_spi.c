@@ -657,7 +657,7 @@ void mxc_spi_chipselect(struct spi_device *spi, int is_active)
 		if (spi->mode & SPI_CPHA)
 			ctrl_reg |=
 			    spi_ver_def->mode_mask << spi_ver_def->pha_shift;
-		if (!(spi->mode & SPI_CPOL))
+		if (spi->mode & SPI_CPOL)
 			ctrl_reg |=
 			    spi_ver_def->mode_mask << spi_ver_def->
 			    low_pol_shift;
@@ -824,16 +824,23 @@ int mxc_spi_poll_transfer(struct spi_device *spi, struct spi_transfer *t)
 	master_drv_data->transfer.count = t->len;
 	fifo_size = master_drv_data->spi_ver_def->fifo_size;
 
-	count = (t->len > fifo_size) ? fifo_size : t->len;
-	spi_put_tx_data(master_drv_data->base, count, master_drv_data);
+	while (master_drv_data->transfer.count) {
+		count = (master_drv_data->transfer.count > fifo_size) ?
+			fifo_size : master_drv_data->transfer.count;
 
-	while ((((status = __raw_readl(master_drv_data->test_addr)) &
-		 master_drv_data->spi_ver_def->rx_cnt_mask) >> master_drv_data->
-		spi_ver_def->rx_cnt_off) != count);
+		spi_put_tx_data(master_drv_data->base, count, master_drv_data);
 
-	for (i = 0; i < count; i++) {
-		rx_tmp = __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
-		master_drv_data->transfer.rx_get(master_drv_data, rx_tmp);
+		while ((((status = __raw_readl(master_drv_data->test_addr)) &
+		  	 master_drv_data->spi_ver_def->rx_cnt_mask) >> master_drv_data->
+			spi_ver_def->rx_cnt_off) != count)
+			;
+
+		for (i = 0; i < count; i++) {
+			rx_tmp = __raw_readl(master_drv_data->base + MXC_CSPIRXDATA);
+			master_drv_data->transfer.rx_get(master_drv_data, rx_tmp);
+		}
+
+		master_drv_data->transfer.count -= count;
 	}
 
 	clk_disable(master_drv_data->clk);
@@ -864,8 +871,19 @@ int mxc_spi_transfer(struct spi_device *spi, struct spi_transfer *t)
 	int chipselect_status;
 	u32 fifo_size;
 
+#if defined(CONFIG_MODULE_CCXMX51)
+	/**
+	 * The ConnectCore i.MX51/Wi-i.MX51 use this bus to communicate with
+	 * the pmic, using poll transfers. Because that bus is also used to
+	 * communicate the cpu with other devices, use also poll transfers
+	 * to avoid conflicts.
+	 */
+	if (spi->master->bus_num == 1) {
+		mxc_spi_poll_transfer(spi, t);
+		return t->len;
+	}
+#endif
 	/* Get the master controller driver data from spi device's master */
-
 	master_drv_data = spi_master_get_devdata(spi->master);
 
 	chipselect_status = __raw_readl(MXC_CSPICONFIG +

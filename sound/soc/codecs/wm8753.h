@@ -99,6 +99,7 @@
 #define WM8753_PCM_DIV_8	(7 << 6)
 
 /* BCLK clock dividers */
+#define WM8753_BCLK_DIV_MASK	(7 << 3)
 #define WM8753_BCLK_DIV_1	(0 << 3)
 #define WM8753_BCLK_DIV_2	(1 << 3)
 #define WM8753_BCLK_DIV_4	(2 << 3)

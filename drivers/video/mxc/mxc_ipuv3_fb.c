@@ -22,7 +22,6 @@
  *
  * @ingroup Framebuffer
  */
-
 /*!
  * Include files
  */
@@ -47,6 +46,9 @@
 #include <asm/mach-types.h>
 #include <asm/uaccess.h>
 #include <mach/hardware.h>
+#include <linux/suspend.h>
+
+static int vt_switch;
 
 /*
  * Driver name
@@ -56,11 +58,14 @@
  * Structure containing the MXC specific framebuffer information.
  */
 struct mxcfb_info {
+	char *fb_mode_str;
+	int default_bpp;
 	int cur_blank;
 	int next_blank;
 	ipu_channel_t ipu_ch;
 	int ipu_di;
 	u32 ipu_di_pix_fmt;
+	bool ipu_ext_clk;
 	bool overlay;
 	bool alpha_chan_en;
 	dma_addr_t alpha_phy_addr0;
@@ -74,6 +79,8 @@ struct mxcfb_info {
 
 	u32 pseudo_palette[16];
 
+	bool wait4vsync;
+	uint32_t waitcnt;
 	struct semaphore flip_sem;
 	struct semaphore alpha_flip_sem;
 	struct completion vsync_complete;
@@ -93,12 +100,9 @@ enum {
 	BOTH_OFF
 };
 
-static char *fb_mode;
-static unsigned long default_bpp = 16;
 static bool g_dp_in_use;
 LIST_HEAD(fb_alloc_list);
 static struct fb_info *mxcfb_info[3];
-static int ext_clk_used;
 
 static uint32_t bpp_to_pixfmt(struct fb_info *fbi)
 {
@@ -125,6 +129,7 @@ static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id);
 static int mxcfb_blank(int blank, struct fb_info *info);
 static int mxcfb_map_video_memory(struct fb_info *fbi);
 static int mxcfb_unmap_video_memory(struct fb_info *fbi);
+static int mxcfb_option_setup(struct fb_info *info, char *options);
 
 /*
  * Set fixed framebuffer parameters based on variable settings.
@@ -175,20 +180,33 @@ static int _setup_disp_channel1(struct fb_info *fbi)
 			}
 		}
 	}
-	if (fbi->var.vmode & FB_VMODE_INTERLACED) {
-		params.mem_dp_bg_sync.interlaced = true;
-		params.mem_dp_bg_sync.out_pixel_fmt =
-			IPU_PIX_FMT_YUV444;
+	if (mxc_fbi->ipu_ch == MEM_DC_SYNC) {
+		if (fbi->var.vmode & FB_VMODE_INTERLACED) {
+			params.mem_dc_sync.interlaced = true;
+			params.mem_dc_sync.out_pixel_fmt =
+				IPU_PIX_FMT_YUV444;
+		} else {
+			if (mxc_fbi->ipu_di_pix_fmt)
+				params.mem_dc_sync.out_pixel_fmt = mxc_fbi->ipu_di_pix_fmt;
+			else
+				params.mem_dc_sync.out_pixel_fmt = IPU_PIX_FMT_RGB666;
+		}
+		params.mem_dc_sync.in_pixel_fmt = bpp_to_pixfmt(fbi);
 	} else {
-		if (mxc_fbi->ipu_di_pix_fmt)
-			params.mem_dp_bg_sync.out_pixel_fmt = mxc_fbi->ipu_di_pix_fmt;
-		else
-			params.mem_dp_bg_sync.out_pixel_fmt = IPU_PIX_FMT_RGB666;
+		if (fbi->var.vmode & FB_VMODE_INTERLACED) {
+			params.mem_dp_bg_sync.interlaced = true;
+			params.mem_dp_bg_sync.out_pixel_fmt =
+				IPU_PIX_FMT_YUV444;
+		} else {
+			if (mxc_fbi->ipu_di_pix_fmt)
+				params.mem_dp_bg_sync.out_pixel_fmt = mxc_fbi->ipu_di_pix_fmt;
+			else
+				params.mem_dp_bg_sync.out_pixel_fmt = IPU_PIX_FMT_RGB666;
+		}
+		params.mem_dp_bg_sync.in_pixel_fmt = bpp_to_pixfmt(fbi);
+		if (mxc_fbi->alpha_chan_en)
+			params.mem_dp_bg_sync.alpha_chan_en = true;
 	}
-	params.mem_dp_bg_sync.in_pixel_fmt = bpp_to_pixfmt(fbi);
-	if (mxc_fbi->alpha_chan_en)
-		params.mem_dp_bg_sync.alpha_chan_en = true;
-
 	ipu_init_channel(mxc_fbi->ipu_ch, &params);
 
 	return 0;
@@ -201,10 +219,12 @@ static int _setup_disp_channel2(struct fb_info *fbi)
 	int fb_stride;
 
 	switch (bpp_to_pixfmt(fbi)) {
-	case V4L2_PIX_FMT_YUV420:
-	case V4L2_PIX_FMT_YVU420:
-	case V4L2_PIX_FMT_NV12:
-	case V4L2_PIX_FMT_YUV422P:
+	case IPU_PIX_FMT_YUV420P2:
+	case IPU_PIX_FMT_YVU420P:
+	case IPU_PIX_FMT_NV12:
+	case IPU_PIX_FMT_YUV422P:
+	case IPU_PIX_FMT_YVU422P:
+	case IPU_PIX_FMT_YUV420P:
 		fb_stride = fbi->var.xres_virtual;
 		break;
 	default:
@@ -327,8 +347,11 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		}
 	}
 
+#if !(defined(CONFIG_CCWMX51_DISP0) && defined(CONFIG_CCWMX51_DISP1))
+	/* FIXME this lines of code doesnt allow to run the dual head... */
 	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK)
 		return retval;
+#endif
 
 	_setup_disp_channel1(fbi);
 
@@ -347,7 +370,7 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		}
 		if (fbi->var.vmode & FB_VMODE_ODD_FLD_FIRST) /* PAL */
 			sig_cfg.odd_field_first = true;
-		if ((fbi->var.sync & FB_SYNC_EXT) || ext_clk_used)
+		if ((fbi->var.sync & FB_SYNC_EXT) || mxc_fbi->ipu_ext_clk)
 			sig_cfg.ext_clk = true;
 		if (fbi->var.sync & FB_SYNC_HOR_HIGH_ACT)
 			sig_cfg.Hsync_pol = true;
@@ -545,6 +568,7 @@ static int swap_channels(struct fb_info *fbi)
  */
 static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
+	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)info->par;
 	u32 vtotal;
 	u32 htotal;
 
@@ -554,8 +578,9 @@ static int mxcfb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		var->yres_virtual = var->yres;
 
 	if ((var->bits_per_pixel != 32) && (var->bits_per_pixel != 24) &&
-	    (var->bits_per_pixel != 16) && (var->bits_per_pixel != 8))
-		var->bits_per_pixel = default_bpp;
+	    (var->bits_per_pixel != 16) && (var->bits_per_pixel != 12) &&
+	    (var->bits_per_pixel != 8))
+		var->bits_per_pixel = mxc_fbi->default_bpp;
 
 	switch (var->bits_per_pixel) {
 	case 8:
@@ -891,10 +916,10 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 				break;
 			}
 
-			down(&mxc_fbi->flip_sem);
 			init_completion(&mxc_fbi->vsync_complete);
 
 			ipu_clear_irq(mxc_fbi->ipu_ch_irq);
+			mxc_fbi->wait4vsync = 1;
 			ipu_enable_irq(mxc_fbi->ipu_ch_irq);
 			retval = wait_for_completion_interruptible_timeout(
 				&mxc_fbi->vsync_complete, 1 * HZ);
@@ -902,6 +927,7 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 				dev_err(fbi->device,
 					"MXCFB_WAIT_FOR_VSYNC: timeout %d\n",
 					retval);
+				mxc_fbi->wait4vsync = 0;
 				retval = -ETIME;
 			} else if (retval > 0) {
 				retval = 0;
@@ -1032,6 +1058,24 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 				return -EFAULT;
 			break;
 		}
+	case MXCFB_GET_DIFMT:
+		{
+			struct mxcfb_info *mxc_fbi =
+				(struct mxcfb_info *)fbi->par;
+
+			if (put_user(mxc_fbi->ipu_di_pix_fmt, argp))
+				return -EFAULT;
+			break;
+		}
+	case MXCFB_GET_FB_IPU_DI:
+		{
+			struct mxcfb_info *mxc_fbi =
+				(struct mxcfb_info *)fbi->par;
+
+			if (put_user(mxc_fbi->ipu_di, argp))
+				return -EFAULT;
+			break;
+		}
 	default:
 		retval = -EINVAL;
 	}
@@ -1122,11 +1166,8 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		return -EINVAL;
 
 	base = (var->yoffset * var->xres_virtual + var->xoffset);
-	base *= (var->bits_per_pixel) / 8;
+	base = (var->bits_per_pixel) * base / 8;
 	base += info->fix.smem_start;
-
-	dev_dbg(info->device, "Updating SDC %s buf %d address=0x%08lX\n",
-		info->fix.id, mxc_fbi->cur_ipu_buf, base);
 
 	/* Check if DP local alpha is enabled and find the graphic fb */
 	if (mxc_fbi->ipu_ch == MEM_BG_SYNC || mxc_fbi->ipu_ch == MEM_FG_SYNC) {
@@ -1152,9 +1193,12 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 	}
 
 	down(&mxc_fbi->flip_sem);
-	init_completion(&mxc_fbi->vsync_complete);
 
 	mxc_fbi->cur_ipu_buf = !mxc_fbi->cur_ipu_buf;
+
+	dev_dbg(info->device, "Updating SDC %s buf %d address=0x%08lX\n",
+		info->fix.id, mxc_fbi->cur_ipu_buf, base);
+
 	if (ipu_update_channel_buffer(mxc_fbi->ipu_ch, IPU_INPUT_BUFFER,
 				      mxc_fbi->cur_ipu_buf, base) == 0) {
 		/* Update the DP local alpha buffer only for graphic plane */
@@ -1176,6 +1220,10 @@ mxcfb_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 		dev_err(info->device,
 			"Error updating SDC buf %d to address=0x%08lX\n",
 			mxc_fbi->cur_ipu_buf, base);
+		mxc_fbi->cur_ipu_buf = !mxc_fbi->cur_ipu_buf;
+		ipu_clear_irq(mxc_fbi->ipu_ch_irq);
+		ipu_enable_irq(mxc_fbi->ipu_ch_irq);
+		return -EBUSY;
 	}
 
 	dev_dbg(info->device, "Update complete\n");
@@ -1269,9 +1317,29 @@ static irqreturn_t mxcfb_irq_handler(int irq, void *dev_id)
 	struct fb_info *fbi = dev_id;
 	struct mxcfb_info *mxc_fbi = fbi->par;
 
-	complete(&mxc_fbi->vsync_complete);
-	up(&mxc_fbi->flip_sem);
-	ipu_disable_irq(irq);
+	if (mxc_fbi->wait4vsync) {
+		complete(&mxc_fbi->vsync_complete);
+		ipu_disable_irq(irq);
+		mxc_fbi->wait4vsync = 0;
+	} else {
+		if (!ipu_check_buffer_busy(mxc_fbi->ipu_ch,
+				IPU_INPUT_BUFFER, mxc_fbi->cur_ipu_buf)
+				|| (mxc_fbi->waitcnt > 2)) {
+			/*
+			 * This interrupt come after pan display select
+			 * cur_ipu_buf buffer, this buffer should become
+			 * idle after show. If it keep busy, clear it manually.
+			 */
+			if (mxc_fbi->waitcnt > 2)
+				ipu_clear_buffer_ready(mxc_fbi->ipu_ch,
+						IPU_INPUT_BUFFER,
+						mxc_fbi->cur_ipu_buf);
+			up(&mxc_fbi->flip_sem);
+			ipu_disable_irq(irq);
+			mxc_fbi->waitcnt = 0;
+		} else
+			mxc_fbi->waitcnt++;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -1443,6 +1511,7 @@ static ssize_t swap_disp_chan(struct device *dev,
 	struct mxcfb_info *mxcfbi = (struct mxcfb_info *)info->par;
 	struct mxcfb_info *fg_mxcfbi = NULL;
 
+	acquire_console_sem();
 	/* swap only happen between DP-BG and DC, while DP-FG disable */
 	if (((mxcfbi->ipu_ch == MEM_BG_SYNC) &&
 	     (strstr(buf, "1-layer-fb") != NULL)) ||
@@ -1462,6 +1531,7 @@ static ssize_t swap_disp_chan(struct device *dev,
 			fg_mxcfbi->cur_blank == FB_BLANK_UNBLANK) {
 			dev_err(dev,
 				"Can not switch while fb2(fb-fg) is on.\n");
+			release_console_sem();
 			return count;
 		}
 
@@ -1469,6 +1539,7 @@ static ssize_t swap_disp_chan(struct device *dev,
 			dev_err(dev, "Swap display channel failed.\n");
 	}
 
+	release_console_sem();
 	return count;
 }
 DEVICE_ATTR(fsl_disp_property, 644, show_disp_chan, swap_disp_chan);
@@ -1487,6 +1558,8 @@ static int mxcfb_probe(struct platform_device *pdev)
 	struct mxcfb_info *mxcfbi;
 	struct mxc_fb_platform_data *plat_data = pdev->dev.platform_data;
 	struct resource *res;
+	char *options, *mstr;
+	char name[] = "mxcdi0fb";
 	int ret = 0;
 
 	/*
@@ -1498,6 +1571,13 @@ static int mxcfb_probe(struct platform_device *pdev)
 		goto err0;
 	}
 	mxcfbi = (struct mxcfb_info *)fbi->par;
+
+	name[5] += pdev->id;
+	if (fb_get_options(name, &options))
+		return -ENODEV;
+
+	if (options)
+		mxcfb_option_setup(fbi, options);
 
 	if (!g_dp_in_use) {
 		mxcfbi->ipu_ch_irq = IPU_IRQ_BG_SYNC_EOF;
@@ -1579,21 +1659,45 @@ static int mxcfb_probe(struct platform_device *pdev)
 	fbi->var.xres = 240;
 	fbi->var.yres = 320;
 
-	if (!fb_mode && plat_data && plat_data->mode_str)
-		fb_find_mode(&fbi->var, fbi, plat_data->mode_str, NULL, 0, NULL,
-			     default_bpp);
+	if (!mxcfbi->default_bpp)
+#ifdef CONFIG_CCWMX51_DEFAULT_VIDEO_BPP
+		mxcfbi->default_bpp = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;
+#else
+		mxcfbi->default_bpp = 16;
+#endif
 
-	if (fb_mode)
-		fb_find_mode(&fbi->var, fbi, fb_mode, NULL, 0, NULL,
-			     default_bpp);
-
-	if (plat_data) {
+	if (plat_data && !mxcfbi->ipu_di_pix_fmt)
 		mxcfbi->ipu_di_pix_fmt = plat_data->interface_pix_fmt;
-		if (!fb_mode && plat_data->mode)
-			fb_videomode_to_var(&fbi->var, plat_data->mode);
+
+	if (plat_data && plat_data->mode && plat_data->num_modes)
+		fb_videomode_to_modelist(plat_data->mode, plat_data->num_modes,
+				&fbi->modelist);
+
+	if (!mxcfbi->fb_mode_str && plat_data && plat_data->mode_str)
+		mxcfbi->fb_mode_str = plat_data->mode_str;
+
+	if (mxcfbi->fb_mode_str) {
+#ifdef CONFIG_MODULE_CCXMX51
+		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
+			mxcfbi->fb_mode_str = mstr + 4;
+#endif
+		ret = fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, NULL, 0, NULL,
+				mxcfbi->default_bpp);
+		if ((!ret || (ret > 2)) && plat_data && plat_data->mode && plat_data->num_modes)
+			fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, plat_data->mode,
+					plat_data->num_modes, NULL, mxcfbi->default_bpp);
+#ifdef CONFIG_MODULE_CCXMX51
+		/* This improves the VGA modes on the CCWi-i.MX51 */
+		if (mstr != NULL) {
+			mxcfbi->ipu_ext_clk = true;
+			fbi->var.sync |= FB_SYNC_CLK_LAT_FALL;
+		}
+#endif
 	}
 
 	mxcfb_check_var(&fbi->var, fbi);
+
+	pm_set_vt_switch(vt_switch);
 
 	/* Default Y virtual size is 2x panel size */
 	fbi->var.yres_virtual = fbi->var.yres * 3;
@@ -1662,28 +1766,71 @@ static struct platform_driver mxcfb_driver = {
 /*
  * Parse user specified options (`video=trident:')
  * example:
- * 	video=trident:800x600,bpp=16,noaccel
+ * 	video=mxcdi0fb:RGB24, 1024x768M-16@60,bpp=16,noaccel
  */
-int mxcfb_setup(char *options)
+static int mxcfb_option_setup(struct fb_info *info, char *options)
 {
+	struct mxcfb_info *mxcfbi = info->par;
 	char *opt;
+
 	if (!options || !*options)
 		return 0;
+
 	while ((opt = strsep(&options, ",")) != NULL) {
 		if (!*opt)
 			continue;
-		if (!strncmp(opt, "ext_clk", 7)) {
-			ext_clk_used = true;
+
+		if (!strncmp(opt, "RGB24", 5)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_RGB24;
 			continue;
-		} else
-			ext_clk_used = false;
-
+		}
+		if (!strncmp(opt, "BGR24", 5)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_BGR24;
+			continue;
+		}
+		if (!strncmp(opt, "RGB565", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_RGB565;
+			continue;
+		}
+		if (!strncmp(opt, "RGB666", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_RGB666;
+			continue;
+		}
+		if (!strncmp(opt, "YUV444", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_YUV444;
+			continue;
+		}
+		if (!strncmp(opt, "LVDS666", 7)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_LVDS666;
+			continue;
+		}
+		if (!strncmp(opt, "YUYV16", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_YUYV;
+			continue;
+		}
+		if (!strncmp(opt, "UYVY16", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_UYVY;
+			continue;
+		}
+		if (!strncmp(opt, "YVYU16", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_YVYU;
+			continue;
+		}
+		if (!strncmp(opt, "VYUY16", 6)) {
+			mxcfbi->ipu_di_pix_fmt = IPU_PIX_FMT_VYUY;
+			continue;
+		}
+		if (!strncmp(opt, "ext_clk", 7)) {
+			mxcfbi->ipu_ext_clk = true;
+			continue;
+		}
 		if (!strncmp(opt, "bpp=", 4))
-			default_bpp = simple_strtoul(opt + 4, NULL, 0);
+			mxcfbi->default_bpp =
+				simple_strtoul(opt + 4, NULL, 0);
 		else
-			fb_mode = opt;
-
+			mxcfbi->fb_mode_str = opt;
 	}
+
 	return 0;
 }
 
@@ -1696,25 +1843,16 @@ int mxcfb_setup(char *options)
  */
 int __init mxcfb_init(void)
 {
-	int ret = 0;
-#ifndef MODULE
-	char *option = NULL;
-#endif
-
-#ifndef MODULE
-	if (fb_get_options("mxcfb", &option))
-		return -ENODEV;
-	mxcfb_setup(option);
-#endif
-
-	ret = platform_driver_register(&mxcfb_driver);
-	return ret;
+	return platform_driver_register(&mxcfb_driver);
 }
 
 void mxcfb_exit(void)
 {
 	platform_driver_unregister(&mxcfb_driver);
 }
+
+module_param(vt_switch, int, 0);
+MODULE_PARM_DESC(vt_switch, "enable VT switch during suspend/resume");
 
 module_init(mxcfb_init);
 module_exit(mxcfb_exit);

@@ -142,32 +142,32 @@ EXPORT_SYMBOL(mxc_mmc_force_detect);
 
 static void sdhci_dumpregs(struct sdhci_host *host)
 {
-	printk(KERN_DEBUG DRIVER_NAME
+	printk(KERN_INFO DRIVER_NAME
 	       ": ============== REGISTER DUMP ==============\n");
 
-	printk(KERN_DEBUG DRIVER_NAME ": Sys addr: 0x%08x | Version:  0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Sys addr: 0x%08x | Version:  0x%08x\n",
 	       readl(host->ioaddr + SDHCI_DMA_ADDRESS),
 	       readl(host->ioaddr + SDHCI_HOST_VERSION));
-	printk(KERN_DEBUG DRIVER_NAME ": Blk size: 0x%08x | Blk cnt:  0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Blk size: 0x%08x | Blk cnt:  0x%08x\n",
 	       (readl(host->ioaddr + SDHCI_BLOCK_SIZE) & 0xFFFF),
 	       (readl(host->ioaddr + SDHCI_BLOCK_COUNT) >> 16));
-	printk(KERN_DEBUG DRIVER_NAME ": Argument: 0x%08x | Trn mode: 0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Argument: 0x%08x | Trn mode: 0x%08x\n",
 	       readl(host->ioaddr + SDHCI_ARGUMENT),
 	       readl(host->ioaddr + SDHCI_TRANSFER_MODE));
-	printk(KERN_DEBUG DRIVER_NAME ": Present:  0x%08x | Host ctl: 0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Present:  0x%08x | Host ctl: 0x%08x\n",
 	       readl(host->ioaddr + SDHCI_PRESENT_STATE),
 	       readl(host->ioaddr + SDHCI_HOST_CONTROL));
-	printk(KERN_DEBUG DRIVER_NAME ": Clock:    0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Clock:    0x%08x\n",
 	       readl(host->ioaddr + SDHCI_CLOCK_CONTROL));
-	printk(KERN_DEBUG DRIVER_NAME ": Int stat: 0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Int stat: 0x%08x\n",
 	       readl(host->ioaddr + SDHCI_INT_STATUS));
-	printk(KERN_DEBUG DRIVER_NAME ": Int enab: 0x%08x | Sig enab: 0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Int enab: 0x%08x | Sig enab: 0x%08x\n",
 	       readl(host->ioaddr + SDHCI_INT_ENABLE),
 	       readl(host->ioaddr + SDHCI_SIGNAL_ENABLE));
-	printk(KERN_DEBUG DRIVER_NAME ": Caps:     0x%08x\n",
+	printk(KERN_INFO DRIVER_NAME ": Caps:     0x%08x\n",
 	       readl(host->ioaddr + SDHCI_CAPABILITIES));
 
-	printk(KERN_DEBUG DRIVER_NAME
+	printk(KERN_INFO DRIVER_NAME
 	       ": ===========================================\n");
 }
 
@@ -506,6 +506,30 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_data *data)
 		host->flags &= ~SDHCI_REQ_USE_DMA;
 	}
 
+	if (cpu_is_mx25() && (data->blksz * data->blocks < 0x10)) {
+		host->flags &= ~SDHCI_REQ_USE_DMA;
+		DBG("Reverting to PIO in small data transfer.\n");
+		writel(readl(host->ioaddr + SDHCI_INT_ENABLE)
+				| SDHCI_INT_DATA_AVAIL
+				| SDHCI_INT_SPACE_AVAIL,
+				host->ioaddr + SDHCI_INT_ENABLE);
+		writel(readl(host->ioaddr + SDHCI_SIGNAL_ENABLE)
+				| SDHCI_INT_DATA_AVAIL
+				| SDHCI_INT_SPACE_AVAIL,
+				host->ioaddr + SDHCI_SIGNAL_ENABLE);
+	} else if (cpu_is_mx25() && (host->flags & SDHCI_USE_DMA)) {
+		host->flags |= SDHCI_REQ_USE_DMA;
+		DBG("Reverting to DMA in large data transfer.\n");
+		writel(readl(host->ioaddr + SDHCI_INT_ENABLE)
+				& ~(SDHCI_INT_DATA_AVAIL
+				| SDHCI_INT_SPACE_AVAIL),
+				host->ioaddr + SDHCI_INT_ENABLE);
+		writel(readl(host->ioaddr + SDHCI_SIGNAL_ENABLE)
+				& ~(SDHCI_INT_DATA_AVAIL
+				| SDHCI_INT_SPACE_AVAIL),
+				host->ioaddr + SDHCI_SIGNAL_ENABLE);
+	}
+
 	if (host->flags & SDHCI_REQ_USE_DMA) {
 		int i;
 		struct scatterlist *tsg;
@@ -644,7 +668,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 	WARN_ON(host->cmd);
 
 	/* Wait max 10 ms */
-	timeout = 5000;
+	timeout = 500;
 
 	mask = SDHCI_CMD_INHIBIT;
 	if ((cmd->data != NULL) || (cmd->flags & MMC_RSP_BUSY))
@@ -695,7 +719,7 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 			mode |= SDHCI_TRNS_READ;
 		else
 			mode &= ~SDHCI_TRNS_READ;
-		if (host->flags & SDHCI_USE_DMA)
+		if (host->flags & SDHCI_REQ_USE_DMA)
 			mode |= SDHCI_TRNS_DMA;
 		if (host->flags & SDHCI_USE_EXTERNAL_DMA)
 			DBG("Prepare data completely in %s transfer mode.\n",
@@ -727,6 +751,11 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 		flags |= SDHCI_CMD_DATA;
 
 	mode |= SDHCI_MAKE_CMD(cmd->opcode, flags);
+	if (host->mmc->ios.bus_width & MMC_BUS_WIDTH_DDR) {
+		/* Eanble the DDR mode */
+		mode |= SDHCI_TRNS_DDR_EN;
+	} else
+		mode &= ~SDHCI_TRNS_DDR_EN;
 	DBG("Complete sending cmd, transfer mode would be 0x%x.\n", mode);
 	writel(mode, host->ioaddr + SDHCI_TRANSFER_MODE);
 }
@@ -775,6 +804,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	int clk_rate = 0;
 	u32 clk;
 	unsigned long timeout;
+	struct mmc_ios ios = host->mmc->ios;
 
 	if (clock == 0) {
 		goto out;
@@ -784,17 +814,20 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 			host->plat_data->clk_flg = 1;
 		}
 	}
-	if (clock == host->clock)
+	if (clock == host->clock && !(ios.bus_width & MMC_BUS_WIDTH_DDR))
 		return;
 
 	clk_rate = clk_get_rate(host->clk);
 	clk = readl(host->ioaddr + SDHCI_CLOCK_CONTROL) & ~SDHCI_CLOCK_MASK;
-	if (!cpu_is_mx53())
+	if (cpu_is_mx53() || cpu_is_mx50())
+		writel(clk | SDHCI_CLOCK_SDCLKFS1,
+				host->ioaddr + SDHCI_CLOCK_CONTROL);
+	else
 		writel(clk, host->ioaddr + SDHCI_CLOCK_CONTROL);
 
 	if (clock == host->min_clk)
 		prescaler = 16;
-	else if (cpu_is_mx53())
+	else if (cpu_is_mx53() || cpu_is_mx50())
 		prescaler = 1;
 	else
 		prescaler = 0;
@@ -820,6 +853,86 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	DBG("prescaler = 0x%x, divider = 0x%x\n", prescaler, div);
 	clk |= (prescaler << 8) | (div << 4);
 
+	/* Configure the DLL when DDR mode is enabled */
+	if (ios.bus_width & MMC_BUS_WIDTH_DDR) {
+		/* Make sure that the PER, HLK, IPG are all enabled */
+		writel(readl(host->ioaddr + SDHCI_CLOCK_CONTROL)
+				| SDHCI_CLOCK_IPG_EN
+				| SDHCI_CLOCK_HLK_EN
+				| SDHCI_CLOCK_PER_EN,
+				host->ioaddr + SDHCI_CLOCK_CONTROL);
+
+		/* Enable the DLL and delay chain */
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_ENABLE,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_REF_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL REF LOCK Timeout!\n");
+		};
+		DBG("dll stat: 0x%x\n", readl(host->ioaddr + SDHCI_DLL_STATUS));
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_SLV_UP_INT | DLL_CTRL_REF_UP_INT
+				| DLL_CTRL_SLV_DLY_TAR,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_SLV_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL SLV LOCK Timeout!\n");
+		};
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				| DLL_CTRL_SLV_FORCE_UPD,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL)
+				& (~DLL_CTRL_SLV_FORCE_UPD),
+				host->ioaddr + SDHCI_DLL_CONTROL);
+
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_REF_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL REF LOCK Timeout!\n");
+		};
+		timeout = 1000000;
+		while (timeout > 0) {
+			timeout--;
+			if (readl(host->ioaddr + SDHCI_DLL_STATUS)
+					& DLL_STS_SLV_LOCK)
+				break;
+			else if (timeout == 0)
+				printk(KERN_ERR "DLL SLV LOCK Timeout!\n");
+		};
+		DBG("dll stat: 0x%x\n", readl(host->ioaddr + SDHCI_DLL_STATUS));
+
+		/* Let the PER, HLK, IPG to be auto-gate */
+		writel(readl(host->ioaddr + SDHCI_CLOCK_CONTROL)
+				& ~(SDHCI_CLOCK_IPG_EN | SDHCI_CLOCK_HLK_EN
+					| SDHCI_CLOCK_PER_EN),
+				host->ioaddr + SDHCI_CLOCK_CONTROL);
+
+	} else if (readl(host->ioaddr + SDHCI_DLL_STATUS) & DLL_STS_SLV_LOCK) {
+		/* reset DLL CTRL */
+		writel(readl(host->ioaddr + SDHCI_DLL_CONTROL) | DLL_CTRL_RESET,
+				host->ioaddr + SDHCI_DLL_CONTROL);
+	}
+
 	/* Configure the clock control register */
 	clk |=
 	    (readl(host->ioaddr + SDHCI_CLOCK_CONTROL) & (~SDHCI_CLOCK_MASK));
@@ -830,7 +943,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 		       host->ioaddr + SDHCI_CLOCK_CONTROL);
 
 	/* Wait max 10 ms */
-	timeout = 5000;
+	timeout = 500;
 	while (timeout > 0) {
 		timeout--;
 		udelay(20);
@@ -933,8 +1046,8 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	u32 tmp;
 	mxc_dma_device_t dev_id = 0;
 
-	DBG("%s: clock %u, bus %lu, power %u, vdd %u\n", DRIVER_NAME,
-	    ios->clock, 1UL << ios->bus_width, ios->power_mode, ios->vdd);
+	DBG("%s: clock %u, bus %u, power %u, vdd %u\n", DRIVER_NAME,
+	    ios->clock, ios->bus_width, ios->power_mode, ios->vdd);
 
 	host = mmc_priv(mmc);
 
@@ -1000,10 +1113,10 @@ static void sdhci_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	tmp = readl(host->ioaddr + SDHCI_HOST_CONTROL);
 
-	if (ios->bus_width == MMC_BUS_WIDTH_4) {
+	if ((ios->bus_width & ~MMC_BUS_WIDTH_DDR) == MMC_BUS_WIDTH_4) {
 		tmp &= ~SDHCI_CTRL_8BITBUS;
 		tmp |= SDHCI_CTRL_4BITBUS;
-	} else if (ios->bus_width == MMC_BUS_WIDTH_8) {
+	} else if ((ios->bus_width & ~MMC_BUS_WIDTH_DDR) == MMC_BUS_WIDTH_8) {
 		tmp &= ~SDHCI_CTRL_4BITBUS;
 		tmp |= SDHCI_CTRL_8BITBUS;
 	} else if (ios->bus_width == MMC_BUS_WIDTH_1) {

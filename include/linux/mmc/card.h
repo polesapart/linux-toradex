@@ -40,8 +40,12 @@ struct mmc_csd {
 };
 
 struct mmc_ext_csd {
+	u8			rev;
+	unsigned int		sa_timeout;		/* Units: 100ns */
 	unsigned int		hs_max_dtr;
 	unsigned int		sectors;
+	unsigned int		card_type;
+#define MMC_DDR_MODE_MASK 	(0x3<<2)
 };
 
 struct sd_scr {

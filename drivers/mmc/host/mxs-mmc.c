@@ -183,6 +183,12 @@ static void mxs_mmc_detect_poll(unsigned long arg)
 				BM_SSP_CTRL1_RECV_TIMEOUT_IRQ   | \
 				BM_SSP_CTRL1_FIFO_OVERRUN_IRQ)
 
+#define MXS_MMC_ERR_BITS (BM_SSP_CTRL1_RESP_ERR_IRQ       | \
+				BM_SSP_CTRL1_RESP_TIMEOUT_IRQ   | \
+				BM_SSP_CTRL1_DATA_TIMEOUT_IRQ   | \
+				BM_SSP_CTRL1_DATA_CRC_IRQ       | \
+				BM_SSP_CTRL1_RECV_TIMEOUT_IRQ)
+
 /* SSP DMA interrupt handler */
 static irqreturn_t mmc_irq_handler(int irq, void *dev_id)
 {
@@ -198,19 +204,17 @@ static irqreturn_t mmc_irq_handler(int irq, void *dev_id)
 		/* STOP the dma transfer here. */
 		mxs_dma_cooked(host->dmach, NULL);
 	}
-	host->status =
-	    __raw_readl(host->ssp_base + HW_SSP_STATUS);
 
-	if (host->cmd)		/* else it is a bogus interrupt */
-		complete(&host->dma_done);
+	if ((irq == host->dmairq) || (c1 & MXS_MMC_ERR_BITS))
+		if (host->cmd) {
+			host->status =
+				__raw_readl(host->ssp_base + HW_SSP_STATUS);
+			complete(&host->dma_done);
+		}
 
-	if ((c1 & BM_SSP_CTRL1_SDIO_IRQ) && (c1 & BM_SSP_CTRL1_SDIO_IRQ_EN)) {
-		__raw_writel(BM_SSP_CTRL0_SDIO_IRQ_CHECK, host->ssp_base + \
-			HW_SSP_CTRL0_CLR);
-		__raw_writel(BM_SSP_CTRL1_SDIO_IRQ_EN, host->ssp_base + \
-			HW_SSP_CTRL1_CLR);
+	if ((c1 & BM_SSP_CTRL1_SDIO_IRQ) && (c1 & BM_SSP_CTRL1_SDIO_IRQ_EN))
 		mmc_signal_sdio_irq(host->mmc);
-	}
+
 	return IRQ_HANDLED;
 }
 
@@ -239,6 +243,7 @@ static void mxs_mmc_bc(struct mxs_mmc_host *host)
 {
 	struct mmc_command *cmd = host->cmd;
 	struct mxs_dma_desc *dma_desc = host->dma_desc;
+	unsigned long flags;
 
 	dma_desc->cmd.cmd.bits.command = NO_DMA_XFER;
 	dma_desc->cmd.cmd.bits.irq = 1;
@@ -255,7 +260,8 @@ static void mxs_mmc_bc(struct mxs_mmc_host *host)
 
 	if (host->sdio_irq_en) {
 		dma_desc->cmd.pio_words[0] |= BM_SSP_CTRL0_SDIO_IRQ_CHECK;
-		dma_desc->cmd.pio_words[1] |= BM_SSP_CMD0_CONT_CLKING_EN;
+		dma_desc->cmd.pio_words[1] |= BM_SSP_CMD0_CONT_CLKING_EN \
+			| BM_SSP_CMD0_SLOW_CLKING_EN;
 	}
 
 	init_completion(&host->dma_done);
@@ -265,6 +271,7 @@ static void mxs_mmc_bc(struct mxs_mmc_host *host)
 	dev_dbg(host->dev, "%s start DMA.\n", __func__);
 	if (mxs_dma_enable(host->dmach) < 0)
 		dev_err(host->dev, "mmc_dma_enable failed\n");
+
 	wait_for_completion(&host->dma_done);
 
 	cmd->error = mxs_mmc_cmd_error(host->status);
@@ -273,6 +280,7 @@ static void mxs_mmc_bc(struct mxs_mmc_host *host)
 		dev_dbg(host->dev, "Command error 0x%x\n", cmd->error);
 		mxs_dma_reset(host->dmach);
 	}
+	mxs_dma_disable(host->dmach);
 }
 
 /* Send the ac command to the device */
@@ -284,6 +292,7 @@ static void mxs_mmc_ac(struct mxs_mmc_host *host)
 	u32 ssp_ctrl0;
 	u32 ssp_cmd0;
 	u32 ssp_cmd1;
+	unsigned long flags;
 
 	ignore_crc = (mmc_resp_type(cmd) & MMC_RSP_CRC) ?
 	    0 : BM_SSP_CTRL0_IGNORE_CRC;
@@ -305,7 +314,8 @@ static void mxs_mmc_ac(struct mxs_mmc_host *host)
 
 	if (host->sdio_irq_en) {
 		ssp_ctrl0 |= BM_SSP_CTRL0_SDIO_IRQ_CHECK;
-		ssp_cmd0 |= BM_SSP_CMD0_CONT_CLKING_EN;
+		ssp_cmd0 |= BM_SSP_CMD0_CONT_CLKING_EN \
+			| BM_SSP_CMD0_SLOW_CLKING_EN;
 	}
 
 	dma_desc->cmd.pio_words[0] = ssp_ctrl0;
@@ -356,6 +366,7 @@ static void mxs_mmc_ac(struct mxs_mmc_host *host)
 		dev_dbg(host->dev, "Command error 0x%x\n", cmd->error);
 		mxs_dma_reset(host->dmach);
 	}
+	mxs_dma_disable(host->dmach);
 }
 
 /* Copy data between sg list and dma buffer */
@@ -451,6 +462,7 @@ static void mxs_mmc_adtc(struct mxs_mmc_host *host)
 
 	u32 data_size = cmd->data->blksz * cmd->data->blocks;
 	u32 log2_block_size;
+	unsigned long flags;
 
 	ignore_crc = mmc_resp_type(cmd) & MMC_RSP_CRC ? 0 : 1;
 	resp = mmc_resp_type(cmd) & MMC_RSP_PRESENT ? 1 : 0;
@@ -551,17 +563,25 @@ static void mxs_mmc_adtc(struct mxs_mmc_host *host)
 		}
 		/* Configure the CMD0 */
 		ssp_cmd0 = BF(cmd->opcode, SSP_CMD0_CMD);
-	} else
-		ssp_cmd0 =
-		    BF(log2_block_size, SSP_BLOCK_SIZE_BLOCK_SIZE) |
-		    BF(cmd->opcode, SSP_CMD0_CMD) |
-		    BF(cmd->data->blocks - 1, SSP_BLOCK_SIZE_BLOCK_COUNT);
-
+	} else {
+		if ((1<<log2_block_size) != cmd->data->blksz) {
+			BUG_ON(cmd->data->blocks > 1);
+			ssp_cmd0 =
+				BF(0, SSP_BLOCK_SIZE_BLOCK_SIZE) |
+				BF(cmd->opcode, SSP_CMD0_CMD) |
+				BF(0, SSP_BLOCK_SIZE_BLOCK_COUNT);
+		} else
+			ssp_cmd0 =
+			BF(log2_block_size, SSP_BLOCK_SIZE_BLOCK_SIZE) |
+			BF(cmd->opcode, SSP_CMD0_CMD) |
+			BF(cmd->data->blocks - 1, SSP_BLOCK_SIZE_BLOCK_COUNT);
+	}
 	if (host->sdio_irq_en) {
 		ssp_ctrl0 |= BM_SSP_CTRL0_SDIO_IRQ_CHECK;
-		ssp_cmd0 |= BM_SSP_CMD0_CONT_CLKING_EN;
+		ssp_cmd0 |= BM_SSP_CMD0_CONT_CLKING_EN \
+			| BM_SSP_CMD0_SLOW_CLKING_EN;
 	}
-	if (cmd->opcode == 12)
+	if ((cmd->opcode == 12) || (cmd->opcode == 53))
 		ssp_cmd0 |= BM_SSP_CMD0_APPEND_8CYC;
 
 	ssp_cmd1 = BF(cmd->arg, SSP_CMD1_CMD_ARG);
@@ -628,6 +648,7 @@ static void mxs_mmc_adtc(struct mxs_mmc_host *host)
 		dev_dbg(host->dev, "Transferred %u bytes\n",
 			cmd->data->bytes_xfered);
 	}
+	mxs_dma_disable(host->dmach);
 }
 
 /* Begin sedning a command to the card */
@@ -672,6 +693,13 @@ static void mxs_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	dev_dbg(host->dev, "MMC request\n");
 
+	if (!host->present) {
+		mrq->cmd->error = -ETIMEDOUT;
+		mmc_request_done(mmc, mrq);
+		return;
+	}
+
+	BUG_ON(host->mrq != NULL);
 	host->mrq = mrq;
 
 	mxs_mmc_start_cmd(host, mrq->cmd);

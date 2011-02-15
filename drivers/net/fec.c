@@ -1131,17 +1131,18 @@ fec_set_mac_address(struct net_device *dev, void *p)
 {
 	struct fec_enet_private *fep = netdev_priv(dev);
 	struct sockaddr *addr = p;
+	u32 temp_mac[2];
 
 	if (!is_valid_ether_addr(addr->sa_data))
 		return -EADDRNOTAVAIL;
 
 	memcpy(dev->dev_addr, addr->sa_data, dev->addr_len);
 
-	writel(dev->dev_addr[3] | (dev->dev_addr[2] << 8) |
-		(dev->dev_addr[1] << 16) | (dev->dev_addr[0] << 24),
-		fep->hwp + FEC_ADDR_LOW);
-	writel((dev->dev_addr[5] << 16) | (dev->dev_addr[4] << 24),
-		fep + FEC_ADDR_HIGH);
+	memcpy(&temp_mac, dev->dev_addr, ETH_ALEN);
+
+	writel(cpu_to_be32(temp_mac[0]), fep->hwp + FEC_ADDR_LOW);
+	writel(cpu_to_be32(temp_mac[1]), fep->hwp + FEC_ADDR_HIGH);
+
 	return 0;
 }
 
@@ -1277,6 +1278,7 @@ fec_restart(struct net_device *dev, int duplex)
 	/* Clear any outstanding interrupt. */
 	writel(0xffc00000, fep->hwp + FEC_IEVENT);
 
+#if !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS)
 	/* Reset all multicast.	*/
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_LOW);
@@ -1284,6 +1286,7 @@ fec_restart(struct net_device *dev, int duplex)
 	writel(0, fep->hwp + FEC_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_HASH_TABLE_LOW);
 #endif
+#endif /* !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS) */
 
 #ifndef CONFIG_ARCH_MXS
 	if (fep->phy_interface == PHY_INTERFACE_MODE_RMII) {
@@ -1499,10 +1502,10 @@ fec_probe(struct platform_device *pdev)
 		fep->mii_bus = fec_mii_bus;
 	}
 
-	fep->ptp_priv = kmalloc(sizeof(struct fec_ptp_private), GFP_KERNEL);
+	fep->ptp_priv = kzalloc(sizeof(struct fec_ptp_private), GFP_KERNEL);
 	if (fep->ptp_priv) {
 		fep->ptp_priv->hwp = fep->hwp;
-		ret = fec_ptp_init(fep->ptp_priv);
+		ret = fec_ptp_init(fep->ptp_priv, pdev->id);
 		if (ret)
 			printk(KERN_WARNING
 					"IEEE1588: ptp-timer is unavailable\n");
