@@ -1202,7 +1202,7 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		}
 	}
 
-exit:
+//exit:
 	port->mmc_cmd = NULL;
 	mmc_request_done(port->mmc, port->mmc_req);
 }

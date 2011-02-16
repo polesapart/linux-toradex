@@ -299,7 +299,7 @@ int fim_dump_registers(struct fim_driver *driver)
 	struct pic_t *pic;
 
 	if (!(pic = get_pic_from_driver(driver))) {
-            printk(KERN_ERR "fim_driver structure has not been initialized\n");
+		printk(KERN_ERR "fim_driver structure has not been initialized\n");
 		return -ENODEV;
 	}
 
