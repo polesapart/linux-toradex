@@ -546,6 +546,8 @@ static int __devinit ns921x_aes_probe(struct platform_device *pdev)
 	iowrite32(DMA_CONTROL_RST, dev_data.membase + DMA_CONTROL);
 	iowrite32((u32)dev_data.p_dma_descr, dev_data.membase + DMA_BDPOINTER);
 
+	init_waitqueue_head(&dev_data.waitq);
+
 	for (i = 0; i < ARRAY_SIZE(ns921x_aes_algs); i++) {
 		ns921x_aes_algs[i].cra_u.ablkcipher = ciphers[i];
 		ret = crypto_register_alg(&ns921x_aes_algs[i]);
@@ -555,7 +557,6 @@ static int __devinit ns921x_aes_probe(struct platform_device *pdev)
 		}
 	}
 
-	init_waitqueue_head(&dev_data.waitq);
 	dev_info(&pdev->dev, "NS921x AES encryption/decryption module at 0x%p (irq: %d)\n",
 			dev_data.membase, dev_data.irq);
 
@@ -585,7 +586,7 @@ err_get_mem:
 	return ret;
 }
 
-static int __exit ns921x_aes_remove(struct platform_device *pdev)
+static int __devexit ns921x_aes_remove(struct platform_device *pdev)
 {
 	int i;
 
@@ -614,7 +615,7 @@ static struct platform_driver ns921x_aes_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ns921x_aes_probe,
-	.remove		= __exit_p(ns921x_aes_remove),
+	.remove		= __devexit_p(ns921x_aes_remove),
 };
 
 static int __init ns921x_aes_init(void)
