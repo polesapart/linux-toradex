@@ -1610,7 +1610,7 @@ DEVICE_ATTR(fsl_disp_property, 644, show_disp_chan, swap_disp_chan);
 
 static void	mxcfb_adjust( struct mxcfb_info * mxcfbi )
 {
-	if( !strcmp(mxcfbi->fb_mode_str,"LQ121K1LG11") ) {
+	if( !strcmp(mxcfbi->fb_mode_str,"LQ121K1LG52") ) {
 		mxcfbi->ipu_di_period = 53;
 		mxcfbi->ipu_di_fall_edge_pos = 4;
 	}
