@@ -66,7 +66,7 @@ void __init ns9xxx_add_device_ns921x_wdt(void) {}
 #endif
 
 /* Ethernet */
-#if defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)
+#if (defined(CONFIG_NS9XXX_ETH) || defined(CONFIG_NS9XXX_ETH_MODULE)) && !defined(CONFIG_MACH_CWME9210JS)
 int __init eth_register_gpios(int gpio[], int func[], int dir[], int num)
 {
 	int i;
