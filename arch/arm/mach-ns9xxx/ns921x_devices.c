@@ -813,7 +813,8 @@ void __init ns9xxx_add_device_ns921x_fims(void)
 	 * can be made active.
 	 */
 #if defined(CONFIG_FIM_CORE) && \
-		(defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS))
+		(defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS) || \
+		 defined(CONFIG_MACH_CWME9210) || defined(CONFIG_MACH_CWME9210JS))
 	enum cme9210_variant variant;
 
 	variant = get_cme9210_variant();
