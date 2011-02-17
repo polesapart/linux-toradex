@@ -175,6 +175,15 @@ static unsigned long _ipu_pixel_clk_round_rate(struct clk *clk, unsigned long ra
 	return parent_rate / div;
 }
 
+void _ipu_pixel_clk_set_sync(int disp , unsigned int period , unsigned int falling_edge_pos )
+{
+	if(period)
+		__raw_writel( period , DI_BS_CLKGEN0(disp));
+
+	if(falling_edge_pos)
+		__raw_writel( falling_edge_pos << 16, DI_BS_CLKGEN1(disp));
+}
+
 static int _ipu_pixel_clk_set_rate(struct clk *clk, unsigned long rate)
 {
 	u32 div = (clk_get_rate(clk->parent) * 16) / rate;
@@ -182,8 +191,8 @@ static int _ipu_pixel_clk_set_rate(struct clk *clk, unsigned long rate)
 	__raw_writel(div, DI_BS_CLKGEN0(clk->id));
 
 	/* Setup pixel clock timing */
-	/* FIXME: needs to be more flexible */
 	/* Down time is half of period */
+	/* LCD specific adjustments though _ipu_pixel_clk_set_sync() */
 	__raw_writel((div / 16) << 16, DI_BS_CLKGEN1(clk->id));
 
 	return 0;
@@ -406,6 +415,49 @@ int ipu_remove(struct platform_device *pdev)
 	iounmap(ipu_vdi_reg);
 
 	return 0;
+}
+
+void di_dump_registers( int di)
+{
+	int i;
+
+	printk(KERN_DEBUG "DI %d----------------------------------------\n",di);
+	printk(KERN_DEBUG "DI_GENERAL = \t0x%08X\n", __raw_readl(DI_GENERAL(di)));
+	printk(KERN_DEBUG "DI_BS_CLKGEN0 = \t0x%08X\n", __raw_readl(DI_BS_CLKGEN0(di)));
+	printk(KERN_DEBUG "DI_BS_CLKGEN1 = \t0x%08X\n", __raw_readl(DI_BS_CLKGEN1(di)));
+	printk(KERN_DEBUG "DI_SW_GEN0: ");
+	for(i=1; i<=9; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_SW_GEN0(di,i)));
+	printk(KERN_DEBUG "DI_SW_GEN1: ");
+	for(i=1; i<=9; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_SW_GEN1(di,i)));
+	printk(KERN_DEBUG "DI_SYNC_AS_GEN = \t0x%08X\n", __raw_readl(DI_SYNC_AS_GEN(di)));
+		printk(KERN_DEBUG "DI_DW_GEN: ");
+	for(i=0; i<=11; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_DW_GEN(di,i)));
+	printk(KERN_DEBUG "DI_DW_SET0: ");
+	for(i=0; i<=11; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_DW_SET(di,i,0)));
+	printk(KERN_DEBUG "DI_DW_SET1: ");
+	for(i=0; i<=11; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_DW_SET(di,i,1)));
+	printk(KERN_DEBUG "DI_DW_SET2: ");
+	for(i=0; i<=11; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_DW_SET(di,i,2)));
+	printk(KERN_DEBUG "DI_DW_SET3: ");
+	for(i=0; i<=11; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_DW_SET(di,i,3)));
+	printk(KERN_DEBUG "DI_STP_REP: ");
+	for(i=0; i<=3; i++)
+		printk(KERN_DEBUG "[%d] \t0x%08X\n",i, __raw_readl(DI_STP_REP(di,i)));
+	printk(KERN_DEBUG "DI_SER_CONF = \t0x%08X\n", __raw_readl(DI_SER_CONF(di)));
+	printk(KERN_DEBUG "DI_SSC = \t0x%08X\n", __raw_readl(DI_SSC(di)));
+	printk(KERN_DEBUG "DI_POL = \t0x%08X\n", __raw_readl(DI_POL(di)));
+	printk(KERN_DEBUG "DI_AW0 = \t0x%08X\n", __raw_readl(DI_AW0(di)));
+	printk(KERN_DEBUG "DI_AW1 = \t0x%08X\n", __raw_readl(DI_AW1(di)));
+	printk(KERN_DEBUG "DI_SCR_CONF = \t0x%08X\n", __raw_readl(DI_SCR_CONF(di)));
+	printk(KERN_DEBUG "DI_STAT = \t0x%08X\n", __raw_readl(DI_STAT(di)));
+	printk(KERN_DEBUG "--------------------------------------------\n");
 }
 
 void ipu_dump_registers(void)

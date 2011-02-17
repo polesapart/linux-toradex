@@ -47,7 +47,23 @@ static void lcd_bl_enable_lq70(int enable, int vif)
 #elif defined(CONFIG_JSCCWMX51_V2)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
 #else
-#error "A function to enable/disalbe the display have to be specified"
+#error "A function to enable/disable the display has to be specified"
+#endif
+}
+
+static void lcd_bl_enable_lq12(int enable, int vif)
+{
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), !enable);
+	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
+	if (vif == 0)
+		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), !enable);
+	else if (vif == 1)
+#ifdef CONFIG_JSCCWMX51_V1
+		ipu_ccwmx51_disp1_enable(enable);
+#elif defined(CONFIG_JSCCWMX51_V2)
+		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
+#else
+#error "A function to enable/disable the display has to be specified"
 #endif
 }
 
@@ -58,54 +74,70 @@ static void lcd_init(int vif)
 }
 
 static struct fb_videomode lq70y3dg3b = {
-	.name		= "LQ070Y3DG3B",
-	.refresh	= 60,
-	.xres		= 800,
-	.yres		= 480,
+	.name          = "LQ070Y3DG3B",
+	.refresh       = 60,
+	.xres          = 800,
+	.yres          = 480,
 	.pixclock	= 44000,
 	.left_margin	= 0,
 	.right_margin	= 50,
-	.upper_margin	= 25,
-	.lower_margin	= 10,
-	.hsync_len	= 128,
-	.vsync_len	= 10,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
-	.flag		= 0,
+	.upper_margin  = 25,
+	.lower_margin  = 10,
+	.hsync_len     = 128,
+	.vsync_len     = 10,
+	.vmode         = FB_VMODE_NONINTERLACED,
+	.sync          = FB_SYNC_EXT,
+	.flag          = 0,
+};
+
+static struct fb_videomode lq121k1lg52 = {
+	.name          = "LQ121K1LG11", /* deprecated, replaced by "LQ121K1LG52" */
+	.refresh       = 60,
+	.xres          = 1280,
+	.yres          = 800,
+	.pixclock      = 22500 /* 44.3333Mhz in ps  */,
+	.left_margin   = 10,
+	.right_margin  = 370,
+	.upper_margin  = 10,
+	.lower_margin  = 10,
+	.hsync_len     = 10,
+	.vsync_len     = 10,
+	.vmode         = FB_VMODE_NONINTERLACED,
+	.sync          = FB_SYNC_CLK_LAT_FALL,
+	.flag          = 0,
 };
 
 static struct fb_videomode lcd_custom_1 = {
 	.name		= "custom1",
-	.refresh	= 0,
-	.xres		= 0,
-	.yres		= 0,
-	.pixclock	= 0,
-	.left_margin	= 0,
-	.right_margin	= 0,
-	.upper_margin	= 0,
-	.lower_margin	= 0,
-	.hsync_len	= 0,
-	.vsync_len	= 0,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
+	.refresh	= 0,			/* Refresh rate in Hz */
+	.xres		= 0,			/* Resolution in the x axis */
+	.yres		= 0,			/* Reslution in the y axis */
+	.pixclock	= 0,			/* Pixelclock/dotclock,picoseconds. */
+	.left_margin	= 0,			/* Horizontal Back Porch (HBP) */
+	.right_margin	= 0,			/* Horizontal Front Porch (HFP) */
+	.upper_margin	= 0,			/* Vertical Back Porch (VBP) */
+	.lower_margin	= 0,			/* Vetical Front Porch (VFP) */
+	.hsync_len	= 0,			/* Horizontal sync pulse width */
+	.vsync_len	= 0,			/* Vertical sync pulse width */
+	.vmode		= FB_VMODE_NONINTERLACED,/* Video mode */
+	.sync		= FB_SYNC_EXT,		/* Data clock polarity */
 };
 
 static struct fb_videomode lcd_custom_2 = {
 	.name		= "custom2",
-	.refresh	= 0,
-	.xres		= 0,
-	.yres		= 0,
-	.pixclock	= 0,
-	.left_margin	= 0,
-	.right_margin	= 0,
-	.upper_margin	= 0,
-	.lower_margin	= 0,
-	.hsync_len	= 0,
-	.vsync_len	= 0,
-	.vmode		= FB_VMODE_NONINTERLACED,
-	.sync		= FB_SYNC_EXT,
+	.refresh	= 0,			/* Refresh rate in Hz */
+	.xres		= 0,			/* Resolution in the x axis */
+	.yres		= 0,			/* Reslution in the y axis */
+	.pixclock	= 0,			/* Pixelclock or dotclock,picoseconds.*/
+	.left_margin	= 0,			/* Horizontal Back Porch (HBP) */
+	.right_margin	= 0,			/* Horizontal Front Porch (HFP) */
+	.upper_margin	= 0,			/* Vertical Back Porch (VBP) */
+	.lower_margin	= 0,			/* Vetical Front Porch (VFP) */
+	.hsync_len	= 0,			/* Horizontal sync pulse width */
+	.vsync_len	= 0,			/* Vertical sync pulse width */
+	.vmode		= FB_VMODE_NONINTERLACED,/* Video mode */
+	.sync		= FB_SYNC_EXT,		/* Data clock polarity */
 };
-
 struct ccwmx51_lcd_pdata lcd_panel_list[] = {
 	{
 		.fb_pdata = {
@@ -114,6 +146,14 @@ struct ccwmx51_lcd_pdata lcd_panel_list[] = {
 			.mode = &lq70y3dg3b,
 		},
 		.bl_enable = lcd_bl_enable_lq70,
+		.init = &lcd_init,
+	}, {
+		.fb_pdata = {
+			.interface_pix_fmt = VIDEO_PIX_FMT,
+			.mode_str = "LQ121K1LG11", /*Replacement model is LQ121K1LG52*/
+			.mode = &lq121k1lg52,
+		},
+		.bl_enable = lcd_bl_enable_lq12,
 		.init = &lcd_init,
 	}, {
 		.fb_pdata = {

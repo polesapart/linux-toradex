@@ -53,6 +53,7 @@ ipu_color_space_t format_to_colorspace(uint32_t fmt);
 bool ipu_pixel_format_has_alpha(uint32_t fmt);
 
 void ipu_dump_registers(void);
+void di_dump_registers( int di);
 
 uint32_t _ipu_channel_status(ipu_channel_t channel);
 

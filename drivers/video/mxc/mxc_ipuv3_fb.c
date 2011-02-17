@@ -49,6 +49,8 @@
 #include <linux/suspend.h>
 
 static int vt_switch;
+extern void _ipu_pixel_clk_set_sync(int disp , unsigned int period ,
+			unsigned int falling_edge_pos );
 
 /*
  * Driver name
@@ -84,6 +86,15 @@ struct mxcfb_info {
 	struct semaphore flip_sem;
 	struct semaphore alpha_flip_sem;
 	struct completion vsync_complete;
+
+	/* Empirical, from physical signal measuring on LCD*/
+	/* See DI0_BS_CLKGEN 0 and DI0_BS_CLKGEN1 */
+	// Display interface clock period for display write access
+	uint32_t ipu_di_period;
+	/* Time interval between display’s access start point and
+	   display ‘s interface clock falling edge. */
+	uint32_t ipu_di_fall_edge_pos;
+
 };
 
 struct mxcfb_alloc_list {
@@ -409,6 +420,10 @@ static int mxcfb_set_par(struct fb_info *fbi)
 				"mxcfb: Error initializing panel.\n");
 			return -EINVAL;
 		}
+
+		// Display specific adjustments
+		_ipu_pixel_clk_set_sync(mxc_fbi->ipu_di, mxc_fbi->ipu_di_period ,
+				mxc_fbi->ipu_di_fall_edge_pos );
 
 		fbi->mode =
 		    (struct fb_videomode *)fb_match_mode(&fbi->var,
@@ -1593,6 +1608,14 @@ static ssize_t swap_disp_chan(struct device *dev,
 }
 DEVICE_ATTR(fsl_disp_property, 644, show_disp_chan, swap_disp_chan);
 
+static void	mxcfb_adjust( struct mxcfb_info * mxcfbi )
+{
+	if( !strcmp(mxcfbi->fb_mode_str,"LQ121K1LG11") ) {
+		mxcfbi->ipu_di_period = 53;
+		mxcfbi->ipu_di_fall_edge_pos = 4;
+	}
+}
+
 /*!
  * Probe routine for the framebuffer driver. It is called during the
  * driver binding process.      The following functions are performed in
@@ -1732,6 +1755,9 @@ static int mxcfb_probe(struct platform_device *pdev)
 #ifdef CONFIG_MODULE_CCXMX51
 		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
 			mxcfbi->fb_mode_str = mstr + 4;
+
+		// Device specific adjustments
+		mxcfb_adjust(mxcfbi);
 #endif
 		ret = fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, NULL, 0, NULL,
 				mxcfbi->default_bpp);
