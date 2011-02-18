@@ -186,26 +186,6 @@ static int __xipram cfi_chip_setup(struct map_info *map,
 	for (i=0; i<(sizeof(struct cfi_ident) + num_erase_regions * 4); i++)
 		((unsigned char *)cfi->cfiq)[i] = cfi_read_query(map,base + (0x10 + i)*ofs_factor);
 
-	/* Get device ID cycle 1,2,3 for Numonyx/ST devices */
-	if ((cfi->mfr == CFI_MFR_NMX || cfi->mfr == CFI_MFR_ST)
-		&& ((cfi->id & 0xff) == 0x7e)
-		&& (le16_to_cpu(cfi->cfiq->P_ID) == 0x0002)) {
-		extendedId1 = cfi_read_query16(map, base + 0x1 * ofs_factor);
-		extendedId2 = cfi_read_query16(map, base + 0xe * ofs_factor);
-		extendedId3 = cfi_read_query16(map, base + 0xf * ofs_factor);
-
-#ifdef M29W640_WBUF_WORKAROUND
-		/* Deactivate write-buffer on M29W640. Write buffer doesn't work
-		 * on this memory on cc9p9215. Root cause still unknown */
-		if (0x227e == extendedId1 &&
-		   (0x220C == extendedId2 || 0x2210 == extendedId2)) {
-			pr_warning("Disabled write-buffer on Numonyx flash M29W640\n");
-			cfi->cfiq->BufWriteTimeoutTyp = 0;
-			cfi->cfiq->BufWriteTimeoutMax = 0;
-		}
-#endif
-	}
-
 	/* Do any necessary byteswapping */
 	cfi->cfiq->P_ID = le16_to_cpu(cfi->cfiq->P_ID);
 
@@ -249,6 +229,26 @@ static int __xipram cfi_chip_setup(struct map_info *map,
 	cfi_send_gen_cmd(0x90, addr_unlock1, base, map, cfi, cfi->device_type, NULL);
 	cfi->mfr = cfi_read_query16(map, base);
 	cfi->id = cfi_read_query16(map, base + ofs_factor);
+
+	/* Get device ID cycle 1,2,3 for Numonyx/ST devices */
+	if ((cfi->mfr == CFI_MFR_NMX || cfi->mfr == CFI_MFR_ST)
+		&& ((cfi->id & 0xff) == 0x7e)
+		&& (le16_to_cpu(cfi->cfiq->P_ID) == 0x0002)) {
+		extendedId1 = cfi_read_query16(map, base + 0x1 * ofs_factor);
+		extendedId2 = cfi_read_query16(map, base + 0xe * ofs_factor);
+		extendedId3 = cfi_read_query16(map, base + 0xf * ofs_factor);
+
+#ifdef M29W640_WBUF_WORKAROUND
+		/* Deactivate write-buffer on M29W640. Write buffer doesn't work
+		 * on this memory on cc9p9215. Root cause still unknown */
+		if (0x227e == extendedId1 &&
+		   (0x220C == extendedId2 || 0x2210 == extendedId2)) {
+			pr_warning("Disabled write-buffer on Numonyx flash M29W640\n");
+			cfi->cfiq->BufWriteTimeoutTyp = 0;
+			cfi->cfiq->BufWriteTimeoutMax = 0;
+		}
+#endif
+	}
 
 	/* Get AMD/Spansion extended JEDEC ID */
 	if (cfi->mfr == CFI_MFR_AMD && (cfi->id & 0xff) == 0x7e)
