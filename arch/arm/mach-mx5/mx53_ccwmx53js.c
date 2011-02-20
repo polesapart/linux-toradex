@@ -63,6 +63,7 @@
 #include <mach/i2c.h>
 #include <mach/mxc_iim.h>
 
+#include "devices_ccwmx53.h"
 #include "crm_regs.h"
 #include "devices.h"
 #include "usb.h"
@@ -109,6 +110,7 @@ extern int __init mx53_ccwmx53js_init_da9052(void);
 
 static struct pad_desc mx53_ccwmx53js_pads[] = {
 	/* FEC */
+#if 0
 	MX53_PAD_FEC_MDC__FEC_MDC,
 	MX53_PAD_FEC_MDIO__FEC_MDIO,
 	MX53_PAD_FEC_REF_CLK__FEC_REF_CLK,
@@ -123,6 +125,8 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_ATA_DA_0__GPIO_7_6,
 	/* FEC_nINT */
 	MX53_PAD_ATA_DATA4__GPIO_2_4,
+#endif
+#if 0
 	/* AUDMUX5 */
 	MX53_PAD_KEY_COL0__AUD5_TXC,
 	MX53_PAD_KEY_ROW0__AUD5_TXD,
@@ -131,28 +135,8 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	/* I2C2 */
 	MX53_PAD_KEY_COL3__I2C2_SCL,
 	MX53_PAD_KEY_ROW3__I2C2_SDA,
-	/* SD1 */
-	MX53_PAD_SD1_CMD__SD1_CMD,
-	MX53_PAD_SD1_CLK__SD1_CLK,
-	MX53_PAD_SD1_DATA0__SD1_DATA0,
-	MX53_PAD_SD1_DATA1__SD1_DATA1,
-	MX53_PAD_SD1_DATA2__SD1_DATA2,
-	MX53_PAD_SD1_DATA3__SD1_DATA3,
-	/* SD3 */
-	MX53_PAD_ATA_DATA8__SD3_DAT0,
-	MX53_PAD_ATA_DATA9__SD3_DAT1,
-	MX53_PAD_ATA_DATA10__SD3_DAT2,
-	MX53_PAD_ATA_DATA11__SD3_DAT3,
-	MX53_PAD_ATA_DATA0__SD3_DAT4,
-	MX53_PAD_ATA_DATA1__SD3_DAT5,
-	MX53_PAD_ATA_DATA2__SD3_DAT6,
-	MX53_PAD_ATA_DATA3__SD3_DAT7,
-	MX53_PAD_ATA_IORDY__SD3_CLK,
-	MX53_PAD_ATA_RESET_B__SD3_CMD,
-	/* SD3_CD */
-	MX53_PAD_EIM_DA11__GPIO_3_11,
-	/* SD3_WP */
-	MX53_PAD_EIM_DA12__GPIO_3_12,
+#endif
+#if 0
 	/* VGA */
 	MX53_PAD_EIM_OE__DI1_PIN7,
 	MX53_PAD_EIM_RW__DI1_PIN8,
@@ -177,12 +161,12 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_LVDS1_CLK_P__LVDS1_CLK,
 	MX53_PAD_LVDS1_TX1_P__LVDS1_TX1,
 	MX53_PAD_LVDS1_TX0_P__LVDS1_TX0,
+#endif
+
 	/* I2C1 */
 	MX53_PAD_CSI0_D8__I2C1_SDA,
 	MX53_PAD_CSI0_D9__I2C1_SCL,
-	/* UART1 */
-	MX53_PAD_CSI0_D10__UART1_TXD,
-	MX53_PAD_CSI0_D11__UART1_RXD,
+#if 0
 	/* CSI0 */
 	MX53_PAD_CSI0_D12__CSI0_D12,
 	MX53_PAD_CSI0_D13__CSI0_D13,
@@ -195,6 +179,8 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_CSI0_VSYNC__CSI0_VSYNC,
 	MX53_PAD_CSI0_MCLK__CSI0_HSYNC,
 	MX53_PAD_CSI0_PIXCLK__CSI0_PIXCLK,
+#endif
+#if 0
 	/* DISPLAY */
 	MX53_PAD_DI0_DISP_CLK__DI0_DISP_CLK,
 	MX53_PAD_DI0_PIN15__DI0_PIN15,
@@ -224,6 +210,8 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_DISP0_DAT21__DISP0_DAT21,
 	MX53_PAD_DISP0_DAT22__DISP0_DAT22,
 	MX53_PAD_DISP0_DAT23__DISP0_DAT23,
+#endif
+#if 0
 	/* Audio CLK*/
 	MX53_PAD_GPIO_0__SSI_EXT1_CLK,
 	/* PWM */
@@ -231,6 +219,8 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	/* SPDIF */
 	MX53_PAD_GPIO_7__PLOCK,
 	MX53_PAD_GPIO_17__SPDIF_OUT1,
+#endif
+#if 0
 	/* GPIO */
 	MX53_PAD_ATA_DA_1__GPIO_7_7,
 	MX53_PAD_ATA_DA_2__GPIO_7_8,
@@ -248,6 +238,7 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_GPIO_5__GPIO_1_5,
 	MX53_PAD_GPIO_16__GPIO_7_11,
 	MX53_PAD_GPIO_8__GPIO_1_8,
+#endif
 };
 
 static struct fb_videomode video_modes[] = {
@@ -379,12 +370,12 @@ static struct fb_videomode video_modes[] = {
 	 0,},
 };
 
-static struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
-	.pwm_id = 1,
-	.max_brightness = 255,
-	.dft_brightness = 128,
-	.pwm_period_ns = 50000,
-};
+// static struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
+// 	.pwm_id = 1,
+// 	.max_brightness = 255,
+// 	.dft_brightness = 128,
+// 	.pwm_period_ns = 50000,
+// };
 
 extern void mx5_ipu_reset(void);
 static struct mxc_ipu_config mxc_ipu_data = {
@@ -430,46 +421,47 @@ static struct mxc_bus_freq_platform_data bus_freq_data = {
 	.lp_reg_id = "DA9052_BUCK_PRO",
 };
 
-static struct tve_platform_data tve_data = {
-	.dac_reg = "DA9052_LDO7",
-};
+// static struct tve_platform_data tve_data = {
+// 	.dac_reg = "DA9052_LDO7",
+// };
 
-static struct ldb_platform_data ldb_data = {
-	.ext_ref = 1,
-};
+// static struct ldb_platform_data ldb_data = {
+// 	.ext_ref = 1,
+// };
 
-static void mxc_iim_enable_fuse(void)
-{
-	u32 reg;
+// static void mxc_iim_enable_fuse(void)
+// {
+// 	u32 reg;
+//
+// 	if (!ccm_base)
+// 		return;
+//
+// 	/* enable fuse blown */
+// 	reg = readl(ccm_base + 0x64);
+// 	reg |= 0x10;
+// 	writel(reg, ccm_base + 0x64);
+// }
+//
+// static void mxc_iim_disable_fuse(void)
+// {
+// 	u32 reg;
+//
+// 	if (!ccm_base)
+// 		return;
+// 	/* enable fuse blown */
+// 	reg = readl(ccm_base + 0x64);
+// 	reg &= ~0x10;
+// 	writel(reg, ccm_base + 0x64);
+// }
+//
+// static struct mxc_iim_data iim_data = {
+// 	.bank_start = MXC_IIM_MX53_BANK_START_ADDR,
+// 	.bank_end   = MXC_IIM_MX53_BANK_END_ADDR,
+// 	.enable_fuse = mxc_iim_enable_fuse,
+// 	.disable_fuse = mxc_iim_disable_fuse,
+// };
 
-	if (!ccm_base)
-		return;
-
-	/* enable fuse blown */
-	reg = readl(ccm_base + 0x64);
-	reg |= 0x10;
-	writel(reg, ccm_base + 0x64);
-}
-
-static void mxc_iim_disable_fuse(void)
-{
-	u32 reg;
-
-	if (!ccm_base)
-		return;
-	/* enable fuse blown */
-	reg = readl(ccm_base + 0x64);
-	reg &= ~0x10;
-	writel(reg, ccm_base + 0x64);
-}
-
-static struct mxc_iim_data iim_data = {
-	.bank_start = MXC_IIM_MX53_BANK_START_ADDR,
-	.bank_end   = MXC_IIM_MX53_BANK_END_ADDR,
-	.enable_fuse = mxc_iim_enable_fuse,
-	.disable_fuse = mxc_iim_disable_fuse,
-};
-
+#if 1
 static struct resource mxcfb_resources[] = {
 	[0] = {
 	       .flags = IORESOURCE_MEM,
@@ -526,130 +518,87 @@ static int __init mxc_init_fb(void)
 	return 0;
 }
 device_initcall(mxc_init_fb);
+#endif
 
-static void sii9022_hdmi_reset(void)
-{
-	gpio_set_value(DISP0_RESET, 0);
-	msleep(10);
-	gpio_set_value(DISP0_RESET, 1);
-	msleep(10);
-}
+// static void sii9022_hdmi_reset(void)
+// {
+// 	gpio_set_value(DISP0_RESET, 0);
+// 	msleep(10);
+// 	gpio_set_value(DISP0_RESET, 1);
+// 	msleep(10);
+// }
+//
+// static struct mxc_lcd_platform_data sii9022_hdmi_data = {
+//        .reset = sii9022_hdmi_reset,
+// };
 
-static struct mxc_lcd_platform_data sii9022_hdmi_data = {
-       .reset = sii9022_hdmi_reset,
-};
+// static struct imxi2c_platform_data mxci2c_data = {
+//        .bitrate = 100000,
+// };
+//
+// static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
+// 	{
+// 	.type = "mma8450",
+// 	.addr = 0x1C,
+// 	 },
+// };
 
-static struct imxi2c_platform_data mxci2c_data = {
-       .bitrate = 100000,
-};
+// static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
+// 	{
+// 	 .type = "sgtl5000-i2c",
+// 	 .addr = 0x0a,
+// 	 },
+// 	{
+// 	 .type = "sii9022",
+// 	 .addr = 0x39,
+// 	 .irq = IOMUX_TO_IRQ_V3(DISP0_DET_INT),
+// 	 .platform_data = &sii9022_hdmi_data,
+// 	},
+// };
 
-static struct i2c_board_info mxc_i2c0_board_info[] __initdata = {
-	{
-	.type = "mma8450",
-	.addr = 0x1C,
-	 },
-};
+// static int headphone_det_status(void)
+// {
+// 	return (gpio_get_value(HEADPHONE_DEC_B) == 0);
+// }
 
-static struct i2c_board_info mxc_i2c1_board_info[] __initdata = {
-	{
-	 .type = "sgtl5000-i2c",
-	 .addr = 0x0a,
-	 },
-	{
-	 .type = "sii9022",
-	 .addr = 0x39,
-	 .irq = IOMUX_TO_IRQ_V3(DISP0_DET_INT),
-	 .platform_data = &sii9022_hdmi_data,
-	},
-};
+//static int mxc_sgtl5000_init(void);
 
-static int sdhc_write_protect(struct device *dev)
-{
-	int ret = 0;
-
-	if (to_platform_device(dev)->id == 2)
-		ret = gpio_get_value(SD3_WP);
-
-	return ret;
-}
-
-static unsigned int sdhc_get_card_det_status(struct device *dev)
-{
-	int ret = 0;
-
-	if (to_platform_device(dev)->id == 2)
-		ret = gpio_get_value(SD3_CD);
-
-	return ret;
-}
-
-static struct mxc_mmc_platform_data mmc1_data = {
-	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
-		| MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA,
-	.min_clk = 400000,
-	.max_clk = 50000000,
-	.card_inserted_state = 1,
-	.clock_mmc = "esdhc_clk",
-	.power_mmc = NULL,
-};
-
-static struct mxc_mmc_platform_data mmc3_data = {
-	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
-		| MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA
-		| MMC_CAP_DATA_DDR,
-	.min_clk = 400000,
-	.max_clk = 50000000,
-	.card_inserted_state = 0,
-	.status = sdhc_get_card_det_status,
-	.wp_status = sdhc_write_protect,
-	.clock_mmc = "esdhc_clk",
-};
-
-static int headphone_det_status(void)
-{
-	return (gpio_get_value(HEADPHONE_DEC_B) == 0);
-}
-
-static int mxc_sgtl5000_init(void);
-
-static struct mxc_audio_platform_data sgtl5000_data = {
-	.ssi_num = 1,
-	.src_port = 2,
-	.ext_port = 5,
-	.hp_irq = IOMUX_TO_IRQ_V3(HEADPHONE_DEC_B),
-	.hp_status = headphone_det_status,
-	.init = mxc_sgtl5000_init,
-};
-
-static int mxc_sgtl5000_init(void)
-{
-	struct clk *ssi_ext1;
-	int rate;
-
-	ssi_ext1 = clk_get(NULL, "ssi_ext1_clk");
-	if (IS_ERR(ssi_ext1))
-			return -1;
-
-	rate = clk_round_rate(ssi_ext1, 24000000);
-	if (rate < 8000000 || rate > 27000000) {
-			printk(KERN_ERR "Error: SGTL5000 mclk freq %d out of range!\n",
-				   rate);
-			clk_put(ssi_ext1);
-			return -1;
-	}
-
-	clk_set_rate(ssi_ext1, rate);
-	clk_enable(ssi_ext1);
-	sgtl5000_data.sysclk = rate;
-
-	return 0;
-}
-
-static struct platform_device mxc_sgtl5000_device = {
-	.name = "imx-3stack-sgtl5000",
-};
+// static struct mxc_audio_platform_data sgtl5000_data = {
+// 	.ssi_num = 1,
+// 	.src_port = 2,
+// 	.ext_port = 5,
+// 	.hp_irq = IOMUX_TO_IRQ_V3(HEADPHONE_DEC_B),
+// 	.hp_status = headphone_det_status,
+// 	.init = mxc_sgtl5000_init,
+// };
+//
+// static int mxc_sgtl5000_init(void)
+// {
+// 	struct clk *ssi_ext1;
+// 	int rate;
+//
+// 	ssi_ext1 = clk_get(NULL, "ssi_ext1_clk");
+// 	if (IS_ERR(ssi_ext1))
+// 			return -1;
+//
+// 	rate = clk_round_rate(ssi_ext1, 24000000);
+// 	if (rate < 8000000 || rate > 27000000) {
+// 			printk(KERN_ERR "Error: SGTL5000 mclk freq %d out of range!\n",
+// 				   rate);
+// 			clk_put(ssi_ext1);
+// 			return -1;
+// 	}
+//
+// 	clk_set_rate(ssi_ext1, rate);
+// 	clk_enable(ssi_ext1);
+// 	sgtl5000_data.sysclk = rate;
+//
+// 	return 0;
+// }
+//
+// static struct platform_device mxc_sgtl5000_device = {
+// 	.name = "imx-3stack-sgtl5000",
+// };
 
 static struct mxc_asrc_platform_data mxc_asrc_data = {
 	.channel_bits = 4,
@@ -676,7 +625,8 @@ static void mx53_ccwmx53js_usbh1_vbus(bool on)
 		gpio_set_value(USB_PWREN, 0);
 }
 
-#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+//#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#if 0
 #define GPIO_BUTTON(gpio_num, ev_code, act_low, descr, wake)	\
 {								\
 	.gpio		= gpio_num,				\
@@ -785,7 +735,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				gpu_device.resource[5].start + gpu_mem - 1;
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-		if (fb_mem) {
+/*		if (fb_mem) {
 			mxcfb_resources[0].start =
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
@@ -793,7 +743,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;
-		}
+		}*/
 #endif
 	}
 }
@@ -843,62 +793,62 @@ static void __init mxc_board_init(void)
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "ssi_ext1_clk");
-	mxc_spdif_data.spdif_core_clk = clk_get(NULL, "spdif_xtal_clk");
-	clk_put(mxc_spdif_data.spdif_core_clk);
-
-	mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ_V3(SD3_CD);
-	mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ_V3(SD3_CD);
 
 	mxc_cpu_common_init();
 	mx53_ccwmx53js_io_init();
 
 	mxc_register_device(&mxc_dma_device, NULL);
 	mxc_register_device(&mxc_wdt_device, NULL);
-	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
-	mxc_register_device(&mxci2c_devices[1], &mxci2c_data);
+//	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
+//	mxc_register_device(&mxci2c_devices[1], &mxci2c_data);
 
 	mx53_ccwmx53js_init_da9052();
 
+
 	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
-	mxc_register_device(&mxc_ldb_device, &ldb_data);
-	mxc_register_device(&mxc_tve_device, &tve_data);
+//	mxc_register_device(&mxc_ldb_device, &ldb_data);
+//	mxc_register_device(&mxc_tve_device, &tve_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&gpu_device, &z160_revision);
 	mxc_register_device(&mxcscc_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
-	mxc_register_device(&mxc_iim_device, &iim_data);
+//	mxc_register_device(&mxc_iim_device, &iim_data);
 	mxc_register_device(&mxc_pwm2_device, NULL);
-	mxc_register_device(&mxc_pwm1_backlight_device, &mxc_pwm_backlight_data);
-	mxc_register_device(&mxcsdhc1_device, &mmc1_data);
-	mxc_register_device(&mxcsdhc3_device, &mmc3_data);
-	mxc_register_device(&mxc_ssi1_device, NULL);
-	mxc_register_device(&mxc_ssi2_device, NULL);
-	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
-	mxc_register_device(&ahci_fsl_device, &sata_data);
-	mxc_register_device(&mxc_fec_device, &fec_data);
+//	mxc_register_device(&mxc_pwm1_backlight_device, &mxc_pwm_backlight_data);
+
+	ccwmx53_register_sdio(1);
+	ccwmx53_register_sdio(2);
+
+
+//	mxc_register_device(&mxc_ssi1_device, NULL);
+//	mxc_register_device(&mxc_ssi2_device, NULL);
+//	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
+//	mxc_register_device(&ahci_fsl_device, &sata_data);
+//	mxc_register_device(&mxc_fec_device, &fec_data);
+
 	/* ASRC is only available for MX53 TO2.0 */
-	if (cpu_is_mx53_rev(CHIP_REV_2_0) >= 1) {
-		mxc_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
-		clk_put(mxc_asrc_data.asrc_core_clk);
-		mxc_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
-		clk_put(mxc_asrc_data.asrc_audio_clk);
-		mxc_register_device(&mxc_asrc_device, &mxc_asrc_data);
-	}
+// 	if (cpu_is_mx53_rev(CHIP_REV_2_0) >= 1) {
+// 		mxc_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
+// 		clk_put(mxc_asrc_data.asrc_core_clk);
+// 		mxc_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
+// 		clk_put(mxc_asrc_data.asrc_audio_clk);
+// 		mxc_register_device(&mxc_asrc_device, &mxc_asrc_data);
+// 	}
 
-	i2c_register_board_info(0, mxc_i2c0_board_info,
-				ARRAY_SIZE(mxc_i2c0_board_info));
-	i2c_register_board_info(1, mxc_i2c1_board_info,
-				ARRAY_SIZE(mxc_i2c1_board_info));
+// 	i2c_register_board_info(0, mxc_i2c0_board_info,
+// 				ARRAY_SIZE(mxc_i2c0_board_info));
+// 	i2c_register_board_info(1, mxc_i2c1_board_info,
+// 				ARRAY_SIZE(mxc_i2c1_board_info));
 
-	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
-	mx5_usb_dr_init();
-	mx5_set_host1_vbus_func(mx53_ccwmx53js_usbh1_vbus);
-	mx5_usbh1_init();
-	mxc_register_device(&mxc_v4l2_device, NULL);
-	mxc_register_device(&mxc_v4l2out_device, NULL);
-	ccwmx53js_add_device_buttons();
+//	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
+//	mx5_usb_dr_init();
+//	mx5_set_host1_vbus_func(mx53_ccwmx53js_usbh1_vbus);
+//	mx5_usbh1_init();
+//	mxc_register_device(&mxc_v4l2_device, NULL);
+//	mxc_register_device(&mxc_v4l2out_device, NULL);
+//	ccwmx53js_add_device_buttons();
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

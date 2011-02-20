@@ -32,6 +32,10 @@
 #define FB_MEM_SIZE		SZ_16M
 #endif
 
+
+#define ESDHC3_WP_PAD		MX53_PAD_NANDF_CS1__NANDF_CS1
+//#define ESDHC3_CD_PAD
+
 void ccwmx51_2nd_touch_gpio_init(void);
 void ccwmx51_init_2nd_touch(void);
 
