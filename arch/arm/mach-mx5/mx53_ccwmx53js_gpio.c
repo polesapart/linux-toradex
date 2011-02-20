@@ -16,89 +16,94 @@
 #include <linux/delay.h>
 #include <mach/hardware.h>
 #include <mach/gpio.h>
+#include <mach/iomux-mx53.h>
 
-#include "iomux.h"
 #include "board-ccwmx53.h"
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
+
+#ifdef CONFIG_UART1_ENABLED
+static struct pad_desc ccwmx53_uart1_pads[] = {
+	MX53_PAD_ATA_DMACK__UART1_RXD,
+	MX53_PAD_ATA_DIOW__UART1_TXD,
+#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
+#endif /* (CONFIG_UART1_CTS_RTS_ENABLED) || (CONFIG_UART1_FULL_UART_ENABLED) */
+#ifdef CONFIG_UART1_FULL_UART_ENABLED
+#endif /* CONFIG_UART1_FULL_UART_ENABLED */
+};
+#endif /* CONFIG_UART1_ENABLED */
+
+#ifdef CONFIG_UART2_ENABLED
+static struct pad_desc ccwmx53_uart2_pads[] = {
+#if defined(CONFIG_UART2_CTS_RTS_ENABLED) || defined(CONFIG_UART2_FULL_UART_ENABLED)
+#endif /* (CONFIG_UART2_CTS_RTS_ENABLED) || (CONFIG_UART2_FULL_UART_ENABLED) */
+#ifdef CONFIG_UART2_FULL_UART_ENABLED
+#endif /* CONFIG_UART2_FULL_UART_ENABLED */
+};
+#endif /* CONFIG_UART2_ENABLED */
+
+#ifdef CONFIG_UART3_ENABLED
+static struct pad_desc ccwmx53_uart3_pads[] = {
+#if defined(CONFIG_UART3_CTS_RTS_ENABLED) || defined(CONFIG_UART3_FULL_UART_ENABLED)
+#endif /* (CONFIG_UART3_CTS_RTS_ENABLED) || (CONFIG_UART3_FULL_UART_ENABLED) */
+#ifdef CONFIG_UART3_FULL_UART_ENABLED
+#endif /* CONFIG_UART3_FULL_UART_ENABLED */
+};
+#endif /* CONFIG_UART3_ENABLED */
+
+#ifdef CONFIG_UART4_ENABLED
+static struct pad_desc ccwmx53_uart4_pads[] = {
+#if defined(CONFIG_UART4_CTS_RTS_ENABLED) || defined(CONFIG_UART4_FULL_UART_ENABLED)
+#endif /* (CONFIG_UART4_CTS_RTS_ENABLED) || (CONFIG_UART4_FULL_UART_ENABLED) */
+#ifdef CONFIG_UART4_FULL_UART_ENABLED
+#endif /* CONFIG_UART4_FULL_UART_ENABLED */
+};
+#endif /* CONFIG_UART4_ENABLED */
+
+#ifdef CONFIG_UART5_ENABLED
+static struct pad_desc ccwmx53_uart5_pads[] = {
+#if defined(CONFIG_UART5_CTS_RTS_ENABLED) || defined(CONFIG_UART5_FULL_UART_ENABLED)
+#endif /* (CONFIG_UART5_CTS_RTS_ENABLED) || (CONFIG_UART5_FULL_UART_ENABLED) */
+#ifdef CONFIG_UART5_FULL_UART_ENABLED
+#endif /* CONFIG_UART5_FULL_UART_ENABLED */
+};
+#endif /* CONFIG_UART5_ENABLED */
+
 
 void gpio_uart_active(int port, int no_irda)
 {
 	/* Configure the IOMUX control registers for the UART signals */
 	switch (port) {
-
-	case 0:		/* UART 1 IOMUX Configs */
 #ifdef CONFIG_UART1_ENABLED
-
-		/* UART1 MUX CONFIG */
-
-#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
-
-		/* UART1 MUX CONFIG */
-
-#endif /* CONFIG_UART1_CTS_RTS_ENABLED */
-#ifdef CONFIG_UART1_FULL_UART_ENABLED
-
-		/* UART1 MUX CONFIG */
-
-#endif /* CONFIG_UART1_FULL_UART_ENABLED */
-#endif /* CONFIG_UART1_ENABLED */
+	case 0:		/* UART 1 IOMUX Configs */
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart1_pads,
+						 ARRAY_SIZE(ccwmx53_uart1_pads));
 		break;
-
-	case 1:		/* UART 2 IOMUX Configs */
+#endif
 #ifdef CONFIG_UART2_ENABLED
-
-		/* UART2 MUX CONFIG */
-
-#ifdef CONFIG_UART2_CTS_RTS_ENABLED
-
-		/* UART2 MUX CONFIG */
-
-#endif /* CONFIG_UART2_CTS_RTS_ENABLED */
-#endif /* CONFIG_UART2_CTS_RTS_ENABLED */
+	case 1:		/* UART 2 IOMUX Configs */
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart2_pads,
+						 ARRAY_SIZE(ccwmx53_uart2_pads));
 		break;
-
-	case 2:		/* UART 3 IOMUX Configs */
+#endif
 #ifdef CONFIG_UART3_ENABLED
-
-		/* UART3 MUX CONFIG */
-
-#ifdef CONFIG_UART3_CTS_RTS_ENABLED
-
-		/* UART3 MUX CONFIG */
-
-#endif /* CONFIG_UART3_CTS_RTS_ENABLED */
-#endif /* CONFIG_UART3_ENABLED */
+	case 2:		/* UART 3 IOMUX Configs */
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart3_pads,
+						 ARRAY_SIZE(ccwmx53_uart3_pads));
 		break;
-
-	case 3:		/* UART 4 IOMUX Configs */
+#endif
 #ifdef CONFIG_UART4_ENABLED
-
-		/* UART4 MUX CONFIG */
-
-#ifdef CONFIG_UART4_CTS_RTS_ENABLED
-
-		/* UART4 MUX CONFIG */
-
-#endif /* CONFIG_UART4_CTS_RTS_ENABLED */
-#endif /* CONFIG_UART4_ENABLED */
+	case 3:		/* UART 4 IOMUX Configs */
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart4_pads,
+						 ARRAY_SIZE(ccwmx53_uart4_pads));
 		break;
-
-	case 4:		/* UART 5 IOMUX Configs */
+#endif
 #ifdef CONFIG_UART5_ENABLED
-
-		/* UART5 MUX CONFIG */
-
-#ifdef CONFIG_UART5_CTS_RTS_ENABLED
-
-		/* UART5 MUX CONFIG */
-
-#endif /* CONFIG_UART5_CTS_RTS_ENABLED */
-#endif /* CONFIG_UART5_ENABLED */
+	case 4:		/* UART 5 IOMUX Configs */
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart5_pads,
+						 ARRAY_SIZE(ccwmx53_uart5_pads));
 		break;
-
-	default:
-		break;
+#endif
 	}
 }
 #else
@@ -108,7 +113,112 @@ void gpio_uart_inactive(int port, int no_irda) {}
 EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
 
-void gpio_sdhc_active(int interface){}
+
+#ifdef ESDHCI_MXC_SELECT1
+static struct pad_desc ccwmx53_mmc1_pads[] = {
+	MX53_PAD_SD1_CLK__SD1_CLK,
+	MX53_PAD_SD1_CMD__SD1_CMD,
+	MX53_PAD_SD1_DATA0__SD1_DATA0,
+#if defined(ESDHCI_MXC_SELECT1_8BIT_PORT) || defined(ESDHCI_MXC_SELECT1_4BIT_PORT)
+	MX53_PAD_SD1_DATA1__SD1_DATA1,
+	MX53_PAD_SD1_DATA2__SD1_DATA2,
+	MX53_PAD_SD1_DATA3__SD1_DATA3,
+#endif /* (ESDHCI_MXC_SELECT1_8BIT_PORT) || (ESDHCI_MXC_SELECT1_4BIT_PORT) */
+#ifdef ESDHCI_MXC_SELECT1_8BIT_PORT
+	MX53_PAD_ATA_DATA8__SD1_DATA4,
+	MX53_PAD_ATA_DATA9__SD1_DATA5,
+	MX53_PAD_ATA_DATA10__SD1_DATA6,
+	MX53_PAD_ATA_DATA11__SD1_DATA7,
+#endif /* ESDHCI_MXC_SELECT1_8BIT_PORT */
+#ifdef ESDHC1_WP_PAD
+	ESDHC1_WP_PAD,
+#endif
+#ifdef ESDHC1_CD_PAD
+	ESDHC1_CD_PAD,
+#endif
+};
+#endif /* ESDHCI_MXC_SELECT1 */
+
+#ifdef ESDHCI_MXC_SELECT2
+static struct pad_desc ccwmx53_mmc2_pads[] = {
+	MX53_PAD_SD2_CLK__SD2_CLK,
+	MX53_PAD_SD2_CMD__SD2_CMD,
+	MX53_PAD_SD2_DATA0__SD2_DAT0,
+#if defined(ESDHCI_MXC_SELECT2_8BIT_PORT) || defined(ESDHCI_MXC_SELECT2_4BIT_PORT)
+	MX53_PAD_SD2_DATA1__SD2_DAT1,
+	MX53_PAD_SD2_DATA2__SD2_DAT2,
+	MX53_PAD_SD2_DATA3__SD2_DAT3,
+#endif /* (ESDHCI_MXC_SELECT2_8BIT_PORT) || (ESDHCI_MXC_SELECT2_4BIT_PORT) */
+#ifdef ESDHCI_MXC_SELECT2_8BIT_PORT
+	MX53_PAD_ATA_DATA12__SD2_DAT4,
+	MX53_PAD_ATA_DATA13__SD2_DAT5,
+	MX53_PAD_ATA_DATA14__SD2_DAT6,
+	MX53_PAD_ATA_DATA15__SD2_DAT7,
+#endif /* ESDHCI_MXC_SELECT2_8BIT_PORT */
+#ifdef ESDHC2_WP_PAD
+	ESDHC2_WP_PAD,
+#endif
+#ifdef ESDHC2_CD_PAD
+	ESDHC2_CD_PAD,
+#endif
+};
+#endif /* ESDHCI_MXC_SELECT2 */
+
+#ifdef ESDHCI_MXC_SELECT3
+static struct pad_desc ccwmx53_mmc3_pads[] = {
+	MX53_PAD_ATA_IORDY__SD3_CLK,
+	MX53_PAD_ATA_RESET_B__SD3_CMD,
+	MX53_PAD_ATA_DATA8__SD3_DAT0,
+#if defined(ESDHCI_MXC_SELECT3_8BIT_PORT) || defined(ESDHCI_MXC_SELECT3_4BIT_PORT)
+	MX53_PAD_ATA_DATA9__SD3_DAT1,
+	MX53_PAD_ATA_DATA10__SD3_DAT2,
+	MX53_PAD_ATA_DATA11__SD3_DAT3,
+#endif /* (ESDHCI_MXC_SELECT3_8BIT_PORT) || (ESDHCI_MXC_SELECT3_4BIT_PORT) */
+#ifdef ESDHCI_MXC_SELECT3_8BIT_PORT
+	MX53_PAD_ATA_DATA0__SD3_DAT4,
+	MX53_PAD_ATA_DATA1__SD3_DAT5,
+	MX53_PAD_ATA_DATA2__SD3_DAT6,
+	MX53_PAD_ATA_DATA3__SD3_DAT7,
+#endif /* ESDHCI_MXC_SELECT3_8BIT_PORT */
+#ifdef ESDHC3_WP_PAD
+	ESDHC3_WP_PAD,
+#endif
+#ifdef ESDHC3_CD_PAD
+	ESDHC3_CD_PAD,
+#endif
+};
+#endif /* ESDHCI_MXC_SELECT3 */
+
+void gpio_sdhc_active(int interface)
+{
+	switch (interface) {
+#ifdef ESDHCI_MXC_SELECT1
+	case 0:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc1_pads,
+						 ARRAY_SIZE(ccwmx51_mmc1_pads));
+		break;
+#endif /* ESDHCI_MXC_SELECT1 */
+#ifdef ESDHCI_MXC_SELECT2
+	case 1:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc2_pads,
+						 ARRAY_SIZE(ccwmx51_mmc2_pads));
+		break;
+#endif /* ESDHCI_MXC_SELECT2 */
+#ifdef ESDHCI_MXC_SELECT3
+	case 2:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc3_pads,
+						 ARRAY_SIZE(ccwmx53_mmc3_pads));
+		break;
+#endif /* ESDHCI_MXC_SELECT3 */
+#ifdef ESDHCI_MXC_SELECT4
+	case 3:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc4_pads,
+						 ARRAY_SIZE(ccwmx53_mmc4_pads));
+		break;
+#endif /* ESDHCI_MXC_SELECT4 */
+	}
+}
 EXPORT_SYMBOL(gpio_sdhc_active);
 void gpio_sdhc_inactive(int module) {}
 EXPORT_SYMBOL(gpio_sdhc_inactive);
+
