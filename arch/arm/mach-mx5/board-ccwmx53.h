@@ -12,7 +12,7 @@
 #ifndef __ASM_ARCH_MXC_BOARD_CCWMX53_H__
 #define __ASM_ARCH_MXC_BOARD_CCWMX53_H__
 
-#include <board-ccwmx5x.h>
+#include "board-ccwmx5x.h"
 
 /* AD9389 interrupt */
 #ifdef CONFIG_JSCCWMX51_V1

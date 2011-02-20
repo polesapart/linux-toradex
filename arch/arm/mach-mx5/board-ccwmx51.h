@@ -12,7 +12,7 @@
 #ifndef __ASM_ARCH_MXC_BOARD_CCWMX51_H__
 #define __ASM_ARCH_MXC_BOARD_CCWMX51_H__
 
-#include <board-ccwmx5x.h>
+#include "board-ccwmx5x.h"
 
 /* Second touch interface configuration */
 #ifdef CONFIG_CCWMX51_SECOND_TOUCH
