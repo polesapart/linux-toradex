@@ -268,14 +268,21 @@ config I2C_MXC_SELECT1
 	default y
 	depends on I2C_MXC
 	help
-	  Enable MX51 I2C1 module.
+	  Enable MX51/MX53 I2C1 module.
 
 config I2C_MXC_SELECT2
 	bool "Enable I2C2 module"
 	default n
 	depends on I2C_MXC
 	help
-	  Enable MX51 I2C2 module.
+	  Enable MX51/MX53 I2C2 module.
+
+config I2C_MXC_SELECT3
+	bool "Enable I2C3 module"
+	default n
+	depends on I2C_MXC && ARCH_MX53
+	help
+	  Enable MX53 I2C3 module.
 
 endmenu
 
