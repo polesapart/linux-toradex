@@ -188,10 +188,9 @@ void ccwmx53_register_sdio(int interface)
 #endif
 	}
 }
+#else
+void ccwmx53_register_sdio(int interface) {}
 #endif
-
-
-
 
 
 
