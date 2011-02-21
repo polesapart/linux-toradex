@@ -364,7 +364,7 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		}
 	}
 
-#if !(defined(CONFIG_CCWMX51_DISP0) && defined(CONFIG_CCWMX51_DISP1))
+#if !(defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1))
 	/* FIXME this lines of code doesnt allow to run the dual head... */
 	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK)
 		return retval;
@@ -1735,8 +1735,8 @@ static int mxcfb_probe(struct platform_device *pdev)
 	fbi->var.yres = 320;
 
 	if (!mxcfbi->default_bpp)
-#ifdef CONFIG_CCWMX51_DEFAULT_VIDEO_BPP
-		mxcfbi->default_bpp = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;
+#ifdef CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP
+		mxcfbi->default_bpp = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;
 #else
 		mxcfbi->default_bpp = 16;
 #endif

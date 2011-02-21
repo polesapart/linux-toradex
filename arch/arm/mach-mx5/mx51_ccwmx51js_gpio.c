@@ -298,7 +298,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_usbh1_pins[] = {
 #endif
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-#if defined(CONFIG_CCWMX51_DISP0)
+#if defined(CONFIG_CCXMX5X_DISP0)
 #define DISP1_PAD0		(PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST)
 static struct mxc_iomux_pin_cfg ccwmx51_iomux_video1_pins[] = {
         {       /* DISP1 DAT0 */
@@ -1347,7 +1347,7 @@ void gpio_video_active(int vif, u32 pad)
 {
 	int i;
 
-#if defined(CONFIG_CCWMX51_DISP0)
+#if defined(CONFIG_CCXMX5X_DISP0)
 	if (vif == 0) {
 		for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video1_pins); i++) {
 			mxc_request_iomux(ccwmx51_iomux_video1_pins[i].pin,

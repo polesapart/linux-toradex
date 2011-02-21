@@ -391,7 +391,7 @@ static void __init mxc_board_init(void)
 #endif
 	mx5_usb_dr_init();
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE) && \
-   (defined(CONFIG_CCWMX51_DISP0) || defined(CONFIG_CCWMX51_DISP1))
+   (defined(CONFIG_CCXMX5X_DISP0) || defined(CONFIG_CCXMX5X_DISP1))
 	ccwmx51_init_fb();
 #endif /* defined(CONFIG_FB_MXC_SYNC_PANEL) || ... */
 

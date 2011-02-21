@@ -15,7 +15,7 @@
 extern void gpio_video_active(int vif, u32 pad);
 extern void gpio_video_inactive(int vif);
 
-#ifdef CONFIG_CCWMX51_DISP0_RGB888
+#ifdef CONFIG_CCXMX5X_DISP0_RGB888
 #define VIDEO_PIX_FMT	IPU_PIX_FMT_RGB24
 #else
 #define VIDEO_PIX_FMT	IPU_PIX_FMT_RGB666

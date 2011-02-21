@@ -557,7 +557,7 @@ static u32 ccwmx51_get_max_video_pclk(void)
 }
 #endif
 
-#if defined(CONFIG_CCWMX51_DISP1)
+#if defined(CONFIG_CCXMX5X_DISP1)
 static char *video2_options[FB_MAX] __read_mostly;
 static int ofonly2 __read_mostly;
 
@@ -621,7 +621,7 @@ static int __init video2_setup(char *options)
         return 1;
 }
 __setup("video2=", video2_setup);
-#endif /* defined(CONFIG_CCWMX51_DISP1) */
+#endif /* defined(CONFIG_CCXMX5X_DISP1) */
 
 struct ccwmx51_lcd_pdata * ccwmx51_find_video_config(struct ccwmx51_lcd_pdata list[],
 						     int len,
@@ -642,12 +642,12 @@ static char *ccwmx51_get_video_cmdline_opt(int dispif, const char *str)
 	int ret = 1;
 	int len = strlen(str);
 
-#if defined(CONFIG_CCWMX51_DISP0)
+#if defined(CONFIG_CCXMX5X_DISP0)
 	if (dispif == 0) {
 		ret = fb_get_options("displayfb", &options);
 	}
 #endif
-#if defined(CONFIG_CCWMX51_DISP1)
+#if defined(CONFIG_CCXMX5X_DISP1)
 	if (dispif == 1) {
 		ret = fb2_get_options("displayfb", &options);
 	}
@@ -717,7 +717,7 @@ enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm
 		}
 		if (ext_clk != NULL ) {
 			/* For single display, default is internal clk and can be overrided by cmdline */
-#if !defined(CONFIG_CCWMX51_DISP0) || !defined(CONFIG_CCWMX51_DISP1)
+#if !defined(CONFIG_CCXMX5X_DISP0) || !defined(CONFIG_CCXMX5X_DISP1)
 			*ext_clk = 1;
 #else
 			*ext_clk = 0;
@@ -771,7 +771,7 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	int modeidx, ext_clk;
 	enum hdmi_mode mode;
 
-	var->bits_per_pixel = CONFIG_CCWMX51_DEFAULT_VIDEO_BPP;	/* Set default bpp  */
+	var->bits_per_pixel = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;	/* Set default bpp  */
 	/* First, check if we have a predefined mode through the kernel command line */
 	mode = get_hdmi_mode(ad9389, (struct fb_videomode **)&fbvmode, &modestr, &tpclk, &ext_clk);
 	if (mode == MODE_AUTO) {
@@ -1014,10 +1014,10 @@ int __init ccwmx51_init_fb(void)
 	plcd_platform_data[1].vif = -1;
 
 	for (i = 0; i < MAX_VIDEO_IF; i++) {
-#if !defined(CONFIG_CCWMX51_DISP0)
+#if !defined(CONFIG_CCXMX5X_DISP0)
 		if (i == 0)	continue;
 #endif
-#if !defined(CONFIG_CCWMX51_DISP1)
+#if !defined(CONFIG_CCXMX5X_DISP1)
 		if (i == 1)	continue;
 #endif
 		if ((p = ccwmx51_get_video_cmdline_opt(i, "HDMI")) != NULL) {

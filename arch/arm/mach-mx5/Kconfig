@@ -95,7 +95,7 @@ choice
 config JSCCWMX51_V1
 	bool "ConnectCore for i.MX51 Early Availability Development Board"
 	depends on MODULE_CCXMX51
-	select CCWMX51_DISP0_RGB888 if CCWMX51_DISP0
+	select CCXMX5X_DISP0_RGB888 if CCXMX5X_DISP0
 	help
 	  Select this option if you are using the development board included in
 	  the Early Availability (EA) kit. The Digi part number for this board
@@ -105,7 +105,7 @@ config JSCCWMX51_V1
 config JSCCWMX51_V2
 	bool "ConnectCore for i.MX51 JumpStart Kit Development Board"
 	depends on MODULE_CCXMX51
-	select CCWMX51_DISP0_RGB666 if CCWMX51_DISP0
+	select CCXMX5X_DISP0_RGB666 if CCXMX5X_DISP0
 	help
 	  Select this option if you are using the development board included in
 	  Digi JumpStart Kit. The Digi part number for this board revision is
@@ -499,32 +499,32 @@ menu "Video Interface(s)"
 
 choice
 	prompt "Video color depth"
-	default CCWMX51_DEFAULT_VIDEO_32BPP
-	depends on MODULE_CCXMX51
+	default CCXMX5X_DEFAULT_VIDEO_32BPP
+	depends on MODULE_CCXMX5X
 
-config CCWMX51_DEFAULT_VIDEO_32BPP
+config CCXMX5X_DEFAULT_VIDEO_32BPP
 	bool "32 bits per pixel"
 
-config CCWMX51_DEFAULT_VIDEO_16BPP
+config CCXMX5X_DEFAULT_VIDEO_16BPP
 	bool "16 bits per pixel"
 endchoice
 
-config CCWMX51_DEFAULT_VIDEO_BPP
+config CCXMX5X_DEFAULT_VIDEO_BPP
 	int
-	depends on MODULE_CCXMX51
-	default 32 if CCWMX51_DEFAULT_VIDEO_32BPP
-	default 16 if CCWMX51_DEFAULT_VIDEO_16BPP
+	depends on MODULE_CCXMX5X
+	default 32 if CCXMX5X_DEFAULT_VIDEO_32BPP
+	default 16 if CCXMX5X_DEFAULT_VIDEO_16BPP
 
-config CCWMX51_DISP0
+config CCXMX5X_DISP0
 	bool "Enable Display Interface 1 (primary)"
 	help
 	  This enables the i.MX51 Display Interface 1.
 
-if CCWMX51_DISP0
+if CCXMX5X_DISP0
 choice
 	prompt "Display 1 color mode"
 
-config CCWMX51_DISP0_RGB888
+config CCXMX5X_DISP0_RGB888
 	bool "24bit color mode"
 	depends on JSCCWMX51_V1
 	help
@@ -538,7 +538,7 @@ config CCWMX51_DISP0_RGB888
 	  IMPORTANT: If Display 1 is configured for 24bit color depth, Display 2
 	  will not be available.
 
-config CCWMX51_DISP0_RGB666
+config CCXMX5X_DISP0_RGB666
 	bool "18bit color mode"
 	depends on JSCCWMX51_V2
 	help
@@ -554,13 +554,13 @@ endchoice
 endif
 
 comment "To enable the Display 2 Video interface, disable the FEC (under network drivers)"
-	  depends on FEC || CCWMX51_DISP0_RGB888
+	  depends on FEC || CCXMX5X_DISP0_RGB888
 comment "and set 18bit color mode for the Display 1"
-	  depends on FEC || CCWMX51_DISP0_RGB888
+	  depends on FEC || CCXMX5X_DISP0_RGB888
 
 config CCWMX51_DISP1
 	bool "Enable Display Interface 2 (secondary)"
-	depends on !FEC && !CCWMX51_DISP0_RGB888
+	depends on !FEC && !CCXMX5X_DISP0_RGB888
 	help
 	  This enables the i.MX51 Display Interface 2 (18bit color mode only).
 
