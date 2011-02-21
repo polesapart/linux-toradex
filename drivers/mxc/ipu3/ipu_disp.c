@@ -1485,17 +1485,15 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 		(pixel_fmt == IPU_PIX_FMT_UYVY) ||
 		(pixel_fmt == IPU_PIX_FMT_YVYU) ||
 		(pixel_fmt == IPU_PIX_FMT_VYUY))
-			di_gen |= 0x00020000;
+			di_gen |= DI_GEN_POLARITY_DISP_CLK;
 	else {
 		/* Configure accordingly to the received configuration */
 		if (sig.clk_pol)
-			di_gen |= 0x00020000;
+			di_gen |= DI_GEN_POLARITY_DISP_CLK;
 		else
-			di_gen &= ~0x00020000;
+			di_gen &= ~DI_GEN_POLARITY_DISP_CLK;
 	}
 
-	if (!sig.clk_pol)
-		di_gen |= DI_GEN_POLARITY_DISP_CLK;
 
 	__raw_writel(di_gen, DI_GENERAL(disp));
 
