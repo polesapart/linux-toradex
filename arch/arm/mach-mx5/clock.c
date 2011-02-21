@@ -1411,6 +1411,8 @@ static struct clk sdma_clk[] = {
 	 .parent = &ipg_clk,
 #ifdef CONFIG_SDMA_IRAM
 	 .secondary = &emi_intr_clk[0],
+#else
+	 .secondary = &emi_fast_clk,
 #endif
 	 },
 };
@@ -3400,6 +3402,7 @@ static struct clk sata_clk = {
 	.enable_reg = MXC_CCM_CCGR4,
 	.enable_shift = MXC_CCM_CCGRx_CG1_OFFSET,
 	.disable = _clk_disable,
+	.secondary = &emi_fast_clk,
 };
 
 static struct clk ieee_1588_clk = {
@@ -3977,14 +3980,19 @@ static struct clk rtc_clk = {
 	.disable = _clk_disable,
 };
 
-static struct clk ata_clk = {
-	.parent = &ipg_clk,
-	.secondary = &spba_clk,
+static struct clk ata_clk[] = {
+	{
+	.parent = &spba_clk,
+	.secondary = &ata_clk[1],
 	.enable = _clk_enable,
 	.enable_reg = MXC_CCM_CCGR4,
 	.enable_shift = MXC_CCM_CCGRx_CG0_OFFSET,
 	.disable = _clk_disable,
 	.flags = AHB_HIGH_SET_POINT | CPU_FREQ_TRIG_UPDATE,
+	},
+	{
+	.parent = &emi_fast_clk,
+	}
 };
 
 static struct clk owire_clk = {
@@ -4556,6 +4564,8 @@ int __init mx51_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	esdhc2_clk[0].get_rate = _clk_esdhc2_get_rate;
 	esdhc2_clk[0].set_rate = _clk_esdhc2_set_rate;
 
+	ata_clk[1].secondary = &ahb_max_clk;
+
 	clk_tree_init();
 
 	for (i = 0; i < ARRAY_SIZE(lookups); i++) {
@@ -4888,6 +4898,8 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 
 	esdhc3_clk[0].get_rate = _clk_esdhc3_get_rate;
 	esdhc3_clk[0].set_rate = _clk_sdhc3_set_rate;
+
+	ata_clk[1].secondary = &tmax3_clk;
 
 #if defined(CONFIG_USB_STATIC_IRAM) \
     || defined(CONFIG_USB_STATIC_IRAM_PPH)
