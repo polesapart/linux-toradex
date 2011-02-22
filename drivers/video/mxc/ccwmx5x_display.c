@@ -1,6 +1,6 @@
 /*
  * Copyright 2008-2009 Freescale Semiconductor, Inc. All Rights Reserved
- * Copyright 2010 Digi International, Inc. All Rights Reserved
+ * Copyright 2010 - 2011 Digi International, Inc. All Rights Reserved
  *
  * The code contained herein is licensed under the GNU General Public
  * License. You may obtain a copy of the GNU General Public License
@@ -27,8 +27,8 @@
 #define DISP0_ID	"DISP3 BG"
 #define DISP1_ID	"DISP3 BG - DI1"
 
-static void lcd_poweron(struct ccwmx51_lcd_pdata *plat);
-static void lcd_poweroff(struct ccwmx51_lcd_pdata *plat);
+static void lcd_poweron(struct ccwmx5x_lcd_pdata *plat);
+static void lcd_poweroff(struct ccwmx5x_lcd_pdata *plat);
 
 static struct platform_device *plcd_dev[MAX_DISPLAYS] = {NULL, NULL};
 
@@ -44,7 +44,7 @@ static int lcd_get_index(struct fb_info *info)
 static void lcd_init_fb(struct fb_info *info)
 {
 	struct fb_var_screeninfo var;
-	struct ccwmx51_lcd_pdata *plat;
+	struct ccwmx5x_lcd_pdata *plat;
 	int i = lcd_get_index(info);
 
 	if (i < 0)
@@ -64,7 +64,7 @@ static void lcd_init_fb(struct fb_info *info)
 static int lcd_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 {
 	struct fb_event *event = v;
-	struct ccwmx51_lcd_pdata *plat = event->info->dev->platform_data;
+	struct ccwmx5x_lcd_pdata *plat = event->info->dev->platform_data;
 
 	switch (val) {
 	case FB_EVENT_FB_REGISTERED:
@@ -88,7 +88,7 @@ static struct notifier_block nb = {
 
 static int __devinit lcd_sync_probe(struct platform_device *pdev)
 {
-	struct ccwmx51_lcd_pdata *plat = pdev->dev.platform_data;
+	struct ccwmx5x_lcd_pdata *plat = pdev->dev.platform_data;
 	int i;
 
 	if (!plat)
@@ -127,7 +127,7 @@ static int __devinit lcd_sync_probe(struct platform_device *pdev)
 
 static int __devexit lcd_sync_remove(struct platform_device *pdev)
 {
-	struct ccwmx51_lcd_pdata *plat = pdev->dev.platform_data;
+	struct ccwmx5x_lcd_pdata *plat = pdev->dev.platform_data;
 
 	lcd_poweroff(plat);
 	if (plat->deinit)
@@ -166,13 +166,13 @@ static struct platform_driver lcd_driver = {
 	.resume = lcd_sync_resume,
 };
 
-static void lcd_poweron(struct ccwmx51_lcd_pdata *plat)
+static void lcd_poweron(struct ccwmx5x_lcd_pdata *plat)
 {
         if (plat && plat->bl_enable)
                 plat->bl_enable(1, plat->vif);
 }
 
-static void lcd_poweroff(struct ccwmx51_lcd_pdata *plat)
+static void lcd_poweroff(struct ccwmx5x_lcd_pdata *plat)
 {
         if (plat && plat->bl_enable)
                 plat->bl_enable(0, plat->vif);

@@ -257,6 +257,9 @@ static struct pad_desc ccwmx53_disp0_pads[] = {
 	MX53_PAD_DI0_PIN15__DI0_PIN15,
 	MX53_PAD_DI0_PIN2__DI0_PIN2,
 	MX53_PAD_DI0_PIN3__DI0_PIN3,
+#if defined(DISP1_ENABLE_PAD)
+	DISP1_ENABLE_PAD,
+#endif
 };
 #endif /* CONFIG_CCWMX53_DISP0 */
 
@@ -265,6 +268,10 @@ void gpio_video_active(int vif, u32 pad)
 #if defined(CONFIG_CCXMX5X_DISP0)
 	mxc_iomux_v3_setup_multiple_pads(ccwmx53_disp0_pads,
 					 ARRAY_SIZE(ccwmx53_disp0_pads));
+#if defined(DISP1_ENABLE_PAD) && defined(DISP1_ENABLE_GPIO)
+	gpio_request(DISP1_ENABLE_GPIO, "lcd1_enable");
+	gpio_direction_output(DISP1_ENABLE_GPIO, 0);
+#endif /* DISP1_ENABLE_PAD && DISP1_ENABLE_GPIO */
 #endif /* CONFIG_CCXMX5X_DISP0 */
 }
 

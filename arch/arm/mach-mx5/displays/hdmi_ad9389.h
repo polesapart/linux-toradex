@@ -113,7 +113,7 @@ static struct fb_videomode ad9389_custom_2 = {
 	.sync		= 0,
 };
 
-struct ccwmx51_lcd_pdata ad9389_panel_list[] = {
+struct ccwmx5x_lcd_pdata ad9389_panel_list[] = {
 	{
 		.fb_pdata = {
 			.interface_pix_fmt = VIDEO_PIX_FMT,

@@ -116,135 +116,6 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_GPIO_6__I2C3_SDA,
 };
 
-static struct fb_videomode video_modes[] = {
-	{
-	 /* NTSC TV output */
-	 "TV-NTSC", 60, 720, 480, 74074,
-	 122, 15,
-	 18, 26,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_INTERLACED,
-	 0,},
-	{
-	 /* PAL TV output */
-	 "TV-PAL", 50, 720, 576, 74074,
-	 132, 11,
-	 22, 26,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_INTERLACED | FB_VMODE_ODD_FLD_FIRST,
-	 0,},
-	{
-	 /* 1080i50 TV output */
-	 "1080I50", 50, 1920, 1080, 13468,
-	 192, 527,
-	 20, 24,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_INTERLACED | FB_VMODE_ODD_FLD_FIRST,
-	 0,},
-	{
-	 /* 1080i60 TV output */
-	 "1080I60", 60, 1920, 1080, 13468,
-	 192, 87,
-	 20, 24,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_INTERLACED | FB_VMODE_ODD_FLD_FIRST,
-	 0,},
-	{
-	 /* 800x480 @ 57 Hz , pixel clk @ 27MHz */
-	 "CLAA-WVGA", 57, 800, 480, 37037, 40, 60, 10, 10, 20, 10,
-	 FB_SYNC_CLK_LAT_FALL,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /* 800x480 @ 60 Hz , pixel clk @ 32MHz */
-	 "SEIKO-WVGA", 60, 800, 480, 29850, 89, 164, 23, 10, 10, 10,
-	 FB_SYNC_CLK_LAT_FALL,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 "XGA", 60, 1024, 768, 15385,
-	 220, 40,
-	 21, 7,
-	 60, 10,
-	 0,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /* 720p30 TV output */
-	 "720P30", 30, 1280, 720, 13468,
-	 260, 1759,
-	 25, 4,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 "720P60", 60, 1280, 720, 13468,
-	 260, 109,
-	 25, 4,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	/* VGA 1280x1024 108M pixel clk output */
-	"SXGA", 60, 1280, 1024, 9259,
-	48, 248,
-	1, 38,
-	112, 3,
-	0,
-	FB_VMODE_NONINTERLACED,
-	0,},
-	{
-	/* 1600x1200 @ 60 Hz 162M pixel clk*/
-	"UXGA", 60, 1600, 1200, 6172,
-	304, 64,
-	1, 46,
-	192, 3,
-	FB_SYNC_HOR_HIGH_ACT|FB_SYNC_VERT_HIGH_ACT,
-	FB_VMODE_NONINTERLACED,
-	0,},
-	{
-	 /* 1080p24 TV output */
-	 "1080P24", 24, 1920, 1080, 13468,
-	 192, 637,
-	 38, 6,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /* 1080p25 TV output */
-	 "1080P25", 25, 1920, 1080, 13468,
-	 192, 527,
-	 38, 6,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 /* 1080p30 TV output */
-	 "1080P30", 30, 1920, 1080, 13468,
-	 192, 87,
-	 38, 6,
-	 1, 1,
-	 FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-	{
-	 "1080P60", 60, 1920, 1080, 7692,
-	 100, 40,
-	 30, 3,
-	 10, 2,
-	 0,
-	 FB_VMODE_NONINTERLACED,
-	 0,},
-};
-
 // static struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
 // 	.pwm_id = 1,
 // 	.max_brightness = 255,
@@ -296,14 +167,6 @@ static struct mxc_bus_freq_platform_data bus_freq_data = {
 	.lp_reg_id = "DA9052_BUCK_PRO",
 };
 
-// static struct tve_platform_data tve_data = {
-// 	.dac_reg = "DA9052_LDO7",
-// };
-
-// static struct ldb_platform_data ldb_data = {
-// 	.ext_ref = 1,
-// };
-
 // static void mxc_iim_enable_fuse(void)
 // {
 // 	u32 reg;
@@ -336,67 +199,6 @@ static struct mxc_bus_freq_platform_data bus_freq_data = {
 // 	.disable_fuse = mxc_iim_disable_fuse,
 // };
 
-#if 1
-static struct resource mxcfb_resources[] = {
-	[0] = {
-	       .flags = IORESOURCE_MEM,
-	       },
-};
-
-static struct mxc_fb_platform_data fb_data[] = {
-	{
-	 .interface_pix_fmt = IPU_PIX_FMT_RGB565,
-	 .mode_str = "CLAA-WVGA",
-	 .mode = video_modes,
-	 .num_modes = ARRAY_SIZE(video_modes),
-	 },
-	{
-	 .interface_pix_fmt = IPU_PIX_FMT_BGR24,
-	 .mode_str = "XGA",
-	 .mode = video_modes,
-	 .num_modes = ARRAY_SIZE(video_modes),
-	 },
-};
-
-extern int primary_di;
-static int __init mxc_init_fb(void)
-{
-	if ( !machine_is_ccwmx53js() && !machine_is_ccmx53js() )
-		return 0;
-
-	if (primary_di) {
-		printk(KERN_INFO "DI1 is primary\n");
-		/* DI1 -> DP-BG channel: */
-//		mxc_fb_devices[1].num_resources = ARRAY_SIZE(mxcfb_resources);
-//		mxc_fb_devices[1].resource = mxcfb_resources;
-//		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
-
-#if defined	( CONFIG_CCXMX5X_DISP0 )
-		/* DI0 -> DC channel: */
-		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
-#endif
-	} else {
-#if defined	( CONFIG_CCXMX5X_DISP0 )
-		printk(KERN_INFO "DI0 is primary\n");
-
-		/* DI0 -> DP-BG channel: */
-		mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
-		mxc_fb_devices[0].resource = mxcfb_resources;
-		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
-#endif
-		/* DI1 -> DC channel: */
-//		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
-	}
-
-	/*
-	 * DI0/1 DP-FG channel:
-	 */
-//	mxc_register_device(&mxc_fb_devices[2], NULL);
-
-	return 0;
-}
-device_initcall(mxc_init_fb);
-#endif
 
 static struct imxi2c_platform_data mxci2c_data = {
 	.bitrate = 100000,
@@ -415,50 +217,6 @@ static struct imxi2c_platform_data mxci2c_data = {
 // };
 
 //
-
-// static int headphone_det_status(void)
-// {
-// 	return (gpio_get_value(HEADPHONE_DEC_B) == 0);
-// }
-
-//static int mxc_sgtl5000_init(void);
-
-// static struct mxc_audio_platform_data sgtl5000_data = {
-// 	.ssi_num = 1,
-// 	.src_port = 2,
-// 	.ext_port = 5,
-// 	.hp_irq = IOMUX_TO_IRQ_V3(HEADPHONE_DEC_B),
-// 	.hp_status = headphone_det_status,
-// 	.init = mxc_sgtl5000_init,
-// };
-//
-// static int mxc_sgtl5000_init(void)
-// {
-// 	struct clk *ssi_ext1;
-// 	int rate;
-//
-// 	ssi_ext1 = clk_get(NULL, "ssi_ext1_clk");
-// 	if (IS_ERR(ssi_ext1))
-// 			return -1;
-//
-// 	rate = clk_round_rate(ssi_ext1, 24000000);
-// 	if (rate < 8000000 || rate > 27000000) {
-// 			printk(KERN_ERR "Error: SGTL5000 mclk freq %d out of range!\n",
-// 				   rate);
-// 			clk_put(ssi_ext1);
-// 			return -1;
-// 	}
-//
-// 	clk_set_rate(ssi_ext1, rate);
-// 	clk_enable(ssi_ext1);
-// 	sgtl5000_data.sysclk = rate;
-//
-// 	return 0;
-// }
-//
-// static struct platform_device mxc_sgtl5000_device = {
-// 	.name = "imx-3stack-sgtl5000",
-// };
 
 static struct mxc_asrc_platform_data mxc_asrc_data = {
 	.channel_bits = 4,
@@ -542,10 +300,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 {
 	struct tag *t;
 	struct tag *mem_tag = 0;
-//	int total_mem = SZ_1G;
 	int total_mem = SZ_512M;
 	int left_mem = 0;
-	int gpu_mem = SZ_128M;
+	int gpu_mem = SZ_64M;
 	int fb_mem = FB_MEM_SIZE;
 	char *str;
 
@@ -588,6 +345,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
+#if defined(CONFIG_CCWMX5X_DISP1) && defined(CONFIG_CCWMX5X_DISP2)
+		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
+#endif
 		/*reserve memory for gpu*/
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
@@ -600,9 +360,17 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
+#if defined(CONFIG_CCWMX5X_DISP1) && defined(CONFIG_CCWMX5X_DISP2)
+			mxcfb_resources[1].start =
+				mxcfb_resources[0].end + 1;
+			mxcfb_resources[1].end =
+				mxcfb_resources[1].start + fb_mem - 1;
+#endif
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;
+			mxcfb_resources[1].start = 0;
+			mxcfb_resources[1].end = 0;
 		}
 #endif
 	}
@@ -635,8 +403,6 @@ static void __init mxc_board_init(void)
 
 	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
-//	mxc_register_device(&mxc_ldb_device, &ldb_data);
-//	mxc_register_device(&mxc_tve_device, &tve_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&gpu_device, &z160_revision);
 	mxc_register_device(&mxcscc_device, NULL);
@@ -665,7 +431,6 @@ static void __init mxc_board_init(void)
 // 	}
 
 
-//	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
 //	mx5_usb_dr_init();
 //	mx5_set_host1_vbus_func(mx53_ccwmx53js_usbh1_vbus);
 //	mx5_usbh1_init();
@@ -674,6 +439,7 @@ static void __init mxc_board_init(void)
 //	ccwmx53js_add_device_buttons();
 	ccwmx53_register_nand();
 	ccwmx53_register_ext_eth();
+	ccwmx5x_init_fb();
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

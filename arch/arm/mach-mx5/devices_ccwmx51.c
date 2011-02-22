@@ -544,7 +544,7 @@ struct mxc_fb_platform_data mx51_fb_data[2] = {
 };
 
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-struct ccwmx51_lcd_pdata plcd_platform_data[2];
+struct ccwmx5x_lcd_pdata plcd_platform_data[2];
 
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 static u32 ccwmx51_get_max_video_pclk(void)
@@ -623,7 +623,7 @@ static int __init video2_setup(char *options)
 __setup("video2=", video2_setup);
 #endif /* defined(CONFIG_CCXMX5X_DISP1) */
 
-struct ccwmx51_lcd_pdata * ccwmx51_find_video_config(struct ccwmx51_lcd_pdata list[],
+struct ccwmx5x_lcd_pdata * ccwmx51_find_video_config(struct ccwmx5x_lcd_pdata list[],
 						     int len,
 						     const char *name)
 {
@@ -698,7 +698,7 @@ static void fb_dump_var(const char *str, struct fb_var_screeninfo *var)
 enum hdmi_mode get_hdmi_mode(struct ad9389_dev *ad9389, struct fb_videomode **vm, char **str, unsigned int *vpclk, int *ext_clk)
 {
 	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
-	struct ccwmx51_lcd_pdata *panel;
+	struct ccwmx5x_lcd_pdata *panel;
 	char *p, *temp;
 
 	if ((p = ccwmx51_get_video_cmdline_opt(pdata->dispif, "HDMI")) != NULL) {
@@ -1006,7 +1006,7 @@ struct i2c_board_info ccwmx51_hdmi[] __initdata = {
 #define MAX_VIDEO_IF		2
 int __init ccwmx51_init_fb(void)
 {
-	struct ccwmx51_lcd_pdata *panel;
+	struct ccwmx5x_lcd_pdata *panel;
 	char *p, *mstr;
 	int i;
 
@@ -1040,7 +1040,7 @@ int __init ccwmx51_init_fb(void)
 				pr_info("Panel: %s", p);
 				memcpy(&plcd_platform_data[i],
 				       panel,
-				       sizeof(struct ccwmx51_lcd_pdata));
+				       sizeof(struct ccwmx5x_lcd_pdata));
 				memcpy(&mx51_fb_data[i],
 				       &plcd_platform_data[i].fb_pdata,
 				       sizeof(struct mxc_fb_platform_data));

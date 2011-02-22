@@ -31,7 +31,7 @@ extern struct platform_pwm_backlight_data mxc_pwm_backlight_data;
 extern struct mxc_audio_platform_data wm8753_data;
 extern struct mxc_fb_platform_data mx51_fb_data[];
 extern struct uio_info gpu2d_platform_data;
-extern struct ccwmx51_lcd_pdata plcd_platform_data[2];
+extern struct ccwmx5x_lcd_pdata plcd_platform_data[2];
 extern struct fsl_ata_platform_data ata_data;
 extern int __init ccwmx51_init_i2c2(void);
 extern void ccwmx51_init_spidevices(void);

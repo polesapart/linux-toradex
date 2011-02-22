@@ -44,7 +44,7 @@ static struct fb_videomode vga_custom_2 = {
 	.sync		= FB_SYNC_EXT,
 };
 
-struct ccwmx51_lcd_pdata vga_panel_list[] = {
+struct ccwmx5x_lcd_pdata vga_panel_list[] = {
 	{
 		.fb_pdata = {
 			.interface_pix_fmt = VIDEO_PIX_FMT,

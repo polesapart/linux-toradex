@@ -519,7 +519,7 @@ choice
 
 config CCXMX5X_DISP0_RGB888
 	bool "24bit color mode"
-	depends on JSCCWMX51_V1
+	depends on JSCCWMX51_V1 || MODULE_CCXMX53
 	help
 	  Configure Display 1 in 24bit color mode.
 
@@ -533,7 +533,7 @@ config CCXMX5X_DISP0_RGB888
 
 config CCXMX5X_DISP0_RGB666
 	bool "18bit color mode"
-	depends on JSCCWMX51_V2
+	depends on JSCCWMX51_V2 || MODULE_CCXMX53
 	help
 	  Configure Display 1 in 18bit color mode.  Use this mode if working
 	  on a JumpStart Kit Development Board.
