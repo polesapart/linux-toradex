@@ -453,8 +453,17 @@ config ESDHCI_MXC_SELECT1
 	bool "Enable SDHC 1"
 	default y
 	depends on MMC_IMX_ESDHCI
+	depends on !MACH_CCWMX53JS
 	help
 	  Enable the SD Host Controller 1.
+
+config ESDHCI_MXC_SELECT2
+	bool "Enable SDHC 2"
+	default y
+	depends on MMC_IMX_ESDHCI
+	depends on !MACH_CCWMX51JS
+	help
+	  Enable the SD Host Controller 2.
 
 config ESDHCI_MXC_SELECT3
 	bool "Enable SDHC 3"
@@ -462,6 +471,15 @@ config ESDHCI_MXC_SELECT3
 	depends on MMC_IMX_ESDHCI
 	help
 	  Enable the SD Host Controller 3.
+
+config ESDHCI_MXC_SELECT4
+	bool "Enable SDHC 4"
+	default y
+	depends on MMC_IMX_ESDHCI
+	depends on !MACH_CCWMX51JS
+	depends on !MACH_CCWMX53JS
+	help
+	  Enable the SD Host Controller 4.
 
 endmenu
 
