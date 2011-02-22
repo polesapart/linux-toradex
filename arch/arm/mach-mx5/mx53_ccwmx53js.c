@@ -106,6 +106,8 @@
 #define USB_PWREN			(6*32 + 8)	/* GPIO_7_8 */
 #define NIRQ				(6*32 + 11)	/* GPIO7_11 */
 
+u8 ccwmx51_swap_bi = 1;
+
 extern int __init mx53_ccwmx53js_init_da9052(void);
 
 static struct pad_desc mx53_ccwmx53js_pads[] = {
@@ -644,7 +646,6 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_sdio(1);
 	ccwmx53_register_sdio(2);
 
-
 //	mxc_register_device(&mxc_ssi1_device, NULL);
 //	mxc_register_device(&mxc_ssi2_device, NULL);
 //	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
@@ -668,6 +669,7 @@ static void __init mxc_board_init(void)
 //	mxc_register_device(&mxc_v4l2_device, NULL);
 //	mxc_register_device(&mxc_v4l2out_device, NULL);
 //	ccwmx53js_add_device_buttons();
+	ccwmx53_register_nand();
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

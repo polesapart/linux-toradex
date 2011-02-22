@@ -15,5 +15,6 @@
 #define __DEVICES_CCWMX53_H_
 
 void ccwmx53_register_sdio(int interface);
+void ccwmx53_register_nand(void);
 
 #endif /* __DEVICES_CCWMX53_H_ */

@@ -114,7 +114,7 @@ static struct nand_ecclayout nand_hw_eccoob_4k = {
 
 #ifdef CONFIG_MTD_PARTITIONS
 static const char *part_probes[] = {
-#ifndef CONFIG_MODULE_CCXMX51
+#ifndef CONFIG_MODULE_CCXMX5X
 	"RedBoot",
 #endif
 	"cmdlinepart", NULL
@@ -1668,7 +1668,7 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 
 	/* Register the partitions */
 #ifdef CONFIG_MTD_PARTITIONS
-#ifdef CONFIG_MODULE_CCXMX51
+#ifdef CONFIG_MODULE_CCXMX5X
 	mtd->name= "onboard_boot";
 #endif
 	nr_parts =
@@ -1684,7 +1684,7 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 		add_mtd_device(mtd);
 	}
 
-#ifdef CONFIG_MODULE_CCXMX51
+#ifdef CONFIG_MODULE_CCXMX5X
         {
                 extern u8 ccwmx51_swap_bi;
                 mxc_nand_data->disable_bi_swap = !ccwmx51_swap_bi;

@@ -192,12 +192,6 @@ void ccwmx53_register_sdio(int interface)
 void ccwmx53_register_sdio(int interface) {}
 #endif
 
-
-
-
-
-
-
 #if defined(CONFIG_MTD_NAND_MXC) \
 	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \
 	|| defined(CONFIG_MTD_NAND_MXC_V2) \
@@ -210,14 +204,12 @@ extern void gpio_nand_inactive(void);
 
 static int nand_init(void)
 {
-       /* Configure the pins */
       gpio_nand_active();
       return 0;
 }
 
 static void nand_exit(void)
 {
-      /* Free the pins */
       gpio_nand_inactive();
 }
 
@@ -226,6 +218,13 @@ struct flash_platform_data mxc_nand_data = {
 	.init = nand_init,
 	.exit = nand_exit,
 };
+
+void ccwmx53_register_nand(void)
+{
+	mxc_register_device(&mxc_nandv2_mtd_device, &mxc_nand_data);
+}
+#else
+void ccwmx53_register_nand(void) {}
 #endif
 
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)

@@ -242,7 +242,7 @@ config ARCH_MXC_HAS_NFC_V3
 config ARCH_MXC_HAS_NFC_V3_2
         bool "MXC NFC Hardware Version 3.2"
         depends on ARCH_MXC_HAS_NFC_V3
-	select MXC_NAND_SWAP_BI if MODULE_CCXMX51
+	select MXC_NAND_SWAP_BI if MODULE_CCXMX5X
         default y
         help
            This selects the Freescale MXC Nand Flash Controller Hardware Version 3.2
