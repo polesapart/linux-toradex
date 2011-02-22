@@ -49,21 +49,17 @@
 #include <mach/iomux-mx53.h>
 #include <video/ad9389.h>
 #include <linux/smc911x.h>
-
-
-#include "devices_ccwmx53.h"
-#include "board-ccwmx51.h"
-#include "crm_regs.h"
-#include "devices.h"
-
-
-
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
 #include <asm/mach/flash.h>
 #endif
+
+#include "devices_ccwmx53.h"
+#include "board-ccwmx51.h"
+#include "crm_regs.h"
+#include "devices.h"
 
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
@@ -113,27 +109,14 @@ static unsigned int sdhc_get_card_det_status(struct device *dev)
 	return ret;
 }
 
-#if 0
+#ifdef CONFIG_ESDHCI_MXC_SELECT1
 static struct mxc_mmc_platform_data mmc1_data = {
 	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
 		| MMC_VDD_31_32,
 	.caps = MMC_CAP_4_BIT_DATA,
 	.min_clk = 400000,
-	.max_clk =SD3_WP 50000000,
-	.card_inserted_state = 1,
-	.clock_mmc = "esdhc_clk",
-	.power_mmc = NULL,
-};
-#endif
-
-#ifdef ESDHCI_MXC_SELECT2
-static struct mxc_mmc_platform_data mmc2_data = {
-	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
-		| MMC_VDD_31_32,
-	.caps = MMC_CAP_4_BIT_DATA,
-	.min_clk = 400000,
 	.max_clk = 50000000,
-	.card_inserted_state = 0,
+	.card_inserted_state = 1,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
 	.clock_mmc = "esdhc_clk",
@@ -141,7 +124,22 @@ static struct mxc_mmc_platform_data mmc2_data = {
 };
 #endif
 
-#ifdef ESDHCI_MXC_SELECT3
+#ifdef CONFIG_ESDHCI_MXC_SELECT2
+static struct mxc_mmc_platform_data mmc2_data = {
+	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
+		| MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 400000,
+	.max_clk = 50000000,
+	.card_inserted_state = 1,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+#endif
+
+#ifdef CONFIG_ESDHCI_MXC_SELECT3
 static struct mxc_mmc_platform_data mmc3_data = {
 	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30
 		| MMC_VDD_31_32,
@@ -150,7 +148,7 @@ static struct mxc_mmc_platform_data mmc3_data = {
 //		| MMC_CAP_DATA_DDR,
 	.min_clk = 400000,
 	.max_clk = 50000000,
-	.card_inserted_state = 0,
+	.card_inserted_state = 1,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
 	.clock_mmc = "esdhc_clk",
@@ -160,32 +158,42 @@ static struct mxc_mmc_platform_data mmc3_data = {
 
 void ccwmx53_register_sdio(int interface)
 {
+	gpio_sdhc_active(interface);
+
 	switch (interface) {
-#ifdef ESDHCI_MXC_SELECT1
+#ifdef CONFIG_ESDHCI_MXC_SELECT1
 	case 0:
+#ifdef ESDHC1_CD_GPIO
 		mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC1_CD_GPIO);
 		mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC1_CD_GPIO);
+#endif
 		mxc_register_device(&mxcsdhc1_device, &mmc1_data);
 		break;
 #endif
-#ifdef ESDHCI_MXC_SELECT2
-	case 2:
+#ifdef CONFIG_ESDHCI_MXC_SELECT2
+	case 1:
+#ifdef ESDHC2_CD_GPIO
 		mxcsdhc2_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC2_CD_GPIO);
 		mxcsdhc2_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC2_CD_GPIO);
+#endif
 		mxc_register_device(&mxcsdhc2_device, &mmc2_data);
 		break;
 #endif
-#ifdef ESDHCI_MXC_SELECT3
+#ifdef CONFIG_ESDHCI_MXC_SELECT3
 	case 2:
+#ifdef ESDHC3_CD_GPIO
 		mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC3_CD_GPIO);
 		mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC3_CD_GPIO);
+#endif
 		mxc_register_device(&mxcsdhc3_device, &mmc3_data);
 		break;
 #endif
-#ifdef ESDHCI_MXC_SELECT4
-	case 2:
+#ifdef CONFIG_ESDHCI_MXC_SELECT4
+	case 3:
+#ifdef ESDHC4_CD_GPIO
 		mxcsdhc4_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC4_CD_GPIO);
 		mxcsdhc4_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC4_CD_GPIO);
+#endif
 		mxc_register_device(&mxcsdhc4_device, &mmc4_data);
 		break;
 #endif
