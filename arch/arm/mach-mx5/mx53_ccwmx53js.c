@@ -367,28 +367,31 @@ static int __init mxc_init_fb(void)
 	if (primary_di) {
 		printk(KERN_INFO "DI1 is primary\n");
 		/* DI1 -> DP-BG channel: */
-		mxc_fb_devices[1].num_resources = ARRAY_SIZE(mxcfb_resources);
-		mxc_fb_devices[1].resource = mxcfb_resources;
-		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
+//		mxc_fb_devices[1].num_resources = ARRAY_SIZE(mxcfb_resources);
+//		mxc_fb_devices[1].resource = mxcfb_resources;
+//		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
 
+#if defined	( CONFIG_CCXMX5X_DISP0 )
 		/* DI0 -> DC channel: */
 		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
+#endif
 	} else {
+#if defined	( CONFIG_CCXMX5X_DISP0 )
 		printk(KERN_INFO "DI0 is primary\n");
 
 		/* DI0 -> DP-BG channel: */
 		mxc_fb_devices[0].num_resources = ARRAY_SIZE(mxcfb_resources);
 		mxc_fb_devices[0].resource = mxcfb_resources;
 		mxc_register_device(&mxc_fb_devices[0], &fb_data[0]);
-
+#endif
 		/* DI1 -> DC channel: */
-		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
+//		mxc_register_device(&mxc_fb_devices[1], &fb_data[1]);
 	}
 
 	/*
 	 * DI0/1 DP-FG channel:
 	 */
-	mxc_register_device(&mxc_fb_devices[2], NULL);
+//	mxc_register_device(&mxc_fb_devices[2], NULL);
 
 	return 0;
 }
@@ -539,10 +542,11 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 {
 	struct tag *t;
 	struct tag *mem_tag = 0;
-	int total_mem = SZ_1G;
+//	int total_mem = SZ_1G;
+	int total_mem = SZ_512M;
 	int left_mem = 0;
 	int gpu_mem = SZ_128M;
-	int fb_mem = SZ_32M;
+	int fb_mem = FB_MEM_SIZE;
 	char *str;
 
 	mxc_set_cpu_type(MXC_CPU_MX53);
@@ -584,7 +588,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-
 		/*reserve memory for gpu*/
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
@@ -592,7 +595,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				gpu_device.resource[5].start + gpu_mem - 1;
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
-/*		if (fb_mem) {
+		if (fb_mem) {
 			mxcfb_resources[0].start =
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
@@ -600,7 +603,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		} else {
 			mxcfb_resources[0].start = 0;
 			mxcfb_resources[0].end = 0;
-		}*/
+		}
 #endif
 	}
 }
