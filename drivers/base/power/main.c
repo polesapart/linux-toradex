@@ -523,7 +523,9 @@ void dpm_resume_noirq(pm_message_t state)
 		}
 	mutex_unlock(&dpm_list_mtx);
 	dpm_show_time(starttime, state, "early");
+#if !defined(CONFIG_ARCH_NS9XXX)
 	resume_device_irqs();
+#endif
 }
 EXPORT_SYMBOL_GPL(dpm_resume_noirq);
 
@@ -824,7 +826,9 @@ int dpm_suspend_noirq(pm_message_t state)
 	ktime_t starttime = ktime_get();
 	int error = 0;
 
+#if !defined(CONFIG_ARCH_NS9XXX)
 	suspend_device_irqs();
+#endif
 	mutex_lock(&dpm_list_mtx);
 	list_for_each_entry_reverse(dev, &dpm_list, power.entry) {
 		error = device_suspend_noirq(dev, state);
