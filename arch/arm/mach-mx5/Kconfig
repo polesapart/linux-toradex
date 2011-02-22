@@ -261,31 +261,6 @@ config MXC_BLUETOOTH_RFKILL
 	Say Y to get the standard rfkill interface of Bluetooth
 endif
 
-menu "I2C Options"
-
-config I2C_MXC_SELECT1
-	bool "Enable I2C1 module"
-	default y
-	depends on I2C_MXC
-	help
-	  Enable MX51/MX53 I2C1 module.
-
-config I2C_MXC_SELECT2
-	bool "Enable I2C2 module"
-	default n
-	depends on I2C_MXC
-	help
-	  Enable MX51/MX53 I2C2 module.
-
-config I2C_MXC_SELECT3
-	bool "Enable I2C3 module"
-	default n
-	depends on I2C_MXC && ARCH_MX53
-	help
-	  Enable MX53 I2C3 module.
-
-endmenu
-
 menu "Serial Port Options"
 config UART1_ENABLED
 	bool "Enable UART1"
@@ -454,21 +429,21 @@ config I2C_MXC_SELECT1
 	depends on I2C_MXC
 	depends on !MACH_CCWMX51JS
 	help
-	  Enable MX51 I2C1 module.
+	  Enable MX51/MX53 I2C1 module.
 
 config I2C_MXC_SELECT2
 	bool "Enable I2C2 module"
 	default n
 	depends on I2C_MXC
 	help
-	  Enable MX51 I2C2 module.
+	  Enable MX51/MX53 I2C2 module.
 
 config I2C_MXC_SELECT3
 	bool "Enable I2C3 module"
 	default n
 	depends on I2C_MXC
 	help
-	  Enable MX51 I2C3 module.
+	  Enable MX51/MX53 I2C3 module.
 
 endmenu
 
