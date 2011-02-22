@@ -352,7 +352,7 @@ struct mxc_i2c_platform_data mxci2c_hs_data = {
 };
 
 #if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
-#if defined(CONFIG_CCWMX51_SECOND_TOUCH)
+#if defined(CONFIG_CCWMX5X_SECOND_TOUCH)
 static int touch_pendown_state(void)
 {
 	return gpio_get_value(IOMUX_TO_GPIO(SECOND_TS_IRQ_PIN)) ? 0 : 1;
@@ -767,8 +767,9 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	struct fb_info *info = ad9389->fbi;
 	const struct fb_videomode *fbvmode = NULL;
 	char *modestr = NULL, str[AD9389_STR_LEN];
-	unsigned int tpclk;
-	int modeidx, ext_clk;
+	unsigned int tpclk = 0;
+	int modeidx;
+	int ext_clk = 0;
 	enum hdmi_mode mode;
 
 	var->bits_per_pixel = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;	/* Set default bpp  */

@@ -404,7 +404,7 @@ static void __init mxc_board_init(void)
 	ccwmx51_create_sysfs_entries();
 #endif
 
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx51_init_2nd_touch();
 #endif
 	pm_power_off = mxc_power_off;

@@ -15,13 +15,13 @@
 #include "board-ccwmx5x.h"
 
 /* Second touch interface configuration */
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 #ifdef CONFIG_JSCCWMX51_V1
 /* Settings for the JSCCWMX51 Board RevA, for the DISP0 */
 #elif defined(CONFIG_JSCCWMX51_V2)
 /* Settings for the JSCCWMX51 Board RevB, for the DISP0/DISP1 */
 #endif /* CONFIG_JSCCWMX51_VX */
-#endif /* CONFIG_CCWMX51_SECOND_TOUCH */
+#endif /* CONFIG_CCWMX5X_SECOND_TOUCH */
 
 /* AD9389 interrupt */
 #ifdef CONFIG_JSCCWMX51_V1

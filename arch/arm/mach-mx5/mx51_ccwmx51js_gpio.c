@@ -812,7 +812,7 @@ void ccwmx51_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
 		case 0x1:
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  0 : 1);
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
 #endif
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
@@ -821,13 +821,13 @@ void ccwmx51_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
 		case 0x2:
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
 				       (ssb_pol & mask) ?  0 : 1);
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
 #endif
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  1 : 0);
 			break;
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 		case 0x4:
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
 				       (ssb_pol & mask) ?  0 : 1);
@@ -864,7 +864,7 @@ void ccwmx51_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  0 : 1);
 			break;
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 		case 0x4:
 			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
 			break;
@@ -1224,7 +1224,7 @@ void __init ccwmx51_io_init(void)
 
 }
 
-#ifdef CONFIG_CCWMX51_SECOND_TOUCH
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 void ccwmx51_2nd_touch_gpio_init(void)
 {
 	/* Second touch interface interrupt line */
