@@ -19,6 +19,7 @@
 #include <mach/iomux-mx53.h>
 
 #include "board-ccwmx53.h"
+#include "devices_ccwmx53.h"
 
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 
@@ -272,3 +273,46 @@ void gpio_video_inactive(int vif, u32 pad)
 }
 EXPORT_SYMBOL(gpio_video_active);
 EXPORT_SYMBOL(gpio_video_inactive);
+
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+static struct pad_desc ccwmx53_smsc911x_pads[] = {
+	MX53_PAD_EIM_EB3__GPIO_2_31,
+	MX53_PAD_EIM_D16__EIM_D16,
+	MX53_PAD_EIM_D17__EIM_D17,
+	MX53_PAD_EIM_D18__EIM_D18,
+	MX53_PAD_EIM_D19__EIM_D19,
+	MX53_PAD_EIM_D20__EIM_D20,
+	MX53_PAD_EIM_D21__EIM_D21,
+	MX53_PAD_EIM_D22__EIM_D22,
+	MX53_PAD_EIM_D23__EIM_D23,
+	MX53_PAD_EIM_D24__EIM_D24,
+	MX53_PAD_EIM_D25__EIM_D25,
+	MX53_PAD_EIM_D26__EIM_D26,
+	MX53_PAD_EIM_D27__EIM_D27,
+	MX53_PAD_EIM_D28__EIM_D28,
+	MX53_PAD_EIM_D29__EIM_D29,
+	MX53_PAD_EIM_D30__EIM_D30,
+	MX53_PAD_EIM_D31__EIM_D31,
+	MX53_PAD_EIM_DA0__EIM_DA0,
+	MX53_PAD_EIM_DA1__EIM_DA1,
+	MX53_PAD_EIM_DA2__EIM_DA2,
+	MX53_PAD_EIM_DA3__EIM_DA3,
+	MX53_PAD_EIM_DA4__EIM_DA4,
+	MX53_PAD_EIM_DA5__EIM_DA5,
+	MX53_PAD_EIM_DA6__EIM_DA6,
+	MX53_PAD_EIM_OE__EIM_OE,
+	MX53_PAD_EIM_RW__EIM_RW,
+	MX53_PAD_EIM_CS1__EIM_CS1,
+	MX53_PAD_GPIO_12__GPIO_4_2,     /* IRQ */
+};
+
+void gpio_smsc911x_active(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_smsc911x_pads,
+					 ARRAY_SIZE(ccwmx53_smsc911x_pads));
+
+	/* Configure interrupt line as GPIO input, the iomux should be already setup */
+	gpio_request(CCWMX53_EXT_IRQ_GPIO, "ext-eth-irq");
+	gpio_direction_input(CCWMX53_EXT_IRQ_GPIO);
+}
+#endif

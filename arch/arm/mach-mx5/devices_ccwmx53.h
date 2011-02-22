@@ -16,5 +16,10 @@
 
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);
+void ccwmx53_register_ext_eth(void);
+void gpio_smsc911x_active(void);
+
+#define MX53_GPIO(port,pin)		((port - 1) * 32 + pin)
+#define CCWMX53_EXT_IRQ_GPIO		MX53_GPIO(4,2)		/* GPIO_4_2 */
 
 #endif /* __DEVICES_CCWMX53_H_ */

@@ -46,14 +46,17 @@
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
+#include <mach/iomux-mx53.h>
 #include <video/ad9389.h>
+#include <linux/smc911x.h>
+
+
+#include "devices_ccwmx53.h"
 #include "board-ccwmx51.h"
-#include "iomux.h"
 #include "crm_regs.h"
 #include "devices.h"
-#include "mx51_pins.h"
-#include <linux/smc911x.h>
-//#include "displays/displays.h"
+
+
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -228,7 +231,7 @@ void ccwmx53_register_nand(void) {}
 #endif
 
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
-struct smsc911x_platform_config ccwmx51_smsc9118 = {
+struct smsc911x_platform_config ccwmx53_smsc9118 = {
 	.flags          = SMSC911X_USE_32BIT,
 	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
 	.irq_type       = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,    /* push-pull irq */
@@ -237,13 +240,13 @@ struct smsc911x_platform_config ccwmx51_smsc9118 = {
 static struct resource smsc911x_device_resources[] = {
         {
 		.name	= "smsc911x-memory",
-		.start	= CS5_BASE_ADDR,
-		.end	= CS5_BASE_ADDR + SZ_4K - 1,
+		.start	= MX53_CS1_BASE_ADDR,
+		.end	= MX53_CS1_BASE_ADDR + SZ_4K - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
-		.end	= IOMUX_TO_IRQ(MX51_PIN_GPIO1_9),
+		.start	= IOMUX_TO_IRQ_V3(CCWMX53_EXT_IRQ_GPIO),
+		.end	= IOMUX_TO_IRQ_V3(CCWMX53_EXT_IRQ_GPIO),
 		.flags	= IORESOURCE_IRQ,
 	},
 };
@@ -261,10 +264,14 @@ struct platform_device smsc911x_device = {
 #define CSRCR1	0x08
 #define CSRCR2	0x0C
 #define CSWCR1	0x10
+#define CSWCR2	0x14
 
-static void ccwmx51_init_ext_eth_mac(void)
+void ccwmx53_register_ext_eth(void)
 {
-	__iomem void *weim_vbaddr;
+	__iomem void *weim_vbaddr, *iomux_vbaddr;
+	u32 reg;
+
+	gpio_smsc911x_active();
 
 	weim_vbaddr = ioremap(WEIM_BASE_ADDR, SZ_4K);
 	if (weim_vbaddr == 0) {
@@ -272,30 +279,36 @@ static void ccwmx51_init_ext_eth_mac(void)
 		return;
 	}
 
+	iomux_vbaddr = ioremap(IOMUXC_BASE_ADDR, SZ_4K);
+	if (iomux_vbaddr == 0) {
+		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", IOMUXC_BASE_ADDR, __func__);
+		goto unmap_weim;
+	}
+
 	/** Configure the CS timming, bus width, etc.
 	 * 16 bit on DATA[31..16], not multiplexed, async
 	 * RWSC=50, RADVA=2, RADVN=6, OEA=0, OEN=0, RCSA=0, RCSN=0, APR=0
 	 * WAL=0, WBED=1, WWSC=50, WADVA=2, WADVN=6, WEA=0, WEN=0, WCSA=0
 	 */
-	__raw_writel(0x00420081, (u32)weim_vbaddr + 0x78 + CSGCR1);
-	__raw_writel(0, (u32)weim_vbaddr + 0x78 + CSGCR2);
-	__raw_writel(0x32260000, (u32)weim_vbaddr + 0x78 + CSRCR1);
-	__raw_writel(0, (u32)weim_vbaddr + 0x78 + CSRCR2);
-	__raw_writel(0x72080f00, (u32)weim_vbaddr + 0x78 + CSWCR1);
+	__raw_writel(0x00420081, (u32)weim_vbaddr + 0x18 + CSGCR1);
+	__raw_writel(0, (u32)weim_vbaddr + 0x18 + CSGCR2);
+	__raw_writel(0x32260000, (u32)weim_vbaddr + 0x18 + CSRCR1);
+	__raw_writel(0, (u32)weim_vbaddr + 0x18 + CSRCR2);
+	__raw_writel(0x72080f00, (u32)weim_vbaddr + 0x18 + CSWCR1);
+	__raw_writel(0, (u32)weim_vbaddr + 0x18 + CSWCR2);
 
+	/* Configure CS1 iomem with 32MB length */
+	reg = __raw_readl(iomux_vbaddr + 0x4);
+	reg &= ~0x3f;
+	reg |= 0x1b;
+	__raw_writel(reg, (u32)iomux_vbaddr + 0x4);
+
+	mxc_register_device(&smsc911x_device, &ccwmx53_smsc9118);
+
+	iounmap(iomux_vbaddr);
+unmap_weim:
 	iounmap(weim_vbaddr);
-
-	/* Configure interrupt line as GPIO input, the iomux should be already setup */
-	gpio_request(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9), "LAN2-irq");
-	gpio_direction_input(IOMUX_TO_GPIO(MX51_PIN_GPIO1_9));
 }
+#else
+void ccwmx53_register_ext_eth(void)
 #endif
-
-
-
-void ccwmx51_init_devices(void)
-{
-#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
-	ccwmx51_init_ext_eth_mac();
-#endif
-}
