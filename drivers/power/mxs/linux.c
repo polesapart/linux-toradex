@@ -309,8 +309,8 @@ static void check_and_handle_5v_connection(struct mxs_info *info)
 
 				__raw_writel(__raw_readl(REGS_POWER_BASE +
 				HW_POWER_5VCTRL) &
-				(~BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT)
-				| (0x20 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT),
+				((~BM_POWER_5VCTRL_CHARGE_4P2_ILIMIT)
+				| (0x20 << BP_POWER_5VCTRL_CHARGE_4P2_ILIMIT)),
 				REGS_POWER_BASE + HW_POWER_5VCTRL);
 
 			}
@@ -1121,12 +1121,13 @@ static struct pt_regs fiq_regs;
 extern char power_fiq_start[], power_fiq_end[];
 extern void lock_vector_tlb(void *);
 extern long power_fiq_count;
-static struct proc_dir_entry *power_fiq_proc;
 #endif
 
 static int __init mxs_bat_init(void)
 {
+#ifdef CONFIG_MXS_VBUS_CURRENT_DRAW
 	struct clk *cpu, *pll0;
+#endif
 
 #ifdef POWER_FIQ
 	int ret;

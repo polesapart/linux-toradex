@@ -275,7 +275,7 @@ static int mxsbl_do_probe(struct mxs_bl_data *data,
 	data->bd->props.power = FB_BLANK_UNBLANK;
 	data->bd->props.fb_blank = FB_BLANK_UNBLANK;
 
-	if (!data->mxsbl_suspended)
+	if (!data->mxsbl_suspended) {
 		if (data->mxsbl_constrained) {
 			data->bd->props.max_brightness = pdata->bl_cons_intensity;
 			data->bd->props.brightness = pdata->bl_cons_intensity;
@@ -283,6 +283,7 @@ static int mxsbl_do_probe(struct mxs_bl_data *data,
 			data->bd->props.max_brightness = pdata->bl_max_intensity;
 			data->bd->props.brightness = pdata->bl_default_intensity;
 		}
+	}
 
 	data->pdata = pdata;
 	mxsbl_set_intensity(data->bd);
@@ -291,7 +292,7 @@ out:
 	return ret;
 }
 
-static int __init mxsbl_probe(struct platform_device *pdev)
+static int __devinit mxsbl_probe(struct platform_device *pdev)
 {
 	struct mxs_bl_data *data;
 	struct mxs_platform_bl_data *pdata = pdev->dev.platform_data;

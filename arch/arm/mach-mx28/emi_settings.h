@@ -27,14 +27,14 @@
 #define SCALING_DATA_NEW_FREQ_OFFSET    12
 
 #ifndef __ASSEMBLER__
-void mxs_ram_freq_scale_end();
+void mxs_ram_freq_scale_end(void);
 void DDR2EmiController_EDE1116_133MHz(void);
 void DDR2EmiController_EDE1116_166MHz(void);
 void DDR2EmiController_EDE1116_200MHz(void);
 void mDDREmiController_24MHz(void);
 void mDDREmiController_133MHz(void);
 void mDDREmiController_200MHz(void);
-unsigned int *get_current_emidata();
+unsigned int *get_current_emidata(void);
 #endif
 
 #endif

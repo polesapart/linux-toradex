@@ -74,7 +74,7 @@ static void hw_i2c_dmachan_reset(struct mxs_i2c_dev *dev)
 	mxs_dma_ack_irq(dev->dma_chan);
 }
 
-static mxs_i2c_reset(struct mxs_i2c_dev *mxs_i2c)
+static void mxs_i2c_reset(struct mxs_i2c_dev *mxs_i2c)
 {
 	hw_i2c_dmachan_reset(mxs_i2c);
 	mxs_dma_enable_irq(mxs_i2c->dma_chan, 1);

@@ -748,8 +748,7 @@ static int duart_suspend(struct platform_device *pdev,
 	return ret;
 }
 
-static int duart_resume(struct platform_device *pdev,
-		pm_message_t state)
+static int duart_resume(struct platform_device *pdev)
 {
 	int ret = 0;
 	if (duart_port.suspended) {

@@ -1349,8 +1349,8 @@ static struct clk gpmi_clk = {
 };
 
 static unsigned long saif_get_rate(struct clk *clk);
-static unsigned long saif_set_rate(struct clk *clk, unsigned int rate);
-static unsigned long saif_set_parent(struct clk *clk, struct clk *parent);
+static int saif_set_rate(struct clk *clk, unsigned long rate);
+static int saif_set_parent(struct clk *clk, struct clk *parent);
 
 static struct clk saif_clk[] = {
 	{
@@ -1404,14 +1404,14 @@ static unsigned long saif_get_rate(struct clk *clk)
 	return (clk->parent->get_rate(clk->parent) / 0x10000) * div;
 }
 
-static unsigned long saif_set_rate(struct clk *clk, unsigned int rate)
+static int saif_set_rate(struct clk *clk, unsigned long rate)
 {
 	u16 div = 0;
 	u32 clkctrl_saif;
 	u64 rates;
 	struct clk *parent = clk->parent;
 
-	pr_debug("%s: rate %d, parent rate %d\n", __func__, rate,
+	pr_debug("%s: rate %lu, parent rate %lu\n", __func__, rate,
 			clk_get_rate(parent));
 
 	if (rate > clk_get_rate(parent))
@@ -1446,7 +1446,7 @@ static unsigned long saif_set_rate(struct clk *clk, unsigned int rate)
 	return 0;
 }
 
-static unsigned long saif_set_parent(struct clk *clk, struct clk *parent)
+static int saif_set_parent(struct clk *clk, struct clk *parent)
 {
 	int ret = -EINVAL;
 	int shift = 4;
@@ -1473,17 +1473,17 @@ static int saif_mclk_enable(struct clk *clk)
 	return 0;
 }
 
-static int saif_mclk_disable(struct clk *clk)
+static void saif_mclk_disable(struct clk *clk)
 {
 	/*Check if disabled already*/
 	if (!(__raw_readl(clk->busy_reg) & clk->busy_bits))
-		return 0;
+		return;
 	 /*Disable saif to disable mclk*/
 	__raw_writel(0x0, clk->enable_reg);
 	mdelay(1);
 	__raw_writel(0x0, clk->enable_reg);
 	mdelay(1);
-	return 0;
+	return;
 }
 
 static struct clk saif_mclk[] = {
@@ -1544,8 +1544,17 @@ static struct clk usb_clk1 = {
 /* usb phy clock for usb0 */
 static struct clk usb_phy_clk0 = {
 	.parent = &pll_clk[0],
+#if 0
+/*
+ * This looks wrong to me because it sets enable to the disable routine, and disable
+ * to the enable routine.  The compiler didn't like it either, so I swapped it.
+ */
 	.enable = mx28_raw_disable, /* EN_USB_CLKS = 1 means ON */
 	.disable = mx28_raw_enable,
+#else
+	.enable = mx28_raw_enable, /* EN_USB_CLKS = 1 means ON */
+	.disable = mx28_raw_disable,
+#endif
 	.enable_reg = CLKCTRL_BASE_ADDR + HW_CLKCTRL_PLL0CTRL0_SET,
 	.enable_bits = BM_CLKCTRL_PLL0CTRL0_EN_USB_CLKS,
 	.flags = CPU_FREQ_TRIG_UPDATE,
@@ -1554,8 +1563,17 @@ static struct clk usb_phy_clk0 = {
 /* usb phy clock for usb1 */
 static struct clk usb_phy_clk1 = {
 	.parent = &pll_clk[1],
-	.enable = mx28_raw_disable,
+#if 0
+/*
+ * This looks wrong to me because it sets enable to the disable routine, and disable
+ * to the enable routine.  The compiler didn't like it either, so I swapped it.
+ */
+	.enable = mx28_raw_disable, /* EN_USB_CLKS = 1 means ON */
 	.disable = mx28_raw_enable,
+#else
+	.enable = mx28_raw_enable, /* EN_USB_CLKS = 1 means ON */
+	.disable = mx28_raw_disable,
+#endif
 	.enable_reg = CLKCTRL_BASE_ADDR + HW_CLKCTRL_PLL1CTRL0_SET,
 	.enable_bits = BM_CLKCTRL_PLL0CTRL0_EN_USB_CLKS,
 	.flags = CPU_FREQ_TRIG_UPDATE,

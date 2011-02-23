@@ -35,12 +35,12 @@
 #include "emi_settings.h"
 
 static unsigned int DRAM_REG[MX28_DRAMCTRLREGNUM];
-unsigned int *get_current_emidata()
+unsigned int *get_current_emidata(void)
 {
 	return DRAM_REG;
 }
 
-void test_emi_change()
+void test_emi_change(void)
 {
 	struct mxs_emi_scaling_data emi;
 	void (*f) (struct mxs_emi_scaling_data *, unsigned int *);

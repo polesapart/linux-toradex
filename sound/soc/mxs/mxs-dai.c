@@ -209,7 +209,6 @@ static int mxs_saif_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 				  int clk_id, unsigned int freq, int dir)
 {
 	struct clk *saif_clk;
-	u32 scr;
 	struct mxs_saif *saif_select = (struct mxs_saif *)cpu_dai->private_data;
 
 	switch (clk_id) {

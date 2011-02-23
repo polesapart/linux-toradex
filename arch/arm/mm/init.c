@@ -629,9 +629,9 @@ void __init mem_init(void)
 				(PAGE_SIZE)),
 			MLK(FIXADDR_START, FIXADDR_TOP),
 #ifdef CONFIG_MMU
-			MLM(CONSISTENT_BASE, CONSISTENT_END),
+			MLM((unsigned long) CONSISTENT_BASE, (unsigned long) CONSISTENT_END),
 #endif
-			MLM(VMALLOC_START, VMALLOC_END),
+			MLM((unsigned long) VMALLOC_START, (unsigned long) VMALLOC_END),
 			MLM(PAGE_OFFSET, (unsigned long)high_memory),
 #ifdef CONFIG_HIGHMEM
 			MLM(PKMAP_BASE, (PKMAP_BASE) + (LAST_PKMAP) *

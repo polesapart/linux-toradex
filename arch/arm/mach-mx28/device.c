@@ -1346,6 +1346,7 @@ err_clk_init:
 	return ret;
 }
 
+#if 0
 static int audio_clk_finit(void)
 {
 	struct clk *saif_clk;
@@ -1376,6 +1377,7 @@ static int audio_clk_finit(void)
 err_clk_finit:
 	return ret;
 }
+#endif
 
 static struct mxs_audio_platform_data audio_plat_data;
 #endif
@@ -1645,7 +1647,7 @@ static struct __initdata map_desc mx28_io_desc[] = {
 	 .type = MT_DEVICE,
 	 },
 	 {
-	 .virtual = MX28_OCRAM_BASE,
+	 .virtual = (unsigned long) MX28_OCRAM_BASE,
 	 .pfn = __phys_to_pfn(MX28_OCRAM_PHBASE),
 	 .length = MX28_OCRAM_SIZE,
 	 .type	= MT_DEVICE,

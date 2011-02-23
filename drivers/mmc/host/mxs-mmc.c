@@ -249,7 +249,6 @@ static void mxs_mmc_bc(struct mxs_mmc_host *host)
 {
 	struct mmc_command *cmd = host->cmd;
 	struct mxs_dma_desc *dma_desc = host->dma_desc;
-	unsigned long flags;
 
 	dma_desc->cmd.cmd.bits.command = NO_DMA_XFER;
 	dma_desc->cmd.cmd.bits.irq = 1;
@@ -298,7 +297,6 @@ static void mxs_mmc_ac(struct mxs_mmc_host *host)
 	u32 ssp_ctrl0;
 	u32 ssp_cmd0;
 	u32 ssp_cmd1;
-	unsigned long flags;
 
 	ignore_crc = (mmc_resp_type(cmd) & MMC_RSP_CRC) ?
 	    0 : BM_SSP_CTRL0_IGNORE_CRC;
@@ -468,7 +466,6 @@ static void mxs_mmc_adtc(struct mxs_mmc_host *host)
 
 	u32 data_size = cmd->data->blksz * cmd->data->blocks;
 	u32 log2_block_size;
-	unsigned long flags;
 
 	ignore_crc = mmc_resp_type(cmd) & MMC_RSP_CRC ? 0 : 1;
 	resp = mmc_resp_type(cmd) & MMC_RSP_PRESENT ? 1 : 0;
@@ -1018,7 +1015,7 @@ static void mxs_mmc_dma_release(struct mxs_mmc_host *host)
 }
 
 /* Probe peripheral for connected cards */
-static int __init mxs_mmc_probe(struct platform_device *pdev)
+static int __devinit mxs_mmc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mxs_mmc_platform_data *mmc_data;

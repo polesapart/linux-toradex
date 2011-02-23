@@ -534,7 +534,7 @@ static struct pin_desc mx28evk_fixed_pins[] = {
 	 .strength	= PAD_12MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 0,
-	 .drive 	= 2,
+	 .drive 	= 1,
 	 .pull 		= 0,
 	 },
 #endif
@@ -901,7 +901,7 @@ static struct pin_desc mx28evk_ssp1_pins[] = {
 	 .strength	= PAD_12MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 0,
-	 .drive 	= 2,
+	 .drive 	= 1,
 	 .pull 		= 0,
 	 },
 };

@@ -159,10 +159,16 @@ static int INIT get_next_block(struct bunzip_data *bd)
 	int *limit = NULL;
 	int dbufCount, nextSym, dbufSize, groupCount, selector,
 		i, j, k, t, runPos, symCount, symTotal, nSelectors,
-		byteCount[256];
+		*byteCount = NULL;
 	unsigned char uc, symToByte[256], mtfSymbol[256], *selectors;
 	unsigned int *dbuf, origPtr;
+	int result = RETVAL_OK;
 
+	byteCount = malloc(256 * sizeof(int));
+	if (byteCount == NULL) {
+		result = RETVAL_OUT_OF_MEMORY;
+		goto get_next_block_exit;
+	}
 	dbuf = bd->dbuf;
 	dbufSize = bd->dbufSize;
 	selectors = bd->selectors;
@@ -172,18 +178,26 @@ static int INIT get_next_block(struct bunzip_data *bd)
 	i = get_bits(bd, 24);
 	j = get_bits(bd, 24);
 	bd->headerCRC = get_bits(bd, 32);
-	if ((i == 0x177245) && (j == 0x385090))
-		return RETVAL_LAST_BLOCK;
-	if ((i != 0x314159) || (j != 0x265359))
-		return RETVAL_NOT_BZIP_DATA;
+	if ((i == 0x177245) && (j == 0x385090)) {
+		result = RETVAL_LAST_BLOCK;
+		goto get_next_block_exit;
+	}
+	if ((i != 0x314159) || (j != 0x265359)) {
+		result = RETVAL_NOT_BZIP_DATA;
+		goto get_next_block_exit;
+	}
 	/* We can add support for blockRandomised if anybody complains.
 	   There was some code for this in busybox 1.0.0-pre3, but nobody ever
 	   noticed that it didn't actually work. */
-	if (get_bits(bd, 1))
-		return RETVAL_OBSOLETE_INPUT;
+	if (get_bits(bd, 1)) {
+		result = RETVAL_OBSOLETE_INPUT;
+		goto get_next_block_exit;
+	}
 	origPtr = get_bits(bd, 24);
-	if (origPtr > dbufSize)
-		return RETVAL_DATA_ERROR;
+	if (origPtr > dbufSize) {
+		result = RETVAL_DATA_ERROR;
+		goto get_next_block_exit;
+	}
 	/* mapping table: if some byte values are never used (encoding things
 	   like ascii text), the compression code removes the gaps to have fewer
 	   symbols to deal with, and writes a sparse bitfield indicating which
@@ -201,23 +215,29 @@ static int INIT get_next_block(struct bunzip_data *bd)
 	}
 	/* How many different Huffman coding groups does this block use? */
 	groupCount = get_bits(bd, 3);
-	if (groupCount < 2 || groupCount > MAX_GROUPS)
-		return RETVAL_DATA_ERROR;
+	if (groupCount < 2 || groupCount > MAX_GROUPS) {
+		result = RETVAL_DATA_ERROR;
+		goto get_next_block_exit;
+	}
 	/* nSelectors: Every GROUP_SIZE many symbols we select a new
 	   Huffman coding group.  Read in the group selector list,
 	   which is stored as MTF encoded bit runs.  (MTF = Move To
 	   Front, as each value is used it's moved to the start of the
 	   list.) */
 	nSelectors = get_bits(bd, 15);
-	if (!nSelectors)
-		return RETVAL_DATA_ERROR;
+	if (!nSelectors) {
+		result = RETVAL_DATA_ERROR;
+		goto get_next_block_exit;
+	}
 	for (i = 0; i < groupCount; i++)
 		mtfSymbol[i] = i;
 	for (i = 0; i < nSelectors; i++) {
 		/* Get next value */
 		for (j = 0; get_bits(bd, 1); j++)
-			if (j >= groupCount)
-				return RETVAL_DATA_ERROR;
+			if (j >= groupCount) {
+				result = RETVAL_DATA_ERROR;
+				goto get_next_block_exit;
+			}
 		/* Decode MTF to get the next selector */
 		uc = mtfSymbol[j];
 		for (; j; j--)
@@ -243,8 +263,10 @@ static int INIT get_next_block(struct bunzip_data *bd)
 		t = get_bits(bd, 5)-1;
 		for (i = 0; i < symCount; i++) {
 			for (;;) {
-				if (((unsigned)t) > (MAX_HUFCODE_BITS-1))
-					return RETVAL_DATA_ERROR;
+				if (((unsigned)t) > (MAX_HUFCODE_BITS-1)) {
+					result = RETVAL_DATA_ERROR;
+					goto get_next_block_exit;
+				}
 
 				/* If first bit is 0, stop.  Else
 				   second bit indicates whether to
@@ -356,8 +378,10 @@ static int INIT get_next_block(struct bunzip_data *bd)
 		/* Determine which Huffman coding group to use. */
 		if (!(symCount--)) {
 			symCount = GROUP_SIZE-1;
-			if (selector >= nSelectors)
-				return RETVAL_DATA_ERROR;
+			if (selector >= nSelectors) {
+				result = RETVAL_DATA_ERROR;
+				goto get_next_block_exit;
+			}
 			hufGroup = bd->groups+selectors[selector++];
 			base = hufGroup->base-1;
 			limit = hufGroup->limit-1;
@@ -396,8 +420,10 @@ got_huff_bits:
 		/* Huffman decode value to get nextSym (with bounds checking) */
 		if ((i > hufGroup->maxLen)
 			|| (((unsigned)(j = (j>>(hufGroup->maxLen-i))-base[i]))
-				>= MAX_SYMBOLS))
-			return RETVAL_DATA_ERROR;
+				>= MAX_SYMBOLS)) {
+				result = RETVAL_DATA_ERROR;
+				goto get_next_block_exit;
+			}
 		nextSym = hufGroup->permute[j];
 		/* We have now decoded the symbol, which indicates
 		   either a new literal byte, or a repeated run of the
@@ -435,8 +461,10 @@ got_huff_bits:
 		   array.) */
 		if (runPos) {
 			runPos = 0;
-			if (dbufCount+t >= dbufSize)
-				return RETVAL_DATA_ERROR;
+			if (dbufCount+t >= dbufSize) {
+				result = RETVAL_DATA_ERROR;
+				goto get_next_block_exit;
+			}
 
 			uc = symToByte[mtfSymbol[0]];
 			byteCount[uc] += t;
@@ -455,8 +483,10 @@ got_huff_bits:
 		   position 0, would have been handled as part of a
 		   run above.  Therefore 1 unused mtf position minus 2
 		   non-literal nextSym values equals -1.) */
-		if (dbufCount >= dbufSize)
-			return RETVAL_DATA_ERROR;
+		if (dbufCount >= dbufSize) {
+			result = RETVAL_DATA_ERROR;
+			goto get_next_block_exit;
+		}
 		i = nextSym - 1;
 		uc = mtfSymbol[i];
 		/* Adjust the MTF array.  Since we typically expect to
@@ -498,8 +528,10 @@ got_huff_bits:
 	   characters are identical it doesn't qualify as a run (hence
 	   writeRunCountdown = 5). */
 	if (dbufCount) {
-		if (origPtr >= dbufCount)
-			return RETVAL_DATA_ERROR;
+		if (origPtr >= dbufCount) {
+			result = RETVAL_DATA_ERROR;
+			goto get_next_block_exit;
+		}
 		bd->writePos = dbuf[origPtr];
 		bd->writeCurrent = (unsigned char)(bd->writePos&0xff);
 		bd->writePos >>= 8;
@@ -507,7 +539,12 @@ got_huff_bits:
 	}
 	bd->writeCount = dbufCount;
 
-	return RETVAL_OK;
+get_next_block_exit:
+	if (byteCount != NULL) {
+		free(byteCount);
+	}
+
+	return result;
 }
 
 /* Undo burrows-wheeler transform on intermediate buffer to produce output.
