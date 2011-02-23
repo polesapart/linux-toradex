@@ -701,11 +701,31 @@ static ssize_t store_power_duty(struct device *dev, struct device_attribute *att
 			piperp->power_duty = MINIMUM_DUTY_CYCLE;
 		} else if (pw_duty > LIMIT_LINEAL_DUTY_CYCLE && pw_duty < 100) {
 			piperp->power_duty = LIMIT_LINEAL_DUTY_CYCLE;
+		} else if (pw_duty > 100) {
+			pw_duty = 100;
+			piperp->power_duty = 100;
 		} else if (pw_duty == 100 ||
 			(pw_duty >= MINIMUM_DUTY_CYCLE && pw_duty <= LIMIT_LINEAL_DUTY_CYCLE)) {
 			piperp->power_duty = pw_duty;
 		}
+
+		if (piperp->areWeAssociated) {
+			if ((pw_duty == 100) && (piperp->ps.mode == PS_MODE_LOW_POWER)) {
+				/*
+				 * Turn duty cycling off if 100% duty cycle was selected and
+				 * duty cycling was on.
+				 */
+				piper_ps_set(piperp, false);
+			} else if ((pw_duty != 100) && (piperp->ps.mode != PS_MODE_LOW_POWER)) {
+				/*
+				 * Turn duty cycling on if a valid duty cycle was set and
+				 * duty cycling was off.
+				 */
+				piper_ps_set(piperp, true);
+			}
+		}
 	}
+
 
 	return ret < 0 ? ret : count;
 }
