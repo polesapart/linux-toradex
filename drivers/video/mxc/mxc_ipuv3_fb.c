@@ -1631,7 +1631,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 	struct mxc_fb_platform_data *plat_data = pdev->dev.platform_data;
 	struct resource *res;
 	char *options;
-#ifdef CONFIG_MODULE_CCXMX51
+#ifdef CONFIG_MODULE_CCXMX5X
 	char *mstr;
 #endif
 	char name[] = "mxcdi0fb";
@@ -1752,7 +1752,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 		mxcfbi->fb_mode_str = plat_data->mode_str;
 
 	if (mxcfbi->fb_mode_str) {
-#ifdef CONFIG_MODULE_CCXMX51
+#ifdef CONFIG_MODULE_CCXMX5X
 		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
 			mxcfbi->fb_mode_str = mstr + 4;
 
