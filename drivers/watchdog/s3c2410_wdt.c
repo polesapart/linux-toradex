@@ -230,7 +230,6 @@ static int s3c2410wdt_release(struct inode *inode, struct file *file)
 	if (expect_close == 42)
 		s3c2410wdt_stop();
 	else {
-		dev_err(wdt_dev, "Unexpected close, not stopping watchdog\n");
 		s3c2410wdt_keepalive();
 	}
 	expect_close = 0;
@@ -273,13 +272,13 @@ static const struct watchdog_info s3c2410_wdt_ident = {
 	.identity         =	"S3C2410 Watchdog",
 };
 
-
 static long s3c2410wdt_ioctl(struct file *file,	unsigned int cmd,
 							unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
 	int __user *p = argp;
 	int new_margin;
+	int value;
 
 	switch (cmd) {
 	case WDIOC_GETSUPPORT:
@@ -300,6 +299,19 @@ static long s3c2410wdt_ioctl(struct file *file,	unsigned int cmd,
 		return put_user(tmr_margin, p);
 	case WDIOC_GETTIMEOUT:
 		return put_user(tmr_margin, p);
+	case WDIOC_SETOPTIONS:
+		if (get_user(value, p))
+			return -EFAULT;
+		if (value & WDIOS_DISABLECARD) {
+			if (!nowayout) {
+				allow_close = CLOSE_STATE_ALLOW;
+			}
+			else {
+				printk("WATCHDOG_NOWAYOUT enabled in kernel. Cannot disable!\n");
+				return -EPERM;
+			}
+		}
+		return 0;
 	default:
 		return -ENOTTY;
 	}
