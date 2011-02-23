@@ -135,7 +135,7 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 #define FIM_SDIO_CARD_STATREG			0x00
 
 /* Interrupts from the FIM to the driver */
-#define FIM_SDIO_INTARM_CARD_DAT1			0x01
+#define FIM_SDIO_INTARM_CARD_DAT1		0x01
 #define FIM_SDIO_INTARM_CARD_DETECTED		0x02
 
 
@@ -147,7 +147,7 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 //#define FIM_SDIO_TIMEOUT_MS			500
 #define FIM_SDIO_TIMEOUT_MS			1000
 #define FIM_SDIO_TX_CMD_LEN			5
-#define FIM_SDIO_MAX_RESP_LENGTH			17
+#define FIM_SDIO_MAX_RESP_LENGTH		17
 
 /* Status bits from the PIC-firmware */
 #define FIM_SDIO_RX_RSP				0x01
@@ -204,9 +204,15 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 #define FIM_SDIO_SET_BUS_WIDTH			0x04
 
 /* Macros for the DMA-configuraton */
-#define FIM_SDIO_DMA_BUFFER_SIZE			PAGE_SIZE
+#define FIM_SDIO_DMA_BUFFER_SIZE		PAGE_SIZE
 #define FIM_SDIO_DMA_RX_BUFFERS			21
 #define FIM_SDIO_DMA_TX_BUFFERS			10
+
+#define FIM_SDIO_MAXBLKSIZE 		4095
+#define FIM_SDIO_BUFSIZE 		FIM_SDIO_DMA_BUFFER_SIZE
+#define FIM_SDIO_BLKATONCE 		FIM_SDIO_DMA_TX_BUFFERS
+
+
 
 /* Used for the Card Detect timer */
 #define FIM_SDIO_CD_POLLING_TIMER			(HZ / 2)
@@ -219,33 +225,18 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 #define FIM_SDIO_FORCE_CD_POLLING
 #endif
 
-/* Enable the multipple block transfer (in development) */
-#if 0
-# define FIM_SDIO_MULTI_BLOCK
-# define FIM_SDIO_MAX_BLOCKS			(FIM_SDIO_DMA_RX_BUFFERS - 10)
-# define FIM_SDIO_SKIP_CRC_CHECK
-#else
-# define FIM_SDIO_MAX_BLOCKS			(PAGE_SIZE / 512)
-#endif
-
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] fim-sdio: " fmt, ## args)
 #define printk_info(fmt, args...)               printk(KERN_INFO "fim-sdio: " fmt, ## args)
 #define printk_dbg(fmt, args...)                printk(KERN_DEBUG "fim-sdio: " fmt, ## args)
 
 #if 0
 #define FIM_SDIO_DEBUG
-#define FIM_SDIO_DEBUG_CRC
 #endif
 
 #ifdef FIM_SDIO_DEBUG
 #  define printk_debug(fmt, args...)		printk(KERN_DEBUG "fim-sdio: %s() " fmt, __FUNCTION__ , ## args)
 #else
 #  define printk_debug(fmt, args...)
-#endif
-
-/* If enabled will generate an CRC error in the function that checks it */
-#if 0
-#define FIM_SDIO_FORCE_CRC
 #endif
 
 /*
@@ -306,6 +297,7 @@ struct fim_sdio_t {
 	int trans_blocks;
 	int trans_blksz;
 	int trans_sg;
+	int trans_sg_offs;
 	int reg;
 
 	int wp_gpio;
@@ -315,9 +307,6 @@ struct fim_sdio_t {
 	int cd_value;
 	struct timer_list cd_timer;
 	struct timer_list debounce_timer;
-
-	/* struct scatterlist *sg; */
-	u8 *sg_virt;
 
 	/* Members used for restarting the FIM */
 	atomic_t fim_is_down;
@@ -357,13 +346,15 @@ struct fim_sdios_t {
 static struct fim_sdios_t *fim_sdios;
 
 /* Internal functions */
-static void fim_sd_process_next(struct fim_sdio_t *port);
 inline static struct fim_sdio_t *get_port_from_mmc(struct mmc_host *mmc);
-inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *data,
-				     unsigned char *dma_buf, int dma_len);
 static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate);
 static struct fim_buffer_t *fim_sd_alloc_cmd(struct fim_sdio_t *port);
 static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd);
+
+#define FIM_SD_COPY_DIR_TO_DMA	0
+#define FIM_SD_COPY_DIR_TO_SG	1
+static int fim_sd_copy_dma_sg(struct fim_sdio_t *port, struct mmc_data *data,
+				     unsigned char *dma_buf, int dma_len, unsigned char dir);
 
 static int cdtimer_disabled = 0;
 
@@ -677,8 +668,8 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 				port->blkrd_state = BLKRD_STATE_CRC_ERR;
 			}
 			else {
-				fim_sd_dma_to_sg(port, mmc_cmd->data,
-						pdata->data, pdata->length);
+				fim_sd_copy_dma_sg(port, mmc_cmd->data,
+						pdata->data, pdata->length, FIM_SD_COPY_DIR_TO_SG);
 
 				/* Check if we have a multiple transfer read */
 				port->trans_blocks -= len / port->trans_blksz;
@@ -717,8 +708,8 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 				port->blkrd_state = BLKRD_STATE_CRC_ERR;
 			}
 			else {
-				fim_sd_dma_to_sg(port, mmc_cmd->data,
-						pdata->data, pdata->length);
+				fim_sd_copy_dma_sg(port, mmc_cmd->data,
+						pdata->data, pdata->length, FIM_SD_COPY_DIR_TO_SG);
 
 				/* Check if we have a multiple transfer read */
 				port->trans_blocks -= len / port->trans_blksz;
@@ -836,82 +827,59 @@ static void fim_sd_free_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf
 }
 
 /*
- * Copy the data from the MMC-layer (scatter list) to the DMA-buffer for the FIM-API
- * Since we have only support for single block reads, some sanity checks
- * are not implemented
+ * Copy the data from the MMC-layer (scatter list) and the DMA-buffer for the FIM-API
+ * The "dir" argument gives the direction:
+ *	FIM_SD_COPY_DIR_TO_DMA:		copying from SG to DMA buffer
+ *	FIM_SD_COPY_DIR_TO_SG:		copying from DMA buffer to SG
  */
-inline static void fim_sd_sg_to_dma(struct fim_sdio_t *port, struct mmc_data *data,
-				   struct fim_buffer_t *buf)
+static int fim_sd_copy_dma_sg(struct fim_sdio_t *port, struct mmc_data *data,
+				     unsigned char *dma_buf, int dma_len, unsigned char dir)
 {
-	unsigned int len, cnt, dma_len;
 	struct scatterlist *sg;
-	unsigned char *sg_buf;
-	unsigned char *dma_buf;
-	int process;
+	unsigned int sg_len;
+	unsigned char *sg_buf_virt;
+	unsigned int sg_buf_len;
+	int len_back;
 
-	sg = data->sg;
-	len = data->sg_len;
-	dma_buf = buf->data;
-	dma_len = 0;
+	sg_len = data->sg_len;
+	len_back = dma_len;
 
-	/* Need a correct error handling */
-	/*if (len > 1) {
-		printk_err("The FIM-SD host only supports single block\n");
-		len = 1;
-	}*/
+	while ( len_back > 0 ) {
+		int len;
 
-	/* @XXX: Check the correctness of the memcpy operation */
-	for (cnt = 0; cnt < len && dma_len <= buf->length; cnt++) {
-                sg_buf = sg_virt(&sg[cnt]);
-		//printk_err("D: %x, S: %x\n", dma_buf, sg_buf);
-		process = (buf->length >= sg[cnt].length) ? sg[cnt].length : buf->length;
-		//printk("%x, %x\n", dma_buf, sg_buf);
-                memcpy(dma_buf, sg_buf, process);
-		dma_buf += process;
-		dma_len += process;
-		data->bytes_xfered += process;
+		/* Check sg */
+		if ( port->trans_sg >= sg_len ) {
+			printk_err("DMA_to_SG was called for a non existing SG\n");
+			return 1;
+		}
+		sg = &data->sg[port->trans_sg];
+
+		sg_buf_len = sg->length - port->trans_sg_offs;
+		sg_buf_virt = (unsigned char *)sg_virt(sg) + port->trans_sg_offs;
+
+		if ( sg_buf_len > len_back ) {
+			len = len_back;
+			port->trans_sg_offs += len;
+		}
+		else {
+			len = sg_buf_len;
+			port->trans_sg_offs = 0;
+			++(port->trans_sg);
+		}
+
+		if ( dir ) {
+			memcpy(sg_buf_virt, dma_buf, len);
+		}
+		else {
+			memcpy(dma_buf, sg_buf_virt, len);
+		}
+
+		len_back -= len;
 	}
-}
 
-/*
- * Function called when RD data has arrived
- * Return value is the pointer of the last byte copied to the scatterlist, it can
- * be used for appending more data (e.g. in multiple block read transfers)
- */
-inline static void *fim_sd_dma_to_sg(struct fim_sdio_t *port, struct mmc_data *data,
-				     unsigned char *dma_buf, int dma_len)
-{
-	char *sg_buf;
-
-	/* This loop was tested only with single block transfers */
-	sg_buf = port->sg_virt;
-	printk_debug("RX: %i bytes from %p to %p\n", dma_len, dma_buf, sg_buf);
-	memcpy(sg_buf, dma_buf, dma_len);
 	data->bytes_xfered += dma_len;
 
-	/* Update the pointer inside the SG buffer for the next transfer */
-	port->sg_virt += dma_len;
-
-#if 0
-	for (cnt = port->trans_sg; cnt < len && dma_len > 0; cnt++) {
-
-		if (sg[cnt].length != 512)
-			printk_dbg("Unexpected block length %u\n", sg[cnt].length);
-
-		process = dma_len > sg[cnt].length ? sg[cnt].length : dma_len;
-		sg_buf = sg_virt(&sg[cnt]);
-                memcpy(sg_buf, dma_buf, process);
-		dma_buf += process;
-		dma_len -= process;
-		data->bytes_xfered += process;
-		sg_buf += process;
-		port->trans_sg += 1;
-	}
-
-	port->sg = &sg[cnt];
-#endif
-
-	return sg_buf;
+	return 0;
 }
 
 inline static int fim_sd_get_transmit_crc_status(struct fim_sdio_t *port)
@@ -953,7 +921,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	int retval, cur_len, data_len = 0, len = 0;
 	unsigned char opctl = 0;
 	unsigned int stat;
-	unsigned char cntr;
 
 	/* @TODO: Send an error response to the MMC-core */
 	if (!(buf = fim_sd_alloc_cmd(port))) {
@@ -984,7 +951,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 
 		/* Reset the scatter list position */
 		port->trans_sg     = 0;
-		port->sg_virt      = sg_virt(&data->sg[0]);
+		port->trans_sg_offs = 0;
 		port->trans_blocks = blocks;
 		port->trans_blksz  = block_length;
 
@@ -1062,7 +1029,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 			}
 
 			buf->private = port;
-			fim_sd_sg_to_dma(port, data, buf);
+			fim_sd_copy_dma_sg(port, data, buf->data, buf->length, FIM_SD_COPY_DIR_TO_DMA);
 			if ((retval = fim_sd_send_buffer(port, buf))) {
 				printk_err("Send BLKWR-buffer failed, %i\n", retval);
 				fim_sd_free_buffer(port, buf);
@@ -1079,86 +1046,40 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		}
 	}
 
-	/* If command doesn't have a response, then this is the end, no need RX ISR */
+	/* If command doesn't have a response, then this is the end, RX ISR is not needed*/
 	if ( !(cmd->flags & MMC_RSP_PRESENT) ) {
-		//fim_sd_process_next(port);
 		return 0;
 	}
 
 	/* Wait 10ms for command response (it's max. 64 SD CLK according to the spec) */
-	cntr = 10;
-	do {
-		--cntr;
-		if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1))) < 0 ) {
-			printk_err("Problem with wait_queue: %d\n", retval);
-			return -ETIMEDOUT;
-		}
+	if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(10))) < 0 ) {
+		printk_err("Problem with wait_queue: %d\n", retval);
+		return -ETIMEDOUT;
+	}
 
-		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
-	} while ( (stat == 0) && (cntr != 0) );
+	fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
 
 	if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
 		printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
 		port->mmc_cmd->error = -ETIMEDOUT;
-		//fim_sd_process_next(port);
-		//return 0;
 		return -ETIMEDOUT;
 	}
 	else if ( stat == 0 ) {
 		printk_err("No response from FIM, down\n");
 		atomic_set(&port->fim_is_down, 1);
 		port->mmc_cmd->error = -ENOMEDIUM;
-		//fim_sd_process_next(port);
-		//return 0;
 		return -ETIMEDOUT;
 	}
 
 	/* Set message RX timeout */
-	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1000));
+	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(5000));
 	if ( retval <= 0 ) {
 		printk_err("Message RX timeout\n");
 		port->mmc_cmd->error = -ETIMEDOUT;
-		//fim_sd_process_next(port);
-		//return 0;
 		return -ETIMEDOUT;
 	}
 
-	fim_sd_process_next(port);
-
 	return 0;
-}
-
-/*
- * This function will be called from the request function and from the ISR callback
- * when a command was executed
- * In some cases we don't need to pass the command response to the Linux-layer (e.g.
- * by the configuration of the bus width)
- */
-static void fim_sd_process_next(struct fim_sdio_t *port)
-{
-#if 0
-	if (port->flags == FIM_SDIO_REQUEST_NEW) {
-		port->flags = FIM_SDIO_REQUEST_CMD;
-		if ( fim_sd_send_command(port, port->mmc_req->cmd) != 0 ) {
-			port->mmc_cmd = NULL;
-			mmc_request_done(port->mmc, port->mmc_req);
-		}
-	} else if ((!(port->flags & FIM_SDIO_REQUEST_STOP)) && port->mmc_req->stop) {
-		port->flags = FIM_SDIO_REQUEST_STOP;
-		/* Need to leave a little time between CMD18 (multiblock read) and CMD18 (stop) commnads */
-		if ( port->mmc_req->cmd->opcode == 18 ) {
-			mdelay(1);
-		}
-		if ( fim_sd_send_command(port, port->mmc_req->stop) != 0 ) {
-			port->mmc_cmd = NULL;
-			mmc_request_done(port->mmc, port->mmc_req);
-		}
-	} else {
-		/* By timeouts the core might retry sending another command */
-		port->mmc_cmd = NULL;
-		mmc_request_done(port->mmc, port->mmc_req);
-	}
-#endif
 }
 
 /*
@@ -1170,7 +1091,6 @@ static void fim_sd_process_next(struct fim_sdio_t *port)
 static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	struct fim_sdio_t *port;
-	int ret;
 
 	if (!(port = get_port_from_mmc(mmc)))
 		return;
@@ -1186,23 +1106,13 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	 * Wait if the timeout function is running or the RX-callback is active
 	 */
 	port->mmc_req = mrq;
-	/*port->flags = FIM_SDIO_REQUEST_NEW;
-	fim_sd_process_next(port);*/
 
-	if ( (ret = fim_sd_send_command(port, port->mmc_req->cmd)) != 0 ) {
-		//printk_err("SD send error: %d\n", ret);
-		//goto exit;
-	}
+	fim_sd_send_command(port, port->mmc_req->cmd);
 
 	if ( port->mmc_req->stop ) {
-		//if ( port->mmc_req->cmd->opcode == 18
-		if ( fim_sd_send_command(port, port->mmc_req->stop) != 0 ) {
-			//printk_err("SD stop send error: %d\n", ret);
-			//goto exit;
-		}
+		fim_sd_send_command(port, port->mmc_req->stop);
 	}
 
-//exit:
 	port->mmc_cmd = NULL;
 	mmc_request_done(port->mmc, port->mmc_req);
 }
@@ -1261,7 +1171,6 @@ static void fim_sd_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	case MMC_POWER_OFF:
 	case MMC_POWER_UP:
 	case MMC_POWER_ON:
-		ireg |= FIM_SDIO_CONTROL1_INTR_EN;
 		break;
 	}
 
@@ -1491,15 +1400,13 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->mmc->caps = hcaps;
 
 	/* Maximum number of blocks in one req */
-	port->mmc->max_blk_count = FIM_SDIO_MAX_BLOCKS;
-	port->mmc->max_blk_size  = FIM_SDIO_DMA_BUFFER_SIZE;
+	port->mmc->max_blk_count = FIM_SDIO_BLKATONCE;
+	port->mmc->max_blk_size  = FIM_SDIO_MAXBLKSIZE;
 	/* The maximum per SG entry depends on the buffer size */
-	port->mmc->max_seg_size  = FIM_SDIO_DMA_BUFFER_SIZE;
-
-	port->mmc->max_req_size       = 4095 * FIM_SDIO_MAX_BLOCKS;
-	port->mmc->max_seg_size       = port->mmc->max_req_size;
-	port->mmc->max_phys_segs      = FIM_SDIO_MAX_BLOCKS;
-	port->mmc->max_hw_segs        = FIM_SDIO_MAX_BLOCKS;
+	port->mmc->max_seg_size  = FIM_SDIO_BUFSIZE;
+	port->mmc->max_req_size  = FIM_SDIO_BUFSIZE;
+	port->mmc->max_phys_segs = FIM_SDIO_BLKATONCE;
+	port->mmc->max_hw_segs   = FIM_SDIO_BLKATONCE;
 
 	/* Save our port structure into the private pointer */
 	port->mmc->private[0] = (unsigned long)port;
