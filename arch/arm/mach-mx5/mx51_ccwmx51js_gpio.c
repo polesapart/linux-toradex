@@ -1414,3 +1414,5 @@ void gpio_video_inactive(int vif, u32 pad)
 EXPORT_SYMBOL(gpio_video_active);
 EXPORT_SYMBOL(gpio_video_inactive);
 
+void gpio_spi_active(void) {}
+EXPORT_SYMBOL(gpio_spi_active);

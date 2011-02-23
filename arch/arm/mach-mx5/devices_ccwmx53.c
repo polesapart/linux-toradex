@@ -49,6 +49,7 @@
 #include <mach/iomux-mx53.h>
 #include <video/ad9389.h>
 #include <linux/smc911x.h>
+
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/map.h>
@@ -62,6 +63,11 @@
 #include "devices.h"
 #include "displays/displays.h"
 
+
+extern void ccwmx53_gpio_spi_chipselect_active(int cspi_mode, int status,
+						    int chipselect);
+extern void ccwmx53_gpio_spi_chipselect_inactive(int cspi_mode, int status,
+						      int chipselect);
 
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 static int sdhc_write_protect(struct device *dev)
@@ -910,3 +916,68 @@ unmap_weim:
 #else
 void ccwmx53_register_ext_eth(void)
 #endif
+
+#if (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
+#if defined(CONFIG_CCWMX5X_SECOND_TOUCH)
+static int touch_pendown_state(void)
+{
+	return gpio_get_value(SECOND_TS_IRQ_PIN) ? 0 : 1;
+}
+
+static struct ads7846_platform_data ccwmx53js_touch_data = {
+	.model			= 7843,
+	.x_min			= 0,
+	.y_min			= 0,
+	.x_max			= 4095,
+	.y_max			= 4095,
+	.get_pendown_state	= touch_pendown_state,
+	.buflen			= 10,
+	.skip_samples		= 2,
+	.rotate			= 0,
+};
+
+static struct spi_board_info ccwmx53_2nd_touch[] = {
+	{
+		.modalias	= "ads7846",
+		.max_speed_hz	= 500000,
+		.irq		= IOMUX_TO_IRQ_V3(SECOND_TS_IRQ_PIN),
+		.bus_num        = 1,
+		.chip_select    = 3,
+		.platform_data	= &ccwmx53js_touch_data,
+	},
+};
+
+void ccwmx53_init_2nd_touch(void)
+{
+	spi_register_board_info(ccwmx53_2nd_touch, ARRAY_SIZE(ccwmx53_2nd_touch));
+}
+#else
+void ccwmx53_init_2nd_touch(void) {}
+#endif
+
+static struct spi_board_info spi_devices[] = {
+#if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
+	{       /* SPIDEV */
+		.modalias	= "spidev",
+		.max_speed_hz	= 6000000,
+		.bus_num	= 1,
+		.chip_select	= 1,
+	},
+#endif
+        /* Add here other SPI devices, if any... */
+};
+
+void ccwmx53_init_spidevices(void)
+{
+	spi_register_board_info(spi_devices, ARRAY_SIZE(spi_devices));
+}
+#else
+void ccwmx53_init_spidevices(void) { }
+#endif
+
+struct mxc_spi_master mxcspi1_data = {
+	.maxchipselect = 4,
+	.spi_version = 23,
+	.chipselect_active = ccwmx53_gpio_spi_chipselect_active,
+	.chipselect_inactive = ccwmx53_gpio_spi_chipselect_inactive,
+};

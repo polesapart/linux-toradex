@@ -868,7 +868,7 @@ int mxc_spi_transfer(struct spi_device *spi, struct spi_transfer *t)
 	int chipselect_status;
 	u32 fifo_size;
 
-#if defined(CONFIG_MODULE_CCXMX51)
+#if defined(CONFIG_MODULE_CCXMX5X)
 	/**
 	 * The ConnectCore i.MX51/Wi-i.MX51 use this bus to communicate with
 	 * the pmic, using poll transfers. Because that bus is also used to

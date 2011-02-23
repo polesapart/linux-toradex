@@ -323,3 +323,87 @@ void gpio_smsc911x_active(void)
 	gpio_direction_input(CCWMX53_EXT_IRQ_GPIO);
 }
 #endif
+
+#ifdef CONFIG_SPI_MXC_SELECT1
+
+static struct pad_desc ccwmx53_spi_pads[] = {
+		MX53_PAD_CSI0_D7__ECSPI1_SS0,
+		MX53_PAD_CSI0_D4__ECSPI_SCLK,
+		MX53_PAD_CSI0_D6__ECSPI1_MISO,
+		MX53_PAD_CSI0_D5__ECSPI1_MOSI,
+		MX53_PAD_GPIO_19__GPIO_4_5,
+};
+
+void gpio_spi_active(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_spi_pads,
+					 ARRAY_SIZE(ccwmx53_spi_pads));
+
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
+	/* Configure external touch interrupt line */
+	gpio_request(SECOND_TS_IRQ_PIN, "ts2_irq");
+	gpio_direction_input(SECOND_TS_IRQ_PIN);
+
+	/* Configure the Slave Select signal as gpio */
+	gpio_request(SECOND_TS_SPI_SS_PIN, "ts2_spi_ss");
+	gpio_direction_output(SECOND_TS_SPI_SS_PIN, 1);
+	gpio_set_value(SECOND_TS_SPI_SS_PIN, 1);
+#endif
+}
+
+void ccwmx53_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
+{
+	u8 mask = 0x1 << (chipselect - 1);
+	/* Deassert/Assert the different CS lines for the different buses */
+	switch (busnum) {
+	case 1:
+		switch (chipselect) {
+		case 0x1:
+			break;
+		case 0x2:
+			break;
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
+		case 0x4:
+			gpio_set_value(SECOND_TS_SPI_SS_PIN, 0);
+			break;
+#endif
+		default:
+			break;
+		}
+		break;
+	case 2:
+	case 3:
+	default:
+		break;
+	}
+}
+EXPORT_SYMBOL(ccwmx53_gpio_spi_chipselect_active);
+
+void ccwmx53_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
+					  int chipselect)
+{
+	u8 mask = 0x1 << (chipselect - 1);
+	switch (busnum) {
+	case 1:
+		switch (chipselect) {
+		case 0x1:
+			break;
+		case 0x2:
+			break;
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
+		case 0x4:
+			gpio_set_value(SECOND_TS_SPI_SS_PIN, 1);
+			break;
+#endif
+		default:
+			break;
+		}
+		break;
+	case 2:
+	case 3:
+	default:
+		break;
+        }
+}
+EXPORT_SYMBOL(ccwmx53_gpio_spi_chipselect_inactive);
+#endif

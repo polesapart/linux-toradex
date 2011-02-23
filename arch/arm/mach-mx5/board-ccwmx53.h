@@ -31,7 +31,7 @@
 #define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO_4_20
 #define DISP1_ENABLE_GPIO	(3*32 + 20)
 
-void ccwmx51_2nd_touch_gpio_init(void);
-void ccwmx51_init_2nd_touch(void);
+/* Second touch settings */
+void ccwmx53_init_2nd_touch(void);
 
 #endif		/* __ASM_ARCH_MXC_BOARD_CCWMX53_H__ */

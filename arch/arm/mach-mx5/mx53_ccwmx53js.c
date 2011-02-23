@@ -436,10 +436,14 @@ static void __init mxc_board_init(void)
 //	mx5_usbh1_init();
 //	mxc_register_device(&mxc_v4l2_device, NULL);
 //	mxc_register_device(&mxc_v4l2out_device, NULL);
+	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 //	ccwmx53js_add_device_buttons();
 	ccwmx53_register_nand();
 	ccwmx53_register_ext_eth();
 	ccwmx5x_init_fb();
+#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
+	ccwmx53_init_2nd_touch();
+#endif
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

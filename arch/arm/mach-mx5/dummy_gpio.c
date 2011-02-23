@@ -23,9 +23,6 @@ EXPORT_SYMBOL(gpio_gps_inactive);
 void config_uartdma_event(int port) {}
 EXPORT_SYMBOL(config_uartdma_event);
 
-void gpio_spi_active(int cspi_mod) {}
-EXPORT_SYMBOL(gpio_spi_active);
-
 void gpio_spi_inactive(int cspi_mod) {}
 EXPORT_SYMBOL(gpio_spi_inactive);
 

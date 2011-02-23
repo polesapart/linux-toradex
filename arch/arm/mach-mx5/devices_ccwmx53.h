@@ -15,6 +15,7 @@
 #define __DEVICES_CCWMX53_H_
 
 extern struct resource mxcfb_resources[];
+extern struct mxc_spi_master mxcspi1_data ;
 
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);
@@ -34,5 +35,7 @@ void gpio_sdhc_active(int interface);
 
 #define MX53_GPIO(port,pin)		((port - 1) * 32 + pin)
 #define CCWMX53_EXT_IRQ_GPIO		MX53_GPIO(4,2)		/* GPIO_4_2 */
+#define SECOND_TS_IRQ_PIN			MX53_GPIO(1,0)		/* GPIO_1_0 */
+#define SECOND_TS_SPI_SS_PIN		MX53_GPIO(4,5)		/* GPIO_4_5 / ECSPI1_RDY */
 
 #endif /* __DEVICES_CCWMX53_H_ */
