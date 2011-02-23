@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2010 Atheros Communications Inc.
  * All rights reserved.
  *
- * 
+ *
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
 // published by the Free Software Foundation;
@@ -387,11 +387,13 @@ static void ar6000_refill_amsdu_rxbufs(AR_SOFTC_T *ar, int Count);
 static void ar6000_cleanup_amsdu_rxbufs(AR_SOFTC_T *ar);
 
 static ssize_t
-ar6000_sysfs_bmi_read(struct kobject *kobj, struct bin_attribute *bin_attr,
+ar6000_sysfs_bmi_read(struct file *not_used, struct kobject *kobj,
+		      struct bin_attribute *bin_attr,
                       char *buf, loff_t pos, size_t count);
 
 static ssize_t
-ar6000_sysfs_bmi_write(struct kobject *kobj, struct bin_attribute *bin_attr,
+ar6000_sysfs_bmi_write(struct file *not_used, struct kobject *kobj,
+		       struct bin_attribute *bin_attr,
                        char *buf, loff_t pos, size_t count);
 
 static A_STATUS
@@ -763,10 +765,10 @@ ar6000_cleanup_module(void)
 
     a_module_debug_support_cleanup();
 
-#ifdef ANDROID_ENV    
+#ifdef ANDROID_ENV
     android_module_exit();
 #endif
-    
+
     AR_DEBUG_PRINTF(ATH_DEBUG_INFO,("ar6000_cleanup: success\n"));
 }
 
@@ -835,13 +837,15 @@ static struct bin_attribute bmi_attr = {
 };
 
 static ssize_t
-ar6000_sysfs_bmi_read(struct kobject *kobj, struct bin_attribute *bin_attr,
+ar6000_sysfs_bmi_read(struct file *not_used, struct kobject *kobj,
+                      struct bin_attribute *bin_attr,
                       char *buf, loff_t pos, size_t count)
 {
     int index;
     AR_SOFTC_T *ar;
     HIF_DEVICE_OS_DEVICE_INFO   *osDevInfo;
 
+    (void) not_used;
     AR_DEBUG_PRINTF(ATH_DEBUG_INFO,("BMI: Read %d bytes\n", count));
     for (index=0; index < MAX_AR6000; index++) {
         ar = (AR_SOFTC_T *)ar6k_priv(ar6000_devices[index]);
@@ -861,13 +865,15 @@ ar6000_sysfs_bmi_read(struct kobject *kobj, struct bin_attribute *bin_attr,
 }
 
 static ssize_t
-ar6000_sysfs_bmi_write(struct kobject *kobj, struct bin_attribute *bin_attr,
+ar6000_sysfs_bmi_write(struct file *not_used, struct kobject *kobj,
+		       struct bin_attribute *bin_attr,
                        char *buf, loff_t pos, size_t count)
 {
     int index;
     AR_SOFTC_T *ar;
     HIF_DEVICE_OS_DEVICE_INFO   *osDevInfo;
 
+    (void) not_used;
     AR_DEBUG_PRINTF(ATH_DEBUG_INFO,("BMI: Write %d bytes\n", count));
     for (index=0; index < MAX_AR6000; index++) {
         ar = (AR_SOFTC_T *)ar6k_priv(ar6000_devices[index]);
@@ -977,7 +983,7 @@ void calculate_crc(A_UINT32 TargetType, A_UCHAR *eeprom_data)
     *ptr_crc = checksum;
 }
 
-static void 
+static void
 ar6000_softmac_update(AR_SOFTC_T *ar, A_UCHAR *eeprom_data, size_t size)
 {
     const char *source = "random generated";
@@ -997,25 +1003,25 @@ ar6000_softmac_update(AR_SOFTC_T *ar, A_UCHAR *eeprom_data, size_t size)
         AR_DEBUG_PRINTF(ATH_DEBUG_ERR,("Invalid Target Type \n"));
         return;
     }
-    printk("MAC from EEPROM %02X:%02X:%02X:%02X:%02X:%02X\n", 
-            ptr_mac[0], ptr_mac[1], ptr_mac[2], 
-            ptr_mac[3], ptr_mac[4], ptr_mac[5]); 
+    printk("MAC from EEPROM %02X:%02X:%02X:%02X:%02X:%02X\n",
+            ptr_mac[0], ptr_mac[1], ptr_mac[2],
+            ptr_mac[3], ptr_mac[4], ptr_mac[5]);
 
     /* create a random MAC in case we cannot read file from system */
     ptr_mac[0] = 0;
     ptr_mac[1] = 0x03;
     ptr_mac[2] = 0x7F;
-    ptr_mac[3] = random32() & 0xff; 
-    ptr_mac[4] = random32() & 0xff; 
-    ptr_mac[5] = random32() & 0xff; 
+    ptr_mac[3] = random32() & 0xff;
+    ptr_mac[4] = random32() & 0xff;
+    ptr_mac[5] = random32() & 0xff;
     if ((A_REQUEST_FIRMWARE(&softmac_entry, "softmac", ((struct device *)ar->osDevInfo.pOSDevice))) == 0)
     {
         A_CHAR *macbuf = A_MALLOC_NOWAIT(softmac_entry->size+1);
-        if (macbuf) {            
+        if (macbuf) {
             unsigned int softmac[6];
             memcpy(macbuf, softmac_entry->data, softmac_entry->size);
             macbuf[softmac_entry->size] = '\0';
-            if (sscanf(macbuf, "%02x:%02x:%02x:%02x:%02x:%02x", 
+            if (sscanf(macbuf, "%02x:%02x:%02x:%02x:%02x:%02x",
                         &softmac[0], &softmac[1], &softmac[2],
                         &softmac[3], &softmac[4], &softmac[5])==6) {
                 int i;
@@ -1029,8 +1035,8 @@ ar6000_softmac_update(AR_SOFTC_T *ar, A_UCHAR *eeprom_data, size_t size)
         A_RELEASE_FIRMWARE(softmac_entry);
     }
     printk("MAC from %s %02X:%02X:%02X:%02X:%02X:%02X\n", source,
-            ptr_mac[0], ptr_mac[1], ptr_mac[2], 
-            ptr_mac[3], ptr_mac[4], ptr_mac[5]); 
+            ptr_mac[0], ptr_mac[1], ptr_mac[2],
+            ptr_mac[3], ptr_mac[4], ptr_mac[5]);
    calculate_crc(ar->arTargetType, eeprom_data);
 }
 #endif /* SOFTMAC_FILE_USED */
@@ -1075,7 +1081,7 @@ ar6000_transfer_bin_file(AR_SOFTC_T *ar, AR6K_BIN_FILE file, A_UINT32 address, A
                 }
                 compressed = 0;
             }
-#endif 
+#endif
 #ifdef HTC_RAW_INTERFACE
             if (bypasswmi) {
                 if (ar->arVersion.target_ver == AR6003_REV1_VERSION) {
@@ -1086,9 +1092,9 @@ ar6000_transfer_bin_file(AR_SOFTC_T *ar, AR6K_BIN_FILE file, A_UINT32 address, A
                     AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unknown firmware revision: %d\n", ar->arVersion.target_ver));
                     return A_ERROR;
                 }
-                compressed = 0;                
+                compressed = 0;
             }
-#endif 
+#endif
             break;
 
         case AR6K_PATCH_FILE:
@@ -1127,7 +1133,7 @@ ar6000_transfer_bin_file(AR_SOFTC_T *ar, AR6K_BIN_FILE file, A_UINT32 address, A
     if (file==AR6K_BOARD_DATA_FILE && fw_entry->data) {
         ar6000_softmac_update(ar, (A_UCHAR *)fw_entry->data, fw_entry->size);
     }
-#endif 
+#endif
 
     if (compressed) {
         status = BMIFastDownload(ar->arHifDevice, address, (A_UCHAR *)fw_entry->data, fw_entry->size);
@@ -1263,7 +1269,7 @@ ar6000_sysfs_bmi_get_config(AR_SOFTC_T *ar, A_UINT32 mode)
                 bmifn(BMIExecute(ar->arHifDevice, address, &param));
             } else if (status != A_ENOENT) {
                 return A_ERROR;
-            } 
+            }
         } else {
             AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Programming of board data for chip %d not supported\n", ar->arTargetType));
             return A_ERROR;
@@ -1608,7 +1614,7 @@ ar6000_avail_ev(void *context, void *hif_handle)
 #endif
 
 #ifdef SET_NETDEV_DEV
-    if (ar_netif) { 
+    if (ar_netif) {
         HIF_DEVICE_OS_DEVICE_INFO osDevInfo;
         A_MEMZERO(&osDevInfo, sizeof(osDevInfo));
         if ( A_SUCCESS( HIFConfigureDevice(hif_handle, HIF_DEVICE_GET_OS_DEVICE,
@@ -1616,7 +1622,7 @@ ar6000_avail_ev(void *context, void *hif_handle)
             SET_NETDEV_DEV(dev, osDevInfo.pOSDevice);
         }
     }
-#endif 
+#endif
 
     ar->arNetDev             = dev;
     ar->arHifDevice          = hif_handle;
@@ -1783,11 +1789,11 @@ ar6000_avail_ev(void *context, void *hif_handle)
 #ifdef HTC_RAW_INTERFACE
                 if (bypasswmi) {
                     A_UINT32 param = 1;
-                    status = BMIWriteMemory(ar->arHifDevice, HOST_INTEREST_ITEM_ADDRESS(ar, hi_board_data_initialized), 
+                    status = BMIWriteMemory(ar->arHifDevice, HOST_INTEREST_ITEM_ADDRESS(ar, hi_board_data_initialized),
                                            (A_UCHAR *)&param, 4);
                     break;
                 }
-#endif 
+#endif
                 rtnl_lock_grabbed = rtnl_trylock();
                 status = (ar6000_init(dev)==0) ? A_OK : A_ERROR;
                 if (rtnl_lock_grabbed) {
@@ -1818,8 +1824,8 @@ ar6000_avail_ev(void *context, void *hif_handle)
 
 avail_ev_failed :
     if (A_FAILED(init_status)) {
-        if (bmienable) { 
-            ar6000_sysfs_bmi_deinit(ar);  
+        if (bmienable) {
+            ar6000_sysfs_bmi_deinit(ar);
         }
     }
 
@@ -1890,9 +1896,9 @@ ar6000_stop_endpoint(struct net_device *dev, A_BOOL keepprofile)
 #ifdef ANDROID_ENV
                 if (keepprofile) {
                     wmi_disconnect_cmd(ar->arWmi);
-                } else 
+                } else
 #endif /* ANDROID_ENV */
-                {                    
+                {
                     AR6000_SPIN_LOCK(&ar->arLock, 0);
                     ar6000_init_profile_info(ar);
                     AR6000_SPIN_UNLOCK(&ar->arLock, 0);
@@ -2006,13 +2012,13 @@ ar6000_destroy(struct net_device *dev, unsigned int unregister)
         return;
     }
     if (ar->arWmiReady && !bypasswmi) {
-            ar6000_dbglog_get_debug_logs(ar); 
+            ar6000_dbglog_get_debug_logs(ar);
     }
 #ifdef ANDROID_ENV
     if (!android_ar6k_endpoint_is_stop(ar)) {
 #else
     if (1) {
-#endif 
+#endif
         /* only stop endpoint if we are not stop it in suspend_ev */
         ar6000_stop_endpoint(dev, FALSE);
     }
@@ -2053,7 +2059,7 @@ ar6000_destroy(struct net_device *dev, unsigned int unregister)
         A_FREE(ar->arRawHtc);
         ar->arRawHtc = NULL;
     }
-#endif 
+#endif
     /* Free up the device data structure */
     if( unregister )
         unregister_netdev(dev);
@@ -2213,7 +2219,7 @@ ar6000_open(struct net_device *dev)
     if(ar->arWlanState == WLAN_DISABLED) {
         ar->arWlanState = WLAN_ENABLED;
     }
-#endif 
+#endif
 
     if( ar->arConnected || bypasswmi) {
         netif_carrier_on(dev);
@@ -2656,7 +2662,7 @@ int ar6000_init(struct net_device *dev)
 
 #ifdef ANDROID_ENV
     android_ar6k_start(ar);
-#endif 
+#endif
 
 ar6000_init_done:
     rtnl_lock();
@@ -3772,7 +3778,7 @@ ar6000_deliver_frames_to_nw_stack(void *dev, void *osbuf)
          * If this routine is called on a ISR (Hard IRQ) or DSR (Soft IRQ)
          * or tasklet use the netif_rx to deliver the packet to the stack
          * netif_rx will queue the packet onto the receive queue and mark
-         * the softirq thread has a pending action to complete. Kernel will 
+         * the softirq thread has a pending action to complete. Kernel will
          * schedule the softIrq kernel thread after processing the DSR.
          *
          * If this routine is called on a process context, use netif_rx_ni
@@ -4025,7 +4031,7 @@ ar6000_get_iwstats(struct net_device * dev)
         return pIwStats;
     }
 
-    dev_hold(dev);   
+    dev_hold(dev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,27)
     rtnllocked = rtnl_is_locked();
 #else
@@ -6080,19 +6086,19 @@ ar6000_connect_to_ap(struct ar6_softc *ar)
         }
 
         ar->arConnectCtrlFlags &= ~CONNECT_DO_WPA_OFFLOAD;
-        
+
         ar->arConnectPending = TRUE;
-        return status;    
+        return status;
     }
     return A_ERROR;
 }
 
-A_STATUS 
+A_STATUS
 ar6000_set_wlan_state(struct ar6_softc *ar, AR6000_WLAN_STATE state)
 {
     A_STATUS status = A_OK;
     AR6000_WLAN_STATE oldstate = ar->arWlanState;
-    if (ar->arWmiReady == FALSE || 
+    if (ar->arWmiReady == FALSE ||
         (state!=WLAN_DISABLED && state!=WLAN_ENABLED)) {
         return A_ERROR;
     }
@@ -6131,7 +6137,7 @@ ar6000_set_wlan_state(struct ar6_softc *ar, AR6000_WLAN_STATE state)
             } else {
                 AR6000_SPIN_UNLOCK(&ar->arLock, 0);
             }
-    
+
             if (wmi_scanparams_cmd(ar->arWmi, 0xFFFF, 0, 0, 0, 0, 0, 0, 0, 0, 0) != A_OK) {
                status = A_ERROR;
                break;

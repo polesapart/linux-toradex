@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2010 Atheros Communications Inc.
  * All rights reserved.
  *
- * 
+ *
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License version 2 as
 // published by the Free Software Foundation;
@@ -2405,7 +2405,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                                      pmParams.tx_wakeup_policy,
                                      pmParams.num_tx_to_wakeup,
 #if WLAN_CONFIG_IGNORE_POWER_SAVE_FAIL_EVENT_DURING_SCAN
-                                     IGNORE_POWER_SAVE_FAIL_EVENT_DURING_SCAN 
+                                     IGNORE_POWER_SAVE_FAIL_EVENT_DURING_SCAN
 #else
                                      SEND_POWER_SAVE_FAIL_EVENT_ALWAYS
 #endif
@@ -2541,7 +2541,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                 ret = -EFAULT;
             } else {
                 if (wmi_set_lpreamble_cmd(ar->arWmi, setLpreambleCmd.status,
-#if WLAN_CONFIG_DONOT_IGNORE_BARKER_IN_ERP 
+#if WLAN_CONFIG_DONOT_IGNORE_BARKER_IN_ERP
                            WMI_DONOT_IGNORE_BARKER_IN_ERP
 #else
                            WMI_IGNORE_BARKER_IN_ERP
@@ -3075,9 +3075,12 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
         case AR6000_XIOCTL_OPT_SEND_FRAME:
         {
         WMI_OPT_TX_FRAME_CMD optTxFrmCmd;
-            A_UINT8 data[MAX_OPT_DATA_LEN];
+            A_UINT8 *data = NULL;
 
-            if (ar->arWmiReady == FALSE) {
+	    data = A_MALLOC(MAX_OPT_DATA_LEN);
+	    if (data == NULL) {
+	    	ret = -ENOMEM;
+            } else if (ar->arWmiReady == FALSE) {
                 ret = -EIO;
             } else if (copy_from_user(&optTxFrmCmd, userdata,
                                       sizeof(optTxFrmCmd)))
@@ -3096,7 +3099,8 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
                                            optTxFrmCmd.optIEDataLen,
                                            data);
             }
-
+            if (data != NULL)
+	    	kfree(data);
             break;
         }
         case AR6000_XIOCTL_WMI_SETRETRYLIMITS:
@@ -3201,7 +3205,7 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
             get_user(state, (unsigned int *)userdata);
             if (ar6000_set_wlan_state(ar, state)!=A_OK) {
                 ret = -EIO;
-            }       
+            }
             break;
         }
         case AR6000_XIOCTL_WMI_GET_ROAM_DATA:
@@ -3795,20 +3799,20 @@ int ar6000_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
             do {
                 if (ar->arWmiReady == FALSE) {
                     ret = -EIO;
-                    break;        
-                } 
+                    break;
+                }
                 if(copy_from_user(&cmd, userdata,
-                            sizeof(WMI_ADD_WOW_PATTERN_CMD))) 
+                            sizeof(WMI_ADD_WOW_PATTERN_CMD)))
                 {
                     ret = -EFAULT;
-                    break;        
+                    break;
                 }
                 if (copy_from_user(pattern_data,
                                       userdata + 3,
-                                      cmd.filter_size)) 
+                                      cmd.filter_size))
                 {
                     ret = -EFAULT;
-                    break;        
+                    break;
                 }
                 if (copy_from_user(mask_data,
                                   (userdata + 3 + cmd.filter_size),
