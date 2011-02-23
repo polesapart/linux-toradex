@@ -321,6 +321,7 @@ struct mxc_ddc_platform_data {
 	u32 di;
 	void (*init) (void);
 	int (*update) (void);
+	char *analog_regulator;
 };
 
 struct mxc_tsc_platform_data {
