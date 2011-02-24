@@ -314,6 +314,8 @@ int fim_dump_registers(struct fim_driver *driver)
 	printk(KERN_ERR "IOHUB_TX_ICTRL_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_ICTRL_REG));
 	printk(KERN_ERR "IOHUB_TX_FIFO_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_FIFO_REG));
 	printk(KERN_ERR "IOHUB_TX_DIR_REG = 0x%8.8X\n", readl(pic->iohub_addr + IOHUB_TX_DIR_REG));
+
+	return 0;
 }
 
 static int pic_get_ctrl_reg(struct pic_t *pic, int reg, unsigned int *val)
