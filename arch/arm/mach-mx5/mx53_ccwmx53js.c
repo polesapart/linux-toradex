@@ -78,33 +78,7 @@
  */
 
 /* MX53 LOCO GPIO PIN configurations */
-#define NVDD_FAULT			(0*32 + 5)	/* GPIO1_5 */
-
-#define FEC_INT				(1*32 + 4)	/* GPIO_2_4 */
-#define HEADPHONE_DEC_B		(1*32 + 5)	/* GPIO_2_5 */
-#define MIC_DEC_B			(1*32 + 6)	/* GPIO_2_6 */
-#define USER_UI1			(1*32 + 14)	/* GPIO_2_14 */
-#define USER_UI2			(1*32 + 15)	/* GPIO_2_15 */
 #define MX53_nONKEY			(0*32 + 8)	/* GPIO_1_8 */
-
-#define SD3_CD				(2*32 + 11)	/* GPIO_3_11 */
-#define SD3_WP				(2*32 + 12)	/* GPIO_3_12 */
-#define DISP0_POWER_EN		(2*32 + 24)	/* GPIO_3_24 */
-#define DISP0_DET_INT		(2*32 + 31)	/* GPIO_3_31 */
-
-#define DISP0_RESET			(4*32 + 0)	/* GPIO_5_0 */
-
-#define CSI0_RTSB			(5*32 + 9)	/* GPIO_6_9 */
-#define CSI0_PWDN			(5*32 + 10)	/* GPIO_6_10 */
-#define ACCL_EN				(5*32 + 14)	/* GPIO_6_14 */
-#define ACCL_INT1_IN		(5*32 + 15)	/* GPIO_6_15 */
-#define ACCL_INT2_IN		(5*32 + 16)	/* GPIO_6_16 */
-
-#define LCD_BLT_EN			(6*32 + 2)	/* GPIO_7_2 */
-#define FEC_RST				(6*32 + 6)	/* GPIO_7_6 */
-#define USER_LED_EN			(6*32 + 7)	/* GPIO_7_7 */
-#define USB_PWREN			(6*32 + 8)	/* GPIO_7_8 */
-#define NIRQ				(6*32 + 11)	/* GPIO7_11 */
 
 u8 ccwmx51_swap_bi = 1;
 
@@ -116,12 +90,12 @@ static struct pad_desc mx53_ccwmx53js_pads[] = {
 	MX53_PAD_GPIO_6__I2C3_SDA,
 };
 
-// static struct platform_pwm_backlight_data mxc_pwm_backlight_data = {
-// 	.pwm_id = 1,
-// 	.max_brightness = 255,
-// 	.dft_brightness = 128,
-// 	.pwm_period_ns = 50000,
-// };
+static struct pad_desc ccwmx53js_keys_leds_pads[] = {
+	USER_LED1_PAD,
+	USER_LED2_PAD,
+	USER_KEY1_PAD,
+	USER_KEY2_PAD,
+};
 
 extern void mx5_ipu_reset(void);
 static struct mxc_ipu_config mxc_ipu_data = {
@@ -132,10 +106,6 @@ static struct mxc_ipu_config mxc_ipu_data = {
 extern void mx5_vpu_reset(void);
 static struct mxc_vpu_platform_data mxc_vpu_data = {
 	.reset = mx5_vpu_reset,
-};
-
-static struct fec_platform_data fec_data = {
-	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
 static struct mxc_dvfs_platform_data dvfs_core_data = {
@@ -167,121 +137,10 @@ static struct mxc_bus_freq_platform_data bus_freq_data = {
 	.lp_reg_id = "DA9052_BUCK_PRO",
 };
 
-// static void mxc_iim_enable_fuse(void)
-// {
-// 	u32 reg;
-//
-// 	if (!ccm_base)
-// 		return;
-//
-// 	/* enable fuse blown */
-// 	reg = readl(ccm_base + 0x64);
-// 	reg |= 0x10;
-// 	writel(reg, ccm_base + 0x64);
-// }
-//
-// static void mxc_iim_disable_fuse(void)
-// {
-// 	u32 reg;
-//
-// 	if (!ccm_base)
-// 		return;
-// 	/* enable fuse blown */
-// 	reg = readl(ccm_base + 0x64);
-// 	reg &= ~0x10;
-// 	writel(reg, ccm_base + 0x64);
-// }
-//
-// static struct mxc_iim_data iim_data = {
-// 	.bank_start = MXC_IIM_MX53_BANK_START_ADDR,
-// 	.bank_end   = MXC_IIM_MX53_BANK_END_ADDR,
-// 	.enable_fuse = mxc_iim_enable_fuse,
-// 	.disable_fuse = mxc_iim_disable_fuse,
-// };
-
 
 static struct imxi2c_platform_data mxci2c_data = {
 	.bitrate = 100000,
 };
-
-// static void sii9022_hdmi_reset(void)
-// {
-// 	gpio_set_value(DISP0_RESET, 0);
-// 	msleep(10);
-// 	gpio_set_value(DISP0_RESET, 1);
-// 	msleep(10);
-// }
-//
-// static struct mxc_lcd_platform_data sii9022_hdmi_data = {
-//        .reset = sii9022_hdmi_reset,
-// };
-
-//
-
-static struct mxc_asrc_platform_data mxc_asrc_data = {
-	.channel_bits = 4,
-	.clk_map_ver = 2,
-};
-
-static struct mxc_spdif_platform_data mxc_spdif_data = {
-	.spdif_tx = 1,
-	.spdif_rx = 0,
-	.spdif_clk_44100 = -1,	/* Souce from CKIH1 for 44.1K */
-	/* Source from CCM spdif_clk (24M) for 48k and 32k
-	 * It's not accurate
-	 */
-	.spdif_clk_48000 = 1,
-	.spdif_clkid = 0,
-	.spdif_clk = NULL,	/* spdif bus clk */
-};
-
-static void mx53_ccwmx53js_usbh1_vbus(bool on)
-{
-	if (on)
-		gpio_set_value(USB_PWREN, 1);
-	else
-		gpio_set_value(USB_PWREN, 0);
-}
-
-//#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
-#if 0
-#define GPIO_BUTTON(gpio_num, ev_code, act_low, descr, wake)	\
-{								\
-	.gpio		= gpio_num,				\
-	.type		= EV_KEY,				\
-	.code		= ev_code,				\
-	.active_low	= act_low,				\
-	.desc		= "btn " descr,				\
-	.wakeup		= wake,					\
-}
-
-static struct gpio_keys_button ccwmx53js_buttons[] = {
-	GPIO_BUTTON(MX53_nONKEY, KEY_POWER, 1, "power", 0),
-	GPIO_BUTTON(USER_UI1, KEY_VOLUMEUP, 1, "volume-up", 0),
-	GPIO_BUTTON(USER_UI2, KEY_VOLUMEDOWN, 1, "volume-down", 0),
-};
-
-static struct gpio_keys_platform_data ccwmx53js_button_data = {
-	.buttons	= ccwmx53js_buttons,
-	.nbuttons	= ARRAY_SIZE(ccwmx53js_buttons),
-};
-
-static struct platform_device ccwmx53js_button_device = {
-	.name		= "gpio-keys",
-	.id		= -1,
-	.num_resources  = 0,
-	.dev		= {
-		.platform_data = &ccwmx53js_button_data,
-	}
-};
-
-static void __init ccwmx53js_add_device_buttons(void)
-{
-	platform_device_register(&ccwmx53js_button_device);
-}
-#else
-static void __init ccwmx53js_add_device_buttons(void) {}
-#endif
 
 
 /*!
@@ -380,6 +239,8 @@ static void __init mx53_ccwmx53js_io_init(void)
 {
 	mxc_iomux_v3_setup_multiple_pads(mx53_ccwmx53js_pads,
 					ARRAY_SIZE(mx53_ccwmx53js_pads));
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53js_keys_leds_pads,
+					 ARRAY_SIZE(ccwmx53js_keys_leds_pads));
 }
 
 /*!
@@ -400,7 +261,6 @@ static void __init mxc_board_init(void)
 
 	mx53_ccwmx53js_init_da9052();
 
-
 	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
@@ -408,36 +268,12 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcscc_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
-//	mxc_register_device(&mxc_iim_device, &iim_data);
 	mxc_register_device(&mxc_pwm2_device, NULL);
-//	mxc_register_device(&mxc_pwm1_backlight_device, &mxc_pwm_backlight_data);
+
+	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 
 	ccwmx53_register_sdio(1);
 	ccwmx53_register_sdio(2);
-
-//	mxc_register_device(&mxc_ssi1_device, NULL);
-//	mxc_register_device(&mxc_ssi2_device, NULL);
-//	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
-//	mxc_register_device(&ahci_fsl_device, &sata_data);
-//	mxc_register_device(&mxc_fec_device, &fec_data);
-
-	/* ASRC is only available for MX53 TO2.0 */
-// 	if (cpu_is_mx53_rev(CHIP_REV_2_0) >= 1) {
-// 		mxc_asrc_data.asrc_core_clk = clk_get(NULL, "asrc_clk");
-// 		clk_put(mxc_asrc_data.asrc_core_clk);
-// 		mxc_asrc_data.asrc_audio_clk = clk_get(NULL, "asrc_serial_clk");
-// 		clk_put(mxc_asrc_data.asrc_audio_clk);
-// 		mxc_register_device(&mxc_asrc_device, &mxc_asrc_data);
-// 	}
-
-
-//	mx5_usb_dr_init();
-//	mx5_set_host1_vbus_func(mx53_ccwmx53js_usbh1_vbus);
-//	mx5_usbh1_init();
-//	mxc_register_device(&mxc_v4l2_device, NULL);
-//	mxc_register_device(&mxc_v4l2out_device, NULL);
-	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
-//	ccwmx53js_add_device_buttons();
 	ccwmx53_register_nand();
 	ccwmx53_register_ext_eth();
 	ccwmx5x_init_fb();
