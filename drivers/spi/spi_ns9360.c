@@ -708,6 +708,8 @@ static int __devinit spi_ns9360_probe(struct platform_device *pdev)
 	master->bus_num = pdev->id;
 	/* hardware controlled cs */
 	master->num_chipselect = 1;
+	/* the spi->mode bits understood by this driver: */
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 
 	/* If CS is GPIO controlled, configure it as output */
 	gpio_cs = info->pdata->gpios[SPI_EN_GPIO_OFFSET];
