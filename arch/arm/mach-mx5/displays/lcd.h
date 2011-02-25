@@ -90,12 +90,12 @@ static struct fb_videomode lq70y3dg3b = {
 	.flag          = 0,
 };
 
-static struct fb_videomode lq121k1lg52 = {
-	.name          = "LQ121K1LG52",
+static struct fb_videomode lq121k1lg11 = {
+	.name          = "LQ121K1LG11",
 	.refresh       = 60,
 	.xres          = 1280,
 	.yres          = 800,
-	.pixclock      = 22500 /* 44.3333Mhz in ps  */,
+	.pixclock      = 30200 /* 44.3333Mhz in ps  */,
 	.left_margin   = 10,
 	.right_margin  = 370,
 	.upper_margin  = 10,
@@ -138,6 +138,7 @@ static struct fb_videomode lcd_custom_2 = {
 	.vmode		= FB_VMODE_NONINTERLACED,/* Video mode */
 	.sync		= FB_SYNC_EXT,		/* Data clock polarity */
 };
+
 struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	{
 		.fb_pdata = {
@@ -150,8 +151,8 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	}, {
 		.fb_pdata = {
 			.interface_pix_fmt = VIDEO_PIX_FMT,
-			.mode_str = "LQ121K1LG52",
-			.mode = &lq121k1lg52,
+			.mode_str = "LQ121K1LG11",
+			.mode = &lq121k1lg11,
 		},
 		.bl_enable = lcd_bl_enable,
 		.init = &lcd_init,
@@ -174,3 +175,4 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	},
 };
 #endif /* __ASM_ARCH_MXC_CCWMX51_DISPLAYS_LCD_H__ */
+
