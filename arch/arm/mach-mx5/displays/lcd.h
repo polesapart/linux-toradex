@@ -15,28 +15,6 @@
 #if defined(CONFIG_MODULE_CCXMX51)
 #include "../iomux.h"
 #include "../mx51_pins.h"
-
-#if defined (CONFIG_JSCCWMX51_V1)
-#include "../drivers/mxc/ipu3/ipu_regs.h"
-#elif
-#endif
-
-
-/**
- * This code is only valide to enable/disable the backlight of the second
- * display, on the first version of the JumpStart Board (JSCCWMX51 RevA).
- * Newer versions use a GPIO to enable the BL of the second display.
- */
-void ipu_ccwmx51_disp1_enable(int enable)
-{
-	uint32_t tmp;
-
-	tmp = __raw_readl(DI_GENERAL(1));
-	tmp &= ~DI_GEN_POLARITY_4;
-	if (enable)
-		tmp |= DI_GEN_POLARITY_4;
-	__raw_writel(tmp, DI_GENERAL(1));
-}
 #endif
 
 static void lcd_bl_enable(int enable, int vif)
@@ -47,9 +25,7 @@ static void lcd_bl_enable(int enable, int vif)
 	if (vif == 0)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), !enable);
 	else if (vif == 1)
-#ifdef CONFIG_JSCCWMX51_V1
-		ipu_ccwmx51_disp1_enable(enable);
-#elif defined(CONFIG_JSCCWMX51_V2)
+#if defined(CONFIG_JSCCWMX51_V2)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
 #else
 #error "A function to enable/disable the display has to be specified"
@@ -68,9 +44,8 @@ static void lcd_init(int vif)
 #if defined(CONFIG_MODULE_CCXMX51)
 			 PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
 #else
-			0
+			0);
 #endif
-			);
 }
 
 static struct fb_videomode lq70y3dg3b = {
