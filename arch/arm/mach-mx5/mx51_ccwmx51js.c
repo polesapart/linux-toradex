@@ -332,7 +332,7 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxci2c_hs_device, &mxci2c_hs_data);
 #endif
 	mxc_register_device(&mxc_rtc_device, NULL);
-	mxc_register_device(&mxc_ssi1_device, NULL);
+//	mxc_register_device(&mxc_ssi1_device, NULL);
 	mxc_register_device(&mxc_ssi2_device, NULL);
 	mxc_register_device(&mxc_dma_device, NULL);
 #if defined(CONFIG_W1_MASTER_MXC) || defined(CONFIG_W1_MASTER_MXC_MODULE)
