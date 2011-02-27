@@ -136,6 +136,7 @@ static uart_mxc_port mxc_ports[] = {
 	       },
 };
 
+#if defined CONFIG_UART1_ENABLED
 static struct resource mxc_uart_resources1[] = {
 	{
 		.start = UART1_BASE_ADDR,
@@ -148,7 +149,6 @@ static struct resource mxc_uart_resources1[] = {
 	},
 };
 
-#if defined CONFIG_UART1_ENABLED
 static struct platform_device mxc_uart_device1 = {
 	.name = "mxcintuart",
 	.id = 0,
@@ -172,9 +172,8 @@ static struct resource mxc_uart_resources2[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 };
-#endif
 
-#if defined CONFIG_UART3_ENABLED
+
 static struct platform_device mxc_uart_device2 = {
 	.name = "mxcintuart",
 	.id = 1,
@@ -186,6 +185,7 @@ static struct platform_device mxc_uart_device2 = {
 };
 #endif
 
+#if defined CONFIG_UART3_ENABLED
 static struct resource mxc_uart_resources3[] = {
 	{
 		.start = UART3_BASE_ADDR,
@@ -207,8 +207,10 @@ static struct platform_device mxc_uart_device3 = {
 		.platform_data = &mxc_ports[2],
 		},
 };
+#endif
 
 #if defined (CONFIG_MODULE_CCXMX53)
+#if defined CONFIG_UART4_ENABLED
 static struct resource mxc_uart_resources4[] = {
 	{
 		.start = UART4_BASE_ADDR,
@@ -230,7 +232,9 @@ static struct platform_device mxc_uart_device4 = {
 		.platform_data = &mxc_ports[3],
 		},
 };
+#endif
 
+#if defined CONFIG_UART5_ENABLED
 static struct resource mxc_uart_resources5[] = {
 	{
 		.start = UART5_BASE_ADDR,
@@ -253,6 +257,7 @@ static struct platform_device mxc_uart_device5 = {
 		},
 };
 #endif
+#endif /* CONFIG_MODULE_CCXMX53 */
 
 static int __init mxc_init_uart(void)
 {
