@@ -1350,7 +1350,7 @@ static const struct net_device_ops fim_can_netdev_ops = {
  * IMPORTANT: First register the FIM-driver, and at last the CAN-device, then
  * it will automatically start with the bit time configuration.
  */
-static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gpios[],
+static int register_fim_can(struct platform_device *pdev, int picnr, struct fim_gpio_t gpios[],
 			    int bitrate)
 {
 	int retval, cnt;
@@ -1369,7 +1369,6 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	/* Set our port structure as private data */
 	port = netdev_priv(dev);
 	port->dev = dev;
-
 	/* Get a reference to the SYS clock for setting the baudrate */
 	if (IS_ERR(port->cpu_clk = clk_get(&dev->dev, "systemclock"))) {
 		printk_err("Couldn't get the SYS clock.\n");
@@ -1471,7 +1470,8 @@ static int register_fim_can(struct device *devi, int picnr, struct fim_gpio_t gp
 	port->dev = dev;
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
 	port->reg = 1;
-	dev_set_drvdata(devi, port);
+	dev_set_drvdata(&pdev->dev, port);
+	SET_NETDEV_DEV(dev, &pdev->dev);
 
  	return 0;
 
@@ -1541,7 +1541,7 @@ static __devinit int fim_can_probe(struct platform_device *pdev)
 		     gpios[0].nr, gpios[1].nr );
 
 	/* XXX SDIO code approach */
-	retval = register_fim_can(&pdev->dev, pdata->fim_nr, gpios, bitrate);
+	retval = register_fim_can(pdev, pdata->fim_nr, gpios, bitrate);
 
 	return retval;
 }
