@@ -538,6 +538,20 @@ config FIM_ONE_SPI_SELECTED
 
 endchoice # FIM_ONE
 
+if FIM_CAN_MODULE || FIM_ZERO_CAN_SELECTED || FIM_ONE_CAN_SELECTED
+config FIM_CAN_DEFAULT_BITRATE
+	int "Default CAN bitrate (in bps)"
+	range 1 1000000
+	default 500000
+	help
+	  This will set the default bitrate for the CAN bus.
+	  This and other CAN settings can be modified using the 'ip'
+	  command of the 'iproute2' suite.
+
+	  For more information refer to Documentation/networking/can.txt
+
+endif # FIM_CAN_MODULE || FIM_ZERO_CAN_SELECTED || FIM_ONE_CAN_SELECTED
+
 if FIM_ONE_SPI
 
 config FIM_ONE_SPI_WANT_MASTER_CS

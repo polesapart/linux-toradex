@@ -388,7 +388,7 @@ EXPORT_SYMBOL(ns921x_fim_spi1);
 #if defined(CONFIG_FIM_ZERO_CAN) || defined(CONFIG_PROCESSOR_NS9215)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr			= 0,
-	.fim_can_bitrate	= 500000,
+	.fim_can_bitrate	= CONFIG_FIM_CAN_DEFAULT_BITRATE,
 	NS921X_FIM_CAN_GPIOS(   96, 97, /* RX + TX */
 				NS921X_GPIO_FUNC_2),
 };
@@ -403,7 +403,7 @@ EXPORT_SYMBOL(ns921x_fim_can0);
 #if defined(CONFIG_FIM_ONE_CAN)
 static struct fim_can_platform_data fim_can_data1 = {
 	.fim_nr			= 1,
-	.fim_can_bitrate	= 500000,
+	.fim_can_bitrate	= CONFIG_FIM_CAN_DEFAULT_BITRATE,
 #if defined(INT_FIM_BOARD)
 	NS921X_FIM_CAN_GPIOS(   68, 69, /* RX + TX */
 				NS921X_GPIO_FUNC_2),
