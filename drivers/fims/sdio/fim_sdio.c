@@ -198,10 +198,7 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 # define FIM_SDIO_DATAWR_STATUS_NO_CRC		0x07	/* No CRC status response */
 
 /* Internal flags for the request function */
-#define FIM_SDIO_REQUEST_NEW			0x00
-#define FIM_SDIO_REQUEST_CMD			0x01
-#define FIM_SDIO_REQUEST_STOP			0x02
-#define FIM_SDIO_SET_BUS_WIDTH			0x04
+#define FIM_SDIO_FLAG_R2_RESPONSE		0x01
 
 /* Macros for the DMA-configuraton */
 #define FIM_SDIO_DMA_BUFFER_SIZE		PAGE_SIZE
@@ -493,7 +490,7 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 
 	/* Disable CD IRQ, and start debounce timer */
 	disable_irq(port->cd_irq);
-	mod_timer(&port->debounce_timer, jiffies + msecs_to_jiffies(300));
+	mod_timer(&port->debounce_timer, jiffies + msecs_to_jiffies(500));
 
 	/*
 	 * If the FIM was stopped, then only schedule the workqueue for restarting it
@@ -624,6 +621,49 @@ inline static void fim_sd_parse_resp(struct mmc_command *cmd,
 	}
 }
 
+static unsigned char fim_sd_calc_crc7(unsigned char *buffer, unsigned char length)
+{
+	int i, a;
+	unsigned char crc, data;
+
+	crc = 0;
+	for ( a = 0; a < length; a++ ) {
+		data = buffer[a];
+		for ( i = 0; i < 8; i++ ) {
+			crc <<= 1;
+
+			if ( (data & 0x80) ^ (crc & 0x80) ) {
+				crc ^= 0x09;
+			}
+			data <<= 1;
+		}
+	}
+	crc = (crc << 1) | 1;
+
+	return crc;
+}
+
+static int fim_sd_check_r2_crc(struct fim_sd_rx_resp_t *resp, int len)
+{
+	unsigned char crc;
+	unsigned char *buffer;
+
+	if ( len != 17 ) {
+		printk_err("Invalid length (%d) for R2 response\n", len);
+		return 0;
+	}
+
+	buffer = (unsigned char *)resp;
+
+	crc = fim_sd_calc_crc7(&buffer[1], 15);
+
+	if ( crc != buffer[16] ) {
+		printk_err("Invalid R2 CRC: 0x%x\n", crc);
+	}
+
+	return 1;
+}
+
 /*
  * Called when a receive DMA-buffer was closed.
  * The data received from the PIC has different formats. Sometimes it
@@ -683,8 +723,21 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 		}
 		/* After data, there comes the response */
 		else if ( port->cmd_state == CMD_STATE_WAIT_DATA ) {
-			fim_sd_parse_resp(mmc_cmd, resp);
-			port->cmd_state = CMD_STATE_HAVE_RSP;
+			/* If the response has R2 type, then check the inner CRC */
+			/* Should not come data before an R2 response */
+			if ( port->flags & FIM_SDIO_FLAG_R2_RESPONSE ) {
+				if ( fim_sd_check_r2_crc(resp,len) ) {
+					fim_sd_parse_resp(mmc_cmd, resp);
+					port->cmd_state = CMD_STATE_HAVE_RSP;
+				}
+				else {
+					port->cmd_state = CMD_STATE_CRC_ERR;
+				}
+			}
+			else {
+				fim_sd_parse_resp(mmc_cmd, resp);
+				port->cmd_state = CMD_STATE_HAVE_RSP;
+			}
 		}
 		/* Unexpected state */
 		else {
@@ -699,8 +752,20 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	else if ( stat & FIM_SDIO_PORTEXP1_RESP ) {
 		/* First comes response */
 		if ( port->cmd_state == CMD_STATE_WAIT_DATA ) {
-			fim_sd_parse_resp(mmc_cmd, resp);
-			port->cmd_state = CMD_STATE_HAVE_RSP;
+			/* If the response has R2 type, then check the inner CRC */
+			if ( port->flags & FIM_SDIO_FLAG_R2_RESPONSE ) {
+				if ( fim_sd_check_r2_crc(resp,len) ) {
+					fim_sd_parse_resp(mmc_cmd, resp);
+					port->cmd_state = CMD_STATE_HAVE_RSP;
+				}
+				else {
+					port->cmd_state = CMD_STATE_CRC_ERR;
+				}
+			}
+			else {
+				fim_sd_parse_resp(mmc_cmd, resp);
+				port->cmd_state = CMD_STATE_HAVE_RSP;
+			}
 		}
 		/* After response, there comes the data */
 		else if ( port->blkrd_state == BLKRD_STATE_WAIT_DATA ) {
@@ -735,6 +800,10 @@ static void fim_sd_rx_isr(struct fim_driver *driver, int irq,
 	if ( port->cmd_state == CMD_STATE_HAVE_RSP &&
 		port->blkrd_state == BLKRD_STATE_CRC_ERR ) {
 		printk_err("CRC failure\n");
+		mmc_cmd->error = -EILSEQ;
+	}
+
+	if ( port->cmd_state == CMD_STATE_CRC_ERR ) {
 		mmc_cmd->error = -EILSEQ;
 	}
 
@@ -937,6 +1006,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	 * Assume that we will wait for a command response (not block read).
 	 * By block reads the flag will be modified inside the if-condition
 	 */
+	port->flags = 0;
 	port->cmd_state = CMD_STATE_WAIT_DATA;
 	port->blkrd_state = BLKRD_STATE_HAVE_DATA;
 	if ((data = cmd->data) != NULL) {
@@ -981,11 +1051,16 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		opctl |= FIM_SDIO_CONTROL2_RESP48;
 	/* Anyway, there's no response for command */
 
-	/* Set the correct CRC configuration */
-	if (!(cmd->flags & MMC_RSP_CRC)) {
+	/* Disable CRC calculation if not needed, or if the command has an R2 type response, which
+	   has an internal CRC. */
+	if ( (cmd->opcode == 2) || (cmd->opcode == 9) || (cmd->opcode == 10) ) {
+		port->flags |= FIM_SDIO_FLAG_R2_RESPONSE;
+	}
+	if (!(cmd->flags & MMC_RSP_CRC) || (port->flags & FIM_SDIO_FLAG_R2_RESPONSE) ) {
 		printk_debug("CRC is disabled\n");
 		opctl |= FIM_SDIO_CONTROL2_SKIP_CRC;
 	}
+
 
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL2_REG, opctl);
 
@@ -1064,6 +1139,11 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		port->mmc_cmd->error = -ETIMEDOUT;
 		return -ETIMEDOUT;
 	}
+	else if ( stat & FIM_SDIO_PORTEXP1_CRCERR_CMD ) {
+		printk_info("Response CRC error\n");
+		port->mmc_cmd->error = -EILSEQ;
+		return -EILSEQ;
+	}
 	else if ( stat == 0 ) {
 		printk_err("No response from FIM, down\n");
 		atomic_set(&port->fim_is_down, 1);
@@ -1072,14 +1152,19 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	}
 
 	/* Set message RX timeout */
-	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(5000));
+	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1000));
 	if ( retval <= 0 ) {
 		printk_err("Message RX timeout\n");
 		port->mmc_cmd->error = -ETIMEDOUT;
 		return -ETIMEDOUT;
 	}
 
-	return 0;
+	if ( port->mmc_cmd->error ) {
+		return port->mmc_cmd->error;
+	}
+	else {
+		return 0;
+	}
 }
 
 /*
@@ -1124,14 +1209,16 @@ static void fim_sd_set_clock(struct fim_sdio_t *port, long int clockrate)
 	unsigned long clk;
 
 	if (clockrate) {
-		clk = clk_get_rate(port->sys_clk) / 7;
-		clkdiv  = clk /clockrate + 0x02;
+		clk = clk_get_rate(port->sys_clk) / 6;
+		clkdiv  = clk /clockrate - 9;
 
-		/* @XXX: If the configuration failed disable the clock */
-		if (clkdiv < 0x2 || clkdiv > 0xff) {
-			printk_info("Unsupported clock %luHz (div out of range 0x%4lx)\n",
-				    clockrate, clkdiv);
-			clockrate = -EINVAL;
+		if ( clkdiv < 1 )
+		{
+			clkdiv = 1;
+		}
+		else if ( clkdiv > 0xff )
+		{
+			clkdiv = 0xff;
 		}
 		else
 			printk_debug("Calculated divisor is 0x%02lx for %lu\n",
@@ -1395,7 +1482,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 
 	/* Supported physical properties of the FIM-host (see the PIC-firmware code) */
 	port->mmc->f_min = 320000;
-	port->mmc->f_max = 25000000;
+	port->mmc->f_max = 5000000;
 	port->mmc->ocr_avail = MMC_VDD_33_34 | MMC_VDD_32_33;
 	port->mmc->caps = hcaps;
 
