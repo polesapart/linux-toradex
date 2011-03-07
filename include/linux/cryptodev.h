@@ -14,9 +14,8 @@
 #ifndef __KERNEL__
 #include <inttypes.h>
 #endif
-#include <linux/miscdevice.h>
 
-/* #define	CRYPTODEV_MINOR	MISC_DYNAMIC_MINOR	#defined in miscdevice.h */
+#define	CRYPTODEV_MINOR	MISC_DYNAMIC_MINOR
 
 #define CRYPTO_FLAG_ECB		0x0000
 #define CRYPTO_FLAG_CBC		0x0001
