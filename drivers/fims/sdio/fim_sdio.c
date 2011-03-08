@@ -942,6 +942,7 @@ static int fim_sd_copy_dma_sg(struct fim_sdio_t *port, struct mmc_data *data,
 		else {
 			memcpy(dma_buf, sg_buf_virt, len);
 		}
+		dma_buf += len;
 
 		len_back -= len;
 	}
@@ -990,6 +991,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	int retval, cur_len, data_len = 0, len = 0;
 	unsigned char opctl = 0;
 	unsigned int stat;
+	int i;
 
 	/* @TODO: Send an error response to the MMC-core */
 	if (!(buf = fim_sd_alloc_cmd(port))) {
@@ -1126,30 +1128,35 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		return 0;
 	}
 
-	/* Wait 10ms for command response (it's max. 64 SD CLK according to the spec) */
-	if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(10))) < 0 ) {
-		printk_err("Problem with wait_queue: %d\n", retval);
-		return -ETIMEDOUT;
-	}
+	/* Wait 100ms for command response (it's max. 64 SD CLK according to the spec) */
+	i = 10;
+	while ( i > 0 ) {
+		if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(10))) < 0 ) {
+			printk_err("Problem with wait_queue: %d\n", retval);
+			return -ETIMEDOUT;
+		}
 
-	fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
+		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
 
-	if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
-		printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
-		port->mmc_cmd->error = -ETIMEDOUT;
-		return -ETIMEDOUT;
-	}
-	else if ( stat & FIM_SDIO_PORTEXP1_CRCERR_CMD ) {
-		printk_info("Response CRC error\n");
-		port->mmc_cmd->error = -EILSEQ;
-		return -EILSEQ;
-	}
-	else if ( stat == 0 ) {
-		printk_err("No response from FIM, down\n");
-		atomic_set(&port->fim_is_down, 1);
-		port->mmc_cmd->error = -ENOMEDIUM;
-		return -ETIMEDOUT;
-	}
+		if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
+			printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
+			port->mmc_cmd->error = -ETIMEDOUT;
+			return -ETIMEDOUT;
+		}
+		else if ( stat & FIM_SDIO_PORTEXP1_CRCERR_CMD ) {
+			printk_info("Response CRC error\n");
+			port->mmc_cmd->error = -EILSEQ;
+			return -EILSEQ;
+		}
+		else if ( stat == 0 ) {
+			printk_err("No response from FIM, down\n");
+			atomic_set(&port->fim_is_down, 1);
+			port->mmc_cmd->error = -ENOMEDIUM;
+			return -ETIMEDOUT;
+		}
+
+		--i;
+	};
 
 	/* Set message RX timeout */
 	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1000));
