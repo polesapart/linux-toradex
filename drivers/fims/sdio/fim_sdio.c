@@ -297,6 +297,8 @@ struct fim_sdio_t {
 	int trans_sg_offs;
 	int reg;
 
+	unsigned int tx_crc_timeout;
+
 	int wp_gpio;
 	struct clk *sys_clk;
 	int cd_gpio;
@@ -956,7 +958,7 @@ inline static int fim_sd_get_transmit_crc_status(struct fim_sdio_t *port)
 {
 	unsigned int crc_status;
 	//unsigned int ret;
-	volatile unsigned char cnt = 200;
+	volatile unsigned int cnt = port->tx_crc_timeout;
 
 	/* Wait for write CRC status */
 	do {
@@ -967,7 +969,7 @@ inline static int fim_sd_get_transmit_crc_status(struct fim_sdio_t *port)
 		}*/
 
 		fim_get_stat_reg(&port->fim, FIM_SDIO_DATAWR_STATUS_REG, &crc_status);
-	} while ( ((crc_status == 0) || (crc_status == 1)) && (cnt != 0) );
+	} while ( (crc_status == 0) && (cnt != 0) );
 
 	if ( crc_status == 0 ) {
 		printk_err("Transmit CRC timeout\n");
@@ -1488,8 +1490,8 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	port->mmc->ops = &fim_sd_ops;
 
 	/* Supported physical properties of the FIM-host (see the PIC-firmware code) */
-	port->mmc->f_min = 320000;
-	port->mmc->f_max = 5000000;
+	port->mmc->f_min = pdata->min_clk;
+	port->mmc->f_max = pdata->max_clk;
 	port->mmc->ocr_avail = MMC_VDD_33_34 | MMC_VDD_32_33;
 	port->mmc->caps = hcaps;
 
@@ -1508,6 +1510,14 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	if (retval) {
 		printk_err("Couldn't add the MMC host\n");
 		goto exit_put_clk;
+	}
+
+	/* Set the transmit CRC timeout time (200 for 5MHz) */
+	if ( pdata->max_clk > 5000000 ) {
+		port->tx_crc_timeout = 200;
+	}
+	else {
+		port->tx_crc_timeout = 5000000 * 200 / pdata->max_clk;
 	}
 
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_SDIO_MAX_GPIOS);

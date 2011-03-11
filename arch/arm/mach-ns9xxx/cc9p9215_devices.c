@@ -215,6 +215,8 @@ EXPORT_SYMBOL(ns921x_fim_serial1);
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
+	.min_clk       = 320000,
+	.max_clk       = 5000000,
 #if defined(INT_FIM_BOARD)
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */
@@ -261,6 +263,8 @@ EXPORT_SYMBOL(ns921x_fim_sdio0);
 static struct fim_sdio_platform_data fim_sdio_data1 = {
 	.fim_nr        = 1,
 	.host_caps     = MMC_CAP_4_BIT_DATA | MMC_CAP_SDIO_IRQ,
+	.min_clk       = 320000,
+	.max_clk       = 5000000,
 #if defined(INT_FIM_BOARD)
 	NS921X_FIM_SDIO_GPIOS(68, 69, 70, 71, /* D0 to D3 */
 			      72, 73,         /* WP + CD */

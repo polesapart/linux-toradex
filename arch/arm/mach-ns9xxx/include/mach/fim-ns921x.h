@@ -257,6 +257,8 @@ struct fim_serial_platform_data {
 struct fim_sdio_platform_data {
 	int fim_nr;
 	unsigned int host_caps;         /* Host capabilities */
+	unsigned int min_clk;		/* Minimal SDIO clock */
+	unsigned int max_clk;		/* Maximal SDIO clock (max. is 5MHz) */
 	
 	int d0_gpio_nr;			/* data 0 */
 	unsigned int d0_gpio_func;

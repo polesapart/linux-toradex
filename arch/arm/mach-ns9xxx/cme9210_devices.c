@@ -176,6 +176,8 @@ EXPORT_SYMBOL(ns921x_fim_can0);
 static struct fim_sdio_platform_data fim_sdio_data0 = {
 	.fim_nr        = 0,
 	.host_caps     = 0,
+	.min_clk       = 320000,
+	.max_clk       = 4500000,
 
 	.d0_gpio_nr    = 0,
 	.d0_gpio_func  = NS921X_GPIO_FUNC_2,
