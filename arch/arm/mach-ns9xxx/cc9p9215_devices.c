@@ -389,7 +389,7 @@ struct platform_device ns921x_fim_spi1 = {
 EXPORT_SYMBOL(ns921x_fim_spi1);
 #endif /* CONFIG_FIM_ONE_SPI */
 
-#if defined(CONFIG_FIM_ZERO_CAN) || defined(CONFIG_PROCESSOR_NS9215)
+#if defined(CONFIG_FIM_ZERO_CAN)
 static struct fim_can_platform_data fim_can_data0 = {
 	.fim_nr			= 0,
 	.fim_can_bitrate	= CONFIG_FIM_CAN_DEFAULT_BITRATE,
