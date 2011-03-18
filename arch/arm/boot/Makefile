@@ -67,10 +67,10 @@ quiet_cmd_uimage = UIMAGE  $@
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 
 quiet_cmd_sbImage = SBIMAGE  $@
-	cmd_sbimage = $(ELFTOSB) -z -c ./imx-bootlets/linux.bd -p arch/arm/boot/ -o sbImage-cpx2
+	cmd_sbimage = $(ELFTOSB) -z -c ./imx-bootlets/linux.bd -p arch/arm/boot/ -o arch/arm/boot/sbImage
 
 quiet_cmd_sbivtImage = SBIVTIMAGE  $@
-	cmd_sbivtimage = $(ELFTOSB) -z -f imx28 -c ./imx-bootlets/linux_ivt.bd -p arch/arm/boot/ -o sbImage_ivt-cpx2
+	cmd_sbivtimage = $(ELFTOSB) -z -f imx28 -c ./imx-bootlets/linux_ivt.bd -p arch/arm/boot/ -o arch/arm/boot/sbivtImage
 
 ifeq ($(CONFIG_ZBOOT_ROM),y)
 $(obj)/uImage: LOADADDR=$(CONFIG_ZBOOT_ROM_TEXT)

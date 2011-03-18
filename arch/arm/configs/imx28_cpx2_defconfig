@@ -1,18 +1,8 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.35
-# Tue Mar  1 18:26:44 2011
+# Linux kernel version: 2.6.35.3
+# Mon Dec  6 17:17:47 2010
 #
-CONFIG_DEL_MX28_EVK=y
-
-#
-# Linux Kernel Configuration
-#
-
-#
-# Kernel Extra options
-#
-CONFIG_LINUX_IMAGE_NAME="uImage-mx28_cpx2"
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
 CONFIG_GENERIC_GPIO=y

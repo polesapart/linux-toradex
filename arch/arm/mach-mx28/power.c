@@ -32,7 +32,7 @@
 #include <mach/regs-power.h>
 
 #define USB_POWER_ENABLE MXS_PIN_TO_GPIO(PINID_AUART2_TX)
-#define MX28EVK_VBUS5v 5
+#define MX28_VBUS5v 5
 
 static int get_voltage(struct mxs_regulator *sreg)
 {
@@ -240,7 +240,7 @@ static struct mxs_platform_regulator_data vdda_data = {
 	.max_voltage	= 2275000,
 };
 
-#define MX28EVK_VDDIO_OFFSET 80000
+#define MX28_VDDIO_OFFSET 80000
 static struct mxs_platform_regulator_data vddio_data = {
 	.name		= "vddio",
 	.set_voltage	= set_voltage,
@@ -251,8 +251,8 @@ static struct mxs_platform_regulator_data vddio_data = {
 	.set_mode	= set_mode,
 	.get_mode	= get_mode,
 	.control_reg	= (u32)(REGS_POWER_BASE + HW_POWER_VDDIOCTRL),
-	.min_voltage	= 2800000 + MX28EVK_VDDIO_OFFSET,
-	.max_voltage	= 3600000 + MX28EVK_VDDIO_OFFSET,
+	.min_voltage	= 2800000 + MX28_VDDIO_OFFSET,
+	.max_voltage	= 3600000 + MX28_VDDIO_OFFSET,
 };
 
 static struct regulator_init_data vddd_init = {
@@ -302,8 +302,8 @@ static struct regulator_init_data vdda_init = {
 static struct regulator_init_data vddio_init = {
 	.constraints = {
 		.name			= "vddio",
-		.min_uV			= 2800000 + MX28EVK_VDDIO_OFFSET,
-		.max_uV			= 3600000 + MX28EVK_VDDIO_OFFSET,
+		.min_uV			= 2800000 + MX28_VDDIO_OFFSET,
+		.max_uV			= 3600000 + MX28_VDDIO_OFFSET,
 		.valid_modes_mask	= REGULATOR_MODE_FAST |
 					  REGULATOR_MODE_NORMAL,
 		.valid_ops_mask		= REGULATOR_CHANGE_VOLTAGE |
@@ -565,7 +565,7 @@ static int __init regulators_init(void)
 	mxs_register_regulator(&overall_cur_reg,
 		MXS_OVERALL_CUR, &overall_cur_init);
 
-	mxs_register_regulator(&vbus5v_reg, MX28EVK_VBUS5v, &vbus5v_init);
+	mxs_register_regulator(&vbus5v_reg, MX28_VBUS5v, &vbus5v_init);
 
 	for (i = 0; i < ARRAY_SIZE(device_names); i++) {
 		retval = mxs_platform_add_regulator(device_names[i], 1);

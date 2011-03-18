@@ -801,7 +801,7 @@ static struct fec_platform_data fec_pdata1 = {
 	.phy = PHY_INTERFACE_MODE_RMII,
 	.init = mx28evk_enet_gpio_init,
 };
-#else
+#elif defined(CONFIG_MACH_CPX2)
 extern int mx28_cpx2_enet_gpio_init(void);
 static struct fec_platform_data fec_pdata0 = {
 	.phy = PHY_INTERFACE_MODE_RMII,
