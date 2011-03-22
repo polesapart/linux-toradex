@@ -13,7 +13,7 @@
 
 MKIMAGE         := $(srctree)/scripts/mkuboot.sh
 
-ELFTOSB 		:=elftosb
+ELFTOSB 	:=elftosb
 
 ifneq ($(MACHINE),)
 include $(srctree)/$(MACHINE)/Makefile.boot
@@ -66,11 +66,13 @@ quiet_cmd_uimage = UIMAGE  $@
 		   -C none -a $(LOADADDR) -e $(STARTADDR) \
 		   -n 'Linux-$(KERNELRELEASE)' -d $< $@
 
-quiet_cmd_sbImage = SBIMAGE  $@
-	cmd_sbimage = $(ELFTOSB) -z -c ./imx-bootlets/linux.bd -p arch/arm/boot/ -o arch/arm/boot/sbImage
+quiet_cmd_sbimage = SBIMAGE  $@
+	cmd_sbimage = $(ELFTOSB) -z -c $(srctree)/imx-bootlets/linux.bd \
+		      -p $(srctree) -p arch/arm/boot -o $@
 
-quiet_cmd_sbivtImage = SBIVTIMAGE  $@
-	cmd_sbivtimage = $(ELFTOSB) -z -f imx28 -c ./imx-bootlets/linux_ivt.bd -p arch/arm/boot/ -o arch/arm/boot/sbivtImage
+quiet_cmd_sbivtimage = SBIVTIMAGE  $@
+	cmd_sbivtimage = $(ELFTOSB) -z -f imx28 -c $(srctree)/imx-bootlets/linux_ivt.bd \
+			 -p $(srctree) -p arch/arm/boot -o $@
 
 ifeq ($(CONFIG_ZBOOT_ROM),y)
 $(obj)/uImage: LOADADDR=$(CONFIG_ZBOOT_ROM_TEXT)
@@ -101,11 +103,11 @@ $(obj)/uImagegz: $(obj)/Image.gz FORCE
 	$(call if_changed,uimagegz)
 	@echo '  Image $@ is ready'
 
-$(obj)/sbImage:	$(obj)/zImage FORCE
+$(obj)/sbImage: $(obj)/zImage FORCE
 	$(call if_changed,sbimage)
 	@echo '  Image $@ is ready'
 
-$(obj)/sbivtImage:	$(obj)/zImage FORCE
+$(obj)/sbivtImage: $(obj)/zImage FORCE
 	$(call if_changed,sbivtimage)
 	@echo '  Image $@ is ready'
 
