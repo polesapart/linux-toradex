@@ -357,7 +357,11 @@ static struct gpmi_nfc_platform_data  gpmi_nfc_platform_data = {
 	.min_prop_delay_in_ns    = 5,
 	.max_prop_delay_in_ns    = 9,
 	.max_chip_count          = 2,
-	.boot_area_size_in_bytes = 20 * SZ_1M,
+#if defined(CONFIG_REMOVE_DEFAULT_FREESCALE_PARTITION)
+	.boot_area_size_in_bytes = 0,
+#else
+  .boot_area_size_in_bytes = 20 * SZ_1M,
+#endif
 	.partition_source_types  = gpmi_nfc_partition_source_types,
 	.partitions              = 0,
 	.partition_count         = 0,
