@@ -13,7 +13,7 @@ config MACH_CPX2
 
 endchoice
 
-config REMOVE_DEFAULT_FREESCALE_PARTITION
+config MTD_DIGI_REMOVE_DEFAULT_FREESCALE_PARTITION
 	bool "Remove the default boot partition created by Freescale"
 	depends on ARCH_MX28 
 	default y
