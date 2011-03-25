@@ -1031,6 +1031,13 @@ fec_enet_open(struct net_device *dev)
 		fec_enet_free_buffers(dev);
 		return ret;
 	}
+
+#ifdef CONFIG_MACH_CPX2
+	// Configure the KSZ8031RNL PHY
+	// AutoMDIX enabled, 50MHz clock mode for RMII
+	fec_enet_mdio_write(fep->mii_bus, fep->phy_dev->addr, 0x1F, 0x8180);
+#endif
+
 	phy_start(fep->phy_dev);
 	fec_restart(dev, fep->phy_dev->duplex);
 	fep->opened = 1;

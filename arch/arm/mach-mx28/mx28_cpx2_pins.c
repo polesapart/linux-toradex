@@ -31,12 +31,12 @@
 static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	{
 	 .name = "DUART.RX",
-	 .id = PINID_PWM0,
+	 .id = PINID_I2C0_SCL,
 	 .fun = PIN_FUN3,
 	 },
 	{
 	 .name = "DUART.TX",
-	 .id = PINID_PWM1,
+	 .id = PINID_I2C0_SDA,
 	 .fun = PIN_FUN3,
 	 },
 #ifdef CONFIG_MXS_AUART0_DEVICE_ENABLE
@@ -782,6 +782,16 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .voltage = PAD_3_3V,
 	 .drive	= 1,
 	 },
+	{
+	 .name = "ENET_RST",
+	 .id = PINID_PWM4,
+	 .fun = PIN_GPIO,
+	 .strength = PAD_8MA,
+	 .pull = 1,
+	 .pullup = 1,
+	 .voltage = PAD_3_3V,
+	 .drive	= 1,
+	 },
 };
 #endif
 
@@ -1228,5 +1238,9 @@ void __init mx28_cpx2_pins_init(void)
 	|| defined(CONFIG_FEC_L2SWITCH)
 		mx28_cpx2_init_pin_group(mx28_cpx2_eth_pins,
 						ARRAY_SIZE(mx28_cpx2_eth_pins));
+
+	// Take the PHY out of reset
+	gpio_request(MXS_PIN_TO_GPIO(PINID_PWM4) , "ENET0_RST#");
+	gpio_direction_output( MXS_PIN_TO_GPIO(PINID_PWM4) , 1 );
 #endif
 }

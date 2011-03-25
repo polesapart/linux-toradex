@@ -24,11 +24,16 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/spinlock.h>
+#ifdef CONFIG_CPU_FREQ
 #include <linux/cpufreq.h>
+#endif
 
 #include <mach/clock.h>
 
+#ifdef CONFIG_CPU_FREQ
 extern int cpufreq_trig_needed;
+#endif
+
 static bool (*mxs_enable_h_autoslow)(bool enable);
 static void (*mxs_set_h_autoslow_flags)(u16 flags);
 
@@ -119,11 +124,13 @@ int clk_enable(struct clk *clk)
 
 	ret = __clk_enable(clk);
 	spin_unlock_irqrestore(&clockfw_lock, flags);
+#ifdef CONFIG_CPU_FREQ
 	if ((clk->flags & CPU_FREQ_TRIG_UPDATE)
 	    && (pre_usage == 0)) {
 		cpufreq_trig_needed = 1;
 		cpufreq_update_policy(0);
 	}
+#endif
 	return ret;
 }
 EXPORT_SYMBOL(clk_enable);
@@ -139,11 +146,13 @@ void clk_disable(struct clk *clk)
 	spin_lock_irqsave(&clockfw_lock, flags);
 	__clk_disable(clk);
 	spin_unlock_irqrestore(&clockfw_lock, flags);
+#ifdef CONFIG_CPU_FREQ
 	if ((clk->flags & CPU_FREQ_TRIG_UPDATE)
 			&& ((clk->ref & CLK_EN_MASK) == 0)) {
 		cpufreq_trig_needed = 1;
 		cpufreq_update_policy(0);
 	}
+#endif
 }
 EXPORT_SYMBOL(clk_disable);
 
