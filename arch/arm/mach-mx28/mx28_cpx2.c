@@ -152,7 +152,7 @@ static void __init mx28_cpx2_init_machine(void)
 	system_rev = 0x28011;
 }
 
-MACHINE_START(CPX2, "Digi International ConnectPort X2 board")
+MACHINE_START(CPX2, "Digi ConnectPort X2")
 	.phys_io	= 0x80000000,
 	.io_pg_offst	= ((0xf0000000) >> 18) & 0xfffc,
 	.boot_params	= 0x40000100,
