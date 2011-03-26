@@ -1065,7 +1065,7 @@ ar6k_cfg80211_set_bitrate_mask(struct wiphy *wiphy, struct net_device *dev,
     AR_SOFTC_T *ar = ar6k_priv(dev);
     A_STATUS status;
 
-    AR_DEBUG_PRINTF(ATH_DEBUG_INFO, ("%s: mask 0x%x\n", __func__, mask->fixed));
+    AR_DEBUG_PRINTF(ATH_DEBUG_INFO, ("%s: mask 0x%x\n", __func__, mask->control[IEEE80211_BAND_2GHZ].legacy));
 
     if(ar->arWmiReady == FALSE) {
         AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s: Wmi not ready\n", __func__));
@@ -1077,7 +1077,8 @@ ar6k_cfg80211_set_bitrate_mask(struct wiphy *wiphy, struct net_device *dev,
         return -EIO;
     }
 
-    status = wmi_set_fixrates_cmd(ar->arWmi, mask->fixed);
+#warning TODO: Figure out correct band for fixrates
+    status = wmi_set_fixrates_cmd(ar->arWmi, mask->control[IEEE80211_BAND_2GHZ].legacy);
 
     if(status == A_EINVAL) {
         AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("%s: invalid params\n", __func__));
