@@ -315,6 +315,7 @@ struct mxc_lcd_platform_data {
 	char *core_reg;
 	char *analog_reg;
 	void (*reset) (void);
+	int boot_enable;
 };
 
 struct mxc_ddc_platform_data {
@@ -322,6 +323,7 @@ struct mxc_ddc_platform_data {
 	void (*init) (void);
 	int (*update) (void);
 	char *analog_regulator;
+	int boot_enable;
 };
 
 struct mxc_tsc_platform_data {
@@ -504,11 +506,17 @@ struct flexcan_platform_data {
 struct tve_platform_data {
 	char *dac_reg;
 	char *dig_reg;
+#define MXC_TVE_TVOUT	0x1
+#define MXC_TVE_VGA	0x2
+	int boot_enable;
 };
 
 struct ldb_platform_data {
 	char *lvds_bg_reg;
 	u32 ext_ref;
+#define MXC_LDBDI0	0x1
+#define MXC_LDBDI1	0x2
+	int boot_enable;
 };
 
  struct mxc_vpu_platform_data {
