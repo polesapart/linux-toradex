@@ -878,6 +878,7 @@ static unsigned long emi_round_rate(struct clk *clk, unsigned long rate)
 	return root_rate / div;
 }
 
+#ifdef CONFIG_MXS_RAM_FREQ_SCALING
 static int emi_set_rate(struct clk *clk, unsigned long rate)
 {
 	int i;
@@ -949,6 +950,12 @@ static int emi_set_rate(struct clk *clk, unsigned long rate)
 
 	return 0;
 }
+#else
+static int emi_set_rate(struct clk *clk, unsigned long rate)
+{
+	return 0;
+}
+#endif
 
 static struct clk emi_clk = {
 	.parent = &ref_emi_clk,

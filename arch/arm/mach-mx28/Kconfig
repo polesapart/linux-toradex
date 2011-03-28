@@ -36,6 +36,29 @@ config MXS_TIMER_WITH_MACH
 	bool "System Timer support Compare Match interrupt"
 	default y
 
+config MXS_RAM_FREQ_SCALING
+        bool "RAM frequency scaling support"
+        depends on ARCH_MXS
+        default y
+
+choice
+	prompt "Select MXS RAM chip"
+	depends on MXS_RAM_FREQ_SCALING
+
+config MXS_RAM_MDDR
+	bool "mDDR SDRAM"
+	depends on ARCH_MX23
+config MXS_RAM_DDR
+	bool "DDR SDRAM"
+	depends on ARCH_MX23
+
+endchoice
+
+config IRAM_ALLOC
+        bool
+        default y
+        select GENERIC_ALLOCATOR
+
 config MEM_mDDR
 	bool "Memory type is mDDR"
 	depends on ARCH_MX28

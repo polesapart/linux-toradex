@@ -1426,7 +1426,7 @@ void __init mx28_init_spdif(void)
 	mxs_add_device(pdev, 3);
 }
 #else
-static inline mx28_init_spdif(void)
+static inline void mx28_init_spdif(void)
 {
 }
 #endif

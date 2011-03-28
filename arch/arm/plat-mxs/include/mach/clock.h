@@ -106,8 +106,8 @@ extern u32 mxs_ram_funcs_sz;
 #else
 static inline int mxs_ram_freq_scale(struct mxs_emi_scaling_data *p)
 {
+	return 0;
 }
-static u32 mxs_ram_funcs_sz;
 #endif
 
 /* Clock flags */
