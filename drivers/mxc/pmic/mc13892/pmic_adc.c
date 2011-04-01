@@ -1,15 +1,21 @@
 /*
- * Copyright 2008-2010 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2008-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-/*
- * The code contained herein is licensed under the GNU General Public
- * License. You may obtain a copy of the GNU General Public License
- * Version 2 or later at the following locations:
- *
- * http://www.opensource.org/licenses/gpl-license.html
- * http://www.gnu.org/copyleft/gpl.html
- */
 #include <linux/platform_device.h>
 #include <linux/poll.h>
 #include <linux/sched.h>
@@ -186,14 +192,6 @@ static int suspend_flag;
 
 static wait_queue_head_t suspendq;
 
-/* EXPORTED FUNCTIONS */
-EXPORT_SYMBOL(pmic_adc_init);
-EXPORT_SYMBOL(pmic_adc_deinit);
-EXPORT_SYMBOL(pmic_adc_convert);
-EXPORT_SYMBOL(pmic_adc_convert_8x);
-EXPORT_SYMBOL(pmic_adc_set_touch_mode);
-EXPORT_SYMBOL(pmic_adc_get_touch_mode);
-EXPORT_SYMBOL(pmic_adc_get_touch_sample);
 
 static DECLARE_COMPLETION(adcdone_it);
 static DECLARE_COMPLETION(adcbisdone_it);
@@ -242,12 +240,11 @@ static unsigned channel_num[] = {
 
 static bool pmic_adc_ready;
 
-int is_pmic_adc_ready()
+int is_mc13892_adc_ready()
 {
 	return pmic_adc_ready;
 }
-EXPORT_SYMBOL(is_pmic_adc_ready);
-
+EXPORT_SYMBOL(is_mc13892_adc_ready);
 
 static int pmic_adc_suspend(struct platform_device *pdev, pm_message_t state)
 {
@@ -336,7 +333,7 @@ static int pmic_adc_filter(t_touch_screen *ts_curr)
 	return 0;
 }
 
-int pmic_adc_init(void)
+int mc13892_adc_init(void)
 {
 	unsigned int reg_value = 0, i = 0;
 
@@ -378,7 +375,7 @@ int pmic_adc_init(void)
 	return PMIC_SUCCESS;
 }
 
-PMIC_STATUS pmic_adc_deinit(void)
+PMIC_STATUS mc13892_adc_deinit(void)
 {
 	CHECK_ERROR(pmic_event_unsubscribe(EVENT_ADCDONEI, event_adc));
 	CHECK_ERROR(pmic_event_unsubscribe(EVENT_ADCBISDONEI, event_adc_bis));
@@ -412,7 +409,7 @@ int mc13892_adc_init_param(t_adc_param *adc_param)
 	return 0;
 }
 
-PMIC_STATUS mc13892_adc_convert(t_adc_param *adc_param)
+PMIC_STATUS __mc13892_adc_convert(t_adc_param *adc_param)
 {
 	bool use_bis = false;
 	unsigned int adc_0_reg = 0, adc_1_reg = 0, result_reg = 0, i = 0;
@@ -420,7 +417,7 @@ PMIC_STATUS mc13892_adc_convert(t_adc_param *adc_param)
 	pmic_version_t mc13892_ver;
 	int ret;
 
-	pr_debug("mc13892 ADC - mc13892_adc_convert ....\n");
+	pr_debug("mc13892 ADC - __mc13892_adc_convert ....\n");
 	if (suspend_flag == 1)
 		return -EBUSY;
 
@@ -669,7 +666,7 @@ t_reading_mode mc13892_set_read_mode(t_channel channel)
 	return read_mode;
 }
 
-PMIC_STATUS pmic_adc_convert(t_channel channel, unsigned short *result)
+PMIC_STATUS mc13892_adc_convert(t_channel channel, unsigned short *result)
 {
 	t_adc_param adc_param;
 	PMIC_STATUS ret;
@@ -684,7 +681,7 @@ PMIC_STATUS pmic_adc_convert(t_channel channel, unsigned short *result)
 		return PMIC_PARAMETER_ERROR;
 	}
 	mc13892_adc_init_param(&adc_param);
-	pr_debug("pmic_adc_convert\n");
+	pr_debug("mc13892_adc_convert\n");
 	adc_param.read_ts = false;
 	adc_param.single_channel = true;
 	adc_param.read_mode = mc13892_set_read_mode(channel);
@@ -695,14 +692,15 @@ PMIC_STATUS pmic_adc_convert(t_channel channel, unsigned short *result)
 	else
 		return PMIC_PARAMETER_ERROR;
 
-	ret = mc13892_adc_convert(&adc_param);
+	ret = __mc13892_adc_convert(&adc_param);
 	for (i = 0; i <= 7; i++)
 		result[i] = adc_param.value[i];
 
 	return ret;
 }
+EXPORT_SYMBOL(mc13892_adc_convert);
 
-PMIC_STATUS pmic_adc_convert_8x(t_channel channel, unsigned short *result)
+PMIC_STATUS mc13892_adc_convert_8x(t_channel channel, unsigned short *result)
 {
 	t_adc_param adc_param;
 	int i;
@@ -717,7 +715,7 @@ PMIC_STATUS pmic_adc_convert_8x(t_channel channel, unsigned short *result)
 		return PMIC_PARAMETER_ERROR;
 	}
 	mc13892_adc_init_param(&adc_param);
-	pr_debug("pmic_adc_convert_8x\n");
+	pr_debug("mc13892_adc_convert_8x\n");
 	adc_param.read_ts = false;
 	adc_param.single_channel = true;
 	adc_param.read_mode = mc13892_set_read_mode(channel);
@@ -728,14 +726,15 @@ PMIC_STATUS pmic_adc_convert_8x(t_channel channel, unsigned short *result)
 	} else
 		return PMIC_PARAMETER_ERROR;
 
-	ret = mc13892_adc_convert(&adc_param);
+	ret = __mc13892_adc_convert(&adc_param);
 	for (i = 0; i <= 7; i++)
 		result[i] = adc_param.value[i];
 
 	return ret;
 }
+EXPORT_SYMBOL(mc13892_adc_convert_8x);
 
-PMIC_STATUS pmic_adc_set_touch_mode(t_touch_mode touch_mode)
+PMIC_STATUS mc13892_adc_set_touch_mode(t_touch_mode touch_mode)
 {
 	if (suspend_flag == 1)
 		return -EBUSY;
@@ -745,8 +744,9 @@ PMIC_STATUS pmic_adc_set_touch_mode(t_touch_mode touch_mode)
 				   BITFMASK(MC13892_ADC0_TS_M)));
 	return PMIC_SUCCESS;
 }
+EXPORT_SYMBOL(mc13892_adc_set_touch_mode);
 
-PMIC_STATUS pmic_adc_get_touch_mode(t_touch_mode *touch_mode)
+PMIC_STATUS mc13892_adc_get_touch_mode(t_touch_mode *touch_mode)
 {
 	unsigned int value;
 	if (suspend_flag == 1)
@@ -758,8 +758,9 @@ PMIC_STATUS pmic_adc_get_touch_mode(t_touch_mode *touch_mode)
 
 	return PMIC_SUCCESS;
 }
+EXPORT_SYMBOL(mc13892_adc_get_touch_mode);
 
-PMIC_STATUS pmic_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
+PMIC_STATUS mc13892_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
 {
 	if (mc13892_adc_read_ts(touch_sample, wait) != 0)
 		return PMIC_ERROR;
@@ -768,6 +769,7 @@ PMIC_STATUS pmic_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
 	else
 		return PMIC_ERROR;
 }
+EXPORT_SYMBOL(mc13892_adc_get_touch_sample);
 
 PMIC_STATUS mc13892_adc_read_ts(t_touch_screen *ts_value, int wait_tsi)
 {
@@ -783,7 +785,7 @@ PMIC_STATUS mc13892_adc_read_ts(t_touch_screen *ts_value, int wait_tsi)
 	mc13892_adc_init_param(&param);
 	param.wait_tsi = wait_tsi;
 	param.read_ts = true;
-	if (mc13892_adc_convert(&param) != 0)
+	if (__mc13892_adc_convert(&param) != 0)
 		return PMIC_ERROR;
 	/* check if x-y is ok */
 	if (param.ts_value.contact_resistance < 1000) {
@@ -944,16 +946,16 @@ static int cmd(unsigned int index, int value)
 		mc13892_adc_init_param(&adc_param_db);
 		break;
 	case ADC_START:
-		mc13892_adc_convert(&adc_param_db);
+		__mc13892_adc_convert(&adc_param_db);
 		break;
 	case ADC_TS:
-		pmic_adc_get_touch_sample(&ts, 1);
+		mc13892_adc_get_touch_sample(&ts, 1);
 		pr_debug("x = %d\n", ts.x_position);
 		pr_debug("y = %d\n", ts.y_position);
 		pr_debug("p = %d\n", ts.contact_resistance);
 		break;
 	case ADC_TS_READ:
-		pmic_adc_get_touch_sample(&ts, 0);
+		mc13892_adc_get_touch_sample(&ts, 0);
 		pr_debug("x = %d\n", ts.x_position);
 		pr_debug("y = %d\n", ts.y_position);
 		pr_debug("p = %d\n", ts.contact_resistance);
@@ -1330,20 +1332,21 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_adc);
 	if (ret) {
-		pr_debug("Can't create device file!\n");
+		pr_err("Can't create device file!\n");
 		ret = -ENODEV;
 		goto dev_destroy;
 	}
 
 	init_waitqueue_head(&suspendq);
 
-	ret = pmic_adc_init();
+	ret = mc13892_adc_init();
 	if (ret != PMIC_SUCCESS) {
-		pr_debug("Error in pmic_adc_init.\n");
+		pr_err("Error in pmic_adc_init.\n");
 		goto rm_dev_file;
 	}
 
 	pmic_adc_ready = 1;
+	register_adc_apis(&pmic_adc_api);
 	printk(KERN_DEBUG"PMIC ADC successfully probed\n");
 	return 0;
 
@@ -1360,7 +1363,7 @@ unreg_char:
 
 static int pmic_adc_module_remove(struct platform_device *pdev)
 {
-	pmic_adc_deinit();
+	mc13892_adc_deinit();
 	pmic_adc_ready = 0;
 	pr_debug("PMIC ADC successfully removed\n");
 	return 0;
@@ -1380,7 +1383,7 @@ static void pmic_adc_module_shutdown(struct platform_device *pdev)
 
 static struct platform_driver pmic_adc_driver_ldm = {
 	.driver = {
-		   .name = "pmic_adc",
+		   .name = "mc13892_adc",
 		   },
 	.suspend = pmic_adc_suspend,
 	.resume = pmic_adc_resume,
