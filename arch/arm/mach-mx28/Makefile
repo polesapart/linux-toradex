@@ -1,11 +1,12 @@
 #
 # Makefile for the linux kernel.
 #
-obj-y += pinctrl.o clock.o device.o serial.o power.o bus_freq.o pm.o sleep.o
+obj-y += pinctrl.o clock.o device.o serial.o bus_freq.o pm.o sleep.o
 
 # Board select
 obj-$(CONFIG_MACH_MX28EVK) += mx28evk.o mx28evk_pins.o
 obj-$(CONFIG_MACH_CPX2) += mx28_cpx2.o mx28_cpx2_pins.o
+obj-$(CONFIG_REGULATOR_MXS) += power.o
 obj-$(CONFIG_GENERIC_GPIO) += gpio.o
 obj-$(CONFIG_MXS_RAM_FREQ_SCALING) +=emi.o emi_settings.o
 
