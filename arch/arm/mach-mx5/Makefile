@@ -24,5 +24,5 @@ obj-$(CONFIG_MACH_CCWMX53JS) += devices_ccwmx53.o mx53_ccwmx53js.o mx53_ccwmx53j
 obj-$(CONFIG_MACH_CCMX53JS) += devices_ccwmx53.o mx53_ccwmx53js.o mx53_ccwmx53js_pmic_da9053.o \
                                mx53_ccwmx53js_gpio.o
 obj-$(CONFIG_MACH_MX50_ARM2) += mx50_arm2.o mx50_arm2_pmic_mc13892.o
-obj-$(CONFIG_MACH_MX50_RDP) += mx50_rdp.o mx50_rdp_pmic_mc13892.o
+obj-$(CONFIG_MACH_MX50_RDP) += mx50_rdp.o mx50_rdp_pmic_mc13892.o mx50_rdp_pmic_mc34708.o
 obj-$(CONFIG_MXC_BLUETOOTH_RFKILL) += mx53_smd_rfkill.o
