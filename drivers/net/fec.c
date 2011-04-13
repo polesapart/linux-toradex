@@ -19,7 +19,7 @@
  * Copyright (c) 2004-2006 Macq Electronique SA.
  *
  * Support for FEC IEEE 1588.
- * Copyright (C) 2010 Freescale Semiconductor, Inc.
+ * Copyright (C) 2010-2011 Freescale Semiconductor, Inc.
  */
 
 #include <linux/module.h>
@@ -174,7 +174,7 @@ struct fec_enet_private {
 	struct bufdesc	*rx_bd_base;
 	struct bufdesc	*tx_bd_base;
 	/* The next free ring entry */
-	struct bufdesc	*cur_rx, *cur_tx; 
+	struct bufdesc	*cur_rx, *cur_tx;
 	/* The ring entries to be free()ed */
 	struct bufdesc	*dirty_tx;
 
@@ -410,6 +410,7 @@ fec_enet_tx(struct net_device *dev)
 #if defined(CONFIG_ENHANCED_BD)
 	unsigned long estatus;
 #endif
+
 	struct	sk_buff	*skb;
 
 	fep = netdev_priv(dev);

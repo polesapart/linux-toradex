@@ -99,9 +99,6 @@ static struct fsl_otg_config fsl_otg_initdata = {
  */
 static unsigned long last_busy;
 static bool clk_stopped;
-#if 0
-static struct timer_list monitor_timer;
-#endif
 static struct workqueue_struct *otg_queue;
 
 static void schedule_otg_work(struct delayed_work *dwork, unsigned long delay)
@@ -430,30 +427,6 @@ static void fsl_otg_clk_gate(bool on)
 		    pdata->usb_clock_for_pm(on);
 	}
 }
-
-#if 0
-static void fsl_otg_clk_ctl(void)
-{
-	if (clk_stopped) {
-		fsl_otg_clk_gate(true);
-		clk_stopped = false;
-	}
-	last_busy = jiffies;
-}
-
-
-static void fsl_otg_loading_monitor(unsigned long data)
-{
-	unsigned long now = jiffies;
-	if (!clk_stopped) {
-		if (time_after(now, last_busy + msecs_to_jiffies(IDLE_TIME))) {
-			clk_stopped = true;
-			fsl_otg_clk_gate(false);
-		}
-	}
-	mod_timer(&monitor_timer, jiffies + msecs_to_jiffies(TIMER_FREQ));
-}
-#endif
 
 /**
  * Enable vbus interrupt
