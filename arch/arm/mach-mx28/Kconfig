@@ -8,24 +8,24 @@ config MACH_MX28EVK
 
 config MACH_CPX2
 	bool "Digi International ConnectPort X2"
-	depends on ARCH_MX28 
+	depends on ARCH_MX28
 	select USB_ARCH_HAS_EHCI
 
 endchoice
 
 config MTD_DIGI_REMOVE_DEFAULT_FREESCALE_PARTITION
 	bool "Remove the default boot partition created by Freescale"
-	depends on ARCH_MX28 
+	depends on ARCH_MX28
 	default y
 	help
-		You should select yes unless you know what you are doing.  We normally
-		use kernel command line arguments to set the NAND partition information.
-		However, the Freescale platform code creates a 20 Megabyte boot partition
-		by default, and this will interfere with the partition settings on the
-		command line.  So if you want to set the NAND partitions on the kernel
-		command line, then set this option to y.  We normally do this for the
-		cpx2 platform.
-		
+	  You should select yes unless you know what you are doing.  We normally
+	  use kernel command line arguments to set the NAND partition information.
+	  However, the Freescale platform code creates a 20 Megabyte boot partition
+	  by default, and this will interfere with the partition settings on the
+	  command line.  So if you want to set the NAND partitions on the kernel
+	  command line, then set this option to y.  We normally do this for the
+	  cpx2 platform.
+
 config VECTORS_PHY_ADDR
 	int "vectors address"
 	default 0
