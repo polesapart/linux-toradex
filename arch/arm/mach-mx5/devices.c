@@ -735,7 +735,6 @@ static struct mxc_i2c_platform_data mxci2c3_data = {
 #endif
 
 struct platform_device mxci2c_devices[] = {
-#ifdef CONFIG_I2C_MXC_SELECT1
 	{
 		.name = "mxc_i2c",
 		.id = 0,
@@ -746,8 +745,6 @@ struct platform_device mxci2c_devices[] = {
 		.num_resources = ARRAY_SIZE(mxci2c1_resources),
 		.resource = mxci2c1_resources,
 	},
-#endif
-#ifdef CONFIG_I2C_MXC_SELECT2
 	{
 		.name = "mxc_i2c",
 		.id = 1,
@@ -758,8 +755,6 @@ struct platform_device mxci2c_devices[] = {
 		.num_resources = ARRAY_SIZE(mxci2c2_resources),
 		.resource = mxci2c2_resources,
 	},
-#endif
-#ifdef CONFIG_I2C_MXC_SELECT3
 	{
 		.name = "mxc_i2c",
 		.id = 2,
@@ -770,7 +765,6 @@ struct platform_device mxci2c_devices[] = {
 		.num_resources = ARRAY_SIZE(mxci2c3_resources),
 		.resource = mxci2c3_resources,
 	},
-#endif
 };
 
 #if defined(CONFIG_I2C_MXC_HS) || defined(CONFIG_I2C_MXC_HS_MODULE)
