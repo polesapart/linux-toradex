@@ -675,7 +675,6 @@ static void mxc_nop_release(struct device *dev)
 /* I2C controller and device data */
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
-#ifdef CONFIG_I2C_MXC_SELECT1
 static struct resource mxci2c1_resources[] = {
 	{
 		.start = I2C1_BASE_ADDR,
@@ -693,7 +692,6 @@ static struct resource mxci2c1_resources[] = {
 static struct mxc_i2c_platform_data mxci2c1_data = {
 	.i2c_clk = 400000,
 };
-#endif
 
 static struct resource mxci2c2_resources[] = {
 	{
