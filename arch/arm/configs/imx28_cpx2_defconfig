@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.35.3
-# Mon Dec  6 17:17:47 2010
+# Linux kernel version: 2.6.35
+# Tue Apr 19 19:55:08 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -355,8 +355,7 @@ CONFIG_ALIGNMENT_TRAP=y
 #
 CONFIG_ZBOOT_ROM_TEXT=0
 CONFIG_ZBOOT_ROM_BSS=0
-CONFIG_CMDLINE="ip=192.168.42.30:192.168.42.1:0.0.0.0:255.255.255.0:cpx2:eth0:off console=ttyAM0,115200 root=nfs nfsroot=192.168.42.1:/exports/cpx2 gpmi"
-# CONFIG_CMDLINE_FORCE is not set
+CONFIG_CMDLINE=""
 # CONFIG_XIP_KERNEL is not set
 # CONFIG_KEXEC is not set
 
