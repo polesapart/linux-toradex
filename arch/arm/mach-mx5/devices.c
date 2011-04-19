@@ -695,7 +695,6 @@ static struct mxc_i2c_platform_data mxci2c1_data = {
 };
 #endif
 
-#ifdef CONFIG_I2C_MXC_SELECT2
 static struct resource mxci2c2_resources[] = {
 	{
 		.start = I2C2_BASE_ADDR,
@@ -712,9 +711,7 @@ static struct resource mxci2c2_resources[] = {
 static struct mxc_i2c_platform_data mxci2c2_data = {
 	.i2c_clk = 400000,
 };
-#endif
 
-#ifdef CONFIG_I2C_MXC_SELECT3
 static struct resource mxci2c3_resources[] = {
 	{
 	       .start = I2C3_BASE_ADDR,
@@ -732,7 +729,6 @@ static struct resource mxci2c3_resources[] = {
 static struct mxc_i2c_platform_data mxci2c3_data = {
 	.i2c_clk = 400000,
 };
-#endif
 
 struct platform_device mxci2c_devices[] = {
 	{
@@ -1887,18 +1883,12 @@ int __init mxc_init_devices(void)
 		mxcspi2_resources[0].end -= MX53_OFFSET;
 		mxcspi3_resources[0].start -= MX53_OFFSET;
 		mxcspi3_resources[0].end -= MX53_OFFSET;
-#ifdef CONFIG_I2C_MXC_SELECT1
 		mxci2c1_resources[0].start -= MX53_OFFSET;
 		mxci2c1_resources[0].end -= MX53_OFFSET;
-#endif
-#ifdef CONFIG_I2C_MXC_SELECT2
 		mxci2c2_resources[0].start -= MX53_OFFSET;
 		mxci2c2_resources[0].end -= MX53_OFFSET;
-#endif
-#ifdef CONFIG_I2C_MXC_SELECT3
 		mxci2c3_resources[0].start -= MX53_OFFSET;
 		mxci2c3_resources[0].end -= MX53_OFFSET;
-#endif
 		ssi1_resources[0].start -= MX53_OFFSET;
 		ssi1_resources[0].end -= MX53_OFFSET;
 		ssi2_resources[0].start -= MX53_OFFSET;
