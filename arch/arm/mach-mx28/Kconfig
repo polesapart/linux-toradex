@@ -16,7 +16,8 @@ endchoice
 config MTD_DIGI_REMOVE_DEFAULT_FREESCALE_PARTITION
 	bool "Remove the default boot partition created by Freescale"
 	depends on ARCH_MX28
-	default y
+	default y if MACH_CPX2
+	default n
 	help
 	  You should select yes unless you know what you are doing.  We normally
 	  use kernel command line arguments to set the NAND partition information.
@@ -25,6 +26,16 @@ config MTD_DIGI_REMOVE_DEFAULT_FREESCALE_PARTITION
 	  command line.  So if you want to set the NAND partitions on the kernel
 	  command line, then set this option to y.  We normally do this for the
 	  cpx2 platform.
+
+config NO_OTP_MAC_ADDRESS
+	bool "Do not read FEC MAC address from OTP bits"
+	depends on ARCH_MX28
+	default y if MACH_CPX2
+	default n
+	help
+	  Enabling this option disregards OTP bits (e-fuses) reserved to store
+	  the MAC address of the FEC. Instead, the MAC will be set by U-Boot or
+	  by the kernel command line with "fec_mac=...".
 
 config VECTORS_PHY_ADDR
 	int "vectors address"

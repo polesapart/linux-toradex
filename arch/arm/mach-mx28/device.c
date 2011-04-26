@@ -824,7 +824,9 @@ static void __init mx28_init_fec(void)
 	struct mxs_dev_lookup *lookup;
 	struct fec_platform_data *pfec;
 	int i;
+#ifndef CONFIG_NO_OTP_MAC_ADDRESS
 	u32 val;
+#endif
 
 	__raw_writel(BM_OCOTP_CTRL_RD_BANK_OPEN,
 			IO_ADDRESS(OCOTP_PHYS_ADDR) + HW_OCOTP_CTRL_SET);
@@ -839,8 +841,6 @@ static void __init mx28_init_fec(void)
 
 	for (i = 0; i < lookup->size; i++) {
 		pdev = lookup->pdev + i;
-		val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
-						HW_OCOTP_CUSTn(pdev->id));
 		switch (pdev->id) {
 		case 0:
 			pdev->resource = fec0_resource;
@@ -857,13 +857,18 @@ static void __init mx28_init_fec(void)
 		}
 
 		pfec = (struct fec_platform_data *)pdev->dev.platform_data;
+#ifdef CONFIG_NO_OTP_MAC_ADDRESS
+		memset(pfec->mac, 0, sizeof(pfec->mac));
+#else
+		val =  __raw_readl(IO_ADDRESS(OCOTP_PHYS_ADDR) +
+						HW_OCOTP_CUSTn(pdev->id));
 		pfec->mac[0] = 0x00;
 		pfec->mac[1] = 0x04;
 		pfec->mac[2] = (val >> 24) & 0xFF;
 		pfec->mac[3] = (val >> 16) & 0xFF;
 		pfec->mac[4] = (val >> 8) & 0xFF;
 		pfec->mac[5] = (val >> 0) & 0xFF;
-
+#endif
 		mxs_add_device(pdev, 2);
 	}
 }
