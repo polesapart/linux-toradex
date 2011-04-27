@@ -969,7 +969,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .fun      = PIN_FUN1,
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
-	 .pullup   = 0,
+	 .pullup   = 1,
 	 .drive    = !0
 	 },
 	{
@@ -978,7 +978,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .fun      = PIN_FUN1,
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
-	 .pullup   = 0,
+	 .pullup   = 1,
 	 .drive    = !0
 	 },
 	{
@@ -987,7 +987,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .fun      = PIN_FUN1,
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
-	 .pullup   = 0,
+	 .pullup   = 1,
 	 .drive    = !0
 	 },
 	{
@@ -996,14 +996,14 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .fun      = PIN_FUN1,
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
-	 .pullup   = 0,
+	 .pullup   = 1,
 	 .drive    = !0
 	 },
 	{
 	 .name     = "GPMI RD-",
 	 .id       = PINID_GPMI_RDN,
 	 .fun      = PIN_FUN1,
-	 .strength = PAD_12MA,
+	 .strength = PAD_8MA,
 	 .voltage  = PAD_3_3V,
 	 .pullup   = 0,
 	 .drive    = !0
@@ -1012,7 +1012,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .name     = "GPMI WR-",
 	 .id       = PINID_GPMI_WRN,
 	 .fun      = PIN_FUN1,
-	 .strength = PAD_12MA,
+	 .strength = PAD_8MA,
 	 .voltage  = PAD_3_3V,
 	 .pullup   = 0,
 	 .drive    = !0
@@ -1039,7 +1039,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	 .name     = "GPMI RST-",
 	 .id       = PINID_GPMI_RESETN,
 	 .fun      = PIN_FUN1,
-	 .strength = PAD_12MA,
+	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
 	 .pullup   = 0,
 	 .drive    = !0
