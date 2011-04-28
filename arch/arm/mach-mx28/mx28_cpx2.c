@@ -81,6 +81,40 @@ static void __init fixup_board(struct machine_desc *desc, struct tag *tags,
 	mx28_set_input_clk(24000000, 24000000, 32000, 50000000);
 }
 
+#if !defined(CONFIG_WLAN) && (defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)) \
+	&& (defined (CONFIG_LEDS_GPIO_PLATFORM) || defined (CONFIG_LEDS_GPIO_PLATFORM_MODULE) )
+#include <linux/leds.h>
+
+static struct gpio_led mxs_cpx2_leds[] = {
+	[0] = {
+		.gpio			= 117, /* GPIO3_21 */
+		.name			= "mxs-cpx2-wifi:green",
+		.default_trigger	= "heartbeat",
+		.active_low		= 0,
+	},
+};
+
+static struct gpio_led_platform_data mxs_cpx2_leds_pdata = {
+	.num_leds	= ARRAY_SIZE(mxs_cpx2_leds),
+	.leds		= mxs_cpx2_leds,
+};
+
+static struct platform_device mxs_cpx2_led_device = {
+	.name		= "leds-gpio",
+	.id		= -1,
+	.dev		= {
+		.platform_data	= &mxs_cpx2_leds_pdata,
+	},
+};
+
+static void __init mx28_cpx2_init_leds(void)
+{
+	platform_device_register(&mxs_cpx2_led_device);
+}
+#else
+static inline void mx28_cpx2_init_leds(void) {}
+#endif
+
 #if defined(CONFIG_LEDS_MXS) || defined(CONFIG_LEDS_MXS_MODULE)
 static struct mxs_pwm_led  mx28_cpx2_led_pwm[2] = {
 	[0] = {
@@ -104,7 +138,7 @@ static struct resource mx28_cpx2_led_res = {
 	.end   = PWM_PHYS_ADDR + 0x3FFF,
 };
 
-static void __init mx28_cpx2_init_leds(void)
+static void __init mx28_cpx2_init_pwm_leds(void)
 {
 	struct platform_device *pdev;
 
@@ -129,6 +163,7 @@ static void __init mx28_cpx2_device_init(void)
 	/* Add mx28_cpx2 special code */
 	i2c_device_init();
 	spi_device_init();
+	mx28_cpx2_init_pwm_leds();
 	mx28_cpx2_init_leds();
 }
 
