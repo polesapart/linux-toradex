@@ -220,8 +220,6 @@ static int __devinit mxs_wdt_probe(struct platform_device *pdev)
 	__raw_writel(BV_RTC_PERSISTENT1_GENERAL__RTC_FORCE_UPDATER,
 		     wdt_base + HW_RTC_PERSISTENT1_CLR);
 
-	wdt_disable();		/* disable for now */
-
 	ret = misc_register(&mxs_wdt_miscdev);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "cannot register misc device\n");
