@@ -61,6 +61,8 @@
 #ifndef _CRYPTO_CRYPTO_H_
 #define _CRYPTO_CRYPTO_H_
 
+#define CRYPTODEV_MINOR MISC_DYNAMIC_MINOR
+
 /* Some initial values */
 #define CRYPTO_DRIVERS_INITIAL	4
 #define CRYPTO_SW_SESSIONS	32
