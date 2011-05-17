@@ -24,12 +24,11 @@ static void lcd_bl_enable(int enable, int vif)
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
 	if (vif == 0)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), !enable);
-	else if (vif == 1)
 #if defined(CONFIG_JSCCWMX51_V2)
+	else if (vif == 1)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
-#else
-#error "A function to enable/disable the display has to be specified"
 #endif
+
 #elif defined(CONFIG_MODULE_CCXMX53)
 #define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO_4_20
 #define DISP1_ENABLE_GPIO	(3*32 + 20)
