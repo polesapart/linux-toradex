@@ -34,7 +34,9 @@
 extern int clk_get_usecount(struct clk *clk);
 static struct clk *usb_clk;
 static struct clk *usb_phy_clk;
+#ifdef CONFIG_USB_EHCI_ARC_OTG
 static struct platform_device *otg_host_pdev;
+#endif
 
 /* Beginning of Common operation for DR port */
 void fsl_phy_usb_utmi_init(struct fsl_xcvr_ops *this)
@@ -499,7 +501,9 @@ static struct fsl_usb2_wakeup_platform_data usbdr_wakeup_config = {
 
 static int __init usb_dr_init(void)
 {
+#ifdef CONFIG_USB_EHCI_ARC_OTG
 	struct platform_device *pdev;
+#endif
 
 	pr_debug("%s: \n", __func__);
 	dr_utmi_config.change_ahb_burst = 1;
