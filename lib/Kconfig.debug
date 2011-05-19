@@ -1119,16 +1119,18 @@ config ATOMIC64_SELFTEST
 
 config TMPFSDEV
 	bool "Create some device nodes in tmpfs"
-	depends on TMPFS
+	depends on TMPFS && BLK_DEV_INITRD
 	default n
 	help
 	  This hack allows the kernel to create some needed device nodes itself
-	  on booting. It mounts a tmpfs in /dev and creates the nodes inside.
+	  on booting when using an initramfs which doesn't contain them.
 
-	  This supports customization of root filesystems without root
-	  privileges.
+	  It mounts a tmpfs in /dev and creates the nodes inside.
 
 	  Currently created nodes: console, null.
+
+	  The recommended way is to include the device nodes on the initramfs
+	  itself.
 
 source "samples/Kconfig"
 
