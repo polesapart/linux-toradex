@@ -479,7 +479,7 @@ static struct platform_device busfreq_device = {
 
 #ifdef CONFIG_MXS_PERSISTENT
 static struct platform_device mxs_persistent = {
-	.name			= "mxs-persistent",
+	.name			= "persistent-memory",
 	.id			= 0,
 	.dev = {
 		.release = mxs_nop_release,
@@ -582,7 +582,7 @@ static struct mxs_dev_lookup dev_lookup[] = {
 
 #if defined(CONFIG_MXS_PERSISTENT)
 	{
-	.name = "mxs-persistent",
+	.name = "persistent-memory",
 	.size = 1,
 	.pdev = &mxs_persistent,
 	},

@@ -248,7 +248,7 @@ static struct platform_driver mxs_persistent_driver = {
 	.suspend	= mxs_persistent_suspend,
 	.resume		= mxs_persistent_resume,
 	.driver		= {
-		.name   = "mxs-persistent",
+		.name   = "persistent-memory",
 		.owner	= THIS_MODULE,
 	},
 };

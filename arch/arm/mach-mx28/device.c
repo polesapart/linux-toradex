@@ -1510,6 +1510,9 @@ mx28_persistent_bit_config[] = {
 		.name = "SPARE_4" },
 	{ .reg = 5, .start =  0, .width = 32,
 		.name = "SPARE_5" },
+
+	{ .reg = 2, .start =  0, .width = 2,
+		.name = "boot_attempts" },
 };
 
 static struct mxs_platform_persistent_data mx28_persistent_data = {
@@ -1528,7 +1531,7 @@ static struct resource mx28_persistent_res[] = {
 static void mx28_init_persistent(void)
 {
 	struct platform_device *pdev;
-	pdev = mxs_get_device("mxs-persistent", 0);
+	pdev = mxs_get_device("persistent-memory", 0);
 	if (pdev == NULL || IS_ERR(pdev))
 		return;
 	pdev->dev.platform_data = &mx28_persistent_data;
