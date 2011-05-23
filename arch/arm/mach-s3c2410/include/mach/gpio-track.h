@@ -17,6 +17,7 @@
 
 #include <mach/regs-gpio.h>
 
+#ifdef CONFIG_DEFAULT_GPIOLIB
 extern struct s3c_gpio_chip s3c24xx_gpios[];
 
 static inline struct s3c_gpio_chip *s3c_gpiolib_getchip(unsigned int pin)
@@ -29,5 +30,30 @@ static inline struct s3c_gpio_chip *s3c_gpiolib_getchip(unsigned int pin)
 	chip = &s3c24xx_gpios[pin/32];
 	return ((pin - chip->chip.base) < chip->chip.ngpio) ? chip : NULL;
 }
+#else
+
+extern struct s3c_gpio_chip s3c2443_gpio_ports[];
+extern size_t s3c2443_gpio_ports_size(void);
+
+static inline struct s3c_gpio_chip *s3c_gpiolib_getchip(unsigned int pin)
+{
+	struct s3c_gpio_chip *chip = NULL;
+	u32 i;
+
+	if (pin >= (S3C2410_GPM(0) + S3C2410_GPIO_M_NR))
+		return NULL;
+
+	for (i = 0; i < s3c2443_gpio_ports_size(); i++) {
+
+		if ( (pin >= s3c2443_gpio_ports[i].chip.base) &&
+			(pin < (s3c2443_gpio_ports[i].chip.base + s3c2443_gpio_ports[i].chip.ngpio))) {
+			chip = &s3c2443_gpio_ports[i];
+		}
+	}
+
+	return chip;
+}
+
+#endif
 
 #endif /* __ASM_ARCH_GPIO_CORE_H */

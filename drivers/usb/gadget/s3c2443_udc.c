@@ -371,10 +371,10 @@ static inline int s3c2443_udc_vbus_state(struct s3c24xx_udc *udc)
 		unsigned long iocfg;
 
 		/* @XXX: Do we really need to change to INPUT first? */
-		iocfg = s3c2410_gpio_getcfg(info->vbus_pin);
-		s3c2410_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
+		iocfg = s3c_gpio_getcfg(info->vbus_pin);
+		s3c_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
                 retval = s3c2410_gpio_getpin(info->vbus_pin);
-                s3c2410_gpio_cfgpin(info->vbus_pin, iocfg);
+                s3c_gpio_cfgpin(info->vbus_pin, iocfg);
 
                 if (info->vbus_pin_inverted)
                         retval = !retval;
@@ -660,7 +660,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 
 		info = udc->mach_info;
 
-		iocfg = s3c2410_gpio_getcfg(info->vbus_pin);
+		iocfg = s3c_gpio_getcfg(info->vbus_pin);
 		s3c2410_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
 		state = s3c2410_gpio_getpin(info->vbus_pin);
 		s3c2410_gpio_cfgpin(info->vbus_pin, iocfg);
@@ -1330,7 +1330,7 @@ static irqreturn_t s3c24xx_udc_vbus_irq(int irq, void *_udc)
 	info = udc->mach_info;
 
 	/* Some cpus cannot read from an line configured to IRQ! */
-	cfg = s3c2410_gpio_getcfg(info->vbus_pin);
+	cfg = s3c_gpio_getcfg(info->vbus_pin);
 	s3c2410_gpio_cfgpin(info->vbus_pin, S3C2410_GPIO_INPUT);
 	value = s3c2410_gpio_getpin(info->vbus_pin);
 	s3c2410_gpio_cfgpin(info->vbus_pin, cfg);
@@ -2369,7 +2369,7 @@ static const struct usb_gadget_ops s3c_udc_ops = {
 
 static void nop_release(struct device *dev)
 {
-	pk_dbg("%s %s\n", __FUNCTION__, dev->bus_id);
+	pk_dbg("%s %s\n", __FUNCTION__, dev->init_name);
 }
 
 /*
@@ -2386,7 +2386,7 @@ static struct s3c24xx_udc memory = {
 		.ep0 = &memory.ep[0].ep,
 		.name = DRIVER_NAME,
 		.dev = {
-			.bus_id = "gadget",
+			.init_name = "gadget",
 			.release = nop_release,
 		},
 	},
@@ -2587,7 +2587,7 @@ static int s3c24xx_udc_probe(struct platform_device *pdev)
 	pk_dbg("IRQ %i for the UDC\n", IRQ_USBD);
 
 	if (mach_info && mach_info->vbus_pin > 0) {
-		udc->irq_vbus = s3c2410_gpio_getirq(mach_info->vbus_pin);
+		udc->irq_vbus = gpio_to_irq(mach_info->vbus_pin);
 		retval = request_irq(udc->irq_vbus,
 				     s3c24xx_udc_vbus_irq,
 				     IRQF_DISABLED | IRQF_SHARED |

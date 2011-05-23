@@ -679,8 +679,10 @@ static void s3c24xx_serial_set_termios(struct uart_port *port,
 
 	baud = uart_get_baud_rate(port, termios, old, 0, 115200*8);
 
-	if (baud == 38400 && (port->flags & UPF_SPD_MASK) == UPF_SPD_CUST)
+	if (baud == 38400 && (port->flags & UPF_SPD_MASK) == UPF_SPD_CUST) {
 		quot = port->custom_divisor;
+		clksrc = &tmp_clksrc;
+	}
 	else
 		quot = s3c24xx_serial_getclk(port, &clksrc, &clk, baud);
 
@@ -795,11 +797,31 @@ static void s3c24xx_serial_set_termios(struct uart_port *port,
 
 static const char *s3c24xx_serial_type(struct uart_port *port)
 {
+#if defined(CONFIG_MACH_CC9M2443JS)
+	struct platform_device *pdev;
+	struct s3c2410_uartcfg *cfg;
+#endif
+
 	switch (port->type) {
 	case PORT_S3C2410:
 		return "S3C2410";
 	case PORT_S3C2440:
+		#if defined(CONFIG_MACH_CC9M2443JS)
+		pdev = to_platform_device(port->dev);
+		cfg = s3c24xx_dev_to_cfg(&pdev->dev);
+		if (0 == cfg->hwport)
+			return "S3C2410 PORT A";
+		else if (1 == cfg->hwport)
+			return "S3C2410 PORT B";
+		else if (2 == cfg->hwport)
+			return "S3C2410 PORT C";
+		else if (3 == cfg->hwport)
+			return "S3C2410 PORT D";
+		else
+			return NULL;
+#else
 		return "S3C2440";
+#endif
 	case PORT_S3C2412:
 		return "S3C2412";
 	case PORT_S3C6400:
@@ -878,10 +900,10 @@ static struct uart_ops s3c24xx_serial_ops = {
 
 static struct uart_driver s3c24xx_uart_drv = {
 	.owner		= THIS_MODULE,
-	.dev_name	= "s3c2410_serial",
+	.driver_name	= "s3c2410_serial",
 	.nr		= CONFIG_SERIAL_SAMSUNG_UARTS,
 	.cons		= S3C24XX_SERIAL_CONSOLE,
-	.driver_name	= S3C24XX_SERIAL_NAME,
+	.dev_name	= S3C24XX_SERIAL_NAME,
 	.major		= S3C24XX_SERIAL_MAJOR,
 	.minor		= S3C24XX_SERIAL_MINOR,
 };
@@ -1097,6 +1119,10 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 
 	port->mapbase = res->start;
 	port->membase = S3C_VA_UART + res->start - (S3C_PA_UART & 0xfff00000);
+
+	/* Use the number of the HW port as line number (Luis Galdos) */
+	port->line      = cfg->hwport;
+
 	ret = platform_get_irq(platdev, 0);
 	if (ret < 0)
 		port->irq = 0;

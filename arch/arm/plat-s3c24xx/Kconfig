@@ -6,7 +6,6 @@ config PLAT_S3C24XX
 	bool
 	depends on ARCH_S3C2410 || ARCH_S3C24A0
 	default y
-	select NO_IOPORT
 	select ARCH_REQUIRE_GPIOLIB
 	select S3C_DEVICE_NAND
 	select S3C_GPIO_CFG_S3C24XX
@@ -104,6 +103,13 @@ config S3C2410_DMA_DEBUG
 	help
 	  Enable debugging output for the DMA code. This option sends info
 	  to the kernel log, at priority KERN_DEBUG.
+
+config DEFAULT_GPIOLIB
+	bool "Default GPIOLIB support"
+	depends on ARCH_S3C2410
+	default n
+	help
+	  Provides the default GPIOLIB support instead of a machine specific one.
 
 # SPI default pin configuration code
 

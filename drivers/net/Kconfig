@@ -1051,15 +1051,6 @@ config SMSC911X
 	  <file:Documentation/networking/net-modules.txt>. The module
 	  will be called smsc911x.
 
-config SMSC9118
-        tristate "SMSC LAN9218 support"
-        depends on NET_ETHERNET && (MACH_CC9M2443JS || MACH_CCW9M2443JS)
-        select CRC32
-        select MII
-        ---help---
-          Say Y here if you want support for SMSC LAN921x families
-          of ethernet controllers.
-
 config NET_VENDOR_RACAL
 	bool "Racal-Interlan (Micom) NI cards"
 	depends on ISA

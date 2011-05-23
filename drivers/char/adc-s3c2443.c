@@ -29,9 +29,10 @@
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
+#include <linux/slab.h>
 
 #include <plat/regs-adc.h>
-#include <plat/ts.h>
+#include <plat/s3c_ts.h>
 
 #define DRIVER_NAME	"s3c2443-adc"
 #ifndef NUM_CHANNELS

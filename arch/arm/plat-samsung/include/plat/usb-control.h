@@ -26,9 +26,22 @@ struct s3c2410_hcd_info {
 	struct usb_hcd		*hcd;
 	struct s3c2410_hcd_port	port[2];
 
-	void		(*power_control)(int port, int to);
+	void		(*power_control)(struct s3c2410_hcd_info *, int port, int to);
 	void		(*enable_oc)(struct s3c2410_hcd_info *, int on);
 	void		(*report_oc)(struct s3c2410_hcd_info *, int ports);
+
+	/* GPIO that should be used as interrupt source */
+        unsigned long   oc_gpio;
+        unsigned long   oc_gpio_cfg;
+        int oc_irq;
+
+        /* GPIO with the power enable */
+        unsigned long   pw_gpio;
+        unsigned long   pw_gpio_cfg;
+        unsigned long   pw_gpio_inv;
+
+        /* Timer used for the secure power-on of the VBUS */
+        struct timer_list timer;
 };
 
 static void inline s3c2410_usb_report_oc(struct s3c2410_hcd_info *info, int ports)

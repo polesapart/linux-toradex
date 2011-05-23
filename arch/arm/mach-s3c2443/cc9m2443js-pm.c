@@ -217,5 +217,5 @@ void __init cc9m2443js_pm_init(void)
 	sysdev_register(&cc9m2443js_pm_sysdev);
 
 	/* This is the main function for the PM of the Samsung-platforms */
-	s3c2410_pm_init();
+	s3c_pm_init();
 }

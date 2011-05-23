@@ -1,8 +1,8 @@
 
 static void lcd_power_enable_lq70(int enable)
 {
-	s3c2443_gpio_cfgpin(S3C2410_GPG4, S3C2410_GPG4_OUTP);
-	s3c2410_gpio_setpin(S3C2410_GPG4, enable ? 0 : 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(4), (0x01 << 8)); /* Output */
+	s3c2410_gpio_setpin(S3C2410_GPG(4), enable ? 0 : 1);
 }
 
 #define LQ070Y3DG3B1_DISPLAY		\

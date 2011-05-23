@@ -41,13 +41,15 @@
 #include <asm/irq.h>
 #include <asm/scatterlist.h>
 #include <asm/sizes.h>
-#include <asm/mach/mmc.h>
+//#include <linux/amba/mmci.h>
 
 #include <mach/dma.h>
 #include <plat/hsmmc.h>
 #include <mach/regs-hsmmc.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-gpioj.h>
+#include <mach/gpio-fns.h>
+#include <mach/gpio-nrs.h>
 
 
 #define printk_err(fmt, args...)                printk(KERN_ERR "[ ERROR ] hsmmc: " fmt, ## args)
@@ -192,7 +194,7 @@ static void s3c_hsmmc_activate_led(struct s3c_hsmmc_host *host)
 	unsigned int ctrl;
 	struct s3c_hsmmc_cfg *cfg = host->plat_data;
 
-	if (cfg->gpio_led == S3C2443_GPJ13) {
+	if (cfg->gpio_led == S3C2410_GPJ(13)) {
 		ctrl = s3c_hsmmc_readl(S3C2410_HSMMC_HOSTCTL);
 		ctrl &= ~S3C_HSMMC_CTRL_LED;
 		s3c_hsmmc_writel(ctrl, S3C2410_HSMMC_HOSTCTL);
@@ -210,7 +212,7 @@ static void s3c_hsmmc_deactivate_led(struct s3c_hsmmc_host *host)
 	unsigned int ctrl;
 	struct s3c_hsmmc_cfg *cfg = host->plat_data;
 	
-	if (cfg->gpio_led == S3C2443_GPJ13) {
+	if (cfg->gpio_led == S3C2410_GPJ(13)) {
 		ctrl = s3c_hsmmc_readl(S3C2410_HSMMC_HOSTCTL);
 		ctrl |= S3C_HSMMC_CTRL_LED;
 		s3c_hsmmc_writel(ctrl, S3C2410_HSMMC_HOSTCTL);
@@ -996,33 +998,33 @@ static void s3c_hsmmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	switch (ios->power_mode) {
 	case MMC_POWER_ON:
 	case MMC_POWER_UP:
-		s3c2410_gpio_cfgpin(S3C2443_GPL0, S3C2443_GPL0_SD0DAT0);
+		s3c2410_gpio_cfgpin(S3C2410_GPL(0), S3C2443_GPL0_SD0DAT0);
 
 		if (cfg->host_caps & (MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA)) {
-			s3c2410_gpio_cfgpin(S3C2443_GPL1, S3C2443_GPL1_SD0DAT1);
-			s3c2410_gpio_cfgpin(S3C2443_GPL2, S3C2443_GPL2_SD0DAT2);
-			s3c2410_gpio_cfgpin(S3C2443_GPL3, S3C2443_GPL3_SD0DAT3);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(1), S3C2443_GPL1_SD0DAT1);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(2), S3C2443_GPL2_SD0DAT2);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(3), S3C2443_GPL3_SD0DAT3);
 		}
 
 		if (cfg->host_caps & MMC_CAP_8_BIT_DATA) {
-			s3c2410_gpio_cfgpin(S3C2443_GPL4, S3C2443_GPL4_SD0DAT4);
-			s3c2410_gpio_cfgpin(S3C2443_GPL5, S3C2443_GPL5_SD0DAT5);
-			s3c2410_gpio_cfgpin(S3C2443_GPL6, S3C2443_GPL6_SD0DAT6);
-			s3c2410_gpio_cfgpin(S3C2443_GPL7, S3C2443_GPL7_SD0DAT7);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(4), S3C2443_GPL4_SD0DAT4);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(5), S3C2443_GPL5_SD0DAT5);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(6), S3C2443_GPL6_SD0DAT6);
+			s3c2410_gpio_cfgpin(S3C2410_GPL(7), S3C2443_GPL7_SD0DAT7);
 		}
 
-		s3c2410_gpio_cfgpin(S3C2443_GPL8, S3C2443_GPL8_SD0CMD);
-		s3c2410_gpio_cfgpin(S3C2443_GPL9, S3C2443_GPL9_SD0CLK);
+		s3c2410_gpio_cfgpin(S3C2410_GPL(8), S3C2443_GPL8_SD0CMD);
+		s3c2410_gpio_cfgpin(S3C2410_GPL(9), S3C2443_GPL9_SD0CLK);
 
 		/* Check for the dedicated GPIOs of the HSMMC-controller */
-		if (cfg->gpio_led == S3C2443_GPJ13)
-			s3c2410_gpio_cfgpin(S3C2443_GPJ13, S3C2440_GPJ13_SD0LED);
+		if (cfg->gpio_led == S3C2410_GPJ(13))
+			s3c2410_gpio_cfgpin(S3C2410_GPJ(13), S3C2440_GPJ13_SD0LED);
 		
-		if (cfg->gpio_detect == S3C2443_GPJ14)
-			s3c2410_gpio_cfgpin(S3C2443_GPJ14, S3C2440_GPJ14_SD0CD);
+		if (cfg->gpio_detect == S3C2410_GPJ(14))
+			s3c2410_gpio_cfgpin(S3C2410_GPJ(14), S3C2440_GPJ14_SD0CD);
 
-		if (cfg->gpio_wprotect == S3C2443_GPJ15)
-			s3c2410_gpio_cfgpin(S3C2443_GPJ15, S3C2440_GPJ15_SD0WP);
+		if (cfg->gpio_wprotect == S3C2410_GPJ(15))
+			s3c2410_gpio_cfgpin(S3C2410_GPJ(15), S3C2440_GPJ15_SD0WP);
 
 		break;
 	default:
@@ -1072,7 +1074,7 @@ static int s3c_hsmmc_get_ro(struct mmc_host *mmc)
 	unsigned int retval;
 	
 	/* Depending on the configured GPIO get the RO-value */
-	if (cfg->gpio_wprotect == S3C2443_GPJ15) {
+	if (cfg->gpio_wprotect == S3C2410_GPJ(15)) {
 		retval = s3c_hsmmc_readl(S3C2410_HSMMC_PRNSTS);
 		retval &= S3C_HSMMC_WRITE_PROTECT; 
 	} else if (cfg->gpio_wprotect) {
@@ -1323,7 +1325,7 @@ static int s3c_hsmmc_suspend(struct platform_device *pdev, pm_message_t state)
 			clk_disable(host->clk[cnt]);
 	}
 
-	retval = mmc_suspend_host(mmc, state);
+	retval = mmc_suspend_host(mmc);
 
 	return retval;
 }

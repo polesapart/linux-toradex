@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/syscalls.h> /* For accessing to the syslog */
+#include <linux/gpio.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -37,8 +38,12 @@
 #include <plat/devs.h>
 #include <plat/cpu.h>
 
-#include <asm/plat-s3c/regs-watchdog.h>
+#include <plat/regs-watchdog.h>
 #include <linux/delay.h>
+
+#include <plat/gpio-core.h>
+#include <plat/gpio-cfg.h>
+#include <plat/gpio-cfg-helpers.h>
 
 static struct map_desc s3c2443_iodesc[] __initdata = {
 	IODESC_ENT(WATCHDOG),

@@ -65,7 +65,7 @@
 #include <mach/irqs.h>
 
 #include <mach/map.h>
-#include <plat/ts.h>
+#include <plat/s3c_ts.h>
 #include <plat/regs-adc.h>
 
 

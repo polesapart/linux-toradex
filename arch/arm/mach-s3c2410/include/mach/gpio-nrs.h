@@ -39,18 +39,33 @@
  */
 
 /* GPIO bank sizes */
-#define S3C2410_GPIO_A_NR	(32)
-#define S3C2410_GPIO_B_NR	(32)
-#define S3C2410_GPIO_C_NR	(32)
-#define S3C2410_GPIO_D_NR	(32)
-#define S3C2410_GPIO_E_NR	(32)
-#define S3C2410_GPIO_F_NR	(32)
-#define S3C2410_GPIO_G_NR	(32)
-#define S3C2410_GPIO_H_NR	(32)
-#define S3C2410_GPIO_J_NR	(32)	/* technically 16. */
-#define S3C2410_GPIO_K_NR	(32)	/* technically 16. */
-#define S3C2410_GPIO_L_NR	(32)	/* technically 15. */
-#define S3C2410_GPIO_M_NR	(32)	/* technically 2. */
+#ifdef CONFIG_MACH_CC9M2443JS
+# define S3C2410_GPIO_A_NR	(16)
+# define S3C2410_GPIO_B_NR	(11)
+# define S3C2410_GPIO_C_NR	(16)
+# define S3C2410_GPIO_D_NR	(16)
+# define S3C2410_GPIO_E_NR	(16)
+# define S3C2410_GPIO_F_NR	(8)
+# define S3C2410_GPIO_G_NR	(16)
+# define S3C2410_GPIO_H_NR	(15)
+# define S3C2410_GPIO_J_NR	(16)
+# define S3C2410_GPIO_K_NR	(0)
+# define S3C2410_GPIO_L_NR	(15)
+# define S3C2410_GPIO_M_NR	(2)
+#else
+# define S3C2410_GPIO_A_NR	(32)
+# define S3C2410_GPIO_B_NR	(32)
+# define S3C2410_GPIO_C_NR	(32)
+# define S3C2410_GPIO_D_NR	(32)
+# define S3C2410_GPIO_E_NR	(32)
+# define S3C2410_GPIO_F_NR	(32)
+# define S3C2410_GPIO_G_NR	(32)
+# define S3C2410_GPIO_H_NR	(32)
+# define S3C2410_GPIO_J_NR	(32)	/* technically 16. */
+# define S3C2410_GPIO_K_NR	(32)	/* technically 16. */
+# define S3C2410_GPIO_L_NR	(32)	/* technically 15. */
+# define S3C2410_GPIO_M_NR	(32)	/* technically 2. */
+#endif
 
 #if CONFIG_S3C_GPIO_SPACE != 0
 #error CONFIG_S3C_GPIO_SPACE cannot be zero at the moment

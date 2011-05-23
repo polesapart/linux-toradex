@@ -20,6 +20,7 @@
 
 /* USB host controller */
 #define S3C2410_PA_USBHOST (0x49000000)
+#define S3C24XX_SZ_USBHOST SZ_1M
 
 /* DMA controller */
 #define S3C2410_PA_DMA	   (0x4B000000)
@@ -32,11 +33,25 @@
 #define S3C2410_PA_LCD	   (0x4D000000)
 #define S3C24XX_SZ_LCD	   SZ_1M
 
+/* TFT-LCD controller */
+#define S3C2410_PA_TFTLCD  (0x4C800000)
+#define S3C24XX_SZ_TFTLCD  SZ_1M
+
 /* NAND flash controller */
 #define S3C2410_PA_NAND	   (0x4E000000)
 
+/* EBI registers for 2443 */
+#define S3C2443_PA_EBI     (0x4E800000)
+#define S3C2443_VA_EBI     S3C_VA_EBI
+#define S3C2443_SZ_EBI	   SZ_1M
+
+/* SSMC Memory controller */
+#define S3C2443_PA_SSMC    (0x4F000000)
+#define S3C2443_SZ_SSMC    SZ_1M
+
 /* IIC hardware controller */
 #define S3C2410_PA_IIC	   (0x54000000)
+#define S3C24XX_SZ_IIC	   SZ_1M
 
 /* IIS controller */
 #define S3C2410_PA_IIS	   (0x55000000)
@@ -50,6 +65,10 @@
 
 /* SPI */
 #define S3C2410_PA_SPI	   (0x59000000)
+
+/* High Speed SPI */
+#define S3C2443_PA_HSSPI   (0x52000000)
+#define S3C2443_SZ_HSSPI   SZ_1M
 
 /* SDI */
 #define S3C2410_PA_SDI	   (0x5A000000)
@@ -65,6 +84,7 @@
 
 /* S3C2443/S3C2416 High-speed SD/MMC */
 #define S3C2443_PA_HSMMC   (0x4A800000)
+#define S3C2443_SZ_HSMMC   (256)
 #define S3C2416_PA_HSMMC0  (0x4AC00000)
 
 #define	S3C2443_PA_FB	(0x4C800000)
@@ -73,8 +93,21 @@
 #define S3C2412_PA_SSMC	(0x4F000000)
 #define S3C2412_VA_SSMC	S3C_ADDR_CPU(0x00000000)
 
+/* CF/ATA */
+#define S3C2443_PA_CFATA   (0x4B800000)
+#define S3C2443_SZ_CFATA   SZ_1M
+
 #define S3C2412_PA_EBI	(0x48800000)
 #define S3C2412_VA_EBI	S3C_ADDR_CPU(0x00010000)
+
+/* LAN Mapping */
+#define CC9M2443_VA_LAN     S3C2410_ADDR(0x04000000)
+#define CC9M2443_PA_LAN     (S3C2410_CS5)
+#define CC9M2443_SZ_LAN     SZ_1M
+
+/* USB device Mapping */
+#define S3C2443_PA_USBDEV   (0x49800000)
+#define S3C2443_SZ_USBDEV   SZ_1M
 
 /* physical addresses of all the chip-select areas */
 
@@ -96,10 +129,12 @@
 #define S3C24XX_PA_DMA      S3C2410_PA_DMA
 #define S3C24XX_PA_CLKPWR   S3C2410_PA_CLKPWR
 #define S3C24XX_PA_LCD      S3C2410_PA_LCD
+#define S3C24XX_PA_TFTLCD   S3C2410_PA_TFTLCD
 #define S3C24XX_PA_UART     S3C2410_PA_UART
 #define S3C24XX_PA_TIMER    S3C2410_PA_TIMER
 #define S3C24XX_PA_USBDEV   S3C2410_PA_USBDEV
 #define S3C24XX_PA_WATCHDOG S3C2410_PA_WATCHDOG
+#define S3C24XX_PA_IIC      S3C2410_PA_IIC
 #define S3C24XX_PA_IIS      S3C2410_PA_IIS
 #define S3C24XX_PA_GPIO     S3C2410_PA_GPIO
 #define S3C24XX_PA_RTC      S3C2410_PA_RTC

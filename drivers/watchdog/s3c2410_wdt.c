@@ -304,7 +304,7 @@ static long s3c2410wdt_ioctl(struct file *file,	unsigned int cmd,
 			return -EFAULT;
 		if (value & WDIOS_DISABLECARD) {
 			if (!nowayout) {
-				allow_close = CLOSE_STATE_ALLOW;
+				expect_close = 42;
 			}
 			else {
 				printk("WATCHDOG_NOWAYOUT enabled in kernel. Cannot disable!\n");

@@ -31,7 +31,7 @@
 
 #include <mach/bast-map.h>
 #include <mach/bast-irq.h>
-#include <mach/usb-control.h>
+#include <plat/usb-control.h>
 #include <mach/regs-gpio.h>
 #include <mach/gpio.h>
 
@@ -104,9 +104,9 @@ static irqreturn_t cc9m2443js_usb_ocirq(int irq, void *_info)
 		pr_info("USB IRQ: Overcurrent Detected\n");
 	} else {
 
-		disable_irq(info->oc_irq);
+		disable_irq_nosync(info->oc_irq);
 		pr_debug("USB IRQ: Scheduling timer for clearing OC\n");
-		mod_timer(&info->timer, jiffies + jiffies_to_msecs(100));
+		mod_timer(&info->timer, jiffies + msecs_to_jiffies(100));
 	}
 
 	return IRQ_HANDLED;
@@ -122,7 +122,7 @@ static void cc9m2443js_usb_enableoc(struct s3c2410_hcd_info *info, int on)
 
 	pr_debug("Command to %s OC detection\n", on ? "enable" : "disable");
 	
-	info->oc_irq = s3c2443_gpio_getirq(info->oc_gpio);
+	info->oc_irq = gpio_to_irq(info->oc_gpio);
 	if (info->oc_irq < 0) {
 		printk(KERN_ERR "[ ERROR ] Couldn't get a GPIO interrupt\n");
 		return;
@@ -155,12 +155,12 @@ static struct s3c2410_hcd_info cc9m2443js_usb_info = {
 	.enable_oc	= cc9m2443js_usb_enableoc,
 
 	/* Over current GPIO */
-	.oc_gpio	= S3C2410_GPG8,
+	.oc_gpio	= S3C2410_GPG(8),
 	.oc_gpio_cfg	= S3C2410_GPG8_EINT16,
 
 	/* Power switch GPIO (inverted by the CC9M2443JS) */
-	.pw_gpio	= S3C2410_GPA14,
-	.pw_gpio_cfg	= S3C2410_GPA14_OUT,
+	.pw_gpio	= S3C2410_GPA(14),
+	.pw_gpio_cfg	= (0<<14), /* Output */
 	.pw_gpio_inv	= 1,
 };
 
@@ -168,7 +168,7 @@ int __init cc9m2443js_usb_init(void)
 {
 	struct s3c2410_hcd_info *info = &cc9m2443js_usb_info;
 
-	s3c_device_usb.dev.platform_data = &cc9m2443js_usb_info;
+	s3c_device_ohci.dev.platform_data = &cc9m2443js_usb_info;
 
 	/* Configure the GPIO and disable the pullups */
 	if (info->oc_gpio) {

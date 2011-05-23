@@ -37,7 +37,7 @@ struct s3c24xx_pwm_channel {
 /* PWM data */
 struct s3c24xx_pwm_pdata {
 	int number_channels;
- 	struct s3c24xx_pwm_channel *channels;
+	struct s3c24xx_pwm_channel *channels;
 };
 
 #endif /* __ASM_ARM_S3C24XX_PWM_H */

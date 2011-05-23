@@ -290,6 +290,13 @@ config AT91_CF
 	  Say Y here to support the CompactFlash controller on AT91 chips.
 	  Or choose M to compile the driver as a module named "at91_cf".
 
+config S3C2443_PCMCIA
+	tristate "S3C2443 PCMCIA driver"
+	depends on PCMCIA && CPU_S3C2443
+	help
+	  Say Y here to support the CompactFlash/PCMCIA interface with the
+	  S3C2443 SoC
+
 config PCMCIA_MX31ADS
 	tristate "MX31ADS PCMCIA support"
 	depends on ARM && MACH_MX31ADS && PCMCIA

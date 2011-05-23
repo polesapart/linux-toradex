@@ -418,6 +418,17 @@ config MMC_S3C_PIODMA
 
 endchoice
 
+config HSMMC_S3C
+	tristate "Samsung S3C High Speed SD/MMC Card Interface support"
+	depends on ARCH_S3C2410 && MMC
+	help
+	  This selects a driver for the High Speed MMC interface found in
+	  Samsung's S3C2410, S3C2412, S3C2440, S3C2442 CPUs.
+	  If you have a board based on one of those and a MMC/SD
+	  slot, say Y or M here.
+
+	  If unsure, say N.
+
 config MMC_SDRICOH_CS
 	tristate "MMC/SD driver for Ricoh Bay1Controllers (EXPERIMENTAL)"
 	depends on EXPERIMENTAL && PCI && PCMCIA

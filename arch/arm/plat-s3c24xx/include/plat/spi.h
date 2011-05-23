@@ -30,8 +30,8 @@ struct s3c24xx_spi_gpio {
 	unsigned long cfg;
 };
 
-/* 
- * The HS SPI controller supports two different input clocks: 
+/*
+ * The HS SPI controller supports two different input clocks:
  * PCLK : 33MHz
  * EPLL : 48MHz
  */

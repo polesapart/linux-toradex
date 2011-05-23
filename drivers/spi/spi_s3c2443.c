@@ -37,11 +37,12 @@
 #include <mach/gpio.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-gpioj.h>
-#include <asm/plat-s3c24xx/regs-spi.h>
+#include <plat/regs-spi.h>
 #include <mach/dma.h>
-#include <asm/plat-s3c24xx/spi.h>
+#include <plat/spi.h>
 #include <mach/dma.h>
 #include <mach/regs-s3c2443-clock.h>
+#include <plat/regs-dma.h>
 
 
 /* This macro selects the virtual DMA-channel to use */
@@ -102,9 +103,9 @@ struct s3c2443_spi {
 	dma_addr_t tx_dma;
 	dma_addr_t rx_dma;
 
-	dmach_t dma_ch;
+	unsigned int dma_ch;
 	struct s3c2410_dma_client dmach;
-	dmach_t dma_ch_rx;
+	unsigned int dma_ch_rx;
 	struct s3c2410_dma_client dmach_rx;
 };
 
@@ -584,7 +585,7 @@ static void s3c2443_spi_dma_callback(struct s3c2410_dma_chan *ch,
  * amok!
  * Luis Galdos
  */
-static int s3c2443_spi_dma_init(dmach_t dma_ch, enum s3c2443_xfer_t mode,
+static int s3c2443_spi_dma_init(unsigned int dma_ch, enum s3c2443_xfer_t mode,
 				int length)
 {
 	int xmode;
@@ -598,7 +599,6 @@ static int s3c2443_spi_dma_init(dmach_t dma_ch, enum s3c2443_xfer_t mode,
 		 * system memory
 		 */
                 s3c2410_dma_devconfig(dma_ch, S3C2410_DMASRC_MEM,
-				      S3C2410_DISRCC_INC | S3C2410_DISRCC_APB,
 				      S3C2443_SPI0_TX_DATA_PA);
         } else if (mode == S3C2443_DMA_RX) {
 		/*
@@ -607,7 +607,6 @@ static int s3c2443_spi_dma_init(dmach_t dma_ch, enum s3c2443_xfer_t mode,
 		 * the address
 		 */
                 s3c2410_dma_devconfig(dma_ch, S3C2410_DMASRC_HW,
-				      S3C2410_DISRCC_INC | S3C2410_DISRCC_APB,
 				      S3C2443_SPI0_RX_DATA_PA);
 	} else {
 		printk_err("Invalid DMA transfer mode (%i)\n", mode);
@@ -628,10 +627,7 @@ static int s3c2443_spi_dma_init(dmach_t dma_ch, enum s3c2443_xfer_t mode,
 
 	/* @XXX: Don't use the burst mode, then it's not working with this driver */
 	s3c2410_dma_config(dma_ch,
-			   xmode,
-			   S3C2410_DCON_HANDSHAKE |
-			   S3C2410_DCON_SYNC_PCLK |
-			   S3C2410_DCON_HWTRIG);
+			   xmode);
 	
 	s3c2410_dma_setflags(dma_ch, S3C2410_DMAF_AUTOSTART);
         return 0;

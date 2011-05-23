@@ -1,10 +1,26 @@
 /* linux/drivers/mtd/nand/s3c2410.c
  *
- * Copyright © 2004-2008 Simtec Electronics
- *	http://armlinux.simtec.co.uk/
+ * Copyright (c) 2004,2005 Simtec Electronics
+ *	http://www.simtec.co.uk/products/SWLINUX/
  *	Ben Dooks <ben@simtec.co.uk>
  *
- * Samsung S3C2410/S3C2440/S3C2412 NAND driver
+ * Samsung S3C2410/S3C240 NAND driver
+ *
+ * Changelog:
+ *	21-Sep-2004  BJD  Initial version
+ *	23-Sep-2004  BJD  Multiple device support
+ *	28-Sep-2004  BJD  Fixed ECC placement for Hardware mode
+ *	12-Oct-2004  BJD  Fixed errors in use of platform data
+ *	18-Feb-2005  BJD  Fix sparse errors
+ *	14-Mar-2005  BJD  Applied tglx's code reduction patch
+ *	02-May-2005  BJD  Fixed s3c2440 support
+ *	02-May-2005  BJD  Reduced hwcontrol decode
+ *	20-Jun-2005  BJD  Updated s3c2440 support, fixed timing bug
+ *	08-Jul-2005  BJD  Fix OOPS when no platform data supplied
+ *	20-Oct-2005  BJD  Fix timing calculation bug
+ *	14-Jan-2006  BJD  Allow clock to be stopped when idle
+ *
+ * $Id: s3c2410.c,v 1.23 2006/04/01 18:06:29 bjd Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +35,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
-
-#ifdef CONFIG_MTD_NAND_S3C2410_DEBUG
-#define DEBUG
-#endif
+ */
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -36,7 +48,6 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
-#include <linux/cpufreq.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -47,6 +58,13 @@
 
 #include <plat/regs-nand.h>
 #include <plat/nand.h>
+
+/* Name of the kernel boot parameter with the partitions table */
+#define PARTITON_PARAMETER_NAME "onboard_boot"
+
+#if defined(CONFIG_MTD_NAND_S3C2410_DEBUG) && !defined(DEBUG)
+#define DEBUG
+#endif
 
 #ifdef CONFIG_MTD_NAND_S3C2410_HWECC
 static int hardware_ecc = 1;
@@ -61,13 +79,35 @@ static const int clock_stop = 0;
 #endif
 
 
-/* new oob placement block for use with hardware ecc generation
+/*
+ * These are the values that we are using in the U-Boot too.
+ * Luis Galdos
  */
 
 static struct nand_ecclayout nand_hw_eccoob = {
-	.eccbytes = 3,
-	.eccpos = {0, 1, 2},
-	.oobfree = {{8, 8}}
+	.eccbytes = 4,
+	.eccpos = { 40, 41, 42, 43 },
+	.oobfree = {
+		{
+			.offset = 2,
+			.length = 38
+		}
+	}
+};
+
+/*
+ * Nand flash oob definition for SLC 512b page size by jsgood
+ * IMPORTANT: These values are coming from the U-Boot
+ */
+static struct nand_ecclayout nand_hw_eccoob_16 = {
+        .eccbytes = 6,
+        .eccpos = { 0, 1, 2, 3, 6, 7 },
+        .oobfree = {
+                {
+			.offset = 8,
+			.length = 8
+		}
+	}
 };
 
 /* controller and mtd information */
@@ -110,7 +150,6 @@ enum s3c_cpu_type {
  * @sel_bit: The bit in @sel_reg to select the NAND chip.
  * @mtd_count: The number of MTDs created from this controller.
  * @save_sel: The contents of @sel_reg to be saved over suspend.
- * @clk_rate: The clock rate from @clk.
  * @cpu_type: The exact type of this controller.
  */
 struct s3c2410_nand_info {
@@ -128,13 +167,9 @@ struct s3c2410_nand_info {
 	int				sel_bit;
 	int				mtd_count;
 	unsigned long			save_sel;
-	unsigned long			clk_rate;
 
 	enum s3c_cpu_type		cpu_type;
 
-#ifdef CONFIG_CPU_FREQ
-	struct notifier_block	freq_transition;
-#endif
 };
 
 /* conversion functions */
@@ -200,25 +235,24 @@ static int s3c_nand_calc_rate(int wanted, unsigned long clk, int max)
 /* controller setup */
 
 /**
- * s3c2410_nand_setrate - setup controller timing information.
- * @info: The controller instance.
+ * s3c2410_nand_inithw - basic hardware initialisation
+ * @info: The hardware state.
+ * @pdev: Platform device
  *
- * Given the information supplied by the platform, calculate and set
- * the necessary timing registers in the hardware to generate the
- * necessary timing cycles to the hardware.
- */
-static int s3c2410_nand_setrate(struct s3c2410_nand_info *info)
+ * Do the basic initialisation of the hardware,setup the hardware
+ * access speeds and set the controller to be enabled.
+*/
+static int s3c2410_nand_inithw(struct s3c2410_nand_info *info,
+			       struct platform_device *pdev)
 {
-	struct s3c2410_platform_nand *plat = info->platform;
+	struct s3c2410_platform_nand *plat = to_nand_plat(pdev);
+	unsigned long clkrate = clk_get_rate(info->clk);
 	int tacls_max = (info->cpu_type == TYPE_S3C2412) ? 8 : 4;
 	int tacls, twrph0, twrph1;
-	unsigned long clkrate = clk_get_rate(info->clk);
-	unsigned long uninitialized_var(set), cfg, uninitialized_var(mask);
-	unsigned long flags;
+	unsigned long cfg = 0;
 
 	/* calculate the timing information for the controller */
 
-	info->clk_rate = clkrate;
 	clkrate /= 1000;	/* turn clock into kHz for ease of use */
 
 	if (plat != NULL) {
@@ -240,73 +274,37 @@ static int s3c2410_nand_setrate(struct s3c2410_nand_info *info)
 	dev_info(info->device, "Tacls=%d, %dns Twrph0=%d %dns, Twrph1=%d %dns\n",
 	       tacls, to_ns(tacls, clkrate), twrph0, to_ns(twrph0, clkrate), twrph1, to_ns(twrph1, clkrate));
 
+	/*
+	 * First get the current value of the configuration register, otherwise
+	 * some chip-information that is coming from the bootloader will be
+	 * gone (e.g. the page size, which is required for the HWECC)
+	 * Luis Galdos
+	 */
+
+	cfg = readl(info->regs + S3C2410_NFCONF);
+
 	switch (info->cpu_type) {
 	case TYPE_S3C2410:
-		mask = (S3C2410_NFCONF_TACLS(3) |
-			S3C2410_NFCONF_TWRPH0(7) |
-			S3C2410_NFCONF_TWRPH1(7));
-		set = S3C2410_NFCONF_EN;
-		set |= S3C2410_NFCONF_TACLS(tacls - 1);
-		set |= S3C2410_NFCONF_TWRPH0(twrph0 - 1);
-		set |= S3C2410_NFCONF_TWRPH1(twrph1 - 1);
+		cfg |= S3C2410_NFCONF_EN;
+		cfg |= S3C2410_NFCONF_TACLS(tacls - 1);
+		cfg |= S3C2410_NFCONF_TWRPH0(twrph0 - 1);
+		cfg |= S3C2410_NFCONF_TWRPH1(twrph1 - 1);
 		break;
 
 	case TYPE_S3C2440:
 	case TYPE_S3C2412:
-		mask = (S3C2440_NFCONF_TACLS(tacls_max - 1) |
-			S3C2440_NFCONF_TWRPH0(7) |
-			S3C2440_NFCONF_TWRPH1(7));
+		cfg |= S3C2440_NFCONF_TACLS(tacls - 1);
+		cfg |= S3C2440_NFCONF_TWRPH0(twrph0 - 1);
+		cfg |= S3C2440_NFCONF_TWRPH1(twrph1 - 1);
 
-		set = S3C2440_NFCONF_TACLS(tacls - 1);
-		set |= S3C2440_NFCONF_TWRPH0(twrph0 - 1);
-		set |= S3C2440_NFCONF_TWRPH1(twrph1 - 1);
-		break;
-
-	default:
-		BUG();
-	}
-
-	local_irq_save(flags);
-
-	cfg = readl(info->regs + S3C2410_NFCONF);
-	cfg &= ~mask;
-	cfg |= set;
-	writel(cfg, info->regs + S3C2410_NFCONF);
-
-	local_irq_restore(flags);
-
-	dev_dbg(info->device, "NF_CONF is 0x%lx\n", cfg);
-
-	return 0;
-}
-
-/**
- * s3c2410_nand_inithw - basic hardware initialisation
- * @info: The hardware state.
- *
- * Do the basic initialisation of the hardware, using s3c2410_nand_setrate()
- * to setup the hardware access speeds and set the controller to be enabled.
-*/
-static int s3c2410_nand_inithw(struct s3c2410_nand_info *info)
-{
-	int ret;
-
-	ret = s3c2410_nand_setrate(info);
-	if (ret < 0)
-		return ret;
-
- 	switch (info->cpu_type) {
- 	case TYPE_S3C2410:
-	default:
-		break;
-
- 	case TYPE_S3C2440:
- 	case TYPE_S3C2412:
 		/* enable the controller and de-assert nFCE */
 
 		writel(S3C2440_NFCONT_ENABLE, info->regs + S3C2440_NFCONT);
 	}
 
+	dev_dbg(info->device, "NF_CONF is 0x%lx\n", cfg);
+
+	writel(cfg, info->regs + S3C2410_NFCONF);
 	return 0;
 }
 
@@ -424,74 +422,72 @@ static int s3c2410_nand_correct_data(struct mtd_info *mtd, u_char *dat,
 				     u_char *read_ecc, u_char *calc_ecc)
 {
 	struct s3c2410_nand_info *info = s3c2410_nand_mtd_toinfo(mtd);
-	unsigned int diff0, diff1, diff2;
-	unsigned int bit, byte;
+	unsigned long nfmeccdata0, nfmeccdata1;
+	unsigned long nfestat0;
+	unsigned char err_type;
+	int retval;
+	unsigned int offset;
+	unsigned char wrong_value, corr_value;
+	struct s3c2410_nand_mtd *nmtd = s3c2410_nand_mtd_toours(mtd);
+	struct nand_chip *chip = &nmtd->chip;
 
-	pr_debug("%s(%p,%p,%p,%p)\n", __func__, mtd, dat, read_ecc, calc_ecc);
-
-	diff0 = read_ecc[0] ^ calc_ecc[0];
-	diff1 = read_ecc[1] ^ calc_ecc[1];
-	diff2 = read_ecc[2] ^ calc_ecc[2];
-
-	pr_debug("%s: rd %02x%02x%02x calc %02x%02x%02x diff %02x%02x%02x\n",
-		 __func__,
-		 read_ecc[0], read_ecc[1], read_ecc[2],
-		 calc_ecc[0], calc_ecc[1], calc_ecc[2],
-		 diff0, diff1, diff2);
-
-	if (diff0 == 0 && diff1 == 0 && diff2 == 0)
-		return 0;		/* ECC is ok */
+	pr_debug("%s: read %02x%02x%02x%02x calc %02x%02x%02x%02x\n", __func__,
+		 read_ecc[0], read_ecc[1], read_ecc[2], read_ecc[3],
+		 calc_ecc[0], calc_ecc[1], calc_ecc[2], calc_ecc[3]);
 
 	/* sometimes people do not think about using the ECC, so check
 	 * to see if we have an 0xff,0xff,0xff read ECC and then ignore
 	 * the error, on the assumption that this is an un-eccd page.
 	 */
 	if (read_ecc[0] == 0xff && read_ecc[1] == 0xff && read_ecc[2] == 0xff
-	    && info->platform->ignore_unset_ecc)
+		&& read_ecc[3] == 0xff && info->platform->ignore_unset_ecc) {
+		pr_debug("Ignoring the HWECC calculation?\n");
 		return 0;
-
-	/* Can we correct this ECC (ie, one row and column change).
-	 * Note, this is similar to the 256 error code on smartmedia */
-
-	if (((diff0 ^ (diff0 >> 1)) & 0x55) == 0x55 &&
-	    ((diff1 ^ (diff1 >> 1)) & 0x55) == 0x55 &&
-	    ((diff2 ^ (diff2 >> 1)) & 0x55) == 0x55) {
-		/* calculate the bit position of the error */
-
-		bit  = ((diff2 >> 3) & 1) |
-		       ((diff2 >> 4) & 2) |
-		       ((diff2 >> 5) & 4);
-
-		/* calculate the byte position of the error */
-
-		byte = ((diff2 << 7) & 0x100) |
-		       ((diff1 << 0) & 0x80)  |
-		       ((diff1 << 1) & 0x40)  |
-		       ((diff1 << 2) & 0x20)  |
-		       ((diff1 << 3) & 0x10)  |
-		       ((diff0 >> 4) & 0x08)  |
-		       ((diff0 >> 3) & 0x04)  |
-		       ((diff0 >> 2) & 0x02)  |
-		       ((diff0 >> 1) & 0x01);
-
-		dev_dbg(info->device, "correcting error bit %d, byte %d\n",
-			bit, byte);
-
-		dat[byte] ^= (1 << bit);
-		return 1;
 	}
 
-	/* if there is only one bit difference in the ECC, then
-	 * one of only a row or column parity has changed, which
-	 * means the error is most probably in the ECC itself */
+	/*
+	 * If the chip has a small page then set the fourth byte to 0xff, so that
+	 * we can use the NAND-controller to check if the ECC is correct or not.
+	 * Please note that this "workaround" is coming from the U-Boot, which has
+	 * an ECC-layout with only three ECC-bytes (but why?).
+	 * (Luis Galdos)
+	 */
+	if (chip->page_shift <= 10) {
+		pr_debug("Setting the fourth byte to 0xff\n");
+		read_ecc[3] = 0xff;
+	}
 
-	diff0 |= (diff1 << 8);
-	diff0 |= (diff2 << 16);
+	/*
+	 * The below code is coming from the driver 's3c_nand.c' (by jsgood)
+	 * Luis Galdos
+	 */
+	nfmeccdata0 = (read_ecc[1] << 16) | read_ecc[0];
+	nfmeccdata1 = (read_ecc[3] << 16) | read_ecc[2];
+	writel(nfmeccdata0, info->regs + S3C2440_NFECCD0);
+	writel(nfmeccdata1, info->regs + S3C2440_NFECCD1);
+	nfestat0 = readl(info->regs + S3C2412_NFMECC_ERR0);
+	err_type = nfestat0 & 0x3;
 
-	if ((diff0 & ~(1<<fls(diff0))) == 0)
-		return 1;
+	switch (err_type) {
+	case 0:
+		retval = 0;
+		break;
+	case 1:
+		offset = (nfestat0 >> 7) & 0x7ff;
+		wrong_value = dat[offset];
+		corr_value = wrong_value ^ (1 << ((nfestat0 >> 4) & 0x7));
+		printk(KERN_DEBUG "[NAND BitErr]: 1 bit error detected at page byte %u. Correcting from 0x%02x to 0x%02x\n",
+		       offset, wrong_value, corr_value);
+		dat[offset] = corr_value;
+		retval = 1;
+		break;
+	default:
+		printk(KERN_ERR "[NAND BitErr]: More than 1 bit error detected. Uncorrectable error.\n");
+		retval = -1;
+		break;
+	}
 
-	return -1;
+	return retval;
 }
 
 /* ECC functions
@@ -515,8 +511,21 @@ static void s3c2412_nand_enable_hwecc(struct mtd_info *mtd, int mode)
 	struct s3c2410_nand_info *info = s3c2410_nand_mtd_toinfo(mtd);
 	unsigned long ctrl;
 
+	/*
+	 * According to the manual: unlock the main area and set the data transfer
+	 * direction (read or write) too
+	 * Luis Galdos
+	 */
 	ctrl = readl(info->regs + S3C2440_NFCONT);
-	writel(ctrl | S3C2412_NFCONT_INIT_MAIN_ECC, info->regs + S3C2440_NFCONT);
+	ctrl |= S3C2412_NFCONT_INIT_MAIN_ECC;
+	ctrl &= ~S3C2412_NFCONT_MAIN_ECC_LOCK;
+
+	if (mode == NAND_ECC_WRITE)
+		ctrl |= S3C2412_NFCONT_ECC4_DIRWR;
+	else
+		ctrl &= ~S3C2412_NFCONT_ECC4_DIRWR;
+
+	writel(ctrl, info->regs + S3C2440_NFCONT);
 }
 
 static void s3c2440_nand_enable_hwecc(struct mtd_info *mtd, int mode)
@@ -545,13 +554,25 @@ static int s3c2410_nand_calculate_ecc(struct mtd_info *mtd, const u_char *dat, u
 static int s3c2412_nand_calculate_ecc(struct mtd_info *mtd, const u_char *dat, u_char *ecc_code)
 {
 	struct s3c2410_nand_info *info = s3c2410_nand_mtd_toinfo(mtd);
-	unsigned long ecc = readl(info->regs + S3C2412_NFMECC0);
+	unsigned long ecc, nfcont;
 
-	ecc_code[0] = ecc;
-	ecc_code[1] = ecc >> 8;
-	ecc_code[2] = ecc >> 16;
+	/*
+	 * According to the manual: lock the main area before reading from the ECC
+	 * status register.
+	 * Luis Galdos
+	 */
+	nfcont = readl(info->regs + S3C2440_NFCONT);
+	nfcont |= S3C2412_NFCONT_MAIN_ECC_LOCK;
+	writel(nfcont, info->regs + S3C2440_NFCONT);
 
-	pr_debug("calculate_ecc: returning ecc %02x,%02x,%02x\n", ecc_code[0], ecc_code[1], ecc_code[2]);
+	ecc = readl(info->regs + S3C2412_NFMECC0);
+	ecc_code[0] = ecc & 0xff;
+	ecc_code[1] = (ecc >> 8) & 0xff;
+	ecc_code[2] = (ecc >> 16) & 0xff;
+	ecc_code[3] = (ecc >> 24) & 0xff;
+
+	pr_debug("calculate_ecc: returning ecc %02x,%02x,%02x,%02x\n",
+		 ecc_code[0], ecc_code[1], ecc_code[2], ecc_code[3]);
 
 	return 0;
 }
@@ -616,52 +637,6 @@ static void s3c2440_nand_write_buf(struct mtd_info *mtd, const u_char *buf, int 
 	}
 }
 
-/* cpufreq driver support */
-
-#ifdef CONFIG_CPU_FREQ
-
-static int s3c2410_nand_cpufreq_transition(struct notifier_block *nb,
-					  unsigned long val, void *data)
-{
-	struct s3c2410_nand_info *info;
-	unsigned long newclk;
-
-	info = container_of(nb, struct s3c2410_nand_info, freq_transition);
-	newclk = clk_get_rate(info->clk);
-
-	if ((val == CPUFREQ_POSTCHANGE && newclk < info->clk_rate) ||
-	    (val == CPUFREQ_PRECHANGE && newclk > info->clk_rate)) {
-		s3c2410_nand_setrate(info);
-	}
-
-	return 0;
-}
-
-static inline int s3c2410_nand_cpufreq_register(struct s3c2410_nand_info *info)
-{
-	info->freq_transition.notifier_call = s3c2410_nand_cpufreq_transition;
-
-	return cpufreq_register_notifier(&info->freq_transition,
-					 CPUFREQ_TRANSITION_NOTIFIER);
-}
-
-static inline void s3c2410_nand_cpufreq_deregister(struct s3c2410_nand_info *info)
-{
-	cpufreq_unregister_notifier(&info->freq_transition,
-				    CPUFREQ_TRANSITION_NOTIFIER);
-}
-
-#else
-static inline int s3c2410_nand_cpufreq_register(struct s3c2410_nand_info *info)
-{
-	return 0;
-}
-
-static inline void s3c2410_nand_cpufreq_deregister(struct s3c2410_nand_info *info)
-{
-}
-#endif
-
 /* device management functions */
 
 static int s3c24xx_nand_remove(struct platform_device *pdev)
@@ -672,8 +647,6 @@ static int s3c24xx_nand_remove(struct platform_device *pdev)
 
 	if (info == NULL)
 		return 0;
-
-	s3c2410_nand_cpufreq_deregister(info);
 
 	/* Release all our mtds  and their partitions, then go through
 	 * freeing the resources used
@@ -842,11 +815,14 @@ static void s3c2410_nand_init_chip(struct s3c2410_nand_info *info,
 		chip->ecc.mode	    = NAND_ECC_SOFT;
 	}
 
+	/* @FIXME: Here seems to be something wrong. (Luis Galdos) */
+#if 1
 	if (set->ecc_layout != NULL)
 		chip->ecc.layout = set->ecc_layout;
 
 	if (set->disable_ecc)
 		chip->ecc.mode	= NAND_ECC_NONE;
+#endif
 
 	switch (chip->ecc.mode) {
 	case NAND_ECC_NONE:
@@ -886,8 +862,7 @@ static void s3c2410_nand_update_chip(struct s3c2410_nand_info *info,
 {
 	struct nand_chip *chip = &nmtd->chip;
 
-	dev_dbg(info->device, "chip %p => page shift %d\n",
-		chip, chip->page_shift);
+	printk("%s: chip %p: %d\n", __func__, chip, chip->page_shift);
 
 	if (chip->ecc.mode != NAND_ECC_HW)
 		return;
@@ -896,12 +871,19 @@ static void s3c2410_nand_update_chip(struct s3c2410_nand_info *info,
 		 * the large or small page nand device */
 
 	if (chip->page_shift > 10) {
-		chip->ecc.size	    = 256;
-		chip->ecc.bytes	    = 3;
+		chip->ecc.size	    = 2048;
+		chip->ecc.bytes	    = 4;
+		chip->ecc.layout    = &nand_hw_eccoob;
 	} else {
+		  /*
+		   * IMPORTANT: For using only three ECC-bytes is required to set
+		   * the fourth byte to '0xff', otherwise we can't use the internal
+		   * NAND-controller for checking if the ECC is correct or not.
+		   * (Luis Galdos)
+		   */
 		chip->ecc.size	    = 512;
 		chip->ecc.bytes	    = 3;
-		chip->ecc.layout    = &nand_hw_eccoob;
+		chip->ecc.layout    = &nand_hw_eccoob_16;
 	}
 }
 
@@ -924,6 +906,18 @@ static int s3c24xx_nand_probe(struct platform_device *pdev)
 	int size;
 	int nr_sets;
 	int setno;
+
+	/*
+	 * Required variables for accessing to the partitions from the command line
+	 * Luis Galdos
+	 */
+#if defined(CONFIG_MTD_CMDLINE_PARTS)
+	struct mtd_partition *mtd_parts;
+	int nr_parts;
+	const char *name_back;
+	struct s3c2410_nand_set nand_sets[1];
+	const char *part_probes[] = { "cmdlinepart", NULL };
+#endif
 
 	cpu_type = platform_get_device_id(pdev)->driver_data;
 
@@ -981,7 +975,7 @@ static int s3c24xx_nand_probe(struct platform_device *pdev)
 
 	/* initialise the hardware */
 
-	err = s3c2410_nand_inithw(info);
+	err = s3c2410_nand_inithw(info, pdev);
 	if (err != 0)
 		goto exit_error;
 
@@ -1013,6 +1007,29 @@ static int s3c24xx_nand_probe(struct platform_device *pdev)
 						 (sets) ? sets->nr_chips : 1,
 						 NULL);
 
+		/*
+		 * This is the code required for accessing to the partitions table
+		 * passed by the bootloader
+		 * (Luis Galdos)
+		 */
+#if defined(CONFIG_MTD_CMDLINE_PARTS)
+		/*
+		 * Need to reset the name of the MTD-device then the name of the
+		 * partition passed by the U-Boot differs from the assigned name.
+		 * U-Boot : onboard_boot
+		 * Device : NAND 128MiB 3,3V 8-bit
+		 */
+		name_back = nmtd->mtd.name;
+		nmtd->mtd.name= PARTITON_PARAMETER_NAME;
+		nr_parts = parse_mtd_partitions(&nmtd->mtd, part_probes, &mtd_parts, 0);
+		nmtd->mtd.name = name_back;
+		nand_sets[0].name = "NAND-Parts";
+		nand_sets[0].nr_chips = 1;
+		nand_sets[0].partitions = mtd_parts;
+		nand_sets[0].nr_partitions = nr_parts;
+		sets = nand_sets;
+#endif /* defined(CONFIG_MTD_CMDLINE_PARTS) */
+
 		if (nmtd->scan_res == 0) {
 			s3c2410_nand_update_chip(info, nmtd);
 			nand_scan_tail(&nmtd->mtd);
@@ -1021,12 +1038,6 @@ static int s3c24xx_nand_probe(struct platform_device *pdev)
 
 		if (sets != NULL)
 			sets++;
-	}
-
-	err = s3c2410_nand_cpufreq_register(info);
-	if (err < 0) {
-		dev_err(&pdev->dev, "failed to init cpufreq support\n");
-		goto exit_error;
 	}
 
 	if (allow_clk_stop(info)) {
@@ -1076,7 +1087,7 @@ static int s3c24xx_nand_resume(struct platform_device *dev)
 
 	if (info) {
 		clk_enable(info->clk);
-		s3c2410_nand_inithw(info);
+		s3c2410_nand_inithw(info, dev);
 
 		/* Restore the state of the nFCE line. */
 

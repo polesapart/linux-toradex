@@ -29,7 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/dma-mapping.h>
-#include <linux/smc911x.h>
+#include <linux/smsc911x.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
@@ -49,23 +49,24 @@
 
 #include <mach/idle.h>
 #include <mach/fb.h>
-#include <asm/plat-s3c24xx/spi.h>
+#include <plat/spi.h>
 #include <mach/gpio.h>
 #include <linux/spi/spi.h>
 
 #include <plat/s3c2410.h>
-#include <plat/s3c2440.h>
+#include <plat/s3c244x.h>
 #include <plat/clock.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
 #include <plat/hsmmc.h>
 #include <plat/ts.h>
+#include <plat/s3c_ts.h>
 #include <plat/udc.h>
 #include <plat/pcmcia.h>
 #include <mach/irqs.h>
 #include <mach/regs-irq.h>
 #include <plat/irq.h>
-#include <asm/plat-s3c24xx/pwm.h>
+#include <plat/pwm.h>
 #include <linux/pwm.h>
 #include <linux/leds.h>
 #include <linux/pwm-led.h>
@@ -76,9 +77,9 @@
 #include <linux/mtd/partitions.h>
 
 #include <plat/common-smdk.h>
-#include <asm/plat-s3c24xx/mci.h>
-#include <asm/plat-s3c/nand.h>
-#include <asm/plat-s3c/iic.h>
+#include <plat/mci.h>
+#include <plat/nand.h>
+#include <plat/iic.h>
 
 #include "displays/displays.h"
 #include "cc9m2443js-pm.h"
@@ -102,14 +103,14 @@ static struct resource smsc911x_device_resources[] = {
         [1] = {
                 .start = IRQ_EINT9,
                 .end = IRQ_EINT9,
-                .flags = IORESOURCE_IRQ,
+                .flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWEDGE,
         },
 };
 
-static struct smc911x_platdata cc9m2443_smsc9118 = {
-        .flags          = SMC911X_USE_16BIT,
-        .irq_flags      = IRQF_DISABLED | IRQF_TRIGGER_FALLING,
-        .irq_polarity   = 0,
+static struct smsc911x_platform_config cc9m2443_smsc9118 = {
+        .flags          = SMSC911X_USE_16BIT,
+        .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+        .irq_type	= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
 };
 
 static struct platform_device smsc911x_device = {
@@ -139,7 +140,7 @@ static struct platform_device smsc911x_device = {
  * available on the connect of the module, the GPIO can be used only with the RTC.
  */
 #define CC9M2443_RTC_IRQ                        (IRQ_EINT7)
-#define CC9M2443_RTC_IRQ_GPIO                   (S3C2410_GPF7)
+#define CC9M2443_RTC_IRQ_GPIO                   (S3C2410_GPF(7))
 #define CC9M2443_RTC_IRQ_CFG                    (S3C2410_GPF7_EINT7)
 
 /* I2C devices */
@@ -217,14 +218,14 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.ucon	     = CC9M2443_PORT_UCON,
 		.ulcon	     = S3C2410_LCON_CS8,
 		.ufcon	     = CC9M2443_PORT_UFCON,
-		.rx_gpio     = S3C2410_GPH1,
+		.rx_gpio     = S3C2410_GPH(1),
 		.rx_cfg      = S3C2443_GPH1_RXD0,
-		.tx_gpio     = S3C2410_GPH0,
+		.tx_gpio     = S3C2410_GPH(0),
 		.tx_cfg      = S3C2443_GPH0_TXD0,
 #if defined(CONFIG_SERIAL_S3C2410_PORTA_HWCTRL)
-		.rts_gpio    = S3C2410_GPH9,
+		.rts_gpio    = S3C2410_GPH(9),
 		.rts_cfg     = S3C2443_GPH9_nRTS0,
-		.cts_gpio    = S3C2410_GPH8,
+		.cts_gpio    = S3C2410_GPH(8),
 		.cts_cfg     = S3C2443_GPH8_nCTS0,
 #endif /* CONFIG_SERIAL_S3C2410_PORTA_HWCTRL */
 	},
@@ -236,14 +237,14 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.ucon	     = CC9M2443_PORT_UCON,
 		.ulcon	     = CC9M2443_PORT_LCON,
 		.ufcon	     = CC9M2443_PORT_UFCON,
-		.rx_gpio     = S3C2410_GPH3,
+		.rx_gpio     = S3C2410_GPH(3),
 		.rx_cfg      = S3C2443_GPH3_RXD1,
-		.tx_gpio     = S3C2410_GPH2,
+		.tx_gpio     = S3C2410_GPH(2),
 		.tx_cfg      = S3C2443_GPH2_TXD1,
 #if defined(CONFIG_SERIAL_S3C2410_PORTB_HWCTRL)
-		.rts_gpio    = S3C2443_GPH11,
+		.rts_gpio    = S3C2443_GPH(11),
 		.rts_cfg     = S3C2443_GPH11_nRTS1,
-		.cts_gpio    = S3C2410_GPH10,
+		.cts_gpio    = S3C2410_GPH(10),
 		.cts_cfg     = S3C2443_GPH10_nCTS1,
 #endif /* CONFIG_SERIAL_S3C2410_PORTB_HWCTRL */
 	},
@@ -255,14 +256,14 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.ucon	     = CC9M2443_PORT_UCON,
 		.ulcon	     = CC9M2443_PORT_LCON,
 		.ufcon	     = CC9M2443_PORT_UFCON,
-		.rx_gpio     = S3C2410_GPH5     ,
+		.rx_gpio     = S3C2410_GPH(5),
 		.rx_cfg      = S3C2443_GPH5_RXD2,
-		.tx_gpio     = S3C2410_GPH4     ,
+		.tx_gpio     = S3C2410_GPH(4),
 		.tx_cfg      = S3C2443_GPH4_TXD2,
 #if defined(CONFIG_SERIAL_S3C2410_PORTC_HWCTRL)
-		.rts_gpio    = S3C2410_GPH6,
+		.rts_gpio    = S3C2410_GPH(6),
 		.rts_cfg     = S3C2443_GPH6_nRTS2,
-		.cts_gpio    = S3C2410_GPH7,
+		.cts_gpio    = S3C2410_GPH(7),
 		.cts_cfg     = S3C2443_GPH7_nCTS2,
 #endif /* CONFIG_SERIAL_S3C2410_PORTC_HWCTRL */
 
@@ -275,9 +276,9 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.ucon	     = CC9M2443_PORT_UCON,
 		.ulcon	     = CC9M2443_PORT_LCON,
 		.ufcon	     = CC9M2443_PORT_UFCON,
-		.rx_gpio     = S3C2410_GPH7,
+		.rx_gpio     = S3C2410_GPH(7),
 		.rx_cfg      = S3C2443_GPH7_RXD3,
-		.tx_gpio     = S3C2410_GPH6,
+		.tx_gpio     = S3C2410_GPH(6),
 		.tx_cfg      = S3C2443_GPH6_TXD3,
 	}
 #endif /* CONFIG_SERIAL_S3C2410_ENABLE_PORTD */
@@ -346,9 +347,9 @@ static struct resource cc9m2443_sdi_resource[] = {
 };
 
 static struct s3c24xx_mci_pdata cc9m2443_sdi_pdata = {
-	.gpio_detect	= S3C2410_GPF1,
-	.gpio_wprotect	= S3C2410_GPG9,
-	.dma_enable     = 1,
+	.gpio_detect	= S3C2410_GPF(1),
+	.gpio_wprotect	= S3C2410_GPG(9),
+	.use_dma	= 1,
 };
 
 struct platform_device cc9m2443_device_sdi = {
@@ -390,9 +391,9 @@ struct s3c_hsmmc_cfg cc9m2443_hsmmc_platform = {
         .clk_name[0]   = "hclk",          /* 1st clock HCLK */
         .clk_name[1]   = "hsmmc-div",     /* 2nd clock hsmmc-epll */
         .clk_name[2]   = "hsmmc-ext",     /* 3rd clock external */
-	.gpio_wprotect = S3C2443_GPJ15,
-	.gpio_detect   = S3C2443_GPJ14,
-	.gpio_led      = S3C2443_GPJ13,
+	.gpio_wprotect = S3C2410_GPJ(15),
+	.gpio_detect   = S3C2410_GPJ(14),
+	.gpio_led      = S3C2410_GPJ(13),
 };
 
 struct platform_device cc9m2443_device_hsmmc = {
@@ -451,19 +452,19 @@ static struct s3c2443_spi_info cc9m2443_hsspi_info = {
 	.num_chipselect = 1,
         .input_clk      = S3C2443_HSSPI_INCLK_PCLK,
 	.miso = {
-		.nr = S3C2410_GPE11,
+		.nr = S3C2410_GPE(11),
 		.cfg = S3C2410_GPE11_SPIMISO0,
 	},
 	.mosi = {
-		.nr = S3C2410_GPE12,
+		.nr = S3C2410_GPE(12),
 		.cfg = S3C2410_GPE12_SPIMOSI0,
 	},
 	.clk = {
-		.nr = S3C2410_GPE13,
+		.nr = S3C2410_GPE(13),
 		.cfg = S3C2410_GPE13_SPICLK0,
 	},
 	.cs[0] = {
-		.nr = S3C2443_GPL13,
+		.nr = S3C2410_GPL(13),
 		.cfg = S3C2443_GPL13_nSS0,
 	}
 };
@@ -505,7 +506,7 @@ static struct resource cc9m2443_udc_resources[] = {
 };
 
 static struct s3c2410_udc_mach_info cc9m2443_udc_pdata = {
-        .vbus_pin               = S3C2410_GPF5,
+        .vbus_pin               = S3C2410_GPF(5),
         .vbus_pin_inverted      = 0,
         .udc_command            = NULL,
 };
@@ -554,7 +555,7 @@ static struct resource s3c2443_pcmcia_resource[] = {
 };
 
 static struct s3c2443_pcmcia_pdata cc9m2443js_pcmcia_pdata = {
-        .gpio_detect	= S3C2410_GPG10,
+        .gpio_detect	= S3C2410_GPG(10),
 };
 
 struct platform_device s3c443_device_pcmcia = {
@@ -609,15 +610,15 @@ static struct resource s3c2443_pwm_resources[] = {
 	}
 
 static struct s3c24xx_pwm_channel s3c2443_pwm_channels[] = {
-	PWM_CHANNEL(0, S3C2410_GPB0),
-	PWM_CHANNEL(1, S3C2410_GPB1),
+	PWM_CHANNEL(0, S3C2410_GPB(0)),
+	PWM_CHANNEL(1, S3C2410_GPB(1)),
 
 	/* timer 2 is connected to the DEBUG_LED on the
 	 * JumpStart board. Its frequencies are limited
 	 * because it shares the prescaler with timers
 	 * 3 and 4 (and timer 4 is the system clock) so
 	 * its prescaler can not be modified */
-	PWM_CHANNEL(2, S3C2410_GPB2),
+	PWM_CHANNEL(2, S3C2410_GPB(2)),
 
 	/* timer 3 output is not connected in the cc9m2443
 	 * module and it is connected to Piper reset on the
@@ -684,10 +685,10 @@ static void __init s3c2443_pwm_init(void)
 
 /* Platform devices for the CC9M2443 */
 static struct platform_device *cc9m2443_devices[] __initdata = {
-	&s3c_device_usb,
+	&s3c_device_ohci,
 	&s3c_device_tft_lcd,
 	&s3c_device_wdt,
-	&s3c_device_i2c,
+	&s3c_device_i2c0,
 	&s3c_device_nand,
 	&smsc911x_device,
         &cc9m2443_device_sdi,
@@ -733,6 +734,14 @@ static void __init cc9m2443_map_io(void)
 	s3c24xx_init_uarts(cc9m2443_uartcfgs, ARRAY_SIZE(cc9m2443_uartcfgs));
 }
 
+static struct s3c2410_nand_set cc9m2443_nand_sets[] = {
+	[0] = {
+		.name		= "onboard_boot",
+		.nr_chips	= 1,
+		.flash_bbt	= 0,
+	},
+};
+
 /*
  * These are the NAND-timing parameters
  * @TODO: Set the correct timing parameters for the NAND-device
@@ -741,8 +750,8 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
 	.tacls          = 20,
 	.twrph0         = 50,
 	.twrph1         = 20,
-	.nr_sets	= 1,
-	.sets           = NULL,
+	.nr_sets	= ARRAY_SIZE(cc9m2443_nand_sets),
+	.sets           = cc9m2443_nand_sets,
 };
 
 /*
@@ -754,8 +763,7 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
 #endif
 static struct s3c2410_platform_i2c cc9m2443_i2c_info = {
 	.flags          = 0,
-	.bus_freq	= 400 * 1000,
-	.max_freq       = 500 * 1000,
+	.frequency	= 400 * 1000,
 	.bus_num	= CONFIG_I2C_S3C2410_ADAPTER_NR,
 };
 
@@ -777,7 +785,7 @@ static void __init cc9m2443_machine_init(void)
 
 	s3c_device_nand.dev.platform_data = &cc9m2443_nand_info;
 
-	s3c_device_i2c.dev.platform_data = &cc9m2443_i2c_info;
+	s3c_device_i2c0.dev.platform_data = &cc9m2443_i2c_info;
 
 #if defined(CONFIG_S3C2443_PWM) || defined(CONFIG_S3C2443_PWM_MODULE)
 	/* Init PWM platform data with channels */
@@ -785,10 +793,10 @@ static void __init cc9m2443_machine_init(void)
 #endif
 
 	/* Enable the pullup for the write protect GPIO of the SD-port */
-	s3c2410_gpio_pullup(S3C2410_GPG9, 0x0);
+	s3c_gpio_setpull(S3C2410_GPG(9), S3C_GPIO_PULL_UP);
 
         /* For the bus detection we MUST activate the pull-down */
-        s3c2443_gpio_extpull(S3C2410_GPF5, 1);
+        s3c2443_gpio_extpull(S3C2410_GPF(5), 1);
 
 	/* Though this call the probes of the different drivers will be called */
 	platform_add_devices(cc9m2443_devices, ARRAY_SIZE(cc9m2443_devices));

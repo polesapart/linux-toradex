@@ -41,6 +41,7 @@
 #include <linux/mm.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
+#include <linux/gpio.h>
 
 #include <asm/byteorder.h>
 #include <asm/dma.h>
@@ -48,14 +49,15 @@
 #include <asm/irq.h>
 #include <asm/system.h>
 #include <asm/unaligned.h>
-#include <mach/hardware.h>
+#include <plat/gpio-cfg.h>
+#include <mach/gpio-fns.h>
 
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
 
 
-#include <asm/plat-s3c24xx/regs-udc.h>
-#include <asm/plat-s3c24xx/udc.h>
+#include <plat/regs-udc.h>
+#include <plat/udc.h>
 #include <linux/io.h>
 #include <mach/regs-s3c2443-clock.h>
 #include <mach/regs-gpio.h>

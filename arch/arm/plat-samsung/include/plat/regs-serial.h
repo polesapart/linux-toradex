@@ -106,6 +106,8 @@
 #define S3C2443_UCON_RXERR_IRQEN  (1<<6)
 #define S3C2443_UCON_LOOPBACK	  (1<<5)
 
+#define S3C2443_UCON_TXMODEMASK	  (3<<2)
+
 #define S3C2410_UCON_DEFAULT	  (S3C2410_UCON_TXILEVEL  | \
 				   S3C2410_UCON_RXILEVEL  | \
 				   S3C2410_UCON_TXIRQMODE | \
@@ -265,6 +267,19 @@ struct s3c2410_uartcfg {
 
 	struct s3c24xx_uart_clksrc *clocks;
 	unsigned int		    clocks_size;
+
+	/*
+	 * Values for configuring the GPIOs of the different ports
+	 * Luis Galdos
+	 */
+	unsigned int       rx_gpio;
+	unsigned int       rx_cfg;
+	unsigned int       tx_gpio;
+	unsigned int       tx_cfg;
+	unsigned int       cts_gpio;
+	unsigned int       cts_cfg;
+	unsigned int       rts_gpio;
+	unsigned int       rts_cfg;
 };
 
 /* s3c24xx_uart_devs
@@ -273,7 +288,7 @@ struct s3c2410_uartcfg {
  * or platform_add_device() before the console_initcall()
 */
 
-extern struct platform_device *s3c24xx_uart_devs[4];
+extern struct platform_device *s3c24xx_uart_devs[];
 
 #endif /* __ASSEMBLY__ */
 

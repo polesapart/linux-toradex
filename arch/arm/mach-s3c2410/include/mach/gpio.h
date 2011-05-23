@@ -15,6 +15,7 @@
 #define gpio_set_value	__gpio_set_value
 #define gpio_cansleep	__gpio_cansleep
 #define gpio_to_irq	__gpio_to_irq
+#define gpio_set_pullupdown __gpio_set_pullupdown
 
 /* some boards require extra gpio capacity to support external
  * devices that need GPIO.
@@ -29,9 +30,19 @@
 #include <asm-generic/gpio.h>
 #include <mach/gpio-nrs.h>
 #include <mach/gpio-fns.h>
+#include <mach/regs-gpio.h>
+#include <mach/regs-gpioj.h>
 
 #ifdef CONFIG_CPU_S3C24XX
 #define S3C_GPIO_END	(S3C2410_GPIO_BANKJ + 32)
 #else
 #define S3C_GPIO_END	(S3C2410_GPIO_BANKH + 32)
 #endif
+
+void s3c2443_gpio_cfgpin(unsigned int pin, unsigned int function);
+int s3c2443_gpio_extpull(unsigned int pin, int pullup);
+int s3c2443_gpio_getirq(unsigned int gpio);
+unsigned int s3c2443_gpio_read_porta(unsigned int pin);
+void s3c2443_gpio_set_udp(unsigned int pin, int val);
+void s3c2443_gpio_setpin(unsigned int pin, unsigned int to);
+unsigned int s3c2443_gpio_num(unsigned gpio);
