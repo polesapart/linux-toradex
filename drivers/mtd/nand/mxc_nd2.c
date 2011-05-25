@@ -148,8 +148,12 @@ static void nand_page_dump(struct mtd_info *mtd, u8 *dbuf, u8* obuf)
 #endif
 
 #ifdef CONFIG_MXC_NAND_SWAP_BI
-#define PART_UBOOT_SIZE         0xc0000
-#define SKIP_SWAP_BI_MAX_PAGE           (PART_UBOOT_SIZE / 0x800)
+#define PART_UBOOT_SIZE				0xc0000
+#define PART_UBOOT_SIZE_4K			0x100000
+#define SKIP_SWAP_BI_MAX_PAGE_2K		(PART_UBOOT_SIZE / 0x800)
+#define SKIP_SWAP_BI_MAX_PAGE_4K		(PART_UBOOT_SIZE_4K / 0x1000)
+u32 swap_bbi_limit = 0;
+
 inline int skip_swap_bi(int page)
 {
         /**
@@ -158,8 +162,10 @@ inline int skip_swap_bi(int page)
 	 * the bad block byte. Avoid doing that (the swapping) when
 	 * programming U-Boot into the flash.
          */
-        if (page < SKIP_SWAP_BI_MAX_PAGE)
+        if (page < swap_bbi_limit)
                 return 1;
+
+
         return 0;
 }
 #else
@@ -205,16 +211,8 @@ static void nfc_memcpy(void *dest, void *src, int len)
 	u8 *s = src;
 
 	while (len > 0) {
-		if (len >= 4) {
-			*(u32 *)d = *(u32 *)s;
-			d += 4;
-			s += 4;
-			len -= 4;
-		} else {
-			*(u16 *)d = *(u16 *)s;
-			len -= 2;
-			break;
-		}
+		*(u16 *)d = *(u16 *)s;
+		len -= 2;
 	}
 
 	if (len)
@@ -1688,7 +1686,8 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
         {
                 extern u8 ccwmx51_swap_bi;
                 mxc_nand_data->disable_bi_swap = !ccwmx51_swap_bi;
-                pr_info("%sUsing swap BI (%x)\n", ccwmx51_swap_bi ? "" : "No ", ccwmx51_swap_bi);
+		swap_bbi_limit = IS_4K_PAGE_NAND ? SKIP_SWAP_BI_MAX_PAGE_4K : SKIP_SWAP_BI_MAX_PAGE_2K;
+		pr_info("%sUsing swap BI (%x)\n", ccwmx51_swap_bi ? "" : "No ", ccwmx51_swap_bi);
         }
 #endif
 	/* Create sysfs entries for this device. */
