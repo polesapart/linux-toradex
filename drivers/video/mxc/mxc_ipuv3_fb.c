@@ -123,10 +123,9 @@ enum {
 #define FB_DEVICE_NUM 3
 static bool g_dp_in_use;
 LIST_HEAD(fb_alloc_list);
-
-static struct fb_info *mxcfb_info[FB_DEVICE_NUM];
-static __initdata struct mxcfb_mode mxc_disp_mode[MXCFB_PORT_NUM];
-static __initdata int (*mxcfb_pre_setup[MXCFB_PORT_NUM])(struct fb_info *info);
+static struct fb_info *mxcfb_info[3];
+static struct mxcfb_mode mxc_disp_mode[MXCFB_PORT_NUM];
+static int (*mxcfb_pre_setup[MXCFB_PORT_NUM])(struct fb_info *info);
 
 /*
  * register pre-setup callback for some display
@@ -1679,14 +1678,73 @@ static ssize_t swap_disp_chan(struct device *dev,
 }
 DEVICE_ATTR(fsl_disp_property, 644, show_disp_chan, swap_disp_chan);
 
-<<<<<<< HEAD
 static void	mxcfb_adjust( struct mxcfb_info * mxcfbi )
 {
 	if( !strcmp(mxcfbi->fb_mode_str,"LQ121K1LG52") ) {
 		mxcfbi->ipu_di_period = 53;
 		mxcfbi->ipu_di_fall_edge_pos = 4;
 	}
+}
+
+<<<<<<< HEAD
+/* Need dummy values until real panel is configured */
+fbi->var.xres = 240;
+fbi->var.yres = 320;
+
+if (!mxcfbi->default_bpp)
+	#ifdef CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP
+	mxcfbi->default_bpp = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;
+#else
+mxcfbi->default_bpp = 16;
+#endif
+
+if (plat_data && !mxcfbi->ipu_di_pix_fmt)
+	mxcfbi->ipu_di_pix_fmt = plat_data->interface_pix_fmt;
+
+if (plat_data && plat_data->mode && plat_data->num_modes)
+	fb_videomode_to_modelist(plat_data->mode, plat_data->num_modes,
+							 &fbi->modelist);
+
+							 if (!mxcfbi->fb_mode_str && plat_data && plat_data->mode_str)
+								 mxcfbi->fb_mode_str = plat_data->mode_str;
+
+							 if (mxcfbi->fb_mode_str) {
+								 #ifdef CONFIG_MODULE_CCXMX5X
+								 if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
+									 mxcfbi->fb_mode_str = mstr + 4;
+
+								 // Device specific adjustments
+								 mxcfb_adjust(mxcfbi);
+								 #endif
+								 ret = fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, NULL, 0, NULL,
+													mxcfbi->default_bpp);
+													if ((!ret || (ret > 2)) && plat_data && plat_data->mode && plat_data->num_modes)
+														fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, plat_data->mode,
+																	 plat_data->num_modes, NULL, mxcfbi->default_bpp);
+																	 #ifdef CONFIG_MODULE_CCXMX51
+																	 /* This improves the VGA modes on the CCWi-i.MX51 */
+																	 if (mstr != NULL) {
+																		 mxcfbi->ipu_int_clk = true;
+																		 fbi->var.sync |= FB_SYNC_CLK_LAT_FALL;
+																	 }
+																	 #endif
+							 }
+
+							 mxcfb_check_var(&fbi->var, fbi);
+
+							 pm_set_vt_switch(vt_switch);
+
+							 /* Default Y virtual size is 2x panel size */
+							 fbi->var.yres_virtual = fbi->var.yres * 3;
+
+							 mxcfb_set_fix(fbi);
+
+							 /* alocate fb first */
+							 if (!res || !res->end)
+								 if (mxcfb_map_video_memory(fbi) < 0)
+									 return -ENOMEM;
 =======
+
 static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 {
 	struct mxcfb_info *mxcfbi = (struct mxcfb_info *)fbi->par;
@@ -1698,7 +1756,11 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 	fbi->var.yres = 320;
 
 	if (!mxcfbi->default_bpp)
+#ifdef CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP
+		mxcfbi->default_bpp = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;
+#else
 		mxcfbi->default_bpp = 16;
+#endif
 
 	if (plat_data && !mxcfbi->ipu_di_pix_fmt)
 		mxcfbi->ipu_di_pix_fmt = plat_data->interface_pix_fmt;
@@ -1707,6 +1769,13 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 		mxcfbi->fb_mode_str = plat_data->mode_str;
 
 	if (mxcfbi->fb_mode_str) {
+#ifdef CONFIG_MODULE_CCXMX5X
+		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
+			mxcfbi->fb_mode_str = mstr + 4;
+
+		// Device specific adjustments
+		mxcfb_adjust(mxcfbi);
+#endif
 		if (mxcfbi->ipu_di >= 0) {
 			const struct fb_videomode *mode;
 			struct fb_videomode m;
@@ -1841,7 +1910,6 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 	release_console_sem();
 done:
 	return ret;
->>>>>>> ENGR00138644-3 ipuv3 fb: change the video mode setting method
 }
 
 /*!
@@ -1948,68 +2016,9 @@ static int mxcfb_probe(struct platform_device *pdev)
 		fbi->screen_base = ioremap(fbi->fix.smem_start, fbi->fix.smem_len);
 	}
 
-<<<<<<< HEAD
-	/* Need dummy values until real panel is configured */
-	fbi->var.xres = 240;
-	fbi->var.yres = 320;
-
-	if (!mxcfbi->default_bpp)
-#ifdef CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP
-		mxcfbi->default_bpp = CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP;
-#else
-		mxcfbi->default_bpp = 16;
-#endif
-
-	if (plat_data && !mxcfbi->ipu_di_pix_fmt)
-		mxcfbi->ipu_di_pix_fmt = plat_data->interface_pix_fmt;
-
-	if (plat_data && plat_data->mode && plat_data->num_modes)
-		fb_videomode_to_modelist(plat_data->mode, plat_data->num_modes,
-				&fbi->modelist);
-
-	if (!mxcfbi->fb_mode_str && plat_data && plat_data->mode_str)
-		mxcfbi->fb_mode_str = plat_data->mode_str;
-
-	if (mxcfbi->fb_mode_str) {
-#ifdef CONFIG_MODULE_CCXMX5X
-		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
-			mxcfbi->fb_mode_str = mstr + 4;
-
-		// Device specific adjustments
-		mxcfb_adjust(mxcfbi);
-#endif
-		ret = fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, NULL, 0, NULL,
-				mxcfbi->default_bpp);
-		if ((!ret || (ret > 2)) && plat_data && plat_data->mode && plat_data->num_modes)
-			fb_find_mode(&fbi->var, fbi, mxcfbi->fb_mode_str, plat_data->mode,
-					plat_data->num_modes, NULL, mxcfbi->default_bpp);
-#ifdef CONFIG_MODULE_CCXMX51
-		/* This improves the VGA modes on the CCWi-i.MX51 */
-		if (mstr != NULL) {
-			mxcfbi->ipu_int_clk = true;
-			fbi->var.sync |= FB_SYNC_CLK_LAT_FALL;
-		}
-#endif
-	}
-
-	mxcfb_check_var(&fbi->var, fbi);
-
-	pm_set_vt_switch(vt_switch);
-
-	/* Default Y virtual size is 2x panel size */
-	fbi->var.yres_virtual = fbi->var.yres * 3;
-
-	mxcfb_set_fix(fbi);
-
-	/* alocate fb first */
-	if (!res || !res->end)
-		if (mxcfb_map_video_memory(fbi) < 0)
-			return -ENOMEM;
-=======
 	ret =  mxcfb_setup(fbi, pdev);
 	if (ret < 0)
 		goto err3;
->>>>>>> ENGR00138644-3 ipuv3 fb: change the video mode setting method
 
 	ret = register_framebuffer(fbi);
 	if (ret < 0)
