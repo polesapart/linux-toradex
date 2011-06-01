@@ -1107,6 +1107,8 @@ static __devinit int spi_fim_probe(struct platform_device *pdev)
 	master->bus_num = pdev->id;
 	/* hardware controlled cs */
 	master->num_chipselect = MAX_CS;
+	/* the spi->mode bits understood by this driver: */
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 
 	master->setup = spi_fim_setup;
 	master->transfer = spi_fim_transfer;
