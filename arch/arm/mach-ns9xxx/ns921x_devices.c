@@ -52,7 +52,7 @@ static struct platform_device ns9xxx_device_ns921x_wdt = {
 
 void __init ns9xxx_add_device_ns921x_wdt(void)
 {
-	wdt_clk.parent = clk_get(NULL, "cpuclock");
+	wdt_clk.parent = clk_get(NULL, "ahbclock");
 	if (IS_ERR(wdt_clk.parent))
 		return;
 

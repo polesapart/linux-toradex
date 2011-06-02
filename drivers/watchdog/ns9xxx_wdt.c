@@ -229,7 +229,11 @@ static int __devinit ns9xxx_wdt_probe(struct platform_device *pdev)
 	 * counter uses full 32bit register
 	 */
 
+#if defined(CONFIG_PROCESSOR_NS9210) || defined(CONFIG_PROCESSOR_NS9215)
+	pdata.multiplier = 2 * clk_get_rate(pdata.clk) / 64;
+#else
 	pdata.multiplier = clk_get_rate(pdata.clk) / 64;
+#endif
 	pdata.timeout_max = 0;
 	pdata.timeout_max = ~pdata.timeout_max / pdata.multiplier;
 
