@@ -26,7 +26,7 @@
 #include "a_config.h"
 #include "athdefs.h"
 #include "a_types.h"
-#include "AR6002/hw2.0/hw/mbox_host_reg.h"
+#include "AR6002/hw.0/mbox_host_reg.h"
 #include "a_osapi.h"
 #include "../htc_debug.h"
 #include "hif.h"

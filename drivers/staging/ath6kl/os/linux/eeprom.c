@@ -26,8 +26,8 @@
 #include "htc.h"
 #include <linux/fs.h>
 
-#include "AR6002/hw2.0/hw/gpio_reg.h"
-#include "AR6002/hw2.0/hw/si_reg.h"
+#include "AR6002/hw.0/gpio_reg.h"
+#include "AR6002/hw.0/si_reg.h"
 
 //
 // defines
