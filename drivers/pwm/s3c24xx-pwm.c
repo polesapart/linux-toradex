@@ -27,8 +27,9 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
+#include <linux/slab.h>
 #include <mach/gpio.h>
-#include <asm/plat-s3c24xx/pwm.h>
+#include <plat/pwm.h>
 #include <plat/regs-timer.h>
 
 #define MAX_TIMER_COUNT	0xffff
@@ -420,7 +421,7 @@ static void s3c24xx_pwm_free(struct pwm_channel *p)
 	gpio_free(pch->gpio);
 }
 
-static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
+static int __devinit s3c24xx_pwmc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct s3c24xx_pwm *np = NULL;
@@ -481,7 +482,7 @@ static int __init s3c24xx_pwmc_probe(struct platform_device *pdev)
 	}
 	spin_lock_init(&np->lock);
 
-	np->pwm.bus_id = pdev->dev.bus_id;
+	np->pwm.bus_id = dev_name(&pdev->dev);
 	np->pwm.nchan = pdata->number_channels;
 
 	/* Copy the external platform data to our internal structure */

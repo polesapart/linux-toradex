@@ -17,6 +17,7 @@
 #include <linux/timer.h>
 #include <linux/sched.h>
 #include <linux/leds.h>
+#include <linux/slab.h>
 
 #include "leds.h"
 
