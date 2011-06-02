@@ -9,7 +9,6 @@ config ARCH_MX28
 	bool "Freescale MX28"
 	select CPU_ARM926T
 	select FIQ
-	select ZONE_DMA
 	select MXS_ICOLL
 	select MXS_DMA_ENGINE
 	select MXS_AUART_DMA_SUPPORT
@@ -39,13 +38,31 @@ if ARCH_MX23
 source arch/arm/mach-mx23/Kconfig
 endif
 
+config DMA_ZONE
+	bool "Add a DMA zone"
+	default y
+	select ZONE_DMA
+	help
+	  Create a zone to reserve memory for DMA.
+
 config DMA_ZONE_SIZE
 	int "DMA memory zone size"
+	depends on ZONE_DMA
 	range 0 32
 	default 16
 	help
 	    This is the size in MB for the DMA zone. The DMA zone is used for
 	    dedicated memory for large contiguous video buffers
+
+config MXS_CONSISTENT_DMA_SIZE
+	int "Consistent DMA memory size (MB)"
+	range 2 32
+	default 32
+	help
+	  Set the DMA consistent memory size according to your video
+	  memory needs, for example if you want to use multiple planes.
+	  The size must be 2MB aligned.
+
 endmenu
 
 config MXS_ICOLL

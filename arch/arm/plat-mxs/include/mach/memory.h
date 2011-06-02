@@ -22,12 +22,15 @@
 #include <asm/page.h>
 #include <asm/sizes.h>
 
+
 /*
  * Physical DRAM offset.
  */
 #define PHYS_OFFSET	UL(0x40000000)
 
 #ifndef __ASSEMBLY__
+
+#ifdef CONFIG_ZONE_DMA
 
 #ifdef CONFIG_DMA_ZONE_SIZE
 #define MXS_DMA_ZONE_SIZE	((CONFIG_DMA_ZONE_SIZE * SZ_1M) >> PAGE_SHIFT)
@@ -40,6 +43,7 @@ static inline void __arch_adjust_zones(int node, unsigned long *zone_size,
 {
 	if (node != 0)
 		return;
+
 	/* Create separate zone to reserve memory for DMA */
 	zone_size[1] = zone_size[0] - MXS_DMA_ZONE_SIZE;
 	zone_size[0] = MXS_DMA_ZONE_SIZE;
@@ -52,8 +56,10 @@ static inline void __arch_adjust_zones(int node, unsigned long *zone_size,
 
 #endif
 
+#endif
+
 #define ISA_DMA_THRESHOLD	(0x0003ffffULL)
 
-#define CONSISTENT_DMA_SIZE	SZ_32M
+#define CONSISTENT_DMA_SIZE	(CONFIG_MXS_CONSISTENT_DMA_SIZE * SZ_1M)
 
 #endif
