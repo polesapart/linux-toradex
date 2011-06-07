@@ -101,6 +101,10 @@ enum pad_voltage {
  * @input:     For GPIO pins only, this indicates whether the pin is an input.
  * @data:      The data field is used when the pin is configured to GPIO output
  *             mode. When data is 0, the pin's output will be 0.
+ * @sysfs:     Only for GPIO pins, this field indicates that the pin will be
+ *             configured by userspace using the sysfs and the kernel should not
+ *             request it and should allow pin configuration without pin
+ *             request.
  */
 struct pin_desc {
 	char *name;
@@ -113,6 +117,7 @@ struct pin_desc {
 	unsigned pull:1;
 	unsigned output:1;
 	unsigned data:1;
+	unsigned sysfs :1;
 };
 
 struct pin_bank {
@@ -143,10 +148,14 @@ extern int __init mxs_set_pinctrl_chip(struct pinctrl_chip *);
 
 extern unsigned int mxs_pin2gpio(unsigned int);
 extern int mxs_request_pin(unsigned int, enum pin_fun, const char *);
-extern int mxs_set_type(unsigned int, enum pin_fun, const char *);
+extern int mxs_set_type(unsigned int pin, enum pin_fun fun, const char *lab,
+		unsigned int sysfs);
 extern int mxs_get_type(unsigned int);
-extern int mxs_set_strength(unsigned int, enum pad_strength, const char *);
-extern int mxs_set_voltage(unsigned int, enum pad_voltage, const char *);
-extern int mxs_set_pullup(unsigned int, int, const char *);
+extern int mxs_set_strength(unsigned int pin, enum pad_strength cfg, unsigned int sysfs,
+		const char *lab);
+extern int mxs_set_voltage(unsigned int pin, enum pad_voltage cfg, unsigned int sysfs ,
+		const char *lab);
+extern int mxs_set_pullup(unsigned int pin, int en, unsigned int sysfs ,
+		const char *lab);
 extern void mxs_release_pin(unsigned int, const char *);
 #endif

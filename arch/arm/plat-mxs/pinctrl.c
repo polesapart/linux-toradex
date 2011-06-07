@@ -68,7 +68,8 @@ int mxs_get_type(unsigned int pin)
 }
 EXPORT_SYMBOL(mxs_get_type);
 
-int mxs_set_type(unsigned int pin, enum pin_fun fun, const char *lab)
+int mxs_set_type(unsigned int pin, enum pin_fun fun, const char *lab,
+		unsigned int sysfs)
 {
 	int bank, index;
 	struct pin_bank *pb;
@@ -81,9 +82,9 @@ int mxs_set_type(unsigned int pin, enum pin_fun fun, const char *lab)
 
 	pb = g_chip->banks + bank;
 
-	if (!test_bit(index, &pb->bitmap))
+	if (!sysfs && !test_bit(index, &pb->bitmap))
 		return -ENOLCK;
-	if (lab != pb->label[index])	/* label is const string */
+	if (!sysfs && lab != pb->label[index])	/* label is const string */
 		return -EINVAL;
 	if (g_chip->set_type)
 		g_chip->set_type(pb, index, fun);
@@ -91,7 +92,8 @@ int mxs_set_type(unsigned int pin, enum pin_fun fun, const char *lab)
 }
 EXPORT_SYMBOL(mxs_set_type);
 
-int mxs_set_strength(unsigned int pin, enum pad_strength cfg, const char *lab)
+int mxs_set_strength(unsigned int pin, enum pad_strength cfg, unsigned int sysfs,
+		const char *lab)
 {
 	int bank, index;
 	struct pin_bank *pb;
@@ -104,9 +106,9 @@ int mxs_set_strength(unsigned int pin, enum pad_strength cfg, const char *lab)
 
 	pb = g_chip->banks + bank;
 
-	if (!test_bit(index, &pb->bitmap))
+	if (!sysfs && !test_bit(index, &pb->bitmap))
 		return -ENOLCK;
-	if (lab != pb->label[index])	/* label is const string */
+	if (!sysfs && lab != pb->label[index])	/* label is const string */
 		return -EINVAL;
 	if (g_chip->set_strength)
 		g_chip->set_strength(pb, index, cfg);
@@ -114,7 +116,8 @@ int mxs_set_strength(unsigned int pin, enum pad_strength cfg, const char *lab)
 }
 EXPORT_SYMBOL(mxs_set_strength);
 
-int mxs_set_voltage(unsigned int pin, enum pad_voltage cfg, const char *lab)
+int mxs_set_voltage(unsigned int pin, enum pad_voltage cfg, unsigned int sysfs ,
+		const char *lab)
 {
 	int bank, index;
 	struct pin_bank *pb;
@@ -127,9 +130,9 @@ int mxs_set_voltage(unsigned int pin, enum pad_voltage cfg, const char *lab)
 
 	pb = g_chip->banks + bank;
 
-	if (!test_bit(index, &pb->bitmap))
+	if (!sysfs && !test_bit(index, &pb->bitmap))
 		return -ENOLCK;
-	if (lab != pb->label[index])	/* label is const string */
+	if (!sysfs && lab != pb->label[index])	/* label is const string */
 		return -EINVAL;
 	if (g_chip->set_voltage)
 		g_chip->set_voltage(pb, index, cfg);
@@ -137,7 +140,7 @@ int mxs_set_voltage(unsigned int pin, enum pad_voltage cfg, const char *lab)
 }
 EXPORT_SYMBOL(mxs_set_voltage);
 
-int mxs_set_pullup(unsigned int pin, int en, const char *lab)
+int mxs_set_pullup(unsigned int pin, int en, unsigned int sysfs , const char *lab)
 {
 	int bank, index;
 	struct pin_bank *pb;
@@ -150,9 +153,10 @@ int mxs_set_pullup(unsigned int pin, int en, const char *lab)
 
 	pb = g_chip->banks + bank;
 
-	if (!test_bit(index, &pb->bitmap))
+	if ( !sysfs && !test_bit(index, &pb->bitmap))
 		return -ENOLCK;
-	if (lab != pb->label[index])	/* label is const string */
+
+	if (!sysfs && (lab != pb->label[index]))/* label is const string */
 		return -EINVAL;
 	if (g_chip->set_pullup)
 		g_chip->set_pullup(pb, index, en);

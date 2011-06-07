@@ -89,6 +89,8 @@ mx28_gpio_set_irq_type(struct mxs_gpio_port *port, int pin, unsigned int type)
 		level = 1;
 		pol = 0;
 		break;
+	case IRQ_TYPE_EDGE_BOTH:
+		printk(KERN_WARNING"IRQ type BOTH not supported\n");
 	default:
 		pr_debug("%s: Incorrect GPIO interrupt type 0x%x\n",
 			 __func__, type);

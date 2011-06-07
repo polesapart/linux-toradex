@@ -474,7 +474,7 @@ static void mxs_mmc_hw_release_ssp0(void)
 
 static void mxs_mmc_cmd_pullup_ssp0(int enable)
 {
-	mxs_set_pullup(PINID_SSP0_CMD, enable, "mmc0_cmd");
+	mxs_set_pullup(PINID_SSP0_CMD, enable, 0 /* sysfs */, "mmc0_cmd");
 }
 
 static unsigned long mxs_mmc_setclock_ssp0(unsigned long hz)
@@ -535,7 +535,7 @@ static void mxs_mmc_hw_release_ssp1(void)
 
 static void mxs_mmc_cmd_pullup_ssp1(int enable)
 {
-	mxs_set_pullup(PINID_GPMI_RDY1, enable, "mmc1_cmd");
+	mxs_set_pullup(PINID_GPMI_RDY1, enable, 0 /*sysfs*/ , "mmc1_cmd");
 }
 
 static unsigned long mxs_mmc_setclock_ssp1(unsigned long hz)

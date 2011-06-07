@@ -1187,11 +1187,11 @@ void __init mx28evk_init_pin_group(struct pin_desc *pins, unsigned count)
 		else
 			mxs_request_pin(pin->id, pin->fun, pin->name);
 		if (pin->drive) {
-			mxs_set_strength(pin->id, pin->strength, pin->name);
-			mxs_set_voltage(pin->id, pin->voltage, pin->name);
+			mxs_set_strength(pin->id, pin->strength, pin->sysfs , pin->name);
+			mxs_set_voltage(pin->id, pin->voltage, pin->sysfs , pin->name);
 		}
 		if (pin->pull)
-			mxs_set_pullup(pin->id, pin->pullup, pin->name);
+			mxs_set_pullup(pin->id, pin->pullup, pin->sysfs , pin->name);
 		if (pin->fun == PIN_GPIO) {
 			if (pin->output)
 				gpio_direction_output(MXS_PIN_TO_GPIO(pin->id),

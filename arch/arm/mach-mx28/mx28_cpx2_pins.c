@@ -564,6 +564,19 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .drive 	= 1,
 	 .pull 		= 0,
 	 },
+#else
+	{
+	 .name  = "SSP0_DETECT",
+	 .id    = PINID_SSP0_DETECT,
+	 .fun   = PIN_GPIO,
+	 .strength      = PAD_8MA,
+	 .voltage       = PAD_3_3V,
+	 .pullup        = 1,
+	 .drive         = 1,
+	 .pull          = 1,
+	 .output        = 0,
+	 .sysfs         = 1,
+	 },
 #endif
 #if defined(CONFIG_LEDS_MXS) || defined(CONFIG_LEDS_MXS_MODULE)
 	{
@@ -1154,19 +1167,23 @@ void __init mx28_cpx2_init_pin_group(struct pin_desc *pins, unsigned count)
 {
 	int i;
 	struct pin_desc *pin;
+
 	for (i = 0; i < count; i++) {
 		pin = pins + i;
-		if (pin->fun == PIN_GPIO)
-			gpio_request(MXS_PIN_TO_GPIO(pin->id), pin->name);
+		if ( pin->fun == PIN_GPIO ) {
+			if ( !pin->sysfs )
+				gpio_request(MXS_PIN_TO_GPIO(pin->id), pin->name);
+		}
 		else
 			mxs_request_pin(pin->id, pin->fun, pin->name);
 		if (pin->drive) {
-			mxs_set_strength(pin->id, pin->strength, pin->name);
-			mxs_set_voltage(pin->id, pin->voltage, pin->name);
+			mxs_set_strength(pin->id, pin->strength, pin->sysfs , pin->name);
+			mxs_set_voltage(pin->id, pin->voltage, pin->sysfs , pin->name);
 		}
-		if (pin->pull)
-			mxs_set_pullup(pin->id, pin->pullup, pin->name);
-		if (pin->fun == PIN_GPIO) {
+		if (pin->pull) {
+			mxs_set_pullup(pin->id, pin->pullup, pin->sysfs, pin->name);
+		}
+		if ( (pin->fun == PIN_GPIO) && ( !pin->sysfs ) ) {
 			if (pin->output)
 				gpio_direction_output(MXS_PIN_TO_GPIO(pin->id),
 							pin->data);
