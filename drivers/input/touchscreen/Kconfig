@@ -175,6 +175,18 @@ config TOUCHSCREEN_S3C2410
 	  To compile this driver as a module, choose M here: the
 	  module will be called s3c2410_ts.
 
+config TOUCHSCREEN_S3C
+	tristate "S3C touchscreen driver"
+	depends on ARCH_S3C2410
+	help
+	   Say Y here to enable the driver for the touchscreen on the
+	   S3C SMDK board.
+
+	   If unsure, say N.
+
+	   To compile this driver as a module, choose M here: the
+	   module will be called s3c24xx_ts.
+
 config TOUCHSCREEN_GUNZE
 	tristate "Gunze AHL-51S touchscreen"
 	select SERIO

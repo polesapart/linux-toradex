@@ -32,7 +32,7 @@
 
 #undef S3C_IIS_V2_SUPPORTED
 
-#if defined(CONFIG_CPU_S3C2412) || defined(CONFIG_CPU_S3C2413)
+#if defined(CONFIG_CPU_S3C2412) || defined(CONFIG_CPU_S3C2413) || defined(CONFIG_CPU_S3C2443)
 #define S3C_IIS_V2_SUPPORTED
 #endif
 
@@ -532,8 +532,9 @@ static int s3c2412_i2s_set_clkdiv(struct snd_soc_dai *cpu_dai,
 
 	case S3C_I2SV2_DIV_PRESCALER:
 		if (div >= 0) {
-			writel((div << 8) | S3C2412_IISPSR_PSREN,
-			       i2s->regs + S3C2412_IISPSR);
+			 /* The S3C2443 has different bit fields (Luis Galdos) */
+			div = (i2s->cpu_is_s3c2443) ? (div - 1) : (div << 8);
+			writel(div | S3C2412_IISPSR_PSREN, i2s->regs + S3C2412_IISPSR);
 		} else {
 			writel(0x0, i2s->regs + S3C2412_IISPSR);
 		}
@@ -646,6 +647,7 @@ int s3c_i2sv2_probe(struct platform_device *pdev,
 {
 	struct device *dev = &pdev->dev;
 	unsigned int iismod;
+	unsigned long regval;
 
 	i2s->dev = dev;
 
@@ -685,6 +687,14 @@ int s3c_i2sv2_probe(struct platform_device *pdev,
 
 	clk_enable(i2s->iis_pclk);
 
+	/* Stop the DMA-channel if it's already running! */
+	regval = readl(i2s->regs + S3C2412_IISCON);
+	if (regval & S3C2412_IISCON_IIS_ACTIVE) {
+		printk(KERN_ERR "DMA channel seems to be already active.\n");
+		regval &= ~S3C2412_IISCON_IIS_ACTIVE;
+		writel(regval, i2s->regs + S3C2412_IISCON);
+	}
+
 	/* Mark ourselves as in TXRX mode so we can run through our cleanup
 	 * process without warnings. */
 	iismod = readl(i2s->regs + S3C2412_IISMOD);
@@ -696,6 +706,27 @@ int s3c_i2sv2_probe(struct platform_device *pdev,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(s3c_i2sv2_probe);
+
+void s3c_i2sv2_remove(struct platform_device *pdev,
+		    struct snd_soc_dai *dai,
+		    struct s3c_i2sv2_info *i2s,
+		    unsigned long base)
+{
+	struct resource *res;
+
+	clk_disable(i2s->iis_pclk);
+	clk_put(i2s->iis_pclk);
+	i2s->iis_pclk = NULL;
+
+	iounmap(i2s->regs);
+	i2s->regs = NULL;
+
+	if (!base) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		release_mem_region(res->start, resource_size(res));
+	}
+}
+EXPORT_SYMBOL_GPL(s3c_i2sv2_remove);
 
 #ifdef CONFIG_PM
 static int s3c2412_i2s_suspend(struct snd_soc_dai *dai)

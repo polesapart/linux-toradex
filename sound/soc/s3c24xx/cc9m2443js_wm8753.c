@@ -37,16 +37,15 @@
 #include <mach/regs-clock.h>
 #include <mach/regs-gpio.h>
 #include <mach/hardware.h>
-#include <mach/audio.h>
-#include <linux/io.h>
+#include <plat/audio.h>
 #include <mach/spi-gpio.h>
 #include <sound/pcm_params.h>
 
-#include <asm/plat-s3c24xx/regs-iis.h>
+#include <plat/regs-iis.h>
 
 #include "../codecs/wm8753.h"
 #include "lm4857.h"
-#include "s3c24xx-pcm.h"
+#include "s3c-dma.h"
 #include "s3c2412-i2s.h"
 
 /* Additional info and error messages */
@@ -72,7 +71,7 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 	unsigned int pll_out = 0, bclk = 0;
 	int ret = 0;
 	unsigned long bitfs, is16bit;
-	struct s3c2412_rate_calc info;
+	struct s3c_i2sv2_rate_calc info;
 
 	switch (params_rate(params)) {
 	case 8000:
@@ -106,28 +105,28 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* cpu_iis_mclk = iis_clkrate / params_rate(params); */
-	s3c2412_iis_calc_rate(&info, NULL, params_rate(params), s3c2412_get_iisclk());
+	s3c_i2sv2_iis_calc_rate(&info, NULL, params_rate(params), s3c_i2sv2_get_clock(cpu_dai));
 	
 	printk_debug("Sample rate %i | Master Clk %lu Hz | FS %u | Clk divisor %u\n",
-		     params_rate(params), clk_get_rate(s3c2412_get_iisclk()),
+		     params_rate(params), clk_get_rate(s3c_i2sv2_get_clock(cpu_dai)),
 		     info.fs_div, info.clk_div);
 
 	/* REQUIRED: Set codec DAI configuration (normal bclk and frm ) and as slave */
-	ret = codec_dai->dai_ops.set_fmt(codec_dai,
+	ret = snd_soc_dai_set_fmt(codec_dai,
 					 SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 					 SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* REQUIRED: Set cpu DAI configuration (normal bclk and frm) and CPU as master */
-	ret = cpu_dai->dai_ops.set_fmt(cpu_dai,
+	ret = snd_soc_dai_set_fmt(cpu_dai,
 				       SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 				       SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* REQUIRED: Set the codec system clock for DAC and ADC */
-	ret = codec_dai->dai_ops.set_sysclk(codec_dai, WM8753_MCLK, pll_out,
+	ret = snd_soc_dai_set_sysclk(codec_dai, WM8753_MCLK, pll_out,
 					    SND_SOC_CLOCK_OUT);
 	if (ret < 0) {
 		printk_err("set_sysclk() failed (%i)\n", ret);
@@ -135,7 +134,7 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* REQUIRED: Set MCLK division for sample rate (256, 384, 512, 768) */
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai, S3C2412_DIV_RCLK, info.fs_div);
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, S3C2412_DIV_RCLK, info.fs_div);
 	if (ret < 0)
 		return ret;
 	
@@ -145,19 +144,31 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 	 * to the table 25-2 of the data sheet of the S3C2443
 	 * @XXX: Define the corresponding macros for the Bit FS selection
 	 */
-	is16bit = (params_format(params) == SNDRV_PCM_FORMAT_S16_LE) ? 1 : 0;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_U8:
+	case SNDRV_PCM_FORMAT_S8:
+		is16bit = 0;
+		break;
+	case SNDRV_PCM_FORMAT_U16_LE:
+	case SNDRV_PCM_FORMAT_S16_LE:
+		is16bit = 1;
+		break;
+	default:
+		return -EINVAL;
+	}
+
 	switch (info.fs_div) {
 	case 256:
-		bitfs = (is16bit) ? 0x0 : 0x2;
+		bitfs = (is16bit) ? 32 : 16;
 		break;
 	case 512:
-		bitfs = (is16bit) ? 0x0 : 0x2;
+		bitfs = (is16bit) ? 32 : 16;
 		break;
 	case 384:
-		bitfs = (is16bit) ? 0x0 : 0x2;
+		bitfs = (is16bit) ? 32 : 16;
 		break;
 	case 768:
-		bitfs = (is16bit) ? 0x0 : 0x2;
+		bitfs = (is16bit) ? 32 : 16;
 		break;
 	default:
 		printk_err("Unsupported root clock FS %i divisor found\n", info.fs_div);
@@ -166,14 +177,14 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 	
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai, S3C2412_DIV_BCLK, bitfs);
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, S3C2412_DIV_BCLK, bitfs);
 	if (ret) {
 		printk_err("Couldn't set the BLCK, %i\n", ret);
 		return ret;
 	}
 	
 	/* Set the prescaler divisor for the master clock */
-	ret = cpu_dai->dai_ops.set_clkdiv(cpu_dai, S3C2412_DIV_PRESCALER,
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, S3C2412_DIV_PRESCALER,
 					  info.clk_div);
 	if (ret < 0) {
 		printk_err("Prescaler setting failed, %i\n", ret);
@@ -190,7 +201,7 @@ static int cc9m2443js_hifi_hw_free(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
 
 	/* disable the PLL */
-	return codec_dai->dai_ops.set_pll(codec_dai, WM8753_PLL1, 0, 0);
+	return snd_soc_dai_set_pll(codec_dai, WM8753_PLL1, 0, 0, 0);
 }
 
 static int cc9m2443js_hifi_startup(struct snd_pcm_substream *substream)
@@ -246,22 +257,16 @@ static struct snd_soc_dai_link cc9m2443js_dai[] = {
 };
 
 /* This is the machine-structure */
-static struct snd_soc_machine cc9m2443js_snd = {
+static struct snd_soc_card cc9m2443js_snd = {
 	.name = "cc9m2443js",
+	.platform = &s3c24xx_soc_platform,
 	.dai_link = cc9m2443js_dai,
 	.num_links = ARRAY_SIZE(cc9m2443js_dai),
 };
 
-static struct wm8753_setup_data cc9m2443js_wm8753_setup = {
-	.i2c_address	= 0x1a,
-	.i2c_bus	= CONFIG_CC9M2443JS_WM8753_I2C_ADAPTER,
-};
-
 static struct snd_soc_device cc9m2443js_snd_devdata = {
-	.machine = &cc9m2443js_snd,
-	.platform = &s3c24xx_soc_platform,
+	.card = &cc9m2443js_snd,
 	.codec_dev = &soc_codec_dev_wm8753,
-	.codec_data = &cc9m2443js_wm8753_setup,
 };
 
 static struct platform_device *cc9m2443js_snd_device;

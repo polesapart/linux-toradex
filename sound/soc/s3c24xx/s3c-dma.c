@@ -63,6 +63,8 @@ struct s3c24xx_runtime_data {
 	dma_addr_t dma_pos;
 	dma_addr_t dma_end;
 	struct s3c_dma_params *params;
+
+	int resumed;
 };
 
 /* s3c_dma_enqueue
@@ -458,11 +460,81 @@ static int s3c_dma_new(struct snd_card *card,
 	return ret;
 }
 
+/* Enables the support of the Power Management */
+#if defined(CONFIG_PM)
+static int s3c_dma_suspend(struct snd_soc_dai_link *dai_link)
+{
+	struct snd_pcm *pcm = dai_link->pcm;
+	struct snd_pcm_str *stream = &pcm->streams[0];
+	struct snd_pcm_substream *substream = stream->substream;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct s3c24xx_runtime_data *prtd;
+	int retval;
+
+	retval = 0;
+	if (!runtime)
+		goto exit_suspend;
+
+	prtd = runtime->private_data;
+	if (!prtd)
+		goto exit_suspend;
+
+	prtd->resumed = 0;
+
+exit_suspend:
+	return retval;
+}
+
+/* We need to reenable the DMA-channel when coming out from the suspend */
+static int s3c_dma_resume(struct snd_soc_dai_link *dai_link)
+{
+	struct snd_pcm *pcm = dai_link->pcm;
+	struct snd_pcm_str *stream = &pcm->streams[0];
+	struct snd_pcm_substream *substream = stream->substream;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct s3c24xx_runtime_data *prtd;
+	int retval;
+
+	retval = 0;
+	if (!runtime)
+		goto exit_resume;
+
+	prtd = runtime->private_data;
+	if (!prtd)
+		goto exit_resume;
+
+	/* Check if a DMA-channel is available and was not already resumed */
+	if (prtd->params != NULL && !prtd->resumed) {
+
+		/*
+		 * We must reenable the DMA-channels otherwise they will not work
+		 * after the wakeup-reset
+		 */
+		s3c2410_dma_free(prtd->params->channel, prtd->params->client);
+		retval = s3c2410_dma_request(prtd->params->channel,
+						prtd->params->client, NULL);
+		if (retval < 0)
+			printk(KERN_ERR "s3c24xx-pcm: DMA %u request failed (%i)\n",
+				prtd->params->channel, retval);
+		else
+			prtd->resumed = 1;
+	}
+
+exit_resume:
+	return retval;
+}
+#else
+#define s3c_dma_suspend            NULL
+#define s3c_dma_resume             NULL
+#endif /* defined(CONFIG_PM) */
+
 struct snd_soc_platform s3c24xx_soc_platform = {
 	.name		= "s3c24xx-audio",
 	.pcm_ops 	= &s3c_dma_ops,
 	.pcm_new	= s3c_dma_new,
 	.pcm_free	= s3c_dma_free_dma_buffers,
+	.suspend        = s3c_dma_suspend,
+	.resume         = s3c_dma_resume,
 };
 EXPORT_SYMBOL_GPL(s3c24xx_soc_platform);
 

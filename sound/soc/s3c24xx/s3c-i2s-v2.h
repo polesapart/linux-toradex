@@ -66,6 +66,9 @@ struct s3c_i2sv2_info {
 	u32		 suspend_iismod;
 	u32		 suspend_iiscon;
 	u32		 suspend_iispsr;
+
+	u32		 cpu_is_s3c2443;
+	int		 counts;
 };
 
 extern struct clk *s3c_i2sv2_get_clock(struct snd_soc_dai *cpu_dai);
@@ -90,6 +93,18 @@ extern int s3c_i2sv2_probe(struct platform_device *pdev,
 			   struct snd_soc_dai *dai,
 			   struct s3c_i2sv2_info *i2s,
 			   unsigned long base);
+
+/**
+ * s3c_i2sv2_remove - remove for i2s device helper
+ * @pdev: The platform device supplied to the original probe.
+ * @dai: The ASoC DAI structure supplied to the original probe.
+ * @i2s: Our local i2s structure to fill in.
+ * @base: The base address for the registers.
+ */
+extern void s3c_i2sv2_remove(struct platform_device *pdev,
+		    struct snd_soc_dai *dai,
+		    struct s3c_i2sv2_info *i2s,
+		    unsigned long base);
 
 /**
  * s3c_i2sv2_register_dai - register dai with soc core

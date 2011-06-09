@@ -165,6 +165,11 @@ static struct i2c_board_info cc9m2443_i2c_devices[] = {
 		.platform_data = &pca9554_data,
 	},
 #endif
+#if defined(CONFIG_SND_S3C24XX_SOC_CC9M2443JS_WM8753) || defined(CONFIG_SND_S3C24XX_SOC_CC9M2443JS_WM8753_MODULE)
+	{
+		I2C_BOARD_INFO("wm8753", 0x1a),
+	},
+#endif
 	CC9M2443_I2C_BASE_BOARD_DEVICES
 };
 

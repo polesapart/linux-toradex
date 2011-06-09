@@ -77,9 +77,15 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 
 	pr_debug("Entered %s\n", __func__);
 
+	/* Check if we have already probed the interface */
+
+	s3c2412_i2s.counts++;
+	if (s3c2412_i2s.counts > 1)
+		return 0;
+
 	ret = s3c_i2sv2_probe(pdev, dai, &s3c2412_i2s, S3C2410_PA_IIS);
 	if (ret)
-		return ret;
+		goto exit_err;
 
 	s3c2412_i2s.dma_capture = &s3c2412_i2s_pcm_stereo_in;
 	s3c2412_i2s.dma_playback = &s3c2412_i2s_pcm_stereo_out;
@@ -87,8 +93,8 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 	s3c2412_i2s.iis_cclk = clk_get(&pdev->dev, "i2sclk");
 	if (s3c2412_i2s.iis_cclk == NULL) {
 		pr_err("failed to get i2sclk clock\n");
-		iounmap(s3c2412_i2s.regs);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto exit_iounmap;
 	}
 
 	/* Set MPLL as the source for IIS CLK */
@@ -105,7 +111,44 @@ static int s3c2412_i2s_probe(struct platform_device *pdev,
 	s3c2410_gpio_cfgpin(S3C2410_GPE3, S3C2410_GPE3_I2SSDI);
 	s3c2410_gpio_cfgpin(S3C2410_GPE4, S3C2410_GPE4_I2SSDO);
 
+	printk("I2S %s successfully probed\n",
+		s3c2412_i2s.cpu_is_s3c2443 ? "S3C2443" : "S3C2412");
+
 	return 0;
+
+exit_iounmap:
+	iounmap(s3c2412_i2s.regs);
+
+exit_err:
+	s3c2412_i2s.counts -= 1;
+	return ret;
+}
+
+static int s3c2443_i2s_probe(struct platform_device *pdev,
+			     struct snd_soc_dai *dai)
+{
+	s3c2412_i2s.cpu_is_s3c2443 = 1;
+	return s3c2412_i2s_probe(pdev, dai);
+}
+
+static void s3c2443_i2s_remove(struct platform_device *pdev, struct snd_soc_dai *dai)
+{
+	printk("Removing the I2C device: id %i\n", pdev->id);
+
+	/*
+	 * If there is still one device using the interface, skip the complete
+	 * remove of the driver
+	 */
+	s3c2412_i2s.counts -= 1;
+	if (s3c2412_i2s.counts)
+		return;
+
+	clk_disable(s3c2412_i2s.iis_cclk);
+
+	/* @FIXME: We can't put the clock at this place! (Luis Galdos) */
+	/* clk_put(s3c2412_i2s.iis_cclk); */
+
+	s3c_i2sv2_remove(pdev, dai, &s3c2412_i2s, S3C2410_PA_IIS);
 }
 
 static int s3c2412_i2s_hw_params(struct snd_pcm_substream *substream,
@@ -172,14 +215,51 @@ struct snd_soc_dai s3c2412_i2s_dai = {
 };
 EXPORT_SYMBOL_GPL(s3c2412_i2s_dai);
 
+#define S3C2443_I2S_RATES \
+	(SNDRV_PCM_RATE_44100)
+
+static struct snd_soc_dai_ops s3c2443_i2s_dai_ops = {
+	.hw_params	= s3c2412_i2s_hw_params,
+};
+
+struct snd_soc_dai s3c2443_i2s_dai = {
+	.name		= "s3c2443-i2s",
+	.id		= 0,
+	.probe		= s3c2443_i2s_probe,
+	.remove		= s3c2443_i2s_remove,
+	.playback = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2412_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.channels_min	= 2,
+		.channels_max	= 2,
+		.rates		= S3C2412_I2S_RATES,
+		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.ops = &s3c2443_i2s_dai_ops,
+};
+EXPORT_SYMBOL_GPL(s3c2443_i2s_dai);
+
 static int __init s3c2412_i2s_init(void)
 {
-	return  s3c_i2sv2_register_dai(&s3c2412_i2s_dai);
+	unsigned int ret;
+
+	ret = s3c_i2sv2_register_dai(&s3c2412_i2s_dai);
+	if ( ret != 0 )
+		s3c_i2sv2_register_dai(&s3c2443_i2s_dai);
+	else
+		ret = s3c_i2sv2_register_dai(&s3c2443_i2s_dai);
+
+	return ret;
 }
 module_init(s3c2412_i2s_init);
 
 static void __exit s3c2412_i2s_exit(void)
 {
+	snd_soc_unregister_dai(&s3c2443_i2s_dai);
 	snd_soc_unregister_dai(&s3c2412_i2s_dai);
 }
 module_exit(s3c2412_i2s_exit);

@@ -70,6 +70,23 @@ config SND_S3C64XX_SOC_WM8580
 	help
 	  Say Y if you want to add support for SoC audio on the SMDK6410.
 
+config SND_S3C24XX_SOC_CC9M2443JS_WM8753
+	tristate "SoC I2S Audio support for Digi CC9M2443JS - WM8753"
+	depends on SND_S3C24XX_SOC && MACH_CC9M2443JS
+	select I2C_S3C2410
+	select SND_S3C2412_SOC_I2S
+	select SND_SOC_WM8753
+	help
+	  Say Y if you want to add support for SoC audio on the Digi CC9M2443
+	  Jumper Start with the codec WM8753.
+
+config CC9M2443JS_WM8753_I2C_ADAPTER
+	int "I2C adapter connected with the WM8753"
+	depends on SND_S3C24XX_SOC_CC9M2443JS_WM8753
+	default 1
+	help
+	  This is the adapter/bus number where the WM8753 is connected to.
+
 config SND_S3C24XX_SOC_SMDK2443_WM9710
 	tristate "SoC AC97 Audio support for SMDK2443 - WM9710"
 	depends on SND_S3C24XX_SOC && MACH_SMDK2443
