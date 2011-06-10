@@ -66,6 +66,7 @@ config MACH_MX21
 
 config MACH_MX27
 	bool "i.MX27 support"
+	select ARCH_HAS_CPUFREQ
 	help
 	  This enables support for Freescale's MX2 based i.MX27 processor.
 

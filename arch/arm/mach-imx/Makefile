@@ -13,6 +13,7 @@ obj-$(CONFIG_ARCH_MX25) += clock-imx25.o mm-imx25.o
 
 obj-$(CONFIG_MACH_MX27) += cpu-imx27.o pm-imx27.o
 obj-$(CONFIG_MACH_MX27) += clock-imx27.o mm-imx27.o
+obj-$(CONFIG_CPU_FREQ_IMX) += cpu_op-mx27.o
 
 # Support for CMOS sensor interface
 obj-$(CONFIG_MX1_VIDEO)	+= mx1-camera-fiq.o mx1-camera-fiq-ksym.o

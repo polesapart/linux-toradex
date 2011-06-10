@@ -177,7 +177,7 @@ static int set_rate_cpu(struct clk *clk, unsigned long rate)
 	if (mx27_revision() >= IMX_CHIP_REVISION_2_0) {
 		reg &= ~(3 << 12);
 		reg |= div << 12;
-		reg &= ~(CCM_CSCR_FPM | CCM_CSCR_SPEN);
+		reg &= ~CCM_CSCR_SPEN;
 		__raw_writel(reg | CCM_CSCR_UPDATE_DIS, CCM_CSCR);
 	} else {
 		printk(KERN_ERR "Can't set CPU frequency!\n");
@@ -676,6 +676,7 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("mxc_w1.0", NULL, owire_clk)
 	_REGISTER_CLOCK(NULL, "rtc", rtc_clk)
 	_REGISTER_CLOCK(NULL, "scc", scc_clk)
+	_REGISTER_CLOCK(NULL, "cpu_clk", cpu_clk)
 };
 
 /* Adjust the clock path for TO2 and later */
