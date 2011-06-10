@@ -1836,7 +1836,9 @@ void __init mx28_clock_init(void)
 		clk_register(&onchip_clocks[i]);
 
 	clk_enable(&cpu_clk);
+	printk(KERN_INFO"CPU rate: %lu\n",cpu_get_rate(&cpu_clk)/MHZ);
 	clk_enable(&emi_clk);
+	printk(KERN_INFO"EMI rate: %lu\n",emi_get_rate(&emi_clk)/MHZ);
 
 	clk_en_public_h_asm_ctrl(mx28_enable_h_autoslow,
 		mx28_set_hbus_autoslow_flags);

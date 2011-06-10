@@ -21,6 +21,10 @@
 
 #ifndef __ASSEMBLER__
 
+#ifndef MHZ
+#define MHZ (1000*1000)
+#endif
+
 #include <linux/list.h>
 #include <asm/clkdev.h>
 
