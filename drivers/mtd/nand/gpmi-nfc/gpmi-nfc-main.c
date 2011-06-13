@@ -1822,8 +1822,8 @@ static int gpmi_nfc_resume(struct platform_device *pdev)
 
 #else
 
-#define suspend  NULL
-#define resume   NULL
+#define gpmi_nfc_suspend  NULL
+#define gpmi_nfc_resume   NULL
 
 #endif  /* CONFIG_PM */
 
