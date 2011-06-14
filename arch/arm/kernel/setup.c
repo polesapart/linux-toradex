@@ -125,6 +125,7 @@ EXPORT_SYMBOL(elf_platform);
 
 static const char *cpu_name;
 static const char *machine_name;
+static unsigned int machine_id;
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 
 static char default_command_line[COMMAND_LINE_SIZE] __initdata = CONFIG_CMDLINE;
@@ -680,6 +681,7 @@ void __init setup_arch(char **cmdline_p)
 	setup_processor();
 	mdesc = setup_machine(machine_arch_type);
 	machine_name = mdesc->name;
+	machine_id = mdesc->nr;
 
 	if (mdesc->soft_reboot)
 		reboot_setup("s");
@@ -853,6 +855,7 @@ static int c_show(struct seq_file *m, void *v)
 
 	seq_puts(m, "\n");
 
+	seq_printf(m, "Machine ID\t: %d\n", machine_id);
 	seq_printf(m, "Hardware\t: %s\n", machine_name);
 	seq_printf(m, "Revision\t: %04x\n", system_rev);
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
