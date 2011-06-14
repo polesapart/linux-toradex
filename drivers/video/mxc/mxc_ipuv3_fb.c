@@ -1718,9 +1718,9 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 		mxcfb_adjust(mxcfbi);
 #endif
 		if (mxcfbi->ipu_di >= 0) {
-			const struct fb_videomode *mode;
+			const struct fb_videomode *mode = NULL;
 			struct fb_videomode m;
-			int num, found = 0;
+			int num = 0, found = 0;
 
 			dev_dbg(fbi->device, "Config display port %d\n",
 					mxcfbi->ipu_di);
