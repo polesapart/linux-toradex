@@ -568,11 +568,15 @@ static irqreturn_t mxs_auart_irq_handle(int irq, void *context)
 		mxs_auart_tx_chars(s);
 		istat &= ~BM_UARTAPP_INTR_TXIS;
 	}
+
+	if( (istat & (BM_UARTAPP_INTR_FEIS | BM_UARTAPP_INTR_BEIS) ) ) {
+		// Long break, do nothing.
+	}
 	/* modem status interrupt bits are undefined
 	after reset,and the hardware do not support
 	DSRMIS,DCDMIS and RIMIS bit,so we should ingore
 	them when they are pending. */
-	if (istat & (BM_UARTAPP_INTR_ABDIS
+	else if (istat & (BM_UARTAPP_INTR_ABDIS
 		| BM_UARTAPP_INTR_OEIS
 		| BM_UARTAPP_INTR_BEIS
 		| BM_UARTAPP_INTR_PEIS
