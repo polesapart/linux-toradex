@@ -81,15 +81,21 @@ static void __init fixup_board(struct machine_desc *desc, struct tag *tags,
 	mx28_set_input_clk(24000000, 24000000, 32000, 50000000);
 }
 
-#if !defined(CONFIG_WLAN) && (defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)) \
+#if (defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)) \
 	&& (defined (CONFIG_LEDS_GPIO_PLATFORM) || defined (CONFIG_LEDS_GPIO_PLATFORM_MODULE) )
 #include <linux/leds.h>
 
 static struct gpio_led mxs_cpx2_leds[] = {
 	[0] = {
-		.gpio			= 117, /* GPIO3_21 */
-		.name			= "mxs-cpx2-wifi:green",
-		.default_trigger	= "heartbeat",
+		.gpio			= 122, /* GPIO3_26 */
+		.name			= "mxs-cpx2-network:green",
+		.default_trigger	= "none",
+		.active_low		= 0,
+	},
+	[1] = {
+		.gpio			= 123, /* GPIO3_27 */
+		.name			= "mxs-cpx2-network:yellow",
+		.default_trigger	= "none",
 		.active_low		= 0,
 	},
 };
