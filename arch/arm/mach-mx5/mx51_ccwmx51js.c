@@ -204,7 +204,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	struct tag *mem_tag = 0;
 	int total_mem = SZ_512M;
 	int left_mem = 0;
-	int gpu_mem = SZ_64M;
+	int gpu_mem = GPU_MEM_SIZE;
 	int fb_mem = FB_MEM_SIZE;
 
 	mxc_set_cpu_type(MXC_CPU_MX51);
@@ -215,6 +215,9 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	for_each_tag(mem_tag, tags) {
 		if (mem_tag->hdr.tag == ATAG_MEM) {
 			total_mem = mem_tag->u.mem.size;
+			if (total_mem == SZ_128M && gpu_mem)
+				gpu_mem = SZ_16M;
+
 			left_mem = total_mem - gpu_mem - fb_mem;
 			break;
 		}
@@ -223,6 +226,13 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	for_each_tag(t, tags) {
 		if (t->hdr.tag == ATAG_CMDLINE) {
 			str = t->u.cmdline.cmdline;
+			str = strstr(str, "gpu_memory=");
+			if (str != NULL) {
+				str += 11;
+				gpu_mem = memparse(str, &str);
+			}
+
+			str = t->u.cmdline.cmdline;
 			str = strstr(str, "mem=");
 			if (str != NULL) {
 				str += 4;
@@ -230,14 +240,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				if (left_mem == 0 || left_mem > total_mem)
 					left_mem = total_mem - gpu_mem - fb_mem;
 			}
-
-			str = t->u.cmdline.cmdline;
-			str = strstr(str, "gpu_memory=");
-			if (str != NULL) {
-				str += 11;
-				gpu_mem = memparse(str, &str);
-			}
-
 			break;
 		}
 	}

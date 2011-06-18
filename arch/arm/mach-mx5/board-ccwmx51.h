@@ -62,6 +62,13 @@
 #define FB_MEM_SIZE		SZ_16M
 #endif
 
+#if defined(CONFIG_MXC_AMD_GPU) || defined(CONFIG_MXC_AMD_GPU_MODULE)
+#define GPU_MEM_SIZE		SZ_64M
+#else
+#define GPU_MEM_SIZE		0
+#endif
+
+
 void ccwmx51_2nd_touch_gpio_init(void);
 void ccwmx51_init_2nd_touch(void);
 
