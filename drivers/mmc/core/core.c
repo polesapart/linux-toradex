@@ -1376,6 +1376,13 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 
 	return 0;
 }
+#else
+int mmc_suspend_host(struct mmc_host *host, pm_message_t state) { return 0; }
+EXPORT_SYMBOL(mmc_suspend_host);
+int mmc_resume_host(struct mmc_host *host) { return 0; }
+EXPORT_SYMBOL(mmc_resume_host);
+int mmc_pm_notify(struct notifier_block *notify_block,
+					unsigned long mode, void *unused) { return 0; }
 #endif
 
 static int __init mmc_init(void)
