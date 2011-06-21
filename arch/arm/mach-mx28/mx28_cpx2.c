@@ -158,7 +158,7 @@ static void __init mx28_cpx2_init_pwm_leds(void)
 	mxs_add_device(pdev, 3);
 }
 #else
-static void __init mx28_cpx2_init_leds(void)
+static void __init mx28_cpx2_init_pwm_leds(void)
 {
 	;
 }
