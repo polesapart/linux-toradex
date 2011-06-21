@@ -954,6 +954,7 @@ static int ccwmx51_hdmi_hw_init(struct ad9389_dev *ad9389)
 {
 	struct ad9389_pdata *pdata = ad9389->client->dev.platform_data;
 
+#ifdef AD9389_GPIO_IRQ
 	if (pdata->dispif == 0) {
 		mxc_request_iomux(AD9389_GPIO_IRQ, IOMUX_CONFIG_GPIO | IOMUX_CONFIG_SION);
 		mxc_iomux_set_pad(AD9389_GPIO_IRQ, PAD_CTL_SRE_SLOW | PAD_CTL_DRV_MEDIUM |
@@ -965,7 +966,7 @@ static int ccwmx51_hdmi_hw_init(struct ad9389_dev *ad9389)
 
 		set_irq_type(IOMUX_TO_GPIO(AD9389_GPIO_IRQ), IRQ_TYPE_EDGE_BOTH);
 	}
-
+#endif
 	/* Configure here the hot plug detection for HDMI on DISP1 */
 	/* if (pdata->dispif == 1) { } */
 
@@ -998,8 +999,10 @@ static struct ad9389_pdata hdmi_pdata = {
 struct i2c_board_info ccwmx51_hdmi[] __initdata = {
 	{
 		I2C_BOARD_INFO("ad9389", 0x39),
-		.irq		= IOMUX_TO_IRQ(AD9389_GPIO_IRQ),
 		.platform_data	= &hdmi_pdata,
+#ifdef AD9389_GPIO_IRQ
+		.irq		= IOMUX_TO_IRQ(AD9389_GPIO_IRQ),
+#endif
 	},
 };
 #endif

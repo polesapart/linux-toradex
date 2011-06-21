@@ -28,13 +28,13 @@ static void lcd_bl_enable(int enable, int vif)
 	else if (vif == 1)
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), !enable);
 #endif
-
 #elif defined(CONFIG_MODULE_CCXMX53)
 #define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO_4_20
 #define DISP1_ENABLE_GPIO	(3*32 + 20)
 	gpio_set_value(DISP1_ENABLE_GPIO, !enable);
-#endif
+#endif /* CONFIG_MODULE_CCXMX51 */
 }
+
 
 static void lcd_init(int vif)
 {

@@ -23,13 +23,6 @@
 #endif /* CONFIG_JSCCWMX51_VX */
 #endif /* CONFIG_CCWMX5X_SECOND_TOUCH */
 
-/* AD9389 interrupt */
-#ifdef CONFIG_JSCCWMX51_V1
-#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_4
-#elif defined(CONFIG_JSCCWMX51_V2)
-#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_0
-#endif
-
 
 /* Set Base board revision */
 #ifdef CONFIG_JSCCWMX51_V1
@@ -38,6 +31,8 @@
 #define BOARD_NAME		" on a EAK board"
 /* SD1 card detect irq */
 #define CCWMX51_SD1_CD_IRQ	IOMUX_TO_IRQ(MX51_PIN_GPIO1_0)
+#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_4	/* AD9389 interrupt */
+
 /* Second touch settings */
 #define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
 #define SECOND_TS_SPI_SS_PIN	MX51_PIN_DI1_D1_CS
@@ -47,12 +42,15 @@
 #define BOARD_NAME		" on a JSK board"
 /* SD1 card detect irq, not present CD line... */
 #define CCWMX51_SD1_CD_IRQ	0
+#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_0	/* AD9389 interrupt */
 /* Second touch settings */
 #define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
 #define SECOND_TS_SPI_SS_PIN	MX51_PIN_CSPI1_RDY
 #else
 #define BASE_BOARD_REV		0
-#define BOARD_NAME		" on an undefined board"
+#define BOARD_NAME		" on a custom board"
+#define CCWMX51_SD1_CD_IRQ	0	/* Customize this value to support a CD irq on the SD1 */
+/* #define AD9389_GPIO_IRQ */
 #endif
 
 /* framebuffer settings */
