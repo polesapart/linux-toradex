@@ -488,6 +488,21 @@ static void mxcuart_modem_status(uart_mxc_port *umxc, unsigned int sr1,
 	wake_up_interruptible(&umxc->port.state->port.delta_msr_wait);
 }
 
+
+static void mxcuart_set_rs485_tx_direction(uart_mxc_port * umxc, unsigned int direction)
+{
+	volatile unsigned int cr;
+
+	if (umxc->mode == MODE_DCE) {
+		/* Set transceiver direction to transmit */
+		cr = readl(umxc->port.membase + MXC_UARTUCR2);
+		cr &= ~(MXC_UARTUCR2_CTSC | MXC_UARTUCR2_CTS);
+		if (direction == umxc->rs485_txdir_lvl)
+			cr |= MXC_UARTUCR2_CTS;
+		writel(cr, umxc->port.membase + MXC_UARTUCR2);
+	}
+}
+
 /*!
  * Interrupt service routine registered to handle the muxed ANDed interrupts.
  * This routine is registered only in the case where the UART interrupts are
@@ -543,6 +558,15 @@ static irqreturn_t mxcuart_int(int irq, void *dev_id)
 				cr |= MXC_UARTUCR4_TCEN;
 				writel(cr, umxc->port.membase + MXC_UARTUCR4);
 			}
+			/* Enable the transmit direction on the RS485 transceiver */
+			if (umxc->ir_mode == RS485_HALF) {
+				/* Set transceiver direction to transmit */
+				mxcuart_set_rs485_tx_direction(umxc, 1);
+				/* Enable Transmit complete intr to set direction to RX */
+				cr = readl(umxc->port.membase + MXC_UARTUCR4);
+				cr |= MXC_UARTUCR4_TCEN;
+				writel(cr, umxc->port.membase + MXC_UARTUCR4);
+			}
 			mxcuart_tx_chars(umxc);
 		}
 
@@ -559,6 +583,18 @@ static irqreturn_t mxcuart_int(int irq, void *dev_id)
 				cr = readl(umxc->port.membase + MXC_UARTUCR2);
 				cr |= MXC_UARTUCR2_RXEN;
 				writel(cr, umxc->port.membase + MXC_UARTUCR2);
+				/* Disable the Transmit complete interrupt bit */
+				cr = readl(umxc->port.membase + MXC_UARTUCR4);
+				cr &= ~MXC_UARTUCR4_TCEN;
+				writel(cr, umxc->port.membase + MXC_UARTUCR4);
+			}
+		}
+
+		/* Is the transmit complete to set RX direction on the RS485 transceiver */
+		if (umxc->ir_mode == RS485_HALF) {
+			if (sr2 & MXC_UARTUSR2_TXDC) {
+				/* Set transceiver direction to receive */
+				mxcuart_set_rs485_tx_direction(umxc, 0);
 				/* Disable the Transmit complete interrupt bit */
 				cr = readl(umxc->port.membase + MXC_UARTUCR4);
 				cr &= ~MXC_UARTUCR4_TCEN;
@@ -609,6 +645,17 @@ static irqreturn_t mxcuart_tx_int(int irq, void *dev_id)
 		writel(cr, umxc->port.membase + MXC_UARTUCR4);
 	}
 
+	/* Enable the transmit direction on the RS485 transceiver */
+	if (umxc->ir_mode == RS485_HALF) {
+		/* Set transceiver direction to transmit */
+		mxcuart_set_rs485_tx_direction(umxc, 1);
+
+		/* Enable Transmit complete intr to set direction to RX */
+		cr = readl(umxc->port.membase + MXC_UARTUCR4);
+		cr |= MXC_UARTUCR4_TCEN;
+		writel(cr, umxc->port.membase + MXC_UARTUCR4);
+	}
+
 	mxcuart_tx_chars(umxc);
 
 	/* Is the transmit complete to reenable the receiver? */
@@ -618,6 +665,18 @@ static irqreturn_t mxcuart_tx_int(int irq, void *dev_id)
 			cr = readl(umxc->port.membase + MXC_UARTUCR2);
 			cr |= MXC_UARTUCR2_RXEN;
 			writel(cr, umxc->port.membase + MXC_UARTUCR2);
+			/* Disable the Transmit complete interrupt bit */
+			cr = readl(umxc->port.membase + MXC_UARTUCR4);
+			cr &= ~MXC_UARTUCR4_TCEN;
+			writel(cr, umxc->port.membase + MXC_UARTUCR4);
+		}
+	}
+	/* Is the transmit complete to set RX direction on the RS485 transceiver */
+	if (umxc->ir_mode == RS485_HALF) {
+		sr2 = readl(umxc->port.membase + MXC_UARTUSR2);
+		if (sr2 & MXC_UARTUSR2_TXDC) {
+			 /* Set transceiver direction to receive */
+			mxcuart_set_rs485_tx_direction(umxc, 0);
 			/* Disable the Transmit complete interrupt bit */
 			cr = readl(umxc->port.membase + MXC_UARTUCR4);
 			cr &= ~MXC_UARTUCR4_TCEN;

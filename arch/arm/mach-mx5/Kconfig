@@ -271,9 +271,25 @@ config UART1_ENABLED
 	  Enable the MX5X UART1 interface
 
 choice
+	prompt "Select the mode:"
+	default UART1_MODE_STANDARD
+	depends on UART1_ENABLED
+
+config UART1_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config UART1_MODE_IRDA
+	bool "Configure for IRDA operation"
+
+config UART1_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
+
+choice
 	prompt "Select the configuration for the UART lines:"
 	default UART1_2WIRE_ENABLED
 	depends on UART1_ENABLED
+	depends on UART1_MODE_STANDARD
 
 config UART1_2WIRE_ENABLED
 	bool "Configure UART1 as 2 wire UART (RX/TX)"
@@ -285,18 +301,6 @@ config UART1_FULL_UART_ENABLED
 	bool "Configure UART1 as full UART (RX/TX/RTS/CTS/DCD/DTR/DSR/RI)"
 endchoice
 
-config UART1_IRDA_ENABLED
-	bool "Enable IRDA mode"
-	default n
-	depends on UART1_ENABLED
-	help
-	  Enable IRDA mode
-
-comment "UART2 CTS/RTS is not available on the ConnectCore Wi-i.MX51 JumpStart board if"
-	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
-comment "the support for Host1 of the Freescale USB controller is enabled."
-	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
-
 config UART2_ENABLED
 	bool "Enable UART2"
 	default y
@@ -305,20 +309,34 @@ config UART2_ENABLED
 	help
 	  Enable the MX5X UART2 interface
 
+choice
+	prompt "Select the mode:"
+	default UART2_MODE_STANDARD
+	depends on UART2_ENABLED
+
+config UART2_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config UART2_MODE_IRDA
+	bool "Configure for IRDA operation"
+
+config UART2_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
+
 config UART2_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART2 hardware flow control"
 	default n
 	depends on UART2_ENABLED
-	depends on (MODULE_CCXMX51 && !USB_EHCI_ARC_H1) || MODULE_CCXMX53
+	depends on UART2_MODE_STANDARD
+	depends on !USB_EHCI_ARC_H1
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
 
-config UART2_IRDA_ENABLED
-	bool "Enable IRDA mode"
-	default n
-	depends on UART2_ENABLED
-	help
-	  Enable IRDA mode
+comment "UART2 CTS/RTS is not available on the ConnectCore Wi-i.MX51 JumpStart board if"
+	  depends on USB_EHCI_ARC_H1
+comment "the support for Host1 of the Freescale USB controller is enabled."
+	  depends on USB_EHCI_ARC_H1
 
 comment "UART3 is not available on the ConnectCore Wi-i.MX51 JumpStart board if UART1"
 	  depends on MODULE_CCXMX51 && UART1_FULL_UART_ENABLED
@@ -333,17 +351,26 @@ config UART3_ENABLED
 	help
 	  Enable the MX51 UART3 interface
 
-config UART3_IRDA_ENABLED
-	bool "Enable IRDA mode"
-	default n
+choice
+	prompt "Select the mode:"
+	default UART3_MODE_STANDARD
 	depends on UART3_ENABLED
-	help
-	  Enable IRDA mode
+
+config UART3_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config UART3_MODE_IRDA
+	bool "Configure for IRDA operation"
+
+config UART3_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
 
 config UART3_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART3 hardware flow control"
 	default n
 	depends on UART3_ENABLED
+	depends on UART3_MODE_STANDARD
 	help
 	  Configure the UART3 RTS/CTS lines for hardware flow control operation
 
@@ -353,6 +380,21 @@ config UART4_ENABLED
 	depends on SERIAL_MXC && MODULE_CCXMX53
 	help
 	  Enable the MX53 UART4 interface
+
+choice
+	prompt "Select the mode:"
+	default UART4_MODE_STANDARD
+	depends on UART4_ENABLED
+
+config UART4_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config UART4_MODE_IRDA
+	bool "Configure for IRDA operation"
+
+config UART4_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
 
 config UART4_IRDA_ENABLED
 	bool "Enable IRDA mode"
@@ -365,6 +407,7 @@ config UART4_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART4 hardware flow control"
 	default n
 	depends on UART4_ENABLED
+	depends on UART4_MODE_STANDARD
 	help
 	  Configure the UART4 RTS/CTS lines for hardware flow control operation
 
@@ -375,17 +418,26 @@ config UART5_ENABLED
 	help
 	  Enable the MX53 UART5 interface
 
-config UART5_IRDA_ENABLED
-	bool "Enable IRDA mode"
-	default n
+choice
+	prompt "Select the mode:"
+	default UART5_MODE_STANDARD
 	depends on UART5_ENABLED
-	help
-	  Enable IRDA mode
+
+config UART5_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config UART5_MODE_IRDA
+	bool "Configure for IRDA operation"
+
+config UART5_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
 
 config UART5_CTS_RTS_ENABLED
 	bool "Configure RTS/CTS lines for UART5 hardware flow control"
 	default n
 	depends on UART5_ENABLED
+	depends on UART5_MODE_STANDARD
 	help
 	  Configure the UART5 RTS/CTS lines for hardware flow control operation
 

@@ -20,13 +20,16 @@
 #else
 #define UART1_ENABLED		0
 #endif
-#if defined CONFIG_UART1_IRDA_ENABLED
+#if defined(UART1_MODE_IRDA)
 #define UART1_IR		IRDA
+#elif defined(UART1_MODE_RS485)
+#define UART1_IR		RS485_HALF
 #else
 #define UART1_IR		NO_IRDA
 #endif
 #define UART1_MODE		MODE_DCE
 #define UART1_DMA_ENABLED	0
+#define UART1_RS485_TXDIR_LVL	0
 
 
 /* UART 2 configuration */
@@ -35,13 +38,16 @@
 #else
 #define UART2_ENABLED		0
 #endif
-#if defined CONFIG_UART2_IRDA_ENABLED
+#if defined(UART2_MODE_IRDA)
 #define UART2_IR		IRDA
+#elif defined(UART2_MODE_RS485)
+#define UART2_IR		RS485_HALF
 #else
 #define UART2_IR		NO_IRDA
 #endif
 #define UART2_MODE		MODE_DCE
 #define UART2_DMA_ENABLED	0
+#define UART2_RS485_TXDIR_LVL	0
 
 /* UART 3 configuration */
 #if defined CONFIG_UART3_ENABLED
@@ -49,13 +55,50 @@
 #else
 #define UART3_ENABLED		0
 #endif
-#if defined CONFIG_UART3_IRDA_ENABLED
+#if defined(UART3_MODE_IRDA)
 #define UART3_IR		IRDA
+#elif defined(UART3_MODE_RS485)
+#define UART3_IR		RS485_HALF
 #else
 #define UART3_IR		NO_IRDA
 #endif
 #define UART3_MODE		MODE_DCE
 #define UART3_DMA_ENABLED	0
+#define UART3_RS485_TXDIR_LVL	0
+
+/* UART 4 configuration */
+#if defined CONFIG_UART4_ENABLED
+#define UART4_ENABLED		1
+#else
+#define UART4_ENABLED		0
+#endif
+#if defined(UART4_MODE_IRDA)
+#define UART4_IR		IRDA
+#elif defined(UART4_MODE_RS485)
+#define UART4_IR		RS485_HALF
+#else
+#define UART4_IR		NO_IRDA
+#endif
+#define UART4_MODE		MODE_DCE
+#define UART4_DMA_ENABLED	0
+#define UART4_RS485_TXDIR_LVL	0
+
+/* UART 5 configuration */
+#if defined CONFIG_UART5_ENABLED
+#define UART5_ENABLED		1
+#else
+#define UART5_ENABLED		0
+#endif
+#if defined(UART5_MODE_IRDA)
+#define UART5_IR		IRDA
+#elif defined(UART5_MODE_RS485)
+#define UART5_IR		RS485_HALF
+#else
+#define UART5_IR		NO_IRDA
+#endif
+#define UART5_MODE		MODE_DCE
+#define UART5_DMA_ENABLED	0
+#define UART5_RS485_TXDIR_LVL	0
 
 /*!
  * Specifies if the Irda transmit path is inverting

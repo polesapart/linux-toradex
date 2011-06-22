@@ -1276,10 +1276,13 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_iomux_set_pad(MX51_PIN_UART1_TXD, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART1_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH0);
 
-#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
+#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED) || \
+    defined(CONFIG_UART1_MODE_RS485)
 		mxc_request_iomux(MX51_PIN_UART1_CTS, IOMUX_CONFIG_ALT0);
-		mxc_request_iomux(MX51_PIN_UART1_RTS, IOMUX_CONFIG_ALT0);
 		mxc_iomux_set_pad(MX51_PIN_UART1_CTS, SERIAL_PORT_PAD);
+#endif
+#if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
+		mxc_request_iomux(MX51_PIN_UART1_RTS, IOMUX_CONFIG_ALT0);
 		mxc_iomux_set_pad(MX51_PIN_UART1_RTS, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART1_IPP_UART_RTS_B_SELECT_INPUT, INPUT_CTL_PATH0);
 #endif /* CONFIG_UART1_CTS_RTS_ENABLED */
@@ -1304,16 +1307,18 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_iomux_set_pad(MX51_PIN_UART2_TXD, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART2_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH2);
 
-#ifdef CONFIG_UART2_CTS_RTS_ENABLED
+#if defined(CONFIG_UART2_CTS_RTS_ENABLED) || defined(CONFIG_UART2_MODE_RS485)
 #if !defined(CONFIG_USB_EHCI_ARC_H1) && !defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
 		mxc_request_iomux(MX51_PIN_USBH1_DATA0, IOMUX_CONFIG_ALT1);	/* CTS */
-		mxc_request_iomux(MX51_PIN_USBH1_DATA3, IOMUX_CONFIG_ALT1);	/* RTS */
 		mxc_iomux_set_pad(MX51_PIN_USBH1_DATA0, SERIAL_PORT_PAD);
+#if defined(CONFIG_UART2_CTS_RTS_ENABLED)
+		mxc_request_iomux(MX51_PIN_USBH1_DATA3, IOMUX_CONFIG_ALT1);	/* RTS */
 		mxc_iomux_set_pad(MX51_PIN_USBH1_DATA3, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART2_IPP_UART_RTS_B_SELECT_INPUT, INPUT_CTL_PATH5);
+#endif /* CONFIG_UART2_CTS_RTS_ENABLED */
 #endif /* CONFIG_USB_EHCI_ARC_H1 && CONFIG_USB_EHCI_ARC_H1_MODULE */
-#endif /* CONFIG_UART2_CTS_RTS_ENABLED */
-#endif /* CONFIG_UART2_CTS_RTS_ENABLED */
+#endif /* CONFIG_UART2_CTS_RTS_ENABLED || CONFIG_UART2_MODE_RS485 */
+#endif /* CONFIG_UART2_ENABLED */
 		break;
 	case 2:		/* UART 3 IOMUX Configs */
 #ifdef CONFIG_UART3_ENABLED
@@ -1323,13 +1328,15 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_iomux_set_pad(MX51_PIN_UART3_TXD, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART3_IPP_UART_RXD_MUX_SELECT_INPUT, INPUT_CTL_PATH4);
 
-#ifdef CONFIG_UART3_CTS_RTS_ENABLED
+#if defined(CONFIG_UART3_CTS_RTS_ENABLED) || defined(CONFIG_UART3_MODE_RS485)
 		mxc_request_iomux(MX51_PIN_KEY_COL5, IOMUX_CONFIG_ALT2);	/* CTS */
-		mxc_request_iomux(MX51_PIN_KEY_COL4, IOMUX_CONFIG_ALT2);	/* RTS */
 		mxc_iomux_set_pad(MX51_PIN_KEY_COL5, SERIAL_PORT_PAD);
+#if defined(CONFIG_UART3_CTS_RTS_ENABLED)
+		mxc_request_iomux(MX51_PIN_KEY_COL4, IOMUX_CONFIG_ALT2);	/* RTS */
 		mxc_iomux_set_pad(MX51_PIN_KEY_COL4, SERIAL_PORT_PAD);
 		mxc_iomux_set_input(MUX_IN_UART3_IPP_UART_RTS_B_SELECT_INPUT, INPUT_CTL_PATH4);
 #endif /* CONFIG_UART3_CTS_RTS_ENABLED */
+#endif /* CONFIG_UART3_CTS_RTS_ENABLED || CONFIG_UART3_MODE_RS485 */
 #endif /* CONFIG_UART3_ENABLED */
 		break;
 	default:

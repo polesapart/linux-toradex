@@ -42,6 +42,7 @@
  */
 #define IRDA                    0
 #define NO_IRDA                 1
+#define RS485_HALF		2
 
 /*!
  * This structure is used to store the the physical and virtual
@@ -87,6 +88,10 @@ typedef struct {
 	 * Flag to hold the IR mode of the port.
 	 */
 	int ir_mode;
+	/*!
+	 * Value to enable the TX direction on the RS485 transceiver.
+	 */
+	int rs485_txdir_lvl;
 	/*!
 	 * Flag to enable/disable the UART port.
 	 */
