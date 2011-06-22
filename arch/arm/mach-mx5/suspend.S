@@ -184,18 +184,20 @@ wait_ddr_refresh:
     PM_SET_BACKUP_REG MX53_DRAM_GRP_B2DS_PAD_CTRL_ADDR, 0x380000, 0x0, 20
     PM_SET_BACKUP_REG MX53_DRAM_GRP_B3DS_PAD_CTRL_ADDR, 0x380000, 0x0, 21
 mx5x_wfi:
-	/*
-	* PLL1 workaround as the following: For mx51 only.
-	* Before enter WFI
-	*      (1) switch ARM/DDR off from PLL1
-	*      (2) Disable AREN bit to avoid PLL1 restart during MFN change)
-	*      (3) set PLL1 to 864Mhz with MFI = 8, MFN = 180, MFD = 179
-	*      (4) Manual restart PLL1, no need to wait PLL1 lock
-	* After CPU out of WFI, PLL1 will be enabled ant LOCK at 864MHZ
-	*      (5) Set PLL1 to 800Mhz with only change MFN to 60, others keep
-	*      (6) Wait MFN change complete by delay more than 4us,
-	*      (7) Switch ARM/DDR back to PLL1
-	*/
+    /*
+     * PLL1 workaround as the following: For mx51 only.
+     * Before enter WFI
+     *      (1) switch DDR and ARM to PLL2
+     *      (2) Disable AREN bit to avoid PLL1 restart during MFN change)
+     *      (3) set PLL1 to ~864Mhz with MFI = 8, MFN = 180, MFD = 179
+     *          thus the equation |MFN/(MFD+1)|  < 1
+     *      (4) Manual restart PLL1
+     *      (5) Wait PLL1 lock
+     * After CPU out of WFI
+     *      (6) Set PLL1 to 800Mhz with only change MFN to 60, others keep
+     *      (7) Wait MFN change complete by delay 4.6us,
+     *      (8) Switch DDR and ARM back to PLL1
+     */
 	cmp r6, #1
 
 	bne WFI
@@ -204,25 +206,21 @@ mx5x_wfi:
 
 	/* step 1 */
 	ldr     r0, [r4, #0x14]
-	tst     r0, #(0x1 << 30)
-	beq     2f
 	bic     r0, r0, #(0x1 << 30)
 	str     r0, [r4, #0x14]
-	mov     r5, #1  /* r5 DDR from PLL1 flag, Reserved */
 
 1:
 	ldr     r0, [r4, #0x48]
 	ands    r0, r0, #(1 << 8)
 	bne     1b
-2:
-	/* Make sure Step-clk is sourced from 24MHz. */
-	ldr 	r0, [r4, #0x0c]
-	bic 	r0, r0, #(0x3 << 7)
-	str	r0, [r4, #0x0c]
 
-	/* Set ARM to be sourced from Step-clk. */
-	orr 	r0, r0, #(1 << 2)
-	str	r0,[r4, #0x0c]
+	ldr     r0, [r4, #0x0c]
+	bic     r0, r0, #(0xf << 5)
+	orr     r0, r0, #(0x1 << 8)
+	str     r0, [r4, #0x0c]
+
+	orr     r0, r0, #(1 << 2)
+	str     r0, [r4, #0x0c]
 
 	/* step 2 */
 	ldr r0, [r3, #0x4]
@@ -245,6 +243,9 @@ mx5x_wfi:
 	/* step 4 */
 	ldr r0, =0x00001236 /* Set PLM =1, manual restart and enable PLL*/
 	str r0, [r3, #0x0]
+1:      ldr r0, [r3, #0x0]
+	ands r0, r0, #0x1
+	beq 1b
 WFI:
 	mov r0,#0x0
 	.long     0xe320f003              @ Opcode for WFI
@@ -257,37 +258,38 @@ WFI:
 	str     r0, [r3, #0x10]
 
 	/* step 6 */
+	/* Load MFN by setting LDREQ */
 	ldr     r0, [r3, #0x04]
 	orr     r0, r0, #0x1
 	str     r0, [r3, #0x04]
 
-	/* Wait for LDREQ bit to clear. */
-2:
-	ldr     r0, [r3, #0x4]
-	tst     r0, #1
-	bne     2b
+      /* Wait for LDREQ bit to clear. */
+2:    ldr     r0, [r3, #0x4]
+       tst    r0, #1
+       bne   2b
 
-	mov r0, #100 /* delay more than 4us */
-3:
-	subs r0, r0, #1
+	mov r0, #100 /* delay more than 4.6 us */
+3:      subs r0, r0, #1
 	bge 3b
 
-	/* step 7 */
+	/* step 8 */
 	ldr     r0, [r4, #0x0c]
 	bic     r0, r0, #(1 << 2)
 	str     r0, [r4, #0x0c]
 
-	cmp     r5, #1
-	bne     wfi_done
+	/* Source step_clk from LPAPM. */
+	ldr     r0, [r4, #0x0c]
+	bic     r0, r0, #(3 << 7)
+	str     r0, [r4, #0x0c]
 
 	ldr     r0, [r4, #0x14]
 	orr     r0, r0, #(0x1 << 30)
 	str     r0, [r4, #0x14]
 
-4:
+3:
 	ldr     r0, [r4, #0x48]
 	ands    r0, r0, #(1 << 8)
-	bne     4b
+	bne     3b
 
 wfi_done:
     cmp     r6, #4
