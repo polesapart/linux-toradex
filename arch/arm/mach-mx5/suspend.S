@@ -73,7 +73,8 @@
 
 #define MX53_M4IF_CR0_FDVFS_ADDR AIPS2_IO_ADDRESS(0x83fd808C)
 
-
+#define MX51_CCM_BASE AIPS1_IO_ADDRESS(0x73fd4000)
+#define MX51_PLL1_BASE AIPS2_IO_ADDRESS(0x83f80000)
 
 /*
  *	cpu_do_suspend_workaround()
@@ -183,12 +184,116 @@ wait_ddr_refresh:
     PM_SET_BACKUP_REG MX53_DRAM_GRP_B2DS_PAD_CTRL_ADDR, 0x380000, 0x0, 20
     PM_SET_BACKUP_REG MX53_DRAM_GRP_B3DS_PAD_CTRL_ADDR, 0x380000, 0x0, 21
 mx5x_wfi:
-    mov r0,#0x0
-    .long     0xe320f003              @ Opcode for WFI
+	/*
+	* PLL1 workaround as the following: For mx51 only.
+	* Before enter WFI
+	*      (1) switch ARM/DDR off from PLL1
+	*      (2) Disable AREN bit to avoid PLL1 restart during MFN change)
+	*      (3) set PLL1 to 864Mhz with MFI = 8, MFN = 180, MFD = 179
+	*      (4) Manual restart PLL1, no need to wait PLL1 lock
+	* After CPU out of WFI, PLL1 will be enabled ant LOCK at 864MHZ
+	*      (5) Set PLL1 to 800Mhz with only change MFN to 60, others keep
+	*      (6) Wait MFN change complete by delay more than 4us,
+	*      (7) Switch ARM/DDR back to PLL1
+	*/
+	cmp r6, #1
 
+	bne WFI
+	PM_SET_ADDR_REG MX51_PLL1_BASE, r3
+	PM_SET_ADDR_REG MX51_CCM_BASE, r4
+
+	/* step 1 */
+	ldr     r0, [r4, #0x14]
+	tst     r0, #(0x1 << 30)
+	beq     2f
+	bic     r0, r0, #(0x1 << 30)
+	str     r0, [r4, #0x14]
+	mov     r5, #1  /* r5 DDR from PLL1 flag, Reserved */
+
+1:
+	ldr     r0, [r4, #0x48]
+	ands    r0, r0, #(1 << 8)
+	bne     1b
+2:
+	/* Make sure Step-clk is sourced from 24MHz. */
+	ldr 	r0, [r4, #0x0c]
+	bic 	r0, r0, #(0x3 << 7)
+	str	r0, [r4, #0x0c]
+
+	/* Set ARM to be sourced from Step-clk. */
+	orr 	r0, r0, #(1 << 2)
+	str	r0,[r4, #0x0c]
+
+	/* step 2 */
+	ldr r0, [r3, #0x4]
+	bic r0, r0, #0x2
+	str r0, [r3, #0x4] /* disable auto-restart AREN bit */
+
+	/* step 3 */
+	mov r0, #0x80
+	mov r1, #179
+	mov r2, #180
+	str r0, [r3, #0x08]
+	str r0, [r3, #0x1c]
+
+	str r1, [r3, #0x0c]
+	str r1, [r3, #0x20]
+
+	str r2, [r3, #0x10]
+	str r2, [r3, #0x24]
+
+	/* step 4 */
+	ldr r0, =0x00001236 /* Set PLM =1, manual restart and enable PLL*/
+	str r0, [r3, #0x0]
+WFI:
+	mov r0,#0x0
+	.long     0xe320f003              @ Opcode for WFI
+
+	cmp     r6, #1
+	bne      wfi_done
+
+	/* step 5 */
+	ldr     r0, =60
+	str     r0, [r3, #0x10]
+
+	/* step 6 */
+	ldr     r0, [r3, #0x04]
+	orr     r0, r0, #0x1
+	str     r0, [r3, #0x04]
+
+	/* Wait for LDREQ bit to clear. */
+2:
+	ldr     r0, [r3, #0x4]
+	tst     r0, #1
+	bne     2b
+
+	mov r0, #100 /* delay more than 4us */
+3:
+	subs r0, r0, #1
+	bge 3b
+
+	/* step 7 */
+	ldr     r0, [r4, #0x0c]
+	bic     r0, r0, #(1 << 2)
+	str     r0, [r4, #0x0c]
+
+	cmp     r5, #1
+	bne     wfi_done
+
+	ldr     r0, [r4, #0x14]
+	orr     r0, r0, #(0x1 << 30)
+	str     r0, [r4, #0x14]
+
+4:
+	ldr     r0, [r4, #0x48]
+	ands    r0, r0, #(1 << 8)
+	bne     4b
+
+wfi_done:
     cmp     r6, #4
     beq     mx5x_post_wfi
-	/*Set the DDR drive strength to max */
+
+    /*Set the DDR drive strength to max */
     cmp     r6, #1
     bne     mx53_restore_ddr_drive_strength
     PM_SET_RESTORE_REG MX51_DRAM_SDCLK_PAD_CTRL_ADDR, 0
