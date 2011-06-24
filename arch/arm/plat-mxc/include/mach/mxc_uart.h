@@ -31,6 +31,10 @@
 
 #include <linux/serial_core.h>
 #include <mach/dma.h>
+#ifdef CONFIG_MODULE_CCXMX51
+#include <mach/gpio.h>
+#endif
+
 
 /*
  * The modes of the UART ports
@@ -89,9 +93,13 @@ typedef struct {
 	 */
 	int ir_mode;
 	/*!
-	 * Value to enable the TX direction on the RS485 transceiver.
+	 * Value to enable the TX direction of the RS485 transceiver.
 	 */
 	int rs485_txdir_lvl;
+	/*!
+	 * GPIO to control the irection of the RS485 transceiver.
+	 */
+	int rs485_txdir_gpio;
 	/*!
 	 * Flag to enable/disable the UART port.
 	 */

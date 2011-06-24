@@ -70,6 +70,7 @@
 
 #ifdef CONFIG_MODULE_CCXMX51
 #include "board-ccwmx51.h"
+#include "mx51_pins.h"
 #endif
 
 #ifdef CONFIG_MODULE_CCXMX53

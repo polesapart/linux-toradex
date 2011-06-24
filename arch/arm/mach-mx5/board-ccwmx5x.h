@@ -15,14 +15,14 @@
 #include <mach/mxc_uart.h>
 
 /* UART 1 configuration */
-#if defined CONFIG_UART1_ENABLED
+#if defined(CONFIG_UART1_ENABLED)
 #define UART1_ENABLED		1
 #else
 #define UART1_ENABLED		0
 #endif
-#if defined(UART1_MODE_IRDA)
+#if defined(CONFIG_UART1_MODE_IRDA)
 #define UART1_IR		IRDA
-#elif defined(UART1_MODE_RS485)
+#elif defined(CONFIG_UART1_MODE_RS485)
 #define UART1_IR		RS485_HALF
 #else
 #define UART1_IR		NO_IRDA
@@ -33,14 +33,14 @@
 
 
 /* UART 2 configuration */
-#if defined CONFIG_UART2_ENABLED
+#if defined(CONFIG_UART2_ENABLED)
 #define UART2_ENABLED		1
 #else
 #define UART2_ENABLED		0
 #endif
-#if defined(UART2_MODE_IRDA)
+#if defined(CONFIG_UART2_MODE_IRDA)
 #define UART2_IR		IRDA
-#elif defined(UART2_MODE_RS485)
+#elif defined(CONFIG_UART2_MODE_RS485)
 #define UART2_IR		RS485_HALF
 #else
 #define UART2_IR		NO_IRDA
@@ -50,14 +50,14 @@
 #define UART2_RS485_TXDIR_LVL	0
 
 /* UART 3 configuration */
-#if defined CONFIG_UART3_ENABLED
+#if defined(CONFIG_UART3_ENABLED)
 #define UART3_ENABLED		1
 #else
 #define UART3_ENABLED		0
 #endif
-#if defined(UART3_MODE_IRDA)
+#if defined(CONFIG_UART3_MODE_IRDA)
 #define UART3_IR		IRDA
-#elif defined(UART3_MODE_RS485)
+#elif defined(CONFIG_UART3_MODE_RS485)
 #define UART3_IR		RS485_HALF
 #else
 #define UART3_IR		NO_IRDA
@@ -67,14 +67,14 @@
 #define UART3_RS485_TXDIR_LVL	0
 
 /* UART 4 configuration */
-#if defined CONFIG_UART4_ENABLED
+#if defined(CONFIG_UART4_ENABLED)
 #define UART4_ENABLED		1
 #else
 #define UART4_ENABLED		0
 #endif
-#if defined(UART4_MODE_IRDA)
+#if defined(CONFIG_UART4_MODE_IRDA)
 #define UART4_IR		IRDA
-#elif defined(UART4_MODE_RS485)
+#elif defined(CONFIG_UART4_MODE_RS485)
 #define UART4_IR		RS485_HALF
 #else
 #define UART4_IR		NO_IRDA
@@ -84,14 +84,14 @@
 #define UART4_RS485_TXDIR_LVL	0
 
 /* UART 5 configuration */
-#if defined CONFIG_UART5_ENABLED
+#if defined(CONFIG_UART5_ENABLED)
 #define UART5_ENABLED		1
 #else
 #define UART5_ENABLED		0
 #endif
-#if defined(UART5_MODE_IRDA)
+#if defined(CONFIG_UART5_MODE_IRDA)
 #define UART5_IR		IRDA
-#elif defined(UART5_MODE_RS485)
+#elif defined(CONFIG_UART5_MODE_RS485)
 #define UART5_IR		RS485_HALF
 #else
 #define UART5_IR		NO_IRDA

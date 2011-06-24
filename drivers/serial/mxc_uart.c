@@ -491,16 +491,10 @@ static void mxcuart_modem_status(uart_mxc_port *umxc, unsigned int sr1,
 
 static void mxcuart_set_rs485_tx_direction(uart_mxc_port * umxc, unsigned int direction)
 {
-	volatile unsigned int cr;
-
-	if (umxc->mode == MODE_DCE) {
-		/* Set transceiver direction to transmit */
-		cr = readl(umxc->port.membase + MXC_UARTUCR2);
-		cr &= ~(MXC_UARTUCR2_CTSC | MXC_UARTUCR2_CTS);
-		if (direction == umxc->rs485_txdir_lvl)
-			cr |= MXC_UARTUCR2_CTS;
-		writel(cr, umxc->port.membase + MXC_UARTUCR2);
-	}
+	if (direction)
+		gpio_set_value(umxc->rs485_txdir_gpio, umxc->rs485_txdir_lvl);
+	else
+		gpio_set_value(umxc->rs485_txdir_gpio, !umxc->rs485_txdir_lvl);
 }
 
 /*!
@@ -1277,7 +1271,11 @@ static int mxcuart_startup(struct uart_port *port)
 	 */
 	if (umxc->ir_mode == IRDA) {
 		cr1 |= MXC_UARTUCR1_IREN;
+	} else if (umxc->ir_mode == RS485_HALF) {
+		/* Set transceiver direction to receive */
+		mxcuart_set_rs485_tx_direction(umxc, 0);
 	}
+
 	if (umxc->dma_enabled == 1) {
 		cr1 |= (MXC_UARTUCR1_RXDMAEN | MXC_UARTUCR1_ATDMAEN |
 			MXC_UARTUCR1_UARTEN);
@@ -1307,6 +1305,10 @@ static void mxcuart_shutdown(struct uart_port *port)
 	writel(0, umxc->port.membase + MXC_UARTUCR3);
 	if (umxc->dma_enabled == 1) {
 		mxcuart_freedma(dma_list + umxc->port.line, umxc);
+	}
+	if (umxc->ir_mode == RS485_HALF) {
+		/* Set transceiver direction to receive */
+		mxcuart_set_rs485_tx_direction(umxc, 0);
 	}
 }
 
