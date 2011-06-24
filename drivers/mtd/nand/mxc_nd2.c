@@ -1215,6 +1215,10 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 		this->ecc.layout = &nand_hw_eccoob_512;
 	}
 
+#ifdef CONFIG_MODULE_CCXMX51
+	swap_bbi_limit = IS_4K_PAGE_NAND ? SKIP_SWAP_BI_MAX_PAGE_4K : SKIP_SWAP_BI_MAX_PAGE_2K;
+#endif
+
 	/* propagate ecc.layout to mtd_info */
 	mtd->ecclayout = this->ecc.layout;
 
@@ -1686,7 +1690,6 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
         {
                 extern u8 ccwmx51_swap_bi;
                 mxc_nand_data->disable_bi_swap = !ccwmx51_swap_bi;
-		swap_bbi_limit = IS_4K_PAGE_NAND ? SKIP_SWAP_BI_MAX_PAGE_4K : SKIP_SWAP_BI_MAX_PAGE_2K;
 		pr_info("%sUsing swap BI (%x)\n", ccwmx51_swap_bi ? "" : "No ", ccwmx51_swap_bi);
         }
 #endif
