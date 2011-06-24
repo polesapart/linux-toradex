@@ -637,12 +637,66 @@ config SERIAL_S3C2410_ENABLE_PORTA
 	help
 	  Enable the serial port A of the S3C24XX
 
+choice
+	prompt "Select the mode:"
+	default SERIAL_S3C2410_PORTA_MODE_STANDARD
+	depends on SERIAL_S3C2410_ENABLE_PORTA
+
+config SERIAL_S3C2410_PORTA_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config SERIAL_S3C2410_PORTA_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
+
+config SERIAL_S3C2410_PORTA_HWCTRL
+	bool "Enable HW flow control of the port A"
+	depends on SERIAL_S3C2410_ENABLE_PORTA && SERIAL_S3C2410_PORTA_MODE_STANDARD
+        default n
+	help
+          Enable the HW flow control on the port A of the S3C24XX
+
+config SERIAL_S3C2410_PORTA_RS485_TXLEVEL
+	int "RTS level during RS485 data transmission"
+	depends on SERIAL_S3C2410_ENABLE_PORTA && SERIAL_S3C2410_PORTA_MODE_RS485
+        default 1
+        range 0 1
+        help
+          RTS line level during data transmission on RS485 half duplex mode.
+
 config SERIAL_S3C2410_ENABLE_PORTB
        	bool "Enable the port B support on the S3C24XX"
 	depends on SERIAL_S3C2410 || SERIAL_S3C2440
         default y
 	help
 	  Enable the serial port B of the S3C24XX
+
+choice
+	prompt "Select the mode:"
+	default SERIAL_S3C2410_PORTB_MODE_STANDARD
+	depends on SERIAL_S3C2410_ENABLE_PORTB
+
+config SERIAL_S3C2410_PORTB_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config SERIAL_S3C2410_PORTB_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
+
+config SERIAL_S3C2410_PORTB_HWCTRL
+	bool "Enable HW flow control of the port B"
+	depends on SERIAL_S3C2410_ENABLE_PORTB && SERIAL_S3C2410_PORTB_MODE_STANDARD
+        default n
+	help
+          Enable the HW flow control on the port B of the S3C24XX
+
+config SERIAL_S3C2410_PORTB_RS485_TXLEVEL
+	int "RTS level during RS485 data transmission"
+	depends on SERIAL_S3C2410_ENABLE_PORTB && SERIAL_S3C2410_PORTB_MODE_RS485
+        default 1
+        range 0 1
+        help
+          RTS line level during data transmission on RS485 half duplex mode.
 
 config SERIAL_S3C2410_ENABLE_PORTC
 	bool "Enable the port C support on the S3C24XX"
@@ -651,41 +705,42 @@ config SERIAL_S3C2410_ENABLE_PORTC
 	help
 	  Enable the serial port C of the S3C24XX
 
+choice
+	prompt "Select the mode:"
+	default SERIAL_S3C2410_PORTC_MODE_STANDARD
+	depends on SERIAL_S3C2410_ENABLE_PORTC
+
+config SERIAL_S3C2410_PORTC_MODE_STANDARD
+	bool "Configure for standard operational mode (RS232)"
+
+config SERIAL_S3C2410_PORTC_MODE_RS485
+	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+endchoice
+
+config SERIAL_S3C2410_PORTC_HWCTRL
+	bool "Enable HW flow control of the port C"
+	depends on SERIAL_S3C2410_ENABLE_PORTC && SERIAL_S3C2410_PORTC_MODE_STANDARD
+	depends on !SERIAL_S3C2410_ENABLE_PORTD
+        default n
+	help
+          Enable the HW flow control on the port C of the S3C24XX
+
+config SERIAL_S3C2410_PORTC_RS485_TXLEVEL
+	int "RTS level during RS485 data transmission"
+	depends on SERIAL_S3C2410_ENABLE_PORTC && SERIAL_S3C2410_PORTC_MODE_RS485
+        default 1
+        range 0 1
+        help
+          RTS line level during data transmission on RS485 half duplex mode.
+
 config SERIAL_S3C2410_ENABLE_PORTD
 	bool "Enable the port D support on the S3C24XX"
 	depends on SERIAL_S3C2410 || SERIAL_S3C2440
+	depends on !SERIAL_S3C2410_PORTC_MODE_RS485
         default y
 	help
           Enable the serial port D of the S3C24XX. Enabling this option will
 	  disable the HW flow control of the port C.
-
-config SERIAL_S3C2410_HWCTRL
-        bool "Enable the HW flow control on the S3C24XX ports"
-        depends on SERIAL_S3C2410 || SERIAL_S3C2440
-        help
-          Enables the support for the hardware handshake on the S3C24XX
-
-config SERIAL_S3C2410_PORTA_HWCTRL
-	bool "Enable HW flow control of the port A"
-	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTA
-        default n
-	help
-          Enable the HW flow control on the port A of the S3C24XX
-
-config SERIAL_S3C2410_PORTB_HWCTRL
-	bool "Enable HW flow control of the port B"
-	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && SERIAL_S3C2410_ENABLE_PORTB
-        default n
-	help
-          Enable the HW flow control on the port B of the S3C24XX
-
-config SERIAL_S3C2410_PORTC_HWCTRL
-	bool "Enable HW flow control of the port C"
-	depends on (SERIAL_S3C2410 || SERIAL_S3C2440) && SERIAL_S3C2410_HWCTRL && \
-	SERIAL_S3C2410_ENABLE_PORTC && !SERIAL_S3C2410_ENABLE_PORTD
-        default n
-	help
-          Enable the HW flow control on the port C of the S3C24XX
 
 config SERIAL_S3C24A0
 	tristate "Samsung S3C24A0 Serial port support"

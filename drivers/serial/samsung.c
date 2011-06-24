@@ -43,11 +43,13 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/cpufreq.h>
+#include <linux/interrupt.h>
 
 #include <asm/irq.h>
 
 #include <mach/hardware.h>
 #include <mach/map.h>
+#include <mach/gpio-fns.h>
 
 #include <plat/regs-serial.h>
 
@@ -59,6 +61,8 @@
 #define S3C24XX_SERIAL_MAJOR	204
 #define S3C24XX_SERIAL_MINOR	64
 
+struct tasklet_struct tasklet[CONFIG_SERIAL_SAMSUNG_UARTS];
+
 /* macros to change one thing to another */
 
 #define tx_enabled(port) ((port)->unused[0])
@@ -66,6 +70,8 @@
 
 /* flag to ignore all characters comming in */
 #define RXSTAT_DUMMY_READ (0x10000000)
+
+static void finish_rs485tx_tasklet(unsigned long data);
 
 static inline struct s3c24xx_uart_port *to_ourport(struct uart_port *port)
 {
@@ -82,6 +88,14 @@ static inline const char *s3c24xx_serial_portname(struct uart_port *port)
 static int s3c24xx_serial_txempty_nofifo(struct uart_port *port)
 {
 	return (rd_regl(port, S3C2410_UTRSTAT) & S3C2410_UTRSTAT_TXE);
+}
+
+static inline struct s3c2410_uartcfg *s3c24xx_port_to_cfg(struct uart_port *port)
+{
+	if (port->dev == NULL)
+		return NULL;
+
+	return (struct s3c2410_uartcfg *)port->dev->platform_data;
 }
 
 static void s3c24xx_serial_rx_enable(struct uart_port *port)
@@ -125,10 +139,17 @@ static void s3c24xx_serial_rx_disable(struct uart_port *port)
 static void s3c24xx_serial_stop_tx(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
 
 	if (tx_enabled(port)) {
 		disable_irq_nosync(ourport->tx_irq);
 		tx_enabled(port) = 0;
+
+		/* If in RS485 mode, schedule tasklet to deactivate RTS
+		 * when data has been fully transmitted */
+		if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+			tasklet_schedule(&tasklet[cfg->hwport]);
+
 		if (port->flags & UPF_CONS_FLOW)
 			s3c24xx_serial_rx_enable(port);
 	}
@@ -137,8 +158,12 @@ static void s3c24xx_serial_stop_tx(struct uart_port *port)
 static void s3c24xx_serial_start_tx(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
 
 	if (!tx_enabled(port)) {
+		/* If in RS485 mode, put RTS to transmit */
+		if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+			s3c2410_gpio_setpin(cfg->rts_gpio, cfg->rs485_rts_txlevel);
 		if (port->flags & UPF_CONS_FLOW)
 			s3c24xx_serial_rx_disable(port);
 
@@ -146,7 +171,6 @@ static void s3c24xx_serial_start_tx(struct uart_port *port)
 		tx_enabled(port) = 1;
 	}
 }
-
 
 static void s3c24xx_serial_stop_rx(struct uart_port *port)
 {
@@ -166,14 +190,6 @@ static void s3c24xx_serial_enable_ms(struct uart_port *port)
 static inline struct s3c24xx_uart_info *s3c24xx_port_to_info(struct uart_port *port)
 {
 	return to_ourport(port)->info;
-}
-
-static inline struct s3c2410_uartcfg *s3c24xx_port_to_cfg(struct uart_port *port)
-{
-	if (port->dev == NULL)
-		return NULL;
-
-	return (struct s3c2410_uartcfg *)port->dev->platform_data;
 }
 
 static int s3c24xx_serial_rx_fifocnt(struct s3c24xx_uart_port *ourport,
@@ -376,10 +392,14 @@ static void s3c24xx_serial_break_ctl(struct uart_port *port, int break_state)
 static void s3c24xx_serial_shutdown(struct uart_port *port)
 {
 	struct s3c24xx_uart_port *ourport = to_ourport(port);
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
 
 	if (ourport->tx_claimed) {
 		free_irq(ourport->tx_irq, ourport);
 		tx_enabled(port) = 0;
+		/* If in RS485 mode, put RTS to receive */
+		if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+			s3c2410_gpio_setpin(cfg->rts_gpio, !cfg->rs485_rts_txlevel);
 		ourport->tx_claimed = 0;
 	}
 
@@ -809,6 +829,7 @@ static const char *s3c24xx_serial_type(struct uart_port *port)
 		#if defined(CONFIG_MACH_CC9M2443JS)
 		pdev = to_platform_device(port->dev);
 		cfg = s3c24xx_dev_to_cfg(&pdev->dev);
+
 		if (0 == cfg->hwport)
 			return "S3C2410 PORT A";
 		else if (1 == cfg->hwport)
@@ -835,12 +856,23 @@ static const char *s3c24xx_serial_type(struct uart_port *port)
 
 static void s3c24xx_serial_release_port(struct uart_port *port)
 {
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
+
+	if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+		tasklet_kill(&tasklet[cfg->hwport]);
+
 	release_mem_region(port->mapbase, MAP_SIZE);
 }
 
 static int s3c24xx_serial_request_port(struct uart_port *port)
 {
 	const char *name = s3c24xx_serial_portname(port);
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
+
+	if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+		tasklet_init(&tasklet[cfg->hwport], finish_rs485tx_tasklet,
+			     (unsigned long)port);
+
 	return request_mem_region(port->mapbase, MAP_SIZE, name) ? 0 : -EBUSY;
 }
 
@@ -1082,6 +1114,10 @@ static int s3c24xx_serial_init_port(struct s3c24xx_uart_port *ourport,
 
 	cfg = s3c24xx_dev_to_cfg(&platdev->dev);
 
+	/* If in RS485 mode, put RTS to receiving */
+	if (S3C24XX_SERIAL_MODE_RS485 == cfg->working_mode)
+		s3c2410_gpio_setpin(cfg->rts_gpio, !cfg->rs485_rts_txlevel);
+
 	if (port->mapbase != 0)
 		return 0;
 
@@ -1245,6 +1281,20 @@ static int s3c24xx_serial_resume(struct platform_device *dev)
 	return 0;
 }
 #endif
+
+/* Checks that the TX FIFO and shift register are empty
+ * and deactivates RTS line.
+ */
+static void finish_rs485tx_tasklet(unsigned long data)
+{
+	unsigned int count = 10000;
+	struct uart_port *port = (struct uart_port *)data;
+	struct s3c2410_uartcfg *cfg = s3c24xx_port_to_cfg(port);
+
+	while (--count && !s3c24xx_serial_txempty_nofifo(port))
+		udelay(10);
+	s3c2410_gpio_setpin(cfg->rts_gpio, !cfg->rs485_rts_txlevel);
+}
 
 int s3c24xx_serial_init(struct platform_driver *drv,
 			struct s3c24xx_uart_info *info)

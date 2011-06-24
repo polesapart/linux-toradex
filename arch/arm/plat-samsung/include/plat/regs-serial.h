@@ -255,6 +255,12 @@ struct s3c24xx_uart_clksrc {
  * arch/arm/mach-s3c2410/ directory.
 */
 
+/* Serial port working modes (Digi) */
+enum {
+	S3C24XX_SERIAL_MODE_STANDARD,
+	S3C24XX_SERIAL_MODE_RS485,
+};
+
 struct s3c2410_uartcfg {
 	unsigned char	   hwport;	 /* hardware port number */
 	unsigned char	   unused;
@@ -280,6 +286,11 @@ struct s3c2410_uartcfg {
 	unsigned int       cts_cfg;
 	unsigned int       rts_gpio;
 	unsigned int       rts_cfg;
+
+	/* Working mode (Digi) */
+	unsigned int       working_mode;
+	/* RS485 handling */
+	unsigned int       rs485_rts_txlevel;
 };
 
 /* s3c24xx_uart_devs
