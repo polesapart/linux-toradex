@@ -544,6 +544,15 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .drive 	= 1,
 	 .pull 		= 1,
 	 },
+#if 0
+/*
+ * This is the "correct" configuration for the SSP0_DETECT pin, but setting
+ * this configuration on the CPX2 board causes a conflict with one of the
+ * LEDs, and strange behavior on the console serial port.  For now I've
+ * reset the configuration to be an output GPIO pin, which is the pin's
+ * configuration when not supporting SDIO/MMC.  The driver still works
+ * well enough to support the Atheros chip with the pin disabled.
+ */
 	{
 	 .name	= "SSP0_DETECT",
 	 .id	= PINID_SSP0_DETECT,
@@ -554,6 +563,20 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .drive 	= 1,
 	 .pull 		= 0,
 	 },
+#else
+	{
+	 .name  = "SSP0_DETECT",
+	 .id    = PINID_SSP0_DETECT,
+	 .fun   = PIN_GPIO,
+	 .strength      = PAD_8MA,
+	 .voltage       = PAD_3_3V,
+	 .pullup        = 1,
+	 .drive         = 1,
+	 .pull          = 1,
+	 .output        = 0,
+	 .sysfs         = 1,
+	 },
+#endif
 	{
 	 .name	= "SSP0_SCK",
 	 .id	= PINID_SSP0_SCK,
