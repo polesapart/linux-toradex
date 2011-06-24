@@ -1418,7 +1418,17 @@ static int ns9xxx_eth_pdrv_suspend(struct platform_device *pdev,
 		}
 
 	} else {
+		int mii_bmcr;
+
 		dev_dbg(&pdev->dev, "%s: !device_may_wakeup\n", __func__);
+		/* Put Ethernet PHY in power down mode */
+		mii_bmcr = ns9xxx_eth_mdiobus_read(priv->mdiobus,
+						   priv->phy->addr,
+						   MII_BMCR);
+		mii_bmcr &= ~BMCR_RESET;
+		mii_bmcr |= BMCR_PDOWN;
+		ns9xxx_eth_mdiobus_write(priv->mdiobus, priv->phy->addr,
+					 MII_BMCR, mii_bmcr);
 		clk_disable(priv->clk);
 	}
 
@@ -1441,7 +1451,16 @@ static int ns9xxx_eth_pdrv_resume(struct platform_device *pdev)
 	if (device_may_wakeup(&pdev->dev))
 		disable_irq_wake(priv->irqrx);
 	else {
+		int mii_bmcr;
 		ret = clk_enable(priv->clk);
+
+		/* Wake up Ethernet PHY */
+		mii_bmcr = ns9xxx_eth_mdiobus_read(priv->mdiobus,
+						   priv->phy->addr,
+						   MII_BMCR);
+		mii_bmcr &= ~(BMCR_RESET | BMCR_PDOWN);
+		ns9xxx_eth_mdiobus_write(priv->mdiobus, priv->phy->addr,
+					MII_BMCR, mii_bmcr);
 		if (ret) {
 			dev_dbg(&pdev->dev, "%s: err_clk_enable -> %d",
 					__func__, ret);
