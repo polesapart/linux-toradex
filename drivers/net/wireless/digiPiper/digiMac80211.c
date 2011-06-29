@@ -423,8 +423,7 @@ static void piper_hw_stop(struct ieee80211_hw *hw)
 		piperp->deinit_hw(piperp);
 
 	/* set status led to link off */
-	if (piper_set_status_led(hw, led_shutdown))
-		return;		/* hardware's probably gone, give up */
+	piper_set_status_led(hw, led_shutdown);
 
 	/* turn off phy */
 	piperp->rf->stop(hw);
