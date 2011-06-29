@@ -64,8 +64,8 @@ static struct fb_videomode lq70y3dg3b = {
 	.flag          = 0,
 };
 
-static struct fb_videomode lq121k1lg11 = {
-	.name          = "LQ121K1LG11",
+static struct fb_videomode lq121k1lg52 = {
+	.name          = "LQ121K1LG52",
 	.refresh       = 60,
 	.xres          = 1280,
 	.yres          = 800,
@@ -125,8 +125,8 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	}, {
 		.fb_pdata = {
 			.interface_pix_fmt = VIDEO_PIX_FMT,
-			.mode_str = "LQ121K1LG11",
-			.mode = &lq121k1lg11,
+			.mode_str = "LQ121K1LG52",
+			.mode = &lq121k1lg52,
 		},
 		.bl_enable = lcd_bl_enable,
 		.init = &lcd_init,
