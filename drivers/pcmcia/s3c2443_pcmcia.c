@@ -19,6 +19,7 @@
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/slab.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -34,7 +35,6 @@
 #include <mach/gpio.h>
 
 #define DRV_NAME	"s3c2443-pcmcia"
-#define	SZ_2K		(2 * SZ_1K)
 
 struct s3c2443_pcmcia_socket {
 	struct pcmcia_socket		socket;
@@ -123,7 +123,7 @@ static int s3c2443_pcmcia_get_status(struct pcmcia_socket *s, u_int *sp)
 		if (!(muxreg & S3C2443_MUX_PWREN_PWOFF))
 			*sp |= SS_POWERON;
 
-		s->irq.AssignedIRQ = 0;
+		s->pcmcia_irq = 0;
 		s->pci_irq = psock->irq;
 	} else
 		*sp = 0;
@@ -238,16 +238,16 @@ static int s3c2443_pcmcia_hw_config(struct s3c2443_pcmcia_socket *psock)
 	writel(reg, ebicon);
 
 	/* Configure the IO lines*/
-	s3c2443_gpio_cfgpin(S3C2410_GPG15, S3C2443_GPG15_CF_PWR);
-	s3c2443_gpio_cfgpin(S3C2410_GPG14, S3C2443_GPG14_CF_RESET);
-	s3c2443_gpio_cfgpin(S3C2410_GPG13, S3C2443_GPG13_CF_nREG);
-	s3c2443_gpio_cfgpin(S3C2410_GPG12, S3C2443_GPG12_nINPACK);
-	s3c2443_gpio_cfgpin(S3C2410_GPG11, S3C2443_GPG11_CF_nIREQ);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(15), S3C2443_GPG15_CF_PWR);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(14), S3C2443_GPG14_CF_RESET);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(13), S3C2443_GPG13_CF_nREG);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(12), S3C2443_GPG12_nINPACK);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(11), S3C2443_GPG11_CF_nIREQ);
 
-	s3c2443_gpio_cfgpin(S3C2410_GPA10, 0);
-	s3c2443_gpio_cfgpin(S3C2410_GPA11, 1);
-	s3c2443_gpio_cfgpin(S3C2410_GPA12, 1);
-	s3c2443_gpio_cfgpin(S3C2410_GPA15, 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(10), 0);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(11), 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(12), 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(15), 1);
 
 	/* TODO use the proper api after adding s3c2443_gpio_pullup */  
 	/* Enable the pullup for interrupt line  */
@@ -351,7 +351,7 @@ static int __init s3c2443_pcmcia_probe(struct platform_device *pdev)
 		goto error_hwcfg;
 	}
 
-	psock->irq_cd = s3c2410_gpio_getirq(pdata->gpio_detect);
+	psock->irq_cd = gpio_to_irq(pdata->gpio_detect);
 	if (psock->irq_cd < 0) {
 		pr_debug("%s: %s, not irq available for card detection\n", 
 			 DRV_NAME, __func__);
@@ -436,35 +436,9 @@ static int __exit s3c2443_pcmcia_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef	CONFIG_PM
-static int 
-s3c2443_pcmcia_drv_suspend(struct platform_device *pdev, pm_message_t mesg)
-{
-	return pcmcia_socket_dev_suspend(&pdev->dev, mesg);
-}
-
-static int
-s3c2443_pcmcia_drv_resume(struct platform_device *pdev)
-{
- 	struct s3c2443_pcmcia_socket *psock = platform_get_drvdata(pdev);
- 	int ret;
-
- 	ret = s3c2443_pcmcia_hw_config(psock);
- 	if (ret)
- 		return ret;
-
-	return pcmcia_socket_dev_resume(&pdev->dev);
-}
-#else
-#define	s3c2443_pcmcia_drv_suspend	NULL
-#define	s3c2443_pcmcia_drv_resume	NULL
-#endif
-
 static struct platform_driver s3c2443_pcmcia_driver = {
 	.probe		= s3c2443_pcmcia_probe,
 	.remove		= __exit_p(s3c2443_pcmcia_remove),
-	.suspend 	= s3c2443_pcmcia_drv_suspend,
-	.resume 	= s3c2443_pcmcia_drv_resume,
 	.driver		= {
 		.name	= DRV_NAME,
 		.owner	= THIS_MODULE,

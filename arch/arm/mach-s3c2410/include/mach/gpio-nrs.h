@@ -39,7 +39,7 @@
  */
 
 /* GPIO bank sizes */
-#ifdef CONFIG_MACH_CC9M2443JS
+#if defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)
 # define S3C2410_GPIO_A_NR	(16)
 # define S3C2410_GPIO_B_NR	(11)
 # define S3C2410_GPIO_C_NR	(16)

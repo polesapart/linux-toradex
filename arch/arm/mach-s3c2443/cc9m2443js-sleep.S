@@ -43,29 +43,6 @@
 */
 
 ENTRY(s3c2443_cpu_suspend)
-	stmfd	sp!, { r4 - r12, lr }	@ save registers on stack
-
-	@@ get co-processor registers
-	mrc	p15, 0, r4, c3, c0, 0	@ Domain ID
-	mrc	p15, 0, r5, c2, c0, 0	@ translation table base address
-	mrc	p15, 0, r6, c13, c0, 0	@ PID
-	mrc	p15, 0, r7, c1, c0, 0	@ control register
-
-	@ store them plus current virtual stact ptr on stack
-	mov	r8, sp
-	stmfd	sp!, {r4 - r8}
-
-
-	mov	r1, #0	
-	mcr	p15, 0, r1, c8, c7, 0		@ flush I+D TLBs
-	mcr	p15, 0, r1, c7, c7, 0		@ flush I & D caches
-	mcr     p15, 0, r1, c9, c0, 0           @ invalidate RB
-	
-	mov	r0, sp
-  	bl	sleep_phys_sp
-	ldr	r1, =sleep_save_sp
-	str	r0, [r1]
-
         @@ flush the caches to ensure everything is back out to
         @@ SDRAM before the core powers down
 
@@ -90,79 +67,3 @@ s3c_goto_sleep:
 @ 	nop
 @ 	nop
 @ 	b	_sleeping
-	.ltorg
-
-	/* s3c_cpu_resume
-	 *
-	 * resume code entry for bootloader to call
-	 *
-	 * we must put this code here in the data segment as we have no
-	 * other way of restoring the stack pointer after sleep, and we
-	 * must not write to the code segment (code is read-only)
-	*/
-	.data
-	.align 5 
-ENTRY(s3c2443_cpu_resume)
-
-        @@@@@@@@@ The U-Boot set the registers: r10 -> GPLDAT
-#if defined(ENABLE_GPIO_TOGGLE)
-        adr     r11, _gplcon_virtual_address
-        ldr     r10, [r11]
-        mov     r5, #50
-_toggle_gpio:
-        ldr     r6, [r10]
-        eor     r6, r6, #0x800
-        str     r6, [r10]
-        mov     r4, #0x800000
-_dec_timer:
-        sub     r4, r4, #1
-        cmp     r4, #0
-        bne     _dec_timer
-
-        sub     r5, r5, #1
-        cmp     r5, #0
-        bne     _toggle_gpio
-#endif /* ENABLE_GPIO_TOGGLE */
-        @@@@@@@@@ The U-Boot set the registers: r5 -> GPLDAT
-
-	
-	mov	r0, #PSR_I_BIT | PSR_F_BIT | SVC_MODE
-	msr	cpsr_c, r0
-
-	ldr	r0, sleep_save_sp	@ address of restore block
-	ldr	r2, =resume_after_mmu
-	ldmfd	r0, {r4 - r7, sp}
-	
-	mov	r1, #0	
-	mcr	p15, 0, r1, c8, c7, 0		@ flush I+D TLBs
-	mcr	p15, 0, r1, c7, c7, 0		@ flush I & D caches
-	mcr     p15, 0, r1, c9, c0, 0           @ invalidate RB
-	mcr     p15, 0, r1, c9, c0, 5           @ allow user space to use RB
-
-	mcr	p15, 0, r4, c3, c0, 0		@ Domain ID
-	mcr	p15, 0, r5, c2, c0, 0		@ translation table base
-	mcr	p15, 0, r6, c13, c0, 0		@ PID
-	b       resume_turn_on_mmu              @ cache align execution
-
-	.align 5 
-resume_turn_on_mmu:
-        mcr     p15, 0, r7, c1, c0, 0           @ turn on MMU, caches, etc.
-	nop 
-	mov	pc, r2
-	nop
-	nop
-	nop
-
-	.ltorg
-sleep_save_sp:
-	.word	0
-
-        @@ DEBUG: Virtual address of the register GPLDAT
-_gplcon_virtual_address:
-	@ .word   0xfb0000f4
-        .word	0x560000f4
-	
-	.text
-resume_after_mmu:
-        ldmfd   sp!, { r4 - r12, pc }
-

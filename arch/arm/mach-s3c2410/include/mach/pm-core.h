@@ -11,6 +11,11 @@
  * published by the Free Software Foundation.
  */
 
+static struct sleep_save s3c_irq_save[] = {
+	SAVE_ITEM(S3C2410_INTMSK),
+	SAVE_ITEM(S3C24XX_EINTMASK),
+};
+
 static inline void s3c_pm_debug_init_uart(void)
 {
 	unsigned long tmp = __raw_readl(S3C2410_CLKCON);
@@ -26,6 +31,7 @@ static inline void s3c_pm_debug_init_uart(void)
 
 static inline void s3c_pm_arch_prepare_irqs(void)
 {
+	s3c_pm_do_save(s3c_irq_save, ARRAY_SIZE(s3c_irq_save));
 	__raw_writel(s3c_irqwake_intmask, S3C2410_INTMSK);
 	__raw_writel(s3c_irqwake_eintmask, S3C2410_EINTMASK);
 
@@ -56,6 +62,8 @@ static inline void s3c_pm_arch_show_resume_irqs(void)
 
 	s3c_pm_show_resume_irqs(IRQ_EINT4-4, __raw_readl(S3C2410_EINTPEND),
 				s3c_irqwake_eintmask);
+
+	s3c_pm_do_restore(s3c_irq_save, ARRAY_SIZE(s3c_irq_save));
 }
 
 static inline void s3c_pm_arch_update_uart(void __iomem *regs,

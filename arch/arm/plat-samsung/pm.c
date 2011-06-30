@@ -31,6 +31,8 @@
 #include <plat/pm.h>
 #include <mach/pm-core.h>
 
+#include <mach/gpio.h>
+
 /* for external use */
 
 unsigned long s3c_pm_flags;

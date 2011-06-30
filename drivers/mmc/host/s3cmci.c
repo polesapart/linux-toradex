@@ -1289,7 +1289,6 @@ static void s3cmci_send_request(struct mmc_host *mmc)
 			      S3C2410_SDIIMSK_RXFIFOLAST |
 			      S3C2410_SDIIMSK_TXFIFOEMPTY |
 			      S3C2410_SDIIMSK_TXFIFOHALF);
-
 }
 
 static int s3cmci_card_present(struct mmc_host *mmc)
@@ -2112,7 +2111,7 @@ static int s3cmci_resume(struct device *dev)
 
 	/* @FIXME: Why do we need to free que DMA-channel? */
 	s3c2410_dma_free(host->dma, &s3cmci_dma_client);
-	s3c2410_dma_request(host->dma, &s3cmci_dma_client, NULL);
+	host->dma = s3c2410_dma_request(DMACH_SDI, &s3cmci_dma_client, host);
 
 	/*
 	 * By unsafe resumes we MUST check the card state at this point, then the

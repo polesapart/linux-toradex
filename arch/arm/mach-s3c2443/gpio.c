@@ -14,6 +14,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/sysdev.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -29,6 +30,7 @@
 #include <mach/gpio.h>
 #include <mach/gpio-track.h>
 #include <plat/gpio-cfg-helpers.h>
+#include <plat/pm.h>
 
 struct s3c_gpio_chip s3c2443_gpio_ports[];
 
@@ -349,10 +351,35 @@ struct s3c_gpio_cfg s3c24xx_gpiocfg_default = {
 	.get_pull	= s3c2443_get_pull,
 };
 
+static void s3c2443_gpio_pm_porta_save(struct s3c_gpio_chip *chip)
+{
+	chip->pm_save[0] = s3c2443_gpio_read_porta(S3C2410_GPA(0));
+	chip->pm_save[1] = s3c2443_gpio_read_porta(S3C2410_GPA(8));
+}
+
+static void s3c2443_gpio_pm_porta_resume(struct s3c_gpio_chip *chip)
+{
+	u32 old_gpal = s3c2443_gpio_read_porta(S3C2410_GPA(0));
+	u32 old_gpah = s3c2443_gpio_read_porta(S3C2410_GPA(8));
+	u32 gps_gpal = chip->pm_save[0];
+	u32 gps_gpah = chip->pm_save[1];
+
+	__raw_writel(gps_gpal, chip->base);
+	__raw_writel(gps_gpah, chip->base + 0x04);
+
+	S3C_PMDBG("%s: GPACDL %08x => %08x, GPACDH %08x => %08x\n",
+		  chip->chip.label, old_gpal, gps_gpal, old_gpah, gps_gpah);
+}
+
+struct s3c_gpio_pm s3c2443_gpio_pm_porta = {
+	.save	= s3c2443_gpio_pm_porta_save,
+	.resume = s3c2443_gpio_pm_porta_resume,
+};
+
 struct s3c_gpio_chip s3c2443_gpio_ports[] = {
 	[0] = {
 		.base	= S3C2410_GPACON,
-		.pm	= __gpio_pm(&s3c_gpio_pm_1bit),
+		.pm	= __gpio_pm(&s3c2443_gpio_pm_porta),
 		.config	= &s3c24xx_gpiocfg_banka,
 		.chip	= {
 			.base			= S3C2410_GPA(0),

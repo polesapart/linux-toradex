@@ -29,7 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/dma-mapping.h>
-#include <linux/smc911x.h>
+#include <linux/smsc911x.h>
 #include <linux/crc32.h>
 
 #include <asm/mach/arch.h>
@@ -110,7 +110,7 @@ static struct resource smsc911x_device_resources[] = {
         },
 };
 
-static struct smc911x_platdata cc9m2443_smsc9118 = {
+static struct smsc911x_platform_config cc9m2443_smsc9118 = {
         .flags          = SMSC911X_USE_16BIT,
         .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
         .irq_type	= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
@@ -744,12 +744,6 @@ static void __init cc9m2443_map_io(void)
 
 static struct s3c2410_nand_set cc9m2443_nand_sets[] = {
 	[0] = {
-		/*
-		 * This name is also hard-coded in the boot loaders, so
-		 * changing it would would require all users to upgrade
-		 * their boot loaders, some of which are stored in a NOR
-		 * that is considered to be immutable.
-		 */
 		.name		= "onboard_boot",
 		.nr_chips	= 1,
 		.flash_bbt	= 0,
@@ -764,7 +758,6 @@ static struct s3c2410_platform_nand cc9m2443_nand_info = {
 	.tacls          = 20,
 	.twrph0         = 50,
 	.twrph1         = 20,
-	.nr_sets	= 1,
 	.nr_sets	= ARRAY_SIZE(cc9m2443_nand_sets),
 	.sets           = cc9m2443_nand_sets,
 };

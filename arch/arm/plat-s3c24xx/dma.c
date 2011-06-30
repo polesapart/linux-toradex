@@ -343,7 +343,7 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
 	 */
 
 	if (chan->load_state == S3C2410_DMALOAD_NONE) {
-		if (chan->next == NULL) {
+		if (chan->curr == NULL) {
 			printk(KERN_ERR "dma%d: channel has nothing loaded\n",
 			       chan->number);
 			chan->state = S3C2410_DMA_IDLE;
@@ -351,7 +351,7 @@ static int s3c2410_dma_start(struct s3c2410_dma_chan *chan)
 			return -EINVAL;
 		}
 
-		s3c2410_dma_loadbuffer(chan, chan->next);
+		s3c2410_dma_loadbuffer(chan, chan->curr);
 	}
 
 	dbg_showchan(chan);
@@ -715,7 +715,7 @@ s3c2410_dma_irq(int irq, void *devpw)
 		 */
 		local_irq_save(flags);
 		chan->load_state = S3C2410_DMALOAD_NONE;
-		s3c2410_dma_loadbuffer(chan, chan->next);
+		s3c2410_dma_loadbuffer(chan, chan->curr);
 		tmp = dma_rdreg(chan, S3C2410_DMA_DMASKTRIG);
 		tmp &= ~S3C2410_DMASKTRIG_STOP;
 		tmp |= S3C2410_DMASKTRIG_ON;
@@ -1029,7 +1029,8 @@ s3c2410_dma_ctrl(unsigned int channel, enum s3c2410_chan_op op)
 		return s3c2410_dma_flush(chan);
 
 	case S3C2410_DMAOP_STARTED:
-		return s3c2410_dma_started(chan);
+		//return s3c2410_dma_started(chan);
+		return 0;
 
 	case S3C2410_DMAOP_TIMEOUT:
 		return 0;

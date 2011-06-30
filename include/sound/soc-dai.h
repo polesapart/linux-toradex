@@ -228,6 +228,9 @@ struct snd_soc_dai {
 	/* DAI private data */
 	void *private_data;
 
+	/* For checking the start of the delayed work inside the soc-core.c */
+	int prepared;
+
 	/* parent platform */
 	struct snd_soc_platform *platform;
 

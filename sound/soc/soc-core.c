@@ -583,9 +583,11 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		/* start delayed pop wq here for playback streams */
-		codec_dai->pop_wait = 1;
-		schedule_delayed_work(&card->delayed_work,
-			msecs_to_jiffies(card->pmdown_time));
+		if (codec_dai->prepared) {
+			codec_dai->pop_wait = 1;
+			schedule_delayed_work(&card->delayed_work,
+						msecs_to_jiffies(pmdown_time));
+		}
 	} else {
 		/* capture streams can be powered down now */
 		snd_soc_dapm_stream_event(codec,
@@ -593,6 +595,7 @@ static int soc_codec_close(struct snd_pcm_substream *substream)
 			SND_SOC_DAPM_STREAM_STOP);
 	}
 
+	codec_dai->prepared = 0;
 	mutex_unlock(&pcm_mutex);
 	return 0;
 }
@@ -615,6 +618,13 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	int ret = 0;
 
 	mutex_lock(&pcm_mutex);
+
+	/*
+	 * This is for informing the close-function that we really need to
+	 * start the delayed work for stopping the codecs
+	 * (Luis Galdos)
+	 */
+	codec_dai->prepared = 1;
 
 	if (machine->ops && machine->ops->prepare) {
 		ret = machine->ops->prepare(substream);

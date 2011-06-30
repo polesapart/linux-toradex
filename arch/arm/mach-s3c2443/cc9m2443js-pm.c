@@ -169,10 +169,10 @@ static int cc9m2443js_pm_suspend(struct sys_device *sd, pm_message_t state)
          * correct address to resume from. */
 
 	printk(KERN_DEBUG "[ SUSPEND ] Setting resume address to %p [0x%lx]\n",
-	       s3c2443_cpu_resume,
-	       virt_to_phys(s3c2443_cpu_resume));
+	       s3c_cpu_resume,
+	       virt_to_phys(s3c_cpu_resume));
         __raw_writel(0x2BED, S3C2412_INFORM0);
-        __raw_writel(virt_to_phys(s3c2443_cpu_resume), S3C2412_INFORM1);
+        __raw_writel(virt_to_phys(s3c_cpu_resume), S3C2412_INFORM1);
 
 	/*
 	 * This two function pointers are used by the platform driver (see [1])

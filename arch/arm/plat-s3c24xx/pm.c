@@ -48,6 +48,35 @@
 
 #define PFX "s3c24xx-pm: "
 
+#if defined(CONFIG_CPU_S3C2443)
+/* For the S3C2443 (Luis Galdos) */
+# include <mach/regs-s3c2443-clock.h>
+# include <mach/regs-s3c2443-mem.h>
+
+/* Registers for the S3C2443 machines */
+
+static struct sleep_save core_save[] = {
+	SAVE_ITEM(S3C2443_LOCKCON0),
+	SAVE_ITEM(S3C2443_LOCKCON1),
+	SAVE_ITEM(S3C2443_OSCSET),
+	SAVE_ITEM(S3C2443_MPLLCON),
+	SAVE_ITEM(S3C2443_EPLLCON),
+	SAVE_ITEM(S3C2443_CLKSRC),
+	SAVE_ITEM(S3C2443_CLKDIV0),
+	SAVE_ITEM(S3C2443_CLKDIV1),
+	SAVE_ITEM(S3C2443_HCLKCON),
+	SAVE_ITEM(S3C2443_PCLKCON),
+	SAVE_ITEM(S3C2443_SCLKCON),
+	SAVE_ITEM(S3C2443_BANKCFG),
+	SAVE_ITEM(S3C2443_BANKCON1),
+	SAVE_ITEM(S3C2443_BANKCON2),
+	SAVE_ITEM(S3C2443_BANKCON3),
+	SAVE_ITEM(S3C2443_REFRESH),
+	SAVE_ITEM(S3C2443_TIMEOUT),
+};
+
+#else
+
 static struct sleep_save core_save[] = {
 	SAVE_ITEM(S3C2410_LOCKTIME),
 	SAVE_ITEM(S3C2410_CLKCON),
@@ -76,6 +105,8 @@ static struct sleep_save core_save[] = {
 	SAVE_ITEM(S3C2410_UPLLCON),
 	SAVE_ITEM(S3C2410_CLKSLOW),
 };
+
+#endif
 
 static struct sleep_save misc_save[] = {
 	SAVE_ITEM(S3C2410_DCLKCON),

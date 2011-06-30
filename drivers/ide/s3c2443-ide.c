@@ -98,109 +98,50 @@ static u8 s3c2443_read_altstatus(ide_hwif_t *hwif)
 	return s3c2443_ide_readb(hwif->io_ports.ctl_addr);
 }
 
-static void s3c2443_set_irq(ide_hwif_t *hwif, int on)
+static void s3c2443_write_devctl(ide_hwif_t *hwif, u8 ctl)
 {
-	u8 ctl = ATA_DEVCTL_OBS;
-
-	if (on == 4) { /* hack for SRST */
-		ctl |= 4;
-		on &= ~4;
-	}
-
-	ctl |= on ? 0 : 2;
 	s3c2443_ide_writeb(ctl, hwif->io_ports.ctl_addr);
 }
 
-static void s3c2443_tf_load(ide_drive_t *drive, ide_task_t *task)
+static void s3c2443_tf_load(ide_drive_t *drive, struct ide_taskfile *tf, u8 valid)
 {
 	ide_hwif_t *hwif = drive->hwif;
 	struct ide_io_ports *io_ports = &hwif->io_ports;
-	struct ide_taskfile *tf = &task->tf;
-	u8 HIHI = (task->tf_flags & IDE_TFLAG_LBA48) ? 0xE0 : 0xEF;
 
-	if (task->tf_flags & IDE_TFLAG_FLAGGED)
-		HIHI = 0xFF;
-
-	if (task->tf_flags & IDE_TFLAG_OUT_DATA) {
-		u16 data = (tf->hob_data << 8) | tf->data;
-		s3c2443_ide_writew (data, io_ports->data_addr);
-	}
-
-	if (task->tf_flags & IDE_TFLAG_OUT_HOB_FEATURE)
-		s3c2443_ide_writeb(tf->hob_feature, io_ports->feature_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_HOB_NSECT)
-		s3c2443_ide_writeb(tf->hob_nsect, io_ports->nsect_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_HOB_LBAL)
-		s3c2443_ide_writeb(tf->hob_lbal, io_ports->lbal_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_HOB_LBAM)
-		s3c2443_ide_writeb(tf->hob_lbam, io_ports->lbam_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_HOB_LBAH)
-		s3c2443_ide_writeb(tf->hob_lbah, io_ports->lbah_addr);
-
-	if (task->tf_flags & IDE_TFLAG_OUT_FEATURE)
+	if (valid & IDE_VALID_FEATURE)
 		s3c2443_ide_writeb(tf->feature, io_ports->feature_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_NSECT)
+	if (valid & IDE_VALID_NSECT)
 		s3c2443_ide_writeb(tf->nsect, io_ports->nsect_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_LBAL)
+	if (valid & IDE_VALID_LBAL)
 		s3c2443_ide_writeb(tf->lbal, io_ports->lbal_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_LBAM)
+	if (valid & IDE_VALID_LBAM)
 		s3c2443_ide_writeb(tf->lbam, io_ports->lbam_addr);
-	if (task->tf_flags & IDE_TFLAG_OUT_LBAH)
+	if (valid & IDE_VALID_LBAH)
 		s3c2443_ide_writeb(tf->lbah, io_ports->lbah_addr);
-
-	if (task->tf_flags & IDE_TFLAG_OUT_DEVICE)
-		s3c2443_ide_writeb((tf->device & HIHI) | drive->select,
-			 io_ports->device_addr);
+	if (valid & IDE_VALID_DEVICE)
+		s3c2443_ide_writeb(tf->device, io_ports->device_addr);
 }
 
-static void s3c2443_tf_read(ide_drive_t *drive, ide_task_t *task)
+static void s3c2443_tf_read(ide_drive_t *drive, struct ide_taskfile *tf, u8 valid)
 {
 	ide_hwif_t *hwif = drive->hwif;
 	struct ide_io_ports *io_ports = &hwif->io_ports;
-	struct ide_taskfile *tf = &task->tf;
 
-	if (task->tf_flags & IDE_TFLAG_IN_DATA) {
-		u16 data;
-
-		data = s3c2443_ide_readw(io_ports->data_addr);
-
-		tf->data = data & 0xff;
-		tf->hob_data = (data >> 8) & 0xff;
-	}
-
-	/* be sure we're looking at the low order bits */
-	s3c2443_ide_writeb(ATA_DEVCTL_OBS & ~0x80, io_ports->ctl_addr);
-
-	if (task->tf_flags & IDE_TFLAG_IN_FEATURE)
-		tf->feature = s3c2443_ide_readb(io_ports->feature_addr);
-	if (task->tf_flags & IDE_TFLAG_IN_NSECT)
+	if (valid & IDE_VALID_ERROR)
+		tf->error  = s3c2443_ide_readb(io_ports->feature_addr);
+	if (valid & IDE_VALID_NSECT)
 		tf->nsect  = s3c2443_ide_readb(io_ports->nsect_addr);
-	if (task->tf_flags & IDE_TFLAG_IN_LBAL)
+	if (valid & IDE_VALID_LBAL)
 		tf->lbal   = s3c2443_ide_readb(io_ports->lbal_addr);
-	if (task->tf_flags & IDE_TFLAG_IN_LBAM)
+	if (valid & IDE_VALID_LBAM)
 		tf->lbam   = s3c2443_ide_readb(io_ports->lbam_addr);
-	if (task->tf_flags & IDE_TFLAG_IN_LBAH)
+	if (valid & IDE_VALID_LBAH)
 		tf->lbah   = s3c2443_ide_readb(io_ports->lbah_addr);
-	if (task->tf_flags & IDE_TFLAG_IN_DEVICE)
+	if (valid & IDE_VALID_DEVICE)
 		tf->device = s3c2443_ide_readb(io_ports->device_addr);
-
-	if (task->tf_flags & IDE_TFLAG_LBA48) {
-		s3c2443_ide_writeb(ATA_DEVCTL_OBS | 0x80, io_ports->ctl_addr);
-
-		if (task->tf_flags & IDE_TFLAG_IN_HOB_FEATURE)
-			tf->hob_feature = s3c2443_ide_readb(io_ports->feature_addr);
-		if (task->tf_flags & IDE_TFLAG_IN_HOB_NSECT)
-			tf->hob_nsect   = s3c2443_ide_readb(io_ports->nsect_addr);
-		if (task->tf_flags & IDE_TFLAG_IN_HOB_LBAL)
-			tf->hob_lbal    = s3c2443_ide_readb(io_ports->lbal_addr);
-		if (task->tf_flags & IDE_TFLAG_IN_HOB_LBAM)
-			tf->hob_lbam    = s3c2443_ide_readb(io_ports->lbam_addr);
-		if (task->tf_flags & IDE_TFLAG_IN_HOB_LBAH)
-			tf->hob_lbah    = s3c2443_ide_readb(io_ports->lbah_addr);
-	}
 }
 
-static void s3c2443_input_data(ide_drive_t *drive, struct request *rq, void *buf,
+static void s3c2443_input_data(ide_drive_t *drive, struct ide_cmd *cmd, void *buf,
 		    unsigned int len)
 {
 	ide_hwif_t *hwif = drive->hwif;
@@ -215,7 +156,7 @@ static void s3c2443_input_data(ide_drive_t *drive, struct request *rq, void *buf
 	}
 }
 
-static void s3c2443_output_data(ide_drive_t *drive, struct request *rq, void *buf,
+static void s3c2443_output_data(ide_drive_t *drive, struct ide_cmd *cmd, void *buf,
 		     unsigned int len)
 {
 	ide_hwif_t *hwif = drive->hwif;
@@ -229,27 +170,10 @@ static void s3c2443_output_data(ide_drive_t *drive, struct request *rq, void *bu
 	}
 }
 
-static const struct ide_tp_ops s3c2443_tp_ops = {
-	.exec_command		= s3c2443_ide_exec_command,
-	.read_status		= s3c2443_read_status,
-	.read_altstatus		= s3c2443_read_altstatus,
- 	.set_irq		= s3c2443_set_irq,
- 	.tf_load		= s3c2443_tf_load,
- 	.tf_read		= s3c2443_tf_read,
-	.input_data		= s3c2443_input_data,
-	.output_data		= s3c2443_output_data,
-};
-
-static const struct ide_port_info s3c2443_port_info = {
-	.tp_ops 		= &s3c2443_tp_ops,
-	.host_flags		= IDE_HFLAG_MMIO | IDE_HFLAG_NO_DMA | \
-				  IDE_HFLAG_NO_IO_32BIT,
-};
-
-static int s3c2443_ide_ack_intr(ide_hwif_t *hwif)
+static int s3c2443_ide_test_irq(ide_hwif_t *hwif)
 {
 	u32 reg = 0, tout = 100;
-	
+
 	while (tout--) {
 		reg = readl(s3c2443_ide_hwif.membase + S3C2443_ATA_IRQ);
 		if (reg) {
@@ -260,6 +184,30 @@ static int s3c2443_ide_ack_intr(ide_hwif_t *hwif)
 
 	return (int)reg;
 }
+
+static const struct ide_tp_ops s3c2443_tp_ops = {
+	.exec_command		= s3c2443_ide_exec_command,
+	.read_status		= s3c2443_read_status,
+	.read_altstatus		= s3c2443_read_altstatus,
+	.write_devctl		= s3c2443_write_devctl,
+	.dev_select		= ide_dev_select,
+	.tf_load		= s3c2443_tf_load,
+	.tf_read		= s3c2443_tf_read,
+	.input_data		= s3c2443_input_data,
+	.output_data		= s3c2443_output_data,
+};
+
+static const struct ide_port_ops s3c2443_port_ops = {
+	.test_irq		= s3c2443_ide_test_irq,
+};
+
+static const struct ide_port_info s3c2443_port_info = {
+	.tp_ops 		= &s3c2443_tp_ops,
+	.port_ops		= &s3c2443_port_ops,
+	.host_flags		= IDE_HFLAG_MMIO | IDE_HFLAG_NO_DMA | \
+				  IDE_HFLAG_NO_IO_32BIT,
+	.chipset		= ide_generic,
+};
 
 static int s3c2443_ide_hw_config(struct _s3c2443_ide_hwif *hw)
 {
@@ -279,16 +227,16 @@ static int s3c2443_ide_hw_config(struct _s3c2443_ide_hwif *hw)
 	writel(reg, ebicon);
 
 	/* Configure the IO lines*/
-	s3c2443_gpio_cfgpin(S3C2410_GPG15, S3C2443_GPG15_CF_PWR);
-	s3c2443_gpio_cfgpin(S3C2410_GPG14, S3C2443_GPG14_CF_RESET);
-	s3c2443_gpio_cfgpin(S3C2410_GPG13, S3C2443_GPG13_CF_nREG);
-	s3c2443_gpio_cfgpin(S3C2410_GPG12, S3C2443_GPG12_nINPACK);
-	s3c2443_gpio_cfgpin(S3C2410_GPG11, S3C2443_GPG11_CF_nIREQ);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(15), S3C2443_GPG15_CF_PWR);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(14), S3C2443_GPG14_CF_RESET);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(13), S3C2443_GPG13_CF_nREG);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(12), S3C2443_GPG12_nINPACK);
+	s3c2443_gpio_cfgpin(S3C2410_GPG(11), S3C2443_GPG11_CF_nIREQ);
 
- 	s3c2443_gpio_cfgpin(S3C2410_GPA10, 0);
- 	s3c2443_gpio_cfgpin(S3C2410_GPA11, 1);
- 	s3c2443_gpio_cfgpin(S3C2410_GPA12, 1);
- 	s3c2443_gpio_cfgpin(S3C2410_GPA15, 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(10), 0);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(11), 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(12), 1);
+	s3c2443_gpio_cfgpin(S3C2410_GPA(15), 1);
 
 	/* Clear the card detect condition */
 	reg = readl(S3C24XX_MISCCR) & ~S3C2443_MISCCR_nCD_CF;
@@ -328,7 +276,7 @@ static int __devinit s3c2443_ide_probe(struct platform_device *pdev)
 {
 	int ret = 0, i;
 	struct _s3c2443_ide_hwif *shwif = &s3c2443_ide_hwif;
-	hw_regs_t hw, *hws[] = {&hw, NULL, NULL, NULL};
+	struct ide_hw hw, *hws[] = { &hw };
 	struct resource *res;
 	struct ide_host *host;
 
@@ -389,11 +337,9 @@ static int __devinit s3c2443_ide_probe(struct platform_device *pdev)
 		hw.io_ports_array[i] = (unsigned long)(shwif->membase + S3C2443_ATA_PIO_DTR + (i * 4));
 	hw.io_ports.ctl_addr = (unsigned long)(shwif->membase + S3C2443_ATA_PIO_DTR + 8 * 4);
 	hw.irq = shwif->irq;
-	hw.ack_intr = s3c2443_ide_ack_intr;
-	hw.chipset = ide_generic;
 	hw.dev = &pdev->dev;
 
-	ret = ide_host_add(&s3c2443_port_info, hws, &host);
+	ret = ide_host_add(&s3c2443_port_info, hws, 1, &host);
 	if (ret) {
 		pr_debug("%s: %s, failed add IDE host device\n", DRV_NAME, __func__);
 		goto error_add;

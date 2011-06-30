@@ -1265,8 +1265,6 @@ static int wm8753_set_bias_level(struct snd_soc_codec *codec,
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		/* set vmid to 50k and unmute dac */
-		wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0);
-
 		/* wm8753_write(codec, WM8753_PWR1, pwr_reg | 0x00c0); */
 		/*
 		* Force the enable of the MICBIAS, otherwise the microphone will not
