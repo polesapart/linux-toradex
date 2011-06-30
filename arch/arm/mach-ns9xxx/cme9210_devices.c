@@ -66,7 +66,7 @@ static void cme9210_i2c_gpio_reconfigure(void)
 static struct plat_ns9xxx_i2c ns9xxx_device_cme9210_i2c_data = {
 	.gpio_scl = 9,
 	.gpio_sda = 12,
-	.speed = 100000,
+	.speed = 100000,	/* 100000Hz only */
 	.gpio_configuration_func = cme9210_i2c_gpio_reconfigure,
 };
 

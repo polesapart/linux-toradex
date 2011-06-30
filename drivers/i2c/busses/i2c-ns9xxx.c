@@ -40,8 +40,14 @@
 #define I2C_CONFIG_CLREFMASK		0x000001ff
 #define I2C_MASTERADDR_ADDRMASK		0x000007ff
 
+/* configuration bitfields */
+#define I2C_CONFIG_IRQD			(1 << 15)
+#define I2C_CONFIG_TMDE			(1 << 14)
+#define I2C_CONFIG_VSCD			(1 << 13)
+
 /* configuration shifts */
 #define I2C_MASTERADDR_ADDRSHIFT	1
+#define I2C_CONFIG_SFW_SHIFT		9
 
 /* shifted i2c commands */
 #define I2C_CMD_NOP			0
@@ -59,6 +65,22 @@
 
 #define I2C_NORMALSPEED			100000
 #define I2C_HIGHSPEED			400000
+
+/* SCL_DELAY
+ * To fine adjust the formulas to the hardware reference manual
+ * we define different SCL_DELAY per platform
+ */
+#if defined(CONFIG_MACH_CC9P9215JS) || defined(CONFIG_MACH_CCW9P9215JS)
+	#define SCL_DELAY		16
+#elif defined(CONFIG_MACH_CME9210JS)
+	#define SCL_DELAY		306
+#elif defined(CONFIG_MACH_CC9P9360JS)
+	#define SCL_DELAY		12
+#elif defined(CONFIG_MACH_CC9CJS) || defined(CONFIG_MACH_CCW9CJS)
+	#define SCL_DELAY		2
+#else
+	#define SCL_DELAY		0
+#endif
 
 #define DRIVER_NAME			"i2c-ns9xxx"
 
@@ -333,16 +355,30 @@ static int ns9xxx_i2c_set_clock(struct ns9xxx_i2c *dev_data, unsigned int freq)
 
 	switch (freq) {
 	case I2C_NORMALSPEED:
-		config |= (((clk_get_rate(dev_data->clk) / (4 * freq))
-				- 4 - 3) / 2) & I2C_CONFIG_CLREFMASK;
+		/* Set standard mode */
+		config &= ~I2C_CONFIG_TMDE;
+		/* Clear VSCD divider */
+		config &= ~I2C_CONFIG_VSCD;
+		/* Calculate CLKREF */
+		config |= (((clk_get_rate(dev_data->clk) / (4 * freq)) - 4 -
+			  SCL_DELAY) / 2) &
+			  I2C_CONFIG_CLREFMASK;
 		break;
+#ifndef CONFIG_MACH_CME9210JS
 	case I2C_HIGHSPEED:
-		config |= (((clk_get_rate(dev_data->clk) / (4 * freq))
-				- 4 - 24) * 2 / 3) & I2C_CONFIG_CLREFMASK;
+		/* Set fast mode */
+		config |= I2C_CONFIG_TMDE;
+		/* Clear VSCD divider */
+		config &= ~I2C_CONFIG_VSCD;
+		/* Calculate CLKREF */
+		config |= (((clk_get_rate(dev_data->clk) / (4 * freq)) - 4 -
+			  SCL_DELAY) * 2 / 3) &
+			  I2C_CONFIG_CLREFMASK;
 		break;
+#endif
 	default:
 		pr_warning(DRIVER_NAME ": wrong clock configuration,"
-				" i2c won't work!\n");
+				" please use a frequency of 100KHz or 400KHz\n");
 		return -EINVAL;
 	}
 
@@ -449,9 +485,11 @@ static int __devinit ns9xxx_i2c_probe(struct platform_device *pdev)
 	}
 	dev_data->pdata->gpio_configuration_func();
 
-	/* Set spike filter width to maximum value to workaround communication
+	/* Initially, disable interrupt, set standard mode and
+	 * set VSCD to zero.
+	 * Set spike filter width to maximum value to workaround communication
 	 * problems on the cc9p9360 module */
-	writel(readl(dev_data->ioaddr + I2C_CONFIG) | (0xf << 9),
+	writel(I2C_CONFIG_IRQD | (0xf << I2C_CONFIG_SFW_SHIFT),
 	       dev_data->ioaddr + I2C_CONFIG);
 
 	if (dev_data->pdata->speed)
@@ -470,6 +508,10 @@ static int __devinit ns9xxx_i2c_probe(struct platform_device *pdev)
 		ret = -EBUSY;
 		goto err_req_irq;
 	}
+
+	/* Enable I2C interrupt now */
+	writel(readl(dev_data->ioaddr + I2C_CONFIG) & ~I2C_CONFIG_IRQD,
+		dev_data->ioaddr + I2C_CONFIG);
 
 	ret = i2c_add_numbered_adapter(&dev_data->adap);
 	if (ret < 0) {

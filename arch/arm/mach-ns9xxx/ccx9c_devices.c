@@ -64,7 +64,7 @@ static void ccx9c_i2c_gpio_reconfigure(void)
 static struct plat_ns9xxx_i2c ns9xxx_device_ccx9c_i2c_data = {
 	.gpio_scl = 70,
 	.gpio_sda = 71,
-	.speed = 100000,
+	.speed = 100000,	/* 100000Hz or 400000Hz */
 	.gpio_configuration_func = ccx9c_i2c_gpio_reconfigure,
 };
 

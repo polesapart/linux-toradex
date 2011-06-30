@@ -474,7 +474,7 @@ static struct platform_device ns9xxx_device_ns9360_i2c = {
 
 void __init ns9xxx_add_device_ns9360_i2c(struct plat_ns9xxx_i2c *i2c_data)
 {
-	i2c_clk.parent = clk_get(NULL, "systemclock");
+	i2c_clk.parent = clk_get(NULL, "cpuclock");
 	if (IS_ERR(i2c_clk.parent))
 		return;
 
@@ -516,7 +516,7 @@ err:
 
 static int fb_endisable(struct clk *clk, int enable)
 {
-	/* Currently, nothing to do */ 
+	/* Currently, nothing to do */
 	return 0;
 }
 
