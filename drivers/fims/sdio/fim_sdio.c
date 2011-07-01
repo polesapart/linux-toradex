@@ -372,9 +372,24 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 	struct fim_sdio_t *port;
 	struct fim_driver *fim;
 	int ret;
+#if defined(MODULE)
+	const char *fwcode = NULL;
+	char fwname[FIM_SDIO_FW_LEN];
+#else
+	char *fwname = NULL;
+	const char *fwcode;
+#endif
 
 	port = container_of(work, struct fim_sdio_t, restart_work);
 	fim = &port->fim;
+
+#if defined(MODULE)
+	snprintf(fwname, FIM_SDIO_FW_LEN, FIM_SDIO_FW_FILE_PAT, fim->picnr);
+#else
+	fwcode = (fim->picnr == 0) ? FIM_SDIO_FW_CODE0 : FIM_SDIO_FW_CODE1;
+#endif
+	fim->fw_name = fwname;
+	fim->fw_code = fwcode;
 
 	printk_dbg("Going to restart the FIM%i\n", fim->picnr);
 	fim_disable_irq(&port->fim);
