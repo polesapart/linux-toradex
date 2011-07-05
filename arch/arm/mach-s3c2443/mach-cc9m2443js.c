@@ -239,7 +239,7 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 #if defined(CONFIG_SERIAL_S3C2410_PORTA_MODE_RS485)
 		.rts_gpio    = S3C2410_GPH9,
 		.rts_cfg     = S3C2410_GPH9_OUTP,
-		.rs485_rts_txlevel = CONFIG_SERIAL_S3C2410_PORTA_RS485_TXLEVEL;
+		.rs485_rts_txlevel = CONFIG_SERIAL_S3C2410_PORTA_RS485_TXLEVEL,
 		.working_mode 	     = S3C24XX_SERIAL_MODE_RS485,
 #endif /* CONFIG_SERIAL_S3C2410_PORTA_MODE_RS485 */
 	},
