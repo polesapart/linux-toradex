@@ -51,41 +51,55 @@ SECTIONS
 #else
 	. = PAGE_OFFSET + TEXT_OFFSET;
 #endif
-
-	.init : {			/* Init code and data		*/
+	.head.text : {
 		_stext = .;
-		_sinittext = .;
-			HEAD_TEXT
-			INIT_TEXT
-			ARM_EXIT_KEEP(EXIT_TEXT)
-		_einittext = .;
+		HEAD_TEXT
+	}
+	INIT_TEXT_SECTION(8)
+	.exit.text : {
+		ARM_EXIT_KEEP(EXIT_TEXT)
+	}
+	.init.proc.info : {
 		__proc_info_begin = .;
 			*(.proc.info.init)
 		__proc_info_end = .;
+	}
+	.init.arch.info : {
+
 		__arch_info_begin = .;
 			*(.arch.info.init)
 		__arch_info_end = .;
+	}
+	.init.tagtable : {
 		__tagtable_begin = .;
-			*(.taglist.init)
+		*(.taglist.init)
 		__tagtable_end = .;
-
+	}
+	.init.pv_table : {
+		__pv_table_begin = .;
+		*(.pv_table)
+		__pv_table_end = .;
+	}
+	.init.data : {
+#ifndef CONFIG_XIP_KERNEL
+		INIT_DATA
+#endif
 		INIT_SETUP(16)
-
 		INIT_CALLS
 		CON_INITCALL
 		SECURITY_INITCALL
 		INIT_RAM_FS
-
-#ifndef CONFIG_XIP_KERNEL
-		__init_begin = _stext;
-		INIT_DATA
-		ARM_EXIT_KEEP(EXIT_DATA)
-#endif
 	}
+#ifndef CONFIG_XIP_KERNEL
+	.exit.data : {
+		ARM_EXIT_KEEP(EXIT_DATA)
+	}
+#endif
 
 	PERCPU(PAGE_SIZE)
 
 #ifndef CONFIG_XIP_KERNEL
+	__init_begin = _stext;
 	. = ALIGN(PAGE_SIZE);
 	__init_end = .;
 #endif
