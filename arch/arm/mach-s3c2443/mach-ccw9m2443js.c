@@ -230,12 +230,21 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.rx_cfg      = S3C2443_GPH1_RXD0,
 		.tx_gpio     = S3C2410_GPH(0),
 		.tx_cfg      = S3C2443_GPH0_TXD0,
+#if defined(CONFIG_SERIAL_S3C2410_PORTA_MODE_STANDARD)
+		.working_mode = S3C24XX_SERIAL_MODE_STANDARD,
+#endif
 #if defined(CONFIG_SERIAL_S3C2410_PORTA_HWCTRL)
 		.rts_gpio    = S3C2410_GPH(9),
 		.rts_cfg     = S3C2443_GPH9_nRTS0,
 		.cts_gpio    = S3C2410_GPH(8),
 		.cts_cfg     = S3C2443_GPH8_nCTS0,
 #endif /* CONFIG_SERIAL_S3C2410_PORTA_HWCTRL */
+#if defined(CONFIG_SERIAL_S3C2410_PORTA_MODE_RS485)
+		.rts_gpio    = S3C2410_GPH9,
+		.rts_cfg     = S3C2410_GPH9_OUTP,
+		.rs485_rts_txlevel = CONFIG_SERIAL_S3C2410_PORTA_RS485_TXLEVEL,
+		.working_mode 	     = S3C24XX_SERIAL_MODE_RS485,
+#endif /* CONFIG_SERIAL_S3C2410_PORTA_MODE_RS485 */
 	},
 #endif /* CONFIG_SERIAL_S3C2410_ENABLE_PORTA */
 #ifdef CONFIG_SERIAL_S3C2410_ENABLE_PORTB
@@ -249,12 +258,21 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.rx_cfg      = S3C2443_GPH3_RXD1,
 		.tx_gpio     = S3C2410_GPH(2),
 		.tx_cfg      = S3C2443_GPH2_TXD1,
+#if defined(CONFIG_SERIAL_S3C2410_PORTB_MODE_STANDARD)
+		.working_mode = S3C24XX_SERIAL_MODE_STANDARD,
+#endif
 #if defined(CONFIG_SERIAL_S3C2410_PORTB_HWCTRL)
 		.rts_gpio    = S3C2443_GPH(11),
 		.rts_cfg     = S3C2443_GPH11_nRTS1,
 		.cts_gpio    = S3C2410_GPH(10),
 		.cts_cfg     = S3C2443_GPH10_nCTS1,
 #endif /* CONFIG_SERIAL_S3C2410_PORTB_HWCTRL */
+#if defined(CONFIG_SERIAL_S3C2410_PORTB_MODE_RS485)
+		.rts_gpio    = S3C2443_GPH11,
+		.rts_cfg     = S3C2443_GPH11_OUTP,
+		.rs485_rts_txlevel = CONFIG_SERIAL_S3C2410_PORTB_RS485_TXLEVEL,
+		.working_mode = S3C24XX_SERIAL_MODE_RS485,
+#endif /* CONFIG_SERIAL_S3C2410_PORTB_MODE_RS485 */
 	},
 #endif /* CONFIG_SERIAL_S3C2410_ENABLE_PORTB */
 #ifdef CONFIG_SERIAL_S3C2410_ENABLE_PORTC
@@ -268,13 +286,21 @@ static struct s3c2410_uartcfg cc9m2443_uartcfgs[] __initdata = {
 		.rx_cfg      = S3C2443_GPH5_RXD2,
 		.tx_gpio     = S3C2410_GPH(4),
 		.tx_cfg      = S3C2443_GPH4_TXD2,
+#if defined(CONFIG_SERIAL_S3C2410_PORTC_MODE_STANDARD)
+		.working_mode = S3C24XX_SERIAL_MODE_STANDARD,
+#endif
 #if defined(CONFIG_SERIAL_S3C2410_PORTC_HWCTRL)
 		.rts_gpio    = S3C2410_GPH(6),
 		.rts_cfg     = S3C2443_GPH6_nRTS2,
 		.cts_gpio    = S3C2410_GPH(7),
 		.cts_cfg     = S3C2443_GPH7_nCTS2,
 #endif /* CONFIG_SERIAL_S3C2410_PORTC_HWCTRL */
-
+#if defined(CONFIG_SERIAL_S3C2410_PORTC_MODE_RS485)
+		.rts_gpio    = S3C2410_GPH6,
+		.rts_cfg     = S3C2410_GPH6_OUTP,
+		.rs485_rts_txlevel = CONFIG_SERIAL_S3C2410_PORTC_RS485_TXLEVEL,
+		.working_mode = S3C24XX_SERIAL_MODE_RS485,
+#endif /* CONFIG_SERIAL_S3C2410_PORTC_MODE_RS485 */
 	},
 #endif /* CONFIG_SERIAL_S3C2410_ENABLE_PORTC */
 #ifdef CONFIG_SERIAL_S3C2410_ENABLE_PORTD
