@@ -208,6 +208,7 @@ static int mx28_pm_begin(suspend_state_t state)
 
 static void mx28_pm_recover(void)
 {
+#if defined(CONFIG_MACH_MX28EVK)
 	/*
 	 * The PSWITCH interrupt is enabled at do_standby, if the deivce
 	 * suspend failed, the enable operation will not be executed, in that
@@ -217,6 +218,9 @@ static void mx28_pm_recover(void)
 		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
 	__raw_writel(BM_POWER_CTRL_ENIRQ_PSWITCH,
 		REGS_POWER_BASE + HW_POWER_CTRL_SET);
+#elif defined(CONFIG_MACH_CPX2)
+	/* No PSWITCH functionality */
+#endif
 }
 
 static void mx28_pm_end(void)
@@ -272,6 +276,11 @@ static void mx28_pm_power_off(void)
 	__raw_writel(BF_POWER_RESET_UNLOCK(0x3e77) | BM_POWER_RESET_PWD,
 		REGS_POWER_BASE + HW_POWER_RESET);
 }
+
+/*
+ * Only implement PSWITCH functionality for the EVK
+ */
+#if defined(CONFIG_MACH_MX28EVK)
 
 struct mx28_pswitch_state {
 	int dev_running;
@@ -359,6 +368,7 @@ static void init_pswitch(void)
 		REGS_POWER_BASE + HW_POWER_CTRL_CLR);
 	setup_irq(IRQ_VDD5V, &pswitch_irq);
 }
+#endif // if CONFIG_MACH_MX28EVK
 
 static int __init mx28_pm_init(void)
 {
@@ -372,7 +382,10 @@ static int __init mx28_pm_init(void)
 	pm_power_off = mx28_pm_power_off;
 	pm_idle = mx28_pm_idle;
 	suspend_set_ops(&mx28_suspend_ops);
+
+#if defined(CONFIG_MACH_MX28EVK)
 	init_pswitch();
+#endif
 	return 0;
 }
 
