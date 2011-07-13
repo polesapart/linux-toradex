@@ -452,6 +452,24 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .drive	= 1,
 	 },
 #endif
+/*
+ * Although this pin is typically used in the MMC interface, it is not
+ * used for this purpose on the CPX2 board.  So it is always configured
+ * as a GPIO input regardless of whether or not we are enabling the MMC
+ * driver.
+ */
+	{
+	 .name  = "SSP0_DETECT",
+	 .id    = PINID_SSP0_DETECT,
+	 .fun   = PIN_GPIO,
+	 .strength      = PAD_8MA,
+	 .voltage       = PAD_3_3V,
+	 .pullup        = 1,
+	 .drive         = 1,
+	 .pull          = 1,
+	 .output        = 0,
+	 .sysfs         = 1,
+	 },
 #if defined(CONFIG_MMC_MXS) || defined(CONFIG_MMC_MXS_MODULE)
 	/* Configurations of SSP0 SD/MMC port pins */
 	{
@@ -495,46 +513,6 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .pull 		= 1,
 	 },
 	{
-	 .name	= "SSP0_DATA4",
-	 .id	= PINID_SSP0_DATA4,
-	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 1,
-	 .drive 	= 1,
-	 .pull 		= 1,
-	 },
-	{
-	 .name	= "SSP0_DATA5",
-	 .id	= PINID_SSP0_DATA5,
-	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 1,
-	 .drive 	= 1,
-	 .pull 		= 1,
-	 },
-	{
-	 .name	= "SSP0_DATA6",
-	 .id	= PINID_SSP0_DATA6,
-	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 1,
-	 .drive 	= 1,
-	 .pull 		= 1,
-	 },
-	{
-	 .name	= "SSP0_DATA7",
-	 .id	= PINID_SSP0_DATA7,
-	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 1,
-	 .drive 	= 1,
-	 .pull 		= 1,
-	 },
-	{
 	 .name	= "SSP0_CMD",
 	 .id	= PINID_SSP0_CMD,
 	 .fun	= PIN_FUN1,
@@ -544,39 +522,6 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .drive 	= 1,
 	 .pull 		= 1,
 	 },
-#if 0
-/*
- * This is the "correct" configuration for the SSP0_DETECT pin, but setting
- * this configuration on the CPX2 board causes a conflict with one of the
- * LEDs, and strange behavior on the console serial port.  For now I've
- * reset the configuration to be an output GPIO pin, which is the pin's
- * configuration when not supporting SDIO/MMC.  The driver still works
- * well enough to support the Atheros chip with the pin disabled.
- */
-	{
-	 .name	= "SSP0_DETECT",
-	 .id	= PINID_SSP0_DETECT,
-	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 0,
-	 .drive 	= 1,
-	 .pull 		= 0,
-	 },
-#else
-	{
-	 .name  = "SSP0_DETECT",
-	 .id    = PINID_SSP0_DETECT,
-	 .fun   = PIN_GPIO,
-	 .strength      = PAD_8MA,
-	 .voltage       = PAD_3_3V,
-	 .pullup        = 1,
-	 .drive         = 1,
-	 .pull          = 1,
-	 .output        = 0,
-	 .sysfs         = 1,
-	 },
-#endif
 	{
 	 .name	= "SSP0_SCK",
 	 .id	= PINID_SSP0_SCK,
@@ -586,19 +531,6 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .pullup	= 0,
 	 .drive 	= 1,
 	 .pull 		= 0,
-	 },
-#else
-	{
-	 .name  = "SSP0_DETECT",
-	 .id    = PINID_SSP0_DETECT,
-	 .fun   = PIN_GPIO,
-	 .strength      = PAD_8MA,
-	 .voltage       = PAD_3_3V,
-	 .pullup        = 1,
-	 .drive         = 1,
-	 .pull          = 1,
-	 .output        = 0,
-	 .sysfs         = 1,
 	 },
 #endif
 #if defined(CONFIG_LEDS_MXS) || defined(CONFIG_LEDS_MXS_MODULE)
