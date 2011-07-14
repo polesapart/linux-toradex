@@ -157,14 +157,13 @@ u32 swap_bbi_limit = 0;
 inline int skip_swap_bi(int page)
 {
         /**
-         * Seems that the boot code of the i.mx515 rom is not able to
-         * boot from a nand flash when the data has been written swapping
-	 * the bad block byte. Avoid doing that (the swapping) when
-	 * programming U-Boot into the flash.
+         * i.MX515 (any revision) and i.MX53 TO1 ROM don't support BI swap.
+	 * Avoid doing that (the swapping) when accessing U-Boot into the flash.
          */
-        if (page < swap_bbi_limit)
-                return 1;
-
+	if ((cpu_is_mx51() ||
+	     (cpu_is_mx53() && mx53_revision() < IMX_CHIP_REVISION_2_0)) &&
+	    page < swap_bbi_limit)
+		return 1;
 
         return 0;
 }
