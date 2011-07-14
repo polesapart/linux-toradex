@@ -24,6 +24,22 @@
 #include <mach/mxc_uart.h>
 #include "serial.h"
 
+#if defined(CONFIG_MACH_CCWMX53JS) || defined(CONFIG_MACH_CCMX53JS)
+#include <mach/iomux-mx53.h>
+
+#define RS485_TX0 	MX53_PAD_EIM_D19__UART1_CTS
+#define RS485_TX1	MX53_PAD_EIM_D28__UART2_CTS
+#define RS485_TX2	MX53_PAD_EIM_D23__UART3_CTS
+#define RS485_TX3	MX53_PAD_CSI0_DAT17__UART4_CTS
+#define RS485_TX4	MX53_PAD_CSI0_DAT19__UART5_CTS
+#elif defined(CONFIG_MACH_CCWMX51JS) || defined(CONFIG_MACH_CCMX51JS)
+#define RS485_TX0 	MX51_PIN_UART1_CTS
+#define RS485_TX1	MX51_PIN_USBH1_DATA0
+#define RS485_TX2	MX51_PIN_KEY_COL5
+#endif
+
+
+
 #if defined(CONFIG_SERIAL_MXC) || defined(CONFIG_SERIAL_MXC_MODULE)
 
 /*!
@@ -45,7 +61,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .mode = UART1_MODE,
 	       .ir_mode = UART1_IR,
 	       .rs485_txdir_lvl = UART1_RS485_TXDIR_LVL,
-	       .rs485_txdir_gpio = IOMUX_TO_GPIO(MX51_PIN_UART1_CTS),
+	       .rs485_txdir_gpio = IOMUX_TO_GPIO(RS485_TX0),
 	       .enabled = UART1_ENABLED,
 	       .cts_threshold = UART1_UCR4_CTSTL,
 	       .dma_enabled = UART1_DMA_ENABLE,
@@ -67,7 +83,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .mode = UART2_MODE,
 	       .ir_mode = UART2_IR,
 	       .rs485_txdir_lvl = UART2_RS485_TXDIR_LVL,
-	       .rs485_txdir_gpio = IOMUX_TO_GPIO(MX51_PIN_USBH1_DATA0),
+	       .rs485_txdir_gpio = IOMUX_TO_GPIO(RS485_TX1),
 	       .enabled = UART2_ENABLED,
 	       .cts_threshold = UART2_UCR4_CTSTL,
 	       .dma_enabled = UART2_DMA_ENABLED,
@@ -89,7 +105,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .mode = UART3_MODE,
 	       .ir_mode = UART3_IR,
                .rs485_txdir_lvl = UART3_RS485_TXDIR_LVL,
-	       .rs485_txdir_gpio = IOMUX_TO_GPIO(MX51_PIN_KEY_COL5),
+	       .rs485_txdir_gpio = IOMUX_TO_GPIO(RS485_TX2),
 	       .enabled = UART3_ENABLED,
 	       .cts_threshold = UART3_UCR4_CTSTL,
 	       .dma_enabled = UART3_DMA_ENABLED,
@@ -100,6 +116,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .dma_rx_id = MXC_DMA_UART3_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
 	       },
+#if defined(CONFIG_MACH_CCWMX53JS) || defined(CONFIG_MACH_CCMX53JS)
 	[3] = {
 	       .port = {
 			.iotype = SERIAL_IO_MEM,
@@ -110,6 +127,8 @@ static uart_mxc_port mxc_ports[] = {
 	       .ints_muxed = 1,
 	       .mode = MODE_DCE,
 	       .ir_mode = NO_IRDA,
+           .rs485_txdir_lvl = UART4_RS485_TXDIR_LVL,
+	       .rs485_txdir_gpio = IOMUX_TO_GPIO(RS485_TX3),
 	       .enabled = 1,
 	       .cts_threshold = UART4_UCR4_CTSTL,
 	       .dma_enabled = UART4_DMA_ENABLE,
@@ -120,6 +139,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .dma_rx_id = MXC_DMA_UART4_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
 	       },
+
 	[4] = {
 	       .port = {
 			.iotype = SERIAL_IO_MEM,
@@ -130,6 +150,8 @@ static uart_mxc_port mxc_ports[] = {
 	       .ints_muxed = 1,
 	       .mode = MODE_DCE,
 	       .ir_mode = NO_IRDA,
+           .rs485_txdir_lvl = UART5_RS485_TXDIR_LVL,
+	       .rs485_txdir_gpio = IOMUX_TO_GPIO(RS485_TX4),
 	       .enabled = 1,
 	       .cts_threshold = UART5_UCR4_CTSTL,
 	       .dma_enabled = UART5_DMA_ENABLE,
@@ -140,6 +162,7 @@ static uart_mxc_port mxc_ports[] = {
 	       .dma_rx_id = MXC_DMA_UART5_RX,
 	       .rxd_mux = MXC_UART_RXDMUX,
 	       },
+#endif
 };
 
 #if defined CONFIG_UART1_ENABLED

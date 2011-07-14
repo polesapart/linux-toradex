@@ -62,6 +62,7 @@
 #include <mach/iomux-mx53.h>
 #include <mach/i2c.h>
 #include <mach/mxc_iim.h>
+#include <mach/iomux-mx53.h>
 
 #include "devices_ccwmx53.h"
 #include "crm_regs.h"
@@ -84,13 +85,13 @@ u8 ccwmx51_swap_bi = 1;
 
 extern int __init mx53_ccwmx53js_init_da9052(void);
 
-static struct pad_desc mx53_ccwmx53js_pads[] = {
+static iomux_v3_cfg_t mx53_ccwmx53js_pads[] = {
 	/* I2C3 */
 	MX53_PAD_GPIO_3__I2C3_SCL,
 	MX53_PAD_GPIO_6__I2C3_SDA,
 };
 
-static struct pad_desc ccwmx53js_keys_leds_pads[] = {
+static iomux_v3_cfg_t ccwmx53js_keys_leds_pads[] = {
 	USER_LED1_PAD,
 	USER_LED2_PAD,
 	USER_KEY1_PAD,
@@ -105,6 +106,8 @@ static struct mxc_ipu_config mxc_ipu_data = {
 
 extern void mx5_vpu_reset(void);
 static struct mxc_vpu_platform_data mxc_vpu_data = {
+	.iram_enable = true,
+	.iram_size = 0x14000,
 	.reset = mx5_vpu_reset,
 };
 
@@ -170,7 +173,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	for_each_tag(mem_tag, tags) {
 		if (mem_tag->hdr.tag == ATAG_MEM) {
 			total_mem = mem_tag->u.mem.size;
-			left_mem = total_mem - gpu_mem - fb_mem;
 			break;
 		}
 	}
@@ -182,9 +184,11 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			if (str != NULL) {
 				str += 4;
 				left_mem = memparse(str, &str);
-				if (left_mem == 0 || left_mem > total_mem)
-					left_mem = total_mem - gpu_mem - fb_mem;
 			}
+			str = t->u.cmdline.cmdline;
+			str = strstr(str, "gpu_nommu");
+			if (str != NULL)
+				gpu_data.enable_mmu = 0;
 
 			str = t->u.cmdline.cmdline;
 			str = strstr(str, "gpu_memory=");
@@ -197,6 +201,12 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		}
 	}
 
+	if (gpu_data.enable_mmu)
+		gpu_mem = 0;
+
+	if (left_mem == 0 || left_mem > total_mem)
+		left_mem = total_mem - gpu_mem - fb_mem;
+
 	if (mem_tag) {
 		fb_mem = total_mem - left_mem - gpu_mem;
 		if (fb_mem < 0) {
@@ -208,14 +218,18 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
 #endif
 		/*reserve memory for gpu*/
+		if (!gpu_data.enable_mmu) {
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
 		gpu_device.resource[5].end =
 				gpu_device.resource[5].start + gpu_mem - 1;
+		}
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 		if (fb_mem) {
 			mxcfb_resources[0].start =
+				gpu_data.enable_mmu ?
+				mem_tag->u.mem.start + left_mem :
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
@@ -264,7 +278,7 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
-	mxc_register_device(&gpu_device, &z160_revision);
+	mxc_register_device(&gpu_device, &gpu_data);
 	mxc_register_device(&mxcscc_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);

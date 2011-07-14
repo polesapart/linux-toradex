@@ -41,6 +41,7 @@
 #include <asm/dma.h>
 #include <asm/div64.h>
 #include <mach/mxc_uart.h>
+#include <mach/gpio.h>
 
 #if defined(CONFIG_SERIAL_MXC_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
 #define SUPPORT_SYSRQ

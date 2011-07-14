@@ -171,8 +171,8 @@ void ccwmx53_register_sdio(int interface)
 #ifdef CONFIG_ESDHCI_MXC_SELECT1
 	case 0:
 #ifdef ESDHC1_CD_GPIO
-		mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC1_CD_GPIO);
-		mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC1_CD_GPIO);
+		mxcsdhc1_device.resource[2].start = IOMUX_TO_IRQ(ESDHC1_CD_GPIO);
+		mxcsdhc1_device.resource[2].end = IOMUX_TO_IRQ(ESDHC1_CD_GPIO);
 #endif
 		mxc_register_device(&mxcsdhc1_device, &mmc1_data);
 		break;
@@ -180,8 +180,8 @@ void ccwmx53_register_sdio(int interface)
 #ifdef CONFIG_ESDHCI_MXC_SELECT2
 	case 1:
 #ifdef ESDHC2_CD_GPIO
-		mxcsdhc2_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC2_CD_GPIO);
-		mxcsdhc2_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC2_CD_GPIO);
+		mxcsdhc2_device.resource[2].start = IOMUX_TO_IRQ(ESDHC2_CD_GPIO);
+		mxcsdhc2_device.resource[2].end = IOMUX_TO_IRQ(ESDHC2_CD_GPIO);
 #endif
 		mxc_register_device(&mxcsdhc2_device, &mmc2_data);
 		break;
@@ -189,8 +189,8 @@ void ccwmx53_register_sdio(int interface)
 #ifdef CONFIG_ESDHCI_MXC_SELECT3
 	case 2:
 #ifdef ESDHC3_CD_GPIO
-		mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC3_CD_GPIO);
-		mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC3_CD_GPIO);
+		mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(ESDHC3_CD_GPIO);
+		mxcsdhc3_device.resource[2].end = IOMUX_TO_IRQ(ESDHC3_CD_GPIO);
 #endif
 		mxc_register_device(&mxcsdhc3_device, &mmc3_data);
 		break;
@@ -198,8 +198,8 @@ void ccwmx53_register_sdio(int interface)
 #ifdef CONFIG_ESDHCI_MXC_SELECT4
 	case 3:
 #ifdef ESDHC4_CD_GPIO
-		mxcsdhc4_device.resource[2].start = IOMUX_TO_IRQ_V3(ESDHC4_CD_GPIO);
-		mxcsdhc4_device.resource[2].end = IOMUX_TO_IRQ_V3(ESDHC4_CD_GPIO);
+		mxcsdhc4_device.resource[2].start = IOMUX_TO_IRQ(ESDHC4_CD_GPIO);
+		mxcsdhc4_device.resource[2].end = IOMUX_TO_IRQ(ESDHC4_CD_GPIO);
 #endif
 		mxc_register_device(&mxcsdhc4_device, &mmc4_data);
 		break;
@@ -849,8 +849,8 @@ static struct resource smsc911x_device_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start	= IOMUX_TO_IRQ_V3(CCWMX53_EXT_IRQ_GPIO),
-		.end	= IOMUX_TO_IRQ_V3(CCWMX53_EXT_IRQ_GPIO),
+		.start	= IOMUX_TO_IRQ(CCWMX53_EXT_IRQ_GPIO),
+		.end	= IOMUX_TO_IRQ(CCWMX53_EXT_IRQ_GPIO),
 		.flags	= IORESOURCE_IRQ,
 	},
 };
@@ -940,7 +940,7 @@ static struct spi_board_info ccwmx53_2nd_touch[] = {
 	{
 		.modalias	= "ads7846",
 		.max_speed_hz	= 500000,
-		.irq		= IOMUX_TO_IRQ_V3(SECOND_TS_IRQ_PIN),
+		.irq		= IOMUX_TO_IRQ(SECOND_TS_IRQ_PIN),
 		.bus_num        = 1,
 		.chip_select    = 3,
 		.platform_data	= &ccwmx53js_touch_data,

@@ -389,7 +389,7 @@ static void __init mxc_board_init(void)
 #endif /* CONFIG_ESDHCI_MXC_SELECT3 && !CONFIG_PATA_FSL && !CONFIG_PATA_FSL_MODULE */
 
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
-	mxc_register_device(&mxc_fec_device, NULL);
+	mxc_register_device(&mxc_fec_device, &fec_data);
 #endif
 #if defined(CONFIG_MTD_NAND_MXC) \
 	|| defined(CONFIG_MTD_NAND_MXC_MODULE) \

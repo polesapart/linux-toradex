@@ -34,6 +34,7 @@
 #include "mach/mxc_dvfs.h"
 #include "devices_ccwmx51.h"
 #include "crm_regs.h"
+#include <linux/fec.h>
 
 /* Flag used to indicate when IRAM has been initialized */
 int iram_ready;
@@ -1484,6 +1485,10 @@ struct platform_device gpu_device = {
 struct mxc_gpu_platform_data gpu_data = {
 	.z160_revision = 0,
 	.enable_mmu = 1,
+};
+
+struct fec_platform_data fec_data = {
+	.phy = PHY_INTERFACE_MODE_RMII,
 };
 
 static struct resource mxc_gpu2d_resources[] = {
