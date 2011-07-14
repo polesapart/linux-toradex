@@ -358,8 +358,12 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&sdram_autogating_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&mxc_dvfs_per_device, &dvfs_per_data);
-	mxc_register_device(&mxc_iim_device, NULL);
-	mxc_register_device(&gpu_device, NULL);
+#ifdef CONFIG_MXC_IIM
+	mxc_register_device(&mxc_iim_device, &iim_data);
+#endif
+	mxc_register_device(&mxc_v4l2_device, NULL);
+	mxc_register_device(&mxc_v4l2out_device, NULL);
+	mxc_register_device(&gpu_device,&gpu_data);
 #if defined (CONFIG_MXC_SECURITY_SCC2)
 	mxc_register_device(&mxcscc_device, NULL);
 #endif

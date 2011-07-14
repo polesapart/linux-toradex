@@ -55,6 +55,7 @@
 #include "mx51_pins.h"
 #include <linux/smc911x.h>
 #include "displays/displays.h"
+#include <mach/mxc_iim.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -1124,6 +1125,40 @@ struct fsl_ata_platform_data ata_data = {
 	.exit       = ccwmx51_deinit_ata,
 	.core_reg   = NULL,
 	.io_reg     = NULL,
+};
+#endif
+
+#ifdef CONFIG_MXC_IIM
+static void mxc_iim_enable_fuse(void)
+{
+	u32 reg;
+
+	if (!ccm_base)
+		return;
+	/* Enable fuse blown */
+	reg = readl(ccm_base + 0x64);
+	reg |= 0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+static void mxc_iim_disable_fuse(void)
+{
+	u32 reg;
+
+	/* Disable fuse blown */
+	if (!ccm_base)
+		return;
+
+	reg = readl(ccm_base + 0x64);
+	reg &= ~0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+struct mxc_iim_data iim_data = {
+	.bank_start = MXC_IIM_MX51_BANK_START_ADDR,
+	.bank_end   = MXC_IIM_MX51_BANK_END_ADDR,
+	.enable_fuse = mxc_iim_enable_fuse,
+	.disable_fuse = mxc_iim_disable_fuse,
 };
 #endif
 
