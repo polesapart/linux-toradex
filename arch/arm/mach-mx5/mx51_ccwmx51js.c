@@ -165,7 +165,6 @@ static struct mxc_dvfs_platform_data dvfs_core_data = {
 	.upcnt_val = 10,
 	.dncnt_val = 10,
 	.delay_time = 30,
-	.num_wp = 3,
 };
 
 static struct mxc_dvfsper_data dvfs_per_data = {
@@ -181,8 +180,8 @@ static struct mxc_dvfsper_data dvfs_per_data = {
 	.div3_offset = 0,
 	.div3_mask = 0x7,
 	.div3_div = 2,
-	.lp_high = 1200000,
-	.lp_low = 1200000,
+	.lp_high = 1250000,
+	.lp_low = 1250000,
 };
 
 /*!
@@ -217,8 +216,6 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			total_mem = mem_tag->u.mem.size;
 			if (total_mem == SZ_128M && gpu_mem)
 				gpu_mem = SZ_16M;
-
-			left_mem = total_mem - gpu_mem - fb_mem;
 			break;
 		}
 	}
@@ -226,23 +223,33 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 	for_each_tag(t, tags) {
 		if (t->hdr.tag == ATAG_CMDLINE) {
 			str = t->u.cmdline.cmdline;
+			str = strstr(str, "mem=");
+			if (str != NULL) {
+				str += 4;
+				left_mem = memparse(str, &str);
+			}
+
+			str = t->u.cmdline.cmdline;
+			str = strstr(str, "gpu_nommu");
+			if (str != NULL)
+				gpu_data.enable_mmu = 0;
+
+			str = t->u.cmdline.cmdline;
 			str = strstr(str, "gpu_memory=");
 			if (str != NULL) {
 				str += 11;
 				gpu_mem = memparse(str, &str);
 			}
 
-			str = t->u.cmdline.cmdline;
-			str = strstr(str, "mem=");
-			if (str != NULL) {
-				str += 4;
-				left_mem = memparse(str, &str);
-				if (left_mem == 0 || left_mem > total_mem)
-					left_mem = total_mem - gpu_mem - fb_mem;
-			}
 			break;
 		}
 	}
+
+	if (gpu_data.enable_mmu)
+		gpu_mem = 0;
+
+				if (left_mem == 0 || left_mem > total_mem)
+					left_mem = total_mem - gpu_mem - fb_mem;
 
 	if (mem_tag) {
 		fb_mem = total_mem - left_mem - gpu_mem;
@@ -255,14 +262,18 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
 #endif
 		/*reserve memory for gpu*/
+		if (!gpu_data.enable_mmu) {
 		gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
 		gpu_device.resource[5].end =
 				gpu_device.resource[5].start + gpu_mem - 1;
+		}
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 		if (fb_mem) {
 			mxcfb_resources[0].start =
+				gpu_data.enable_mmu ?
+				mem_tag->u.mem.start + left_mem :
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
@@ -428,7 +439,7 @@ static void __init ccwmx51_timer_init(void)
 	struct clk *uart_clk;
 
 	/* Change the CPU voltages for TO2*/
-	if (cpu_is_mx51_rev(CHIP_REV_2_0) <= 1) {
+	if (mx51_revision() == IMX_CHIP_REVISION_2_0) {
 		cpu_wp_auto_800[0].cpu_voltage = 1175000;
 		cpu_wp_auto_800[1].cpu_voltage = 1100000;
 		cpu_wp_auto_800[2].cpu_voltage = 1000000;
@@ -436,7 +447,7 @@ static void __init ccwmx51_timer_init(void)
 
 	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
 
-	uart_clk = clk_get(NULL, "uart_clk.1");
+	uart_clk = clk_get_sys("mxcintuart.0", NULL);
 	early_console_setup(UART2_BASE_ADDR, uart_clk);
 }
 
