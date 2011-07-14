@@ -33,6 +33,7 @@
 /* Global address Variables */
 static void __iomem *nfc_axi_base, *nfc_ip_base;
 static int nfc_irq;
+static uint64_t boot_part_max_page = 0;
 
 struct mxc_mtd_s {
 	struct mtd_info mtd;
@@ -150,10 +151,6 @@ static void nand_page_dump(struct mtd_info *mtd, u8 *dbuf, u8* obuf)
 #ifdef CONFIG_MXC_NAND_SWAP_BI
 #define PART_UBOOT_SIZE				0xc0000
 #define PART_UBOOT_SIZE_4K			0x100000
-#define SKIP_SWAP_BI_MAX_PAGE_2K		(PART_UBOOT_SIZE / 0x800)
-#define SKIP_SWAP_BI_MAX_PAGE_4K		(PART_UBOOT_SIZE_4K / 0x1000)
-u32 swap_bbi_limit = 0;
-
 inline int skip_swap_bi(int page)
 {
         /**
@@ -162,7 +159,7 @@ inline int skip_swap_bi(int page)
          */
 	if ((cpu_is_mx51() ||
 	     (cpu_is_mx53() && mx53_revision() < IMX_CHIP_REVISION_2_0)) &&
-	    page < swap_bbi_limit)
+	    page < boot_part_max_page)
 		return 1;
 
         return 0;
@@ -1214,10 +1211,6 @@ static int mxc_nand_scan_bbt(struct mtd_info *mtd)
 		this->ecc.layout = &nand_hw_eccoob_512;
 	}
 
-#ifdef CONFIG_MODULE_CCXMX51
-	swap_bbi_limit = IS_4K_PAGE_NAND ? SKIP_SWAP_BI_MAX_PAGE_4K : SKIP_SWAP_BI_MAX_PAGE_2K;
-#endif
-
 	/* propagate ecc.layout to mtd_info */
 	mtd->ecclayout = this->ecc.layout;
 
@@ -1657,10 +1650,41 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 	/* Reset NAND */
 	this->cmdfunc(mtd, NAND_CMD_RESET, -1, -1);
 
-	/* Scan to find existence of the device */
+	/* Scan to find existence of the device (first phase only) */
 	if (nand_scan_ident(mtd, NFC_GET_MAXCHIP_SP(), NULL)
-		|| nand_scan_mid(mtd)
-		|| nand_scan_tail(mtd)) {
+		|| nand_scan_mid(mtd)) {
+		DEBUG(MTD_DEBUG_LEVEL0,
+		      "MXC_ND2: Unable to find any NAND device.\n");
+		err = -ENXIO;
+		goto out_1;
+	}
+
+	/* Initially set default size of boot partition (for most platforms) */
+	boot_part_max_page = IS_4K_PAGE_NAND ?
+			     PART_UBOOT_SIZE_4K / 0x1000 :
+			     PART_UBOOT_SIZE / 0x800;
+	/* Scan the partitions (to establish the real boot part size
+	 * for eventually skipping the swap BI) */
+#ifdef CONFIG_MTD_PARTITIONS
+#ifdef CONFIG_MODULE_CCXMX5X
+	mtd->name= "onboard_boot";
+#endif
+	nr_parts =
+	    parse_mtd_partitions(mtd, part_probes, &mxc_nand_data->parts, 0);
+	if (nr_parts > 0) {
+		/* Initialize page limit for boot partition.
+		 * We may need this value to skip the swap BI operation
+		 * in certain SOCs that can't do the swap BI on boot
+		 * partition */
+		boot_part_max_page = IS_4K_PAGE_NAND ?
+				     mxc_nand_data->parts[0].size / 0x1000 :
+				     mxc_nand_data->parts[0].size / 0x800;
+	}
+#endif
+
+	/* Scan to find existence of the device (second phase)
+	 * Fill in function pointers and scan for bad blocks*/
+	if (nand_scan_tail(mtd)) {
 		DEBUG(MTD_DEBUG_LEVEL0,
 		      "MXC_ND2: Unable to find any NAND device.\n");
 		err = -ENXIO;
@@ -1669,11 +1693,6 @@ static int __devinit mxcnd_probe(struct platform_device *pdev)
 
 	/* Register the partitions */
 #ifdef CONFIG_MTD_PARTITIONS
-#ifdef CONFIG_MODULE_CCXMX5X
-	mtd->name= "onboard_boot";
-#endif
-	nr_parts =
-	    parse_mtd_partitions(mtd, part_probes, &mxc_nand_data->parts, 0);
 	if (nr_parts > 0)
 		add_mtd_partitions(mtd, mxc_nand_data->parts, nr_parts);
 	else if (flash->parts)
