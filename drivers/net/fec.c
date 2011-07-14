@@ -918,7 +918,7 @@ static void fec_enet_get_drvinfo(struct net_device *dev,
 	strcpy(info->bus_info, dev_name(&dev->dev));
 }
 
-static int fec_enet_get_link(struct net_device *dev)
+static unsigned int fec_enet_get_link(struct net_device *dev)
 {
 	if (netif_running(dev))
 		return netif_carrier_ok(dev) ? 1 : 0;

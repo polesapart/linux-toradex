@@ -40,8 +40,8 @@
 #define MC13892_ADC0_TS_M_LSH	14
 #define MC13892_ADC0_TS_M_WID	3
 
-static int pmic_adc_major;
-static struct class *pmic_adc_class;
+static int mc13892_adc_major;
+static struct class *mc13892_adc_class;
 
 /*
  * Maximun allowed variation in the three X/Y co-ordinates acquired from
@@ -175,7 +175,7 @@ typedef struct {
 	t_touch_screen ts_value;
 } t_adc_param;
 
-static int pmic_adc_filter(t_touch_screen *ts_curr);
+static int mc13892_adc_filter(t_touch_screen *ts_curr);
 int mc13892_adc_request(bool read_ts);
 int mc13892_adc_release(int adc_index);
 t_reading_mode mc13892_set_read_mode(t_channel channel);
@@ -191,7 +191,6 @@ static int swait;
 static int suspend_flag;
 
 static wait_queue_head_t suspendq;
-
 
 static DECLARE_COMPLETION(adcdone_it);
 static DECLARE_COMPLETION(adcbisdone_it);
@@ -238,15 +237,15 @@ static unsigned channel_num[] = {
 	-1
 };
 
-static bool pmic_adc_ready;
+static bool mc13892_adc_ready;
 
-int is_mc13892_adc_ready()
+int is_mc13892_adc_ready( void )
 {
-	return pmic_adc_ready;
+	return mc13892_adc_ready;
 }
 EXPORT_SYMBOL(is_mc13892_adc_ready);
 
-static int pmic_adc_suspend(struct platform_device *pdev, pm_message_t state)
+static int mc13892_adc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	suspend_flag = 1;
 	CHECK_ERROR(pmic_write_reg(REG_ADC0, DEF_ADC_0, PMIC_ALL_BITS));
@@ -258,7 +257,7 @@ static int pmic_adc_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 };
 
-static int pmic_adc_resume(struct platform_device *pdev)
+static int mc13892_adc_resume(struct platform_device *pdev)
 {
 	/* nothing for mc13892 adc */
 	unsigned int adc_0_reg, adc_1_reg, reg_mask;
@@ -301,7 +300,7 @@ static void callback_adcbisdone(void *unused)
 		complete(&adcbisdone_it);
 }
 
-static int pmic_adc_filter(t_touch_screen *ts_curr)
+static int mc13892_adc_filter(t_touch_screen *ts_curr)
 {
 	unsigned int ydiff, xdiff;
 	unsigned int sample_sumx, sample_sumy;
@@ -314,7 +313,7 @@ static int pmic_adc_filter(t_touch_screen *ts_curr)
 
 	ydiff = abs(ts_curr->y_position1 - ts_curr->y_position2);
 	if (ydiff > DELTA_Y_MAX) {
-		pr_debug("pmic_adc_filter: Ret pos y\n");
+		pr_debug("mc13892_adc_filter: Ret pos y\n");
 		return -1;
 	}
 
@@ -764,7 +763,7 @@ PMIC_STATUS mc13892_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
 {
 	if (mc13892_adc_read_ts(touch_sample, wait) != 0)
 		return PMIC_ERROR;
-	if (0 == pmic_adc_filter(touch_sample))
+	if (0 == mc13892_adc_filter(touch_sample))
 		return PMIC_SUCCESS;
 	else
 		return PMIC_ERROR;
@@ -1031,7 +1030,7 @@ static ssize_t adc_ctl(struct device *dev, struct device_attribute *attr,
  *
  * @return       This function returns PMIC_SUCCESS if successful.
  */
-PMIC_STATUS pmic_adc_convert_multichnnel(t_channel channels,
+PMIC_STATUS mc13892_adc_convert_multichnnel(t_channel channels,
 					 unsigned short *result)
 {
 	t_adc_param adc_param;
@@ -1041,7 +1040,7 @@ PMIC_STATUS pmic_adc_convert_multichnnel(t_channel channels,
 		return -EBUSY;
 	}
 	mc13892_adc_init_param(&adc_param);
-	pr_debug("pmic_adc_convert_multichnnel\n");
+	pr_debug("mc13892_adc_convert_multichnnel\n");
 
 	channels = channel_num[channels];
 
@@ -1060,7 +1059,7 @@ PMIC_STATUS pmic_adc_convert_multichnnel(t_channel channels,
 	}
 	adc_param.read_mode = 0x00003f;
 	adc_param.read_ts = false;
-	ret = mc13892_adc_convert(&adc_param);
+	ret = __mc13892_adc_convert(&adc_param);
 
 	for (i = 0; i <= 7; i++) {
 		result[i] = adc_param.value[i];
@@ -1087,7 +1086,7 @@ PMIC_STATUS pmic_adc_convert_multichnnel(t_channel channels,
  *
  * @return       This function returns PMIC_SUCCESS if successful.
  */
-PMIC_STATUS pmic_adc_get_battery_current(t_conversion_mode mode,
+PMIC_STATUS mc13892_adc_get_battery_current(t_conversion_mode mode,
 					 unsigned short *result)
 {
 	PMIC_STATUS ret;
@@ -1097,9 +1096,9 @@ PMIC_STATUS pmic_adc_get_battery_current(t_conversion_mode mode,
 	}
 	channel = BATTERY_CURRENT;
 	if (mode == ADC_8CHAN_1X) {
-		ret = pmic_adc_convert(channel, result);
+		ret = mc13892_adc_convert(channel, result);
 	} else {
-		ret = pmic_adc_convert_8x(channel, result);
+		ret = mc13892_adc_convert_8x(channel, result);
 	}
 	return ret;
 }
@@ -1111,7 +1110,7 @@ PMIC_STATUS pmic_adc_get_battery_current(t_conversion_mode mode,
  * @param        file        pointer on the file
  * @return       This function returns 0.
  */
-static int pmic_adc_open(struct inode *inode, struct file *file)
+static int mc13892_adc_open(struct inode *inode, struct file *file)
 {
 	while (suspend_flag == 1) {
 		swait++;
@@ -1131,7 +1130,7 @@ static int pmic_adc_open(struct inode *inode, struct file *file)
  * @param        file        pointer on the file
  * @return       This function returns 0.
  */
-static int pmic_adc_free(struct inode *inode, struct file *file)
+static int mc13892_adc_free(struct inode *inode, struct file *file)
 {
 	pr_debug("mc13892_adc : mc13892_adc_free()\n");
 	return 0;
@@ -1146,7 +1145,7 @@ static int pmic_adc_free(struct inode *inode, struct file *file)
  * @param        arg         the parameter
  * @return       This function returns 0 if successful.
  */
-static int pmic_adc_ioctl(struct inode *inode, struct file *file,
+static int mc13892_adc_ioctl(struct inode *inode, struct file *file,
 			  unsigned int cmd, unsigned long arg)
 {
 	t_adc_convert_param *convert_param;
@@ -1167,11 +1166,11 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 
 	switch (cmd) {
 	case PMIC_ADC_INIT:
-		CHECK_ERROR(pmic_adc_init());
+		CHECK_ERROR(mc13892_adc_init());
 		break;
 
 	case PMIC_ADC_DEINIT:
-		CHECK_ERROR(pmic_adc_deinit());
+		CHECK_ERROR(mc13892_adc_deinit());
 		break;
 
 	case PMIC_ADC_CONVERT:
@@ -1184,7 +1183,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 			kfree(convert_param);
 			return -EFAULT;
 		}
-		CHECK_ERROR_KFREE(pmic_adc_convert(convert_param->channel,
+		CHECK_ERROR_KFREE(mc13892_adc_convert(convert_param->channel,
 						   convert_param->result),
 				  (kfree(convert_param)));
 
@@ -1206,7 +1205,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 			kfree(convert_param);
 			return -EFAULT;
 		}
-		CHECK_ERROR_KFREE(pmic_adc_convert_8x(convert_param->channel,
+		CHECK_ERROR_KFREE(mc13892_adc_convert_8x(convert_param->channel,
 						      convert_param->result),
 				  (kfree(convert_param)));
 
@@ -1229,7 +1228,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 			return -EFAULT;
 		}
 
-		CHECK_ERROR_KFREE(pmic_adc_convert_multichnnel
+		CHECK_ERROR_KFREE(mc13892_adc_convert_multichnnel
 				  (convert_param->channel,
 				   convert_param->result),
 				  (kfree(convert_param)));
@@ -1243,11 +1242,11 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 		break;
 
 	case PMIC_ADC_SET_TOUCH_MODE:
-		CHECK_ERROR(pmic_adc_set_touch_mode((t_touch_mode) arg));
+		CHECK_ERROR(mc13892_adc_set_touch_mode((t_touch_mode) arg));
 		break;
 
 	case PMIC_ADC_GET_TOUCH_MODE:
-		CHECK_ERROR(pmic_adc_get_touch_mode(&touch_mode));
+		CHECK_ERROR(mc13892_adc_get_touch_mode(&touch_mode));
 		if (copy_to_user((t_touch_mode *) arg, &touch_mode,
 				 sizeof(t_touch_mode))) {
 			return -EFAULT;
@@ -1255,7 +1254,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 		break;
 
 	case PMIC_ADC_GET_TOUCH_SAMPLE:
-		CHECK_ERROR(pmic_adc_get_touch_sample(&touch_sample, 1));
+		CHECK_ERROR(mc13892_adc_get_touch_sample(&touch_sample, 1));
 		if (copy_to_user((t_touch_screen *) arg, &touch_sample,
 				 sizeof(t_touch_screen))) {
 			return -EFAULT;
@@ -1263,7 +1262,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 		break;
 
 	case PMIC_ADC_GET_BATTERY_CURRENT:
-		CHECK_ERROR(pmic_adc_get_battery_current(ADC_8CHAN_1X,
+		CHECK_ERROR(mc13892_adc_get_battery_current(ADC_8CHAN_1X,
 							 &b_current));
 		if (copy_to_user((unsigned short *)arg, &b_current,
 				 sizeof(unsigned short))) {
@@ -1273,7 +1272,7 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 		break;
 
 	default:
-		pr_debug("pmic_adc_ioctl: unsupported ioctl command 0x%x\n",
+		pr_debug("mc13892_adc_ioctl: unsupported ioctl command 0x%x\n",
 			 cmd);
 		return -EINVAL;
 	}
@@ -1282,15 +1281,16 @@ static int pmic_adc_ioctl(struct inode *inode, struct file *file,
 
 static struct file_operations mc13892_adc_fops = {
 	.owner = THIS_MODULE,
-	.ioctl = pmic_adc_ioctl,
-	.open = pmic_adc_open,
-	.release = pmic_adc_free,
+	.ioctl = mc13892_adc_ioctl,
+	.open = mc13892_adc_open,
+	.release = mc13892_adc_free,
 };
 
-static struct cdev pmic_adc_cdev;
+static struct cdev mc13892_adc_cdev;
 static DEVICE_ATTR(adc, 0644, adc_info, adc_ctl);
+static struct pmic_adc_api mc13892_adc_api_d;
 
-static int pmic_adc_module_probe(struct platform_device *pdev)
+static int mc13892_adc_module_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device * sdev;
@@ -1298,34 +1298,34 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 	pr_debug("PMIC ADC start probe\n");
 
-	if( (ret = alloc_chrdev_region(&devid, 0, 8, "pmic_adc")) < 0 ) {
-		pr_debug(KERN_ERR "Unable to allocate device range for pmic_adc\n");
+	if( (ret = alloc_chrdev_region(&devid, 0, 8, "mc13892_adc")) < 0 ) {
+		pr_debug(KERN_ERR "Unable to allocate device range for mc13892_adc\n");
 		return ret;
 	}
-	pmic_adc_major = MAJOR(devid);
-	if (pmic_adc_major < 0) {
-		pr_debug(KERN_ERR "Unable to get a major for pmic_adc\n");
-		ret = pmic_adc_major;
+	mc13892_adc_major = MAJOR(devid);
+	if (mc13892_adc_major < 0) {
+		pr_debug(KERN_ERR "Unable to get a major for mc13892_adc\n");
+		ret = mc13892_adc_major;
 		goto unreg_char;
 	}
 
-	cdev_init(&pmic_adc_cdev, &mc13892_adc_fops);
-	ret  =cdev_add(&pmic_adc_cdev, devid, 8);
+	cdev_init(&mc13892_adc_cdev, &mc13892_adc_fops);
+	ret  =cdev_add(&mc13892_adc_cdev, devid, 8);
 	if (ret < 0) {
-		pr_err("pmic_adc: cannot add character device\n");
+		pr_err("mc13892_adc: cannot add character device\n");
 		goto unreg_char;
 	}
 
-	pmic_adc_class = class_create(THIS_MODULE, "pmic_adc");
-	if (IS_ERR(pmic_adc_class)) {
-		pr_debug(KERN_ERR "Error creating pmic_adc class.\n");
-		ret = PTR_ERR(pmic_adc_class);
+	mc13892_adc_class = class_create(THIS_MODULE, "mc13892_adc");
+	if (IS_ERR(mc13892_adc_class)) {
+		pr_debug(KERN_ERR "Error creating mc13892_adc class.\n");
+		ret = PTR_ERR(mc13892_adc_class);
 		goto unreg_char;
 	}
 
-	sdev = device_create(pmic_adc_class, NULL, devid, NULL, "pmic_adc");
+	sdev = device_create(mc13892_adc_class, NULL, devid, NULL, "mc13892_adc");
 	if (IS_ERR(sdev) ) {
-		pr_debug(KERN_ERR "Error creating pmic_adc class device.\n");
+		pr_debug(KERN_ERR "Error creating mc13892_adc class device.\n");
 		ret = PTR_ERR(sdev);
 		goto cl_destroy;
 	}
@@ -1341,35 +1341,35 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 	ret = mc13892_adc_init();
 	if (ret != PMIC_SUCCESS) {
-		pr_err("Error in pmic_adc_init.\n");
+		pr_err("Error in mc13892_adc_init.\n");
 		goto rm_dev_file;
 	}
 
-	pmic_adc_ready = 1;
-	register_adc_apis(&pmic_adc_api);
+	mc13892_adc_ready = 1;
+	register_adc_apis(&mc13892_adc_api_d);
 	printk(KERN_DEBUG"PMIC ADC successfully probed\n");
 	return 0;
 
 rm_dev_file:
 	device_remove_file(&(pdev->dev), &dev_attr_adc);
 dev_destroy:
-	device_destroy(pmic_adc_class, MKDEV(pmic_adc_major, 0));
+	device_destroy(mc13892_adc_class, MKDEV(mc13892_adc_major, 0));
 cl_destroy:
-	class_destroy(pmic_adc_class);
+	class_destroy(mc13892_adc_class);
 unreg_char:
-	unregister_chrdev(pmic_adc_major, "pmic_adc");
+	unregister_chrdev(mc13892_adc_major, "mc13892_adc");
  	return ret;
 }
 
-static int pmic_adc_module_remove(struct platform_device *pdev)
+static int mc13892_adc_module_remove(struct platform_device *pdev)
 {
 	mc13892_adc_deinit();
-	pmic_adc_ready = 0;
+	mc13892_adc_ready = 0;
 	pr_debug("PMIC ADC successfully removed\n");
 	return 0;
 }
 
-static void pmic_adc_module_shutdown(struct platform_device *pdev)
+static void mc13892_adc_module_shutdown(struct platform_device *pdev)
 {
 	/**
 	 * Stop the ADC by calling the deinit function. Without this
@@ -1377,35 +1377,35 @@ static void pmic_adc_module_shutdown(struct platform_device *pdev)
 	 * shell reboot call when the touch screen is enabled.
 	 * The the system doesnt reboot.
 	 */
-	pmic_adc_deinit();
-	pmic_adc_ready = 0;
+	mc13892_adc_deinit();
+	mc13892_adc_ready = 0;
 }
 
-static struct platform_driver pmic_adc_driver_ldm = {
+static struct platform_driver mc13892_adc_driver_ldm = {
 	.driver = {
 		   .name = "mc13892_adc",
 		   },
-	.suspend = pmic_adc_suspend,
-	.resume = pmic_adc_resume,
-	.probe = pmic_adc_module_probe,
-	.remove = pmic_adc_module_remove,
-	.shutdown = pmic_adc_module_shutdown,
+	.suspend = mc13892_adc_suspend,
+	.resume = mc13892_adc_resume,
+	.probe = mc13892_adc_module_probe,
+	.remove = mc13892_adc_module_remove,
+	.shutdown = mc13892_adc_module_shutdown,
 };
 
-static int __init pmic_adc_module_init(void)
+static int __init mc13892_adc_module_init(void)
 {
 	pr_debug("PMIC ADC driver loading...\n");
-	return platform_driver_register(&pmic_adc_driver_ldm);
+	return platform_driver_register(&mc13892_adc_driver_ldm);
 }
 
-static void __exit pmic_adc_module_exit(void)
+static void __exit mc13892_adc_module_exit(void)
 {
-	platform_driver_unregister(&pmic_adc_driver_ldm);
+	platform_driver_unregister(&mc13892_adc_driver_ldm);
 	pr_debug("PMIC ADC driver successfully unloaded\n");
 }
 
-module_init(pmic_adc_module_init);
-module_exit(pmic_adc_module_exit);
+module_init(mc13892_adc_module_init);
+module_exit(mc13892_adc_module_exit);
 
 MODULE_DESCRIPTION("PMIC ADC device driver");
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");

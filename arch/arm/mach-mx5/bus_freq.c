@@ -707,13 +707,6 @@ void exit_lpapm_mode_mx53()
 	} */
 }
 
-int can_change_ddr_freq( void )
-{
-	if (clk_get_usecount(epdc_clk) == 0)
-		return 1;
-	return 0;
-}
-
 void set_ddr_freq(int ddr_rate)
 {
 	unsigned long flags;
