@@ -423,6 +423,20 @@ struct mxc_spi_master mxcspi1_data = {
 	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
 };
 
+struct mxc_spi_master mxcspi2_data = {
+	.maxchipselect = 4,
+	.spi_version = 23,
+	.chipselect_active = ccwmx51_gpio_spi_chipselect_active,
+	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
+};
+
+struct mxc_spi_master mxcspi3_data = {
+	.maxchipselect = 4,
+	.spi_version = 23,
+	.chipselect_active = ccwmx51_gpio_spi_chipselect_active,
+	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
+};
+
 struct mxc_ipu_config mxc_ipu_data = {
 	.rev = 2,
 };

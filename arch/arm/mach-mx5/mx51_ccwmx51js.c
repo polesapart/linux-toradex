@@ -353,7 +353,15 @@ static void __init mxc_board_init(void)
 	ccwmx51_init_devices();
 
 	mxc_register_device(&mxc_wdt_device, NULL);
+#if defined(CONFIG_SPI_MXC_SELECT1) || defined(CONFIG_SPI_MXC_SELECT1_MODULE)
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
+#endif
+#if defined(CONFIG_SPI_MXC_SELECT2) || defined(CONFIG_SPI_MXC_SELECT2_MODULE)
+	mxc_register_device(&mxcspi2_device, &mxcspi2_data);
+#endif
+#if defined(CONFIG_SPI_MXC_SELECT3) || defined(CONFIG_SPI_MXC_SELECT3_MODULE)
+	mxc_register_device(&mxcspi3_device, &mxcspi3_data);
+#endif
 #if defined(CONFIG_I2C_MXC_SELECT1) || defined(CONFIG_I2C_MXC_SELECT1_MODULE)
 	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
 #endif
