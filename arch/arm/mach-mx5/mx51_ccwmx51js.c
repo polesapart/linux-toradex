@@ -54,8 +54,16 @@
 
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void (*set_num_cpu_wp)(int num);
+extern struct dvfs_wp *(*get_dvfs_core_wp)(int *wp);
 static int num_cpu_wp = 3;
 u8 ccwmx51_swap_bi = 0;
+
+static struct dvfs_wp dvfs_core_setpoint[] = {
+	{33, 13, 33, 10, 10, 0x08}, /* 800MHz*/
+	{28, 8, 33, 10, 10, 0x08},   /* 400MHz */
+	{20, 0, 33, 20, 10, 0x08},   /* 160MHz*/
+	{28, 8, 33, 20, 30, 0x08},   /*160MHz, AHB 133MHz, LPAPM mode*/
+	{29, 0, 33, 20, 10, 0x08},}; /* 160MHz, AHB 24MHz */
 
 /* working point(wp): 0 - 800MHz; 1 - 166.25MHz; */
 static struct cpu_wp cpu_wp_auto_800[] = {
@@ -184,6 +192,12 @@ static struct mxc_dvfsper_data dvfs_per_data = {
 	.lp_low = 1250000,
 };
 
+static struct dvfs_wp *mx51_get_dvfs_core_table(int *wp)
+{
+	*wp = ARRAY_SIZE(dvfs_core_setpoint);
+	return dvfs_core_setpoint;
+}
+
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -210,6 +224,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 
 	get_cpu_wp = mx51_get_cpu_wp;
 	set_num_cpu_wp = mx51_set_num_cpu_wp;
+	get_dvfs_core_wp = mx51_get_dvfs_core_table;
 
 	for_each_tag(mem_tag, tags) {
 		if (mem_tag->hdr.tag == ATAG_MEM) {
