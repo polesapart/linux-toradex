@@ -1488,7 +1488,7 @@ struct mxc_gpu_platform_data gpu_data = {
 };
 
 struct fec_platform_data fec_data = {
-	.phy = PHY_INTERFACE_MODE_RMII,
+	.phy = PHY_INTERFACE_MODE_MII,
 };
 
 static struct resource mxc_gpu2d_resources[] = {
