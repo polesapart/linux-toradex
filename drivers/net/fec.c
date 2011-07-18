@@ -226,7 +226,7 @@ static void fec_stop(struct net_device *dev);
 #define FEC_MII_TIMEOUT		1000
 
 /* Transmitter timeout */
-#define TX_TIMEOUT (2 * HZ)
+#define TX_TIMEOUT (3 * HZ)
 
 #ifdef CONFIG_ARCH_MXS
 static void *swap_buffer(void *bufaddr, int len)
