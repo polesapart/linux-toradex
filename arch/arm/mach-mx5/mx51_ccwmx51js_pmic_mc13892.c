@@ -1,6 +1,6 @@
  /*
- * Copyright 2009 Freescale Semiconductor, Inc. All Rights Reserved.
- * Copyright 2009 Digi International, Inc. All Rights Reserved.
+ * Copyright 2009-2011 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2009-2011 Digi International, Inc. All Rights Reserved.
   */
 
  /*
@@ -36,8 +36,8 @@
 #define uV_to_V(uV) (uV_to_mV(uV) / 1000)
 
 /* Coin cell charger enable */
-#define CIONCHEN_LSH	23
-#define CIONCHEN_WID	1
+#define COINCHEN_LSH	23
+#define COINCHEN_WID	1
 /* Coin cell charger voltage setting */
 #define VCOIN_LSH	20
 #define VCOIN_WID	3
@@ -72,12 +72,20 @@
 
 /* 0x92412 */
 #define REG_MODE_0_ALL_MASK	(GEN1_STBY_MASK |\
-				DIG_STBY_MASK | GEN2_STBY_MASK |\
-				PLL_STBY_MASK | USB2_STBY_MASK)
+				DIG_STBY_MASK |\
+				PLL_STBY_MASK)
 /* 0x92082 */
-#define REG_MODE_1_ALL_MASK	(GEN3_STBY_MASK | CAM_STBY_MASK |\
-				VIDEO_STBY_MASK | AUDIO_STBY_MASK |\
-				SD_STBY_MASK)
+#define REG_MODE_1_ALL_MASK	(CAM_STBY_MASK | VIDEO_STBY_MASK |\
+				AUDIO_STBY_MASK | SD_STBY_MASK)
+
+/* switch mode setting */
+#define	SW1MODE_LSB	0
+#define	SW2MODE_LSB	10
+#define	SW3MODE_LSB	0
+#define	SW4MODE_LSB	8
+
+#define	SWMODE_MASK	0xF
+#define SWMODE_AUTO	0x8
 
 /* CPU */
 static struct regulator_consumer_supply sw1_consumers[] = {
@@ -150,6 +158,8 @@ static struct regulator_init_data sw4_init = {
 static struct regulator_init_data viohi_init = {
 	.constraints = {
 		.name = "VIOHI",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+		.always_on = 1,
 		.boot_on = 1,
 	}
 };
@@ -157,7 +167,9 @@ static struct regulator_init_data viohi_init = {
 static struct regulator_init_data vusb_init = {
 	.constraints = {
 		.name = "VUSB",
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 		.boot_on = 1,
+		.always_on = 1,
 	}
 };
 
@@ -170,9 +182,10 @@ static struct regulator_init_data swbst_init = {
 static struct regulator_init_data vdig_init = {
 	.constraints = {
 		.name = "VDIG",
-		.min_uV = mV_to_uV(1050),
-		.max_uV = mV_to_uV(1800),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.min_uV = mV_to_uV(1650),
+		.max_uV = mV_to_uV(1650),
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 		.boot_on = 1,
 	}
 };
@@ -182,8 +195,10 @@ static struct regulator_init_data vpll_init = {
 		.name = "VPLL",
 		.min_uV = mV_to_uV(1050),
 		.max_uV = mV_to_uV(1800),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 		.boot_on = 1,
+		.always_on = 1,
 	}
 };
 
@@ -192,8 +207,10 @@ static struct regulator_init_data vusb2_init = {
 		.name = "VUSB2",
 		.min_uV = mV_to_uV(2400),
 		.max_uV = mV_to_uV(2775),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 		.boot_on = 1,
+		.always_on = 1,
 	}
 };
 
@@ -202,8 +219,8 @@ static struct regulator_init_data vvideo_init = {
 		.name = "VVIDEO",
 		.min_uV = mV_to_uV(2775),
 		.max_uV = mV_to_uV(2775),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
-		.always_on = 1,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 		.apply_uV =1,
 	}
 };
@@ -213,7 +230,8 @@ static struct regulator_init_data vaudio_init = {
 		.name = "VAUDIO",
 		.min_uV = mV_to_uV(2300),
 		.max_uV = mV_to_uV(3000),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 	}
 };
 
@@ -222,7 +240,8 @@ static struct regulator_init_data vsd_init = {
 		.name = "VSD",
 		.min_uV = mV_to_uV(1800),
 		.max_uV = mV_to_uV(3150),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 	}
 };
 
@@ -232,7 +251,8 @@ static struct regulator_init_data vcam_init = {
 		.min_uV = mV_to_uV(2500),
 		.max_uV = mV_to_uV(3000),
 		.valid_ops_mask =
-			REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_MODE,
+			REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_MODE |
+			REGULATOR_CHANGE_STATUS,
 		.valid_modes_mask = REGULATOR_MODE_FAST | REGULATOR_MODE_NORMAL,
 	}
 };
@@ -241,8 +261,9 @@ static struct regulator_init_data vgen1_init = {
 	.constraints = {
 		.name = "VGEN1",
 		.min_uV = mV_to_uV(1200),
-		.max_uV = mV_to_uV(3150),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.max_uV = mV_to_uV(1200),
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
 	}
 };
 
@@ -251,7 +272,9 @@ static struct regulator_init_data vgen2_init = {
 		.name = "VGEN2",
 		.min_uV = mV_to_uV(1200),
 		.max_uV = mV_to_uV(3150),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
+		.always_on = 1,
 	}
 };
 
@@ -260,7 +283,9 @@ static struct regulator_init_data vgen3_init = {
 		.name = "VGEN3",
 		.min_uV = mV_to_uV(1800),
 		.max_uV = mV_to_uV(2900),
-		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE,
+		.valid_ops_mask = REGULATOR_CHANGE_VOLTAGE |
+			REGULATOR_CHANGE_STATUS,
+		.always_on = 1,
 	}
 };
 
@@ -284,9 +309,30 @@ static int mc13892_regulator_init(struct mc13892 *mc13892)
 	value |= REG_MODE_1_ALL_MASK;
 	pmic_write_reg(REG_MODE_1, value, 0xffffff);
 
+	/* enable switch audo mode */
+	pmic_read_reg(REG_IDENTIFICATION, &value, 0xffffff);
+	/* only for mc13892 2.0A */
+	if ((value & 0x0000FFFF) == 0x45d0) {
+		pmic_read_reg(REG_SW_4, &value, 0xffffff);
+		register_mask = (SWMODE_MASK << SW1MODE_LSB) |
+		       (SWMODE_MASK << SW2MODE_LSB);
+		value &= ~register_mask;
+		value |= (SWMODE_AUTO << SW1MODE_LSB) |
+			(SWMODE_AUTO << SW2MODE_LSB);
+		pmic_write_reg(REG_SW_4, value, 0xffffff);
+
+		pmic_read_reg(REG_SW_5, &value, 0xffffff);
+		register_mask = (SWMODE_MASK << SW3MODE_LSB) |
+			(SWMODE_MASK << SW4MODE_LSB);
+		value &= ~register_mask;
+		value |= (SWMODE_AUTO << SW3MODE_LSB) |
+			(SWMODE_AUTO << SW4MODE_LSB);
+		pmic_write_reg(REG_SW_5, value, 0xffffff);
+	}
+
 	/* Enable coin cell charger */
-	value = BITFVAL(CIONCHEN, 1) | BITFVAL(VCOIN, VCOIN_3_0V);
-	register_mask = BITFMASK(CIONCHEN) | BITFMASK(VCOIN);
+	value = BITFVAL(COINCHEN, 1) | BITFVAL(VCOIN, VCOIN_3_0V);
+	register_mask = BITFMASK(COINCHEN) | BITFMASK(VCOIN);
 	pmic_write_reg(REG_POWER_CTL0, value, register_mask);
 
 #if defined(CONFIG_RTC_DRV_MXC_V2) || defined(CONFIG_RTC_DRV_MXC_V2_MODULE)
