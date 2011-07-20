@@ -299,7 +299,7 @@ static int __init mxc_init_uart(void)
 		mxc_uart_resources2[0].start -= 0x20000000;
 		mxc_uart_resources2[0].end -= 0x20000000;
 #endif
-#if defined CONFIG_UART3ENABLED
+#if defined CONFIG_UART3_ENABLED
 		mxc_uart_resources3[0].start -= 0x20000000;
 		mxc_uart_resources3[0].end -= 0x20000000;
 #endif
