@@ -914,7 +914,7 @@ unmap_weim:
 	iounmap(weim_vbaddr);
 }
 #else
-void ccwmx53_register_ext_eth(void)
+void ccwmx53_register_ext_eth(void) {}
 #endif
 
 #if (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
