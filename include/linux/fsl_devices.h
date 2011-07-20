@@ -685,4 +685,6 @@ struct mxs_platform_perfmon_data {
 	int bit_config_cnt;
 };
 
+#define MX53_OFFSET 0x20000000
+
 #endif /* _FSL_DEVICE_H_ */

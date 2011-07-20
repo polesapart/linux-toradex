@@ -1919,8 +1919,6 @@ exit:
 	iram_ready = 1;
 }
 
-#define MX53_OFFSET 0x20000000
-
 int __init mxc_init_devices(void)
 {
 	if (cpu_is_mx53() || cpu_is_mx50()) {

@@ -70,6 +70,9 @@
 #include "devices.h"
 #include "usb.h"
 #include "board-ccwmx53.h"
+#include "linux/fsl_devices.h"
+
+extern void pm_i2c_init(u32 base_addr);
 
 /*!
  * @file mach-mx5/mx53_ccwmx53js.c
@@ -258,6 +261,12 @@ static void __init mx53_ccwmx53js_io_init(void)
 	gpio_dio_active();
 }
 
+static struct mxc_pm_platform_data ccwmx53_pm_data = {
+		.suspend_enter = NULL,
+		.suspend_exit = NULL,
+};
+
+
 /*!
  * Board specific initialization.
  */
@@ -289,6 +298,7 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&gpu_device, &gpu_data);
 	mxc_register_device(&mxcscc_device, NULL);
+	mxc_register_device(&pm_device, &ccwmx53_pm_data);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
 	mxc_register_device(&mxc_iim_device, &iim_data);
@@ -334,6 +344,7 @@ static void __init mxc_board_init(void)
 #if defined (CONFIG_PMIC_DA9052)
 	pm_power_off = da9053_power_off;
 #endif
+	pm_i2c_init(I2C3_BASE_ADDR - MX53_OFFSET);
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

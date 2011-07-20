@@ -24,7 +24,6 @@
 #include <linux/cpufreq.h>
 #include <linux/iram_alloc.h>
 #include <linux/fsl_devices.h>
-#include <linux/mfd/da9052/da9052.h>
 #include <asm/mach-types.h>
 #include <asm/cacheflush.h>
 #include <asm/tlb.h>
@@ -40,7 +39,6 @@
 #define DATABAHN_CTL_REG19	0x4c
 #define DATABAHN_CTL_REG79	0x13c
 #define DATABAHN_PHY_REG25	0x264
-#define MX53_OFFSET 0x20000000
 
 static struct cpu_wp *cpu_wp_tbl;
 static int cpu_wp_nr;
@@ -57,7 +55,6 @@ extern int cpufreq_suspended;
 extern int set_cpu_freq(int wp);
 #endif
 
-
 static struct device *pm_dev;
 struct clk *gpc_dvfs_clk;
 extern void cpu_do_suspend_workaround(u32 sdclk_iomux_addr);
@@ -65,41 +62,11 @@ extern void mx50_suspend(u32 databahn_addr);
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
 extern void __iomem *ccm_base;
 extern void __iomem *databahn_base;
-extern void da9053_suspend_cmd_hw(void);
-extern int da9053_restore_volt_settings(void);
-extern void da9053_suspend_cmd_sw(void);
-extern void da9053_resume_dump(void);
-extern void pm_da9053_i2c_init(u32 base_addr , u32 i2c_addr);
-extern int da9053_ccxmx53_suspend_workaround(void);
 
 extern int iram_ready;
 void *suspend_iram_base;
 void (*suspend_in_iram)(void *param1, void *param2, void* param3) = NULL;
 void __iomem *suspend_param1;
-
-#define TZIC_WAKEUP0_OFFSET            0x0E00
-#define TZIC_WAKEUP1_OFFSET            0x0E04
-#define TZIC_WAKEUP2_OFFSET            0x0E08
-#define TZIC_WAKEUP3_OFFSET            0x0E0C
-#define GPIO7_0_11_IRQ_BIT			   (0x1<<11)
-
-static void mx53_smd_loco_irq_wake_fixup(void)
-{
-	void __iomem *tzic_base;
-	tzic_base = ioremap(MX53_TZIC_BASE_ADDR, SZ_4K);
-	if (NULL == tzic_base) {
-		pr_err("fail to map MX53_TZIC_BASE_ADDR\n");
-		return;
-	}
-	__raw_writel(0, tzic_base + TZIC_WAKEUP0_OFFSET);
-	__raw_writel(0, tzic_base + TZIC_WAKEUP1_OFFSET);
-	__raw_writel(0, tzic_base + TZIC_WAKEUP2_OFFSET);
-	/* only enable irq wakeup for da9053 */
-	__raw_writel(GPIO7_0_11_IRQ_BIT, tzic_base + TZIC_WAKEUP3_OFFSET);
-	iounmap(tzic_base);
-	pr_info("only da9053 irq is wakeup-enabled\n");
-}
-
 
 static int mx5_suspend_enter(suspend_state_t state)
 {
@@ -134,42 +101,19 @@ static int mx5_suspend_enter(suspend_state_t state)
 		local_flush_tlb_all();
 		flush_cache_all();
 
+		if (pm_data->suspend_enter)
+			pm_data->suspend_enter();
+
 		if (cpu_is_mx51() || cpu_is_mx53()) {
-			if (machine_is_mx53_smd() ||
-				(machine_is_mx53_loco() && (!board_is_mx53_loco_mc34708()))) {
-				if (board_is_rev(BOARD_REV_4) ||
-					machine_is_mx53_loco()) {
-					mx53_smd_loco_irq_wake_fixup();
-					da9053_suspend_cmd_sw();
-				} else {
-				/*  for new OTP DA9053 board,
-					enable other irq for wakeup,
-					otherwise disable other wakeup sources.
-				*/
-					if (da9053_get_chip_version() !=
-						DA9053_VERSION_BB)
-						mx53_smd_loco_irq_wake_fixup();
-
-					da9053_suspend_cmd_hw();
-				}
-			}
-
-			if( machine_is_ccwmx53js() || machine_is_ccmx53js() )
-				da9053_ccxmx53_suspend_workaround();
 
 			/* Run the suspend code from iRAM. */
 			suspend_in_iram(suspend_param1, NULL, NULL);
-			if (machine_is_mx53_smd() ||
-				(machine_is_mx53_loco() && (!board_is_mx53_loco_mc34708())))
-				if (da9053_get_chip_version())
-					da9053_restore_volt_settings();
+
 			/*clear the EMPGC0/1 bits */
 			__raw_writel(0, MXC_SRPG_EMPGC0_SRPGCR);
 			__raw_writel(0, MXC_SRPG_EMPGC1_SRPGCR);
 		} else {
 			if (cpu_is_mx50()) {
-				if (pm_data->suspend_enter)
-					pm_data->suspend_enter();
 
 				/* Store the LPM mode of databanhn */
 				databahn_mode = __raw_readl(
@@ -183,10 +127,10 @@ static int mx5_suspend_enter(suspend_state_t state)
 				__raw_writel(databahn_mode,
 					databahn_base + DATABAHN_CTL_REG20);
 
-				if (pm_data->suspend_exit)
-					pm_data->suspend_exit();
 			}
 		}
+		if (pm_data->suspend_exit)
+			pm_data->suspend_exit();
 	} else {
 			cpu_do_idle();
 	}
@@ -338,20 +282,6 @@ static int __init pm_init(void)
 		return PTR_ERR(cpu_clk);
 	}
 	printk(KERN_INFO "PM driver module loaded\n");
-
-	if (machine_is_mx53_smd() ||
-		machine_is_mx53_loco())
-		pm_da9053_i2c_init(I2C1_BASE_ADDR - MX53_OFFSET , 0x48 /* PMIC I2C addr */);
-
-	if (machine_is_ccwmx53js() || machine_is_ccmx53js() ) {
-		u8 modrev = ccxmx5x_get_mod_revision();
-		u32 i2caddr = DA9052_I2C_ADDR >> 1;
-
-		/* Early variants use a different (0x48) address for the PMIC */
-		if (modrev == 0x01)
-			i2caddr = DA9052_I2C_ADDR_ALT >> 1;
-		pm_da9053_i2c_init(I2C3_BASE_ADDR - MX53_OFFSET , i2caddr );
-	}
 
 	return 0;
 }
