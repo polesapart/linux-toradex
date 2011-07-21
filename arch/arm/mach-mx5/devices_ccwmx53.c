@@ -877,13 +877,13 @@ void ccwmx53_register_ext_eth(void)
 
 	gpio_smsc911x_active();
 
-	weim_vbaddr = ioremap(WEIM_BASE_ADDR, SZ_4K);
+	weim_vbaddr = ioremap(MX53_BASE_ADDR(WEIM_BASE_ADDR), SZ_4K);
 	if (weim_vbaddr == 0) {
 		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", WEIM_BASE_ADDR, __func__);
 		return;
 	}
 
-	iomux_vbaddr = ioremap(IOMUXC_BASE_ADDR, SZ_4K);
+	iomux_vbaddr = ioremap(MX53_BASE_ADDR(IOMUXC_BASE_ADDR), SZ_4K);
 	if (iomux_vbaddr == 0) {
 		printk(KERN_ERR "Unable to ioremap 0x%08x in %s\n", IOMUXC_BASE_ADDR, __func__);
 		goto unmap_weim;
