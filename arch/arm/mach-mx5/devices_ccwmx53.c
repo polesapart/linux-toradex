@@ -838,7 +838,7 @@ void ccwmx53_register_nand(void) {}
 struct smsc911x_platform_config ccwmx53_smsc9118 = {
 	.flags          = SMSC911X_USE_32BIT,
 	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-	.irq_type       = SMSC911X_IRQ_POLARITY_ACTIVE_HIGH,    /* push-pull irq */
+	.irq_type       = SMSC911X_IRQ_TYPE_PUSH_PULL,    /* push-pull irq */
 };
 
 static struct resource smsc911x_device_resources[] = {
