@@ -25,6 +25,7 @@ extern struct mxc_spi_master mxcspi1_data ;
 extern struct mxc_spi_master mxcspi2_data ;
 extern struct mxc_spi_master mxcspi3_data ;
 extern struct mxc_ipu_config mxc_ipu_data;
+extern struct mxc_vpu_platform_data mxc_vpu_data;
 extern struct mxc_w1_config mxc_w1_data;
 extern struct mxc_spdif_platform_data mxc_spdif_data;
 extern struct tve_platform_data tve_data;

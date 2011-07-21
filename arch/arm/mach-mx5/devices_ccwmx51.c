@@ -437,8 +437,17 @@ struct mxc_spi_master mxcspi3_data = {
 	.chipselect_inactive = ccwmx51_gpio_spi_chipselect_inactive,
 };
 
+extern void mx5_ipu_reset(void);
 struct mxc_ipu_config mxc_ipu_data = {
 	.rev = 2,
+	.reset = mx5_ipu_reset,
+};
+
+extern void mx5_vpu_reset(void);
+struct mxc_vpu_platform_data mxc_vpu_data = {
+	.iram_enable = false,
+	.iram_size = 0x14000,
+	.reset = mx5_vpu_reset,
 };
 
 #if defined(CONFIG_W1_MASTER_MXC) || defined(CONFIG_W1_MASTER_MXC_MODULE)

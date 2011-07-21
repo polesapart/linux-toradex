@@ -381,10 +381,8 @@ static void __init mxc_board_init(void)
 #if defined(CONFIG_W1_MASTER_MXC) || defined(CONFIG_W1_MASTER_MXC_MODULE)
 	mxc_register_device(&mxc_w1_master_device, &mxc_w1_data);
 #endif
-	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
-	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
-	mxc_register_device(&mxcvpu_device, NULL);
+	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&mxc_alsa_spdif_device, &mxc_spdif_data);
 	mxc_register_device(&mxc_tve_device, &tve_data);
 	mxc_register_device(&mx51_lpmode_device, NULL);
