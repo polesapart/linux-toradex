@@ -1459,19 +1459,19 @@ static int register_fim_can(struct platform_device *pdev, int picnr, struct fim_
 	 */
 	port->can.bittiming.bitrate    = bitrate;
 
-	/* Now register the new CAN-net device */
-	retval = register_candev(dev);
-	if (retval) {
-		printk_err("Registering the net device for the FIM %i\n", picnr);
-		goto err_unreg_fim;
-	}
-
 	spin_lock_init(&port->lock);
 	port->dev = dev;
 	memcpy(port->gpios, gpios, sizeof(struct fim_gpio_t) * FIM_CAN_MAX_GPIOS);
 	port->reg = 1;
 	dev_set_drvdata(&pdev->dev, port);
 	SET_NETDEV_DEV(dev, &pdev->dev);
+
+	/* Now register the new CAN-net device */
+	retval = register_candev(dev);
+	if (retval) {
+		printk_err("Registering the net device for the FIM %i\n", picnr);
+		goto err_unreg_fim;
+	}
 
  	return 0;
 
