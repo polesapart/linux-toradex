@@ -175,7 +175,7 @@ typedef struct {
 	t_touch_screen ts_value;
 } t_adc_param;
 
-static int mc13892_adc_filter(t_touch_screen *ts_curr);
+static int pmic_adc_filter(t_touch_screen *ts_curr);
 int mc13892_adc_request(bool read_ts);
 int mc13892_adc_release(int adc_index);
 t_reading_mode mc13892_set_read_mode(t_channel channel);
@@ -237,15 +237,15 @@ static unsigned channel_num[] = {
 	-1
 };
 
-static bool mc13892_adc_ready;
+static bool pmic_adc_ready;
 
-int is_mc13892_adc_ready( void )
+int is_mc13892_adc_ready(void)
 {
-	return mc13892_adc_ready;
+	return pmic_adc_ready;
 }
 EXPORT_SYMBOL(is_mc13892_adc_ready);
 
-static int mc13892_adc_suspend(struct platform_device *pdev, pm_message_t state)
+static int pmic_adc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	suspend_flag = 1;
 	CHECK_ERROR(pmic_write_reg(REG_ADC0, DEF_ADC_0, PMIC_ALL_BITS));
@@ -257,7 +257,7 @@ static int mc13892_adc_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 };
 
-static int mc13892_adc_resume(struct platform_device *pdev)
+static int pmic_adc_resume(struct platform_device *pdev)
 {
 	/* nothing for mc13892 adc */
 	unsigned int adc_0_reg, adc_1_reg, reg_mask;
@@ -300,7 +300,7 @@ static void callback_adcbisdone(void *unused)
 		complete(&adcbisdone_it);
 }
 
-static int mc13892_adc_filter(t_touch_screen *ts_curr)
+static int pmic_adc_filter(t_touch_screen *ts_curr)
 {
 	unsigned int ydiff, xdiff;
 	unsigned int sample_sumx, sample_sumy;
@@ -313,7 +313,7 @@ static int mc13892_adc_filter(t_touch_screen *ts_curr)
 
 	ydiff = abs(ts_curr->y_position1 - ts_curr->y_position2);
 	if (ydiff > DELTA_Y_MAX) {
-		pr_debug("mc13892_adc_filter: Ret pos y\n");
+		pr_debug("pmic_adc_filter: Ret pos y\n");
 		return -1;
 	}
 
@@ -763,7 +763,7 @@ PMIC_STATUS mc13892_adc_get_touch_sample(t_touch_screen *touch_sample, int wait)
 {
 	if (mc13892_adc_read_ts(touch_sample, wait) != 0)
 		return PMIC_ERROR;
-	if (0 == mc13892_adc_filter(touch_sample))
+	if (0 == pmic_adc_filter(touch_sample))
 		return PMIC_SUCCESS;
 	else
 		return PMIC_ERROR;
@@ -1288,9 +1288,14 @@ static struct file_operations mc13892_adc_fops = {
 
 static struct cdev mc13892_adc_cdev;
 static DEVICE_ATTR(adc, 0644, adc_info, adc_ctl);
-static struct pmic_adc_api mc13892_adc_api_d;
 
-static int mc13892_adc_module_probe(struct platform_device *pdev)
+static struct pmic_adc_api pmic_adc_api = {
+	.is_pmic_adc_ready = is_mc13892_adc_ready,
+	.pmic_adc_convert = mc13892_adc_convert,
+	.pmic_adc_get_touch_sample = mc13892_adc_get_touch_sample,
+};
+
+static int pmic_adc_module_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device * sdev;
@@ -1345,8 +1350,8 @@ static int mc13892_adc_module_probe(struct platform_device *pdev)
 		goto rm_dev_file;
 	}
 
-	mc13892_adc_ready = 1;
-	register_adc_apis(&mc13892_adc_api_d);
+	pmic_adc_ready = 1;
+	register_adc_apis(&pmic_adc_api);
 	printk(KERN_DEBUG"PMIC ADC successfully probed\n");
 	return 0;
 
@@ -1361,10 +1366,10 @@ unreg_char:
  	return ret;
 }
 
-static int mc13892_adc_module_remove(struct platform_device *pdev)
+static int pmic_adc_module_remove(struct platform_device *pdev)
 {
 	mc13892_adc_deinit();
-	mc13892_adc_ready = 0;
+	pmic_adc_ready = 0;
 	pr_debug("PMIC ADC successfully removed\n");
 	return 0;
 }
@@ -1378,34 +1383,34 @@ static void mc13892_adc_module_shutdown(struct platform_device *pdev)
 	 * The the system doesnt reboot.
 	 */
 	mc13892_adc_deinit();
-	mc13892_adc_ready = 0;
+	pmic_adc_ready = 0;
 }
 
-static struct platform_driver mc13892_adc_driver_ldm = {
+static struct platform_driver pmic_adc_driver_ldm = {
 	.driver = {
 		   .name = "mc13892_adc",
 		   },
-	.suspend = mc13892_adc_suspend,
-	.resume = mc13892_adc_resume,
-	.probe = mc13892_adc_module_probe,
-	.remove = mc13892_adc_module_remove,
+	.suspend = pmic_adc_suspend,
+	.resume = pmic_adc_resume,
+	.probe = pmic_adc_module_probe,
+	.remove = pmic_adc_module_remove,
 	.shutdown = mc13892_adc_module_shutdown,
 };
 
-static int __init mc13892_adc_module_init(void)
+static int __init pmic_adc_module_init(void)
 {
 	pr_debug("PMIC ADC driver loading...\n");
-	return platform_driver_register(&mc13892_adc_driver_ldm);
+	return platform_driver_register(&pmic_adc_driver_ldm);
 }
 
-static void __exit mc13892_adc_module_exit(void)
+static void __exit pmic_adc_module_exit(void)
 {
-	platform_driver_unregister(&mc13892_adc_driver_ldm);
+	platform_driver_unregister(&pmic_adc_driver_ldm);
 	pr_debug("PMIC ADC driver successfully unloaded\n");
 }
 
-module_init(mc13892_adc_module_init);
-module_exit(mc13892_adc_module_exit);
+module_init(pmic_adc_module_init);
+module_exit(pmic_adc_module_exit);
 
 MODULE_DESCRIPTION("PMIC ADC device driver");
 MODULE_AUTHOR("Freescale Semiconductor, Inc.");
