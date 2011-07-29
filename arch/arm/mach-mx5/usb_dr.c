@@ -99,7 +99,8 @@ static void __wakeup_irq_enable(bool on, int source)
 	if (on) {
 #ifdef CONFIG_USB_OTG
 		wakeup_irq_enable_src |= source;
-		if (wakeup_irq_enable_src == (ENABLED_BY_HOST | ENABLED_BY_DEVICE)) {
+		if (	wakeup_irq_enable_src & ENABLED_BY_HOST ||
+				wakeup_irq_enable_src & ENABLED_BY_DEVICE) {
 			USBCTRL |= UCTRL_OWIE;
 			USB_PHY_CTR_FUNC |= USB_UTMI_PHYCTRL_CONF2;
 		}

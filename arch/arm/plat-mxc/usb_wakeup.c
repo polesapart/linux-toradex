@@ -77,7 +77,7 @@ static irqreturn_t usb_wakeup_handler(int irq, void *_dev)
 	irqreturn_t ret = IRQ_NONE;
 
 	if (usb2_is_in_lowpower(ctrl)) {
-		printk(KERN_INFO "usb wakeup is here\n");
+		pr_debug("usb wakeup is here\n");
 		delay_process_wakeup(ctrl);
 		ret = IRQ_HANDLED;
 	}
@@ -154,7 +154,7 @@ static int wakeup_dev_probe(struct platform_device *pdev)
 	struct wakeup_ctrl *ctrl = NULL;
 	int status;
 
-	printk(KERN_INFO "IMX usb wakeup probe\n");
+	printk(KERN_INFO "MXC usb wakeup probe\n");
 
 	if (!pdev || !pdev->dev.platform_data)
 		return -ENODEV;
