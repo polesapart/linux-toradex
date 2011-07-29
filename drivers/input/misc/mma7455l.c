@@ -42,6 +42,7 @@
 #include <linux/interrupt.h>
 #include <linux/sysfs.h>
 #include <linux/gpio.h>
+#include <linux/slab.h>
 
 #include <linux/mma7455l.h>
 #include <linux/i2c.h>
