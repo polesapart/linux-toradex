@@ -1303,13 +1303,13 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 	pr_debug("PMIC ADC start probe\n");
 
-	if( (ret = alloc_chrdev_region(&devid, 0, 8, "mc13892_adc")) < 0 ) {
+	if( (ret = alloc_chrdev_region(&devid, 0, 8, "pmic_adc")) < 0 ) {
 		pr_debug(KERN_ERR "Unable to allocate device range for mc13892_adc\n");
 		return ret;
 	}
 	mc13892_adc_major = MAJOR(devid);
 	if (mc13892_adc_major < 0) {
-		pr_debug(KERN_ERR "Unable to get a major for mc13892_adc\n");
+		pr_debug(KERN_ERR "Unable to get a major for pmic_adc\n");
 		ret = mc13892_adc_major;
 		goto unreg_char;
 	}
@@ -1317,20 +1317,20 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 	cdev_init(&mc13892_adc_cdev, &mc13892_adc_fops);
 	ret  =cdev_add(&mc13892_adc_cdev, devid, 8);
 	if (ret < 0) {
-		pr_err("mc13892_adc: cannot add character device\n");
+		pr_err("pmic_adc: cannot add character device\n");
 		goto unreg_char;
 	}
 
-	mc13892_adc_class = class_create(THIS_MODULE, "mc13892_adc");
+	mc13892_adc_class = class_create(THIS_MODULE, "pmic_adc");
 	if (IS_ERR(mc13892_adc_class)) {
-		pr_debug(KERN_ERR "Error creating mc13892_adc class.\n");
+		pr_debug(KERN_ERR "Error creating pmic_adc class.\n");
 		ret = PTR_ERR(mc13892_adc_class);
 		goto unreg_char;
 	}
 
-	sdev = device_create(mc13892_adc_class, NULL, devid, NULL, "mc13892_adc");
+	sdev = device_create(mc13892_adc_class, NULL, devid, NULL, "pmic_adc");
 	if (IS_ERR(sdev) ) {
-		pr_debug(KERN_ERR "Error creating mc13892_adc class device.\n");
+		pr_debug(KERN_ERR "Error creating pmic_adc class device.\n");
 		ret = PTR_ERR(sdev);
 		goto cl_destroy;
 	}
@@ -1346,7 +1346,7 @@ static int pmic_adc_module_probe(struct platform_device *pdev)
 
 	ret = mc13892_adc_init();
 	if (ret != PMIC_SUCCESS) {
-		pr_err("Error in mc13892_adc_init.\n");
+		pr_err("Error in pmic_adc.\n");
 		goto rm_dev_file;
 	}
 
