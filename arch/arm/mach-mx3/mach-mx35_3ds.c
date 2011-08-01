@@ -326,7 +326,7 @@ static struct platform_device *devices[] __initdata = {
 static iomux_v3_cfg_t mx35pdk_pads[] = {
 	/* UART1 */
 	MX35_PAD_CTS1__UART1_CTS,
-	MX35_PAD_RTS1__UART1_RTS, 
+	MX35_PAD_RTS1__UART1_RTS,
 	MX35_PAD_TXD1__UART1_TXD_MUX,
 	MX35_PAD_RXD1__UART1_RXD_MUX,
 	/* FEC */
@@ -338,7 +338,7 @@ static iomux_v3_cfg_t mx35pdk_pads[] = {
 	MX35_PAD_FEC_TDATA0__FEC_TDATA_0,
 	MX35_PAD_FEC_TX_EN__FEC_TX_EN,
 	MX35_PAD_FEC_MDC__FEC_MDC,
-	MX35_PAD_FEC_MDIO__FEC_MDIO, 
+	MX35_PAD_FEC_MDIO__FEC_MDIO,
 	MX35_PAD_FEC_TX_ERR__FEC_TX_ERR,
 	MX35_PAD_FEC_RX_ERR__FEC_RX_ERR,
 	MX35_PAD_FEC_CRS__FEC_CRS,
