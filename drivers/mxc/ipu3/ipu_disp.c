@@ -1691,8 +1691,7 @@ int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, bool enable,
 	else
 		bg_chan = false;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
+	ipu_get_clk(false);
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	if (bg_chan) {
@@ -1719,8 +1718,7 @@ int32_t ipu_disp_set_global_alpha(ipu_channel_t channel, bool enable,
 	__raw_writel(reg, IPU_SRM_PRI2);
 
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	ipu_put_clk();
 
 	return 0;
 }
@@ -1754,9 +1752,7 @@ int32_t ipu_disp_set_color_key(ipu_channel_t channel, bool enable,
 	else
 		return -EINVAL;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
-
+	ipu_get_clk(false);
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	color_key_4rgb = 1;
@@ -1797,8 +1793,7 @@ int32_t ipu_disp_set_color_key(ipu_channel_t channel, bool enable,
 	__raw_writel(reg, IPU_SRM_PRI2);
 
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	ipu_put_clk();
 
 	return 0;
 }
@@ -1831,8 +1826,7 @@ int32_t ipu_disp_set_gamma_correction(ipu_channel_t channel, bool enable, int co
 	else
 		return -EINVAL;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
+	ipu_get_clk(false);
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	for (i = 0; i < 8; i++)
@@ -1855,8 +1849,7 @@ int32_t ipu_disp_set_gamma_correction(ipu_channel_t channel, bool enable, int co
 	__raw_writel(reg, IPU_SRM_PRI2);
 
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	ipu_put_clk();
 
 	return 0;
 }
@@ -1896,9 +1889,7 @@ int32_t ipu_disp_set_window_pos(ipu_channel_t channel, int16_t x_pos,
 	} else
 		return -EINVAL;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
-
+	ipu_get_clk(false);
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	__raw_writel((x_pos << 16) | y_pos, DP_FG_POS(flow));
@@ -1915,8 +1906,7 @@ int32_t ipu_disp_set_window_pos(ipu_channel_t channel, int16_t x_pos,
 	}
 
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	ipu_put_clk();
 
 	return 0;
 }
@@ -1938,8 +1928,7 @@ int32_t ipu_disp_get_window_pos(ipu_channel_t channel, int16_t *x_pos,
 	else
 		return -EINVAL;
 
-	if (!g_ipu_clk_enabled)
-		clk_enable(g_ipu_clk);
+	ipu_get_clk(false);
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	reg = __raw_readl(DP_FG_POS(flow));
@@ -1948,8 +1937,7 @@ int32_t ipu_disp_get_window_pos(ipu_channel_t channel, int16_t *x_pos,
 	*y_pos = reg & 0x7FF;
 
 	spin_unlock_irqrestore(&ipu_lock, lock_flags);
-	if (!g_ipu_clk_enabled)
-		clk_disable(g_ipu_clk);
+	ipu_put_clk();
 
 	return 0;
 }
