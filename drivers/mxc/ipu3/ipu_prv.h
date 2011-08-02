@@ -52,7 +52,6 @@ enum ipu_dmfc_type {
 int register_ipu_device(void);
 ipu_color_space_t format_to_colorspace(uint32_t fmt);
 bool ipu_pixel_format_has_alpha(uint32_t fmt);
-
 void ipu_get_clk(bool stop_dvfs);
 void ipu_put_clk(void);
 void ipu_dump_registers(void);

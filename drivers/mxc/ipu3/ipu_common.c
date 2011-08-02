@@ -2685,7 +2685,6 @@ EXPORT_SYMBOL(ipu_set_csc_coefficients);
 
 static int ipu_suspend(struct platform_device *pdev, pm_message_t state)
 {
-
 	mutex_lock(&ipu_clk_lock);
 	if (g_ipu_use_count > 0) {
 		uint32_t chan_should_disable, timeout = 1000, time = 0;
