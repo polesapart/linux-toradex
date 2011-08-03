@@ -90,6 +90,8 @@ struct mxcfb_info {
 	struct semaphore alpha_flip_sem;
 	struct completion vsync_complete;
 
+	bool fb_suspended;
+
 	/* Empirical, from physical signal measuring on LCD*/
 	/* See DI0_BS_CLKGEN 0 and DI0_BS_CLKGEN1 */
 	// Display interface clock period for display write access
@@ -441,7 +443,8 @@ static int mxcfb_set_par(struct fb_info *fbi)
 
 #if !(defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1))
 	/* FIXME this lines of code doesnt allow to run the dual head... */
-	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK)
+	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK ||
+		mxc_fbi->fb_suspended)
 		return retval;
 #endif
 
@@ -512,6 +515,8 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		return retval;
 
 	ipu_enable_channel(mxc_fbi->ipu_ch);
+
+	mxc_fbi->cur_blank = FB_BLANK_UNBLANK;
 
 	return retval;
 }
@@ -926,7 +931,9 @@ static int mxcfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 			} else
 				mxc_fbi->alpha_chan_en = false;
 
+			acquire_console_sem();
 			mxcfb_set_par(fbi);
+			release_console_sem();
 
 			la.alpha_phy_addr0 = mxc_fbi->alpha_phy_addr0;
 			la.alpha_phy_addr1 = mxc_fbi->alpha_phy_addr1;
@@ -1495,15 +1502,13 @@ static int mxcfb_suspend(struct platform_device *pdev, pm_message_t state)
 	struct fb_info *fbi = platform_get_drvdata(pdev);
 	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
 	int saved_blank;
-#ifdef CONFIG_FB_MXC_LOW_PWR_DISPLAY
-	void *fbmem;
-#endif
 
 	acquire_console_sem();
 	fb_set_suspend(fbi, 1);
 	saved_blank = mxc_fbi->cur_blank;
 	mxcfb_blank(FB_BLANK_POWERDOWN, fbi);
 	mxc_fbi->next_blank = saved_blank;
+	mxc_fbi->fb_suspended = true;
 	release_console_sem();
 
 	return 0;
@@ -1518,6 +1523,7 @@ static int mxcfb_resume(struct platform_device *pdev)
 	struct mxcfb_info *mxc_fbi = (struct mxcfb_info *)fbi->par;
 
 	acquire_console_sem();
+	mxc_fbi->fb_suspended = false;
 	mxcfb_blank(mxc_fbi->next_blank, fbi);
 	fb_set_suspend(fbi, 0);
 	release_console_sem();
@@ -1908,6 +1914,7 @@ static int mxcfb_probe(struct platform_device *pdev)
 
 	mxcfbi->ipu_di = pdev->id;
 	mxcfbi->ipu_alp_ch_irq = -1;
+	mxcfbi->fb_suspended = false;
 
 	if (pdev->id == 0) {
 		ipu_disp_set_global_alpha(mxcfbi->ipu_ch, true, 0x80);
