@@ -441,12 +441,9 @@ static int mxcfb_set_par(struct fb_info *fbi)
 		}
 	}
 
-#if !(defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1))
-	/* FIXME this lines of code doesnt allow to run the dual head... */
 	if (mxc_fbi->next_blank != FB_BLANK_UNBLANK ||
-		mxc_fbi->fb_suspended)
+	    mxc_fbi->fb_suspended)
 		return retval;
-#endif
 
 	_setup_disp_channel1(fbi);
 
