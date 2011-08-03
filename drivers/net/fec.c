@@ -327,6 +327,9 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	/* Trigger transmission start */
 	writel(0, fep->hwp + FEC_X_DES_ACTIVE);
+#ifdef CONFIG_ARCH_MXS
+	udelay(100);
+#endif
 
 	/* If this was the last BD in the ring, start at the beginning again. */
 	if (status & BD_ENET_TX_WRAP)
