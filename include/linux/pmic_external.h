@@ -41,7 +41,9 @@
 
 #include <linux/ioctl.h>
 #include <linux/pmic_status.h>
+#ifdef __KERNEL__
 #include <linux/spi/spi.h>
+#endif /*__KERNEL__*/
 
 /*!
  * This is the enumeration of versions of PMIC

@@ -18,7 +18,9 @@
 #define _FSL_DEVICE_H_
 
 #include <linux/types.h>
+#ifdef __KERNEL__
 #include <linux/cdev.h>
+#endif /*__KERNEL__*/
 
 /*
  * Some conventions on how we handle peripherals on Freescale chips
