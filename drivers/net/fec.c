@@ -250,6 +250,7 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	unsigned short	status;
 	unsigned long	estatus;
 	unsigned long flags;
+	int i = 0;
 
 	if (!fep->link) {
 		/* Link is down or autonegotiation is in progress. */
@@ -325,10 +326,18 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 			| BD_ENET_TX_LAST | BD_ENET_TX_TC);
 	bdp->cbd_sc = status;
 
+#ifdef CONFIG_ARCH_MXS
+	/* Trigger transmission start */
+		writel(0, fep->hwp + FEC_X_DES_ACTIVE);
+		while ( i++ < 5 ) {
+			while (readl(fep->hwp + FEC_X_DES_ACTIVE) == 1)
+				continue;
+			udelay(10);
+			writel(0, fep->hwp + FEC_X_DES_ACTIVE);
+		}
+#else
 	/* Trigger transmission start */
 	writel(0, fep->hwp + FEC_X_DES_ACTIVE);
-#ifdef CONFIG_ARCH_MXS
-	udelay(100);
 #endif
 
 	/* If this was the last BD in the ring, start at the beginning again. */
