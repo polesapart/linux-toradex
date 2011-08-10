@@ -250,7 +250,9 @@ fec_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	unsigned short	status;
 	unsigned long	estatus;
 	unsigned long flags;
+#ifdef CONFIG_ARCH_MXS
 	int i = 0;
+#endif
 
 	if (!fep->link) {
 		/* Link is down or autonegotiation is in progress. */
