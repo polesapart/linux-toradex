@@ -231,6 +231,10 @@ static void _ipu_di_data_wave_config(int di,
 				     int access_size, int component_size)
 {
 	u32 reg;
+
+	if(di < 0)
+		return;
+
 	reg = (access_size << DI_DW_GEN_ACCESS_SIZE_OFFSET) |
 	    (component_size << DI_DW_GEN_COMPONENT_SIZE_OFFSET);
 	__raw_writel(reg, DI_DW_GEN(di, wave_gen));
@@ -240,6 +244,9 @@ static void _ipu_di_data_pin_config(int di, int wave_gen, int di_pin, int set,
 				    int up, int down)
 {
 	u32 reg;
+
+	if(di < 0)
+		return;
 
 	reg = __raw_readl(DI_DW_GEN(di, wave_gen));
 	reg &= ~(0x3 << (di_pin * 2));
@@ -259,6 +266,9 @@ static void _ipu_di_sync_config(int di, int wave_gen,
 				int cnt_up, int cnt_down)
 {
 	u32 reg;
+
+	if(di < 0)
+		return;
 
 	if ((run_count >= 0x1000) || (offset_count >= 0x1000) || (repeat_count >= 0x1000) ||
 		(cnt_up >= 0x400) || (cnt_down >= 0x400)) {
@@ -448,6 +458,9 @@ void __ipu_dp_csc_setup(int dp, struct dp_csc_param_t dp_csc_param,
 	u32 reg;
 	const int (*coeff)[5][3];
 
+	if(dp < 0)
+		return;
+
 	if (dp_csc_param.mode >= 0) {
 		reg = __raw_readl(DP_COM_CONF(dp));
 		reg &= ~DP_COM_CONF_CSC_DEF_MASK;
@@ -593,6 +606,9 @@ void _ipu_dp_uninit(ipu_channel_t channel)
 void _ipu_dc_init(int dc_chan, int di, bool interlaced, uint32_t pixel_fmt)
 {
 	u32 reg = 0;
+
+	if(di < 0)
+		return;
 
 	if ((dc_chan == 1) || (dc_chan == 5)) {
 		if (interlaced) {
@@ -1067,6 +1083,9 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 	struct clk *di_parent;
 
 	dev_dbg(g_ipu_dev, "panel size = %d x %d\n", width, height);
+
+	if(disp < 0)
+		return EINVAL;
 
 	if ((v_sync_width == 0) || (h_sync_width == 0))
 		return EINVAL;
@@ -1565,6 +1584,11 @@ void ipu_uninit_sync_panel(int disp)
 	uint32_t reg;
 	uint32_t di_gen;
 
+	if(disp < 0) {
+		// Overlay, do nothing
+		return;
+	}
+
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	di_gen = __raw_readl(DI_GENERAL(disp));
@@ -1587,6 +1611,11 @@ int ipu_init_async_panel(int disp, int type, uint32_t cycle_time,
 	u32 ser_conf = 0;
 	u32 div;
 	u32 di_clk = clk_get_rate(g_ipu_clk);
+
+	if(disp < 0) {
+		// Overlay, do nothing
+		return -EINVAL;;
+	}
 
 	/* round up cycle_time, then calcalate the divider using scaled math */
 	cycle_time += (1000000000UL / di_clk) - 1;
