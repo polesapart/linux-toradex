@@ -86,7 +86,7 @@ extern int __init mx53_ccwmx53js_init_da9052(void);
 
 static iomux_v3_cfg_t mx53_ccwmx53js_pads[] = {
 	/* I2C3 */
-	MX53_PAD_GPIO_3__I2C3_SCL,
+	MX53_PAD_GPIO_5__I2C3_SCL,
 	MX53_PAD_GPIO_6__I2C3_SDA,
 };
 
