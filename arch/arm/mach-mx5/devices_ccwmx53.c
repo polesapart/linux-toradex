@@ -49,6 +49,7 @@
 #include <mach/iomux-mx53.h>
 #include <video/ad9389.h>
 #include <linux/smc911x.h>
+#include <linux/fec.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -833,6 +834,22 @@ void ccwmx53_register_nand(void)
 #else
 void ccwmx53_register_nand(void) {}
 #endif
+
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+static struct fec_platform_data fec_pdata = {
+	.phy = PHY_INTERFACE_MODE_RMII,
+};
+
+void ccwmx53_register_fec(void)
+{
+	/* TODO, reset the PHY? */
+	gpio_fec_active();
+	mxc_register_device(&mxc_fec_device, &fec_pdata);
+}
+#else
+void ccwmx53_register_fec(void) {}
+#endif
+
 
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 struct smsc911x_platform_config ccwmx53_smsc9118 = {

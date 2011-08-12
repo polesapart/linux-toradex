@@ -20,10 +20,12 @@ extern struct mxc_spi_master mxcspi1_data ;
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);
 void ccwmx53_register_ext_eth(void);
+void ccwmx53_register_fec(void);
 int __init ccwmx5x_init_fb(void);
 
 void gpio_smsc911x_active(void);
 void gpio_sdhc_active(int interface);
+void gpio_fec_active(void);
 
 
 /* framebuffer settings */

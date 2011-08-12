@@ -281,6 +281,27 @@ void gpio_video_inactive(int vif, u32 pad)
 EXPORT_SYMBOL(gpio_video_active);
 EXPORT_SYMBOL(gpio_video_inactive);
 
+#if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
+static iomux_v3_cfg_t ccwmx53_fec_pads[] = {
+	MX53_PAD_FEC_MDC__FEC_MDC,
+	MX53_PAD_FEC_MDIO__FEC_MDIO,
+	MX53_PAD_FEC_REF_CLK__FEC_TX_CLK,
+	MX53_PAD_FEC_RX_ER__FEC_RX_ER,
+	MX53_PAD_FEC_CRS_DV__FEC_RX_DV,
+	MX53_PAD_FEC_RXD1__FEC_RDATA_1,
+	MX53_PAD_FEC_RXD0__FEC_RDATA_0,
+	MX53_PAD_FEC_TX_EN__FEC_TX_EN,
+	MX53_PAD_FEC_TXD1__FEC_TDATA_1,
+	MX53_PAD_FEC_TXD0__FEC_TDATA_0,
+};
+
+void gpio_fec_active(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_fec_pads,
+					 ARRAY_SIZE(ccwmx53_fec_pads));
+}
+#endif
+
 #if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 static iomux_v3_cfg_t ccwmx53_smsc911x_pads[] = {
 	MX53_PAD_EIM_EB3__GPIO2_31,

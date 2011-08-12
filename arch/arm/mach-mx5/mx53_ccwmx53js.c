@@ -43,7 +43,6 @@
 #include <linux/ipu.h>
 #include <linux/mxcfb.h>
 #include <linux/pwm_backlight.h>
-#include <linux/fec.h>
 #include <linux/ahci_platform.h>
 #include <linux/gpio_keys.h>
 #include <mach/common.h>
@@ -289,6 +288,7 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_sdio(1);
 	ccwmx53_register_sdio(2);
 	ccwmx53_register_nand();
+	ccwmx53_register_fec();
 	ccwmx53_register_ext_eth();
 	ccwmx5x_init_fb();
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH

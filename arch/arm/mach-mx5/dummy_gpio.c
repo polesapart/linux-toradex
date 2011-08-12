@@ -79,9 +79,6 @@ EXPORT_SYMBOL(gpio_usbotg_hs_active);
 void gpio_usbotg_hs_inactive(void) {}
 EXPORT_SYMBOL(gpio_usbotg_hs_inactive);
 
-void gpio_fec_active(void) {}
-EXPORT_SYMBOL(gpio_fec_active);
-
 void gpio_fec_inactive(void) {}
 EXPORT_SYMBOL(gpio_fec_inactive);
 
