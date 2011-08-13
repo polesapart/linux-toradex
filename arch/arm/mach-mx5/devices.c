@@ -693,7 +693,8 @@ static void mxc_nop_release(struct device *dev)
 }
 
 /* I2C controller and device data */
-#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE) || \
+    defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 
 static struct resource mxci2c1_resources[] = {
 	{
@@ -750,7 +751,7 @@ static struct mxc_i2c_platform_data mxci2c3_data = {
 
 struct platform_device mxci2c_devices[] = {
 	{
-		.name = "mxc_i2c",
+		.name = "imx-i2c",
 		.id = 0,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -760,7 +761,7 @@ struct platform_device mxci2c_devices[] = {
 		.resource = mxci2c1_resources,
 	},
 	{
-		.name = "mxc_i2c",
+		.name = "imx-i2c",
 		.id = 1,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -770,7 +771,7 @@ struct platform_device mxci2c_devices[] = {
 		.resource = mxci2c2_resources,
 	},
 	{
-		.name = "mxc_i2c",
+		.name = "imx-i2c",
 		.id = 2,
 		.dev = {
 		    .release = mxc_nop_release,
