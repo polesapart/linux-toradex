@@ -41,5 +41,6 @@ void gpio_fec_active(void);
 #define SECOND_TS_IRQ_PIN		MX53_GPIO(1,0)		/* GPIO_1_0 */
 #define SECOND_TS_SPI_SS_PIN		MX53_GPIO(4,5)		/* GPIO_4_5 / ECSPI1_RDY */
 #define CCWMX53_MMA7455_IRQ_GPIO	MX53_GPIO(4,4)		/* GPIO_4_4 */
+#define CCWMX53_DA9052_IRQ_GPIO		MX53_GPIO(7,11)		/* GPIO7_11 */
 
 #endif /* __DEVICES_CCWMX53_H_ */

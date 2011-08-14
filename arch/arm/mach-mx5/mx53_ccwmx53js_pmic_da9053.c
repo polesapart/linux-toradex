@@ -38,6 +38,8 @@
 #include <mach/gpio.h>
 #include <mach/hardware.h>
 
+#include "devices_ccwmx53.h"
+
 #define DA9052_LDO(max, min, rname, suspend_mv) \
 {\
 	.constraints = {\
@@ -234,15 +236,16 @@ static void da9052_init_ssc_cache(struct da9052 *da9052)
 }
 
 
-#define MX53_CCWMX53_DA9052_IRQ			(6*32 + 11)	/* GPIO7_11 */
 
 static int __init ccwmx53js_da9052_init(struct da9052 *da9052)
 {
-	/* Configuring for DA9052 interrupt servce */
-	/* s3c_gpio_setpull(DA9052_IRQ_PIN, S3C_GPIO_PULL_UP);*/
+	/* Configuring for DA905x interrupt line */
+	mxc_iomux_v3_setup_pad(MX53_PAD_GPIO_16__GPIO7_11);
+	gpio_request(CCWMX53_DA9052_IRQ_GPIO, "pmic_irq");
+	gpio_direction_input(CCWMX53_DA9052_IRQ_GPIO);
 
 	/* Set interrupt as LOW LEVEL interrupt source */
-	set_irq_type(gpio_to_irq(MX53_CCWMX53_DA9052_IRQ), IRQF_TRIGGER_LOW);
+	set_irq_type(gpio_to_irq(CCWMX53_DA9052_IRQ_GPIO), IRQF_TRIGGER_LOW);
 
 	da9052_init_ssc_cache(da9052);
 
@@ -262,7 +265,7 @@ static struct da9052_platform_data __initdata da9052_plat = {
 
 static struct i2c_board_info __initdata da9052_i2c_device = {
 	I2C_BOARD_INFO(DA9052_SSC_I2C_DEVICE_NAME, DA9052_I2C_ADDR >> 1),
-	.irq = gpio_to_irq(MX53_CCWMX53_DA9052_IRQ),
+	.irq = gpio_to_irq(CCWMX53_DA9052_IRQ_GPIO),
 	.platform_data = &da9052_plat,
 };
 
