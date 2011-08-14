@@ -22,6 +22,7 @@ void ccwmx53_register_nand(void);
 void ccwmx53_register_ext_eth(void);
 void ccwmx53_register_fec(void);
 int __init ccwmx5x_init_fb(void);
+int __init ccwmx53_init_i2c_devices(void);
 
 void gpio_smsc911x_active(void);
 void gpio_sdhc_active(int interface);
@@ -37,7 +38,8 @@ void gpio_fec_active(void);
 
 #define MX53_GPIO(port,pin)		((port - 1) * 32 + pin)
 #define CCWMX53_EXT_IRQ_GPIO		MX53_GPIO(4,2)		/* GPIO_4_2 */
-#define SECOND_TS_IRQ_PIN			MX53_GPIO(1,0)		/* GPIO_1_0 */
+#define SECOND_TS_IRQ_PIN		MX53_GPIO(1,0)		/* GPIO_1_0 */
 #define SECOND_TS_SPI_SS_PIN		MX53_GPIO(4,5)		/* GPIO_4_5 / ECSPI1_RDY */
+#define CCWMX53_MMA7455_IRQ_GPIO	MX53_GPIO(4,4)		/* GPIO_4_4 */
 
 #endif /* __DEVICES_CCWMX53_H_ */

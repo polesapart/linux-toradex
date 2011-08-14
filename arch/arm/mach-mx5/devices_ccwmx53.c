@@ -934,6 +934,27 @@ unmap_weim:
 void ccwmx53_register_ext_eth(void) {}
 #endif
 
+static struct i2c_board_info ccwmx53_i2c_devices[] __initdata = {
+#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
+	{
+		I2C_BOARD_INFO("mma7455l", 0x1d),
+		.irq = gpio_to_irq(CCWMX53_MMA7455_IRQ_GPIO),
+	},
+#endif
+};
+
+int __init ccwmx53_init_i2c_devices(void)
+{
+#if defined(CONFIG_INPUT_MMA7455L) || defined(CONFIG_INPUT_MMA7455L_MODULE)
+	/* Accelerometer interrupt line configuration */
+	mxc_iomux_v3_setup_pad(MX53_PAD_GPIO_14__GPIO4_4);
+	gpio_request(CCWMX53_MMA7455_IRQ_GPIO, "accelerometer_irq");
+	gpio_direction_input(CCWMX53_MMA7455_IRQ_GPIO);
+#endif
+
+	return i2c_register_board_info(2, ccwmx53_i2c_devices , ARRAY_SIZE(ccwmx53_i2c_devices) );
+}
+
 #if (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
 #if defined(CONFIG_CCWMX5X_SECOND_TOUCH)
 static int touch_pendown_state(void)

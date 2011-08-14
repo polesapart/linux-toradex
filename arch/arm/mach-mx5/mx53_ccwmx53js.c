@@ -85,7 +85,7 @@ u8 ccwmx51_swap_bi = 1;
 extern int __init mx53_ccwmx53js_init_da9052(void);
 
 static iomux_v3_cfg_t mx53_ccwmx53js_pads[] = {
-	/* I2C3 */
+	/* I2C3, connected to the DA9053 and MMA7455  */
 	MX53_PAD_GPIO_5__I2C3_SCL,
 	MX53_PAD_GPIO_6__I2C3_SDA,
 };
@@ -291,6 +291,7 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_fec();
 	ccwmx53_register_ext_eth();
 	ccwmx5x_init_fb();
+	ccwmx53_init_i2c_devices();
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx53_init_2nd_touch();
 #endif
