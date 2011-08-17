@@ -7,7 +7,9 @@ menuconfig FIM_CORE
 	depends on PROCESSOR_NS921X
         select FW_LOADER
         select HOTPLUG
+        select FIM_ONE_SDIO if MACH_CWME9210 || MACH_CWME9210JS
 	default n
+	default y if MACH_CWME9210 || MACH_CWME9210JS
 	help
 	  This option adds the support for the Flexible Interfaces Modules (FIM).
 	  Currently only the NS921X processors are supporting the FIM-devices.
@@ -85,7 +87,7 @@ config FIM_SERIAL_MODULE
 	bool "Serial as loadable module"
 	depends on !FIM_ZERO_SERIAL_SELECTED && !FIM_ONE_SERIAL_SELECTED && (!FIM_ZERO || !FIM_ONE)
 	select FIM_ZERO_SERIAL
-	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210)
+	select FIM_ONE_SERIAL if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
 	select SERIAL_CORE
 	help
           Enables the FIM Serial loadable module. The number of FIMs to be
@@ -95,7 +97,7 @@ config FIM_CAN_MODULE
 	bool "CAN as loadable module"
 	depends on CAN && CAN_DEV && !FIM_ZERO_CAN_SELECTED && !FIM_ONE_CAN_SELECTED && (!FIM_ZERO || !FIM_ONE)
 	select FIM_ZERO_CAN
-	select FIM_ONE_CAN if !(MACH_CME9210JS || MACH_CME9210)
+	select FIM_ONE_CAN if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
 	help
           Enables the FIM CAN as loadable module. The number of FIMs to be
 	  handled by this driver can be passed with the module parameter 'fims'
@@ -104,7 +106,7 @@ config FIM_USB_MODULE
         bool "USB serial port driver as loadable module"
         depends on SERIAL_CORE && !FIM_ZERO_USB_SELECTED && !FIM_ONE_USB_SELECTED
         select FIM_ZERO_USB
-        select FIM_ONE_USB if !(MACH_CME9210JS || MACH_CME9210)
+        select FIM_ONE_USB if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
         help
           Enables the FIM USB Device Controller as loadable module.
           The number of FIMs to be handled by this driver can be passed with the
@@ -114,7 +116,7 @@ config FIM_SPI_MODULE
         bool "SPI port driver as loadable module"
         depends on SPI && !FIM_ZERO_SPI_SELECTED && !FIM_ONE_SPI_SELECTED
         select FIM_ZERO_SPI
-        select FIM_ONE_SPI if !(MACH_CME9210JS || MACH_CME9210)
+        select FIM_ONE_SPI if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
         help
           Enables the FIM SPI Device controller as a loadable module.
 
@@ -160,8 +162,8 @@ config FIM_ZERO_SDIO_CD
 
 config FIM_ZERO_SDIO_CD_GPIO
 	int "GPIO to use for Card Detect on FIM 0"
-	default 101 if !(MACH_CME9210JS || MACH_CME9210)
-	default 9 if (MACH_CME9210JS || MACH_CME9210)
+	default 101 if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
+	default 9 if (MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
 	depends on FIM_ZERO_SDIO_CD
 	help
 	  Specify the GPIO number to use for the SDIO Card Detect signal.
@@ -187,8 +189,8 @@ config FIM_ZERO_SDIO_WP
 
 config FIM_ZERO_SDIO_WP_GPIO
 	int "GPIO to use for Write Protect on FIM 0"
-	default 100 if !(MACH_CME9210JS || MACH_CME9210)
-	default 6 if (MACH_CME9210JS || MACH_CME9210)
+	default 100 if !(MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
+	default 6 if (MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210)
 	depends on FIM_ZERO_SDIO_WP
 	help
 	  Specify the GPIO number to use for the SDIO Write Protect signal.
@@ -280,7 +282,7 @@ endchoice
 config FIM_ZERO_SPI_WANT_MASTER_CS
     bool "Enable master CS signal from FIM0 SPI port"
     default y
-	depends on MACH_CC9P9215JS || MACH_CCW9P9215JS || (MACH_CME9210JS && !CME9210JS_SERIAL_PORTA)
+	depends on MACH_CC9P9215JS || MACH_CCW9P9215JS || ((MACH_CME9210JS || MACH_CWME9210JS) && !CME9210JS_SERIAL_PORTA)
     help
         If you are developing for a cme9210js, then you should probably disable this
         feature since it uses the same pin as RX data on the cme9210js serial port A.
@@ -400,7 +402,7 @@ config FIM_ZERO_SPIDEV_CS2
 
 config FIM_ZERO_SPI_CS_3_ENABLED
     bool "Enable FIM0 SPI Chip Select 3"
-    depends on !MACH_CME9210JS
+    depends on !MACH_CME9210JS && !MACH_CWME9210JS
     help
         Set this value to y if you intend to use the chip select
         on this port.  This will cause the driver to
@@ -497,7 +499,7 @@ config FIM_ONE_SDIO_WP_GPIO
 
 config FIM_ONE_SERIAL_RXTX
 	bool "Serial driver 2-wires (RX/TX)"
-	depends on !MACH_CME9210 && !MACH_CME9210JS
+	depends on !MACH_CME9210 && !MACH_CME9210JS && !MACH_CWME9210 && !MACH_CWME9210JS
 	select FIM_ONE_SERIAL_SELECTED
 	help
 	  Enables the FIM-serial driver without the HW flow control (CTS and RTS
@@ -505,21 +507,21 @@ config FIM_ONE_SERIAL_RXTX
 
 config FIM_ONE_SERIAL_CTSRTS
 	bool "Serial driver 4-wires (RX/TX/CTS/RTS)"
-	depends on !MACH_CME9210 && !MACH_CME9210JS
+	depends on !MACH_CME9210 && !MACH_CME9210JS && !MACH_CWME9210 && !MACH_CWME9210JS
 	select FIM_ONE_SERIAL_SELECTED
 	help
 	  Enables the FIM-serial driver with HW flow control support.
 
 config FIM_ONE_CAN_SELECTED
 	bool "CAN-bus driver"
-	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS)
+	depends on CAN && CAN_DEV && (!MACH_CME9210 && !MACH_CME9210JS && !MACH_CWME9210 && !MACH_CWME9210JS)
 	select FIM_ONE_CAN
 	help
 	  Enables the FIM-CAN bus driver.
 
 config FIM_ONE_W1_SELECTED
 	bool "1-wire driver"
-	depends on !MACH_CME9210 && !MACH_CME9210JS && !FIM_ZERO_W1_SELECTED
+	depends on !MACH_CME9210 && !MACH_CME9210JS && !MACH_CWME9210 && !MACH_CWME9210JS && !FIM_ZERO_W1_SELECTED
 	select FIM_ONE_W1
 	select W1_MASTER_GPIO
 	help
@@ -528,7 +530,7 @@ config FIM_ONE_W1_SELECTED
 
 config FIM_ONE_USB_SELECTED
         bool "USB serial port driver"
-        depends on !MACH_CME9210JS
+        depends on !MACH_CME9210JS && !MACH_CWME9210JS
         select FIM_ONE_USB
 	select SERIAL_CORE
         help
@@ -536,7 +538,7 @@ config FIM_ONE_USB_SELECTED
 
 config FIM_ONE_SPI_SELECTED
         bool "SPI driver"
-        depends on SPI && !MACH_CME9210JS
+        depends on SPI && !MACH_CME9210JS && !MACH_CWME9210JS
 	select FIM_ONE_SPI
         help
           Enables the SPI port driver on FIM 1.  This interface will always

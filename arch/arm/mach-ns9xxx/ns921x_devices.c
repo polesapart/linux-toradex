@@ -691,7 +691,7 @@ void __init ns9xxx_add_device_ns921x_fim_sdio0(void)
 void __init ns9xxx_add_device_ns921x_fim_sdio0(void) {}
 #endif
 
-#if defined(CONFIG_FIM_ONE_SDIO)
+#if defined(CONFIG_FIM_ONE_SDIO) && !defined(CONFIG_MACH_CWME9210JS) && !defined(CONFIG_MACH_CWME9210)
 void __init ns9xxx_add_device_ns921x_fim_sdio1(void)
 {
 	extern struct platform_device ns921x_fim_sdio1;
