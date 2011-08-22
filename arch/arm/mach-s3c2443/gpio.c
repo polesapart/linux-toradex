@@ -248,13 +248,15 @@ static int s3c2443_gpio_get(struct gpio_chip *chip, unsigned gpio)
 	if (pin < S3C2410_GPIO_BANKB) {
 		dat = s3c2443_gpio_read_porta(pin);
 		if (pin > S3C2410_GPA7)
-			return (dat & (1 << ((offs - S3C2410_GPA7 - 1) * 2)));
+			dat &= (1 << ((offs - S3C2410_GPA7 - 1) * 2));
 		else
-			return dat & (1 << (offs * 2));
+			dat &= (1 << (offs * 2));
 	}
 	else {
-		return s3c2410_gpio_getpin(pin);
+		dat = s3c2410_gpio_getpin(pin);
 	}
+
+	return dat ? 1 : 0;
 }
 
 static void s3c2443_gpio_set(struct gpio_chip *chip, unsigned gpio, int value)
