@@ -475,25 +475,25 @@ endmenu
 
 menu "I2C Interface options"
 
-config I2C_MXC_SELECT1
+config I2C_MX_SELECT1
 	bool "Enable I2C1 module"
 	default y
-	depends on I2C_IMX
+	depends on I2C_MXC || I2C_IMX
 	depends on !MACH_CCWMX51JS
 	help
 	  Enable MX51/MX53 I2C1 module.
 
-config I2C_MXC_SELECT2
+config I2C_MX_SELECT2
 	bool "Enable I2C2 module"
 	default n
-	depends on I2C_IMX
+	depends on I2C_MXC || I2C_IMX
 	help
 	  Enable MX51/MX53 I2C2 module.
 
-config I2C_MXC_SELECT3
+config I2C_MX_SELECT3
 	bool "Enable I2C3 module"
 	default n
-	depends on I2C_IMX
+	depends on I2C_MXC || I2C_IMX
 	help
 	  Enable MX51/MX53 I2C3 module.
 

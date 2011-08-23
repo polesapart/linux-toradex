@@ -751,7 +751,11 @@ static struct mxc_i2c_platform_data mxci2c3_data = {
 
 struct platform_device mxci2c_devices[] = {
 	{
+#if defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 		.name = "imx-i2c",
+#else
+		.name = "mxc_i2c",
+#endif
 		.id = 0,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -761,7 +765,11 @@ struct platform_device mxci2c_devices[] = {
 		.resource = mxci2c1_resources,
 	},
 	{
+#if defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 		.name = "imx-i2c",
+#else
+		.name = "mxc_i2c",
+#endif
 		.id = 1,
 		.dev = {
 		    .release = mxc_nop_release,
@@ -771,7 +779,11 @@ struct platform_device mxci2c_devices[] = {
 		.resource = mxci2c2_resources,
 	},
 	{
+#if defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 		.name = "imx-i2c",
+#else
+		.name = "mxc_i2c",
+#endif
 		.id = 2,
 		.dev = {
 		    .release = mxc_nop_release,

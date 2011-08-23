@@ -498,9 +498,10 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_video2_pins[] = {
 #endif
 #endif
 
-#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE) || \
+	defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_i2c_pins[] = {
-#if defined (CONFIG_I2C_MXC_SELECT1)
+#if defined (CONFIG_I2C_MX_SELECT1)
 	{
 		MX51_PIN_SD2_CMD, IOMUX_CONFIG_ALT1 | IOMUX_CONFIG_SION,
 		(PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_HYS_ENABLE |
@@ -514,7 +515,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_i2c_pins[] = {
 		MUX_IN_I2C1_IPP_SCL_IN_SELECT_INPUT, INPUT_CTL_PATH2,
 	},
 #endif
-#ifdef CONFIG_I2C_MXC_SELECT2
+#ifdef CONFIG_I2C_MX_SELECT2
 	{
 		MX51_PIN_GPIO1_2, IOMUX_CONFIG_ALT2 | IOMUX_CONFIG_SION,
 		(PAD_CTL_SRE_FAST | PAD_CTL_ODE_OPENDRAIN_ENABLE | PAD_CTL_DRV_HIGH |
@@ -528,7 +529,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_i2c_pins[] = {
 		MUX_IN_I2C2_IPP_SDA_IN_SELECT_INPUT, INPUT_CTL_PATH3,
 	},
 #endif
-#ifdef CONFIG_I2C_MXC_SELECT3
+#ifdef CONFIG_I2C_MX_SELECT3
 	{
 		MX51_PIN_I2C1_CLK, IOMUX_CONFIG_ALT0 | IOMUX_CONFIG_SION,
 		(PAD_CTL_ODE_OPENDRAIN_NONE | PAD_CTL_HYS_ENABLE |

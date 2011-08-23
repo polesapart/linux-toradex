@@ -19,8 +19,13 @@ extern struct smc911x_platdata ccwmx51_smsc9118;
 extern struct mxc_mmc_platform_data mmc1_data ;
 extern struct mxc_mmc_platform_data mmc3_data;
 extern struct resource mxcfb_resources[1];
-extern struct imxi2c_platform_data mxci2c_data;
+#ifdef CONFIG_I2C_MXC
+extern struct mxc_i2c_platform_data mxci2c_data;
 extern struct mxc_i2c_platform_data mxci2c_hs_data;
+#endif
+#ifdef CONFIG_I2C_IMX
+extern struct imxi2c_platform_data mxci2c_data;
+#endif
 extern struct mxc_spi_master mxcspi1_data ;
 extern struct mxc_spi_master mxcspi2_data ;
 extern struct mxc_spi_master mxcspi3_data ;

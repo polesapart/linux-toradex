@@ -57,6 +57,7 @@
 #include <linux/smc911x.h>
 #include "displays/displays.h"
 #include <mach/mxc_iim.h>
+#include <mach/i2c.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -345,13 +346,20 @@ int __init ccwmx51_init_i2c2(void)
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
 
-struct imxi2c_platform_data mxci2c_data = {
-	.bitrate = 100000,
+#ifdef CONFIG_I2C_MXC
+struct mxc_i2c_platform_data mxci2c_data = {
+	.i2c_clk = 100000,
 };
 
 struct mxc_i2c_platform_data mxci2c_hs_data = {
 	.i2c_clk = 400000,
 };
+#endif
+#ifdef CONFIG_I2C_IMX
+struct imxi2c_platform_data mxci2c_data = {
+	.bitrate = 100000,
+};
+#endif
 
 #if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
 #if defined(CONFIG_CCWMX5X_SECOND_TOUCH)
