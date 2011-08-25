@@ -179,7 +179,7 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 	unsigned long vidcon0, vidcon1, vidtcon0, vidtcon1, vidtcon2;
 	unsigned long wincon0, wincon1;
 	unsigned long vidosd0a, vidosd0b;
-	
+
 	/* Compute number of clocks per frame */
 	hsync_cnt = display->lower_margin + /* VBPD */
 		display->upper_margin +     /* VFPD */
@@ -197,17 +197,17 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 	lcd_clk = clk_get_rate(fbi->clk);
         clkval = (lcd_clk / pixel_clk) - 1;
 
-	if (abs((lcd_clk / clkval) - pixel_clk) > 
+	if (abs((lcd_clk / clkval) - pixel_clk) >
 	    abs((lcd_clk / (clkval + 1)) - pixel_clk))
 		clkval++;
 
 	printk_debug("Calculated CLKVAL is 0x%x (pixel clk: %lu | lcd clk %lu)\n",
 		     clkval, pixel_clk, lcd_clk);
-	
+
 	vidcon1 = readl(fbi->io + S3C24XX_LCD_VIDCON1);
 	vidcon0 = readl(fbi->io + S3C24XX_LCD_VIDCON0);
 	wincon1 = readl(fbi->io + S3C24XX_LCD_WINCON1);
-	
+
 	/* Configure the clock */
 	vidcon0 &= ~(S3C24XX_LCD_VIDCON0_CLKSEL_MASK |
 		     S3C24XX_LCD_VIDCON0_CLKVAL_MASK);
@@ -216,7 +216,7 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 
 	vidcon0 |=	(display->vidcon0 | S3C24XX_LCD_VIDCON0_CLKVAL(clkval));
 	vidcon1 |=	display->vidcon1;
-	
+
 	vidtcon0 =	S3C24XX_LCD_VIDTCON0_VSPW(display->vsync_len - 1) |
 			S3C24XX_LCD_VIDTCON0_VFPD(display->upper_margin - 1) |
 			S3C24XX_LCD_VIDTCON0_VBPD(display->lower_margin - 1);
@@ -252,7 +252,7 @@ static void s3c2443fb_activate_var(struct fb_info *info)
 	writel(info->fix.smem_start, fbi->io + S3C24XX_LCD_VIDW00ADD0B0);
 	writel(info->fix.smem_start + info->fix.smem_len,
 	       fbi->io + S3C24XX_LCD_VIDW00ADD1B0);
-		
+
 	printk_debug("vidcon0 0x%08x | vidcon1 0x%08x\n",
 		     (unsigned int)vidcon0,
 		     (unsigned int)vidcon1);
@@ -281,9 +281,9 @@ static int s3c2443fb_set_par(struct fb_info *info)
 		break;
 	}
 
-	
+
 	info->fix.line_length = (var->xres_virtual * var->bits_per_pixel) / 8;
-	
+
 	/* activate this new configuration */
 	s3c2443fb_activate_var(info);
 	return 0;
@@ -334,7 +334,7 @@ static void schedule_palette_update(struct s3c2443fb_info *fbi,
 	void __iomem *irq_base = fbi->irq_base;
 
 	printk_debug("Calling %s\n", __func__);
-	
+
 	local_irq_save(flags);
 
 	fbi->palette_buffer[regno] = val;
@@ -457,7 +457,7 @@ static int s3c2443fb_init_registers(struct fb_info *info)
 
 	/* modify the gpio(s) with interrupts set (bjd) */
 	local_irq_save(flags);
-	/* Select display type and config the gpios */  
+	/* Select display type and config the gpios */
 	writel(readl(S3C24XX_MISCCR) | (1 << 28), S3C24XX_MISCCR);
 	modify_gpio(S3C2410_GPCUP,  mach_info->gpcup,  mach_info->gpcup_mask);
 	modify_gpio(S3C2410_GPCCON, mach_info->gpccon, mach_info->gpccon_mask);
@@ -476,7 +476,7 @@ static inline void s3c2443fb_unmap_video_memory(struct fb_info *info)
 			      info->screen_base, info->fix.smem_start);
 }
 
-int __init s3c2443_fb_probe(struct platform_device *pdev)
+int __devinit s3c2443_fb_probe(struct platform_device *pdev)
 {
 	struct s3c2443fb_info *info;
 	struct s3c2443fb_display *display;
@@ -500,9 +500,9 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 	}
 
 	if (mach_info->num_displays > 1) {
-		/* 
+		/*
 		 * If there are multiple displays, use the one specified
-		 * through the command line parameter vith following 
+		 * through the command line parameter vith following
 		 * format video=displayfb:<display_name>
 		 */
 		if (fb_get_options("displayfb", &option)) {
@@ -521,12 +521,12 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 		/* If there is only one, that is what we use */
 		mach_info->display = mach_info->displays;
 	}
-  
+
 	if ((display = mach_info->display) == NULL) {
 		dev_err(&pdev->dev, "no display information available\n");
 		return -EINVAL;
 	}
-	
+
 	/* Allocate the frame buffer for this device */
 	fbinfo = framebuffer_alloc(sizeof(struct s3c2443fb_info), &pdev->dev);
 	if (!fbinfo)
@@ -535,7 +535,7 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, fbinfo);
 
 	/* Use the private data for our internal settings */
-	info = fbinfo->par;	
+	info = fbinfo->par;
 	info->dev = &pdev->dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -583,7 +583,7 @@ int __init s3c2443_fb_probe(struct platform_device *pdev)
 
 	info->clk = clk_get(NULL, mach_info->display->clock_source);
 	if (!info->clk || IS_ERR(info->clk)) {
-		dev_err(&pdev->dev, "failed to get lcd clock source %s\n", 
+		dev_err(&pdev->dev, "failed to get lcd clock source %s\n",
 			mach_info->display->clock_source);
 		ret = -ENOENT;
 		goto release_regs;
@@ -659,13 +659,13 @@ static int s3c2443_fb_remove(struct platform_device *pdev)
 		clk_put(info->clk);
 		info->clk = NULL;
 	}
-	
+
 	iounmap(info->io);
 	release_resource(info->mem);
 	kfree(info->mem);
 	platform_set_drvdata(pdev, NULL);
 	framebuffer_release(fbinfo);
-	
+
 	return 0;
 }
 
@@ -692,14 +692,14 @@ static int s3c2443_fb_resume(struct platform_device *dev)
 {
 	struct fb_info	   *fbinfo = platform_get_drvdata(dev);
 	struct s3c2443fb_info *info = fbinfo->par;
-	
+
 	clk_enable(info->clk);
 	msleep(1);
 	s3c2443fb_init_registers(fbinfo);
 	s3c2443_check_var(&fbinfo->var, fbinfo);
 	s3c2443fb_activate_var(fbinfo);
 	s3c2443fb_lcd_enable(info, 1);
-	
+
 	return 0;
 }
 #else
