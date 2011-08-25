@@ -141,7 +141,7 @@ dmadbg_showregs(const char *fname, int line, struct s3c2410_dma_chan *chan)
  *
  * Update DMA stats from timeout info
 */
-
+#if 0
 static void
 s3c2410_dma_stats_timeout(struct s3c2410_dma_stats *stats, int val)
 {
@@ -155,12 +155,13 @@ s3c2410_dma_stats_timeout(struct s3c2410_dma_stats *stats, int val)
 
 	stats->timeout_avg += val;
 }
+#endif
 
 /* s3c2410_dma_waitforload
  *
  * wait for the DMA engine to load a buffer, and update the state accordingly
 */
-
+#if 0
 static int
 s3c2410_dma_waitforload(struct s3c2410_dma_chan *chan, int line)
 {
@@ -200,6 +201,7 @@ s3c2410_dma_waitforload(struct s3c2410_dma_chan *chan, int line)
 
 	return 0;
 }
+#endif
 
 /* s3c2410_dma_loadbuffer
  *
@@ -970,6 +972,7 @@ static int s3c2410_dma_flush(struct s3c2410_dma_chan *chan)
 	return 0;
 }
 
+#if 0
 static int s3c2410_dma_started(struct s3c2410_dma_chan *chan)
 {
 	unsigned long flags;
@@ -1005,6 +1008,7 @@ static int s3c2410_dma_started(struct s3c2410_dma_chan *chan)
 	return 0;
 
 }
+#endif
 
 int
 s3c2410_dma_ctrl(unsigned int channel, enum s3c2410_chan_op op)
