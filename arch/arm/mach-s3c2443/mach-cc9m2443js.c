@@ -60,7 +60,6 @@
 #include <plat/cpu.h>
 #include <plat/hsmmc.h>
 #include <plat/ts.h>
-#include <plat/s3c_ts.h>
 #include <plat/udc.h>
 #include <plat/pcmcia.h>
 #include <mach/irqs.h>

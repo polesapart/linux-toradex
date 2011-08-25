@@ -9,7 +9,7 @@
  * the Free Software Foundation.
  */
 /*
- * In future, this driver should be replaced by the general adc core support 
+ * In future, this driver should be replaced by the general adc core support
  * for the Samsung platforms, plus the corresponding hwmon driver and the touch
  * driver that uses that common adc support.
  */
@@ -32,7 +32,7 @@
 #include <linux/slab.h>
 
 #include <plat/regs-adc.h>
-#include <plat/s3c_ts.h>
+#include <plat/ts.h>
 
 #define DRIVER_NAME	"s3c2443-adc"
 #ifndef NUM_CHANNELS
@@ -66,7 +66,7 @@ static u16 adc_read_sample(struct s3c2443_adc_dev *adcdev, int channel)
 	writel(channel, adcdev->ioaddr + S3C2410_ADCMUX);
 	adccon = readl(adcdev->ioaddr + S3C2410_ADCCON);
 	writel(adccon | S3C2410_ADCCON_ENABLE_START, adcdev->ioaddr + S3C2410_ADCCON);
-	
+
 	while (timeout--) {
 		adccon = readl(adcdev->ioaddr + S3C2410_ADCCON);
 		if (adccon & S3C2410_ADCCON_ECFLG)
@@ -90,7 +90,7 @@ static ssize_t s3c2443_adc_read(struct file *filep, char __user *buff,
 	val8 = val12 >> 4;
 
 	count = (count > 2) ? 2 : count;
-	
+
 	if (count == 1)
 		copy_to_user(buff, &val8, count);
 	else
@@ -155,14 +155,14 @@ static int __devinit s3c2443_adc_probe(struct platform_device *pdev)
 	if (!adc->res_iomem) {
 		pr_err(DRIVER_NAME ": unable to find iomem resource\n");
 		ret = -ENOENT;
-		goto error_get_res; 
+		goto error_get_res;
 	}
-	/* 
+	/*
 	 * Dont request mem region becasue the address space is shared with the touch
          * driver. This will be resolved in future when both drivers use the same core
-	 * adc funcionality 
+	 * adc funcionality
 	 */
-	adc->ioaddr = ioremap(adc->res_iomem->start, 
+	adc->ioaddr = ioremap(adc->res_iomem->start,
 			      adc->res_iomem->end - adc->res_iomem->start + 1);
 	if (!adc->ioaddr) {
 		pr_err(DRIVER_NAME ": unable to remap IO memory\n");
@@ -185,7 +185,7 @@ static int __devinit s3c2443_adc_probe(struct platform_device *pdev)
 		goto error_get_clk;
 	}
 	clk_enable(adc->clk);
-	
+
 	/* initialize mutexes for every channel */
 	for (i = 0; i < NUM_CHANNELS; i++)
 		init_MUTEX(&adc->channel[i].sem);
@@ -236,7 +236,7 @@ int s3c2443_adc_remove(struct platform_device *pdev)
 
 	if (!adc)
 		return -EIO;
-  
+
 	/* lock/check all channels */
 	for (i = 0; i < NUM_CHANNELS; i++) {
 		if (down_trylock(&adc->channel[i].sem))
@@ -251,7 +251,7 @@ int s3c2443_adc_remove(struct platform_device *pdev)
 	iounmap(adc->ioaddr);
 	kfree(adc);
 	platform_set_drvdata(pdev, NULL);
-      
+
 	return 0;
 
 adc_remove_unlock:
@@ -287,7 +287,7 @@ static int s3c2443_adc_resume(struct platform_device *pdev)
 	writel(adc->adccon, adc->ioaddr + S3C2410_ADCCON);
 	writel(adc->adctsc, adc->ioaddr + S3C2410_ADCTSC);
 	writel(adc->adcdly, adc->ioaddr + S3C2410_ADCDLY);
-		
+
 	return 0;
 }
 #else

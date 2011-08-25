@@ -17,6 +17,21 @@ struct s3c2410_ts_mach_info {
 	void    (*cfg_gpio)(struct platform_device *dev);
 };
 
+/* Digi driver */
+struct s3c_ts_mach_info {
+       int             delay;
+       int             presc;
+       int             oversampling_shift;
+       int             probes;
+       int             trigger_ms;
+       unsigned long   xmin;
+       unsigned long   xmax;
+       unsigned long   ymin;
+       unsigned long   ymax;
+};
+
+void __init set_s3c_ts_info(struct s3c_ts_mach_info *hard_s3c_ts_info);
+
 extern void s3c24xx_ts_set_platdata(struct s3c2410_ts_mach_info *);
 
 /* defined by architecture to configure gpio */

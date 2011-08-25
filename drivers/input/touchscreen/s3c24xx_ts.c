@@ -65,7 +65,7 @@
 #include <mach/irqs.h>
 
 #include <mach/map.h>
-#include <plat/s3c_ts.h>
+#include <plat/ts.h>
 #include <plat/regs-adc.h>
 
 
@@ -186,15 +186,15 @@ static inline int s3c_ts_calc_sample(struct s3c_ts *ts)
 	info = ts->info;
 	px = py = 0;
 	for (cnt = 0, offset = 0; offset < info->probes / 3; offset++) {
-		
-		tx = filter_raw_values(ts, &ts->xps[offset * 3]);		
+
+		tx = filter_raw_values(ts, &ts->xps[offset * 3]);
 		if (ts->skip_this_sample)
 			continue;
 
 		ty = filter_raw_values(ts, &ts->yps[offset * 3]);
 		if (ts->skip_this_sample)
 			continue;
-		
+
 		cnt++;
 		px += tx;
 		py += ty;
@@ -234,14 +234,14 @@ static void touch_timer_fire(unsigned long data)
 			ts->xps[ts->sample] = ts->xp;
 			ts->yps[ts->sample] = ts->yp;
 			ts->sample += 1;
-			
+
 			if (ts->sample == info->probes) {
 				if (s3c_ts_calc_sample(ts)) {
 					printk_debug("XP %lu | YP %lu\n",
 						     ts->xp, ts->yp);
 					input_report_abs(ts->indev, ABS_X, ts->xp);
 					input_report_abs(ts->indev, ABS_Y, ts->yp);
-					
+
 					input_report_key(ts->indev, BTN_TOUCH, 1);
 					input_report_abs(ts->indev, ABS_PRESSURE, 1);
 					input_sync(ts->indev);
@@ -314,10 +314,10 @@ static irqreturn_t stylus_action(int irq, void *dev_id)
 	struct s3c_ts *ts;
 	unsigned int adccon;
 	struct s3c_ts_mach_info *info;
-	
+
 	ts = (struct s3c_ts *)dev_id;
 	info = ts->info;
-	
+
 	disable_irq(ts->irq_tc);
 
 	data0 = readl(ts->base + S3C2410_ADCDAT0);
@@ -326,7 +326,7 @@ static irqreturn_t stylus_action(int irq, void *dev_id)
 
 	ts->xp = (data0 & S3C2410_ADCDAT0_XPDATA_MASK);
 	ts->yp = (data1 & S3C2410_ADCDAT1_YPDATA_MASK);
-	
+
 	ts->timer_enabled = 1;
 
 	/* Use the correct values for updating the timer */
@@ -340,7 +340,7 @@ static irqreturn_t stylus_action(int irq, void *dev_id)
 
 	if (!atomic_read(&ts->closed))
 		enable_irq(ts->irq_tc);
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -350,7 +350,7 @@ static void s3c_ts_close(struct input_dev *dev)
 	struct s3c_ts *ts;
 
 	printk_debug("Close function called\n");
-	
+
 	ts = input_get_drvdata(dev);
 	atomic_set(&ts->closed, 1);
 	disable_irq(ts->irq_adc);
@@ -365,7 +365,7 @@ static int s3c_ts_open(struct input_dev *dev)
 	struct s3c_ts *ts;
 
 	printk_debug("Open function called\n");
-	
+
 	ts = input_get_drvdata(dev);
 	atomic_set(&ts->closed, 0);
 	enable_irq(ts->irq_adc);
@@ -395,8 +395,8 @@ static int __devinit s3c_ts_probe(struct platform_device *pdev)
 		printk_err("Found an invalid configuration.\n");
 		return -EINVAL;
 	}
-	
-	
+
+
 	ts = kzalloc(sizeof(struct s3c_ts), GFP_KERNEL);
 	ts->info = info;
 	indev = input_allocate_device();
@@ -404,7 +404,7 @@ static int __devinit s3c_ts_probe(struct platform_device *pdev)
 		if (ts)
 			kfree(ts);
 		if (indev)
-			kfree(indev);				
+			kfree(indev);
 		return -ENOMEM;
 	} else
 		ts->indev = indev;
@@ -474,7 +474,7 @@ static int __devinit s3c_ts_probe(struct platform_device *pdev)
 		goto err_put_clock;
 	}
  	printk_debug("Got ADC IRQ %i\n", ts->irq_adc);
-	
+
 	ts->irq_tc = platform_get_irq(pdev, 1);
 	err = request_irq(ts->irq_tc, stylus_updown, 0, "s3c_updown", ts);
 	if (err) {
@@ -483,11 +483,11 @@ static int __devinit s3c_ts_probe(struct platform_device *pdev)
 	}
  	printk_debug("Got TC IRQ %i\n", ts->irq_tc);
 
-	
+
 	/* Disable the interrupts first */
 	disable_irq(ts->irq_adc);
 	disable_irq(ts->irq_tc);
-	
+
 	printk_info("%s successfully loaded\n", s3c_ts_name);
 
 	/* All went ok, so register to the input system */
@@ -503,23 +503,23 @@ static int __devinit s3c_ts_probe(struct platform_device *pdev)
 
 	input_set_drvdata(indev, ts);
 	platform_set_drvdata(pdev, ts);
-	
+
 	return 0;
-	
+
  err_free_tcirq:
 	free_irq(ts->irq_tc, ts);
 
  err_free_adcirq:
 	free_irq(ts->irq_adc, ts);
-	
+
  err_put_clock:
 	clk_disable(ts->clk);
 	clk_put(ts->clk);
-	
+
  err_free_ts:
 	input_free_device(ts->indev);
 	kfree(ts);
-	
+
 	return err;
 }
 
@@ -528,14 +528,14 @@ static int __devexit s3c_ts_remove(struct platform_device *pdev)
 	struct s3c_ts *ts;
 
 	ts = platform_get_drvdata(pdev);
-	
+
 	printk_debug("Removing the device with the ID %i\n", pdev->id);
 
 	if (!atomic_read(&ts->closed)) {
 		disable_irq(ts->irq_adc);
 		disable_irq(ts->irq_tc);
 	}
-	
+
 	free_irq(ts->irq_adc, ts);
 	free_irq(ts->irq_tc, ts);
 
@@ -578,7 +578,7 @@ static int s3c_ts_resume(struct platform_device *pdev)
 	struct s3c_ts *ts;
 
 	ts = platform_get_drvdata(pdev);
-	
+
 	clk_enable(ts->clk);
 	writel(ts->adccon, ts->base + S3C2410_ADCCON);
 	writel(ts->adctsc, ts->base + S3C2410_ADCTSC);
