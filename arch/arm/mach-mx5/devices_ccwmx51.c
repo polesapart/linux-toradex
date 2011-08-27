@@ -47,6 +47,7 @@
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
+#include <mach/i2c.h>
 #include <video/ad9389.h>
 #include "board-ccwmx51.h"
 #include "iomux.h"
@@ -344,8 +345,8 @@ int __init ccwmx51_init_i2c2(void)
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
 
-struct mxc_i2c_platform_data mxci2c_data = {
-	.i2c_clk = 100000,
+struct imxi2c_platform_data mxci2c_data = {
+	.bitrate = 100000,
 };
 
 struct mxc_i2c_platform_data mxci2c_hs_data = {
