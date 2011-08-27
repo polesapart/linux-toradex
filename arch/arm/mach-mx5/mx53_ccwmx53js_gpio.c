@@ -115,14 +115,14 @@ EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
 
 
-#ifdef ESDHCI_MXC_SELECT1
+#if defined(ESDHCI_MXC_SELECT1)
 static iomux_v3_cfg_t ccwmx53_mmc1_pads[] = {
-	MX53_PAD_SD1_CLK__SD1_CLK,
-	MX53_PAD_SD1_CMD__SD1_CMD,
-	MX53_PAD_SD1_DATA0__SD1_DATA0,
+	MX53_PAD_SD1_CLK__ESDHC1_CLK,
+	MX53_PAD_SD1_CMD__ESDHC1_CMD,
+	MX53_PAD_SD1_DATA0__ESDHC1_DAT0,
 #if defined(ESDHCI_MXC_SELECT1_8BIT_PORT) || defined(ESDHCI_MXC_SELECT1_4BIT_PORT)
-	MX53_PAD_SD1_DATA1__SD1_DATA1,
-	MX53_PAD_SD1_DATA2__SD1_DATA2,
+	MX53_PAD_SD1_DATA1__ESDHC1_DAT1,
+	MX53_PAD_SD1_DATA2__ESDHC1_DAT2,
 	MX53_PAD_SD1_DATA3__SD1_DATA3,
 #endif /* (ESDHCI_MXC_SELECT1_8BIT_PORT) || (ESDHCI_MXC_SELECT1_4BIT_PORT) */
 #ifdef ESDHCI_MXC_SELECT1_8BIT_PORT
@@ -193,7 +193,7 @@ static iomux_v3_cfg_t ccwmx53_mmc3_pads[] = {
 void gpio_sdhc_active(int interface)
 {
 	switch (interface) {
-#ifdef ESDHCI_MXC_SELECT1
+#if defined(ESDHCI_MXC_SELECT1)
 	case 0:
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc1_pads,
 						 ARRAY_SIZE(ccwmx51_mmc1_pads));
@@ -223,6 +223,25 @@ EXPORT_SYMBOL(gpio_sdhc_active);
 void gpio_sdhc_inactive(int module) {}
 EXPORT_SYMBOL(gpio_sdhc_inactive);
 
+#if defined(CONFIG_MACH_CCWMX53JS) || defined(CONFIG_MACH_CCWMX53JS)
+static iomux_v3_cfg_t ccwmx53_wireless_pads[] = {
+	MX53_PAD_SD1_CLK__ESDHC1_CLK,
+	MX53_PAD_SD1_CMD__ESDHC1_CMD,
+	MX53_PAD_SD1_DATA0__ESDHC1_DAT0,
+	MX53_PAD_SD1_DATA1__ESDHC1_DAT1,
+	MX53_PAD_SD1_DATA2__ESDHC1_DAT2,
+	MX53_PAD_SD1_DATA3__ESDHC1_DAT3,
+};
+
+void gpio_wireless_active(void)
+{
+	/* Wireless module is connected to SD1 interface */
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_wireless_pads,
+					 ARRAY_SIZE(ccwmx53_wireless_pads));
+}
+#else
+void gpio_wireless_active(int module) {}
+#endif
 
 
 #if defined(CONFIG_CCXMX5X_DISP0)

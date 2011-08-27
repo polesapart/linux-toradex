@@ -43,5 +43,6 @@
 
 /* Second touch settings */
 void ccwmx53_init_2nd_touch(void);
+void gpio_wireless_active(void);
 
 #endif		/* __ASM_ARCH_MXC_BOARD_CCWMX53_H__ */

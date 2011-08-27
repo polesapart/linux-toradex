@@ -254,6 +254,7 @@ static void __init mx53_ccwmx53js_io_init(void)
 					ARRAY_SIZE(mx53_ccwmx53js_pads));
 	mxc_iomux_v3_setup_multiple_pads(ccwmx53js_keys_leds_pads,
 					 ARRAY_SIZE(ccwmx53js_keys_leds_pads));
+	gpio_wireless_active();
 }
 
 /*!
