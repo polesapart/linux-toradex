@@ -270,11 +270,12 @@ static int s3c24xx_gpiolib_banka_input(struct gpio_chip *chip, unsigned offset)
 static int s3c24xx_gpiolib_banka_output(struct gpio_chip *chip,
 					unsigned offset, int value)
 {
+	struct s3c_gpio_chip *ourchip = to_s3c_gpio(chip);
+	void __iomem *base = ourchip->base;
 	unsigned long flags;
 
-	printk("%s(offset=%d)\n", __func__, offset);
 	local_irq_save(flags);
-	if (offset < S3C2410_GPB(0)) {
+	if (S3C2410_GPACON == base) {
 		s3c2443_gpio_cfgpin(offset, 0);
 	}
 	else {

@@ -101,13 +101,18 @@ static void s3c_gpiolib_set(struct gpio_chip *chip,
 	unsigned long dat;
 
 	s3c_gpio_lock(ourchip, flags);
-
-	dat = __raw_readl(base + 0x04);
-	dat &= ~(1 << offset);
-	if (value)
-		dat |= 1 << offset;
-	__raw_writel(dat, base + 0x04);
-
+	if (S3C2410_GPACON == base) {
+		/* PORT A, special handling */
+		s3c2443_gpio_setpin(offset, value);
+	}
+	else {
+		/* rest of PORTs */
+		dat = __raw_readl(base + 0x04);
+		dat &= ~(1 << offset);
+		if (value)
+			dat |= 1 << offset;
+		__raw_writel(dat, base + 0x04);
+	}
 	s3c_gpio_unlock(ourchip, flags);
 }
 
