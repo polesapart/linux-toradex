@@ -135,9 +135,6 @@ void s3c2443_gpio_set_udp(unsigned int pin, int val)
 	unsigned long flags;
 	unsigned long up;
 
-	if (pin < S3C2410_GPB(0))
-		return;
-
 	port = s3c_gpiolib_getchip(pin);
 	if (port == NULL)
 		return;
@@ -202,14 +199,6 @@ int s3c2443_gpio_extpull(unsigned int pin, int pullup)
 	return 0;
 }
 
-/* Gets the s3c2410 GPIO number from a s3c2443 GPIO number */
-static inline unsigned int s3c2410_gpio_num(struct gpio_chip *chip, unsigned gpio)
-{
-	struct s3c_gpio_chip *port = to_s3c_gpio(chip);
-
-	return (gpio + (unsigned int)port->base);
-}
-
 int s3c2443_gpio_getirq(unsigned gpio)
 {
 	return gpio_to_irq(gpio);
@@ -257,9 +246,20 @@ static int s3c2443_gpio_wakeup_conf(struct gpio_chip *chip, unsigned gpio, int e
 	return ret;
 }
 
-static void s3c2443_set_pullupdown(struct gpio_chip *chip, unsigned gpio, int value)
+static void s3c2443_set_pullupdown(struct gpio_chip *chip, unsigned offset, int value)
 {
-	s3c2443_gpio_set_udp( s3c2410_gpio_num(chip, gpio), value);
+	struct s3c_gpio_chip *ourchip = to_s3c_gpio(chip);
+	void __iomem *base = ourchip->base;
+	int pin = offset + chip->base;
+
+	/* The following ports don't have pull-up/down control */
+	if (S3C2410_GPACON == base ||
+	    S3C2410_GPCCON == base ||
+	    S3C2410_GPDCON == base ||
+	    S3C2410_GPFCON == base)
+		return;
+
+	s3c2443_gpio_set_udp(pin, value);
 }
 
 static int s3c24xx_gpiolib_banka_input(struct gpio_chip *chip, unsigned offset)
