@@ -87,6 +87,8 @@ static void _wake_up_enable(struct fsl_usb2_platform_data *pdata, bool enable)
 		* cycles of the standby clock(32k Hz) , that is 0.094 ms*/
 		udelay(100);
 	}
+	// Digi AG - Halting the suspend locks without this delay.
+	mdelay(3);
 }
 
 static void _phy_lowpower_suspend(struct fsl_usb2_platform_data *pdata, bool enable)
