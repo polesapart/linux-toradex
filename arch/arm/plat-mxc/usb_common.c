@@ -453,6 +453,7 @@ static int usb_register_remote_wakeup(struct platform_device *pdev)
 	}
 	irq = res->start;
 	pdev->dev.power.can_wakeup = 1;
+	enable_irq_wake(irq);
 
 	return 0;
 }
@@ -500,8 +501,7 @@ int fsl_usb_host_init(struct platform_device *pdev)
 	if (xops->init)
 		xops->init(xops);
 
-#if !defined(CONFIG_MODULE_CCXMX5X)
-	// USB wakeup not currently supported
+#ifdef CONFIG_USB_SUSPEND
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("%s port is not a wakeup source.\n", pdata->name);
 #endif
