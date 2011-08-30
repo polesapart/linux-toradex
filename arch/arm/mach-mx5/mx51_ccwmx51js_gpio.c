@@ -1089,7 +1089,8 @@ void __init ccwmx51_io_init(void)
 	}
 #endif
 
-#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE) || \
+	defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
         for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_i2c_pins); i++) {
                 mxc_request_iomux(ccwmx51_iomux_i2c_pins[i].pin,
 				ccwmx51_iomux_i2c_pins[i].mux_mode);
