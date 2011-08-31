@@ -30,7 +30,7 @@ void gpio_fec_active(void);
 
 
 /* framebuffer settings */
-#if defined(CONFIG_CCWMX5X_DISP1) && defined(CONFIG_CCWMX5X_DISP2)
+#if defined(CONFIG_CCWMX5X_DISP0) && defined(CONFIG_CCWMX5X_DISP1)
 #define FB_MEM_SIZE		SZ_32M
 #else
 #define FB_MEM_SIZE		SZ_16M

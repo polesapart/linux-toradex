@@ -213,7 +213,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-#if defined(CONFIG_CCWMX5X_DISP1) && defined(CONFIG_CCWMX5X_DISP2)
+#if defined(CONFIG_CCWMX5X_DISP0) && defined(CONFIG_CCWMX5X_DISP1)
 		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
 #endif
 		/*reserve memory for gpu*/

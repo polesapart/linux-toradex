@@ -603,7 +603,7 @@ comment "To enable the Display 2 Video interface, disable the FEC (under network
 comment "and set 18bit color mode for the Display 1"
 	  depends on FEC || CCXMX5X_DISP0_RGB888
 
-config CCWMX51_DISP1
+config CCXMX5X_DISP1
 	bool "Enable Display Interface 2 (secondary)"
 	depends on !FEC && !CCXMX5X_DISP0_RGB888
 	help

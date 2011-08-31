@@ -273,7 +273,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+#if defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1)
 		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
 #endif
 		/*reserve memory for gpu*/
@@ -292,7 +292,7 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
-#if defined(CONFIG_CCWMX51_DISP1) && defined(CONFIG_CCWMX51_DISP2)
+#if defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1)
 			mxcfb_resources[1].start =
 				mxcfb_resources[0].end + 1;
 			mxcfb_resources[1].end =

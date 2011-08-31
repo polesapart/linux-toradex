@@ -389,7 +389,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_video1_pins[] = {
                 MX51_PIN_DISP1_DAT21, IOMUX_CONFIG_ALT0,
                 DISP1_PAD0,
         },
-#if !defined(CONFIG_CCWMX51_DISP1)
+#if !defined(CONFIG_CCXMX5X_DISP1)
         {       /* DISP1 DAT22 */
                 MX51_PIN_DISP1_DAT22, IOMUX_CONFIG_ALT0,
                 DISP1_PAD0,
@@ -402,7 +402,7 @@ static struct mxc_iomux_pin_cfg ccwmx51_iomux_video1_pins[] = {
 };
 #endif
 
-#if defined(CONFIG_CCWMX51_DISP1)
+#if defined(CONFIG_CCXMX5X_DISP1)
 #define DISP2_PAD0		(PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST)
 static struct mxc_iomux_pin_cfg ccwmx51_iomux_video2_pins[] = {
         /* This interface can be enabled only if the FEC interface is disabled */
@@ -1392,7 +1392,7 @@ void gpio_video_active(int vif, u32 pad)
 		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN11), 0);
 	}
 #endif
-#if defined(CONFIG_CCWMX51_DISP1)
+#if defined(CONFIG_CCXMX5X_DISP1)
 	if (vif == 1) {
 		for (i = 0; i < ARRAY_SIZE(ccwmx51_iomux_video2_pins); i++) {
 			mxc_request_iomux(ccwmx51_iomux_video2_pins[i].pin,
@@ -1423,7 +1423,7 @@ void gpio_video_active(int vif, u32 pad)
 		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DI1_PIN12), 0);
 #endif
 	}
-#endif /* defined(CONFIG_CCWMX51_DISP1) */
+#endif /* defined(CONFIG_CCXMX5X_DISP1) */
 }
 
 void gpio_video_inactive(int vif, u32 pad)
