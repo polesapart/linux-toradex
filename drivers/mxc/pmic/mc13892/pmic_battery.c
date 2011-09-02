@@ -131,6 +131,8 @@ int disable_chg_timer;
 struct workqueue_struct *chg_wq;
 struct delayed_work chg_work;
 
+static int pmic_restart_charging(void);
+
 static int pmic_set_chg_current(unsigned short curr)
 {
 	unsigned int mask;
@@ -802,7 +804,7 @@ success:
 
 static struct platform_driver pmic_battery_driver_ldm = {
 	.driver = {
-		   .name = "pmic_battery",
+		   .name = "mc13892_battery",
 		   .bus = &platform_bus_type,
 		   },
 	.probe = pmic_battery_probe,
