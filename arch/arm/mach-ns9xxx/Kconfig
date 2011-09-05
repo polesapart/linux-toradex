@@ -171,10 +171,18 @@ config MACH_CME9210JS
 	select MODULE_CME9210
 	select BOARD_JSCME9210
 
+config MACH_CWME9210
+	bool "Digi Connect Wi-ME 9210"
+	select MODULE_CWME9210
+	select WEXT_PRIV
+	select WEXT_SPY
+
 config MACH_CWME9210JS
 	bool "Digi Connect Wi-ME 9210 on Devboard"
 	select MODULE_CWME9210
 	select BOARD_JSCWME9210
+	select WEXT_PRIV
+	select WEXT_SPY
 
 config MACH_INC20OTTER
 	bool "Inc20-Otter"

@@ -56,6 +56,8 @@ config MACH_CCWMX51JS
 	bool "Support for the ConnectCore Wi-i.MX51 module, on the JSK base board"
 	select MODULE_CCXMX51
 	select LATE_CPU_CLK_ENABLE
+	select WEXT_PRIV
+	select WEXT_SPY
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX51 Embedded Module, on the
 	  JumpStart Kit base board. This includes specific configurations for the
@@ -65,6 +67,8 @@ config MACH_CCWMX51
 	bool "Support for the ConnectCore Wi-i.MX51 module"
 	select MODULE_CCXMX51
 	select LATE_CPU_CLK_ENABLE
+	select WEXT_PRIV
+	select WEXT_SPY
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX51 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
@@ -156,6 +160,8 @@ config MODULE_CCXMX53
 config MACH_CCWMX53JS
 	bool "Support for the ConnectCore Wi-i.MX53 module, on the JSK base board"
 	select MODULE_CCXMX53
+	select WEXT_PRIV
+	select WEXT_SPY
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX53 Embedded Module, on the
 	  JumpStart Kit base board. This includes specific configurations for the
@@ -164,6 +170,8 @@ config MACH_CCWMX53JS
 config MACH_CCWMX53
 	bool "Support for the ConnectCore Wi-i.MX53 module"
 	select MODULE_CCXMX53
+	select WEXT_PRIV
+	select WEXT_SPY
 	help
 	  Include support for the Digi ConnectCore Wi-i.MX53 Embedded Module, on a
 	  custom board. The machine file should be modified to include support for
