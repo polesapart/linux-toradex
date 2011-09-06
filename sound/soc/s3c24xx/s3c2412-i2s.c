@@ -230,13 +230,13 @@ struct snd_soc_dai s3c2443_i2s_dai = {
 	.playback = {
 		.channels_min	= 2,
 		.channels_max	= 2,
-		.rates		= S3C2412_I2S_RATES,
+		.rates		= S3C2443_I2S_RATES,
 		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.capture = {
 		.channels_min	= 2,
 		.channels_max	= 2,
-		.rates		= S3C2412_I2S_RATES,
+		.rates		= S3C2443_I2S_RATES,
 		.formats	= SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.ops = &s3c2443_i2s_dai_ops,
