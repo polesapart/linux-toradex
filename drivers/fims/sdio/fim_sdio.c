@@ -97,7 +97,8 @@ NS921X_FIM_NUMBERS_PARAM(fims_number);
 /* Other module parameters */
 #if defined(MODULE)
 #if defined(CONFIG_FIM_APPKIT_BOARD)
-#if defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS)
+#if defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS) || \
+    defined(CONFIG_MACH_CWME9210) || defined(CONFIG_MACH_CWME9210JS)
 static int cd0_gpio = 9;
 static int cd0_gpio_func = NS921X_GPIO_FUNC_2;
 static int wp0_gpio = 6;
@@ -111,7 +112,8 @@ static int wp0_gpio = 100;
 static int cd1_gpio = 101;
 static int cd1_gpio_func = NS921X_GPIO_FUNC_2;
 static int wp1_gpio = 100;
-#endif /* defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS) */
+#endif /* defined(CONFIG_MACH_CME9210) || defined(CONFIG_MACH_CME9210JS) ||
+	  defined(CONFIG_MACH_CWME9210) || defined(CONFIG_MACH_CWME9210JS) */
 #else
 static int cd0_gpio = FIM_GPIO_DONT_USE;
 static unsigned int cd0_gpio_func = NS921X_GPIO_FUNC_GPIO;
@@ -208,8 +210,6 @@ module_param_named(wp1, wp1_gpio, int, 0644);
 #define FIM_SDIO_MAXBLKSIZE 		4095
 #define FIM_SDIO_BUFSIZE 		FIM_SDIO_DMA_BUFFER_SIZE
 #define FIM_SDIO_BLKATONCE 		FIM_SDIO_DMA_TX_BUFFERS
-
-
 
 /* Used for the Card Detect timer */
 #define FIM_SDIO_CD_POLLING_TIMER			(HZ / 2)
@@ -1080,7 +1080,6 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		opctl |= FIM_SDIO_CONTROL2_SKIP_CRC;
 	}
 
-
 	fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL2_REG, opctl);
 
 	txcmd->cmd[0] = SDIO_HOST_TX_HDR | (cmd->opcode & SDIO_HOST_CMD_MASK);
@@ -1399,8 +1398,6 @@ static int fim_sdio_unregister_port(struct fim_sdio_t *port)
 	return 0;
 }
 
-
-
 /* Register the new FIM driver by the FIM-API */
 static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 				  struct fim_sdio_platform_data *pdata,
@@ -1632,8 +1629,6 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 	return retval;
 }
 
-
-
 static int __devinit fim_sdio_probe(struct platform_device *pdev)
 {
 	struct fim_sdio_t *port;
@@ -1819,8 +1814,6 @@ static int __init fim_sdio_init(void)
 	return retval;
 }
 
-
-
 /*
  * Free the requested resources (GPIOs, memory, drivers, etc.)
  * The following steps MUST be followed when unregistering the driver:
@@ -1835,7 +1828,5 @@ static void __exit fim_sdio_exit(void)
 	kfree(fim_sdios);
 }
 
-
 module_init(fim_sdio_init);
 module_exit(fim_sdio_exit);
-
