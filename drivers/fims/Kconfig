@@ -37,7 +37,7 @@ config FIM_APPKIT_BOARD
 
 config FIM_MODULES
 	bool "Enable FIM drivers as loadable modules"
-	depends on !FIM_ZERO || !FIM_ONE
+	depends on ((MACH_CC9P9215JS || MACH_CC9P9215 || MACH_CCW9P9215JS || MACH_CCW9P9215) && (!FIM_ZERO || !FIM_ONE)) || ((MACH_CME9210JS || MACH_CME9210 || MACH_CWME9210JS || MACH_CWME9210) && !FIM_ZERO)
 	help
 	  This option allows to build the FIM drivers as loadable modules
 	  rather than as built-in features.
@@ -47,7 +47,7 @@ if FIM_MODULES
 # -- These are the options for enabling the FIM-drivers as loadable modules
 config FIM_SDIO_MODULE
 	bool "SDIO as loadable module"
-	depends on MMC && MMC_BLOCK && !FIM_ZERO_SDIO_SELECTED && !FIM_ONE_SDIO_SELECTED && (!FIM_ZERO || !FIM_ONE)
+	depends on MMC && MMC_BLOCK && !FIM_ZERO_SDIO_SELECTED && !FIM_ONE_SDIO_SELECTED && (!FIM_ZERO || !FIM_ONE) && !MACH_CWME9210JS && !MACH_CWME9210
 	select FIM_ZERO_SDIO
 	select FIM_ONE_SDIO if !(MACH_CME9210JS || MACH_CME9210)
 	help
