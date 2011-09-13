@@ -293,6 +293,9 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_ext_eth();
 	ccwmx5x_init_fb();
 	ccwmx53_init_i2c_devices();
+
+	mx5_usbh1_init();
+
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx53_init_2nd_touch();
 #endif
