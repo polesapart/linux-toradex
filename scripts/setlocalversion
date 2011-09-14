@@ -66,6 +66,11 @@ scm_version()
 			fi
 		fi
 
+		# Check if a DEL tag exists
+		if del_tag="$(git describe --tags --exact-match --match 'del*' 2>/dev/null)"; then
+			printf '%s' - ${del_tag}
+		fi
+
 		# Is this git on svn?
 		if git config --get svn-remote.svn.url >/dev/null; then
 			printf -- '-svn%s' "`git svn find-rev $head`"
