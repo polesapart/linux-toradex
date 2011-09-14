@@ -811,29 +811,15 @@ void ccwmx51_gpio_spi_chipselect_active(int busnum, int ssb_pol, int chipselect)
 	case 1:
 		switch (chipselect) {
 		case 0x1:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
-				       (ssb_pol & mask) ?  0 : 1);
-#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
-			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
-#endif
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
 				       (ssb_pol & mask) ?  1 : 0);
 			break;
 		case 0x2:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
-				       (ssb_pol & mask) ?  0 : 1);
-#ifdef CONFIG_CCWMX5X_SECOND_TOUCH
-			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 1);
-#endif
 			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
 				       (ssb_pol & mask) ?  1 : 0);
 			break;
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 		case 0x4:
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS0),
-				       (ssb_pol & mask) ?  0 : 1);
-			gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSPI1_SS1),
-				       (ssb_pol & mask) ?  0 : 1);
 			gpio_set_value(IOMUX_TO_GPIO(SECOND_TS_SPI_SS_PIN), 0);
 			break;
 #endif
