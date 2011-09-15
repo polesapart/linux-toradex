@@ -133,10 +133,6 @@ static struct i2c_board_info i2c_devices[] __initdata = {
 
 static void __init mach_cwme9210js_init_machine(void)
 {
-	enum cme9210_variant variant;
-
-	variant = get_cme9210_variant();
-
 	/* register several system clocks */
 	ns921x_init_machine();
 
@@ -150,37 +146,31 @@ static void __init mach_cwme9210js_init_machine(void)
 	ns9xxx_add_device_cme9210_uarta_full();
 #endif
 #if defined(CONFIG_CME9210JS_SERIAL_PORT_ON_JTAG_CON)
-	if (CME9210_NEW_8M_FLASH == variant ||
-	    CME9210_NEW_4M_FLASH == variant ||
-	    CME9210_NEW_2M_FLASH == variant) {
-		if (!gpio_request(GPIO_MFGO, "mfgo") &&
-		    !gpio_request(GPIO_CLK, "clk")) {
-			gpio_configure_ns921x(GPIO_MFGO, NS921X_GPIO_OUTPUT,
-					      NS921X_GPIO_DONT_INVERT,
-					      NS921X_GPIO_FUNC_GPIO,
-					      NS921X_GPIO_DISABLE_PULLUP);
+	if (!gpio_request(GPIO_MFGO, "mfgo") &&
+	    !gpio_request(GPIO_CLK, "clk")) {
+		gpio_configure_ns921x(GPIO_MFGO, NS921X_GPIO_OUTPUT,
+				      NS921X_GPIO_DONT_INVERT,
+				      NS921X_GPIO_FUNC_GPIO,
+				      NS921X_GPIO_DISABLE_PULLUP);
 
-			gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_OUTPUT,
-					      NS921X_GPIO_DONT_INVERT,
-					      NS921X_GPIO_FUNC_GPIO,
-					      NS921X_GPIO_DISABLE_PULLUP);
+		gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_OUTPUT,
+				      NS921X_GPIO_DONT_INVERT,
+				      NS921X_GPIO_FUNC_GPIO,
+				      NS921X_GPIO_DISABLE_PULLUP);
 
-			gpio_set_value(GPIO_CLK, 0);
-			udelay(1);
-			gpio_set_value(GPIO_MFGO, 1);
-			udelay(1);
-			gpio_set_value(GPIO_CLK, 1);
-			udelay(1);
-			/* Ok, the buffers are enabled and we can free the clock... */
-			gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_INPUT,
-					      NS921X_GPIO_DONT_INVERT,
-					      NS921X_GPIO_FUNC_GPIO,
-					      NS921X_GPIO_DISABLE_PULLUP);
-			gpio_free(GPIO_CLK);
-			ns9xxx_add_device_cme9210_uartb_rxtx();
-		}
-	} else  {
-		ns9xxx_add_device_cme9210_uartc_rxtx();
+		gpio_set_value(GPIO_CLK, 0);
+		udelay(1);
+		gpio_set_value(GPIO_MFGO, 1);
+		udelay(1);
+		gpio_set_value(GPIO_CLK, 1);
+		udelay(1);
+		/* Ok, the buffers are enabled and we can free the clock... */
+		gpio_configure_ns921x(GPIO_CLK, NS921X_GPIO_INPUT,
+				      NS921X_GPIO_DONT_INVERT,
+				      NS921X_GPIO_FUNC_GPIO,
+				      NS921X_GPIO_DISABLE_PULLUP);
+		gpio_free(GPIO_CLK);
+		ns9xxx_add_device_cme9210_uartb_rxtx();
 	}
 #endif
 

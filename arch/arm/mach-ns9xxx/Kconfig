@@ -718,8 +718,8 @@ config CME9210JS_SERIAL_PORT_ON_JTAG_CON
         help
           Enable serial port on the JTAG-header. Only RX/TX lines are available.
           Note that the serial port is different depending on the Digi Connect
-          ME 9210 variant:
-            -Port B on the Connect ME 9210 that supports CAN.
+          ME or Wi-ME 9210 variant:
+            -Port B on the Connect ME 9210 with CAN and Digi Connect Wi-ME 9210.
             -Port C on others.
 
 config CME9210JS_SPI
