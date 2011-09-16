@@ -1069,6 +1069,8 @@ static int __devinit s3c2443_spi_probe(struct platform_device *pdev)
 
 	/* Setup and register the SPI master */
 	master->num_chipselect = pdata->num_chipselect;
+	/* the spi->mode bits understood by this driver: */
+	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 	master->setup          = s3c2443_spi_setup;
 	master->transfer       = s3c2443_spi_transfer;
 	master->bus_num	       = pdata->bus_num;
