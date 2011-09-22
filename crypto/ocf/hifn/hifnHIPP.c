@@ -53,7 +53,7 @@
 #include <linux/miscdevice.h>
 #include <asm/io.h>
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 
 #include "hifnHIPPreg.h"
 #include "hifnHIPPvar.h"

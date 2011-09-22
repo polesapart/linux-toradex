@@ -72,7 +72,7 @@
 #include <linux/delay.h>
 #include <linux/skbuff.h>
 
-#include "cryptodev.h"
+#include <crypto/cryptodev.h>
 #include "uio.h"
 
 #include "cpa.h"

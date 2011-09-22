@@ -29,7 +29,7 @@
 #include <asm/scatterlist.h>
 #include <linux/moduleparam.h>
 #include <linux/pci.h>
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 #include "pasemi_fnu.h"
 

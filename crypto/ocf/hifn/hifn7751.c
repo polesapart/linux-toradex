@@ -64,7 +64,7 @@ __FBSDID("$FreeBSD: src/sys/dev/hifn/hifn7751.c,v 1.40 2007/03/21 03:42:49 sam E
 #include <linux/skbuff.h>
 #include <asm/io.h>
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 #include <hifn/hifn7751reg.h>
 #include <hifn/hifn7751var.h>

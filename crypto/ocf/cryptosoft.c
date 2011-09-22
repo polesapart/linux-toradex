@@ -50,7 +50,7 @@
 #include <linux/completion.h>
 #include <asm/scatterlist.h>
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 
 struct {

@@ -48,7 +48,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/time.h>
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include "rndtest.h"
 
 static struct rndtest_stats rndstats;

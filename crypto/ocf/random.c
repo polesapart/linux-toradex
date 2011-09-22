@@ -49,7 +49,7 @@
 #include <linux/unistd.h>
 #include <linux/poll.h>
 #include <linux/random.h>
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 
 #ifdef CONFIG_OCF_FIPS
 #include "rndtest.h"

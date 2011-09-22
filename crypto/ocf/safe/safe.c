@@ -54,7 +54,7 @@ __FBSDID("$FreeBSD: src/sys/dev/safe/safe.c,v 1.18 2007/03/21 03:42:50 sam Exp $
  * SafeNet SafeXcel-1141 hardware crypto accelerator
  */
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 #include <safe/safereg.h>
 #include <safe/safevar.h>

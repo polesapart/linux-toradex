@@ -186,7 +186,7 @@ struct session_op {
 	int		mackeylen;	/* mac key */
 	caddr_t		mackey;
 
-  	u_int32_t	ses;		/* returns: session # */ 
+  	u_int32_t	ses;		/* returns: session # */
 };
 
 struct session2_op {
@@ -198,7 +198,7 @@ struct session2_op {
 	int		mackeylen;	/* mac key */
 	caddr_t		mackey;
 
-  	u_int32_t	ses;		/* returns: session # */ 
+  	u_int32_t	ses;		/* returns: session # */
 	int		crid;		/* driver id + flags (rw) */
 	int		pad[4];		/* for future expansion */
 };

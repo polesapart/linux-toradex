@@ -54,7 +54,7 @@
 #include <IxOsServices.h>
 #include <IxOsCacheMMU.h>
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 
 #ifndef IX_MBUF_PRIV

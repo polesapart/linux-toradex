@@ -45,7 +45,7 @@
 #include <linux/crypto.h>
 #include <linux/interrupt.h>
 
-#include <cryptodev.h>
+#include <crypto/cryptodev.h>
 #include <uio.h>
 
 static int32_t			 null_id = -1;
