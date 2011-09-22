@@ -1118,7 +1118,7 @@ void mx28_cpx2_enet_io_lowerpower_exit(void)
 {}
 #endif
 
-void __init mx28_cpx2_init_pin_group(struct pin_desc *pins, unsigned count)
+static void __init mx28_cpx2_init_pin_group(struct pin_desc *pins, unsigned count)
 {
 	int i;
 	struct pin_desc *pin;
@@ -1163,6 +1163,27 @@ void __init mx28_cpx2_pins_init(void)
 		mx28_cpx2_init_pin_group(mx28_cpx2_gpmi_pins,
 						ARRAY_SIZE(mx28_cpx2_gpmi_pins));
 	}
+
+#if (defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)) \
+	&& (defined (CONFIG_LEDS_GPIO_PLATFORM) || defined (CONFIG_LEDS_GPIO_PLATFORM_MODULE) )
+	/*
+	 * The CPX2 platform uses GPIO 122 & 123 (aka 3_26 & 3_27) as network green &
+	 * yellow LEDs. These need at least 8mA drive strength. With this config
+	 * option, these pins are registered in mx28_cpx2.c with the leds-gpio
+	 * driver; however, neither the leds-gpio nor gpio drivers support setting the
+	 * drive strength of the GPIO pins; this is only supported in the MXS pinctrl
+	 * code, but if we try to initialize them here with init_pin_group(), this
+	 * routine calls gpio_request() to claim the pins, which then causes the
+	 * leds-gpio driver to fail with EBUSY when it tries to register them also.
+	 *
+	 * Therefore, we manually set the drive strength of these pins here, and
+	 * let the leds-gpio driver call gpio_request(). Note that we must supply
+	 * sysfs = 1 to prevent testing the gpio_request() lock.
+	 */
+
+	mxs_set_strength(PINID_SAIF1_SDATA0, PAD_8MA, 1, NULL);	// GPIO 122 / 3_26
+	mxs_set_strength(PINID_SPDIF,        PAD_8MA, 1, NULL);	// GPIO 123 / 3_27
+#endif
 
 #if defined(CONFIG_SPI_MXS) || defined(CONFIG_SPI_MXS_MODULE)
 	mx28_cpx2_init_pin_group(mx28_cpx2_spi_pins,
