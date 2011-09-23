@@ -38,7 +38,6 @@
 
 #include "epm.h"
 #include "iapiLow.h"
-#include "asm/delay.h"
 
 /* ****************************************************************************
  * Function Section
@@ -342,7 +341,6 @@ iapi_lowSetScript(channelDescriptor *cd_p, void *buf, unsigned short size,
 				 buf, (void *)(address));
 	/* Receive, polling method */
 	iapi_lowStartChannel(cd_p->channelNumber);
-	udelay(50);
 	iapi_lowSynchChannel(cd_p->channelNumber);
 }
 
