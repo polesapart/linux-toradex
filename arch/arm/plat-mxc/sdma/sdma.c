@@ -135,7 +135,7 @@ static void sdma_init_sleep(int channel)
 static void sdma_sleep_channel(int channel)
 {
 	while ((iapi_SDMAIntr & (1 << channel)) == 0) {
-		int timeout = 10; /* timeout 10ms */
+		int timeout = msecs_to_jiffies(10); /* timeout 10ms */
 		timeout = wait_event_interruptible_timeout(
 				sdma_sleep_queue[channel],
 				((iapi_SDMAIntr & (1 << channel)) !=
