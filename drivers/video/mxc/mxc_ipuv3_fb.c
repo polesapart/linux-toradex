@@ -1839,6 +1839,12 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 
 	mxcfb_check_var(&fbi->var, fbi);
 
+#ifdef CONFIG_MODULE_CCXMX5X
+	/* Workaround problem of target not entering in suspend mode
+	 * when a QT application is running (#36889,#40053)*/
+	pm_set_vt_switch(vt_switch);
+#endif
+
 	mxcfb_set_fix(fbi);
 
 	/* setup display */
