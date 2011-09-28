@@ -437,8 +437,9 @@ static inline void dapm_clear_walk(struct snd_soc_codec *codec)
  */
 static int snd_soc_dapm_suspend_check(struct snd_soc_dapm_widget *widget)
 {
-	struct snd_soc_codec *codec = widget->codec;
+	struct snd_soc_codec *codec;
 
+	codec  = widget->codec;
 	switch (snd_power_get_state(codec->card)) {
 	case SNDRV_CTL_POWER_D3hot:
 	case SNDRV_CTL_POWER_D3cold:

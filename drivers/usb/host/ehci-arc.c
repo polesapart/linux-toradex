@@ -31,6 +31,8 @@
 
 extern int usb_host_wakeup_irq(struct device *wkup_dev);
 extern void usb_host_set_wakeup(struct device *wkup_dev, bool para);
+
+#ifdef CONFIG_PM
 static void fsl_usb_lowpower_mode(struct fsl_usb2_platform_data *pdata, bool enable)
 {
 	if (enable) {
@@ -43,6 +45,7 @@ static void fsl_usb_lowpower_mode(struct fsl_usb2_platform_data *pdata, bool ena
 
 	pdata->lowpower = enable;
 }
+#endif
 
 static void fsl_usb_clk_gate(struct fsl_usb2_platform_data *pdata, bool enable)
 {
@@ -369,6 +372,7 @@ static int ehci_fsl_reinit(struct ehci_hcd *ehci)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int ehci_fsl_bus_suspend(struct usb_hcd *hcd)
 {
 	int ret = 0;
@@ -432,6 +436,7 @@ static int ehci_fsl_bus_resume(struct usb_hcd *hcd)
 
 	return ret;
 }
+#endif
 
 static void ehci_fsl_shutdown(struct usb_hcd *hcd)
 {
@@ -521,8 +526,10 @@ static const struct hc_driver ehci_fsl_hc_driver = {
 	 */
 	.hub_status_data = ehci_hub_status_data,
 	.hub_control = ehci_hub_control,
+#ifdef CONFIG_PM
 	.bus_suspend = ehci_fsl_bus_suspend,
 	.bus_resume = ehci_fsl_bus_resume,
+#endif
 	.relinquish_port = ehci_relinquish_port,
 	.port_handed_over = ehci_port_handed_over,
 

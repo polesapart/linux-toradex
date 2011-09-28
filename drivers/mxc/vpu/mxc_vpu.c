@@ -67,7 +67,9 @@ static DEFINE_SPINLOCK(vpu_lock);
 static LIST_HEAD(head);
 
 static int vpu_major;
+#ifdef CONFIG_PM
 static int vpu_clk_usercount;
+#endif
 static struct class *vpu_class;
 static struct vpu_priv vpu_data;
 static u8 open_count;
@@ -89,10 +91,12 @@ static struct iram_setting iram;
 static int codec_done;
 static wait_queue_head_t vpu_queue;
 
+#ifdef CONFIG_PM
 static u32 workctrl_regsave[6];
 static u32 rd_ptr_regsave[4];
 static u32 wr_ptr_regsave[4];
 static u32 dis_flag_regsave[4];
+#endif
 
 #define	READ_REG(x)		__raw_readl(vpu_base + x)
 #define	WRITE_REG(val, x)	__raw_writel(val, vpu_base + x)

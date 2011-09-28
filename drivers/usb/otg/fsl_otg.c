@@ -682,7 +682,9 @@ static void fsl_otg_event(struct work_struct *work)
 	struct otg_fsm *fsm = &og->fsm;
 	struct otg_transceiver *otg = &og->otg;
 
+#ifdef CONFIG_PM
 	mutex_lock(&pm_mutex);
+#endif
 	b_session_irq_enable(false);
 	otg->default_a = (fsm->id == 0);
 	/* clear conn information */
@@ -703,7 +705,9 @@ static void fsl_otg_event(struct work_struct *work)
 		b_session_irq_enable(false);
 		fsl_otg_start_host(fsm, 1);
 	}
+#ifdef CONFIG_PM
 	mutex_unlock(&pm_mutex);
+#endif
 }
 
 /* B-device start SRP */
