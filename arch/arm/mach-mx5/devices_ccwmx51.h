@@ -22,8 +22,7 @@ extern struct resource mxcfb_resources[1];
 #ifdef CONFIG_I2C_MXC
 extern struct mxc_i2c_platform_data mxci2c_data;
 extern struct mxc_i2c_platform_data mxci2c_hs_data;
-#endif
-#ifdef CONFIG_I2C_IMX
+#elif CONFIG_I2C_IMX
 extern struct imxi2c_platform_data mxci2c_data;
 #endif
 extern struct mxc_spi_master mxcspi1_data ;

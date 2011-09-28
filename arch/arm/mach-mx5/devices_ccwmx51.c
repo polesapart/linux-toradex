@@ -354,8 +354,7 @@ struct mxc_i2c_platform_data mxci2c_data = {
 struct mxc_i2c_platform_data mxci2c_hs_data = {
 	.i2c_clk = 400000,
 };
-#endif
-#ifdef CONFIG_I2C_IMX
+#elif CONFIG_I2C_IMX
 struct imxi2c_platform_data mxci2c_data = {
 	.bitrate = 100000,
 };
