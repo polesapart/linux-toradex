@@ -121,7 +121,11 @@ void fsl_usb_recover_hcd(struct platform_device *pdev)
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	u32 cmd = 0;
 
-	set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+	if (!test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
+		set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+		fsl_usb_clk_gate(hcd->self.controller->platform_data, true);
+	}
+
 	/* After receive remote wakeup signaling. Must restore
 	 * CMDRUN bit in 20ms to keep port status.
 	 */
@@ -378,6 +382,9 @@ static int ehci_fsl_bus_suspend(struct usb_hcd *hcd)
 		return 0;
 	}
 
+	/* Make sure the clock is not gated. */
+	fsl_usb_clk_gate(hcd->self.controller->platform_data, true);
+
 	ret = ehci_bus_suspend(hcd);
 	if (ret != 0)
 		return ret;
@@ -585,15 +592,21 @@ static int ehci_fsl_drv_suspend(struct platform_device *pdev,
 		if (!host_can_wakeup_system(pdev)) {
 			int mask;
 			/* Need open clock for register access */
-			if (!test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags))
+			if (!test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
 				fsl_usb_clk_gate(hcd->self.controller->platform_data, true);
+				set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+			}
 
 			mask = ehci_readl(ehci, &ehci->regs->intr_enable);
 			mask &= ~STS_PCD;
 			ehci_writel(ehci, mask, &ehci->regs->intr_enable);
 
 			usb_host_set_wakeup(hcd->self.controller, false);
-			fsl_usb_clk_gate(hcd->self.controller->platform_data, false);
+
+			if (test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
+				fsl_usb_clk_gate(hcd->self.controller->platform_data, false);
+				clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+			}
 		}
 		return 0;
 	}
@@ -679,11 +692,13 @@ static int ehci_fsl_drv_resume(struct platform_device *pdev)
 		if (!host_can_wakeup_system(pdev)) {
 			if (!test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
 				fsl_usb_clk_gate(hcd->self.controller->platform_data, true);
+				set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 			}
 			usb_host_set_wakeup(hcd->self.controller, true);
 
-			if (!test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
+			if (test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags)) {
 				fsl_usb_clk_gate(hcd->self.controller->platform_data, false);
+				clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 			}
 		}
 		return 0;
