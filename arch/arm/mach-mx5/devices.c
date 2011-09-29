@@ -30,6 +30,7 @@
 #include <mach/hardware.h>
 #include <mach/gpio.h>
 #include <mach/sdma.h>
+#include <mach/i2c.h>
 #include "dma-apbh.h"
 #include "mach/mxc_dvfs.h"
 #include "devices_ccwmx51.h"
@@ -709,11 +710,6 @@ static struct resource mxci2c1_resources[] = {
 	},
 };
 
-/*! Platform Data for MXC I2C */
-static struct mxc_i2c_platform_data mxci2c1_data = {
-	.i2c_clk = 400000,
-};
-
 static struct resource mxci2c2_resources[] = {
 	{
 		.start = I2C2_BASE_ADDR,
@@ -725,10 +721,6 @@ static struct resource mxci2c2_resources[] = {
 		.end = MXC_INT_I2C2,
 		.flags = IORESOURCE_IRQ,
 	},
-};
-/*! Platform Data for MXC I2C */
-static struct mxc_i2c_platform_data mxci2c2_data = {
-	.i2c_clk = 400000,
 };
 
 static struct resource mxci2c3_resources[] = {
@@ -744,10 +736,34 @@ static struct resource mxci2c3_resources[] = {
 	       },
 };
 
-/*! Platform Data for MXC I2C */
-static struct mxc_i2c_platform_data mxci2c3_data = {
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+
+struct mxc_i2c_platform_data mxci2c1_data = {
 	.i2c_clk = 400000,
 };
+
+struct mxc_i2c_platform_data mxci2c2_data = {
+	.i2c_clk = 400000,
+};
+
+struct mxc_i2c_platform_data mxci2c3_data = {
+	.i2c_clk = 400000,
+};
+
+#elif defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
+
+struct imxi2c_platform_data mxci2c1_data = {
+	.bitrate = 100000,
+};
+
+struct imxi2c_platform_data mxci2c2_data = {
+	.bitrate = 100000,
+};
+
+struct imxi2c_platform_data mxci2c3_data = {
+	.bitrate = 100000,
+};
+#endif
 
 struct platform_device mxci2c_devices[] = {
 	{

@@ -346,20 +346,6 @@ int __init ccwmx51_init_i2c2(void)
 	return i2c_register_board_info(1, ccwmx51_i2c_devices , ARRAY_SIZE(ccwmx51_i2c_devices) );
 }
 
-#ifdef CONFIG_I2C_MXC
-struct mxc_i2c_platform_data mxci2c_data = {
-	.i2c_clk = 100000,
-};
-
-struct mxc_i2c_platform_data mxci2c_hs_data = {
-	.i2c_clk = 400000,
-};
-#elif CONFIG_I2C_IMX
-struct imxi2c_platform_data mxci2c_data = {
-	.bitrate = 100000,
-};
-#endif
-
 #if defined(CONFIG_SPI_MXC_SELECT1_SS1) && (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
 #if defined(CONFIG_CCWMX5X_SECOND_TOUCH)
 static int touch_pendown_state(void)

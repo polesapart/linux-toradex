@@ -139,12 +139,6 @@ static struct mxc_bus_freq_platform_data bus_freq_data = {
 	.lp_reg_id = "DA9052_BUCK_PRO",
 };
 
-
-static struct imxi2c_platform_data mxci2c_data = {
-	.bitrate = 100000,
-};
-
-
 /*!
  * Board specific fixup function. It is called by \b setup_arch() in
  * setup.c file very early on during kernel starts. It allows the user to
@@ -271,7 +265,7 @@ static void __init mxc_board_init(void)
 
 	mxc_register_device(&mxc_dma_device, NULL);
 	mxc_register_device(&mxc_wdt_device, NULL);
-	mxc_register_device(&mxci2c_devices[2], &mxci2c_data);
+	mxc_register_device(&mxci2c_devices[2], &mxci2c3_data);
 
 	mx53_ccwmx53js_init_da9052();
 

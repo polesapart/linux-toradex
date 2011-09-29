@@ -363,13 +363,13 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcspi3_device, &mxcspi3_data);
 #endif
 #if defined(CONFIG_I2C_MX_SELECT1) || defined(CONFIG_I2C_MX_SELECT1_MODULE)
-	mxc_register_device(&mxci2c_devices[0], &mxci2c_data);
+	mxc_register_device(&mxci2c_devices[0], &mxci2c1_data);
 #endif
-#if defined(CONFIG_I2C_MX_SELECT2) || defined(CONFIG_MXC_SELECT2_MODULE)
-	mxc_register_device(&mxci2c_devices[1], &mxci2c_data);
+#if defined(CONFIG_I2C_MX_SELECT2) || defined(CONFIG_I2C_MX_SELECT2_MODULE)
+	mxc_register_device(&mxci2c_devices[1], &mxci2c2_data);
 #endif
 #if defined(CONFIG_I2C_MX_SELECT3) || defined(CONFIG_I2C_MX_SELECT3_MODULE)
-	mxc_register_device(&mxci2c_devices[2], &mxci2c_data);
+	mxc_register_device(&mxci2c_devices[2], &mxci2c3_data);
 #endif
 #if defined(CONFIG_I2C_MXC_HS) || defined(CONFIG_I2C_MXC_HS_MODULE)
 	mxc_register_device(&mxci2c_hs_device, &mxci2c_hs_data);
