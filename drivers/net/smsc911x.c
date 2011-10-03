@@ -2448,6 +2448,24 @@ static int smsc911x_resume(struct platform_device *pdev) {
 			regval &= ~BMCR_PDOWN;
 			smsc911x_mii_write(phy_dev->bus, phy_dev->addr, MII_BMCR, regval);
 
+#if defined(CONFIG_MACH_CC9M2443JS) || defined(CONFIG_MACH_CCW9M2443JS)
+			/* hpalacio 2011/10/03 (V.#39967)
+			 * For some reason, after resuming with PHY_INT_EN by connecting
+			 * the cable the interrupt line is hold low and the interrupt status
+			 * is active. Writing a 1 to INT_STS doesn't seem to clear the interrupt
+			 * either, preventing the driver from doing future wakeups.
+			 * Reset PHY_INT_EN and restore its previous status. This clears the
+			 * interrupt.
+			 */
+			regval = smsc911x_reg_read(pdata, INT_STS);
+			if (regval & INT_STS_PHY_INT_) {
+				regval = smsc911x_reg_read(pdata, INT_EN);
+				smsc911x_reg_write(pdata, INT_EN , regval & ~INT_EN_PHY_INT_EN_);
+				/* now restore the previous value */
+				smsc911x_reg_write(pdata, INT_EN , regval & ~INT_EN_PHY_INT_EN_);
+			}
+#endif
+
 			/* Reenable the interrupts now in case they were disabled */
 			regval = smsc911x_reg_read(pdata, INT_CFG);
 			regval |= INT_CFG_IRQ_EN_;
