@@ -48,6 +48,28 @@ void __iomem *tzic_base;
 
 #define TZIC_NUM_IRQS		128
 
+#define TZIC_0_OFFSET            0x00
+#define TZIC_1_OFFSET            0x04
+#define TZIC_2_OFFSET            0x08
+#define TZIC_3_OFFSET            0x0C
+
+void mxc_tzic_dump(void)
+{
+	pr_debug("INTCNTL %08x\n",__raw_readl(TZIC_INTCNTL));
+	pr_debug("PRIOMASK %08x\n",__raw_readl(TZIC_PRIOMASK));
+	pr_debug("SYNCCTRL %08x\n",__raw_readl(TZIC_SYNCCTRL));
+	pr_debug("DSMINT %08x\n",__raw_readl(TZIC_DSMINT));
+	pr_debug("INTSEC %08x %08x %08x %08x\n",__raw_readl(TZIC_INTSEC0+TZIC_0_OFFSET),__raw_readl(TZIC_INTSEC0+TZIC_1_OFFSET),__raw_readl(TZIC_INTSEC0+TZIC_2_OFFSET),__raw_readl(TZIC_INTSEC0+TZIC_3_OFFSET));
+	pr_debug("ENSET %08x %08x %08x %08x\n",__raw_readl(TZIC_ENSET0+TZIC_0_OFFSET),__raw_readl(TZIC_ENSET0+TZIC_1_OFFSET),__raw_readl(TZIC_ENSET0+TZIC_2_OFFSET),__raw_readl(TZIC_ENSET0+TZIC_3_OFFSET));
+	pr_debug("ENCLEAR %08x %08x %08x %08x\n",__raw_readl(TZIC_ENCLEAR0+TZIC_0_OFFSET),__raw_readl(TZIC_ENCLEAR0+TZIC_1_OFFSET),__raw_readl(TZIC_ENCLEAR0+TZIC_2_OFFSET),__raw_readl(TZIC_ENCLEAR0+TZIC_3_OFFSET));
+	pr_debug("SRCSET %08x %08x %08x %08x\n",__raw_readl(TZIC_SRCSET0+TZIC_0_OFFSET),__raw_readl(TZIC_SRCSET0+TZIC_1_OFFSET),__raw_readl(TZIC_SRCSET0+TZIC_2_OFFSET),__raw_readl(TZIC_SRCSET0+TZIC_3_OFFSET));
+	pr_debug("SRCCLAR %08x %08x %08x %08x\n",__raw_readl(TZIC_SRCCLAR0+TZIC_0_OFFSET),__raw_readl(TZIC_SRCCLAR0+TZIC_1_OFFSET),__raw_readl(TZIC_SRCCLAR0+TZIC_2_OFFSET),__raw_readl(TZIC_SRCCLAR0+TZIC_3_OFFSET));
+	pr_debug("PRIORITY %08x %08x %08x %08x\n",__raw_readl(TZIC_PRIORITY0+TZIC_0_OFFSET),__raw_readl(TZIC_PRIORITY0+TZIC_1_OFFSET),__raw_readl(TZIC_PRIORITY0+TZIC_2_OFFSET),__raw_readl(TZIC_PRIORITY0+TZIC_3_OFFSET));
+	pr_debug("PND %08x %08x %08x %08x\n",__raw_readl(TZIC_PND0+TZIC_0_OFFSET),__raw_readl(TZIC_PND0+TZIC_1_OFFSET),__raw_readl(TZIC_PND0+TZIC_2_OFFSET),__raw_readl(TZIC_PND0+TZIC_3_OFFSET));
+	pr_debug("HIPND %08x %08x %08x %08x\n",__raw_readl(TZIC_HIPND0+TZIC_0_OFFSET),__raw_readl(TZIC_HIPND0+TZIC_1_OFFSET),__raw_readl(TZIC_HIPND0+TZIC_2_OFFSET),__raw_readl(TZIC_HIPND0+TZIC_3_OFFSET));
+	pr_debug("WAKEUP %08x %08x %08x %08x\n",__raw_readl(TZIC_WAKEUP0+TZIC_0_OFFSET),__raw_readl(TZIC_WAKEUP0+TZIC_1_OFFSET),__raw_readl(TZIC_WAKEUP0+TZIC_2_OFFSET),__raw_readl(TZIC_WAKEUP0+TZIC_3_OFFSET));
+}
+
 /**
  * tzic_mask_irq() - Disable interrupt number "irq" in the TZIC
  *
