@@ -313,8 +313,8 @@ struct fim_sdio_t {
 
 	/* Wait queue, and events */
 	wait_queue_head_t wq;
-	u8 tx_ready;
-	u8 rx_ready;
+	s8 tx_ready;
+	s8 rx_ready;
 };
 
 /*
@@ -400,9 +400,23 @@ static void fim_sd_restart_work_func(struct work_struct *work)
 		return;
 	}
 
+	ret = fim_dma_stop(&port->fim);
+	if (ret) {
+		printk_err("Couldn't stop FIM%i DMA\n", fim->picnr);
+		return;
+	}
+
+#if 0
 	ret = fim_download_firmware(&port->fim);
 	if (ret) {
 		printk_err("FIM%i download failed\n", fim->picnr);
+		return;
+	}
+#endif
+
+	ret = fim_dma_start(&port->fim, NULL);
+	if (ret) {
+		printk_err("Couldn't start FIM%i DMA\n", fim->picnr);
 		return;
 	}
 
@@ -442,10 +456,23 @@ static void fim_sd_cd_timer_func(unsigned long _port)
 		if (val != port->cd_value) {
 			port->cd_value = val;
 
-			if (atomic_read(&port->fim_is_down))
+			/* Interrupt TX and RX */
+			port->tx_ready = -1;
+			port->rx_ready = -1;
+			if ( port->mmc_req && port->mmc_req->cmd ) {
+				port->mmc_req->cmd->error = -ENOMEDIUM;
+			}
+			wake_up_interruptible(&port->wq);
+
+			if (val) {
+				atomic_set(&port->fim_is_down, 1);
+
+				mmc_detect_change(port->mmc, 0);
+			}
+			else {
 				schedule_work(&port->restart_work);
-			else
-				mmc_detect_change(port->mmc, msecs_to_jiffies(100));
+			}
+
 		}
 
 		mod_timer(&port->cd_timer, jiffies + FIM_SDIO_CD_POLLING_TIMER);
@@ -480,8 +507,27 @@ static void fim_sd_cd_debounce_func(unsigned long _port)
 {
 	struct fim_sdio_t *port;
 	int ret;
+	int val;
 
 	port = (struct fim_sdio_t *)_port;
+
+	/* Interrupt TX and RX */
+	port->tx_ready = -1;
+	port->rx_ready = -1;
+	if ( port->mmc_req && port->mmc_req->cmd ) {
+		port->mmc_req->cmd->error = -ENOMEDIUM;
+	}
+	wake_up_interruptible(&port->wq);
+
+	val = gpio_get_value_ns921x(port->cd_gpio);
+	if (val) {
+		atomic_set(&port->fim_is_down, 1);
+
+		mmc_detect_change(port->mmc, 0);
+	}
+	else {
+		schedule_work(&port->restart_work);
+	}
 
 	/* Set new IRQ type */
 	if ((ret = fim_sd_prepare_cd_irq(port))) {
@@ -502,21 +548,10 @@ static irqreturn_t fim_sd_cd_irq(int irq, void *_port)
 	//int ret;
 
 	port = (struct fim_sdio_t *)_port;
-	/*if ((ret = fim_sd_prepare_cd_irq(port)))
-		printk_err("Failed CD IRQ reconfiguration (%i)\n", ret);*/
 
 	/* Disable CD IRQ, and start debounce timer */
 	disable_irq(port->cd_irq);
 	mod_timer(&port->debounce_timer, jiffies + msecs_to_jiffies(500));
-
-	/*
-	 * If the FIM was stopped, then only schedule the workqueue for restarting it
-	 * again. This worker will call the detect change function.
-	 */
-	if (atomic_read(&port->fim_is_down))
-		schedule_work(&port->restart_work);
-	else
-		mmc_detect_change(port->mmc, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
 }
@@ -573,9 +608,7 @@ static void fim_sd_isr(struct fim_driver *driver, int irq, unsigned char code,
 		else
 			printk_dbg("Premature SDIO IRQ received!\n");
 		break;
-	case 0x10:
-		printk_err("CRC status IRQ!!!\n");
-		break;
+
 	default:
 		printk_err("Unknown IRQ %i | FIM %i | %x\n",
 			   code, port->fim.picnr, rx_fifo);
@@ -870,6 +903,11 @@ static int fim_sd_send_buffer(struct fim_sdio_t *port, struct fim_buffer_t *buf)
 		printk_err("DMA transmit timeout\n");
 		return -ETIMEDOUT;
 	}
+	if ( port->tx_ready == -1 )
+	{
+		printk_dbg("DMA transmit interrupt\n");
+		return -ENOMEDIUM;
+	}
 
 	return 0;
 }
@@ -1009,6 +1047,7 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	unsigned char opctl = 0;
 	unsigned int stat;
 	int i;
+	unsigned int control1_reg;
 
 	/* @TODO: Send an error response to the MMC-core */
 	if (!(buf = fim_sd_alloc_cmd(port))) {
@@ -1019,6 +1058,14 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 
 	/* Use the buffer data for the TX-command */
 	txcmd = (struct fim_sd_tx_cmd_t *)buf->data;
+
+	/* Clear abort flag */
+	fim_get_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, &control1_reg);
+	if ( control1_reg & FIM_SDIO_CONTROL1_STOP )
+	{
+		control1_reg &= ~FIM_SDIO_CONTROL1_STOP;
+		fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, control1_reg);
+	}
 
 	/*
 	 * Set the internal flags for the next response sequences
@@ -1104,6 +1151,44 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		return retval;
 	}
 
+	if ( cmd->flags & MMC_RSP_PRESENT ) {
+		/* Wait 3ms for command response (it's max. 64 SD CLK according to the spec) */
+		i = 3;
+		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
+		while ( (i > 0) && (stat == 0) ) {
+			if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1))) < 0 ) {
+				printk_err("Problem with wait_queue: %d\n", retval);
+				return -ETIMEDOUT;
+			}
+			if ( port->rx_ready == -1 )
+			{
+				printk_dbg("STAT reg reading interrupt\n");
+				return -ENOMEDIUM;
+			}
+
+			fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
+
+			--i;
+		};
+
+		if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
+			printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
+			port->mmc_cmd->error = -ETIMEDOUT;
+			return -ETIMEDOUT;
+		}
+		else if ( stat & FIM_SDIO_PORTEXP1_CRCERR_CMD ) {
+			printk_info("Response CRC error\n");
+			port->mmc_cmd->error = -EILSEQ;
+			return -EILSEQ;
+		}
+		else if ( stat == 0 ) {
+			printk_err("No response from FIM, down\n");
+			atomic_set(&port->fim_is_down, 1);
+			port->mmc_cmd->error = -ENOMEDIUM;
+			return -ETIMEDOUT;
+		}
+	}
+
 	/*
 	 * If we have a write command then fill a next buffer and send it
 	 * @TODO: We need here an error handling, then otherwise we have started a
@@ -1132,6 +1217,24 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 
 			if ( (retval = fim_sd_get_transmit_crc_status(port)) != 0 ) {
 				cmd->error = retval;
+
+				len += cur_len;
+
+				if ( len < data_len )
+				{
+					/* Set the abort flag, and send a sector buffer to abort the data transmission */
+					fim_get_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, &control1_reg);
+					control1_reg |= FIM_SDIO_CONTROL1_STOP;
+					fim_set_ctrl_reg(&port->fim, FIM_SDIO_CONTROL1_REG, control1_reg);
+
+					if ((buf = fim_sd_alloc_buffer(port, data->blksz)) != 0) {
+						buf->private = port;
+						if (fim_sd_send_buffer(port, buf)) {
+							fim_sd_free_buffer(port, buf);
+						}
+					}
+				}
+
 				return retval;
 			}
 
@@ -1144,42 +1247,17 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 		return 0;
 	}
 
-	/* Wait 100ms for command response (it's max. 64 SD CLK according to the spec) */
-	i = 10;
-	do {
-		if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(10))) < 0 ) {
-			printk_err("Problem with wait_queue: %d\n", retval);
-			return -ETIMEDOUT;
-		}
-
-		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
-
-		--i;
-	} while ( (i > 0) && (stat == 0) );
-
-	if ( stat & FIM_SDIO_PORTEXP1_TIMEOUT ) {
-		printk_dbg("Timeout from FIM: 0x%x, CMD%d\n", stat, port->mmc_cmd->opcode);
-		port->mmc_cmd->error = -ETIMEDOUT;
-		return -ETIMEDOUT;
-	}
-	else if ( stat & FIM_SDIO_PORTEXP1_CRCERR_CMD ) {
-		printk_info("Response CRC error\n");
-		port->mmc_cmd->error = -EILSEQ;
-		return -EILSEQ;
-	}
-	else if ( stat == 0 ) {
-		printk_err("No response from FIM, down\n");
-		atomic_set(&port->fim_is_down, 1);
-		port->mmc_cmd->error = -ENOMEDIUM;
-		return -ETIMEDOUT;
-	}
-
 	/* Set message RX timeout */
 	retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1000));
 	if ( retval <= 0 ) {
 		printk_err("Message RX timeout\n");
 		port->mmc_cmd->error = -ETIMEDOUT;
 		return -ETIMEDOUT;
+	}
+	if ( port->rx_ready == -1 )
+	{
+		printk_dbg("Message RX interrupt\n");
+		return -ENOMEDIUM;
 	}
 
 	if ( port->mmc_cmd->error ) {
@@ -1222,7 +1300,8 @@ static void fim_sd_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	}
 
 	port->mmc_cmd = NULL;
-	mmc_request_done(port->mmc, port->mmc_req);
+	port->mmc_req = NULL;
+	mmc_request_done(mmc, mrq);
 }
 
 /* Set the transfer clock using the pre-defined values */
