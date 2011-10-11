@@ -42,7 +42,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 #ifdef CONFIG_WLAN
 	{
 	 .name = "ATHEROS_PWR",
-	 .id = PINID_AUART1_TX,
+	 .id = PINID_SAIF0_LRCLK,
 	 .fun           = PIN_GPIO,
 	 .strength      = PAD_4MA,
 	 .voltage       = PAD_3_3V,
@@ -51,18 +51,6 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .pull          = 0,
 	 .output	= 1,
 	 .data		= 1,
-	 },
-	{
-	 .name	= "WIFI_ACTIVITY",
-	 .id	= PINID_SAIF0_LRCLK,
-	 .fun	= PIN_GPIO,
-	 .strength	= PAD_4MA,
-	 .voltage	= PAD_3_3V,
-	 .pullup	= 1,
-	 .drive 	= 1,
-	 .pull 		= 1,
-	 .output	= 0,
-	 .data		= 0,
 	 },
 #endif
 #ifdef CONFIG_MXS_AUART0_DEVICE_ENABLE
