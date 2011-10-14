@@ -653,9 +653,6 @@ static irqreturn_t ns9xxx_eth_tx_int(int irq, void *dev_id)
 
 		ns9xxx_eth_read_txdesc(dev, &txbuffer);
 
-		if (txbuffer.flags & DMADESC_FULL)
-			break;
-
 		dma_unmap_single(&dev->dev, txbuffer.source,
 				skb->len, DMA_TO_DEVICE);
 
@@ -672,6 +669,9 @@ static irqreturn_t ns9xxx_eth_tx_int(int irq, void *dev_id)
 		}
 
 		dev_kfree_skb_irq(skb);
+
+		if (txbuffer.flags & DMADESC_FULL)
+			break;
 	}
 
 	if (ns9xxx_eth_num_txbusy(dev) &&
