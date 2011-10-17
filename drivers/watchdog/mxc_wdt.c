@@ -54,7 +54,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-
+#include <mach/hardware.h>
 #include "mxc_wdt.h"
 
 #define DVR_VER "2.0"
@@ -100,6 +100,11 @@ static void mxc_wdt_enable(void *base)
 	val = __raw_readw(base + MXC_WDT_WCR);
 	val |= WCR_WDE_BIT;
 	__raw_writew(val, base + MXC_WDT_WCR);
+
+#ifdef CONFIG_MXC_DISABLE_WARM_RESET
+	__raw_writel(__raw_readl(IO_ADDRESS(SRC_BASE_ADDR) + 0x0) & ~0x1 ,
+			IO_ADDRESS(SRC_BASE_ADDR) + 0x0);
+#endif
 }
 
 static void mxc_wdt_disable(void *base)

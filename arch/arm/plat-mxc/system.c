@@ -52,7 +52,7 @@ void arch_reset(char mode, const char *cmd)
 	}
 #endif
 
-#ifdef CONFIG_ARCH_MX51
+#ifdef CONFIG_ARCH_MX5
 	/* Workaround to reset NFC_CONFIG3 register
 	 * due to the chip warm reset does not reset it
 	 */
@@ -64,6 +64,12 @@ void arch_reset(char mode, const char *cmd)
 	/* Stop DVFS-CORE before reboot. */
 	if (dvfs_core_is_active)
 		stop_dvfs();
+
+#ifdef CONFIG_MXC_DISABLE_WARM_RESET
+	__raw_writel(__raw_readl(IO_ADDRESS(SRC_BASE_ADDR) + 0x0) & ~0x1 ,
+			IO_ADDRESS(SRC_BASE_ADDR) + 0x0);
+#endif
+
 #endif
 
 	if (cpu_is_mx1()) {
