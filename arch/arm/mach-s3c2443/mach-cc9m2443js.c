@@ -102,7 +102,7 @@ static struct resource smsc911x_device_resources[] = {
         [1] = {
                 .start = IRQ_EINT9,
                 .end = IRQ_EINT9,
-                .flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWEDGE,
+                .flags = IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
         },
 };
 
