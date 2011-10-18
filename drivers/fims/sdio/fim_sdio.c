@@ -1152,8 +1152,8 @@ static int fim_sd_send_command(struct fim_sdio_t *port, struct mmc_command *cmd)
 	}
 
 	if ( cmd->flags & MMC_RSP_PRESENT ) {
-		/* Wait 3ms for command response (it's max. 64 SD CLK according to the spec) */
-		i = 3;
+		/* Wait 10ms for command response (it's max. 64 SD CLK according to the spec) */
+		i = 10;
 		fim_get_stat_reg(&port->fim, FIM_SDIO_PORTEXP1_REG, &stat);
 		while ( (i > 0) && (stat == 0) ) {
 			if ( (retval = wait_event_interruptible_timeout(port->wq, port->rx_ready, msecs_to_jiffies(1))) < 0 ) {
@@ -1651,7 +1651,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 		*/
 		if (port->cd_irq < 0) {
 			printk_dbg(KERN_DEBUG "Polling the Card Detect line (no IRQ)\n");
-			port->cd_value = 1; /* @XXX: Use an invert value for this purpose */
+			port->cd_value = gpio_get_value_ns921x(port->cd_gpio);
 			mod_timer(&port->cd_timer, jiffies + HZ / 2);
 		} else {
 			/*
