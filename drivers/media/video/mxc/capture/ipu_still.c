@@ -67,12 +67,17 @@ static irqreturn_t prp_csi_eof_callback(int irq, void *dev_id)
 static irqreturn_t prp_still_callback(int irq, void *dev_id)
 {
 	cam_data *cam = (cam_data *) dev_id;
+	ipu_channel_t channel;
 
+	if (cam->csi == 0)
+		channel = CSI_MEM0;
+	else
+		channel = CSI_MEM1;
 	callback_eof_flag++;
 	if (callback_eof_flag < 5) {
 #ifndef CONFIG_MXC_IPU_V1
 		buffer_num = (buffer_num == 0) ? 1 : 0;
-		ipu_select_buffer(CSI_MEM, IPU_OUTPUT_BUFFER, buffer_num);
+		ipu_select_buffer(channel, IPU_OUTPUT_BUFFER, buffer_num);
 #endif
 	} else {
 		cam->still_counter++;
