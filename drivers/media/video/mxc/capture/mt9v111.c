@@ -67,8 +67,12 @@ static int mt9v111_probe(struct i2c_client *client,
 static int mt9v111_remove(struct i2c_client *client);
 
 static const struct i2c_device_id mt9v111_id[] = {
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{"mt9v111_1", 2},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	{"mt9v111_2", 3},
+#endif
 	{},
 };
 
@@ -108,18 +112,17 @@ static struct i2c_driver mt9v111_i2c_driver = {
 
 static int mt9v111_id_from_name ( const char * name )
 {
-	int id = -1;
+	int i;
 
 	if( name == NULL || ( strlen(name) < strlen("mt9v111_n") ) )
 		return -1;
 
-	id = (int)simple_strtol(name+strlen("mt9v111_"),NULL,0) - 1;
-	if( id >= ARRAY_SIZE(mt9v111_id) ) {
-		printk("Invalid sensor index %d for %s\n",id,name);
-		return -1;
+	for (i=0; i < ARRAY_SIZE(mt9v111_id); i++) {
+		if (!strcmp(name, mt9v111_id[i].name))
+			return i;
 	}
 
-	return id;
+	return -1;
 }
 
 static inline int mt9v111_read_reg(int sensorid , u8 reg)
@@ -1327,34 +1330,36 @@ static struct v4l2_int_ioctl_desc mt9v111_ioctl_desc[] = {
 };
 
 static struct v4l2_int_slave mt9v111_slave[] = {
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
 		.ioctls = mt9v111_ioctl_desc,
 		.num_ioctls = ARRAY_SIZE(mt9v111_ioctl_desc),
 		.attach_to = "mxc_v4l2_cap_1",
 	},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	{
 		.ioctls = mt9v111_ioctl_desc,
 		.num_ioctls = ARRAY_SIZE(mt9v111_ioctl_desc),
 		.attach_to = "mxc_v4l2_cap_2",
 	},
- };
+#endif
+};
 
 static struct v4l2_int_device mt9v111_int_device [] = {
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 		{
 			.module = THIS_MODULE,
 			.type = v4l2_int_type_slave,
-			.u = {
-				.slave = &mt9v111_slave[0],
-				},
 		},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 		{
 			.module = THIS_MODULE,
 			.type = v4l2_int_type_slave,
-			.u = {
-				.slave = &mt9v111_slave[1],
-				},
  		},
- };
+#endif
+};
 
 static int mt9v111_read_id( int sensoridx )
 {
@@ -1398,8 +1403,6 @@ static int mt9v111_probe(struct i2c_client *client,
 
 	/* Set initial values for the sensor struct. */
 	memset(&mt9v111_data[sensorid], 0, sizeof(struct sensor));
-	mt9v111_data[sensorid].i2c_client = client;
-	pr_debug("   client name is %s\n", client->name);
 	mt9v111_data[sensorid].pix.pixelformat = V4L2_PIX_FMT_UYVY;
 	mt9v111_data[sensorid].pix.width = MT9V111_MAX_WIDTH;
 	mt9v111_data[sensorid].pix.height = MT9V111_MAX_HEIGHT;
@@ -1409,34 +1412,40 @@ static int mt9v111_probe(struct i2c_client *client,
 	mt9v111_data[sensorid].streamcap.timeperframe.numerator = 1;
 
 	strcpy(mt9v111_int_device[sensorid].name,id->name);
-	pr_debug("   video device name is %s\n", mt9v111_data[sensorid].v4l2_int_device->name);
+	mt9v111_int_device[sensorid].u.slave = &mt9v111_slave[sensorid];
 	mt9v111_data[sensorid].v4l2_int_device = &mt9v111_int_device[sensorid];
 	mt9v111_int_device[sensorid].priv = &mt9v111_data[sensorid];
+	mt9v111_data[sensorid].i2c_client = client;
+	pr_debug("   client name is %s\n", client->name);
+
+	/* This function attaches this structure to the /dev/video0 device.
+	 * The pointer in priv points to the mt9v111_data structure here.*/
+	/* We need to register the device even if the sensor is not detected,
+	 * otherwise the camera2 would not be detected if the camera1 is not
+	 * connected.
+	 */
+	retval = v4l2_int_device_register(&mt9v111_int_device[sensorid]);
+	if( retval == 0 )
+		mt9v111_data[sensorid].used = 1;
 
 	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , true, true);
 
 	if( mt9v111_read_id(sensorid) != 0) {
 		printk(KERN_ERR"mt9v111_probe: No sensor found\n");
-		ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , false, false);
-		return -ENXIO;
+		v4l2_int_device_unregister(&mt9v111_int_device[sensorid]);
+		retval = -ENXIO;
+	}
+	else {
+#ifdef MT9V111_DEBUG
+		mt9v111_test_pattern(1);
+#endif
+		pr_debug("   type is %d (expect %d)\n",
+			mt9v111_int_device[sensorid].type, v4l2_int_type_slave);
+		pr_debug("   num ioctls is %d\n",
+			mt9v111_int_device[sensorid].u.slave->num_ioctls);
 	}
 
-#ifdef MT9V111_DEBUG
-	mt9v111_test_pattern(1);
-#endif
-
 	ipu_csi_enable_mclk_if(CSI_MCLK_I2C, sensorid , false, false);
-
-	pr_debug("   type is %d (expect %d)\n",
-		mt9v111_int_device[sensorid].type, v4l2_int_type_slave);
-	pr_debug("   num ioctls is %d\n",
-		mt9v111_int_device[sensorid].u.slave->num_ioctls);
-
-	/* This function attaches this structure to the /dev/video0 device.
-	 * The pointer in priv points to the mt9v111_data structure here.*/
-	retval = v4l2_int_device_register(&mt9v111_int_device[sensorid]);
-	if( retval == 0 )
-		mt9v111_data[sensorid].used = 1;
 
 	return retval;
 }

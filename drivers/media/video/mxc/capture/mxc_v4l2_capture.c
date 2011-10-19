@@ -180,6 +180,7 @@ static struct v4l2_int_master mxc_v4l2_master = {
 };
 
 static struct v4l2_int_device mxc_v4l2_int_device [] = {
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
 	.module = THIS_MODULE,
 	.name = "mxc_v4l2_cap_1",
@@ -188,6 +189,8 @@ static struct v4l2_int_device mxc_v4l2_int_device [] = {
 		.master = &mxc_v4l2_master,
 		},
 	},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	{
 	.module = THIS_MODULE,
 	.name = "mxc_v4l2_cap_2",
@@ -196,6 +199,7 @@ static struct v4l2_int_device mxc_v4l2_int_device [] = {
 		.master = &mxc_v4l2_master,
 		},
 	},
+#endif
 };
 
 static cam_data *g_cam[ARRAY_SIZE(mxc_v4l2_int_device)];
@@ -2470,6 +2474,7 @@ static void camera_platform_release(struct device *device)
 
 /*! Device Definition for Mt9v111 devices */
 static struct platform_device mxc_v4l2_devices[] = {
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
 		.name = "mxc_v4l2_1",
 		.dev = {
@@ -2477,6 +2482,8 @@ static struct platform_device mxc_v4l2_devices[] = {
 			},
 		.id = 0,
 	},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	{
 		.name = "mxc_v4l2_2",
 		.dev = {
@@ -2484,6 +2491,7 @@ static struct platform_device mxc_v4l2_devices[] = {
 			},
 		.id = 1,
 	}
+#endif
 };
 
 /*!
@@ -2573,14 +2581,14 @@ next:
  *
  * @return status  0 Success
  */
-static void init_camera_struct(cam_data *cam,unsigned int csi)
+static void init_camera_struct(cam_data *cam, unsigned int device_index)
 {
-	pr_debug("In MVC: init_camera_struct for csi %d\n",csi);
-
 	/* Default everything to 0 */
 	memset(cam, 0, sizeof(cam_data));
 
-	cam->csi = csi;
+	cam->csi = mxc_v4l2_devices[device_index].id;
+
+	pr_debug("In MVC: init_camera_struct for csi %d\n", cam->csi);
 
 	init_MUTEX(&cam->param_lock);
 	init_MUTEX(&cam->busy_lock);
@@ -2592,7 +2600,7 @@ static void init_camera_struct(cam_data *cam,unsigned int csi)
 	*(cam->video_dev) = mxc_v4l_template;
 
 	video_set_drvdata(cam->video_dev, cam);
-	dev_set_drvdata(&mxc_v4l2_devices[csi].dev, (void *)cam);
+	dev_set_drvdata(&mxc_v4l2_devices[device_index].dev, (void *)cam);
 	cam->video_dev->minor = -1;
 
 	init_waitqueue_head(&cam->enc_queue);
@@ -2832,6 +2840,7 @@ static __init int camera_init(void)
 			platform_driver_unregister(&mxc_v4l2_driver[i]);
 			return -1;
 		}
+
 		init_camera_struct(g_cam [i], i);
 
 		/* Set up the v4l2 device and register it*/
@@ -2871,38 +2880,27 @@ static __init int camera_init(void)
  */
 static void __exit camera_exit(void)
 {
+	int i;
+
 	pr_debug("In MVC: camera_exit\n");
 
 	pr_info("V4L2 unregistering video\n");
 
-	if (g_cam[0]->open_count) {
-		pr_err("ERROR: v4l2 capture:camera open "
-			"-- setting ops to NULL\n");
-	} else {
-		pr_info("V4L2 freeing image input device\n");
-		v4l2_int_device_unregister(&mxc_v4l2_int_device[0]);
-		video_unregister_device(g_cam[0]->video_dev);
-		platform_driver_unregister(&mxc_v4l2_driver[0]);
-		platform_device_unregister(&mxc_v4l2_devices[0]);
+	for (i = 0; i < ARRAY_SIZE(mxc_v4l2_int_device); i++) {
+		if (g_cam[i]->open_count) {
+			pr_err("ERROR: v4l2 capture:camera open "
+				"-- setting ops to NULL\n");
+		} else {
+			pr_info("V4L2 freeing image input device\n");
+			v4l2_int_device_unregister(&mxc_v4l2_int_device[i]);
+			video_unregister_device(g_cam[i]->video_dev);
+			platform_driver_unregister(&mxc_v4l2_driver[i]);
+			platform_device_unregister(&mxc_v4l2_devices[i]);
 
-		mxc_free_frame_buf(g_cam[0]);
-		kfree(g_cam[0]);
-		g_cam[0] = NULL;
-	}
-
-	if (g_cam[1]->open_count) {
-		pr_err("ERROR: v4l2 capture:camera open "
-			"-- setting ops to NULL\n");
-	} else {
-		pr_info("V4L2 freeing image input device\n");
-		v4l2_int_device_unregister(&mxc_v4l2_int_device[1]);
-		video_unregister_device(g_cam[1]->video_dev);
-		platform_driver_unregister(&mxc_v4l2_driver[1]);
-		platform_device_unregister(&mxc_v4l2_devices[1]);
-
-		mxc_free_frame_buf(g_cam[1]);
-		kfree(g_cam[1]);
-		g_cam[1] = NULL;
+			mxc_free_frame_buf(g_cam[i]);
+			kfree(g_cam[i]);
+			g_cam[i] = NULL;
+		}
 	}
 }
 

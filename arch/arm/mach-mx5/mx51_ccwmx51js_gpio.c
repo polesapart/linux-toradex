@@ -594,6 +594,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_audio_pins[] = {
 #if defined CONFIG_VIDEO_MXC_IPU_CAMERA
 static struct mxc_iomux_pin_cfg __initdata ccwmx51_camera_pins[] = {
 		/* CSI0 camera interface 1 */
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
 		MX51_PIN_CSI1_D12, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
 	},
@@ -631,6 +632,8 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_camera_pins[] = {
 		MX51_PIN_CSI1_D9, IOMUX_CONFIG_ALT3,
 		(PAD_CTL_HYS_NONE | PAD_CTL_DRV_MEDIUM | PAD_CTL_SRE_FAST),
 	},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	/* CSI2 camera interface 2 */
 	{
 		MX51_PIN_CSI2_D12, IOMUX_CONFIG_ALT0, PAD_CTL_HYS_NONE,
@@ -675,6 +678,7 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_camera_pins[] = {
 		MUX_IN_GPIO3_IPP_IND_G_IN_7_SELECT_INPUT,
 		INPUT_CTL_PATH1
 	 },
+#endif
 };
 #endif /* #if defined CONFIG_VIDEO_MXC_IPU_CAMERA */
 
@@ -1043,6 +1047,7 @@ void __init ccwmx51_io_init(void)
 	mxc_iomux_set_pad(MX51_PIN_CSI2_PIXCLK,PAD_CTL_HYS_NONE | PAD_CTL_SRE_SLOW);
 	mxc_iomux_set_pad(MX51_PIN_CSI1_MCLK,PAD_CTL_DRV_HIGH | PAD_CTL_SRE_SLOW);
 
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	/* Camera 1 reset */
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), "gpio3_13");
 	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), 0);
@@ -1051,7 +1056,8 @@ void __init ccwmx51_io_init(void)
 	msleep(100);
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_CSI1_D9), 1);
 	msleep(100);
-
+#endif /* CAMERA 1 */
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
 	/* Camera 2 reset */
 	gpio_request(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_CLK), "gpio3_7");
 	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_CLK), 0);
@@ -1060,6 +1066,7 @@ void __init ccwmx51_io_init(void)
 	msleep(100);
 	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_DISPB2_SER_CLK), 1);
 	msleep(100);
+#endif /* CAMERA 2 */
 #endif
 
 #if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
