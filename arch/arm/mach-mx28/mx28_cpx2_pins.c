@@ -39,6 +39,18 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .id = PINID_I2C0_SDA,
 	 .fun = PIN_FUN3,
 	 },
+         // Boot ROM configures 3-16,3-17 as DUART
+         // but these are unused on CPX2, so set to GPIO
+	{
+	 .name = "unused.3-16",
+	 .id = PINID_PWM0,
+	 .fun = PIN_GPIO,
+	 },
+	{
+	 .name = "unused.3-17",
+	 .id = PINID_PWM1,
+	 .fun = PIN_GPIO,
+	 },
 #ifdef CONFIG_WLAN
 	{
 	 .name = "ATHEROS_PWR",
@@ -181,6 +193,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 
 #if defined(CONFIG_I2C_MXS) || \
 	defined(CONFIG_I2C_MXS_MODULE)
+#error I2C0_SCL/_SDA used for DUART on CPX2
 	{
 	 .name = "I2C0_SCL",
 	 .id = PINID_I2C0_SCL,
@@ -443,19 +456,18 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 /*
  * Although this pin is typically used in the MMC interface, it is not
  * used for this purpose on the CPX2 board.  So it is always configured
- * as a GPIO input regardless of whether or not we are enabling the MMC
- * driver.
+ * as a GPIO input (for push-button) regardless of whether or not we are
+ * enabling the MMC driver.
  */
 	{
 	 .name  = "SSP0_DETECT",
 	 .id    = PINID_SSP0_DETECT,
 	 .fun   = PIN_GPIO,
-	 .strength      = PAD_8MA,
+	 .strength      = PAD_4MA,
 	 .voltage       = PAD_3_3V,
 	 .pullup        = 1,
 	 .drive         = 1,
 	 .pull          = 1,
-	 .output        = 0,
 	 .sysfs         = 1,
 	 },
 #if defined(CONFIG_MMC_MXS) || defined(CONFIG_MMC_MXS_MODULE)
@@ -464,7 +476,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_DATA0",
 	 .id	= PINID_SSP0_DATA0,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 1,
 	 .drive 	= 1,
@@ -474,7 +486,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_DATA1",
 	 .id	= PINID_SSP0_DATA1,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 1,
 	 .drive 	= 1,
@@ -484,7 +496,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_DATA2",
 	 .id	= PINID_SSP0_DATA2,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 1,
 	 .drive 	= 1,
@@ -494,7 +506,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_DATA3",
 	 .id	= PINID_SSP0_DATA3,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 1,
 	 .drive 	= 1,
@@ -504,7 +516,7 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_CMD",
 	 .id	= PINID_SSP0_CMD,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_8MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 1,
 	 .drive 	= 1,
@@ -514,23 +526,11 @@ static struct pin_desc mx28_cpx2_fixed_pins[] = {
 	 .name	= "SSP0_SCK",
 	 .id	= PINID_SSP0_SCK,
 	 .fun	= PIN_FUN1,
-	 .strength	= PAD_12MA,
+	 .strength	= PAD_4MA,
 	 .voltage	= PAD_3_3V,
 	 .pullup	= 0,
 	 .drive 	= 1,
 	 .pull 		= 0,
-	 },
-#endif
-#if defined(CONFIG_LEDS_MXS) || defined(CONFIG_LEDS_MXS_MODULE)
-	{
-	 .name = "LEDS_PWM0",
-	 .id = PINID_AUART1_RX,
-	 .fun           = PIN_FUN3,
-	 .strength      = PAD_8MA,
-	 .voltage       = PAD_3_3V,
-	 .pullup        = 1,
-	 .drive         = 1,
-	 .pull          = 1,
 	 },
 #endif
 #if defined(CONFIG_SND_SOC_MXS_SPDIF) || \
@@ -555,7 +555,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_MDC",
 	 .id = PINID_ENET0_MDC,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -565,7 +565,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_MDIO",
 	 .id = PINID_ENET0_MDIO,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -575,7 +575,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_RX_EN",
 	 .id = PINID_ENET0_RX_EN,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -585,7 +585,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_RXD0",
 	 .id = PINID_ENET0_RXD0,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -595,7 +595,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_RXD1",
 	 .id = PINID_ENET0_RXD1,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -605,7 +605,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_TX_EN",
 	 .id = PINID_ENET0_TX_EN,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -615,7 +615,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_TXD0",
 	 .id = PINID_ENET0_TXD0,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -625,17 +625,20 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET0_TXD1",
 	 .id = PINID_ENET0_TXD1,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
 	 .drive	= 1,
 	 },
+// EVK interpreted CONFIG_FEC to enable both ENET0 & ENET1
+// but CPX2 only uses ENET0.
+#if 0
 	{
 	 .name = "ENET1_RX_EN",
 	 .id = PINID_ENET0_CRS,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -645,7 +648,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET1_RXD0",
 	 .id = PINID_ENET0_RXD2,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -655,7 +658,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET1_RXD1",
 	 .id = PINID_ENET0_RXD3,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -665,7 +668,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET1_TX_EN",
 	 .id = PINID_ENET0_COL,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -675,7 +678,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET1_TXD0",
 	 .id = PINID_ENET0_TXD2,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -685,17 +688,18 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET1_TXD1",
 	 .id = PINID_ENET0_TXD3,
 	 .fun = PIN_FUN2,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
 	 .drive = 1,
 	 },
+#endif
 	{
 	 .name = "ENET_CLK",
 	 .id = PINID_ENET_CLK,
 	 .fun = PIN_FUN1,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -705,7 +709,7 @@ static struct pin_desc mx28_cpx2_eth_pins[] = {
 	 .name = "ENET_RST",
 	 .id = PINID_PWM4,
 	 .fun = PIN_GPIO,
-	 .strength = PAD_8MA,
+	 .strength = PAD_4MA,
 	 .pull = 1,
 	 .pullup = 1,
 	 .voltage = PAD_3_3V,
@@ -931,7 +935,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	{
 	 .name     = "GPMI CE1-",
 	 .id       = PINID_GPMI_CE1N,
-	 .fun      = PIN_FUN1,
+	 .fun      = PIN_GPIO,              // Unused on CPX2, leave as GPIO input
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
 	 .pullup   = 1,
@@ -949,7 +953,7 @@ static struct pin_desc mx28_cpx2_gpmi_pins[] = {
 	{
 	 .name     = "GPMI RDY1",
 	 .id       = PINID_GPMI_RDY1,
-	 .fun      = PIN_FUN1,
+	 .fun      = PIN_GPIO,              // Unused on CPX2, leave as GPIO input
 	 .strength = PAD_4MA,
 	 .voltage  = PAD_3_3V,
 	 .pullup   = 1,
