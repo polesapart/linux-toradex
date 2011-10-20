@@ -2763,6 +2763,35 @@ static int mxc_v4l2out_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int mxc_v4l2out_suspend(struct platform_device *pdev,pm_message_t state) {
+	vout_data *vout = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	if( vout->state == STATE_STREAM_ON || vout->state == STATE_STREAM_PAUSED) {
+		if( vout->post_proc_ch ){
+			ipu_disable_channel(MEM_PP_MEM, true);
+			ipu_uninit_channel(MEM_PP_MEM);
+		}
+	}
+	return ret;
+}
+
+static int mxc_v4l2out_resume(struct platform_device *pdev) {
+	vout_data *vout = platform_get_drvdata(pdev);
+	int ret = 0;
+	ipu_channel_params_t params;
+	struct fb_info *fbi = registered_fb[vout->output_fb_num[vout->cur_disp_output]];
+	memset( &params , 0 , sizeof(ipu_channel_params_t) );
+
+	if( vout->state == STATE_STREAM_ON || vout->state == STATE_STREAM_PAUSED ){
+		if( vout->post_proc_ch ){
+		ret = init_PP(&params, vout, &pdev->dev, fbi, vout->crop_current.width,
+				vout->crop_current.height);
+		}
+	}
+	return ret;
+}
+
 /*!
  * This structure contains pointers to the power management callback functions.
  */
@@ -2772,6 +2801,8 @@ static struct platform_driver mxc_v4l2out_driver = {
 		   },
 	.probe = mxc_v4l2out_probe,
 	.remove = mxc_v4l2out_remove,
+	.suspend = mxc_v4l2out_suspend,
+	.resume = mxc_v4l2out_resume,
 };
 
 /*!

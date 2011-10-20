@@ -2678,6 +2678,11 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 
 	if (cam->overlay_on == true)
 		stop_preview(cam);
+
+	if (cam->capture_on == true) {
+		mxc_streamoff(cam);
+		cam->capture_on = true;
+	}
 	vidioc_int_s_power(cam->sensor, 0);
 	return 0;
 }
