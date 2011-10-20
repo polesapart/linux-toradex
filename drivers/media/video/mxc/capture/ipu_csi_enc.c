@@ -26,7 +26,7 @@
 
 #ifdef CAMERA_DBG
 	extern void ipu_dump_registers(void);
-	#define CAMERA_TRACE(x) (printk)x
+	#define CAMERA_TRACE(x) printk(x)
 #else
 	#define CAMERA_TRACE(x)
 #endif
