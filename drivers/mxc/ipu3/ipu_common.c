@@ -2114,8 +2114,7 @@ int32_t ipu_disable_channel(ipu_channel_t channel, bool wait_for_stop)
 				ret = wait_for_completion_timeout(&disable_comp, msecs_to_jiffies(200));
 				ipu_free_irq(irq, &disable_comp);
 				if (ret == 0) {
-					ipu_dump_registers();
-					dev_err(g_ipu_dev, "warning: disable ipu dma channel %d during its busy state\n", irq);
+					dev_warn(g_ipu_dev, "warning: disable ipu dma channel %d during its busy state\n", irq);
 					break;
 				}
 			}
