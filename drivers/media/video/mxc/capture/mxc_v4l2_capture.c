@@ -440,11 +440,11 @@ static int mxc_streamon(cam_data *cam)
  *
  * @return status  0 Success
  */
-static int mxc_streamoff(cam_data *cam)
+static int mxc_streamoff(cam_data *cam , int suspend)
 {
 	int err = 0;
 
-	pr_debug("In MVC:mxc_streamoff\n");
+	pr_debug("In MVC:mxc_streamoff, suspend %d\n",suspend);
 
 	if (cam->capture_on == false)
 		return 0;
@@ -457,9 +457,11 @@ static int mxc_streamoff(cam_data *cam)
 	if (cam->enc_disable)
 		err = cam->enc_disable(cam);
 
-	mxc_free_frames(cam);
+	if( !suspend){
+		mxc_free_frames(cam);
+		cam->capture_on = false;
+	}
 	mxc_capture_inputs[cam->current_input].status |= V4L2_IN_ST_NO_POWER;
-	cam->capture_on = false;
 	return err;
 }
 
@@ -1723,7 +1725,7 @@ static int mxc_v4l_close(struct file *file)
 		cam->overlay_on = false;
 	}
 	if (cam->capture_pid == current->tgid) {
-		err |= mxc_streamoff(cam);
+		err |= mxc_streamoff(cam,false);
 		wake_up_interruptible(&cam->enc_queue);
 	}
 
@@ -1981,7 +1983,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 			break;
 		}
 
-		mxc_streamoff(cam);
+		mxc_streamoff(cam,false);
 		mxc_free_frame_buf(cam);
 		cam->enc_counter = 0;
 		INIT_LIST_HEAD(&cam->ready_q);
@@ -2086,7 +2088,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 	 */
 	case VIDIOC_STREAMOFF: {
 		pr_debug("   case VIDIOC_STREAMOFF\n");
-		retval = mxc_streamoff(cam);
+		retval = mxc_streamoff(cam,false);
 		break;
 	}
 
@@ -2322,7 +2324,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 
 		if ((mxc_capture_inputs[cam->current_input].status &
 		    V4L2_IN_ST_NO_POWER) == 0) {
-			retval = mxc_streamoff(cam);
+			retval = mxc_streamoff(cam,false);
 			if (retval)
 				break;
 			mxc_capture_inputs[cam->current_input].status |=
@@ -2697,10 +2699,11 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 		stop_preview(cam);
 
 	if (cam->capture_on == true) {
-		mxc_streamoff(cam);
-		cam->capture_on = true;
+		mxc_streamoff(cam,true);
 	}
 	vidioc_int_s_power(cam->sensor, 0);
+	mxc_capture_inputs[cam->current_input].status |= V4L2_IN_ST_NO_POWER;
+
 	return 0;
 }
 
