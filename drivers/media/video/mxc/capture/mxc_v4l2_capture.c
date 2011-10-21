@@ -2719,6 +2719,7 @@ static int mxc_v4l2_suspend(struct platform_device *pdev, pm_message_t state)
 static int mxc_v4l2_resume(struct platform_device *pdev)
 {
 	cam_data *cam = platform_get_drvdata(pdev);
+	int err=0;
 
 	pr_debug("In MVC:mxc_v4l2_resume\n");
 
@@ -2734,6 +2735,10 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 
 	if (cam->sensor)
 		vidioc_int_s_power(cam->sensor, 1);
+
+	err = mxc_v4l2_init_csi(cam);
+	if(err)
+		pr_err("Error initializing CSI\n");
 
 	if (cam->overlay_on == true)
 		start_preview(cam);
