@@ -358,6 +358,7 @@ static int mxc_streamon(cam_data *cam)
 	struct mxc_v4l_frame *frame;
 	int err = 0;
 	unsigned long lock_flags;
+	int ret = 0;
 
 	if (NULL == cam) {
 		pr_err("ERROR! cam parameter is NULL\n");
@@ -368,6 +369,12 @@ static int mxc_streamon(cam_data *cam)
 		pr_err("ERROR: v4l2 capture: Capture stream has been turned "
 		       " on\n");
 		return -1;
+	}
+
+	if (list_empty(&cam->ready_q)) {
+		ret = wait_event_interruptible_timeout( cam->ready_queue , !list_empty(&cam->ready_q) , msecs_to_jiffies( 100 ) );
+		if( ret <= 0 )
+			pr_warning("Timeout waiting on ready queue\n");
 	}
 
 	if (list_empty(&cam->ready_q)) {
@@ -2043,6 +2050,7 @@ static long mxc_v4l_do_ioctl(struct file *file,
 
 		buf->flags = cam->frame[index].buffer.flags;
 		spin_unlock_irqrestore(&cam->queue_int_lock, lock_flags);
+		wake_up_interruptible(&cam->ready_queue);
 		break;
 	}
 
@@ -2574,6 +2582,12 @@ next:
 	return;
 }
 
+static void r_queue_work(struct work_struct *work)
+{
+	cam_data *cam = container_of( work , cam_data , r_queue_wq);
+	mxc_streamon(cam);
+}
+
 /*!
  * initialize cam_data structure
  *
@@ -2605,6 +2619,8 @@ static void init_camera_struct(cam_data *cam, unsigned int device_index)
 
 	init_waitqueue_head(&cam->enc_queue);
 	init_waitqueue_head(&cam->still_queue);
+
+	INIT_WORK( &cam->r_queue_wq ,  r_queue_work );
 
 	/* setup cropping */
 	cam->crop_bounds.left = 0;
@@ -2645,6 +2661,7 @@ static void init_camera_struct(cam_data *cam, unsigned int device_index)
 
 	cam->enc_callback = camera_callback;
 	init_waitqueue_head(&cam->power_queue);
+	init_waitqueue_head(&cam->ready_queue);
 	spin_lock_init(&cam->queue_int_lock);
 	spin_lock_init(&cam->dqueue_int_lock);
 }
@@ -2718,8 +2735,10 @@ static int mxc_v4l2_resume(struct platform_device *pdev)
 	if (cam->overlay_on == true)
 		start_preview(cam);
 
-	if (cam->capture_on == true)
-	    mxc_streamon(cam);
+	if (cam->capture_on == true){
+		cam->capture_on = false;
+		schedule_work(&cam->r_queue_wq);
+	}
 
 	return 0;
 }
