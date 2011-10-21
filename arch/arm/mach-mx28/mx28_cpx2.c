@@ -173,8 +173,27 @@ static void __init mx28_cpx2_device_init(void)
 	mx28_cpx2_init_leds();
 }
 
+	// Digi product_id value; defaults to "cpx2e-se"
+	// since initial cpx2e-se units were not manufactured
+	// with digi_product_id= in ubootenv
+unsigned long digi_product_id = { 0x00008001 };
+
+static int __init digi_product_id_setup(char *value)
+{
+	if (value != NULL && !strict_strtoul(value, 16, &digi_product_id))
+		return 1;
+
+	printk(KERN_ERR "bad value for digi_product_id\n");
+	return 0;
+}
+
+__setup("digi_product_id=", digi_product_id_setup);
+
+
 static void __init mx28_cpx2_init_machine(void)
 {
+	printk(KERN_INFO "digi_product_id=0x%08lx\n", digi_product_id);
+
 	mx28_pinctrl_init();
 	/* Init iram allocate */
 #ifdef CONFIG_VECTORS_PHY_ADDR
