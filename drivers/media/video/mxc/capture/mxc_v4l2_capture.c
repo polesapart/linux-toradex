@@ -372,7 +372,7 @@ static int mxc_streamon(cam_data *cam)
 	}
 
 	if (list_empty(&cam->ready_q)) {
-		ret = wait_event_interruptible_timeout( cam->ready_queue , !list_empty(&cam->ready_q) , msecs_to_jiffies( 100 ) );
+		ret = wait_event_interruptible_timeout( cam->ready_queue , !list_empty(&cam->ready_q) , msecs_to_jiffies(1000));
 		if( ret <= 0 )
 			pr_warning("Timeout waiting on ready queue\n");
 	}

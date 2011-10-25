@@ -1262,9 +1262,9 @@ static int mxc_v4l2out_streamon(vout_data *vout)
 		return 0;
 
 	if ( queue_size(&vout->ready_q) < 2) {
-		ret = wait_event_interruptible( vout->ready_queue , queue_size(&vout->ready_q) >= 2 );
-		if( ret < 0 )
-			pr_warning("Timeout waiting on ready queue\n");
+		ret = wait_event_interruptible_timeout( vout->ready_queue , queue_size(&vout->ready_q) >= 2 , msecs_to_jiffies(1000));
+		if( ret <= 0 )
+			pr_warning("mxc_v4l2out_streamon: Timeout waiting on ready queue\n");
 	}
 
 	if (queue_size(&vout->ready_q) < 2) {
