@@ -1247,6 +1247,7 @@ static int mxc_v4l2out_streamon(vout_data *vout)
 	unsigned int ipu_ch = CHAN_NONE;
 	unsigned int fb_fmt;
 	int rc = 0;
+	int ret = 0;
 
 	dev_dbg(dev, "mxc_v4l2out_streamon: field format=%d\n",
 		vout->field_fmt);
@@ -1256,6 +1257,12 @@ static int mxc_v4l2out_streamon(vout_data *vout)
 
 	if (vout->state != STATE_STREAM_OFF)
 		return -EBUSY;
+
+	if (queue_size(&vout->ready_q) < 2) {
+		ret = wait_event_interruptible( vout->ready_queue , queue_size(&vout->ready_q) >= 2 );
+		if( ret < 0 )
+			pr_warning("Timeout waiting on ready queue\n");
+	}
 
 	if (queue_size(&vout->ready_q) < 2) {
 		dev_err(dev, "2 buffers not been queued yet!\n");
@@ -2103,6 +2110,12 @@ static int mxc_v4l2out_close(struct file *file)
 	return 0;
 }
 
+static void r_queue_work(struct work_struct *work)
+{
+	vout_data *vout = container_of( work , vout_data , r_queue_wq);
+	mxc_v4l2out_streamon(vout);
+}
+
 /*!
  * V4L2 interface - ioctl function
  *
@@ -2215,6 +2228,8 @@ mxc_v4l2out_do_ioctl(struct file *file,
 			vout->done_q.tail = 0;
 			vout->ready_q.head = 0;
 			vout->ready_q.tail = 0;
+			init_waitqueue_head(&vout->ready_queue);
+			INIT_WORK( &vout->r_queue_wq ,  r_queue_work );
 
 			for (i = 0; i < vout->buffer_cnt; i++) {
 				memset(&(vout->v4l2_bufs[i]), 0,
@@ -2287,6 +2302,7 @@ mxc_v4l2out_do_ioctl(struct file *file,
 								 display_ch,
 								 param);
 			queue_buf(&vout->ready_q, index);
+			wake_up_interruptible(&vout->ready_queue);
 			if (vout->state == STATE_STREAM_PAUSED) {
 				index = peek_next_buf(&vout->ready_q);
 				setup_next_buf_timer(vout, index);
@@ -2767,12 +2783,8 @@ static int mxc_v4l2out_suspend(struct platform_device *pdev,pm_message_t state) 
 	vout_data *vout = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	if( vout->state == STATE_STREAM_ON || vout->state == STATE_STREAM_PAUSED) {
-		if( vout->post_proc_ch ){
-			ipu_disable_channel(MEM_PP_MEM, true);
-			ipu_uninit_channel(MEM_PP_MEM);
-		}
-	}
+	mxc_v4l2out_streamoff(vout);
+
 	return ret;
 }
 
@@ -2782,6 +2794,8 @@ static int mxc_v4l2out_resume(struct platform_device *pdev) {
 	ipu_channel_params_t params;
 	struct fb_info *fbi = registered_fb[vout->output_fb_num[vout->cur_disp_output]];
 	memset( &params , 0 , sizeof(ipu_channel_params_t) );
+
+	schedule_work(&vout->r_queue_wq);
 
 	if( vout->state == STATE_STREAM_ON || vout->state == STATE_STREAM_PAUSED ){
 		if( vout->post_proc_ch ){

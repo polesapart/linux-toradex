@@ -33,6 +33,7 @@
 #include <linux/ipu.h>
 #include <linux/mxc_v4l2.h>
 #include <linux/videodev2.h>
+#include <linux/wait.h>
 
 #define MIN_FRAME_NUM 2
 #define MAX_FRAME_NUM 30
@@ -87,6 +88,8 @@ typedef struct _vout_data {
 
 	v4l_queue ready_q;
 	v4l_queue done_q;
+	wait_queue_head_t ready_queue;
+	struct work_struct r_queue_wq;
 
 	s8 next_rdy_ipu_buf;
 	s8 next_done_ipu_buf;
