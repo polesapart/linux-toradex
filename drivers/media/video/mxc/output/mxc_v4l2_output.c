@@ -1258,7 +1258,10 @@ static int mxc_v4l2out_streamon(vout_data *vout)
 	if (vout->state != STATE_STREAM_OFF)
 		return -EBUSY;
 
-	if (queue_size(&vout->ready_q) < 2) {
+	if( !vout->buffer_cnt )
+		return 0;
+
+	if ( queue_size(&vout->ready_q) < 2) {
 		ret = wait_event_interruptible( vout->ready_queue , queue_size(&vout->ready_q) >= 2 );
 		if( ret < 0 )
 			pr_warning("Timeout waiting on ready queue\n");
