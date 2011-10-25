@@ -1625,7 +1625,7 @@ static int mxc_v4l2out_streamon(vout_data *vout)
  *
  * @return status  0 Success
  */
-static int mxc_v4l2out_streamoff(vout_data *vout)
+static int mxc_v4l2out_streamoff(vout_data *vout,int suspend)
 {
 	struct fb_info *fbi =
 	    registered_fb[vout->output_fb_num[vout->cur_disp_output]];
@@ -1811,12 +1811,14 @@ static int mxc_v4l2out_streamoff(vout_data *vout)
 			ipu_uninit_channel(MEM_ROT_VF_MEM);
 	}
 
-	vout->ready_q.head = vout->ready_q.tail = 0;
-	vout->done_q.head = vout->done_q.tail = 0;
-	for (i = 0; i < vout->buffer_cnt; i++) {
-		vout->v4l2_bufs[i].flags = 0;
-		vout->v4l2_bufs[i].timestamp.tv_sec = 0;
-		vout->v4l2_bufs[i].timestamp.tv_usec = 0;
+	if( !suspend ){
+		vout->ready_q.head = vout->ready_q.tail = 0;
+		vout->done_q.head = vout->done_q.tail = 0;
+		for (i = 0; i < vout->buffer_cnt; i++) {
+			vout->v4l2_bufs[i].flags = 0;
+			vout->v4l2_bufs[i].timestamp.tv_sec = 0;
+			vout->v4l2_bufs[i].timestamp.tv_usec = 0;
+		}
 	}
 
 	vout->post_proc_ch = CHAN_NONE;
@@ -2090,7 +2092,7 @@ static int mxc_v4l2out_close(struct file *file)
 
 	if (--vout->open_count == 0) {
 		if (vout->state != STATE_STREAM_OFF)
-			mxc_v4l2out_streamoff(vout);
+			mxc_v4l2out_streamoff(vout,false);
 
 		file->private_data = NULL;
 
@@ -2185,7 +2187,7 @@ mxc_v4l2out_do_ioctl(struct file *file,
 			}
 
 			if (req->count == 0)
-				mxc_v4l2out_streamoff(vout);
+				mxc_v4l2out_streamoff(vout,false);
 
 			if (vout->state == STATE_STREAM_OFF) {
 				if (vout->queue_buf_paddr[0] != 0) {
@@ -2361,7 +2363,7 @@ mxc_v4l2out_do_ioctl(struct file *file,
 		}
 	case VIDIOC_STREAMOFF:
 		{
-			retval = mxc_v4l2out_streamoff(vout);
+			retval = mxc_v4l2out_streamoff(vout,false);
 			break;
 		}
 	case VIDIOC_G_CTRL:
@@ -2783,7 +2785,7 @@ static int mxc_v4l2out_suspend(struct platform_device *pdev,pm_message_t state) 
 	vout_data *vout = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	mxc_v4l2out_streamoff(vout);
+	mxc_v4l2out_streamoff(vout,true);
 
 	return ret;
 }
