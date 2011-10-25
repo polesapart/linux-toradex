@@ -2114,7 +2114,7 @@ static int mxc_v4l2out_close(struct file *file)
 
 static void r_queue_work(struct work_struct *work)
 {
-	vout_data *vout = container_of( work , vout_data , r_queue_wq);
+	vout_data *vout = container_of( work , vout_data , r_queue_wq.work);
 	mxc_v4l2out_streamon(vout);
 }
 
@@ -2230,8 +2230,6 @@ mxc_v4l2out_do_ioctl(struct file *file,
 			vout->done_q.tail = 0;
 			vout->ready_q.head = 0;
 			vout->ready_q.tail = 0;
-			init_waitqueue_head(&vout->ready_queue);
-			INIT_WORK( &vout->r_queue_wq ,  r_queue_work );
 
 			for (i = 0; i < vout->buffer_cnt; i++) {
 				memset(&(vout->v4l2_bufs[i]), 0,
@@ -2760,6 +2758,9 @@ static int mxc_v4l2out_probe(struct platform_device *pdev)
 			&dev_attr_fsl_v4l2_output_property))
 		dev_err(&pdev->dev, "Error on creating file\n");
 
+	INIT_DELAYED_WORK( &vout->r_queue_wq ,  r_queue_work );
+	init_waitqueue_head(&vout->ready_queue);
+
 	return 0;
 }
 
@@ -2793,18 +2794,9 @@ static int mxc_v4l2out_suspend(struct platform_device *pdev,pm_message_t state) 
 static int mxc_v4l2out_resume(struct platform_device *pdev) {
 	vout_data *vout = platform_get_drvdata(pdev);
 	int ret = 0;
-	ipu_channel_params_t params;
-	struct fb_info *fbi = registered_fb[vout->output_fb_num[vout->cur_disp_output]];
-	memset( &params , 0 , sizeof(ipu_channel_params_t) );
 
-	schedule_work(&vout->r_queue_wq);
+	schedule_delayed_work(&vout->r_queue_wq,msecs_to_jiffies(500));
 
-	if( vout->state == STATE_STREAM_ON || vout->state == STATE_STREAM_PAUSED ){
-		if( vout->post_proc_ch ){
-		ret = init_PP(&params, vout, &pdev->dev, fbi, vout->crop_current.width,
-				vout->crop_current.height);
-		}
-	}
 	return ret;
 }
 
