@@ -845,6 +845,8 @@ void ipu_uninit_channel(ipu_channel_t channel)
 	uint32_t in_dma, out_dma = 0;
 	uint32_t ipu_conf;
 
+	dev_dbg(g_ipu_dev, "init channel = %d\n", IPU_CHAN_ID(channel));
+
 	spin_lock_irqsave(&ipu_lock, lock_flags);
 
 	if ((g_channel_init_mask & (1L << IPU_CHAN_ID(channel))) == 0) {
