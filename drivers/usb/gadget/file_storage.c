@@ -669,6 +669,8 @@ static void fsg_disconnect(struct usb_gadget *gadget)
 	struct fsg_dev		*fsg = get_gadget_data(gadget);
 
 	DBG(fsg, "disconnect or port reset\n");
+
+#ifdef CONFIG_MACH_MX5
 	/*
 	 * The disconnect exception will call do_set_config, and therefore will
 	 * visit controller registers. However it is a delayed event, and will be
@@ -677,6 +679,7 @@ static void fsg_disconnect(struct usb_gadget *gadget)
 	 */
 	if (fsg->new_config)
 		do_set_interface(fsg, -1);/* disable the interface */
+#endif
 
 	raise_exception(fsg, FSG_STATE_DISCONNECT);
 }
