@@ -66,9 +66,11 @@ scm_version()
 			fi
 		fi
 
-		# Check if a DEL tag exists
+		# Check if a DEL or DAK tag exists
 		if del_tag="$(git describe --tags --exact-match --match 'del*' 2>/dev/null)"; then
 			printf '%s' - ${del_tag}
+		elif dak_tag="$(git describe --tags --exact-match --match 'dak*' 2>/dev/null)"; then
+			printf '%s' - ${dak_tag}
 		fi
 
 		# Is this git on svn?
