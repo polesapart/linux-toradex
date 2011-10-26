@@ -299,6 +299,10 @@ static int __devinit pmic_probe(struct spi_device *spi)
 		return ret;
 	}
 
+#ifdef CONFIG_CCXMX5X_PM_POWER_BUTTON
+	enable_irq_wake(spi->irq);
+#endif
+
 	if (plat_data && plat_data->init) {
 		ret = plat_data->init(spi_get_drvdata(spi));
 		if (ret != 0) {

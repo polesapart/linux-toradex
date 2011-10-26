@@ -276,6 +276,14 @@ config MXC_DISABLE_WARM_RESET
            seeing reboot problems. The memory won't be refreshed so it won't be
            available across resets.
 
+config CCXMX5X_PM_POWER_BUTTON
+        bool "Enable power button for suspend/resume to RAM"
+        default y
+        help
+           This option will enable the usage of the power button to suspend
+           and wake up the device. With this set, the target will always have
+           the power button enabled as a wake up source.
+
 endif
 
 menu "Serial Port Options"

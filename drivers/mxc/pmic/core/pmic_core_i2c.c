@@ -363,6 +363,10 @@ static int __devinit pmic_probe(struct i2c_client *client,
 		return ret;
 	}
 
+#ifdef CONFIG_CCXMX5X_PM_POWER_BUTTON
+	enable_irq_wake(pmic_irq);
+#endif
+
 	if (plat_data && plat_data->init) {
 		ret = plat_data->init(i2c_get_clientdata(client));
 		if (ret != 0)

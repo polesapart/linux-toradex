@@ -289,9 +289,59 @@ static struct regulator_init_data vgen3_init = {
 	}
 };
 
+#ifdef CONFIG_CCXMX5X_PM_POWER_BUTTON
+enum power_on_state {
+	PWRON_FROM_RESUME,
+	PWRON_FALLING_EDGE,
+	PWRON_FROM_SUSPEND
+};
+
+static int pwron_state = PWRON_FROM_RESUME;
+
+static void power_on_evt_handler(void)
+{
+	int pwron1_sense = 0;
+	int pwron1_interrupt = 0;
+
+	switch (pwron_state){
+			case PWRON_FROM_RESUME:
+				// Are we waking up from a non power button suspend
+				// and this is the falling edge already?
+				pmic_read_reg(REG_INT_SENSE1, &pwron1_sense, 0xffffff);
+				if(pwron1_sense & 0x8 /* Reg 5, Bit 3, PWRON1S */)
+					pwron_state = PWRON_FROM_RESUME;
+				else
+					// Skipping falling edge
+					pwron_state = PWRON_FALLING_EDGE;
+				break;
+			case PWRON_FALLING_EDGE:
+				// Suspend on rising edge
+				pm_suspend(PM_SUSPEND_MEM);
+				// Did we wake by a power button press?
+				pmic_read_reg(REG_INT_STATUS1, &pwron1_interrupt, 0xffffff);
+				if(pwron1_interrupt & 0x8 /* Reg 3, Bit 3, PWRON1I */)
+					pwron_state = PWRON_FROM_SUSPEND;
+				else
+					// Waken by other source
+					pwron_state = PWRON_FROM_RESUME;
+				break;
+			case PWRON_FROM_SUSPEND:
+				// Ignoring raising edge
+				pwron_state = PWRON_FROM_RESUME;
+				break;
+			default:
+				pr_err("power_on_evt_handler: Unitialized state\n");
+	}
+}
+#endif
+
 static int mc13892_regulator_init(struct mc13892 *mc13892)
 {
 	unsigned int value, register_mask;
+#ifdef CONFIG_CCXMX5X_PM_POWER_BUTTON
+	pmic_event_callback_t power_key_event;
+#endif
+
 	printk("Initializing regulators for CCWMX51.\n");
 	if (mxc_cpu_is_rev(CHIP_REV_2_0) < 0)
 		sw2_init.constraints.state_mem.uV = 1100000;
@@ -299,6 +349,13 @@ static int mc13892_regulator_init(struct mc13892 *mc13892)
 		sw2_init.constraints.state_mem.uV = 1250000;
 		sw1_init.constraints.state_mem.uV = 1000000;
 	}
+
+#ifdef CONFIG_CCXMX5X_PM_POWER_BUTTON
+	/* subscribe PWRON1 event to enable POWER key */
+	power_key_event.param = NULL;
+	power_key_event.func = (void *)power_on_evt_handler;
+	pmic_event_subscribe(EVENT_PWRONI, power_key_event);
+#endif
 
 	/* enable standby controll for all regulators */
 	pmic_read_reg(REG_MODE_0, &value, 0xffffff);
