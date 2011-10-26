@@ -18,7 +18,8 @@ extern struct flash_platform_data mxc_nand_data;
 extern struct smc911x_platdata ccwmx51_smsc9118;
 extern struct mxc_mmc_platform_data mmc1_data ;
 extern struct mxc_mmc_platform_data mmc3_data;
-extern struct resource mxcfb_resources[1];
+
+extern struct resource mxcfb_resources[];
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 extern struct mxc_i2c_platform_data mxci2c1_data;
 extern struct mxc_i2c_platform_data mxci2c2_data;
