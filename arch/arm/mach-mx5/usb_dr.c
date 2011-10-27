@@ -219,6 +219,16 @@ static enum usb_wakeup_event _is_host_wakeup(struct fsl_usb2_platform_data *pdat
 		return WAKEUP_EVENT_DPDM;
 	}
 
+	if (!wakeup_req) {
+		/* PROBLEM: endless loop due to a wake up
+		 * interrupt without OWIR flag being set.
+		 * This triggers when the OTG cable is connected
+		 * during suspend with a USB disk.
+		 * Do nothing, but return a valid ID wakeup
+		 * event. */
+		return WAKEUP_EVENT_ID;
+	}
+
 	return WAKEUP_EVENT_INVALID;
 }
 
