@@ -16,6 +16,16 @@
 
 extern struct resource mxcfb_resources[];
 extern struct mxc_spi_master mxcspi1_data ;
+#if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
+extern struct mxc_i2c_platform_data mxci2c1_data;
+extern struct mxc_i2c_platform_data mxci2c2_data;
+extern struct mxc_i2c_platform_data mxci2c3_data;
+extern struct mxc_i2c_platform_data mxci2c_hs_data;
+#elif defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
+extern struct imxi2c_platform_data mxci2c1_data;
+extern struct imxi2c_platform_data mxci2c2_data;
+extern struct imxi2c_platform_data mxci2c3_data;
+#endif
 
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);
