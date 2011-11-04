@@ -137,17 +137,15 @@ struct mma7455l_info {
 static inline u_int8_t __reg_read(struct mma7455l_info *mma, u_int8_t reg)
 {
 	unsigned char buf;
+	int ret;
 
-	struct i2c_msg msgs[] = {
-		{mma->client->addr, 0, 1, &reg},	/* setup read ptr */
-		{mma->client->addr, I2C_M_RD, 1, &buf},	/* read date */
-	};
+	ret = i2c_master_send(mma->client, &reg, 1);
+	if (ret < 0)
+		return ret;
 
-	/* read register */
-	if ((i2c_transfer(mma->client->adapter, &msgs[0], 2)) != 2) {
-		dev_err(&mma->client->dev, "%s: read error\n", __func__);
-		return -EIO;
-	}
+	ret = i2c_master_recv(mma->client, &buf, 1);
+	if (ret < 0)
+		return ret;
 	return buf;
 }
 
@@ -155,14 +153,13 @@ static inline int __reg_write(struct mma7455l_info *mma,
 				u_int8_t reg, u_int8_t val)
 {
 
-	struct i2c_msg msgs[] = {
-		{mma->client->addr, 0, 1, &reg},	/* setup read ptr */
-		{mma->client->addr, 0, 1, &val},	/* write value */
-	};
+	u8 data[2];
 
-	/* Write register */
-	if ((i2c_transfer(mma->client->adapter, &msgs[0], 2)) != 2) {
-		dev_err(&mma->client->dev, "%s: read error\n", __func__);
+	data[0] = reg;
+	data[1] = val;
+
+	if( i2c_master_send(mma->client, data, 2) < 0 ) {
+		dev_err(&mma->client->dev, "%s: write error\n", __func__);
 		return -EIO;
 	}
 	return 0;
