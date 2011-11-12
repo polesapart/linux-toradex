@@ -107,6 +107,24 @@ static struct gpio_led mxs_cpx2_leds[] = {
 		.default_trigger	= "none",
 		.active_low		= 0,
 	},
+	[2] = {
+		.gpio			= 68, /* ERT_ACTIVITY */
+		.name			= "mxs-cpx2-ert-act",
+		.default_trigger	= "none",
+		.active_low		= 0,
+	},
+	[3] = {
+		.gpio			= 118, /* UTILITY_ACT1 */
+		.name			= "mxs-cpx2-utility-act1",
+		.default_trigger	= "none",
+		.active_low		= 0,
+	},
+	[4] = {
+		.gpio			= 119, /* UTILITY_ACT2 */
+		.name			= "mxs-cpx2-utility-act2",
+		.default_trigger	= "none",
+		.active_low		= 0,
+	},
 };
 
 static struct gpio_led_platform_data mxs_cpx2_leds_pdata = {
