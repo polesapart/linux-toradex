@@ -99,7 +99,7 @@ static int imx_ccwmx51_audio_hw_params(struct snd_pcm_substream *substream,
 
 #if WM8753_SSI_MASTER
 	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-	    SND_SOC_DAIFMT_CBM_CFM;
+	    SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_LRSWAP;
 #else
 	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 	    SND_SOC_DAIFMT_CBS_CFS;

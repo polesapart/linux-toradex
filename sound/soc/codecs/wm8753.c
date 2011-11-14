@@ -1133,6 +1133,14 @@ static int wm8753_i2s_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		return -EINVAL;
 	}
 
+	switch (fmt & SND_SOC_DAIFMT_CLOCK_MASK) {
+		case SND_SOC_DAIFMT_LRSWAP:
+			hifi |= 0x0020;
+			break;
+		default:
+			break;
+	}
+
 	wm8753_write(codec, WM8753_HIFI, hifi);
 	wm8753_write(codec, WM8753_IOCTL, ioctl);
 	return 0;

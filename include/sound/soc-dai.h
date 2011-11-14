@@ -44,8 +44,9 @@ struct snd_pcm_substream;
  * DAI bit clocks can be be gated (disabled) when the DAI is not
  * sending or receiving PCM data in a frame. This can be used to save power.
  */
-#define SND_SOC_DAIFMT_CONT		(0 << 4) /* continuous clock */
+#define SND_SOC_DAIFMT_CONT			(0 << 4) /* continuous clock */
 #define SND_SOC_DAIFMT_GATED		(1 << 4) /* clock is gated */
+#define SND_SOC_DAIFMT_LRSWAP		(2 << 4) /* swap left/right DAC data in audio interface */
 
 /*
  * DAI hardware signal inversions.
