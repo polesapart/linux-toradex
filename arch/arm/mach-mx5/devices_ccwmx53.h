@@ -41,9 +41,9 @@ void gpio_fec_active(void);
 
 /* framebuffer settings */
 #if defined(CONFIG_CCWMX5X_DISP0) && defined(CONFIG_CCWMX5X_DISP1)
-#define FB_MEM_SIZE		SZ_32M
+#define FB_MEM_SIZE             (SZ_1M * 48)    /* 1920x1080x32bpp x 3 buffers x 2 interfaces*/
 #else
-#define FB_MEM_SIZE		SZ_16M
+#define FB_MEM_SIZE             (SZ_1M * 24)    /* 1920x1080x32bpp x 3 buffers */
 #endif
 
 #define MX53_GPIO(port,pin)		((port - 1) * 32 + pin)

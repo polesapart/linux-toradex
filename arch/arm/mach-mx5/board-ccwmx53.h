@@ -16,11 +16,8 @@
 #include "devices_ccwmx53.h"	/* MX53_GPIO(port,pin) */
 
 /* AD9389 interrupt */
-#ifdef CONFIG_JSCCWMX51_V1
-#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_4
-#elif defined(CONFIG_JSCCWMX51_V2)
-#define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_0
-#endif
+#define AD9389_GPIO_IRQ		MX53_GPIO(5,2)		/* GPIO_5_2 */
+#define AD9389_IRQ_PAD		MX53_PAD_EIM_A25__GPIO5_2
 
 /* Board revision */
 #define BASE_BOARD_REV		1
