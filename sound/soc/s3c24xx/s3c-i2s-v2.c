@@ -291,7 +291,11 @@ static int s3c2412_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
 		iismod |= S3C2412_IISMOD_SDF_LSB;
 		break;
 	case SND_SOC_DAIFMT_I2S:
+#ifdef CONFIG_MACH_CC9M2443JS
+		iismod |= S3C2412_IISMOD_LR_RLOW;
+#else
 		iismod &= ~S3C2412_IISMOD_LR_RLOW;
+#endif
 		iismod |= S3C2412_IISMOD_SDF_IIS;
 		break;
 	default:
