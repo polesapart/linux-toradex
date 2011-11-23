@@ -113,14 +113,14 @@ static int cc9m2443js_hifi_hw_params(struct snd_pcm_substream *substream,
 
 	/* REQUIRED: Set codec DAI configuration (normal bclk and frm ) and as slave */
 	ret = snd_soc_dai_set_fmt(codec_dai,
-					 SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF |
+					 SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 					 SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
 
 	/* REQUIRED: Set cpu DAI configuration (normal bclk and frm) and CPU as master */
 	ret = snd_soc_dai_set_fmt(cpu_dai,
-				       SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_IF |
+				       SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
 				       SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0)
 		return ret;
