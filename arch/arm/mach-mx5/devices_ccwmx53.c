@@ -50,6 +50,7 @@
 #include <video/ad9389.h>
 #include <linux/smc911x.h>
 #include <linux/fec.h>
+#include <mach/mxc_iim.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -1008,3 +1009,37 @@ struct mxc_spi_master mxcspi1_data = {
 	.chipselect_active = ccwmx53_gpio_spi_chipselect_active,
 	.chipselect_inactive = ccwmx53_gpio_spi_chipselect_inactive,
 };
+
+#ifdef CONFIG_MXC_IIM
+static void mxc_iim_enable_fuse(void)
+{
+	u32 reg;
+
+	if (!ccm_base)
+		return;
+	/* Enable fuse blown */
+	reg = readl(ccm_base + 0x64);
+	reg |= 0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+static void mxc_iim_disable_fuse(void)
+{
+	u32 reg;
+
+	/* Disable fuse blown */
+	if (!ccm_base)
+		return;
+
+	reg = readl(ccm_base + 0x64);
+	reg &= ~0x10;
+	writel(reg, ccm_base + 0x64);
+}
+
+struct mxc_iim_data iim_data = {
+	.bank_start = MXC_IIM_MX53_BANK_START_ADDR,
+	.bank_end   = MXC_IIM_MX53_BANK_END_ADDR,
+	.enable_fuse = mxc_iim_enable_fuse,
+	.disable_fuse = mxc_iim_disable_fuse,
+};
+#endif /* CONFIG_MXC_IIM */

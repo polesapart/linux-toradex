@@ -26,6 +26,7 @@ extern struct imxi2c_platform_data mxci2c1_data;
 extern struct imxi2c_platform_data mxci2c2_data;
 extern struct imxi2c_platform_data mxci2c3_data;
 #endif
+extern struct mxc_iim_data iim_data;
 
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);

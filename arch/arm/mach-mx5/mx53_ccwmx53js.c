@@ -276,7 +276,8 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcscc_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
-	mxc_register_device(&mxc_pwm2_device, NULL);
+
+	mxc_register_device(&mxc_iim_device, &iim_data);
 
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 
