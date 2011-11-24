@@ -300,6 +300,54 @@ void gpio_video_inactive(int vif, u32 pad)
 EXPORT_SYMBOL(gpio_video_active);
 EXPORT_SYMBOL(gpio_video_inactive);
 
+
+#if defined(CONFIG_CCXMX5X_DISP0)
+static iomux_v3_cfg_t ccwmx53_lvds0_pads[] = {
+#if defined(CONFIG_CCXMX5X_DISP0_RGB888)
+	MX53_PAD_LVDS0_TX3_P__LDB_LVDS0_TX3,
+#endif
+	MX53_PAD_LVDS0_CLK_P__LDB_LVDS0_CLK,
+	MX53_PAD_LVDS0_TX2_P__LDB_LVDS0_TX2,
+	MX53_PAD_LVDS0_TX1_P__LDB_LVDS0_TX1,
+	MX53_PAD_LVDS0_TX0_P__LDB_LVDS0_TX0,
+};
+#endif /* CONFIG_CCXMX5X_DISP0 */
+
+#if defined(CONFIG_CCXMX5X_DISP1)
+static iomux_v3_cfg_t ccwmx53_lvds1_pads[] = {
+#if defined(CONFIG_CCXMX5X_DISP1_RGB888)
+	MX53_PAD_LVDS1_TX3_P__LDB_LVDS1_TX3,
+#endif
+	MX53_PAD_LVDS1_CLK_P__LDB_LVDS1_CLK,
+	MX53_PAD_LVDS1_TX2_P__LDB_LVDS1_TX2,
+	MX53_PAD_LVDS1_TX1_P__LDB_LVDS1_TX1,
+	MX53_PAD_LVDS1_TX0_P__LDB_LVDS1_TX0,
+};
+#endif /* CONFIG_CCXMX5X_DISP1 */
+
+void gpio_lvds_active(int interf)
+{
+#if defined(CONFIG_CCXMX5X_DISP0)
+	if (interf == 0) {
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_lvds0_pads,
+						 ARRAY_SIZE(ccwmx53_lvds0_pads));
+	}
+#endif /* CONFIG_CCXMX5X_DISP0 */
+#if defined(CONFIG_CCXMX5X_DISP1)
+	if (interf == 1) {
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_lvds1_pads,
+						 ARRAY_SIZE(ccwmx53_lvds1_pads));
+	}
+#endif /* CONFIG_CCXMX5X_DISP1 */
+}
+
+void gpio_lvds_inactive(int interf)
+{
+}
+EXPORT_SYMBOL(gpio_lvds_active);
+EXPORT_SYMBOL(gpio_lvds_inactive);
+
+
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 static iomux_v3_cfg_t ccwmx53_fec_pads[] = {
 	MX53_PAD_FEC_MDC__FEC_MDC,

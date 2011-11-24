@@ -252,6 +252,16 @@ struct mxc_fb_platform_data mx53_fb_data[2] = {
 	}
 };
 
+struct ldb_platform_data ldb_data[] = {
+	{
+		.ext_ref = 1,
+		.boot_enable = MXC_LDBDI0,
+	}, {
+		.ext_ref = 1,
+		.boot_enable = MXC_LDBDI1,
+	}
+};
+
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 static u32 ccwmx53_get_max_video_pclk(void)
 {
@@ -741,6 +751,29 @@ int __init ccwmx5x_init_fb(void)
 				       sizeof(struct mxc_fb_platform_data));
 				plcd_platform_data[i].vif = i;
 				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
+			}
+		} else 	if ((p = ccwmx53_get_video_cmdline_opt(i, "LVDS")) != NULL) {
+			pr_info("LVDS interface in DISP%d", i);
+			if (*p++ != '@') {
+				pr_info("Panel not provided, video interface will be disabled\n");
+				continue;
+			}
+			if ((panel = ccwmx53_find_video_config(lcd_panel_list,
+							      ARRAY_SIZE(lcd_panel_list),
+							      p)) != NULL) {
+				pr_info("Panel: %s", p);
+				memcpy(&plcd_platform_data[i],
+				       panel,
+				       sizeof(struct ccwmx5x_lcd_pdata));
+				memcpy(&mx53_fb_data[i],
+				       &plcd_platform_data[i].fb_pdata,
+				       sizeof(struct mxc_fb_platform_data));
+				plcd_platform_data[i].vif = i;
+				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
+
+				/* Configure the pins and register the LVDS bridge */
+				gpio_lvds_active(i);
+				mxc_register_device(&mxc_ldb_device, &ldb_data[i]);
 			}
 		} else if ((p = ccwmx53_get_video_cmdline_opt(i, "VGA")) != NULL) {
 			pr_info("VGA interface in DISP%d\n", i);
