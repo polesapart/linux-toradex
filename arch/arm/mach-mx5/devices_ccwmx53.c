@@ -858,6 +858,50 @@ void ccwmx53_register_nand(void)
 void ccwmx53_register_nand(void) {}
 #endif
 
+#if defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000) || defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000_MODULE)
+
+static int mxc_sgtl5000_amp_enable(int enable)
+{
+	return 0;
+}
+
+#define MX53_HP_DETECT	MX53_GPIO(4,3)	/* GPIO_4_3 */
+
+static int headphone_det_status(void)
+{
+	return (gpio_get_value(MX53_HP_DETECT) == 0);
+}
+
+static int mxc_sgtl5000_init(void);
+
+static struct mxc_audio_platform_data sgtl5000_data = {
+	.ssi_num = 1,
+	.src_port = 2,
+	.ext_port = 5,
+	.hp_irq = IOMUX_TO_IRQ(MX53_HP_DETECT),
+	.hp_status = headphone_det_status,
+	.amp_enable = mxc_sgtl5000_amp_enable,
+	.init = mxc_sgtl5000_init,
+};
+
+static int mxc_sgtl5000_init(void)
+{
+	sgtl5000_data.sysclk = 13000000;
+	return 0;
+}
+
+struct platform_device mxc_sgtl5000_device = {
+	.name = "imx-ccxmx53-sgtl5000",
+};
+
+void ccwmx53_register_sgtl5000(void)
+{
+	mxc_register_device(&mxc_sgtl5000_device, &sgtl5000_data);
+}
+#else
+void ccwmx53_register_sgtl5000(void) {}
+#endif
+
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 static struct fec_platform_data fec_pdata = {
 	.phy = PHY_INTERFACE_MODE_RMII,
@@ -962,6 +1006,11 @@ static struct i2c_board_info ccwmx53_i2c_devices[] __initdata = {
 	{
 		I2C_BOARD_INFO("mma7455l", 0x1d),
 		.irq = gpio_to_irq(CCWMX53_MMA7455_IRQ_GPIO),
+	},
+#endif
+#if defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000) || defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000_MODULE)
+	{
+		I2C_BOARD_INFO("sgtl5000-i2c", 0x0A),
 	},
 #endif
 };

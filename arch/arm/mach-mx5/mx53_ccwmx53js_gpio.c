@@ -256,6 +256,23 @@ EXPORT_SYMBOL(gpio_sdhc_active);
 void gpio_sdhc_inactive(int module) {}
 EXPORT_SYMBOL(gpio_sdhc_inactive);
 
+
+static iomux_v3_cfg_t ccwmx53_audio_pads[] = {
+	MX53_PAD_KEY_COL0__AUDMUX_AUD5_TXC,
+	MX53_PAD_KEY_ROW0__AUDMUX_AUD5_TXD,
+	MX53_PAD_KEY_COL1__AUDMUX_AUD5_TXFS,
+	MX53_PAD_KEY_ROW1__AUDMUX_AUD5_RXD,
+};
+
+void gpio_activate_audio_ports( void )
+{
+#if defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000) || defined(CONFIG_SND_SOC_IMX_CCXMX53_SGTL5000_MODULE)
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_audio_pads,ARRAY_SIZE(ccwmx53_audio_pads));
+#endif
+}
+EXPORT_SYMBOL(gpio_activate_audio_ports);
+
+
 #if defined(CONFIG_MACH_CCWMX53JS) || defined(CONFIG_MACH_CCWMX53JS)
 static iomux_v3_cfg_t ccwmx53_wireless_pads[] = {
 	MX53_PAD_SD1_CLK__ESDHC1_CLK,

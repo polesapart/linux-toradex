@@ -1361,7 +1361,7 @@ static __devexit int sgtl5000_i2c_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id sgtl5000_id[] = {
-	{"sgtl5000-i2c", 0},
+	{"sgtl5000-i2c", 2},
 	{},
 };
 

@@ -47,9 +47,6 @@ EXPORT_SYMBOL(gpio_i2c_hs_inactive);
 void gpio_pmic_active(void) {}
 EXPORT_SYMBOL(gpio_pmic_active);
 
-void gpio_activate_audio_ports(void) {}
-EXPORT_SYMBOL(gpio_activate_audio_ports);
-
 void gpio_sensor_select(int sensor) {}
 
 void gpio_sensor_active(unsigned int csi) {}

@@ -31,6 +31,7 @@ extern struct mxc_iim_data iim_data;
 void ccwmx53_register_sdio(int interface);
 void ccwmx53_register_nand(void);
 void ccwmx53_register_ext_eth(void);
+void ccwmx53_register_sgtl5000(void);
 void ccwmx53_register_fec(void);
 int __init ccwmx5x_init_fb(void);
 int __init ccwmx53_init_i2c_devices(void);

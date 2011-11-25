@@ -276,16 +276,17 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxcscc_device, NULL);
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
-
 	mxc_register_device(&mxc_iim_device, &iim_data);
-
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
+//	mxc_register_device(&mxc_ssi1_device, NULL);
+	mxc_register_device(&mxc_ssi2_device, NULL);
 
 	ccwmx53_register_sdio(1);
 	ccwmx53_register_sdio(2);
 	ccwmx53_register_nand();
 	ccwmx53_register_fec();
 	ccwmx53_register_ext_eth();
+	ccwmx53_register_sgtl5000();
 	ccwmx5x_init_fb();
 	ccwmx53_init_i2c_devices();
 
