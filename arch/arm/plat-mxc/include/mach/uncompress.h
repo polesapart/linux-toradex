@@ -63,6 +63,46 @@ static inline void flush(void)
 {
 }
 
+#ifdef CONFIG_MODULE_CCXMX5X
+static unsigned long get_console_uart_baddr(unsigned long arch_id)
+{
+	if (arch_id == MACH_TYPE_CCMX51JS || arch_id == MACH_TYPE_CCWMX51JS ||
+	    arch_id == MACH_TYPE_CCMX51 || arch_id == MACH_TYPE_CCWMX51) {
+		uart_base = UART1_BASE_ADDR;
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = UART2_BASE_ADDR;
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = UART3_BASE_ADDR;
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		/* Default in UART2 */
+		return UART2_BASE_ADDR;
+	} else if (arch_id == MACH_TYPE_CCMX53JS || arch_id == MACH_TYPE_CCWMX53JS ||
+		   arch_id == MACH_TYPE_CCMX53 || arch_id == MACH_TYPE_CCWMX53) {
+		uart_base = MX53_BASE_ADDR(UART1_BASE_ADDR);
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = MX53_BASE_ADDR(UART2_BASE_ADDR);
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = MX53_BASE_ADDR(UART3_BASE_ADDR);
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = MX53_BASE_ADDR(UART4_BASE_ADDR);
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		uart_base = MX53_BASE_ADDR(UART5_BASE_ADDR);
+		if (UART(UCR1) & UCR1_UARTEN)
+			return uart_base;
+		/* Default in UART1 */
+		return MX53_BASE_ADDR(UART1_BASE_ADDR);
+	}
+	return 0;
+}
+#endif
+
 #define MX1_UART1_BASE_ADDR	0x00206000
 #define MX25_UART1_BASE_ADDR	0x43f90000
 #define MX2X_UART1_BASE_ADDR	0x1000a000
@@ -117,17 +157,18 @@ static __inline__ void __arch_decomp_setup(unsigned long arch_id)
 	case MACH_TYPE_MX50_RDP:
 		uart_base = MX50_UART1_BASE_ADDR;
 		break;
+#ifdef CONFIG_MODULE_CCXMX5X
 	case MACH_TYPE_CCMX51JS:
 	case MACH_TYPE_CCWMX51JS:
-#if defined (CONFIG_UART2_ENABLED)
-		// UART2 is the default console
-		uart_base = UART2_BASE_ADDR;
-#elif defined (CONFIG_UART1_ENABLED)
-		uart_base = UART1_BASE_ADDR;
-#elif defined (CONFIG_UART3_ENABLED)
-		uart_base = UART3_BASE_ADDR;
-#endif
+	case MACH_TYPE_CCMX51:
+	case MACH_TYPE_CCWMX51:
+	case MACH_TYPE_CCMX53JS:
+	case MACH_TYPE_CCWMX53JS:
+	case MACH_TYPE_CCMX53:
+	case MACH_TYPE_CCWMX53:
+		uart_base = get_console_uart_baddr(arch_id);
 		break;
+#endif
 	default:
 		break;
 	}
