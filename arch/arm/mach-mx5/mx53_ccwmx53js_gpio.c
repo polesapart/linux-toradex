@@ -28,31 +28,52 @@ static iomux_v3_cfg_t ccwmx53_uart1_pads[] = {
 	MX53_PAD_PATA_DMACK__UART1_RXD_MUX,
 	MX53_PAD_PATA_DIOW__UART1_TXD_MUX,
 #if defined(CONFIG_UART1_CTS_RTS_ENABLED) || defined(CONFIG_UART1_FULL_UART_ENABLED)
+	MX53_PAD_PATA_IORDY__UART1_RTS,
+	MX53_PAD_PATA_RESET_B__UART1_CTS,
 #endif /* (CONFIG_UART1_CTS_RTS_ENABLED) || (CONFIG_UART1_FULL_UART_ENABLED) */
+#if defined(CONFIG_UART1_MODE_RS485)
+	MX53_PAD_PATA_RESET_B__GPIO7_4,
+#endif /* CONFIG_UART1_MODE_RS485 */
 #ifdef CONFIG_UART1_FULL_UART_ENABLED
+	MX53_PAD_EIM_D23__UART1_DCD,
+	MX53_PAD_EIM_EB3__UART1_RI,
+	MX53_PAD_EIM_D24__UART1_DTR,
+	MX53_PAD_EIM_D25__UART1_DSR,
 #endif /* CONFIG_UART1_FULL_UART_ENABLED */
 };
 #endif /* CONFIG_UART1_ENABLED */
 
 #ifdef CONFIG_UART2_ENABLED
 static iomux_v3_cfg_t ccwmx53_uart2_pads[] = {
+	MX53_PAD_PATA_BUFFER_EN__UART2_RXD_MUX,
+	MX53_PAD_PATA_DMARQ__UART2_TXD_MUX,
 #if defined(CONFIG_UART2_CTS_RTS_ENABLED) || defined(CONFIG_UART2_FULL_UART_ENABLED)
+	MX53_PAD_PATA_DIOR__UART2_RTS,
+	MX53_PAD_PATA_INTRQ__UART2_CTS,
 #endif /* (CONFIG_UART2_CTS_RTS_ENABLED) || (CONFIG_UART2_FULL_UART_ENABLED) */
-#ifdef CONFIG_UART2_FULL_UART_ENABLED
-#endif /* CONFIG_UART2_FULL_UART_ENABLED */
+#if defined(CONFIG_UART2_MODE_RS485)
+	MX53_PAD_PATA_INTRQ__GPIO7_2,
+#endif /* CONFIG_UART2_MODE_RS485 */
 };
 #endif /* CONFIG_UART2_ENABLED */
 
 #ifdef CONFIG_UART3_ENABLED
 static iomux_v3_cfg_t ccwmx53_uart3_pads[] = {
+	MX53_PAD_PATA_CS_1__UART3_RXD_MUX,
+	MX53_PAD_PATA_CS_0__UART3_TXD_MUX,
 #if defined(CONFIG_UART3_CTS_RTS_ENABLED) || defined(CONFIG_UART3_FULL_UART_ENABLED)
+	MX53_PAD_PATA_DA_2__UART3_RTS,
+	MX53_PAD_PATA_DA_1__UART3_CTS,
 #endif /* (CONFIG_UART3_CTS_RTS_ENABLED) || (CONFIG_UART3_FULL_UART_ENABLED) */
-#ifdef CONFIG_UART3_FULL_UART_ENABLED
-#endif /* CONFIG_UART3_FULL_UART_ENABLED */
+#if defined(CONFIG_UART3_MODE_RS485)
+	MX53_PAD_PATA_DA_1__GPIO7_7,
+#endif /* CONFIG_UART3_MODE_RS485 */
 };
 #endif /* CONFIG_UART3_ENABLED */
 
 #ifdef CONFIG_UART4_ENABLED
+
+
 static iomux_v3_cfg_t ccwmx53_uart4_pads[] = {
 #if defined(CONFIG_UART4_CTS_RTS_ENABLED) || defined(CONFIG_UART4_FULL_UART_ENABLED)
 #endif /* (CONFIG_UART4_CTS_RTS_ENABLED) || (CONFIG_UART4_FULL_UART_ENABLED) */
@@ -79,20 +100,32 @@ void gpio_uart_active(int port, int no_irda)
 	case 0:		/* UART 1 IOMUX Configs */
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart1_pads,
 						 ARRAY_SIZE(ccwmx53_uart1_pads));
-		break;
+#if defined(CONFIG_UART1_MODE_RS485)
+		gpio_request(MX53_GPIO(7, 4), "rs485_uart1_dir");
+		gpio_direction_output(MX53_GPIO(7, 4), !UART1_RS485_TXDIR_LVL);
 #endif
+		break;
+#endif /* CONFIG_UART1_ENABLED */
 #ifdef CONFIG_UART2_ENABLED
 	case 1:		/* UART 2 IOMUX Configs */
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart2_pads,
 						 ARRAY_SIZE(ccwmx53_uart2_pads));
-		break;
+#if defined(CONFIG_UART2_MODE_RS485)
+		gpio_request(MX53_GPIO(7, 2), "rs485_uart2_dir");
+		gpio_direction_output(MX53_GPIO(7, 2), !UART2_RS485_TXDIR_LVL);
 #endif
+		break;
+#endif /* CONFIG_UART2_ENABLED */
 #ifdef CONFIG_UART3_ENABLED
 	case 2:		/* UART 3 IOMUX Configs */
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart3_pads,
 						 ARRAY_SIZE(ccwmx53_uart3_pads));
-		break;
+#if defined(CONFIG_UART3_MODE_RS485)
+		gpio_request(MX53_GPIO(7, 7), "rs485_uart3_dir");
+		gpio_direction_output(MX53_GPIO(7, 7), !UART3_RS485_TXDIR_LVL);
 #endif
+		break;
+#endif /* CONFIG_UART3_ENABLED */
 #ifdef CONFIG_UART4_ENABLED
 	case 3:		/* UART 4 IOMUX Configs */
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_uart4_pads,
