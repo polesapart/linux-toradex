@@ -91,10 +91,16 @@ enum mma7455l_reg_status {
 };
 
 enum mma7455l_mode {
-	MMA7455L_MODE_STANDBY		= 0,
-	MMA7455L_MODE_MEASUREMENT	= 1,
-	MMA7455L_MODE_LEVELDETECTION	= 0x42, /* Set DRPD to on */
-	MMA7455L_MODE_PULSEDETECTION	= 0x43, /* Set DRPD to on */
+	/* +HP: Normally we would want Data Ready Status to be
+	 * signaled to INT1/DRDY PIN only in measurement mode, but
+	 * that would cause continued interrupts that we are not
+	 * going to handle for measurement (we would probably need
+	 * a DMA buffer for that), so do not output
+	 * Data Ready to INT1/DRDY PIN in any mode */
+	MMA7455L_MODE_STANDBY		= 0x40,
+	MMA7455L_MODE_MEASUREMENT	= 0x41,
+	MMA7455L_MODE_LEVELDETECTION	= 0x42,
+	MMA7455L_MODE_PULSEDETECTION	= 0x43,
 	MMA7455L_MODE_MASK		= 0x43,
 };
 
