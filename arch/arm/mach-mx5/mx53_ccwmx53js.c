@@ -290,7 +290,10 @@ static void __init mxc_board_init(void)
 	ccwmx5x_init_fb();
 	ccwmx53_init_i2c_devices();
 
+	mx5_usb_dr_init();
+#if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
 	mx5_usbh1_init();
+#endif
 
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx53_init_2nd_touch();

@@ -354,14 +354,14 @@ config UART2_CTS_RTS_ENABLED
 	default n
 	depends on UART2_ENABLED
 	depends on UART2_MODE_STANDARD
-	depends on !USB_EHCI_ARC_H1
+	depends on MODULE_CCXMX51 && !USB_EHCI_ARC_H1
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
 
 comment "UART2 CTS/RTS is not available on the ConnectCore Wi-i.MX51 JumpStart board if"
-	  depends on USB_EHCI_ARC_H1
+	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
 comment "the support for Host1 of the Freescale USB controller is enabled."
-	  depends on USB_EHCI_ARC_H1
+	  depends on MODULE_CCXMX51 && USB_EHCI_ARC_H1
 
 comment "UART3 is not available on the ConnectCore Wi-i.MX51 JumpStart board if UART1"
 	  depends on MODULE_CCXMX51 && UART1_FULL_UART_ENABLED
