@@ -85,7 +85,7 @@ static int imx_ccxmx53_audio_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 
 	unsigned int channels = params_channels(params);
-	u32 dai_format;
+	u32 dai_format = SND_SOC_DAIFMT_I2S;
 
 	/* only need to do this once as capture and playback are sync */
 	if (priv->hw)
@@ -135,11 +135,9 @@ static int imx_ccxmx53_audio_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_dai_set_sysclk(codec_dai, SGTL5000_LRCLK, rate, 0);
 
 #if SGTL5000_SSI_MASTER
-	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-	    SND_SOC_DAIFMT_CBM_CFM;
+	dai_format |= SND_SOC_DAIFMT_CBM_CFM;
 #else
-	dai_format = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
-	    SND_SOC_DAIFMT_CBS_CFS;
+	dai_format |= SND_SOC_DAIFMT_CBS_CFS;
 #endif
 
 	ssi_mode->sync_mode = 1;
@@ -149,6 +147,7 @@ static int imx_ccxmx53_audio_hw_params(struct snd_pcm_substream *substream,
 		ssi_mode->network_mode = 1;
 
 	/* set codec DAI configuration */
+	dai_format |= SND_SOC_DAIFMT_NB_NF;
 	ret = snd_soc_dai_set_fmt(codec_dai, dai_format);
 	if (ret < 0)
 		return ret;
@@ -160,6 +159,7 @@ static int imx_ccxmx53_audio_hw_params(struct snd_pcm_substream *substream,
 				 2, 32);
 
 	/* set cpu DAI configuration */
+	dai_format |= SND_SOC_DAIFMT_NB_IF;
 	ret = snd_soc_dai_set_fmt(cpu_dai, dai_format);
 	if (ret < 0)
 		return ret;
