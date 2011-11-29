@@ -50,8 +50,8 @@
 #define REGS_DBG		0x0004
 #define SCREEN_DBG		0x0008
 
-//int debug = I2C_DBG | EDID_DBG | REGS_DBG | SCREEN_DBG;
-int debug = 0;
+//static int debug = I2C_DBG | EDID_DBG | REGS_DBG | SCREEN_DBG;
+static int debug = 0;
 #define DBG(flag, fmt, args...)	do {							\
 					if (debug & flag)				\
 						printk(KERN_DEBUG fmt, ## args);	\
