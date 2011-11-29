@@ -277,7 +277,10 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
 	mxc_register_device(&mxc_iim_device, &iim_data);
+#if defined(CONFIG_SPI_MXC_SELECT1) || defined(CONFIG_SPI_MXC_SELECT1_MODULE)
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
+#endif
+	ccwmx53_init_spidevices();
 //	mxc_register_device(&mxc_ssi1_device, NULL);
 	mxc_register_device(&mxc_ssi2_device, NULL);
 

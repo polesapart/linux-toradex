@@ -1067,12 +1067,14 @@ void ccwmx53_init_2nd_touch(void) {}
 
 static struct spi_board_info spi_devices[] = {
 #if defined(CONFIG_SPI_SPIDEV) || defined(CONFIG_SPI_SPIDEV_MODULE)
-	{       /* SPIDEV */
+#if defined(CONFIG_SPI_MXC_SELECT1) || defined(CONFIG_SPI_MXC_SELECT1_MODULE)
+		{       /* SPIDEV */
 		.modalias	= "spidev",
 		.max_speed_hz	= 6000000,
 		.bus_num	= 1,
 		.chip_select	= 1,
 	},
+#endif
 #endif
         /* Add here other SPI devices, if any... */
 };

@@ -462,21 +462,35 @@ void gpio_smsc911x_active(void)
 }
 #endif
 
-#ifdef CONFIG_SPI_MXC_SELECT1
+#if (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
 
-static iomux_v3_cfg_t ccwmx53_spi_pads[] = {
+#ifdef CONFIG_SPI_MXC_SELECT1
+static iomux_v3_cfg_t ccwmx53_spi1_pads[] = {
 		MX53_PAD_CSI0_DAT7__ECSPI1_SS0,
 		MX53_PAD_CSI0_DAT4__ECSPI1_SCLK,
 		MX53_PAD_CSI0_DAT6__ECSPI1_MISO,
 		MX53_PAD_CSI0_DAT5__ECSPI1_MOSI,
 		MX53_PAD_GPIO_19__GPIO4_5,
 };
+#endif
+
+#ifdef CONFIG_SPI_MXC_SELECT2
+static iomux_v3_cfg_t ccwmx53_spi2_pads[] = {
+	// Depends on the hardware. On the CCXMX53JS these are not available.
+};
+#endif
+
+#ifdef CONFIG_SPI_MXC_SELECT3
+static iomux_v3_cfg_t ccwmx53_spi3_pads[] = {
+	// Depends on the hardware. On the CCXMX53JS these are not available.
+};
+#endif
 
 void gpio_spi_active(void)
 {
-	mxc_iomux_v3_setup_multiple_pads(ccwmx53_spi_pads,
-					 ARRAY_SIZE(ccwmx53_spi_pads));
-
+#ifdef CONFIG_SPI_MXC_SELECT1
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_spi1_pads,
+					 ARRAY_SIZE(ccwmx53_spi1_pads));
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	/* Configure external touch interrupt line */
 	gpio_request(SECOND_TS_IRQ_PIN, "ts2_irq");
@@ -486,6 +500,15 @@ void gpio_spi_active(void)
 	gpio_request(SECOND_TS_SPI_SS_PIN, "ts2_spi_ss");
 	gpio_direction_output(SECOND_TS_SPI_SS_PIN, 1);
 	gpio_set_value(SECOND_TS_SPI_SS_PIN, 1);
+#endif
+#endif
+#ifdef CONFIG_SPI_MXC_SELECT2
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_spi2_pads,
+					 ARRAY_SIZE(ccwmx53_spi1_pads));
+#endif
+#ifdef CONFIG_SPI_MXC_SELECT3
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_spi3_pads,
+					 ARRAY_SIZE(ccwmx53_spi1_pads));
 #endif
 }
 
