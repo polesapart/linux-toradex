@@ -555,9 +555,9 @@ static struct mxc_iomux_pin_cfg __initdata ccwmx51_iomux_devices_pins[] = {
 		MX51_PIN_GPIO1_6, IOMUX_CONFIG_GPIO,
 	},
 	{
-		MX51_PIN_GPIO1_7, IOMUX_CONFIG_ALT2,
+		MX51_PIN_GPIO1_7, IOMUX_CONFIG_ALT0,
 		(PAD_CTL_DRV_HIGH | PAD_CTL_PUE_PULL |
-		PAD_CTL_100K_PU | PAD_CTL_PKE_ENABLE | PAD_CTL_SRE_FAST),
+		PAD_CTL_100K_PU | PAD_CTL_SRE_FAST),
 	},
 #endif
 };
