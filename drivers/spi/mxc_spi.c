@@ -436,6 +436,7 @@ extern void gpio_spi_inactive(int cspi_mod);
 void mxc_spi_buf_rx_##type(struct mxc_spi *master_drv_data, u32 val)\
 {\
 	type *rx = master_drv_data->transfer.rx_buf;\
+	if(!rx) return;\
 	*rx++ = (type)val;\
 	master_drv_data->transfer.rx_buf = rx;\
 }
@@ -445,6 +446,7 @@ u32 mxc_spi_buf_tx_##type(struct mxc_spi *master_drv_data)\
 {\
 	u32 val;\
 	const type *tx = master_drv_data->transfer.tx_buf;\
+	if(!tx) return 0;\
 	val = *tx++;\
 	master_drv_data->transfer.tx_buf = tx;\
 	return val;\
