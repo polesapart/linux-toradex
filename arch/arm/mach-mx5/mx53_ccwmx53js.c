@@ -285,7 +285,15 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_ssi2_device, NULL);
 
 	ccwmx53_register_sdio(1);
+#ifdef CONFIG_ESDHCI_MXC_SELECT2
 	ccwmx53_register_sdio(2);
+#endif
+#ifdef CONFIG_ESDHCI_MXC_SELECT3
+	ccwmx53_register_sdio(3);
+#endif
+#ifdef CONFIG_ESDHCI_MXC_SELECT4
+	ccwmx53_register_sdio(4);
+#endif
 	ccwmx53_register_nand();
 	ccwmx53_register_fec();
 	ccwmx53_register_ext_eth();

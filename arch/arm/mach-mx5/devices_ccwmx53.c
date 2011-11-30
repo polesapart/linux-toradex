@@ -71,6 +71,10 @@ extern void ccwmx53_gpio_spi_chipselect_active(int cspi_mode, int status,
 extern void ccwmx53_gpio_spi_chipselect_inactive(int cspi_mode, int status,
 						      int chipselect);
 
+/* Only SD2 has connected WP and CD */
+#define ESDHC2_WP_GPIO MX53_GPIO(1,2)
+#define ESDHC2_CD_GPIO MX53_GPIO(1,4)
+
 #if defined(CONFIG_MMC_IMX_ESDHCI) || defined(CONFIG_MMC_IMX_ESDHCI_MODULE)
 static int sdhc_write_protect(struct device *dev)
 {
