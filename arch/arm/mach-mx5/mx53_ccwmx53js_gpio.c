@@ -566,3 +566,35 @@ void ccwmx53_gpio_spi_chipselect_inactive(int busnum, int ssb_pol,
 }
 EXPORT_SYMBOL(ccwmx53_gpio_spi_chipselect_inactive);
 #endif
+
+/* CAN */
+static iomux_v3_cfg_t ccwmx53_can0_pads[] = {
+	MX53_PAD_GPIO_7__CAN1_TXCAN,
+	MX53_PAD_GPIO_8__CAN1_RXCAN,
+};
+
+static iomux_v3_cfg_t ccwmx53_can1_pads[] = {
+	MX53_PAD_KEY_COL4__CAN2_TXCAN,
+	MX53_PAD_KEY_ROW4__CAN2_RXCAN,
+};
+
+void gpio_can_active(int interface)
+{
+	switch (interface) {
+#ifdef CONFIG_CCWMX53_CAN1
+	case 0:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_can0_pads,
+						 ARRAY_SIZE(ccwmx53_can0_pads));
+		break;
+#endif /* CONFIG_CCWMX53_CAN1 */
+#ifdef CONFIG_CCWMX53_CAN2
+	case 1:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_can1_pads,
+						 ARRAY_SIZE(ccwmx53_can1_pads));
+		break;
+#endif /* CONFIG_CCWMX53_CAN2 */
+	}
+}
+EXPORT_SYMBOL(gpio_can_active);
+void gpio_can_inactive(int module) {}
+EXPORT_SYMBOL(gpio_can_inactive);

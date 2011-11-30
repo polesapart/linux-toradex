@@ -1131,3 +1131,63 @@ struct mxc_iim_data iim_data = {
 	.disable_fuse = mxc_iim_disable_fuse,
 };
 #endif /* CONFIG_MXC_IIM */
+
+#ifdef CONFIG_CAN_FLEXCAN
+static struct flexcan_platform_data flexcan0_data = {
+	.core_reg = NULL,
+	.io_reg = NULL,
+	.root_clk_id = "lp_apm", /*lp_apm is 24MHz */
+	.xcvr_enable = NULL,
+	.br_clksrc = 0,
+	.br_rjw = 2,
+	.br_presdiv = 3,
+	.br_propseg = 2,
+	.br_pseg1 = 3,
+	.br_pseg2 = 3,
+	.bcc = 1,
+	.srx_dis = 1,
+	.smp = 1,
+	.boff_rec = 1,
+	.ext_msg = 1,
+	.std_msg = 1,
+};
+static struct flexcan_platform_data flexcan1_data = {
+	.core_reg = NULL,
+	.io_reg = NULL,
+	.root_clk_id = "lp_apm", /*lp_apm is 24MHz */
+	.xcvr_enable = NULL,
+	.br_clksrc = 0,
+	.br_rjw = 2,
+	.br_presdiv = 3,
+	.br_propseg = 2,
+	.br_pseg1 = 3,
+	.br_pseg2 = 3,
+	.bcc = 1,
+	.srx_dis = 1,
+	.boff_rec = 1,
+	.ext_msg = 1,
+	.std_msg = 1,
+};
+
+void ccwmx53_register_can(int interface)
+{
+	/* Configure GPIOs */
+	gpio_can_active(interface);
+
+	/* Register interface */
+	switch (interface) {
+#ifdef CONFIG_CCWMX53_CAN1
+	case 0:
+		mxc_register_device(&mxc_flexcan0_device, &flexcan0_data);
+		break;
+#endif /* CONFIG_CCWMX53_CAN1 */
+#ifdef CONFIG_CCWMX53_CAN2
+	case 1:
+		mxc_register_device(&mxc_flexcan1_device, &flexcan1_data);
+		break;
+#endif /* CONFIG_CCWMX53_CAN2 */
+	}
+}
+#else
+void ccwmx53_register_can(int interface) {}
+#endif /* CONFIG_CAN_FLEXCAN */

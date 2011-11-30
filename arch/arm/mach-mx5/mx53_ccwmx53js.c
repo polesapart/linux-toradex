@@ -300,6 +300,8 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_sgtl5000();
 	ccwmx5x_init_fb();
 	ccwmx53_init_i2c_devices();
+	ccwmx53_register_can(0);
+	ccwmx53_register_can(1);
 
 	mx5_usb_dr_init();
 #if defined(CONFIG_USB_EHCI_ARC_H1) || defined(CONFIG_USB_EHCI_ARC_H1_MODULE)

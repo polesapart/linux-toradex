@@ -33,6 +33,7 @@ void ccwmx53_register_nand(void);
 void ccwmx53_register_ext_eth(void);
 void ccwmx53_register_sgtl5000(void);
 void ccwmx53_register_fec(void);
+void ccwmx53_register_can(int interface);
 int __init ccwmx5x_init_fb(void);
 int __init ccwmx53_init_i2c_devices(void);
 extern void ccwmx53_init_spidevices(void);
@@ -40,7 +41,7 @@ extern void ccwmx53_init_spidevices(void);
 void gpio_smsc911x_active(void);
 void gpio_sdhc_active(int interface);
 void gpio_fec_active(void);
-
+void gpio_can_active(int interface);
 
 /* framebuffer settings */
 #if defined(CONFIG_CCWMX5X_DISP0) && defined(CONFIG_CCWMX5X_DISP1)
