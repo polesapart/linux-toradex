@@ -105,8 +105,11 @@ static struct mxc_ipu_config mxc_ipu_data = {
 
 extern void mx5_vpu_reset(void);
 static struct mxc_vpu_platform_data mxc_vpu_data = {
+#ifdef CONFIG_MXC_VPU_IRAM
 	.iram_enable = true,
+#else
 	.iram_size = 0x14000,
+#endif
 	.reset = mx5_vpu_reset,
 };
 
