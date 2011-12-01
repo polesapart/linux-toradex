@@ -1132,7 +1132,7 @@ struct mxc_iim_data iim_data = {
 };
 #endif /* CONFIG_MXC_IIM */
 
-#ifdef CONFIG_CAN_FLEXCAN
+#if defined(CONFIG_CAN_FLEXCAN) || defined(CONFIG_CAN_FLEXCAN_MODULE)
 static struct flexcan_platform_data flexcan0_data = {
 	.core_reg = NULL,
 	.io_reg = NULL,
