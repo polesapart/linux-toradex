@@ -547,18 +547,17 @@ config I2C_MX_SELECT3
 endmenu
 
 menu "CAN Port Options"
+	depends on CAN_FLEXCAN && MODULE_CCXMX53
 
 config CCWMX53_CAN1
 	bool "Enable CAN1 port"
 	default y
-	depends on CAN_FLEXCAN && MODULE_CCXMX53
 	help
 	  Enables port CAN1 of the CPU
 
 config CCWMX53_CAN2
 	bool "Enable CAN2 port"
 	default y
-	depends on CAN_FLEXCAN && MODULE_CCXMX53
 	help
 	  Enables port CAN2 of the CPU
 
