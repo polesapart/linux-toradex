@@ -4826,6 +4826,7 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 	struct clk *tclk;
 	int i = 0, j = 0, reg;
 	u32 pll1_rate;
+	u32 ccgr1_mask = 0;
 
 	pll1_base = ioremap(MX53_BASE_ADDR(PLL1_BASE_ADDR), SZ_4K);
 	pll2_base = ioremap(MX53_BASE_ADDR(PLL2_BASE_ADDR), SZ_4K);
@@ -4837,10 +4838,10 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 		__raw_writel(1 << MXC_CCM_CCGRx_CG0_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG1_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG2_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG3_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG3_OFFSET |
 			      3 << MXC_CCM_CCGRx_CG4_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG8_OFFSET |
-			      3 << MXC_CCM_CCGRx_CG9_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG8_OFFSET |
+			      1 << MXC_CCM_CCGRx_CG9_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG12_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG13_OFFSET |
 			      1 << MXC_CCM_CCGRx_CG14_OFFSET, MXC_CCM_CCGR0);
@@ -4855,13 +4856,34 @@ int __init mx53_clocks_init(unsigned long ckil, unsigned long osc, unsigned long
 			      3 << MXC_CCM_CCGRx_CG14_OFFSET, MXC_CCM_CCGR0);
 	}
 
-	__raw_writel(0, MXC_CCM_CCGR1);
+#if defined(CONFIG_UART1_ENABLED)
+	ccgr1_mask |= 0x140;
+#endif
+#if defined(CONFIG_UART2_ENABLED)
+	ccgr1_mask |= 0x1400;
+#endif
+#if defined(CONFIG_UART3_ENABLED)
+	ccgr1_mask |= 0x14000;
+#endif
+
+#if defined(CONFIG_I2C_MX_SELECT1)
+	ccgr1_mask |= 0x40000;
+#endif
+#if defined(CONFIG_I2C_MX_SELECT2)
+	ccgr1_mask |= 0x100000;
+#endif
+#if defined(CONFIG_I2C_MX_SELECT3)
+	ccgr1_mask |= 0x400000;
+#endif
+
+	__raw_writel(ccgr1_mask, MXC_CCM_CCGR1);
 	__raw_writel(0, MXC_CCM_CCGR2);
 	__raw_writel(0, MXC_CCM_CCGR3);
 	__raw_writel(1 << MXC_CCM_CCGRx_CG8_OFFSET, MXC_CCM_CCGR4);
 
 	__raw_writel(1 << MXC_CCM_CCGRx_CG2_OFFSET |
-		     1 << MXC_CCM_CCGRx_CG6_OFFSET |
+		     1 << MXC_CCM_CCGR5_CG6_1_OFFSET |
+		     1 << MXC_CCM_CCGR5_CG6_2_OFFSET |
 		     3 << MXC_CCM_CCGRx_CG7_OFFSET |
 		     1 << MXC_CCM_CCGRx_CG8_OFFSET |
 		     1 << MXC_CCM_CCGRx_CG9_OFFSET |
