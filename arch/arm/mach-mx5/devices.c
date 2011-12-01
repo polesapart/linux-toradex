@@ -33,7 +33,12 @@
 #include <mach/i2c.h>
 #include "dma-apbh.h"
 #include "mach/mxc_dvfs.h"
+#ifdef CONFIG_MODULE_CCXMX51
 #include "devices_ccwmx51.h"
+#endif
+#ifdef CONFIG_MODULE_CCXMX53
+#include "devices_ccwmx53.h"
+#endif
 #include "crm_regs.h"
 #include <linux/fec.h>
 
