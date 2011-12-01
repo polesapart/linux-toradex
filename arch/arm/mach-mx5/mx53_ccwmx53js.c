@@ -259,6 +259,7 @@ static void __init mxc_board_init(void)
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "ssi_ext1_clk");
+	mxc_ipu_data.csi_clk[1] = clk_get(NULL, "ssi_ext1_clk");
 
 	mxc_cpu_common_init();
 	mx53_ccwmx53js_io_init();
@@ -277,6 +278,8 @@ static void __init mxc_board_init(void)
 	mxc_register_device(&mxc_dvfs_core_device, &dvfs_core_data);
 	mxc_register_device(&busfreq_device, &bus_freq_data);
 	mxc_register_device(&mxc_iim_device, &iim_data);
+	mxc_register_device(&mxc_v4l2_device, NULL);
+	mxc_register_device(&mxc_v4l2out_device, NULL);
 #if defined(CONFIG_SPI_MXC_SELECT1) || defined(CONFIG_SPI_MXC_SELECT1_MODULE)
 	mxc_register_device(&mxcspi1_device, &mxcspi1_data);
 #endif

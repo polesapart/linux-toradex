@@ -1016,6 +1016,16 @@ static struct i2c_board_info ccwmx53_i2c_devices[] __initdata = {
 	{
 		I2C_BOARD_INFO("sgtl5000-i2c", 0x0A),
 	},
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
+	{
+		I2C_BOARD_INFO("mt9v111_1", 0xB8>>1 /*0x5C*/),
+	},
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
+	{
+		I2C_BOARD_INFO("mt9v111_2", 0x90>>1 /*0x48*/),
+	},
+#endif
 #endif
 };
 
