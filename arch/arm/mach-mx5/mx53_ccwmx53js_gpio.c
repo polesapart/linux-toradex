@@ -598,3 +598,71 @@ void gpio_can_active(int interface)
 EXPORT_SYMBOL(gpio_can_active);
 void gpio_can_inactive(int module) {}
 EXPORT_SYMBOL(gpio_can_inactive);
+
+#if defined CONFIG_VIDEO_MXC_IPU_CAMERA
+
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
+static iomux_v3_cfg_t ccwmx53_cam1_pads[] = {
+	MX53_PAD_CSI0_DAT12__IPU_CSI0_D_12,
+	MX53_PAD_CSI0_DAT13__IPU_CSI0_D_13,
+	MX53_PAD_CSI0_DAT14__IPU_CSI0_D_14,
+	MX53_PAD_CSI0_DAT15__IPU_CSI0_D_15,
+	MX53_PAD_CSI0_DAT16__IPU_CSI0_D_16,
+	MX53_PAD_CSI0_DAT17__IPU_CSI0_D_17,
+	MX53_PAD_CSI0_DAT18__IPU_CSI0_D_18,
+	MX53_PAD_CSI0_DAT19__IPU_CSI0_D_19,
+	MX53_PAD_GPIO_0__CCM_SSI_EXT1_CLK,
+	MX53_PAD_CSI0_PIXCLK__IPU_CSI0_PIXCLK,
+	MX53_PAD_CSI0_MCLK__IPU_CSI0_HSYNC,
+	MX53_PAD_CSI0_VSYNC__IPU_CSI0_VSYNC,
+	MX53_PAD_CSI0_DAT9__GPIO5_27
+};
+#endif
+
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
+static iomux_v3_cfg_t ccwmx53_cam2_pads[] = {
+	MX53_PAD_EIM_A17__IPU_CSI1_D_12,
+	MX53_PAD_EIM_A18__IPU_CSI1_D_13,
+	MX53_PAD_EIM_A19__IPU_CSI1_D_14,
+	MX53_PAD_EIM_A20__IPU_CSI1_D_15,
+	MX53_PAD_EIM_A21__IPU_CSI1_D_16,
+	MX53_PAD_EIM_A22__IPU_CSI1_D_17,
+	MX53_PAD_EIM_A23__IPU_CSI1_D_18,
+	MX53_PAD_EIM_A24__IPU_CSI1_D_19,
+	MX53_PAD_GPIO_0__CCM_SSI_EXT1_CLK,
+	MX53_PAD_EIM_A16__IPU_CSI1_PIXCLK,
+	MX53_PAD_EIM_DA11__IPU_CSI1_HSYNC,
+	MX53_PAD_EIM_DA12__IPU_CSI1_VSYNC,
+	MX53_PAD_CSI0_DAT8__GPIO5_26
+};
+#endif
+
+void gpio_camera_active(void)
+{
+#if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_cam1_pads, ARRAY_SIZE(ccwmx53_cam1_pads));
+
+	/* Camera 1 reset */
+	gpio_request(MX53_GPIO(5,27), "gpio5_27");
+	gpio_direction_output(MX53_GPIO(5,27), 0);
+	// Take camera out of reset
+	gpio_set_value(MX53_GPIO(5,27), 0);
+	msleep(100);
+	gpio_set_value(MX53_GPIO(5,27), 1);
+	msleep(100);
+#endif
+#if defined (CONFIG_MXC_CAMERA_MICRON111_2) || defined(CONFIG_MXC_CAMERA_MICRON111_2_MODULE)
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_cam2_pads, ARRAY_SIZE(ccwmx53_cam2_pads));
+
+	/* Camera 2 reset */
+	gpio_request(MX53_GPIO(5,26), "gpio5_26");
+	gpio_direction_output(MX53_GPIO(5,26), 0);
+	// Take camera out of reset
+	gpio_set_value(MX53_GPIO(5,26), 0);
+	msleep(100);
+	gpio_set_value(MX53_GPIO(5,26), 1);
+	msleep(100);
+#endif
+}
+EXPORT_SYMBOL(gpio_camera_active);
+#endif //CONFIG_VIDEO_MXC_IPU_CAMERA

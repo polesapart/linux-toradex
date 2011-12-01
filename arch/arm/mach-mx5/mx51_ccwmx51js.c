@@ -503,3 +503,6 @@ MACHINE_START(CCMX51JS, "ConnectCore i.MX51"BOARD_NAME)
 	.timer		= &mxc_timer,
 MACHINE_END
 #endif /* CONFIG_MACH_CCMX51JS */
+
+/* Space holder, used for the CCWMX53 */
+void gpio_camera_active(void) {}

@@ -38,6 +38,7 @@
 static u16 testpattern;
 #endif
 
+extern void gpio_camera_active(void);
 static mt9v111_conf mt9v111_device;
 
 /*!
@@ -1400,6 +1401,8 @@ static int mt9v111_probe(struct i2c_client *client,
 
 	if( sensorid < 0 )
 		return -ENODEV;
+
+	gpio_camera_active();
 
 	/* Set initial values for the sensor struct. */
 	memset(&mt9v111_data[sensorid], 0, sizeof(struct sensor));
