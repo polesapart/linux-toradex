@@ -28,6 +28,7 @@
 /* base board custom GPIOs */
 #define DISP1_ENABLE_PAD	MX53_PAD_NANDF_CS2__GPIO6_15
 #define DISP1_ENABLE_GPIO	MX53_GPIO(6, 15)	/* GPIO_6_15 */
+#define DISP1_ENABLE_ACT_HIGH	1
 
 #elif defined(CONFIG_JSCCWMX53_V2)
 
@@ -37,7 +38,6 @@
 /* base board custom GPIOs */
 #define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO4_20
 #define DISP1_ENABLE_GPIO	MX53_GPIO(4, 20)	/* GPIO_4_20 */
-#define DISP1_ENABLE_ACT_HIGH	1
 
 #elif defined(CONFIG_JSCCWMX53_CUSTOM)
 
