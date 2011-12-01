@@ -123,6 +123,28 @@ config JSCCWMX51_CUSTOM
 	  Select this option if you are using your own custom-designed carrier
 	  board.
 
+
+config CERTMX53_V1
+	bool "ConnectCore for Wi-i.MX53 Certification Board"
+	depends on MODULE_CCXMX53
+	help
+	  Select this option if you are using the ConnectCore Wi-i.MX53 Certification
+	  Board.
+
+config JSCCWMX53_V2
+	bool "ConnectCore Wi-i.MX53 JumpStart Kit Development Board"
+	depends on MODULE_CCXMX53
+	help
+	  Select this option if you are using the development board included in
+	  Digi JumpStart Kit.
+
+config JSCCWMX53_CUSTOM
+	bool "Custom ConnectCore Wi-i.MX53 Carrier Board"
+	depends on MODULE_CCXMX53
+	help
+	  Select this option if you are using your own custom-designed carrier
+	  board.
+
 endchoice
 
 config MACH_MX53_EVK

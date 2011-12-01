@@ -78,6 +78,23 @@
 
 #define LDB_SPLIT_MODE_EN		0x00000010
 
+#define DEBUG
+#define DBG_CONFIG			0x0001
+#define DBG_FCALL			0x0002
+#define DBG_WARNING			0x4000
+#define DBG_ERROR			0x8000
+#define DBG_ALL				0xffff
+
+#ifdef DEBUG
+static int debug = DBG_ALL;
+#define DBG(flag, fmt, args...)	do {							\
+					if (debug & flag)				\
+						printk(KERN_DEBUG fmt, ## args);	\
+				} while (0)
+#else
+#define DBG(flag, fmt, args...)
+#endif
+
 enum ldb_chan_mode_opt {
 	LDB_SIN_DI0 = 0,
 	LDB_SIN_DI1 = 1,
@@ -166,10 +183,13 @@ static void ldb_disable(int ipu_di)
 	uint32_t reg;
 	int i = 0;
 
+	DBG(DBG_FCALL, "%s (intf %d)\n", __func__, ipu_di);
+
 	spin_lock(&ldb_lock);
 
 	switch (ldb.chan_mode_opt) {
 	case LDB_SIN_DI0:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI0\n", __func__, ipu_di);
 		if (ipu_di != 0 || !ldb.ch_working[0]) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -188,6 +208,7 @@ static void ldb_disable(int ipu_di)
 		ldb.ch_working[0] = false;
 		break;
 	case LDB_SIN_DI1:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI1\n", __func__, ipu_di);
 		if (ipu_di != 1 || !ldb.ch_working[1]) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -207,6 +228,8 @@ static void ldb_disable(int ipu_di)
 		break;
 	case LDB_SPL_DI0:
 	case LDB_DUL_DI0:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI0 | LDB_SPL_DI0\n",
+		    __func__, ipu_di);
 		if (ipu_di != 0) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -243,6 +266,8 @@ static void ldb_disable(int ipu_di)
 		break;
 	case LDB_SPL_DI1:
 	case LDB_DUL_DI1:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI1 | LDB_SPL_DI1\n",
+		    __func__, ipu_di);
 		if (ipu_di != 1) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -278,6 +303,7 @@ static void ldb_disable(int ipu_di)
 		}
 		break;
 	case LDB_SEP:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SEP\n", __func__, ipu_di);
 		if (ldb.ch_working[ipu_di]) {
 			reg = __raw_readl(ldb.control_reg);
 			if (ipu_di == 0)
@@ -302,6 +328,8 @@ static void ldb_disable(int ipu_di)
 	default:
 		break;
 	}
+	DBG(DBG_CONFIG, "%s[%d]: control_reg %x\n",
+	    __func__, ipu_di, __raw_readl(ldb.control_reg));
 
 	spin_unlock(&ldb_lock);
 	return;
@@ -311,11 +339,14 @@ static void ldb_enable(int ipu_di)
 {
 	uint32_t reg;
 
+	DBG(DBG_FCALL, "%s (intf %d)\n", __func__, ipu_di);
+
 	spin_lock(&ldb_lock);
 
 	reg = __raw_readl(ldb.control_reg);
 	switch (ldb.chan_mode_opt) {
 	case LDB_SIN_DI0:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI0\n", __func__, ipu_di);
 		if (ldb.ch_working[0] || ipu_di != 0) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -330,6 +361,7 @@ static void ldb_enable(int ipu_di)
 		ldb.ch_working[0] = true;
 		break;
 	case LDB_SIN_DI1:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI1\n", __func__, ipu_di);
 		if (ldb.ch_working[1] || ipu_di != 1) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -344,6 +376,7 @@ static void ldb_enable(int ipu_di)
 		ldb.ch_working[1] = true;
 		break;
 	case LDB_SEP:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SEP\n", __func__, ipu_di);
 		if (ldb.ch_working[ipu_di]) {
 			spin_unlock(&ldb_lock);
 			return;
@@ -371,12 +404,16 @@ static void ldb_enable(int ipu_di)
 		break;
 	case LDB_DUL_DI0:
 	case LDB_SPL_DI0:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI0 | LDB_SPL_DI0\n",
+		    __func__, ipu_di);
 		if (ipu_di != 0)
 			return;
 		else
 			goto proc;
 	case LDB_DUL_DI1:
 	case LDB_SPL_DI1:
+		DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI1 | LDB_SPL_DI1\n",
+		    __func__, ipu_di);
 		if (ipu_di != 1)
 			return;
 proc:
@@ -425,6 +462,8 @@ proc:
 	default:
 		break;
 	}
+	DBG(DBG_CONFIG, "%s[%d]: control_reg %x\n",
+	    __func__, ipu_di, __raw_readl(ldb.control_reg));
 	spin_unlock(&ldb_lock);
 	return;
 }
@@ -433,7 +472,9 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 {
 	int ipu_di = 0;
 	struct clk *di_clk, *ldb_clk_parent;
-	unsigned long ldb_clk_prate = 455000000;
+	unsigned long ldb_clk_prate;
+
+	DBG(DBG_FCALL, "%s\n", __func__);
 
 	fbi->mode = (struct fb_videomode *)fb_match_mode(&fbi->var,
 			&fbi->modelist);
@@ -442,6 +483,10 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				fbi->var.xres, fbi->var.yres);
 		return 0;
 	}
+
+	ldb_clk_prate = PICOS2KHZ(fbi->var.pixclock) * 1000UL * 7;
+	DBG(DBG_CONFIG, "%s[%d]: ldb_clk_prate %ld (pixclock %d)\n",
+	    __func__, ipu_di, ldb_clk_prate, fbi->var.pixclock);
 
 	if (fbi->fbops->fb_ioctl) {
 		mm_segment_t old_fs;
@@ -462,6 +507,7 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 		 * others: single, SPWG
 		 */
 		if (ldb.chan_mode_opt == LDB_NO_MODE) {
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_NO_MODE\n", __func__, ipu_di);
 			if (fb_mode_is_equal(fbi->mode, &mxcfb_ldb_modedb[0])) {
 				if (ipu_di == 0) {
 					ldb.chan_mode_opt = LDB_SPL_DI0;
@@ -498,6 +544,10 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				clk_get_parent(ldb.ldb_di_clk[1]);
 			clk_set_rate(ldb_clk_parent, ldb_clk_prate);
 			clk_set_parent(di_clk, ldb.ldb_di_clk[1]);
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di0_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(ldb_clk_parent));
+			DBG(DBG_CONFIG, "%s[%d]: ipu_di0_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(di_clk));
 			clk_put(di_clk);
 			clk_put(ldb.ldb_di_clk[1]);
 		} else {
@@ -508,34 +558,47 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				clk_get_parent(ldb.ldb_di_clk[0]);
 			clk_set_rate(ldb_clk_parent, ldb_clk_prate);
 			clk_set_parent(di_clk, ldb.ldb_di_clk[0]);
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di0_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(ldb_clk_parent));
+			DBG(DBG_CONFIG, "%s[%d]: ipu_di0_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(di_clk));
 			clk_put(di_clk);
 			clk_put(ldb.ldb_di_clk[0]);
 		}
 
 		switch (ldb.chan_mode_opt) {
 		case LDB_SIN_DI0:
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI0\n", __func__, ipu_di);
 			ldb.ldb_di_clk[0] = clk_get(g_ldb_dev, "ldb_di0_clk");
 			clk_set_rate(ldb.ldb_di_clk[0], ldb_clk_prate/7);
 			if (ldb.blank[0] == FB_BLANK_UNBLANK &&
 			    clk_get_usecount(ldb.ldb_di_clk[0]) == 0)
 				clk_enable(ldb.ldb_di_clk[0]);
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di0_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(ldb.ldb_di_clk[0]));
 			clk_put(ldb.ldb_di_clk[0]);
 			break;
 		case LDB_SIN_DI1:
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SIN_DI1\n", __func__, ipu_di);
 			ldb.ldb_di_clk[1] = clk_get(g_ldb_dev, "ldb_di1_clk");
 			clk_set_rate(ldb.ldb_di_clk[1], ldb_clk_prate/7);
 			if (ldb.blank[1] == FB_BLANK_UNBLANK &&
 			    clk_get_usecount(ldb.ldb_di_clk[1]) == 0)
 				clk_enable(ldb.ldb_di_clk[1]);
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di1_clk rate %ld\n",
+			    __func__, ipu_di, clk_get_rate(ldb.ldb_di_clk[1]));
 			clk_put(ldb.ldb_di_clk[1]);
 			break;
 		case LDB_SEP:
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_SEP\n", __func__, ipu_di);
 			if (ipu_di == 0) {
 				ldb.ldb_di_clk[0] = clk_get(g_ldb_dev, "ldb_di0_clk");
 				clk_set_rate(ldb.ldb_di_clk[0], ldb_clk_prate/7);
 				if (ldb.blank[0] == FB_BLANK_UNBLANK &&
 				    clk_get_usecount(ldb.ldb_di_clk[0]) == 0)
 					clk_enable(ldb.ldb_di_clk[0]);
+				DBG(DBG_CONFIG, "%s[%d]: ldb_di0_clk rate %ld\n",
+				    __func__, ipu_di, clk_get_rate(ldb.ldb_di_clk[0]));
 				clk_put(ldb.ldb_di_clk[0]);
 			} else {
 				ldb.ldb_di_clk[1] = clk_get(g_ldb_dev, "ldb_di1_clk");
@@ -543,11 +606,14 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				if (ldb.blank[1] == FB_BLANK_UNBLANK &&
 				    clk_get_usecount(ldb.ldb_di_clk[1]) == 0)
 					clk_enable(ldb.ldb_di_clk[1]);
+				DBG(DBG_CONFIG, "%s[%d]: ldb_di1_clk rate %ld\n",
+				    __func__, ipu_di, clk_get_rate(ldb.ldb_di_clk[1]));
 				clk_put(ldb.ldb_di_clk[1]);
 			}
 			break;
 		case LDB_DUL_DI0:
 		case LDB_SPL_DI0:
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI0 | LDB_SPL_DI0\n", __func__, ipu_di);
 			ldb.ldb_di_clk[0] = clk_get(g_ldb_dev, "ldb_di0_clk");
 			ldb.ldb_di_clk[1] = clk_get(g_ldb_dev, "ldb_di1_clk");
 			if (ldb.chan_mode_opt == LDB_DUL_DI0) {
@@ -562,11 +628,14 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				if (clk_get_usecount(ldb.ldb_di_clk[1]) == 0)
 					clk_enable(ldb.ldb_di_clk[1]);
 			}
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di%d_clk rate %ld\n",
+				    __func__, ipu_di, ipu_di, clk_get_rate(ldb.ldb_di_clk[ipu_di]));
 			clk_put(ldb.ldb_di_clk[0]);
 			clk_put(ldb.ldb_di_clk[1]);
 			break;
 		case LDB_DUL_DI1:
 		case LDB_SPL_DI1:
+			DBG(DBG_CONFIG, "%s[%d]: chan_mode_opt LDB_DUL_DI1 | LDB_SPL_DI1\n", __func__, ipu_di);
 			ldb.ldb_di_clk[0] = clk_get(g_ldb_dev, "ldb_di0_clk");
 			ldb.ldb_di_clk[1] = clk_get(g_ldb_dev, "ldb_di1_clk");
 			if (ldb.chan_mode_opt == LDB_DUL_DI1) {
@@ -581,6 +650,8 @@ static int ldb_fb_pre_setup(struct fb_info *fbi)
 				if (clk_get_usecount(ldb.ldb_di_clk[1]) == 0)
 					clk_enable(ldb.ldb_di_clk[1]);
 			}
+			DBG(DBG_CONFIG, "%s[%d]: ldb_di%d_clk rate %ld\n",
+				    __func__, ipu_di, ipu_di, clk_get_rate(ldb.ldb_di_clk[ipu_di]));
 			clk_put(ldb.ldb_di_clk[0]);
 			clk_put(ldb.ldb_di_clk[1]);
 			break;
@@ -601,6 +672,8 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 	struct fb_info *fbi = event->info;
 	mm_segment_t old_fs;
 	int ipu_di = 0;
+
+	DBG(DBG_FCALL, "%s (%lx)\n", __func__, val);
 
 	/* Get rid of impact from FG fb */
 	if (strcmp(fbi->fix.id, "DISP3 FG") == 0)
@@ -630,15 +703,18 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 		return 0;
 	}
 
+	DBG(DBG_CONFIG, "%s (xres: %d, yres: %d)\n", __func__, fbi->var.xres, fbi->var.yres);
+
 	switch (val) {
 	case FB_EVENT_MODE_CHANGE: {
 		int ipu_di_pix_fmt;
 		uint32_t reg;
 
+		DBG(DBG_CONFIG, "%s (FB_EVENT_MODE_CHANGE)\n", __func__);
+
 		if ((ldb.fbi[0] != NULL && ldb.chan_mode_opt != LDB_SEP) ||
 		    ldb.fbi[1] != NULL)
 			return 0;
-
 		/*
 		 * We cannot support two LVDS panels with different
 		 * pixel clock rates except that one's pixel clock rate
@@ -654,13 +730,11 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 				return 0;
 		} else
 			ldb.fbi[0] = fbi;
-
 		old_fs = get_fs();
 		set_fs(KERNEL_DS);
 		fbi->fbops->fb_ioctl(fbi, MXCFB_GET_DIFMT,
 				(unsigned long)&ipu_di_pix_fmt);
 		set_fs(old_fs);
-
 		if (!valid_mode(ipu_di_pix_fmt)) {
 			dev_err(g_ldb_dev, "Unsupport pixel format "
 					   "for ldb input\n");
@@ -691,9 +765,9 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 					LDB_DI1_VS_POL_ACT_LOW,
 					ldb.control_reg);
 		}
-
 		switch (ldb.chan_mode_opt) {
 		case LDB_SIN_DI0:
+			DBG(DBG_CONFIG, "%s (cofiguring LDB_SIN_DI0)\n", __func__);
 			reg = __raw_readl(ldb.control_reg);
 			if (bits_per_pixel(ipu_di_pix_fmt) == 24)
 				__raw_writel((reg & ~LDB_DATA_WIDTH_CH0_MASK) |
@@ -703,7 +777,6 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 				__raw_writel((reg & ~LDB_DATA_WIDTH_CH0_MASK) |
 					      LDB_DATA_WIDTH_CH0_18,
 					      ldb.control_reg);
-
 			reg = __raw_readl(ldb.control_reg);
 			if (ldb.chan_bit_map[0] == LDB_BIT_MAP_SPWG)
 				__raw_writel((reg & ~LDB_BIT_MAP_CH0_MASK) |
@@ -713,7 +786,6 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 				__raw_writel((reg & ~LDB_BIT_MAP_CH0_MASK) |
 					      LDB_BIT_MAP_CH0_JEIDA,
 					      ldb.control_reg);
-
 			reg = __raw_readl(ldb.control_reg);
 			__raw_writel((reg & ~LDB_CH0_MODE_MASK) |
 				      LDB_CH0_MODE_EN_TO_DI0, ldb.control_reg);
@@ -721,6 +793,7 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 				ldb.ch_working[0] = true;
 			break;
 		case LDB_SIN_DI1:
+			DBG(DBG_CONFIG, "%s (cofiguring LDB_SIN_DI)\n", __func__);
 			reg = __raw_readl(ldb.control_reg);
 			if (bits_per_pixel(ipu_di_pix_fmt) == 24)
 				__raw_writel((reg & ~LDB_DATA_WIDTH_CH1_MASK) |
@@ -748,6 +821,7 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 				ldb.ch_working[1] = true;
 			break;
 		case LDB_SEP:
+			DBG(DBG_CONFIG, "%s (cofiguring LDB_SEP)\n", __func__);
 			reg = __raw_readl(ldb.control_reg);
 			if (ipu_di == 0) {
 				if (bits_per_pixel(ipu_di_pix_fmt) == 24)
@@ -800,6 +874,7 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 			break;
 		case LDB_DUL_DI0:
 		case LDB_SPL_DI0:
+			DBG(DBG_CONFIG, "%s (cofiguring LDB_DUL_DI0 | LDB_SPL_DI0)\n", __func__);
 			reg = __raw_readl(ldb.control_reg);
 			if (bits_per_pixel(ipu_di_pix_fmt) == 24)
 				__raw_writel((reg & ~(LDB_DATA_WIDTH_CH0_MASK |
@@ -850,6 +925,7 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 			break;
 		case LDB_DUL_DI1:
 		case LDB_SPL_DI1:
+			DBG(DBG_CONFIG, "%s (cofiguring LDB_DUL_DI1 | LDB_SPL_DI1)\n", __func__);
 			reg = __raw_readl(ldb.control_reg);
 			if (bits_per_pixel(ipu_di_pix_fmt) == 24)
 				__raw_writel((reg & ~(LDB_DATA_WIDTH_CH0_MASK |
@@ -901,9 +977,14 @@ int ldb_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 		default:
 			break;
 		}
+		DBG(DBG_CONFIG, "%s[%d]: control_reg %x\n",
+		    __func__, ipu_di, __raw_readl(ldb.control_reg));
+
 		break;
 	}
 	case FB_EVENT_BLANK: {
+		DBG(DBG_CONFIG, "%s (FB_EVENT_BLANK) intf: %d, blank: %d\n",
+		    __func__, ipu_di, *(int *)event->data);
 		if (ldb.fbi[0] != fbi && ldb.fbi[1] != fbi)
 			return 0;
 
@@ -934,11 +1015,14 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 	int ret = 0;
 	uint32_t reg;
 
+	DBG(DBG_FCALL, "%s (%x)\n", __func__, cmd);
+
 	switch (cmd) {
 	case LDB_BGREF_RMODE:
 		{
 		ldb_bgref_parm parm;
 
+		DBG(DBG_CONFIG, "%s: LDB_BGREF_RMODE\n", __func__);
 		if (copy_from_user(&parm, (ldb_bgref_parm *) arg,
 				   sizeof(ldb_bgref_parm)))
 			return -EFAULT;
@@ -958,6 +1042,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		{
 		ldb_vsync_parm parm;
 
+		DBG(DBG_CONFIG, "%s: LDB_VSYNC_POL\n", __func__);
 		if (copy_from_user(&parm, (ldb_vsync_parm *) arg,
 				   sizeof(ldb_vsync_parm)))
 			return -EFAULT;
@@ -995,6 +1080,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		{
 		ldb_bitmap_parm parm;
 
+		DBG(DBG_CONFIG, "%s: LDB_BIT_MAP\n", __func__);
 		if (copy_from_user(&parm, (ldb_bitmap_parm *) arg,
 				   sizeof(ldb_bitmap_parm)))
 			return -EFAULT;
@@ -1027,6 +1113,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		{
 		ldb_data_width_parm parm;
 
+		DBG(DBG_CONFIG, "%s: LDB_DATA_WIDTH\n", __func__);
 		if (copy_from_user(&parm, (ldb_data_width_parm *) arg,
 				   sizeof(ldb_data_width_parm)))
 			return -EFAULT;
@@ -1061,6 +1148,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		struct clk *pll4_clk;
 		unsigned long pll4_rate = 0;
 
+		DBG(DBG_CONFIG, "%s: LDB_CHAN_MODE\n", __func__);
 		if (copy_from_user(&parm, (ldb_chan_mode_parm *) arg,
 				   sizeof(ldb_chan_mode_parm)))
 			return -EFAULT;
@@ -1180,6 +1268,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		{
 		int ipu_di;
 
+		DBG(DBG_CONFIG, "%s: LDB_ENABLE\n", __func__);
 		if (copy_from_user(&ipu_di, (int *) arg, sizeof(int)))
 			return -EFAULT;
 
@@ -1190,6 +1279,7 @@ static int mxc_ldb_ioctl(struct inode *inode, struct file *file,
 		{
 		int ipu_di;
 
+		DBG(DBG_CONFIG, "%s: LDB_DISABLE\n", __func__);
 		if (copy_from_user(&ipu_di, (int *) arg, sizeof(int)))
 			return -EFAULT;
 
@@ -1245,6 +1335,8 @@ static int ldb_probe(struct platform_device *pdev)
 	struct device *temp;
 	int mxc_ldb_major;
 	struct class *mxc_ldb_class;
+
+	DBG(DBG_FCALL, "%s\n", __func__);
 
 	if ((plat_data->boot_enable & (MXC_LDBDI0 | MXC_LDBDI1))
 		&& !g_enable_ldb) {
@@ -1457,6 +1549,8 @@ static int __init ldb_setup(char *options)
 
 	if (!strncmp(options, "di1", 3))
 		g_di1_used = true;
+
+	g_chan_mode_opt = LDB_SIN_DI0;
 
 	if (!strncmp(options, "single", 6)) {
 		strsep(&options, ",");

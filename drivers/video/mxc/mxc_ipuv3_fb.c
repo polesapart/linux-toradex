@@ -1678,12 +1678,9 @@ static ssize_t swap_disp_chan(struct device *dev,
 }
 DEVICE_ATTR(fsl_disp_property, 644, show_disp_chan, swap_disp_chan);
 
-static void	mxcfb_adjust( struct mxcfb_info * mxcfbi )
+static void mxcfb_adjust(struct mxcfb_info * mxcfbi)
 {
-	if( !strcmp(mxcfbi->fb_mode_str,"LQ121K1LG52") ) {
-		mxcfbi->ipu_di_period = 53;
-		mxcfbi->ipu_di_fall_edge_pos = 4;
-	}
+	/* Nothing needed, just a placeholder */
 }
 
 static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
@@ -1717,7 +1714,7 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
 			mxcfbi->fb_mode_str = mstr + 4;
 
-		// Device specific adjustments
+		/* Device specific adjustments */
 		mxcfb_adjust(mxcfbi);
 #endif
 		if (mxcfbi->ipu_di >= 0) {

@@ -30,7 +30,11 @@ static void lcd_bl_enable(int enable, int vif)
 #endif
 
 #elif defined(CONFIG_MODULE_CCXMX53)
+#ifdef DISP1_ENABLE_ACT_HIGH
+	gpio_set_value(DISP1_ENABLE_GPIO, enable);
+#else
 	gpio_set_value(DISP1_ENABLE_GPIO, !enable);
+#endif
 #endif /* CONFIG_MODULE_CCXMX51 */
 }
 
@@ -62,12 +66,12 @@ static struct fb_videomode lq70y3dg3b = {
 	.flag          = 0,
 };
 
-static struct fb_videomode lq121k1lg52 = {
-	.name          = "LQ121K1LG52",
+static struct fb_videomode lq121k1lg11 = {
+	.name          = "LQ121K1LG11",
 	.refresh       = 60,
 	.xres          = 1280,
 	.yres          = 800,
-	.pixclock      = 30200 /* 44.3333Mhz in ps  */,
+	.pixclock      = 18000, /* 55.55 MHz in ps  */
 	.left_margin   = 10,
 	.right_margin  = 370,
 	.upper_margin  = 10,
@@ -75,7 +79,7 @@ static struct fb_videomode lq121k1lg52 = {
 	.hsync_len     = 10,
 	.vsync_len     = 10,
 	.vmode         = FB_VMODE_NONINTERLACED,
-	.sync          = FB_SYNC_CLK_LAT_FALL,
+	.sync          = FB_SYNC_CLK_LAT_FALL | FB_SYNC_EXT,
 	.flag          = 0,
 };
 
@@ -124,8 +128,8 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	}, {
 		.fb_pdata = {
 			.interface_pix_fmt = VIDEO_PIX_FMT,
-			.mode_str = "LQ121K1LG52",
-			.mode = &lq121k1lg52,
+			.mode_str = "LQ121K1LG11",
+			.mode = &lq121k1lg11,
 			.num_modes = 1,
 		},
 		.bl_enable = lcd_bl_enable,

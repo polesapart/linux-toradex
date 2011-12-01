@@ -19,15 +19,35 @@
 #define AD9389_GPIO_IRQ		MX53_GPIO(5,2)		/* GPIO_5_2 */
 #define AD9389_IRQ_PAD		MX53_PAD_EIM_A25__GPIO5_2
 
-/* Board revision */
+/* Set base board type and revision */
+#ifdef CONFIG_CERTMX53_V1
+
 #define BASE_BOARD_REV		1
+#define BOARD_NAME		" on a CERTMX53 board"
+
+/* base board custom GPIOs */
+#define DISP1_ENABLE_PAD	MX53_PAD_NANDF_CS2__GPIO6_15
+#define DISP1_ENABLE_GPIO	MX53_GPIO(6, 15)	/* GPIO_6_15 */
+
+#elif defined(CONFIG_JSCCWMX53_V2)
+
+#define BASE_BOARD_REV		2
 #define BOARD_NAME		" on a JSK board"
+
+/* base board custom GPIOs */
+#define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO4_20
+#define DISP1_ENABLE_GPIO	MX53_GPIO(4, 20)	/* GPIO_4_20 */
+#define DISP1_ENABLE_ACT_HIGH	1
+
+#elif defined(CONFIG_JSCCWMX53_CUSTOM)
+
+#define BASE_BOARD_REV		0
+#define BOARD_NAME		" on a custom board"
+
+#endif /* CONFIG_base_board */
 
 #define ESDHC3_WP_PAD		MX53_PAD_NANDF_CS1__NANDF_CS1
 //#define ESDHC3_CD_PAD
-
-#define DISP1_ENABLE_PAD	MX53_PAD_DI0_PIN4__GPIO4_20
-#define DISP1_ENABLE_GPIO	MX53_GPIO(4, 20)	/* GPIO_4_20 */
 
 #define USER_LED1_PAD		MX53_PAD_CSI0_DATA_EN__GPIO5_20
 #define USER_LED1_GPIO		MX53_GPIO(5, 20)	/* GPIO_5_20 */
