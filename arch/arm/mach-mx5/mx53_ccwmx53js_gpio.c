@@ -568,15 +568,19 @@ EXPORT_SYMBOL(ccwmx53_gpio_spi_chipselect_inactive);
 #endif
 
 /* CAN */
+#ifdef CONFIG_CCWMX53_CAN1
 static iomux_v3_cfg_t ccwmx53_can0_pads[] = {
 	MX53_PAD_GPIO_7__CAN1_TXCAN,
 	MX53_PAD_GPIO_8__CAN1_RXCAN,
 };
+#endif
 
+#ifdef CONFIG_CCWMX53_CAN2
 static iomux_v3_cfg_t ccwmx53_can1_pads[] = {
 	MX53_PAD_KEY_COL4__CAN2_TXCAN,
 	MX53_PAD_KEY_ROW4__CAN2_RXCAN,
 };
+#endif
 
 void gpio_can_active(int interface)
 {
