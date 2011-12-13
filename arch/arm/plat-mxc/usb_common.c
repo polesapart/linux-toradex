@@ -838,8 +838,10 @@ int usbotg_init(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_USB_SUSPEND
 	if (usb_register_remote_wakeup(pdev))
 		pr_debug("DR is not a wakeup source.\n");
+#endif
 
 	mxc_otg_used++;
 	pr_debug("%s: success\n", __func__);
