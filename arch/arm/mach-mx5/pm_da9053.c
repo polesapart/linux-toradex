@@ -398,8 +398,10 @@ int da9053_suspend_cmd_hw(void)
 	data &= ~(DA9052_ID01_DEFSUPPLY | DA9052_ID01_nRESMODE);
 	pm_da9053_write_reg(DA9052_ID01_REG, data);
 
+#if !defined(CONFIG_MODULE_CCXMX53)
 	pm_da9053_write_reg(DA9052_GPIO0809_REG,
 			DA9052_GPIO0809_SMD_SET);
+#endif
 	pm_da9053_read_reg(DA9052_IRQMASKD_REG, &data);
 	data |= DA9052_GPI9_IRQ_MASK;
 	pm_da9053_write_reg(DA9052_IRQMASKD_REG, data);
