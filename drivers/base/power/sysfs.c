@@ -138,7 +138,8 @@ wake_store(struct device * dev, struct device_attribute *attr,
 	if (!device_can_wakeup(dev))
 		return -EINVAL;
 
-	if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ) {
+	if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ||
+			machine_is_ccwmx53js() || machine_is_ccmx53js() ) {
 		/*  Check whether this is a GPIO */
 		if( (name = strstr(dev->kobj.name , "gpio")) ) {
 			is_gpio = 1;

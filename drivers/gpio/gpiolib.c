@@ -803,7 +803,8 @@ int gpio_export(unsigned gpio, bool direction_may_change)
 		dev = device_create(&gpio_class, desc->chip->dev, MKDEV(0, 0),
 				desc, ioname ? ioname : "gpio%u", gpio);
 
-		if ( machine_is_ccwmx51js() || machine_is_ccmx51js() )
+		if ( machine_is_ccwmx51js() || machine_is_ccmx51js() ||
+				machine_is_ccwmx53js() || machine_is_ccmx53js())
 			// Allow this device to be used as wake up source
 			device_set_wakeup_capable(dev,1);
 
