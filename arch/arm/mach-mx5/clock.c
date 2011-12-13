@@ -4338,7 +4338,6 @@ static struct clk_lookup lookups[] = {
 	_REGISTER_CLOCK("mxcintuart.0", NULL, uart1_clk[0]),
 	_REGISTER_CLOCK("mxcintuart.1", NULL, uart2_clk[0]),
 	_REGISTER_CLOCK("mxcintuart.2", NULL, uart3_clk[0]),
-	_REGISTER_CLOCK(NULL, "i2c_clk", i2c_clk[0]),
 	_REGISTER_CLOCK("imx-i2c.1", NULL, i2c_clk[1]),
 	_REGISTER_CLOCK("mxc_pwm.0", NULL, pwm1_clk[0]),
 	_REGISTER_CLOCK("mxc_pwm.1", NULL, pwm2_clk[0]),
@@ -4386,6 +4385,7 @@ static struct clk_lookup lookups[] = {
 };
 
 static struct clk_lookup mx51_lookups[] = {
+	_REGISTER_CLOCK(NULL, "i2c_clk", i2c_clk[0]),
 	_REGISTER_CLOCK("mxc_i2c_hs.3", NULL, hsi2c_serial_clk),
 	_REGISTER_CLOCK("mxc_sim.0", NULL, sim_clk[0]),
 	_REGISTER_CLOCK("mxc_alsa_spdif.0", NULL, spdif1_clk[0]),
@@ -4397,7 +4397,8 @@ static struct clk_lookup mx53_lookups[] = {
 	_REGISTER_CLOCK(NULL, "pll4", pll4_sw_clk),
 	_REGISTER_CLOCK("mxcintuart.3", NULL, uart4_clk[0]),
 	_REGISTER_CLOCK("mxcintuart.4", NULL, uart5_clk[0]),
-	_REGISTER_CLOCK("imx-i2c.2", NULL, i2c_clk[2]),
+	_REGISTER_CLOCK("imx-i2c.0", NULL , i2c_clk[0]),
+	_REGISTER_CLOCK(NULL, "i2c_clk", i2c_clk[2]),
 	_REGISTER_CLOCK(NULL, "usb_phy2_clk", usb_phy_clk[1]),
 	_REGISTER_CLOCK(NULL, "ocram_clk", ocram_clk),
 	_REGISTER_CLOCK(NULL, "imx_sata_clk", sata_clk),
