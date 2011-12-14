@@ -53,10 +53,10 @@ void da9052_rtc_notifier(struct da9052_eh_nb *eh_data, unsigned int event)
 
 	if (msg.data & DA9052_ALARMMI_ALARMTYPE) {
 		da9052_rtc_enable_alarm(rtc->da9052, 0);
-		printk(KERN_DEBUG "RTC: TIMER ALARM\n");
+		printk(KERN_INFO "RTC: TIMER ALARM\n");
 	} else {
 		kobject_uevent(&rtc->rtc->dev.kobj, KOBJ_CHANGE);
-		printk(KERN_DEBUG "RTC: TICK ALARM\n");
+		printk(KERN_INFO "RTC: TICK ALARM\n");
 	}
 }
 
@@ -199,6 +199,10 @@ static int da9052_rtc_gettime(struct da9052 *da9052, struct rtc_time *rtc_tm)
 	if (validate_param)
 		return validate_param;
 
+	pr_debug("da9052_rtc_gettime: %d/%d/%d %d:%d:%d\n",rtc_tm->tm_mday,
+			rtc_tm->tm_mon,2000 + rtc_tm->tm_year,rtc_tm->tm_hour,rtc_tm->tm_min,
+			rtc_tm->tm_sec);
+
 	/* System compatability */
 	rtc_tm->tm_year += 100;
 	rtc_tm->tm_mon -= 1;
@@ -322,6 +326,9 @@ static int da9052_alarm_settime(struct da9052 *da9052, struct rtc_time *rtc_tm)
 		return ret;
 	}
 
+	pr_debug("da9052_alarm_settime: %d/%d/%d %d:%d\n",rtc_tm->tm_mday,
+			rtc_tm->tm_mon,2000+rtc_tm->tm_year,rtc_tm->tm_hour,rtc_tm->tm_min);
+
 	da9052_unlock(da9052);
 	return 0;
 }
@@ -346,6 +353,41 @@ static int da9052_rtc_get_alarm_status(struct da9052 *da9052)
 	return (msg.data > 0) ? 1 : 0;
 }
 
+#ifdef DEBUG
+static int da9052_dump_mask_irq(struct da9052 *da9052 )
+ {
+	struct da9052_ssc_msg msg[6];
+	unsigned char loop_index = 0;
+	int ret = 0;
+
+	msg[loop_index].data = 0;
+	msg[loop_index++].addr = DA9052_IRQMASKD_REG;
+
+	msg[loop_index].data = 0;
+	msg[loop_index++].addr = DA9052_IRQMASKC_REG;
+
+	msg[loop_index].data = 0;
+	msg[loop_index++].addr = DA9052_IRQMASKB_REG;
+
+	msg[loop_index].data = 0;
+	msg[loop_index++].addr = DA9052_IRQMASKA_REG;
+
+	da9052_lock(da9052);
+	ret = da9052->read_many(da9052, msg, loop_index);
+	if (ret != 0) {
+		da9052_unlock(da9052);
+		return ret;
+	}
+	da9052_unlock(da9052);
+
+	pr_info("IRQ MASK A %08x\n",msg[--loop_index].data);
+	pr_info("IRQ MASK B %08x\n",msg[--loop_index].data);
+	pr_info("IRQ MASK C %08x\n",msg[--loop_index].data);
+	pr_info("IRQ MASK D %08x\n",msg[--loop_index].data);
+
+	return 0;
+}
+#endif
 
 static int da9052_rtc_enable_alarm(struct da9052 *da9052, unsigned char flag)
 {
