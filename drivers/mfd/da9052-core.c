@@ -491,10 +491,18 @@ int da9052_ssc_init(struct da9052 *da9052)
 	INIT_WORK(&da9052->eh_isr_work, eh_workqueue_isr);
 
 	ssc_msg.addr = DA9052_IRQMASKA_REG;
-	ssc_msg.data = 0xff;
+	ssc_msg.data = 0xdf;
+	da9052->write(da9052, &ssc_msg);
+	ssc_msg.addr = DA9052_IRQMASKB_REG;
+	ssc_msg.data = 0x1f;
 	da9052->write(da9052, &ssc_msg);
 	ssc_msg.addr = DA9052_IRQMASKC_REG;
 	ssc_msg.data = 0xff;
+	da9052->write(da9052, &ssc_msg);
+
+	/* Initialize with no battery, let the battery driver set this */
+	ssc_msg.addr = DA9052_BATCHG_REG;
+	ssc_msg.data = 0;
 	da9052->write(da9052, &ssc_msg);
 
 	/* read chip version */
