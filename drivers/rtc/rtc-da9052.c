@@ -447,7 +447,7 @@ static int da9052_rtc_enable_alarm(struct da9052 *da9052, unsigned char flag)
 	return 0;
 }
 
-
+#if 0
 static ssize_t da9052_rtc_mask_irq(struct da9052 *da9052)
  {
 	unsigned char data = 0;
@@ -507,6 +507,7 @@ static ssize_t da9052_rtc_unmask_irq(struct da9052 *da9052)
 	return 0;
 
 }
+#endif
 
 static int da9052_rtc_class_ops_gettime
 			(struct device *dev, struct rtc_time *rtc_tm)
@@ -561,6 +562,7 @@ static int da9052_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	return ret;
 }
 
+#if 0
 static int da9052_rtc_update_irq_enable(struct device *dev,
 		unsigned int enabled)
 {
@@ -587,6 +589,7 @@ static int da9052_rtc_alarm_irq_enable(struct device *dev,
 	else
 		return da9052_rtc_enable_alarm(priv->da9052, enabled);
 }
+#endif
 
 static const struct rtc_class_ops da9052_rtc_ops = {
 	.read_time	= da9052_rtc_class_ops_gettime,
