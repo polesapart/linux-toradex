@@ -30,6 +30,7 @@ struct da9052_rtc {
 };
 
 static int da9052_rtc_enable_alarm(struct da9052 *da9052, unsigned char flag);
+static int da9052_rtc_gettime(struct da9052 *da9052, struct rtc_time *rtc_tm);
 
 void da9052_rtc_notifier(struct da9052_eh_nb *eh_data, unsigned int event)
 {
@@ -256,6 +257,23 @@ static int da9052_alarm_gettime(struct da9052 *da9052, struct rtc_time *rtc_tm)
 	return 0;
 }
 
+static int da9052_rtc_validate_alarm_parameters(struct da9052 *da9052 ,
+		struct rtc_time *alarm_rtc_tm)
+{
+	struct rtc_time rtc_tm;
+
+	if( !da9052_rtc_gettime( da9052 , &rtc_tm )) {
+		// Check that the alarm resolution is minutes and not seconds.
+		if( alarm_rtc_tm->tm_year > rtc_tm.tm_year-100 ||
+			alarm_rtc_tm->tm_mon > rtc_tm.tm_mon+1 ||
+			alarm_rtc_tm->tm_hour > rtc_tm.tm_hour ||
+			alarm_rtc_tm->tm_min > rtc_tm.tm_min)
+				return 0;
+	}
+
+	return -ETIME;
+}
+
 static int da9052_alarm_settime(struct da9052 *da9052, struct rtc_time *rtc_tm)
 {
 
@@ -274,6 +292,11 @@ static int da9052_alarm_settime(struct da9052 *da9052, struct rtc_time *rtc_tm)
 	validate_param = da9052_rtc_validate_parameters(rtc_tm);
 	if (validate_param)
 		return validate_param;
+
+	validate_param = da9052_rtc_validate_alarm_parameters(da9052,rtc_tm);
+	if (validate_param){
+		pr_info("Same minute alarm - triggering now.\n");
+	}
 
 	msg.addr = DA9052_ALARMMI_REG;
 	msg.data = 0;
