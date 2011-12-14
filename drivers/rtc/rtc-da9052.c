@@ -14,6 +14,7 @@
 #include <linux/mfd/da9052/da9052.h>
 #include <linux/mfd/da9052/reg.h>
 #include <linux/mfd/da9052/rtc.h>
+#include <linux/irq.h>
 
 #define DRIVER_NAME "da9052-rtc"
 #define ENABLE		1
@@ -425,10 +426,16 @@ static int da9052_rtc_enable_alarm(struct da9052 *da9052, unsigned char flag)
 		return ret;
 	}
 
-	if (flag)
+	if (flag){
 		msg.data = msg.data | DA9052_ALARMY_ALARMON;
-	else
+		if( device_may_wakeup(da9052->dev) )
+			enable_irq_wake(da9052->irq);
+	}
+	else{
 		msg.data = msg.data & ~(DA9052_ALARMY_ALARMON);
+		if( device_may_wakeup(da9052->dev) )
+			disable_irq_wake(da9052->irq);
+	}
 
 	ret = da9052->write(da9052, &msg);
 	if (ret != 0) {
@@ -603,6 +610,7 @@ static int __devinit da9052_rtc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->da9052 = dev_get_drvdata(pdev->dev.parent);
+	priv->da9052->dev = &pdev->dev;
 	platform_set_drvdata(pdev, priv);
 
 	/* KPIT added to support sysfs wakealarm attribute */
