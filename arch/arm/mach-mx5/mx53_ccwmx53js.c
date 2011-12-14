@@ -273,7 +273,6 @@ static void __init mxc_board_init(void)
 
 	mx53_ccwmx53js_init_da9052();
 
-	mxc_register_device(&mxc_rtc_device, NULL);
 	mxc_register_device(&mxc_ipu_device, &mxc_ipu_data);
 	mxc_register_device(&mxcvpu_device, &mxc_vpu_data);
 	mxc_register_device(&gpu_device, &gpu_data);
