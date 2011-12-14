@@ -629,7 +629,7 @@ static int __devinit da9052_rtc_probe(struct platform_device *pdev)
 		goto err_register_alarm;
 
 	priv->is_min_alarm = 1;
-	priv->enable_tick_alarm = 1;
+	priv->enable_tick_alarm = 0;
 	priv->enable_clk_buffer = 1;
 	priv->set_osc_trim_freq = 5;
 	/* Enable/Disable TICK Alarm */
@@ -673,6 +673,24 @@ static int __devinit da9052_rtc_probe(struct platform_device *pdev)
 	else
 		/* Set 1 sec tick type */
 		ssc_msg.data = (ssc_msg.data & ~(DA9052_ALARMMI_TICKTYPE));
+
+	ret = priv->da9052->write(priv->da9052, &ssc_msg);
+	if (ret != 0) {
+		da9052_unlock(priv->da9052);
+		goto err_ssc_comm;
+	}
+
+	// Disable alarm
+	ssc_msg.addr = DA9052_ALARMY_REG;
+	ssc_msg.data = 0;
+
+	ret = priv->da9052->read(priv->da9052, &ssc_msg);
+	if (ret != 0) {
+		da9052_unlock(priv->da9052);
+		goto err_ssc_comm;
+	}
+
+	ssc_msg.data = ssc_msg.data & ~(DA9052_ALARMY_ALARMON);
 
 	ret = priv->da9052->write(priv->da9052, &ssc_msg);
 	if (ret != 0) {
