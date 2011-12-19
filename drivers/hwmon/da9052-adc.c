@@ -23,8 +23,20 @@
 #include <linux/mfd/da9052/da9052.h>
 #include <linux/mfd/da9052/reg.h>
 #include <linux/mfd/da9052/adc.h>
+#ifdef CONFIG_SENSORS_DA9052_CHARDEV
+#include <linux/pmic_status.h>
+#include <linux/pmic_adc.h>
+#include <linux/device.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#endif
 
 #define DRIVER_NAME "da9052-adc"
+
+#ifdef CONFIG_SENSORS_DA9052_CHARDEV
+static int da9052_adc_major;
+static struct class *da9052_adc_class;
+#endif
 
 static const char *input_names[] = {
 	[DA9052_ADC_VDDOUT]	=	"VDDOUT",
@@ -193,21 +205,18 @@ int da9052_read_tbat_ich(struct da9052 *da9052, char *data, int channel_no)
 		goto err_ssc_comm;
 	da9052_unlock(da9052);
 	*data = msg.data;
-	printk(KERN_INFO"msg.data 1= %d\n", msg.data);
 	msg.data = 28;
 	da9052_lock(da9052);
 	ret = da9052->write(da9052, &msg);
 	if (ret)
 		goto err_ssc_comm;
 	da9052_unlock(da9052);
-	printk(KERN_INFO"msg.data2 = %d\n", msg.data);
 	msg.data = 0;
 	da9052_lock(da9052);
 	ret = da9052->read(da9052, &msg);
 	if (ret)
 		goto err_ssc_comm;
 	da9052_unlock(da9052);
-	printk(KERN_INFO"msg.data3 = %d\n", msg.data);
 	return 0;
 
 err_ssc_comm:
@@ -285,16 +294,12 @@ err_ssc_comm:
 	return -EIO;
 }
 
-static ssize_t da9052_adc_read_start_stop(struct device *dev,
-	struct device_attribute *devattr, char *buf)
+static unsigned char da9052_adc_read_start_stop_internal( struct da9052 *da9052 , int channel )
 {
-	struct platform_device *pdev = to_platform_device(dev);
-	struct da9052_adc_priv *priv = platform_get_drvdata(pdev);
 	struct da9052_ssc_msg msg;
-	int channel = to_sensor_dev_attr(devattr)->index;
 	int ret;
 
-	ret = da9052_start_adc(priv->da9052, channel);
+	ret = da9052_start_adc(da9052, channel);
 	if (ret < 0)
 		return ret;
 
@@ -322,21 +327,35 @@ static ssize_t da9052_adc_read_start_stop(struct device *dev,
 		return -EINVAL;
 	}
 	msg.data = 0;
-	da9052_lock(priv->da9052);
-	ret = priv->da9052->read(priv->da9052, &msg);
+	da9052_lock(da9052);
+	ret = da9052->read(da9052, &msg);
 	if (ret != 0)
 		goto err_ssc_comm;
-	da9052_unlock(priv->da9052);
+	da9052_unlock(da9052);
 
-	ret = da9052_stop_adc(priv->da9052, channel);
+	ret = da9052_stop_adc(da9052, channel);
 	if (ret < 0)
 		return ret;
 
-	return sprintf(buf, "%u\n", msg.data);
+	return msg.data;
 
 err_ssc_comm:
-	da9052_unlock(priv->da9052);
+	da9052_unlock(da9052);
 	return ret;
+}
+
+static ssize_t da9052_adc_read_start_stop(struct device *dev,
+	struct device_attribute *devattr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct da9052_adc_priv *priv = platform_get_drvdata(pdev);
+	int channel = to_sensor_dev_attr(devattr)->index;
+	int ret  = da9052_adc_read_start_stop_internal( priv->da9052 , channel );
+
+	if( ret < 0 )
+		return ret;
+
+	return sprintf(buf, "%u\n", ret );
 }
 
 static ssize_t da9052_adc_read_ich(struct device *dev,
@@ -571,10 +590,207 @@ static const struct attribute_group da9052_group = {
 	.attrs = da9052_attr,
 };
 
+#ifdef CONFIG_SENSORS_DA9052_CHARDEV
+/*!
+ * This function implements the open method on a DA9052 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @return       This function returns 0.
+ */
+static int da9052_adc_open(struct inode *inode, struct file *file)
+{
+	pr_debug("da9052_adc : da9052_adc_open()\n");
+	return 0;
+}
+
+/*!
+ * This function implements the release method on a DA9052 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @return       This function returns 0.
+ */
+static int da9052_adc_free(struct inode *inode, struct file *file)
+{
+	pr_debug("da9052_adc : da9052_adc_free()\n");
+	return 0;
+}
+
+/*!
+ * This function implements IOCTL controls on a DA9052 ADC device.
+ *
+ * @param        inode       pointer on the node
+ * @param        file        pointer on the file
+ * @param        cmd         the command
+ * @param        arg         the parameter
+ * @return       This function returns 0 if successful.
+ */
+static int da9052_adc_ioctl(struct inode *inode, struct file *file,
+			  unsigned int cmd, unsigned long arg)
+{
+	t_adc_convert_param *convert_param;
+
+	if ((_IOC_TYPE(cmd) != 'p') && (_IOC_TYPE(cmd) != 'D'))
+		return -ENOTTY;
+
+	switch (cmd) {
+	case PMIC_ADC_CONVERT:
+		if ((convert_param = kmalloc(sizeof(t_adc_convert_param),
+					     GFP_KERNEL)) == NULL) {
+			return -ENOMEM;
+		}
+		if (copy_from_user(convert_param, (t_adc_convert_param *) arg,
+				   sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+
+		switch (convert_param->channel){
+			case DA9052_ADC_VDDOUT:
+				convert_param->result[0] =
+						da9052_adc_read_start_stop_internal(da9052_local,
+								convert_param->channel);
+				break;
+			case DA9052_ADC_ICH:
+				da9052_read_tbat_ich(da9052_local,
+						(char *)&convert_param->result[0] , convert_param->channel);
+				break;
+			case DA9052_ADC_TBAT:
+				da9052_read_tbat_ich(da9052_local,
+						(char *)&convert_param->result[0] ,
+						convert_param->channel);
+				break;
+			case DA9052_ADC_VBAT:
+				convert_param->result[0] = da9052_manual_read(da9052_local,
+						convert_param->channel);
+				break;
+			case DA9052_ADC_ADCIN4:
+				convert_param->result[0] =
+						da9052_adc_read_start_stop_internal(da9052_local,
+								convert_param->channel);
+				break;
+			case DA9052_ADC_ADCIN5:
+				convert_param->result[0] =
+						da9052_adc_read_start_stop_internal(da9052_local,
+								convert_param->channel);
+				break;
+			case DA9052_ADC_ADCIN6:
+				convert_param->result[0] =
+						da9052_adc_read_start_stop_internal(da9052_local,
+								convert_param->channel);
+				break;
+			case DA9052_ADC_TSI:
+				pr_info("TSI not availale through chardev driver.\n");
+				return -EFAULT;
+			case DA9052_ADC_TJUNC:
+				da9052_read_tjunc(da9052_local,
+						(char *)&convert_param->result[0]);
+				break;
+			case DA9052_ADC_VBBAT:
+				convert_param->result[0] = da9052_manual_read(da9052_local,
+						convert_param->channel);
+				break;
+			default:
+				pr_err("Invalid channel %d\n",convert_param->channel);
+				return -EFAULT;
+		}
+
+		if( convert_param->result[0] < 0 ){
+			kfree(convert_param);
+			return -EFAULT;
+		}
+
+		if (copy_to_user((t_adc_convert_param *) arg, convert_param,
+				 sizeof(t_adc_convert_param))) {
+			kfree(convert_param);
+			return -EFAULT;
+		}
+		kfree(convert_param);
+		break;
+
+	default:
+		pr_debug("da9052_adc_ioctl: unsupported ioctl command 0x%x\n", cmd);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static struct file_operations da9052_adc_fops = {
+	.owner = THIS_MODULE,
+	.ioctl = da9052_adc_ioctl,
+	.open = da9052_adc_open,
+	.release = da9052_adc_free,
+};
+
+static struct cdev da9052_adc_cdev;
+static DEVICE_ATTR(adc, 0644, da9052_adc_show_name, NULL);
+
+static int __init da9052_adc_chardev(struct platform_device *pdev)
+{
+	int ret = 0;
+	dev_t devid;
+	struct device * sdev;
+
+	if( (ret = alloc_chrdev_region(&devid, 0, 8, "pmic_adc")) < 0 ) {
+		pr_err(KERN_ERR "Unable to allocate device range for da9052_adc\n");
+		return ret;
+	}
+	da9052_adc_major = MAJOR(devid);
+	if (da9052_adc_major < 0) {
+		pr_err(KERN_ERR "Unable to get a major for pmic_adc\n");
+		ret = da9052_adc_major;
+		goto unreg_char;
+	}
+
+	cdev_init(&da9052_adc_cdev, &da9052_adc_fops);
+	ret  =cdev_add(&da9052_adc_cdev, devid, 8);
+	if (ret < 0) {
+		pr_err("pmic_adc: cannot add character device\n");
+		goto unreg_char;
+	}
+
+	da9052_adc_class = class_create(THIS_MODULE, "pmic_adc");
+	if (IS_ERR(da9052_adc_class)) {
+		pr_err(KERN_ERR "Error creating pmic_adc class.\n");
+		ret = PTR_ERR(da9052_adc_class);
+		goto unreg_char;
+	}
+
+	sdev = device_create(da9052_adc_class, NULL, devid, NULL, "pmic_adc");
+	if (IS_ERR(sdev) ) {
+		pr_err(KERN_ERR "Error creating pmic_adc class device.\n");
+		ret = PTR_ERR(sdev);
+		goto cl_destroy;
+	}
+
+	ret = device_create_file(&(pdev->dev), &dev_attr_adc);
+	if (ret) {
+		pr_err("Can't create device file!\n");
+		ret = -ENODEV;
+		goto dev_destroy;
+	}
+
+	return ret;
+
+dev_destroy:
+	device_destroy(da9052_adc_class, MKDEV(da9052_adc_major, 0));
+cl_destroy:
+	class_destroy(da9052_adc_class);
+unreg_char:
+	unregister_chrdev(da9052_adc_major, "da9052_adc");
+	return ret;
+}
+#endif
+
 static int __init da9052_adc_probe(struct platform_device *pdev)
 {
 	struct da9052_adc_priv *priv;
 	int ret;
+
+#ifdef CONFIG_SENSORS_DA9052_CHARDEV
+	da9052_adc_chardev(pdev);
+#endif
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -624,6 +840,13 @@ static int __devexit da9052_adc_remove(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, NULL);
 	kfree(priv);
+
+#ifdef CONFIG_SENSORS_DA9052_CHARDEV
+	device_remove_file(&(pdev->dev), &dev_attr_adc);
+	device_destroy(da9052_adc_class, MKDEV(da9052_adc_major, 0));
+	class_destroy(da9052_adc_class);
+	unregister_chrdev(da9052_adc_major, "da9052_adc");
+#endif
 
 	return 0;
 }
