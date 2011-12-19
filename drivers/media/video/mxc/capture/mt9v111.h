@@ -216,7 +216,7 @@
 #define MT9V111S_RM_COLUMNSKIP            0x4
 #define MT9V111S_RM_ROWSKIP               0x8
 #define MT9V111S_RM_BOOSTEDRESET          0x1000
-#define MT9V111S_RM_COLUMN_LATE           0x10
+#define MT9V111S_RM_COLUMN_LATE           0x20
 #define MT9V111S_RM_ROW_LATE              0x80
 #define MT9V111S_RM_RIGTH_TO_LEFT         0x4000
 #define MT9V111S_RM_BOTTOM_TO_TOP         0x8000

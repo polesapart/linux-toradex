@@ -225,6 +225,11 @@ static u8 mt9v111_sensor_lib_datasheet(int sensorid , mt9v111_coreReg * coreReg,
 	data = coreReg->reserved33;
 	mt9v111_write_reg(sensorid,reg, data);
 
+	// Digi: 180º image rotation to compensate sensor position in the CAM_APPKIT
+	reg = MT9V111S_READ_MODE;
+	data = MT9V111S_RM_RIGTH_TO_LEFT | MT9V111S_RM_BOTTOM_TO_TOP | MT9V111S_RM_COLUMN_LATE | MT9V111S_RM_ROW_LATE;
+	mt9v111_write_reg(sensorid,reg, data);
+
 	return error;
 }
 
