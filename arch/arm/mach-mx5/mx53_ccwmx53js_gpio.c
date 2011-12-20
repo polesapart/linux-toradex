@@ -397,6 +397,35 @@ void gpio_lvds_inactive(int interf)
 EXPORT_SYMBOL(gpio_lvds_active);
 EXPORT_SYMBOL(gpio_lvds_inactive);
 
+#if defined(CONFIG_CCXMX5X_DISP1)
+static iomux_v3_cfg_t ccwmx53_vga_pads[] = {
+	/* VSYNC */
+	MX53_PAD_EIM_DA12__IPU_DI1_PIN3,
+	/* HSYNC */
+	MX53_PAD_EIM_DA11__IPU_DI1_PIN2,
+};
+#endif /* CONFIG_CCXMX5X_DISP1 */
+
+void gpio_vga_active(int interf)
+{
+#if defined(CONFIG_CCXMX5X_DISP0)
+	if (interf == 0) {
+		printk(KERN_INFO "%s: VGA interface not supported on video DISP0\n", __func__);
+	}
+#endif /* CONFIG_CCXMX5X_DISP0 */
+#if defined(CONFIG_CCXMX5X_DISP1)
+	if (interf == 1) {
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_vga_pads,
+						 ARRAY_SIZE(ccwmx53_vga_pads));
+	}
+#endif /* CONFIG_CCXMX5X_DISP1 */
+}
+
+void gpio_vga_inactive(int interf)
+{
+}
+EXPORT_SYMBOL(gpio_vga_active);
+EXPORT_SYMBOL(gpio_vga_inactive);
 
 #if defined(CONFIG_FEC) || defined(CONFIG_FEC_MODULE)
 static iomux_v3_cfg_t ccwmx53_fec_pads[] = {

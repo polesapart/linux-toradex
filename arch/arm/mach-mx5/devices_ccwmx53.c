@@ -229,7 +229,6 @@ static int debug = 0;
 						printk(fmt, ## args);		\
 				} while (0)
 
-
 struct resource mxcfb_resources[2] = {
 	{
 		.flags = IORESOURCE_MEM,
@@ -264,6 +263,11 @@ struct ldb_platform_data ldb_data[] = {
 		.ext_ref = 1,
 		.boot_enable = MXC_LDBDI1,
 	}
+};
+
+static struct tve_platform_data tve_data = {
+	.dac_reg 	= "DA9052_LDO7",
+	.boot_enable	= MXC_TVE_VGA,
 };
 
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
@@ -781,7 +785,7 @@ int __init ccwmx5x_init_fb(void)
 			}
 		} else if ((p = ccwmx53_get_video_cmdline_opt(i, "VGA")) != NULL) {
 			pr_info("VGA interface in DISP%d\n", i);
-//			gpio_video_active(i, PAD_CTL_PKE_ENABLE | PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+			gpio_vga_active(i);
 			mstr = p - 3;
 
 			/* Get the desired configuration provided by the bootloader */
@@ -802,16 +806,22 @@ int __init ccwmx5x_init_fb(void)
 				} else {
 					/* Pass the video configuration as mode string */
 					pr_info("VGA: string %s", p);
-
 					if (!strcmp(p, "800x600")) {
-						strcpy(mx53_fb_data[0].mode_str, "VGA@800x600M-32");
+						strcpy(mx53_fb_data[i].mode_str, "VGA-SVGA");
+					} else if (!strcmp(p, "1024x768")) {
+						strcpy(mx53_fb_data[i].mode_str, "VGA-XGA");
 					} else if (!strcmp(p, "1280x1024")) {
-						strcpy(mx53_fb_data[0].mode_str, "VGA@1280x1024M-32");
+						strcpy(mx53_fb_data[i].mode_str, "VGA-SXGA");
+					} else if (!strcmp(p, "1680x1050")) {
+						strcpy(mx53_fb_data[i].mode_str, "VGA-WSXGA+");
 					} else {
-						strcpy(mx53_fb_data[0].mode_str, mstr);
+						strcpy(mx53_fb_data[i].mode_str, mstr);
 					}
 				}
 			}
+			/* Register the TVE device and set the pixel format for the TVE-VGA interface */
+			mx53_fb_data[i].interface_pix_fmt = IPU_PIX_FMT_GBR24;
+			mxc_register_device(&mxc_tve_device, &tve_data);
 		}
 		mxc_fb_devices[i].num_resources = 1;
 		mxc_fb_devices[i].resource = &mxcfb_resources[i];

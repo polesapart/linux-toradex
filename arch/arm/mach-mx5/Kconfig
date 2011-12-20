@@ -613,7 +613,7 @@ config CCXMX5X_DEFAULT_VIDEO_BPP
 config CCXMX5X_DISP0
 	bool "Enable Display Interface 1 (primary)"
 	help
-	  This enables the i.MX51 Display Interface 1.
+	  This enables the i.MX51/i.MX53 Display Interface 1.
 
 if CCXMX5X_DISP0
 choice
@@ -625,39 +625,63 @@ config CCXMX5X_DISP0_RGB888
 	help
 	  Configure Display 1 in 24bit color mode.
 
-	  WARNING: The JumpStart Kit Development Board (30011032-02) is designed
-	  to work in 18bit mode. To work in 24bit mode you need an Early Availability
-	  Kit Development Board (30011032-01) or a custom designed board that
-	  populates all 24 data lines of the video interface.
+	  NOTE for the ConnectCore Wi-i.MX51/i.MX51
 
-	  IMPORTANT: If Display 1 is configured for 24bit color depth, Display 2
-	  will not be available.
+	    The JumpStart Kit Development Board (30011032-02) is designed
+	    to work in 18bit mode. To work in 24bit mode you need an Early
+	    Availability Kit Development Board (30011032-01) or a custom 
+	    designed board that populates all 24 data lines of the video 
+	    interface.
+	    IMPORTANT: On the ConnectCore Wi-i.MX51/i.MX51 if the Display 1
+	    is configured for 24bit color depth, the Display 2 will not be
+	    available.
 
 config CCXMX5X_DISP0_RGB666
 	bool "18bit color mode"
 	depends on JSCCWMX51_V2 || MODULE_CCXMX53
 	help
-	  Configure Display 1 in 18bit color mode.  Use this mode if working
-	  on a JumpStart Kit Development Board.
+	  Configure Display 1 in 18bit color mode.
 
-	  WARNING: The Early Availability Development Board (30011032-01) is
-	  designed to work in 24bit mode. To work in 18bit mode you need a
-	  JumpStart Kit Development Board (30011032-02) or a custom designed
-	  board that only populates 18 data lines of the video interface.
+	  NOTE for the ConnectCore Wi-i.MX51/i.MX51
 
+	    Use this mode if working on a JumpStart Kit Development Board.
+	    The Early Availability Development Board (30011032-01) is
+	    designed to work in 24bit mode. To work in 18bit mode you need a
+	    JumpStart Kit Development Board (30011032-02) or a custom designed
+	    board that only populates 18 data lines of the video interface.
 endchoice
 endif
 
 comment "To enable the Display 2 Video interface, disable the FEC (under network drivers)"
-	  depends on FEC || CCXMX5X_DISP0_RGB888
+	  depends on (FEC || CCXMX5X_DISP0_RGB888) && MODULE_CCXMX51
 comment "and set 18bit color mode for the Display 1"
-	  depends on FEC || CCXMX5X_DISP0_RGB888
+	  depends on (FEC || CCXMX5X_DISP0_RGB888) && MODULE_CCXMX51
 
 config CCXMX5X_DISP1
 	bool "Enable Display Interface 2 (secondary)"
-	depends on !FEC && !CCXMX5X_DISP0_RGB888
+	depends on (!FEC && !CCXMX5X_DISP0_RGB888) && MODULE_CCXMX51 || MODULE_CCXMX53
 	help
-	  This enables the i.MX51 Display Interface 2 (18bit color mode only).
+	  This enables the i.MX51 Display Interface 2.
+	  Note that, on the ConnectCore Wi-i.MX51/i.MX51 this interface can only work in
+	  18bit color mode.
+
+if CCXMX5X_DISP1
+choice
+	prompt "Display 2 color mode"
+
+config CCXMX5X_DISP1_RGB888
+	bool "24bit color mode"
+	depends on MODULE_CCXMX53
+	help
+	  Configure Display 1 in 24bit color mode.
+
+config CCXMX5X_DISP1_RGB666
+	bool "18bit color mode"
+	depends on MODULE_CCXMX53
+	help
+	  Configure Display 1 in 18bit color mode.
+endchoice
+endif
 
 config CCWMX5X_SECOND_TOUCH
 	bool "Enable support for external touch controller (ADS7843)"
@@ -669,5 +693,4 @@ config CCWMX5X_SECOND_TOUCH
 	  used with the secondary display (but also with the primary)
 
 endmenu
-
 endif

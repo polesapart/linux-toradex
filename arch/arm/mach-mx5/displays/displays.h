@@ -9,13 +9,15 @@
  * the Free Software Foundation.
  */
 
-#ifndef __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__
-#define __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__
+#ifndef __ASM_ARCH_MXC_CCXMX5X_DISPLAYS_H__
+#define __ASM_ARCH_MXC_CCXMX5X_DISPLAYS_H__
 
 extern void gpio_video_active(int vif, u32 pad);
 extern void gpio_video_inactive(int vif);
 extern void gpio_lvds_active(int interf);
 extern void gpio_lvds_inactive(int interf);
+extern void gpio_vga_active(int interf);
+extern void gpio_vga_inactive(int interf);
 
 #ifdef CONFIG_CCXMX5X_DISP0_RGB888
 #define VIDEO_PIX_FMT	IPU_PIX_FMT_RGB24
@@ -27,4 +29,4 @@ extern void gpio_lvds_inactive(int interf);
 #include "vga.h"
 #include "lcd.h"
 
-#endif /* __ASM_ARCH_MXC_CCWMX51_DISPLAYS_H__ */
+#endif /* __ASM_ARCH_MXC_CCXMX5X_DISPLAYS_H__ */
