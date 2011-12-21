@@ -345,7 +345,6 @@ static void _ipu_dc_write_tmpl(int word, u32 opcode, u32 operand, int map,
 		reg |= (++wave << 11);
 		reg |= ((operand & 0x1FFFF) << 15);
 		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2);
-
 		reg = (operand >> 17);
 		reg |= opcode << 7;
 		reg |= (stop << 9);
@@ -357,7 +356,6 @@ static void _ipu_dc_write_tmpl(int word, u32 opcode, u32 operand, int map,
 		reg |= (++map << 15);
 		reg |= (operand << 20) & 0xFFF00000;
 		__raw_writel(reg, ipu_dc_tmpl_reg + word * 2);
-
 		reg = (operand >> 12);
 		reg |= opcode << 4;
 		reg |= (stop << 9);
@@ -1495,7 +1493,6 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				DI_SYNC_INT_HSYNC, 0, DI_SYNC_NONE,
 				DI_SYNC_NONE, 0, 0);
 		}
-
 		/* Init template microcode */
 		if (disp) {
 			if ((pixel_fmt == IPU_PIX_FMT_YUYV) ||
@@ -1507,9 +1504,20 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				/* configure user events according to DISP NUM */
 				__raw_writel((width - 1), DC_UGDE_3(disp));
 			}
-		   _ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
-		   _ipu_dc_write_tmpl(3, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
-		   _ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+			_ipu_dc_write_tmpl(2, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
+
+			/* PPH, FIXME: workarround to avoid that the video output is shifted 1
+			 * pixel to the right. This happens when the commented line below is used.
+			 * This has on the other hand a side effect on the VGA output, causing
+			 * that the video output is a bit fuzzy. To correct that, we apply the
+			 * FSL configuration when that video output is used. */
+			//_ipu_dc_write_tmpl(3, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
+			if (pixel_fmt == IPU_PIX_FMT_GBR24)
+				_ipu_dc_write_tmpl(3, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
+			else
+				_ipu_dc_write_tmpl(3, WROD(0), 0, map, SYNC_WAVE, 4, 5, 1);
+
+			_ipu_dc_write_tmpl(4, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
 		} else {
 			if ((pixel_fmt == IPU_PIX_FMT_YUYV) ||
 				(pixel_fmt == IPU_PIX_FMT_UYVY) ||
@@ -1520,9 +1528,11 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				/* configure user events according to DISP NUM */
 				__raw_writel(width - 1, DC_UGDE_3(disp));
 			}
-		   _ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
-		   _ipu_dc_write_tmpl(6, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
-		   _ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
+			_ipu_dc_write_tmpl(5, WROD(0), 0, map, SYNC_WAVE, 8, 5, 1);
+			/* PPH, FIXME: see the previous note */
+			//_ipu_dc_write_tmpl(6, WRG, 0, map, SYNC_WAVE, 4, 5, 1);
+			_ipu_dc_write_tmpl(6, WROD(0), 0, map, SYNC_WAVE, 4, 5, 1);
+			_ipu_dc_write_tmpl(7, WROD(0), 0, map, SYNC_WAVE, 0, 5, 1);
 		}
 
 		if (sig.Hsync_pol) {
