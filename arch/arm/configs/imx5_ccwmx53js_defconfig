@@ -1,6 +1,7 @@
-
 #
-# Kernel Extra options
+# Automatically generated make config: don't edit
+# Linux kernel version: 2.6.35
+# Thu Dec 22 21:46:48 2011
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -343,14 +344,7 @@ CONFIG_CCXMX5X_DEFAULT_VIDEO_BPP=32
 CONFIG_CCXMX5X_DISP0=y
 CONFIG_CCXMX5X_DISP0_RGB888=y
 # CONFIG_CCXMX5X_DISP0_RGB666 is not set
-
-#
-# To enable the Display 2 Video interface, disable the FEC (under network drivers)
-#
-
-#
-# and set 18bit color mode for the Display 1
-#
+# CONFIG_CCXMX5X_DISP1 is not set
 # CONFIG_CCWMX5X_SECOND_TOUCH is not set
 CONFIG_IRAM_ALLOC=y
 CONFIG_DMA_ZONE_SIZE=96
@@ -1416,8 +1410,8 @@ CONFIG_FB_MODE_HELPERS=y
 CONFIG_FB_MXC=y
 CONFIG_FB_MXC_SYNC_PANEL=y
 # CONFIG_FB_MXC_EPSON_VGA_SYNC_PANEL is not set
-# CONFIG_FB_MXC_TVOUT_TVE is not set
-# CONFIG_FB_MXC_LDB is not set
+CONFIG_FB_MXC_TVOUT_TVE=y
+CONFIG_FB_MXC_LDB=y
 # CONFIG_FB_MXC_CLAA_WVGA_SYNC_PANEL is not set
 # CONFIG_FB_MXC_SEIKO_WVGA_SYNC_PANEL is not set
 # CONFIG_FB_MXC_SII902X is not set
