@@ -45,6 +45,7 @@
 #include <linux/pwm_backlight.h>
 #include <linux/ahci_platform.h>
 #include <linux/gpio_keys.h>
+#include <linux/mfd/da9052/da9052.h>
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <asm/irq.h>
@@ -316,6 +317,7 @@ static void __init mxc_board_init(void)
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx53_init_2nd_touch();
 #endif
+	pm_power_off = da9053_power_off;
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)

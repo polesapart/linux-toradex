@@ -545,6 +545,38 @@ void da9052_ssc_exit(struct da9052 *da9052)
 
 void da9053_power_off(void)
 {
+#if defined(CONFIG_MODULE_CCXMX53)
+	struct da9052_ssc_msg msgs[5];
+	int ret;
+
+	if (!da9052_data)
+		return;
+
+	da9052_lock(da9052_data);
+
+	/* On the ConnectCore Wi-i.MX53 the poweroff is done by clearing the
+	 * SYSEN bit in the CONTROLA register. To avid undesired wakeups, it
+	 * is necessary to clear all the interrupt sources, except the nONKEY.
+	 * The FSL reference boards use a different mechanism, but this was
+	 * not working propperly in our device. */
+	msgs[4].addr = DA9052_CONTROLA_REG;
+	da9052_data->read(da9052_data, &msgs[4]);
+	msgs[4].data &= ~DA9052_CONTROLA_SYSEN;
+	msgs[0].addr = DA9052_IRQMASKA_REG;
+	msgs[0].data = 0xff;
+	msgs[1].addr = DA9052_IRQMASKB_REG;
+	msgs[1].data = 0xfe;
+	msgs[2].addr = DA9052_IRQMASKC_REG;
+	msgs[2].data = 0xff;
+	msgs[3].addr = DA9052_IRQMASKD_REG;
+	msgs[3].data = 0xff;
+
+	ret = da9052_data->write_many(da9052_data, msgs, 5);
+	if (ret != 0)
+		printk(KERN_WARNING "DA9052: %s failure\n", __func__);
+
+	da9052_unlock(da9052_data);
+#else
 	struct da9052_ssc_msg ssc_msg;
 	if (!da9052_data)
 		return;
@@ -557,6 +589,7 @@ void da9053_power_off(void)
 	ssc_msg.addr = DA9052_GPID9_REG;
 	ssc_msg.data = 0;
 	da9052_data->read(da9052_data, &ssc_msg);
+#endif
 }
 
 int da9053_get_chip_version(void)
