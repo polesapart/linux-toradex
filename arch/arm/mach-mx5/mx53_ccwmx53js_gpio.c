@@ -290,7 +290,7 @@ void gpio_wireless_active(void)
 					 ARRAY_SIZE(ccwmx53_wireless_pads));
 }
 #else
-void gpio_wireless_active(int module) {}
+void gpio_wireless_active(void) {}
 #endif
 
 
