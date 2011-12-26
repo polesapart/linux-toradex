@@ -1412,12 +1412,14 @@ static int ldb_probe(struct platform_device *pdev)
 	}
 
 	if (g_di0_used) {
+		gpio_lvds_active(0);
 		mxcfb_register_mode(0, mxcfb_ldb_modedb,
 				mxcfb_ldb_modedb_sz,
 				MXC_DISP_SPEC_DEV);
 		mxcfb_register_presetup(0, ldb_fb_pre_setup);
 	}
 	if (g_di1_used) {
+		gpio_lvds_active(1);
 		mxcfb_register_mode(1, mxcfb_ldb_modedb,
 				mxcfb_ldb_modedb_sz,
 				MXC_DISP_SPEC_DEV);
@@ -1445,6 +1447,9 @@ static int ldb_remove(struct platform_device *pdev)
 	int i;
 
 	__raw_writel(0, ldb.control_reg);
+
+	gpio_lvds_inactive(0);
+	gpio_lvds_inactive(1);
 
 	for (i = 0; i < 2; i++) {
 		if (ldb.ch_working[i]) {
@@ -1533,6 +1538,10 @@ static struct platform_driver mxcldb_driver = {
  */
 static int __init ldb_setup(char *options)
 {
+	char *opt;
+
+	DBG(DBG_FCALL, "%s: ldb%s\n", __func__, options);
+	printk("\n%d: %p\n", __LINE__, options);
 	if (!strcmp(options, "=off")) {
 		g_enable_ldb = MXC_DISABLE;
 		return 1;
@@ -1566,6 +1575,7 @@ static int __init ldb_setup(char *options)
 		g_di0_used = true;
 		g_di1_used = true;
 	} else if (!strncmp(options, "dual", 4)) {
+	printk("\n%d: %p\n", __LINE__, options);
 		strsep(&options, ",");
 		if (!strncmp(options, "di=", 3)) {
 			if (simple_strtoul(options + 3, NULL, 0) == 0) {
@@ -1590,25 +1600,24 @@ static int __init ldb_setup(char *options)
 	} else
 		return 1;
 
-	if ((strsep(&options, ",") != NULL) &&
-	    !strncmp(options, "ch0_map=", 8)) {
-		if (!strncmp(options + 8, "SPWG", 4))
-			g_chan_bit_map[0] = LDB_BIT_MAP_SPWG;
-		else
-			g_chan_bit_map[0] = LDB_BIT_MAP_JEIDA;
+	/* Retrieve the channel data map for one or both channels */
+	while ((opt = strsep(&options, ",")) != NULL) {
+		if (!options)
+			break;
+		if (!strncmp(options, "ch0_map=", 8)) {
+			if (!strncmp(options + 8, "SPWG", 4))
+				g_chan_bit_map[0] = LDB_BIT_MAP_SPWG;
+			else
+				g_chan_bit_map[0] = LDB_BIT_MAP_JEIDA;
+		} else if (!strncmp(options, "ch1_map=", 8)) {
+			if (!strncmp(options + 8, "SPWG", 4))
+				g_chan_bit_map[1] = LDB_BIT_MAP_SPWG;
+			else
+				g_chan_bit_map[1] = LDB_BIT_MAP_JEIDA;
+		}
 	}
 
-	if (!(g_chan_mode_opt == LDB_SIN_DI0 ||
-	      g_chan_mode_opt == LDB_SIN_DI1) &&
-	    (strsep(&options, ",") != NULL) &&
-	    !strncmp(options, "ch1_map=", 8)) {
-		if (!strncmp(options + 8, "SPWG", 4))
-			g_chan_bit_map[1] = LDB_BIT_MAP_SPWG;
-		else
-			g_chan_bit_map[1] = LDB_BIT_MAP_JEIDA;
-	}
-
-	return 1;
+	return 0;
 }
 __setup("ldb", ldb_setup);
 

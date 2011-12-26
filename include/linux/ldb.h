@@ -77,6 +77,9 @@ typedef struct _ldb_chan_mode_parm {
 	ldb_channel_mode_t		channel_mode;
 } ldb_chan_mode_parm;
 
+extern void gpio_lvds_active(int interf);
+extern void gpio_lvds_inactive(int interf);
+
 /* IOCTL commands */
 #define LDB_BGREF_RMODE			_IOW('L', 0x1, ldb_bgref_parm)
 #define LDB_VSYNC_POL			_IOW('L', 0x2, ldb_vsync_parm)
