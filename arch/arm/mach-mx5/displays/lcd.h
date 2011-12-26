@@ -118,7 +118,6 @@ static struct fb_videomode lcd_custom_2 = {
 struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 	{
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "LQ070Y3DG3B",
 			.mode = &lq70y3dg3b,
 			.num_modes = 1,
@@ -127,7 +126,6 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 		.init = &lcd_init,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "LQ121K1LG11",
 			.mode = &lq121k1lg11,
 			.num_modes = 1,
@@ -136,7 +134,6 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 		.init = &lcd_init,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom1",
 			.mode = &lcd_custom_1,
 			.num_modes = 1,
@@ -145,7 +142,6 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 		.init = &lcd_init,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom2",
 			.mode = &lcd_custom_2,
 			.num_modes = 1,

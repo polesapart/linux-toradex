@@ -47,14 +47,12 @@ static struct fb_videomode vga_custom_2 = {
 struct ccwmx5x_lcd_pdata vga_panel_list[] = {
 	{
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom1",
 			.mode = &vga_custom_1,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom2",
 			.mode = &vga_custom_2,
 		},

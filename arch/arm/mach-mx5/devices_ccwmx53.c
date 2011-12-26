@@ -245,7 +245,7 @@ struct resource mxcfb_resources[2] = {
 struct mxc_fb_platform_data mx53_fb_data[2] = {
 	/* DISP0 */
 	{
-		.interface_pix_fmt = VIDEO_PIX_FMT,
+		.interface_pix_fmt = IPU_PIX_FMT_RGB24,
 		.mode_str = "1024x768M-16@60",  /* Default */
 	},
 	/* DISP1 */
@@ -255,14 +255,8 @@ struct mxc_fb_platform_data mx53_fb_data[2] = {
 	}
 };
 
-struct ldb_platform_data ldb_data[] = {
-	{
-		.ext_ref = 1,
-		.boot_enable = MXC_LDBDI0,
-	}, {
-		.ext_ref = 1,
-		.boot_enable = MXC_LDBDI1,
-	}
+struct ldb_platform_data ldb_data = {
+	.ext_ref = 1,
 };
 
 static struct tve_platform_data tve_data = {
@@ -758,30 +752,12 @@ int __init ccwmx5x_init_fb(void)
 				       &plcd_platform_data[i].fb_pdata,
 				       sizeof(struct mxc_fb_platform_data));
 				plcd_platform_data[i].vif = i;
+				if (!plcd_platform_data[i].fb_pdata.interface_pix_fmt)
+					plcd_platform_data[i].fb_pdata.interface_pix_fmt =
+						i ? DISP1_PIX_FMT : DISP0_PIX_FMT;
+				mx53_fb_data[i].interface_pix_fmt =
+					plcd_platform_data[i].fb_pdata.interface_pix_fmt;
 				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
-			}
-		} else 	if ((p = ccwmx53_get_video_cmdline_opt(i, "LVDS")) != NULL) {
-			pr_info("LVDS interface in DISP%d", i);
-			if (*p++ != '@') {
-				pr_info("Panel not provided, video interface will be disabled\n");
-				continue;
-			}
-			if ((panel = ccwmx53_find_video_config(lcd_panel_list,
-							      ARRAY_SIZE(lcd_panel_list),
-							      p)) != NULL) {
-				pr_info("Panel: %s", p);
-				memcpy(&plcd_platform_data[i],
-				       panel,
-				       sizeof(struct ccwmx5x_lcd_pdata));
-				memcpy(&mx53_fb_data[i],
-				       &plcd_platform_data[i].fb_pdata,
-				       sizeof(struct mxc_fb_platform_data));
-				plcd_platform_data[i].vif = i;
-				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
-
-				/* Configure the pins and register the LVDS bridge */
-				gpio_lvds_active(i);
-				mxc_register_device(&mxc_ldb_device, &ldb_data[i]);
 			}
 		} else if ((p = ccwmx53_get_video_cmdline_opt(i, "VGA")) != NULL) {
 			pr_info("VGA interface in DISP%d\n", i);
@@ -826,7 +802,11 @@ int __init ccwmx5x_init_fb(void)
 		mxc_fb_devices[i].num_resources = 1;
 		mxc_fb_devices[i].resource = &mxcfb_resources[i];
 		mxc_register_device(&mxc_fb_devices[i], &mx53_fb_data[i]);
+
 	}
+
+	/* Register the LVDS bridge */
+	mxc_register_device(&mxc_ldb_device, &ldb_data);
 
 	/* DI0/1 DP-FG channel, used by the VPU */
 	mxc_register_device(&mxc_fb_devices[2], NULL);

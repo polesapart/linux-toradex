@@ -116,49 +116,42 @@ static struct fb_videomode ad9389_custom_2 = {
 struct ccwmx5x_lcd_pdata ad9389_panel_list[] = {
 	{
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "1280x720",
 			.mode = &ad9389_1280x720x24,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "1360x768",
 			.mode = &ad9389_1360x768x24,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "1366x768",
 			.mode = &ad9389_1366x768x24,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "1920x1080",
 			.mode = &ad9389_1920x1080x24,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "1024x768",
 			.mode = &ad9389_1024x768x24,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom1",
 			.mode = &ad9389_custom_1,
 		},
 		.bl_enable = NULL,
 	}, {
 		.fb_pdata = {
-			.interface_pix_fmt = VIDEO_PIX_FMT,
 			.mode_str = "custom2",
 			.mode = &ad9389_custom_2,
 		},
