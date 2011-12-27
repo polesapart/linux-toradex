@@ -66,6 +66,23 @@ static struct fb_videomode lq70y3dg3b = {
 	.flag          = 0,
 };
 
+static struct fb_videomode hsd101pfw2 = {
+	.name          = "HSD101PFW2",
+	.refresh       = 60,
+	.xres          = 1024,
+	.yres          = 600,
+	.pixclock      = 22222, /* 45 MHz in ps  */
+	.left_margin   = 0,
+	.right_margin  = 0,
+	.upper_margin  = 0,
+	.lower_margin  = 0,
+	.hsync_len     = 176,
+	.vsync_len     = 25,
+	.vmode         = FB_VMODE_NONINTERLACED,
+	.sync          = FB_SYNC_CLK_LAT_FALL | FB_SYNC_EXT,
+	.flag          = 0,
+};
+
 static struct fb_videomode lq121k1lg11 = {
 	.name          = "LQ121K1LG11",
 	.refresh       = 60,
@@ -123,6 +140,14 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 			.num_modes = 1,
 		},
 		.bl_enable = lcd_bl_enable,
+		.init = &lcd_init,
+
+	}, {
+		.fb_pdata = {
+			.mode_str = "HSD101PFW2",
+			.mode = &hsd101pfw2,
+			.num_modes = 1,
+		},
 		.init = &lcd_init,
 	}, {
 		.fb_pdata = {
