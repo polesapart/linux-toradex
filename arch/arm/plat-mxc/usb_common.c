@@ -427,6 +427,7 @@ static void usbh2_set_serial_xcvr(void)
 	msleep(100);
 }
 
+#ifdef CONFIG_USB_SUSPEND
 /*!
  * Register remote wakeup by this usb controller
  *
@@ -457,6 +458,7 @@ static int usb_register_remote_wakeup(struct platform_device *pdev)
 
 	return 0;
 }
+#endif
 
 int fsl_usb_host_init(struct platform_device *pdev)
 {
