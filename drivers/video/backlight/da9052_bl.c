@@ -22,14 +22,32 @@
 #define DRIVER_NAME1		"WLED-1"
 #define DRIVER_NAME2		"WLED-2"
 #define DRIVER_NAME3		"WLED-3"
+#define DRIVER_NAME4		"WLED-4"
+#define DRIVER_NAME5		"WLED-5"
 
 /* These flags define if Backlight LEDs are present */
 /* Set the following macros to 1, if LEDs are present. Otherwise set to 0 */
 #define DA9052_LED1_PRESENT	1
 #define DA9052_LED2_PRESENT	1
 #define DA9052_LED3_PRESENT	1
+#define DA9052_LED4_PRESENT	1
+#define DA9052_LED5_PRESENT	1
 
 #define DA9052_MAX_BRIGHTNESS	0xA0/*0xFF*/
+#define DA9052_MAX_BRIGHTNESS2	95	/* For LED4 and LED5 */
+
+#define GPIO14_PIN		2 /* GPO Open Drain */
+#define GPIO14_TYPE		0 /* VDD_IO1 */
+#define GPIO14_MODE		1 /* Output High */
+
+#define GPIO15_PIN		2 /* GPO Open Drain */
+#define GPIO15_TYPE		0 /* VDD_IO1 */
+#define GPIO15_MODE		1 /* Output High */
+
+#define MAXIMUM_PWM		95
+#define MASK_GPIO14		0x0F
+#define MASK_GPIO15		0xF0
+#define GPIO15_PIN_BIT_POSITION	4
 
 struct da9052_backlight_data {
 	struct device *da9052_dev;
@@ -39,13 +57,58 @@ struct da9052_backlight_data {
 	int is_led1_present;
 	int is_led2_present;
 	int is_led3_present;
+	int is_led4_present;
+	int is_led5_present;
 };
 
 enum da9052_led_number {
 	LED1 = 1,
 	LED2,
 	LED3,
+	LED4,
+	LED5,
 };
+
+#if defined(CONFIG_DA9052_BL_HAS_LED4) || defined(CONFIG_DA9052_BL_HAS_LED5)
+static int da9052_backlight_brightness2_set(struct da9052_backlight_data *data,
+			int brightness, enum da9052_led_number led)
+{
+	unsigned int reg = 0;
+	unsigned int led_dim_bit = 0;
+	struct da9052_ssc_msg msg;
+	int ret = 0;
+
+	switch (led) {
+	case LED4:
+		reg = DA9052_LED4CONT_REG;
+		led_dim_bit = DA9052_LED4CONT_LED4DIM;
+		break;
+	case LED5:
+		reg = DA9052_LED5CONT_REG;
+		led_dim_bit = DA9052_LED5CONT_LED5DIM;
+		break;
+	default:
+		return -EIO;
+	}
+
+	if (brightness > DA9052_MAX_BRIGHTNESS2)
+		brightness = DA9052_MAX_BRIGHTNESS2;
+
+	/* Always enable DIM feature */
+	msg.addr = reg;
+	msg.data = brightness | led_dim_bit;
+
+	da9052_lock(data->da9052);
+	ret = data->da9052->write(data->da9052, &msg);
+	if (ret) {
+		da9052_unlock(data->da9052);
+		return ret;
+	}
+	da9052_unlock(data->da9052);
+
+	return 0;
+}
+#endif
 
 static int da9052_backlight_brightness_set(struct da9052_backlight_data *data,
 			int brightness, enum da9052_led_number led)
@@ -197,7 +260,22 @@ static int da9052_backlight_set(struct backlight_device *bl, int brightness)
 		if (ret)
 			return ret;
 	}
-
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+	/* Check for LED4 */
+	if (1 == data->is_led4_present) {
+		ret = da9052_backlight_brightness2_set(data, brightness, LED4);
+		if (ret)
+			return ret;
+	}
+#endif
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+	/* Check for LED5 */
+	if (1 == data->is_led5_present) {
+		ret = da9052_backlight_brightness2_set(data, brightness, LED5);
+		if (ret)
+			return ret;
+	}
+#endif
 	data->current_brightness = brightness;
 	return 0;
 }
@@ -224,6 +302,59 @@ struct backlight_ops da9052_backlight_ops = {
 	.update_status	= da9052_backlight_update_status,
 	.get_brightness	= da9052_backlight_get_brightness,
 };
+
+#if defined(CONFIG_DA9052_BL_HAS_LED4) || defined(CONFIG_DA9052_BL_HAS_LED5)
+static int da9052_backlight_prepare(struct backlight_device *bl)
+{
+	struct da9052_backlight_data *data = bl_get_data(bl);
+	struct da9052_ssc_msg msg;
+	int ret = 0;
+
+	da9052_lock(data->da9052);
+
+	if (1 == data->is_led4_present) {
+		msg.addr = DA9052_GPIO1415_REG;
+		msg.data = 0;
+
+		ret = data->da9052->read(data->da9052, &msg);
+		if (ret)
+			goto out;
+		msg.data = msg.data & ~(MASK_GPIO14);
+		msg.data = msg.data | (
+				GPIO14_PIN |
+				(GPIO14_TYPE ? DA9052_GPIO1415_GPIO14TYPE : 0) |
+				(GPIO14_MODE ? DA9052_GPIO1415_GPIO14MODE : 0));
+
+		ret = data->da9052->write(data->da9052, &msg);
+		if (ret)
+			goto out;
+	}
+
+	if (1 == data->is_led5_present) {
+		msg.addr = DA9052_GPIO1415_REG;
+		msg.data = 0;
+
+		ret = data->da9052->read(data->da9052, &msg);
+		if (ret)
+			goto out;
+		msg.data = msg.data & ~(MASK_GPIO15);
+		msg.data = msg.data |
+			(((GPIO15_PIN << GPIO15_PIN_BIT_POSITION) |
+				(GPIO15_TYPE ? DA9052_GPIO1415_GPIO15TYPE : 0) |
+				(GPIO15_MODE ? DA9052_GPIO1415_GPIO15MODE : 0))
+				);
+		ret = data->da9052->write(data->da9052, &msg);
+		if (ret)
+			goto out;
+	}
+
+	da9052_unlock(data->da9052);
+	return ret;
+out:
+	da9052_unlock(data->da9052);
+	return ret;
+}
+#endif
 
 static int da9052_backlight_probe1(struct platform_device *pdev)
 {
@@ -310,6 +441,7 @@ static int da9052_backlight_probe2(struct platform_device *pdev)
 
 	return 0;
 }
+
 static int da9052_backlight_probe3(struct platform_device *pdev)
 {
 	struct da9052_backlight_data *data;
@@ -352,6 +484,83 @@ static int da9052_backlight_probe3(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+static int da9052_backlight_probe4(struct platform_device *pdev)
+{
+	struct da9052_backlight_data *data;
+	struct backlight_device *bl;
+	struct backlight_properties props;
+	struct da9052 *da9052 = dev_get_drvdata(pdev->dev.parent);
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (data == NULL)
+		return -ENOMEM;
+	data->da9052_dev = pdev->dev.parent;
+	data->da9052	= da9052;
+
+	/* TODO This should come through platform data */
+	data->current_brightness = 0;
+	data->is_led4_present = DA9052_LED4_PRESENT;
+
+	bl = backlight_device_register(pdev->name, data->da9052_dev,
+			data, &da9052_backlight_ops, &props);
+	if (IS_ERR(bl)) {
+		dev_err(&pdev->dev, "failed to register backlight\n");
+		kfree(data);
+		return PTR_ERR(bl);
+	}
+
+	bl->props.max_brightness = DA9052_MAX_BRIGHTNESS2;
+	bl->props.brightness = 0;
+	bl->props.power = FB_BLANK_UNBLANK;
+	bl->props.fb_blank = FB_BLANK_UNBLANK;
+	platform_set_drvdata(pdev, bl);
+
+	backlight_update_status(bl);
+
+	return da9052_backlight_prepare(bl);
+}
+#endif
+
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+static int da9052_backlight_probe5(struct platform_device *pdev)
+{
+	struct da9052_backlight_data *data;
+	struct backlight_device *bl;
+	struct backlight_properties props;
+	struct da9052 *da9052 = dev_get_drvdata(pdev->dev.parent);
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (data == NULL)
+		return -ENOMEM;
+	data->da9052_dev = pdev->dev.parent;
+	data->da9052	= da9052;
+
+	/* TODO This should come through platform data */
+	data->current_brightness = 0;
+	data->is_led5_present = DA9052_LED5_PRESENT;
+
+	bl = backlight_device_register(pdev->name, data->da9052_dev,
+			data, &da9052_backlight_ops, &props);
+	if (IS_ERR(bl)) {
+		dev_err(&pdev->dev, "failed to register backlight\n");
+		kfree(data);
+		return PTR_ERR(bl);
+	}
+
+	bl->props.max_brightness = DA9052_MAX_BRIGHTNESS2;
+	bl->props.brightness = 0;
+	bl->props.power = FB_BLANK_UNBLANK;
+	bl->props.fb_blank = FB_BLANK_UNBLANK;
+	platform_set_drvdata(pdev, bl);
+
+	backlight_update_status(bl);
+
+	return da9052_backlight_prepare(bl);
+}
+#endif
+
+
 static int da9052_backlight_remove1(struct platform_device *pdev)
 {
 	struct backlight_device *bl = platform_get_drvdata(pdev);
@@ -371,6 +580,7 @@ static int da9052_backlight_remove2(struct platform_device *pdev)
 	kfree(data);
 	return 0;
 }
+
 static int da9052_backlight_remove3(struct platform_device *pdev)
 {
 	struct backlight_device *bl = platform_get_drvdata(pdev);
@@ -380,6 +590,30 @@ static int da9052_backlight_remove3(struct platform_device *pdev)
 	kfree(data);
 	return 0;
 }
+
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+static int da9052_backlight_remove4(struct platform_device *pdev)
+{
+	struct backlight_device *bl = platform_get_drvdata(pdev);
+	struct da9052_backlight_data *data = bl_get_data(bl);
+
+	backlight_device_unregister(bl);
+	kfree(data);
+	return 0;
+}
+#endif
+
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+static int da9052_backlight_remove5(struct platform_device *pdev)
+{
+	struct backlight_device *bl = platform_get_drvdata(pdev);
+	struct da9052_backlight_data *data = bl_get_data(bl);
+
+	backlight_device_unregister(bl);
+	kfree(data);
+	return 0;
+}
+#endif
 
 static struct platform_driver da9052_backlight_driver1 = {
 	.driver		= {
@@ -406,6 +640,28 @@ static struct platform_driver da9052_backlight_driver3 = {
 	.remove		= da9052_backlight_remove3,
 };
 
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+static struct platform_driver da9052_backlight_driver4 = {
+	.driver		= {
+		.name	= DRIVER_NAME4,
+		.owner	= THIS_MODULE,
+	},
+	.probe		= da9052_backlight_probe4,
+	.remove		= da9052_backlight_remove4,
+};
+#endif
+
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+static struct platform_driver da9052_backlight_driver5 = {
+	.driver		= {
+		.name	= DRIVER_NAME5,
+		.owner	= THIS_MODULE,
+	},
+	.probe		= da9052_backlight_probe5,
+	.remove		= da9052_backlight_remove5,
+};
+#endif
+
 static int __init da9052_backlight_init(void)
 {
 	s32 ret;
@@ -419,6 +675,16 @@ static int __init da9052_backlight_init(void)
 	ret = platform_driver_register(&da9052_backlight_driver3);
 	if (ret)
 		return ret;
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+	ret = platform_driver_register(&da9052_backlight_driver4);
+	if (ret)
+		return ret;
+#endif
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+	ret = platform_driver_register(&da9052_backlight_driver5);
+	if (ret)
+		return ret;
+#endif
 
 	return ret;
 }
@@ -429,6 +695,12 @@ static void __exit da9052_backlight_exit(void)
 	platform_driver_unregister(&da9052_backlight_driver1);
 	platform_driver_unregister(&da9052_backlight_driver2);
 	platform_driver_unregister(&da9052_backlight_driver3);
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+	platform_driver_unregister(&da9052_backlight_driver4);
+#endif
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+	platform_driver_unregister(&da9052_backlight_driver5);
+#endif
 }
 module_exit(da9052_backlight_exit);
 

@@ -176,6 +176,20 @@ config BACKLIGHT_DA9052
 
 	  To compile this driver as a module, choose M here.
 
+config DA9052_BL_HAS_LED4
+	bool "Enable Backlight support for LED4"
+	depends on BACKLIGHT_DA9052
+	help
+	  Enable the support to control the LED4 PWM ouput, available in
+	  the DA9053 PMIC.
+
+config DA9052_BL_HAS_LED5
+	bool "Enable Backlight support for LED5"
+	depends on BACKLIGHT_DA9052
+	help
+	  Enable the support to control the LED5 PWM ouput, available in
+	  the DA9053 PMIC.
+
 config BACKLIGHT_LOCOMO
 	tristate "Sharp LOCOMO LCD/Backlight Driver"
 	depends on SHARP_LOCOMO

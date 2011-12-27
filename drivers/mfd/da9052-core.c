@@ -409,6 +409,18 @@ static int add_da9052_devices(struct da9052 *da9052)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_DA9052_BL_HAS_LED4
+	ret = da9052_add_subdevice(da9052, "WLED-4");
+	if (ret)
+		return ret;
+#endif
+
+#ifdef CONFIG_DA9052_BL_HAS_LED5
+	ret = da9052_add_subdevice(da9052, "WLED-5");
+	if (ret)
+		return ret;
+#endif
+
 	ret = da9052_add_subdevice(da9052, "da9052-adc");
 	if (ret)
 		return ret;
