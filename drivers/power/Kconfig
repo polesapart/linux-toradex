@@ -131,6 +131,15 @@ config BATTERY_DA9052
 
 	  To compile this driver as a module, choose M here.
 
+config BATTERY_JSCCXMX53_DA9052
+	tristate "Dialog DA9052 Battery driver for the CCXMX53 JSK."
+	depends on PMIC_DA9052
+	help
+	  Say Y here to enable support for batteries charger integrated into
+	  DA9052 PMIC on Digi's ConnectCore (w)i.MX53 JumpStart Kit.
+
+	  To compile this driver as a module, choose M here.
+
 config BATTERY_MAX17085
 	tristate "Maxim MAX17085 charger"
 	depends on PMIC_DA9052 && SENSORS_DA9052

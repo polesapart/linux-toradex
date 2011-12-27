@@ -125,22 +125,9 @@ static struct da9052_leds_platform_data da9052_gpio_leds = {
 
 
 static struct da9052_bat_platform_data da9052_bat = {
-	.sw_temp_control_en = 0,
-	.monitoring_interval = 500,
-	.sw_bat_temp_threshold = 60,
-	.sw_junc_temp_threshold = 120,
-	.hysteresis_window_size = 1,
-	.current_monitoring_window = 10,
-	.bat_with_no_resistor = 62,
-	.bat_capacity_limit_low = 4,
-	.bat_capacity_full = 100,
-	.bat_capacity_limit_high = 70,
-	.chg_hysteresis_const = 89,
-	.hysteresis_reading_interval = 1000,
-	.hysteresis_no_of_reading = 10,
-	.filter_size = 4,
+	.monitoring_interval = 5000,
 	.bat_volt_cutoff = 2800,
-	.vbat_first_valid_detect_iteration = 3,
+	.filter_size = 4,
 };
 
 static void da9052_init_ssc_cache(struct da9052 *da9052)
