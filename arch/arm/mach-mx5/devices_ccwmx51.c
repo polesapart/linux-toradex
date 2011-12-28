@@ -557,7 +557,7 @@ struct mxc_audio_platform_data wm8753_data = {
 struct mxc_fb_platform_data mx51_fb_data[2] = {
 	/* DISP0 */
 	{
-		.interface_pix_fmt = IPU_PIX_FMT_RGB,
+		.interface_pix_fmt = IPU_PIX_FMT_RGB24,
 		.mode_str = "1024x768M-16@60",  /* Default */
 	},
 	/* DISP1 */
