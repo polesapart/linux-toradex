@@ -404,6 +404,9 @@ static void __init mxc_board_init(void)
 #ifdef CONFIG_ESDHCI_MXC_SELECT1
 	ccwmx51_register_sdio(0);	/* SDHC1 */
 #endif /* CONFIG_ESDHCI_MXC_SELECT1 */
+#ifdef CONFIG_ESDHCI_MXC_SELECT2
+	ccwmx51_register_sdio(1);	/* SDHC1 */
+#endif /* CONFIG_ESDHCI_MXC_SELECT1 */
 #if defined(CONFIG_ESDHCI_MXC_SELECT3) && \
     (!defined(CONFIG_PATA_FSL) && !defined(CONFIG_PATA_FSL_MODULE))
 	ccwmx51_register_sdio(2);	/* SDHC3 */

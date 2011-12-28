@@ -578,8 +578,8 @@ config ESDHCI_MXC_SELECT4
 	bool "Enable SDHC 4"
 	default y
 	depends on MMC_IMX_ESDHCI
-	depends on !MACH_CCWMX51JS
-	depends on !MACH_CCWMX53JS
+	depends on !MACH_CCWMX51JS && !MACH_CCMX51JS
+	depends on !MACH_CCWMX53JS && !MACH_CCMX53JS
 	help
 	  Enable the SD Host Controller 4.
 

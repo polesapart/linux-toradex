@@ -201,6 +201,12 @@ static int sdhc_write_protect(struct device *dev)
 
 	if (to_platform_device(dev)->id == 0)
 		rc = 0; /* Not supported WP on JSK board, therefore write is enabled */
+	else if (to_platform_device(dev)->id == 1)
+#ifdef CCWMX51_SD2_WP
+		rc = gpio_get_value(IOMUX_TO_GPIO(CCWMX51_SD2_WP));
+#else
+		rc = 0;
+#endif
 	else if (to_platform_device(dev)->id == 2)
 		rc = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_NANDF_CS1));
 	return rc;
@@ -216,6 +222,12 @@ static unsigned int sdhc_get_card_det_status(struct device *dev)
 #else
 		ret = 0;
 #endif
+	else if (to_platform_device(dev)->id == 1)
+#ifdef CCWMX51_SD2_CD
+		ret = gpio_get_value(IOMUX_TO_GPIO(CCWMX51_SD2_CD));
+#else
+		ret = 0;
+#endif
 	else if (to_platform_device(dev)->id == 2)
 		ret = gpio_get_value(IOMUX_TO_GPIO(MX51_PIN_GPIO_NAND));
 	return ret;
@@ -226,6 +238,19 @@ struct mxc_mmc_platform_data mmc1_data = {
 	.caps = MMC_CAP_4_BIT_DATA,
 	.min_clk = 400000,
 	.max_clk = 52000000,
+	.card_inserted_state = 0,
+	.status = sdhc_get_card_det_status,
+	.wp_status = sdhc_write_protect,
+	.clock_mmc = "esdhc_clk",
+	.power_mmc = NULL,
+};
+
+static struct mxc_mmc_platform_data mmc2_data = {
+	.ocr_mask = MMC_VDD_27_28 | MMC_VDD_28_29 | MMC_VDD_29_30 |
+	    MMC_VDD_31_32,
+	.caps = MMC_CAP_4_BIT_DATA,
+	.min_clk = 150000,
+	.max_clk = 50000000,
 	.card_inserted_state = 0,
 	.status = sdhc_get_card_det_status,
 	.wp_status = sdhc_write_protect,
@@ -253,6 +278,11 @@ void ccwmx51_register_sdio(int interface)
 		mxcsdhc1_device.resource[2].start = CCWMX51_SD1_CD_IRQ;
 		mxcsdhc1_device.resource[2].end = CCWMX51_SD1_CD_IRQ;
 		mxc_register_device(&mxcsdhc1_device, &mmc1_data);
+		break;
+	case 1:
+		mxcsdhc2_device.resource[2].start = CCWMX51_SD2_CD_IRQ;
+		mxcsdhc2_device.resource[2].end = CCWMX51_SD2_CD_IRQ;
+		mxc_register_device(&mxcsdhc2_device, &mmc2_data);
 		break;
 	case 2:
 		mxcsdhc3_device.resource[2].start = IOMUX_TO_IRQ(MX51_PIN_GPIO_NAND);

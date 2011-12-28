@@ -31,6 +31,7 @@
 #define BOARD_NAME		" on a EAK board"
 /* SD1 card detect irq */
 #define CCWMX51_SD1_CD_IRQ	IOMUX_TO_IRQ(MX51_PIN_GPIO1_0)
+#define CCWMX51_SD2_CD_IRQ	0 /* Customize this value to support a CD irq on the SD2 */
 #define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_4	/* AD9389 interrupt */
 
 /* Second touch settings */
@@ -42,6 +43,7 @@
 #define BOARD_NAME		" on a JSK board"
 /* SD1 card detect irq, not present CD line... */
 #define CCWMX51_SD1_CD_IRQ	0
+#define CCWMX51_SD2_CD_IRQ	0 /* Customize this value to support a CD irq on the SD2 */
 #define AD9389_GPIO_IRQ		MX51_PIN_GPIO1_0	/* AD9389 interrupt */
 /* Second touch settings */
 #define SECOND_TS_IRQ_PIN	MX51_PIN_DI1_D0_CS
@@ -50,6 +52,7 @@
 #define BASE_BOARD_REV		0
 #define BOARD_NAME		" on a custom board"
 #define CCWMX51_SD1_CD_IRQ	0	/* Customize this value to support a CD irq on the SD1 */
+#define CCWMX51_SD2_CD_IRQ	0 /* Customize this value to support a CD irq on the SD2 */
 /* #define AD9389_GPIO_IRQ */
 #endif
 
