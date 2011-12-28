@@ -52,8 +52,8 @@ void gpio_can_active(int interface);
 
 #define MX53_GPIO(port,pin)		((port - 1) * 32 + pin)
 #define CCWMX53_EXT_IRQ_GPIO		MX53_GPIO(4,2)		/* GPIO_4_2 */
-#define SECOND_TS_IRQ_PIN		MX53_GPIO(1,0)		/* GPIO_1_0 */
-#define SECOND_TS_SPI_SS_PIN		MX53_GPIO(4,5)		/* GPIO_4_5 / ECSPI1_RDY */
+#define SECOND_TS_IRQ_PIN		MX53_GPIO(5,28)		/* GPIO_5_28 */
+#define SECOND_TS_SPI_SS_PIN		MX53_GPIO(5,25)		/* GPIO_5_25 */
 #define CCWMX53_MMA7455_IRQ_GPIO	MX53_GPIO(4,4)		/* GPIO_4_4 */
 #define CCWMX53_DA9052_IRQ_GPIO		MX53_GPIO(7,11)		/* GPIO7_11 */
 
