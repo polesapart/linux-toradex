@@ -699,3 +699,18 @@ void gpio_camera_active(void)
 }
 EXPORT_SYMBOL(gpio_camera_active);
 #endif //CONFIG_VIDEO_MXC_IPU_CAMERA
+
+static iomux_v3_cfg_t ccwmx53_dio_pads[] = {
+#if !defined CONFIG_CERTMX53_V1 && !defined(DISP1_ENABLE_PAD)
+	MX53_PAD_NANDF_CS2__GPIO6_15,
+#endif
+	MX53_PAD_PATA_DA_0__GPIO7_6,
+	MX53_PAD_NANDF_CS1__GPIO6_14,
+	MX53_PAD_NANDF_CS3__GPIO6_16,
+};
+
+void gpio_dio_active(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_dio_pads, ARRAY_SIZE(ccwmx53_dio_pads));
+}
+EXPORT_SYMBOL(gpio_dio_active);

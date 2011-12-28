@@ -84,6 +84,7 @@
 u8 ccwmx51_swap_bi = 1;
 
 extern int __init mx53_ccwmx53js_init_da9052(void);
+extern void gpio_dio_active(void);
 
 static iomux_v3_cfg_t mx53_ccwmx53js_pads[] = {
 	/* I2C3, connected to the DA9053 and MMA7455  */
@@ -253,6 +254,7 @@ static void __init mx53_ccwmx53js_io_init(void)
 	mxc_iomux_v3_setup_multiple_pads(ccwmx53js_keys_leds_pads,
 					 ARRAY_SIZE(ccwmx53js_keys_leds_pads));
 	gpio_wireless_active();
+	gpio_dio_active();
 }
 
 /*!
