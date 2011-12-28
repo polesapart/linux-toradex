@@ -727,7 +727,10 @@ int __init ccwmx5x_init_fb(void)
 #if !defined(CONFIG_CCXMX5X_DISP1)
 		if (i == 1)	continue;
 #endif
-		if ((p = ccwmx53_get_video_cmdline_opt(i, "HDMI")) != NULL) {
+		if ((p = ccwmx53_get_video_cmdline_opt(i, "disabled")) != NULL) {
+			/* Skip this interface */
+			continue;
+		} else if ((p = ccwmx53_get_video_cmdline_opt(i, "HDMI")) != NULL) {
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 			pr_info("HDMI interface in DISP%d\n", i);
 			i2c_register_board_info(2, ccwmx53_hdmi, 1);
