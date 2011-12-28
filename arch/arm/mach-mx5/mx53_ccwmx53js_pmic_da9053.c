@@ -128,6 +128,9 @@ static struct da9052_bat_platform_data da9052_bat = {
 	.monitoring_interval = 5000,
 	.bat_volt_cutoff = 2800,
 	.filter_size = 4,
+	.bat_capacity_limit_high = 85,
+	.bat_capacity_limit_low = 25,
+	.bat_capacity_full = 100,
 };
 
 static void da9052_init_ssc_cache(struct da9052 *da9052)
