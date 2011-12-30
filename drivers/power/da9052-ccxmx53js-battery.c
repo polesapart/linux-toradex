@@ -616,6 +616,8 @@ static int da9052_bat_get_property(struct power_supply *psy,
 
 		else if (bat_status.status == DA9052_CHARGEEND)
 			val->intval = POWER_SUPPLY_STATUS_FULL;
+		else
+			val->intval = POWER_SUPPLY_STATUS_UNKNOWN;
 
 	break;
 	case POWER_SUPPLY_PROP_ONLINE:
