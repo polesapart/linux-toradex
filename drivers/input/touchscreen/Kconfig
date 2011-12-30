@@ -150,6 +150,16 @@ config TOUCHSCREEN_EGALAX
 	  To compile this driver as a module, choose M here: the
 	  module will be called egalax_ts.
 
+config TOUCHSCREEN_FUSION
+	tristate "Fusion multi-touchscreen panel support"
+	depends on I2C
+	help
+	  Say Y here to enable support for the Fusion I2C multi-touch
+	  driver.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called fusion.
+
 config TOUCHSCREEN_FUJITSU
 	tristate "Fujitsu serial touchscreen"
 	select SERIO

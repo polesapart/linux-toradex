@@ -22,13 +22,16 @@
 #ifndef __LINUX_MFD_DA9052_LED_H
 #define __LINUX_MFD_DA9052_LED_H
 
-struct da9052_led_platform_data {
 #define DA9052_LED_4			4
 #define DA9052_LED_5			5
 #define DA9052_LED_MAX			2
+#define MAXIMUM_PWM			95
+
+struct da9052_led_platform_data {
 	int id;
 	const char *name;
 	const char *default_trigger;
+	unsigned char defval;
 };
 
 struct da9052_leds_platform_data {

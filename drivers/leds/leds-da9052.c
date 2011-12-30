@@ -38,6 +38,7 @@ struct da9052_led_data {
 	int new_brightness;
 	int is_led4_present;
 	int is_led5_present;
+	unsigned char defval;
 };
 
 #define GPIO14_PIN		2 /* GPO Open Drain */
@@ -117,7 +118,7 @@ static int __devinit da9052_led_setup(struct da9052_led_data *led)
 	}
 
 	msg.addr = reg;
-	msg.data = 0;
+	msg.data = led->defval;
 
 	da9052_lock(led->da9052);
 	ret = led->da9052->write(led->da9052, &msg);
@@ -218,11 +219,13 @@ static int __devinit da9052_led_probe(struct platform_device *pdev)
 		}
 
 		init_led |= 1 << led_cur->id;
-		
+
 		led_dat->cdev.name = led_cur->name;
 		// led_dat->cdev.default_trigger = led_cur[i]->default_trigger;
 		led_dat->cdev.brightness_set = da9052_led_set;
-		led_dat->cdev.brightness = LED_OFF;
+		led_dat->cdev.brightness = led_cur->defval;
+		led_dat->defval = led_cur->defval;
+		led_dat->cdev.max_brightness = MAXIMUM_PWM;
 		led_dat->id = led_cur->id;
 		led_dat->da9052 = dev_get_drvdata(pdev->dev.parent);
 

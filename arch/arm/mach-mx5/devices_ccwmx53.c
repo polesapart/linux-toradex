@@ -1009,6 +1009,7 @@ static struct i2c_board_info ccwmx53_i2c_devices[] __initdata = {
 	{
 		I2C_BOARD_INFO("sgtl5000-i2c", 0x0A),
 	},
+#endif
 #if defined (CONFIG_MXC_CAMERA_MICRON111_1) || defined(CONFIG_MXC_CAMERA_MICRON111_1_MODULE)
 	{
 		I2C_BOARD_INFO("mt9v111_1", 0xB8>>1 /*0x5C*/),
@@ -1018,7 +1019,6 @@ static struct i2c_board_info ccwmx53_i2c_devices[] __initdata = {
 	{
 		I2C_BOARD_INFO("mt9v111_2", 0x90>>1 /*0x48*/),
 	},
-#endif
 #endif
 };
 
@@ -1194,3 +1194,24 @@ void ccwmx53_register_can(int interface)
 #else
 void ccwmx53_register_can(int interface) {}
 #endif /* CONFIG_CAN_FLEXCAN */
+
+#ifdef CONFIG_CCWMX5X_FUSION_MULTITOUCH
+struct i2c_board_info ccwmx53_fusion_ts[] __initdata = {
+	{
+		I2C_BOARD_INFO("fusion", 0x10),
+		.irq = gpio_to_irq(SECOND_TS_IRQ_PIN),
+	},
+};
+
+void ccwmx53_register_fusion_touch(void)
+{
+	/* Configure external touch interrupt line and register the i2c device */
+	mxc_iomux_v3_setup_pad(MX53_PAD_CSI0_DAT10__GPIO5_28);
+	gpio_request(SECOND_TS_IRQ_PIN, "fusion_ts_irq");
+	gpio_direction_input(SECOND_TS_IRQ_PIN);
+
+	i2c_register_board_info(2, ccwmx53_fusion_ts, 1);
+}
+#else
+void ccwmx53_register_fusion_touch(void) {}
+#endif

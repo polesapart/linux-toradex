@@ -319,6 +319,8 @@ static void __init mxc_board_init(void)
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx53_init_2nd_touch();
 #endif
+	ccwmx53_register_fusion_touch();
+
 	pm_power_off = da9053_power_off;
 }
 

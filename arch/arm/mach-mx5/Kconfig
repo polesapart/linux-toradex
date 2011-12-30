@@ -629,8 +629,8 @@ config CCXMX5X_DISP0_RGB888
 
 	    The JumpStart Kit Development Board (30011032-02) is designed
 	    to work in 18bit mode. To work in 24bit mode you need an Early
-	    Availability Kit Development Board (30011032-01) or a custom 
-	    designed board that populates all 24 data lines of the video 
+	    Availability Kit Development Board (30011032-01) or a custom
+	    designed board that populates all 24 data lines of the video
 	    interface.
 	    IMPORTANT: On the ConnectCore Wi-i.MX51/i.MX51 if the Display 1
 	    is configured for 24bit color depth, the Display 2 will not be
@@ -691,6 +691,14 @@ config CCWMX5X_SECOND_TOUCH
 	  This enables the support for the external touch interface (ADS7843) available on the
 	  High Resolution Display board, connected to the processor through SPI and that can be
 	  used with the secondary display (but also with the primary)
+
+config CCWMX5X_FUSION_MULTITOUCH
+	bool "Enable support for the Fusion multi-touchscreen controller on the JSK board"
+	depends on (I2C_MXC || I2C_IMX) && (JSCCWMX53_V2 || JSCCWMX51_V2)
+	select TOUCHSCREEN_FUSION
+	help
+	  This enables the support for the Fusion multi-touch controller available in the
+	  fusion Touch Displays, connected to the JumpStart Kit board.
 
 endmenu
 endif
