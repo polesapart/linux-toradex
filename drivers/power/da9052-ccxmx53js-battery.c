@@ -365,6 +365,7 @@ static void da9052_charger_status_update(struct da9052_charger_device
 	u8 regvalue = 0;
 	u16 ichgm = 0;
 	u16 vbat = 0;
+	static int bat_status_old;
 
 	// Will return error and ichgm=0 if no charger present
 	da9052_bat_get_chg_current(chg_device->da9052,&ichgm);
@@ -416,6 +417,10 @@ static void da9052_charger_status_update(struct da9052_charger_device
 	DA9052_DEBUG("Status %s\n",get_bat_mode(bat_status.status));
 	return;
 
+	if( bat_status_old != bat_status.status )
+		power_supply_changed(&chg_device->psy);
+	bat_status_old = bat_status.status;
+
 read_err:
 	pr_err("da9052: Error on read\n");
 return;
@@ -426,6 +431,7 @@ s32 da9052_get_bat_level(struct da9052_charger_device *chg_device)
 {
 	u16 vbat = 0;
 	u16 ichgm = 0;
+	static int bat_capacity_old;
 
 	da9052_charger_status_update(chg_device);
 
@@ -532,6 +538,9 @@ s32 da9052_get_bat_level(struct da9052_charger_device *chg_device)
 	}
 
 	DA9052_DEBUG("bat_status.cal_capacity %d\n",bat_status.cal_capacity);
+	if( bat_capacity_old != bat_status.cal_capacity )
+		power_supply_changed(&chg_device->psy);
+	bat_capacity_old = bat_status.cal_capacity;
 	return 0;
 
 read_err:
