@@ -712,6 +712,17 @@ config TOUCHSCREEN_DA9052
           Say y here to support the touchscreen found on
           Dialog Semiconductor DA9052 PMIC
 
+config ENABLE_WINDOW_FILTER
+        bool "Dialog DA9052 TSI window filter"
+        depends on PMIC_DA9052
+        depends on TOUCHSCREEN_DA9052
+        default N
+        help
+          Say y here to enable the DA9052 touchscreen driver
+          window filter.
+
+          If unsure say N.
+
 config TOUCHSCREEN_MAX11801
        tristate "MAXIM MAX11801 touchscreen"
        depends on I2C

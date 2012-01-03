@@ -50,9 +50,9 @@ static s32 da9052_tsi_calc_debounce_data(struct da9052_ts_priv *priv,
 # if (ENABLE_WINDOW_FILTER)
 static s32 diff_within_window(struct da9052_tsi_data *prev_raw_data,
 			      struct da9052_tsi_data *cur_raw_data);
-#endif
 static s32 da9052_tsi_window_filter(struct da9052_ts_priv *ts,
 					struct da9052_tsi_data *raw_data);
+#endif
 
 void clean_tsi_fifos(struct da9052_ts_priv *priv)
 {
