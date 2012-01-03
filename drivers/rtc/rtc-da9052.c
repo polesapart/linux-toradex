@@ -613,7 +613,6 @@ static int __devinit da9052_rtc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->da9052 = dev_get_drvdata(pdev->dev.parent);
-	priv->da9052->dev = &pdev->dev;
 	platform_set_drvdata(pdev, priv);
 
 	/* KPIT added to support sysfs wakealarm attribute */
