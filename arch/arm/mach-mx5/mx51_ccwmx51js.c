@@ -509,3 +509,4 @@ MACHINE_END
 
 /* Space holder, used for the CCWMX53 */
 void gpio_camera_active(void) {}
+EXPORT_SYMBOL(gpio_camera_active);
