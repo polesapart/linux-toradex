@@ -316,7 +316,13 @@ config UART1_MODE_IRDA
 
 config UART1_MODE_RS485
 	bool "Configure for RS485-half duplex (automatically handles RTS for the RS485 direction)"
+	depends on MODULE_CCXMX51 || (MODULE_CCXMX53 && !ESDHCI_MXC_SELECT3)
 endchoice
+
+comment "UART1 RS485 mode is not available on the ConnectCore Wi-i.MX53 JumpStart board if"
+	  depends on MODULE_CCXMX53 && ESDHCI_MXC_SELECT3
+comment "the support for the SD Host Controller 3 is enabled."
+	  depends on MODULE_CCXMX53 && ESDHCI_MXC_SELECT3
 
 choice
 	prompt "Select the configuration for the UART lines:"
@@ -329,10 +335,23 @@ config UART1_2WIRE_ENABLED
 
 config UART1_CTS_RTS_ENABLED
 	bool "Configure UART1 as 4 wire UART (RX/TX/RTS/CTS)"
+	depends on MODULE_CCXMX51 || (MODULE_CCXMX53 && !ESDHCI_MXC_SELECT3)
 
 config UART1_FULL_UART_ENABLED
 	bool "Configure UART1 as full UART (RX/TX/RTS/CTS/DCD/DTR/DSR/RI)"
+	depends on MODULE_CCXMX51 || (MODULE_CCXMX53 && !ESDHCI_MXC_SELECT3)
+		depends on MODULE_CCXMX51 || (MODULE_CCXMX53 && !SMSC911X)
 endchoice
+
+comment "UART1 CTS/RTS is not available on the ConnectCore Wi-i.MX53 JumpStart board if"
+	  depends on MODULE_CCXMX53 && ESDHCI_MXC_SELECT3
+comment "the support for the SD Host Controller 3 is enabled."
+	  depends on MODULE_CCXMX53 && ESDHCI_MXC_SELECT3
+
+comment "UART1 FULL UART is not available on the ConnectCore Wi-i.MX53 JumpStart board if"
+	  depends on MODULE_CCXMX53 && SMSC911X
+comment "the support for the SMSC LAN911x/LAN921x is enabled."
+	  depends on MODULE_CCXMX53 && SMSC911X
 
 config UART2_ENABLED
 	bool "Enable UART2"
@@ -362,7 +381,7 @@ config UART2_CTS_RTS_ENABLED
 	default n
 	depends on UART2_ENABLED
 	depends on UART2_MODE_STANDARD
-	depends on MODULE_CCXMX51 && !USB_EHCI_ARC_H1
+	depends on MODULE_CCXMX53 || (MODULE_CCXMX51 && !USB_EHCI_ARC_H1)
 	help
 	  Configure the UART2 RTS/CTS lines for hardware flow control operation
 
