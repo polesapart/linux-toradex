@@ -320,7 +320,7 @@ int da9052_ldo_buck_set_voltage(struct regulator_dev *rdev,
 	break;
 	default:
 		da9052_unlock(priv->da9052);
-		return -EINVAL;
+		return 0;
 	}
 
 	ret = priv->da9052->write(priv->da9052, &ssc_msg);
