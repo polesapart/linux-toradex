@@ -346,6 +346,9 @@ int da9052_ldo_buck_get_voltage(struct regulator_dev *rdev)
 	int ldo_volt_uV = 0;
 	int ret;
 
+	if( !da9052_ldo_buck_is_enabled(rdev) )
+		return ldo_volt_uV;
+
 	ssc_msg.addr = da9052_regulators[id].reg_add;
 	ssc_msg.data = 0;
 	/* Read register */
