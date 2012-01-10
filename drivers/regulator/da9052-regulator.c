@@ -241,6 +241,11 @@ int da9052_ldo_buck_set_voltage(struct regulator_dev *rdev,
 	int ret;
 	int ldo_volt = 0;
 
+	if( min_uV == 0 && max_uV == 0 ){
+		// Disable regulator
+		return da9052_ldo_buck_disable(rdev);
+	}
+
 	/* KPIT - Below if condition is there for added setvoltage attribute
 	in sysfs */
 	if (0 == max_uV)
