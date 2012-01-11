@@ -383,6 +383,20 @@ int da9053_suspend_cmd_sw(void)
 	return 0;
 }
 
+int da9053_ccxmx53_suspend_workaround(void)
+{
+	struct clk *i2c_clk;
+
+	i2c_clk = clk_get(NULL, "i2c_clk");
+	if (IS_ERR(i2c_clk)) {
+		pr_err("unable to get i2c clk\n");
+		return PTR_ERR(i2c_clk);
+	}
+	clk_enable(i2c_clk);
+	clk_disable(i2c_clk);
+	clk_put(i2c_clk);
+	return 0;
+}
 
 int da9053_suspend_cmd_hw(void)
 {

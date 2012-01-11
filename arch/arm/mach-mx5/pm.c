@@ -69,6 +69,7 @@ extern int da9053_restore_volt_settings(void);
 extern void da9053_suspend_cmd_sw(void);
 extern void da9053_resume_dump(void);
 extern void pm_da9053_i2c_init(u32 base_addr);
+extern int da9053_ccxmx53_suspend_workaround(void);
 
 extern int iram_ready;
 void *suspend_iram_base;
@@ -151,6 +152,10 @@ static int mx5_suspend_enter(suspend_state_t state)
 					da9053_suspend_cmd_hw();
 				}
 			}
+
+			if( machine_is_ccwmx53js() || machine_is_ccmx53js() )
+				da9053_ccxmx53_suspend_workaround();
+
 			/* Run the suspend code from iRAM. */
 			suspend_in_iram(suspend_param1, NULL, NULL);
 			if (machine_is_mx53_smd() ||
