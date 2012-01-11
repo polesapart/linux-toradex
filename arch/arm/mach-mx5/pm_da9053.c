@@ -29,6 +29,7 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 #include <linux/mfd/da9052/reg.h>
+#include <linux/mfd/da9052/da9052.h>
 
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
@@ -62,6 +63,7 @@
 
 static void __iomem		*base;
 static int stopped;
+static int i2caddr = DA9052_I2C_ADDR >> 1;
 
 /** Functions for IMX I2C adapter driver ***************************************
 *******************************************************************************/
@@ -247,9 +249,10 @@ fail0:
 	return (result < 0) ? result : num;
 }
 
-void pm_da9053_i2c_init(u32 base_addr)
+void pm_da9053_i2c_init(u32 base_addr , u32 i2c_addr)
 {
 	base = ioremap(base_addr, SZ_4K);
+	i2caddr = i2c_addr;
 }
 
 void pm_da9053_i2c_deinit(void)
@@ -262,13 +265,13 @@ void pm_da9053_read_reg(u8 reg, u8 *value)
 	unsigned char buf[2] = {0, 0};
 	struct i2c_msg i2cmsg[2];
 	buf[0] = reg;
-	i2cmsg[0].addr  = 0x48 ;
+	i2cmsg[0].addr  = i2caddr ;
 	i2cmsg[0].len   = 1;
 	i2cmsg[0].buf   = &buf[0];
 
 	i2cmsg[0].flags = 0;
 
-	i2cmsg[1].addr  = 0x48 ;
+	i2cmsg[1].addr  = i2caddr ;
 	i2cmsg[1].len   = 1;
 	i2cmsg[1].buf   = &buf[1];
 
@@ -284,7 +287,7 @@ void pm_da9053_write_reg(u8 reg, u8 value)
 	struct i2c_msg i2cmsg[2];
 	buf[0] = reg;
 	buf[1] = value;
-	i2cmsg[0].addr  = 0x48 ;
+	i2cmsg[0].addr  = i2caddr ;
 	i2cmsg[0].len   = 2;
 	i2cmsg[0].buf   = &buf[0];
 	i2cmsg[0].flags = 0;

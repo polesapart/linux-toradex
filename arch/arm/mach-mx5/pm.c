@@ -32,6 +32,7 @@
 #include <asm/mach/map.h>
 #include <mach/hardware.h>
 #include "mach/irqs.h"
+#include "devices_ccxmx5x.h"
 
 #define MXC_SRPG_EMPGC0_SRPGCR	(IO_ADDRESS(GPC_BASE_ADDR) + 0x2C0)
 #define MXC_SRPG_EMPGC1_SRPGCR	(IO_ADDRESS(GPC_BASE_ADDR) + 0x2D0)
@@ -68,7 +69,7 @@ extern void da9053_suspend_cmd_hw(void);
 extern int da9053_restore_volt_settings(void);
 extern void da9053_suspend_cmd_sw(void);
 extern void da9053_resume_dump(void);
-extern void pm_da9053_i2c_init(u32 base_addr);
+extern void pm_da9053_i2c_init(u32 base_addr , u32 i2c_addr);
 extern int da9053_ccxmx53_suspend_workaround(void);
 
 extern int iram_ready;
@@ -340,10 +341,17 @@ static int __init pm_init(void)
 
 	if (machine_is_mx53_smd() ||
 		machine_is_mx53_loco())
-		pm_da9053_i2c_init(I2C1_BASE_ADDR - MX53_OFFSET);
+		pm_da9053_i2c_init(I2C1_BASE_ADDR - MX53_OFFSET , 0x48 /* PMIC I2C addr */);
 
-	if (machine_is_ccwmx53js() || machine_is_ccmx53js() )
-		pm_da9053_i2c_init(I2C3_BASE_ADDR - MX53_OFFSET);
+	if (machine_is_ccwmx53js() || machine_is_ccmx53js() ) {
+		u8 modrev = ccxmx5x_get_mod_revision();
+		u32 i2caddr = DA9052_I2C_ADDR >> 1;
+
+		/* Early variants use a different (0x48) address for the PMIC */
+		if (modrev == 0x01)
+			i2caddr = DA9052_I2C_ADDR_ALT >> 1;
+		pm_da9053_i2c_init(I2C3_BASE_ADDR - MX53_OFFSET , i2caddr );
+	}
 
 	return 0;
 }
