@@ -65,6 +65,7 @@
 #include <mach/iomux-mx53.h>
 
 #include "devices_ccwmx53.h"
+#include "devices_ccxmx5x.h"
 #include "crm_regs.h"
 #include "devices.h"
 #include "usb.h"
@@ -262,6 +263,14 @@ static void __init mx53_ccwmx53js_io_init(void)
  */
 static void __init mxc_board_init(void)
 {
+	/* Setup hwid information, passed through Serial ATAG */
+	ccxmx5x_set_mod_variant(system_serial_low & 0xff);
+	ccxmx5x_set_mod_revision((system_serial_low >> 8) & 0xff);
+	ccxmx5x_set_mod_sn(((system_serial_low << 8) & 0xff000000) |
+			   ((system_serial_low >> 8) & 0x00ff0000) |
+			   ((system_serial_high << 8) & 0x0000ff00) |
+			   ((system_serial_high >> 8) & 0xff));
+
 	mxc_ipu_data.di_clk[0] = clk_get(NULL, "ipu_di0_clk");
 	mxc_ipu_data.di_clk[1] = clk_get(NULL, "ipu_di1_clk");
 	mxc_ipu_data.csi_clk[0] = clk_get(NULL, "ssi_ext1_clk");
@@ -320,6 +329,7 @@ static void __init mxc_board_init(void)
 	ccwmx53_init_2nd_touch();
 #endif
 	ccwmx53_register_fusion_touch();
+	ccxmx5x_create_sysfs_entries();
 
 	pm_power_off = da9053_power_off;
 }

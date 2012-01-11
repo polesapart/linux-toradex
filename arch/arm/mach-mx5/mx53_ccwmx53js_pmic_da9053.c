@@ -38,7 +38,7 @@
 #include <mach/gpio.h>
 #include <mach/hardware.h>
 
-#include "devices_ccwmx53.h"
+#include "devices_ccxmx5x.h"
 
 #define DA9052_LDO(max, min, rname, suspend_mv) \
 {\
@@ -261,5 +261,11 @@ static struct i2c_board_info __initdata da9052_i2c_device = {
 
 int __init mx53_ccwmx53js_init_da9052(void)
 {
+	u8 modrev = ccxmx5x_get_mod_revision();
+
+	/* Early variants use a different (0x48) address for the PMIC */
+	if (modrev == 0x01)
+		da9052_i2c_device.addr = DA9052_I2C_ADDR_ALT >> 1;
+
 	return i2c_register_board_info(2, &da9052_i2c_device, 1);
 }

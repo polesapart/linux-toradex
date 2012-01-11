@@ -13,16 +13,18 @@ obj-$(CONFIG_ARCH_MX50) += clock_mx50.o dmaengine.o dma-apbh.o mx50_suspend.o mx
 
 obj-$(CONFIG_MACH_MX51_3DS) += mx51_3stack.o mx51_3stack_gpio.o mx51_3stack_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX51_BABBAGE) += mx51_babbage.o mx51_babbage_pmic_mc13892.o
-obj-$(CONFIG_MACH_CCWMX51JS) += devices_ccwmx51.o mx51_ccwmx51js.o mx51_ccwmx51js_gpio.o
-obj-$(CONFIG_MACH_CCMX51JS) += devices_ccwmx51.o mx51_ccwmx51js.o mx51_ccwmx51js_gpio.o
+obj-$(CONFIG_MACH_CCWMX51JS) += devices_ccwmx51.o devices_ccxmx5x.o mx51_ccwmx51js.o \
+                                mx51_ccwmx51js_gpio.o
+obj-$(CONFIG_MACH_CCMX51JS) += devices_ccwmx51.o devices_ccxmx5x.o mx51_ccwmx51js.o \
+                               mx51_ccwmx51js_gpio.o
 obj-$(CONFIG_MXC_PMIC_MC13892) +=  mx51_ccwmx51js_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX53_EVK) += mx53_evk.o mx53_evk_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX53_ARD) += mx53_ard.o mx53_ard_pmic_ltc3589.o
 obj-$(CONFIG_MACH_MX53_SMD) += mx53_smd.o mx53_smd_pmic_da9053.o
-obj-$(CONFIG_MACH_CCWMX53JS) += devices_ccwmx53.o mx53_ccwmx53js.o mx53_ccwmx53js_pmic_da9053.o \
-                                mx53_ccwmx53js_gpio.o
-obj-$(CONFIG_MACH_CCMX53JS) += devices_ccwmx53.o mx53_ccwmx53js.o mx53_ccwmx53js_pmic_da9053.o \
-                               mx53_ccwmx53js_gpio.o
+obj-$(CONFIG_MACH_CCWMX53JS) += devices_ccwmx53.o devices_ccxmx5x.o mx53_ccwmx53js.o \
+                                mx53_ccwmx53js_pmic_da9053.o mx53_ccwmx53js_gpio.o
+obj-$(CONFIG_MACH_CCMX53JS) += devices_ccwmx53.o devices_ccxmx5x.o mx53_ccwmx53js.o \
+                               mx53_ccwmx53js_pmic_da9053.o mx53_ccwmx53js_gpio.o
 obj-$(CONFIG_MACH_MX53_LOCO) += mx53_loco.o mx53_loco_pmic_mc34708.o mx53_loco_pmic_da9053.o
 obj-$(CONFIG_MACH_MX50_ARM2) += mx50_arm2.o mx50_arm2_pmic_mc13892.o
 obj-$(CONFIG_MACH_MX50_RDP) += mx50_rdp.o mx50_rdp_pmic_mc13892.o mx50_rdp_pmic_mc34708.o

@@ -44,12 +44,14 @@
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
+
 #include "board-ccwmx51.h"
 #include "iomux.h"
 #include "crm_regs.h"
 #include "devices.h"
 #include "mx51_pins.h"
 #include "devices_ccwmx51.h"
+#include "devices_ccxmx5x.h"
 #include "usb.h"
 
 extern struct cpu_wp *(*get_cpu_wp)(int *wp);
@@ -331,9 +333,9 @@ static void mxc_power_off(void)
 static void __init mxc_board_init(void)
 {
 	/* Setup hwid information, passed through Serial ATAG */
-	ccwmx51_set_mod_variant(system_serial_low & 0xff);
-	ccwmx51_set_mod_revision((system_serial_low >> 8) & 0xff);
-	ccwmx51_set_mod_sn(((system_serial_low << 8) & 0xff000000) |
+	ccxmx5x_set_mod_variant(system_serial_low & 0xff);
+	ccxmx5x_set_mod_revision((system_serial_low >> 8) & 0xff);
+	ccxmx5x_set_mod_sn(((system_serial_low << 8) & 0xff000000) |
 			   ((system_serial_low >> 8) & 0x00ff0000) |
 			   ((system_serial_high << 8) & 0x0000ff00) |
 			   ((system_serial_high >> 8) & 0xff));
@@ -448,13 +450,12 @@ static void __init mxc_board_init(void)
 	/* Configure PMIC irq line */
 	set_irq_type(IOMUX_TO_GPIO(MX51_PIN_GPIO1_5), IRQ_TYPE_EDGE_BOTH);
 #endif
-#ifdef CONFIG_SYSFS
-	ccwmx51_create_sysfs_entries();
-#endif
 
 #ifdef CONFIG_CCWMX5X_SECOND_TOUCH
 	ccwmx51_init_2nd_touch();
 #endif
+	ccxmx5x_create_sysfs_entries();
+
 	pm_power_off = mxc_power_off;
 }
 
