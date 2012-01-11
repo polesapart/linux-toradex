@@ -331,7 +331,9 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_fusion_touch();
 	ccxmx5x_create_sysfs_entries();
 
+#if defined (CONFIG_PMIC_DA9052)
 	pm_power_off = da9053_power_off;
+#endif
 }
 
 static void __init mx53_ccwmx53js_timer_init(void)
