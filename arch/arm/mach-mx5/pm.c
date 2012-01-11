@@ -133,8 +133,7 @@ static int mx5_suspend_enter(suspend_state_t state)
 		flush_cache_all();
 
 		if (cpu_is_mx51() || cpu_is_mx53()) {
-			if (machine_is_mx53_smd() || machine_is_ccwmx53js() ||
-					machine_is_ccmx53js() ||
+			if (machine_is_mx53_smd() ||
 				(machine_is_mx53_loco() && (!board_is_mx53_loco_mc34708()))) {
 				if (board_is_rev(BOARD_REV_4) ||
 					machine_is_mx53_loco()) {
@@ -154,8 +153,7 @@ static int mx5_suspend_enter(suspend_state_t state)
 			}
 			/* Run the suspend code from iRAM. */
 			suspend_in_iram(suspend_param1, NULL, NULL);
-			if (machine_is_mx53_smd() || machine_is_ccwmx53js() ||
-					machine_is_ccmx53js() ||
+			if (machine_is_mx53_smd() ||
 				(machine_is_mx53_loco() && (!board_is_mx53_loco_mc34708())))
 				if (da9053_get_chip_version())
 					da9053_restore_volt_settings();
