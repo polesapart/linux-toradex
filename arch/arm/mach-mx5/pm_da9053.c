@@ -313,6 +313,8 @@ static u8 volt_settings[DA9052_LDO10_REG - DA9052_BUCKCORE_REG + 1];
 static void pm_da9053_preset_voltage(void)
 {
 	u8 reg, data;
+
+	/* All regulators, set supply voltage preset */
 	for (reg = DA9052_BUCKCORE_REG;
 		reg <= DA9052_LDO10_REG; reg++) {
 		pm_da9053_read_reg(reg, &data);
@@ -320,10 +322,15 @@ static void pm_da9053_preset_voltage(void)
 		data |= CONF_BIT;
 		pm_da9053_write_reg(reg, data);
 	}
+	/* 0xCE Enable , CONF , 850 mv*/
 	pm_da9053_write_reg(DA9052_BUCKCORE_REG, BUCKCORE_SUSPEND_PRESET);
+	/* 0xD2 Enable, CONF , 950 mv */
 	pm_da9053_write_reg(DA9052_BUCKPRO_REG, BUCKPRO_SUSPEND_PRESET);
+	/* 0xC0 , Enable, CONF , minimum 1200 mv*/
 	pm_da9053_write_reg(DA9052_LDO6_REG, LDO6_SUSPEND_PRESET);
+	/* 0xC0 , Enable, CONF , minimum 1200 mv*/
 	pm_da9053_write_reg(DA9052_LDO10_REG, iLDO10_SUSPEND_PRESET);
+	/* This changes the power down slot for MEM */
 	pm_da9053_write_reg(DA9052_ID1213_REG, BUCKPERI_SUSPEND_SW_STEP);
 }
 
@@ -344,6 +351,7 @@ void pm_da9053_dump(int start, int end)
 #define DA9052_ID1415_SMD_SET   0x1
 #define DA9052_GPI9_IRQ_MASK    0x2
 
+/* Only called for board rev 4 */
 int da9053_suspend_cmd_sw(void)
 {
 	unsigned char buf[2] = {0, 0};
@@ -391,26 +399,31 @@ int da9053_suspend_cmd_hw(void)
 	clk_enable(i2c_clk);
 
 	pm_da9053_preset_voltage();
-	pm_da9053_write_reg(DA9052_CONTROLC_REG,
-				DA9052_CONTROLC_SMD_SET);
+
+	/* 0x02 , Set FB pin as GP_FB indicator */
+	pm_da9053_write_reg(DA9052_CONTROLC_REG,DA9052_CONTROLC_SMD_SET);
+
 
 	pm_da9053_read_reg(DA9052_ID01_REG, &data);
+	/* No assertion of reset during power down mode,
+	 * No default OTP supplies */
 	data &= ~(DA9052_ID01_DEFSUPPLY | DA9052_ID01_nRESMODE);
 	pm_da9053_write_reg(DA9052_ID01_REG, data);
 
-#if !defined(CONFIG_MODULE_CCXMX53)
 	pm_da9053_write_reg(DA9052_GPIO0809_REG,
 			DA9052_GPIO0809_SMD_SET);
-#endif
 	pm_da9053_read_reg(DA9052_IRQMASKD_REG, &data);
 	data |= DA9052_GPI9_IRQ_MASK;
 	pm_da9053_write_reg(DA9052_IRQMASKD_REG, data);
 
+
+	/* Play with the power down slot for CORE and PRO */
 	pm_da9053_read_reg(DA9052_ID1415_REG, &data);
 	data &= 0xf0;
 	data |= DA9052_ID1415_SMD_SET;
 	pm_da9053_write_reg(DA9052_ID1415_REG, data);
 
+	/* Set sequencer time to minimum 32us */
 	pm_da9053_write_reg(DA9052_SEQTIMER_REG, 0);
 	/* pm_da9053_write_reg(DA9052_SEQB_REG, 0x1f); */
 
@@ -431,7 +444,10 @@ int da9053_restore_volt_settings(void)
 	}
 	clk_enable(i2c_clk);
 
+	/* Restores the power down time slot for MEM */
 	pm_da9053_write_reg(DA9052_ID1213_REG, BUCKPERI_RESTORE_SW_STEP);
+
+	/* Makes PERICORE controllable from sequencer */
 	pm_da9053_read_reg(DA9052_SUPPLY_REG, &data);
 	data |= SUPPLY_RESTORE_VPERISW_EN;
 	pm_da9053_write_reg(DA9052_SUPPLY_REG, data);
