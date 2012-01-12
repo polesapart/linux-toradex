@@ -57,8 +57,10 @@ static ssize_t da9052_tsi_config_manual_mode(struct da9052_ts_priv *priv,
 static ssize_t da9052_tsi_config_auto_mode(struct da9052_ts_priv *priv,
 					u8 state);
 static ssize_t da9052_tsi_config_gpio(struct da9052_ts_priv *priv);
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 static ssize_t da9052_tsi_config_power_supply(struct da9052_ts_priv *priv,
 					u8 state);
+#endif
 static struct da9052_tsi_info *get_tsi_drvdata(void);
 static void da9052_tsi_penup_event(struct da9052_ts_priv *priv);
 static s32 da9052_tsi_get_rawdata(struct da9052_tsi_reg *buf, u8 cnt);
@@ -326,9 +328,11 @@ static ssize_t da9052_tsi_config_state(struct da9052_ts_priv *priv,
 		if (ret)
 			return ret;
 
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 		ret = da9052_tsi_config_power_supply(priv, DISABLE);
 		if (ret)
 			return ret;
+#endif
 
 		ret = da9052_tsi_enable_irq(priv, TSI_PEN_DWN);
 		if (ret)
@@ -363,9 +367,11 @@ static ssize_t da9052_tsi_config_state(struct da9052_ts_priv *priv,
 		if (ret)
 			return ret;
 
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 		ret = da9052_tsi_config_power_supply(priv, DISABLE);
 		if (ret)
 			return ret;
+#endif
 
 		if (ts->pd_reg_status) {
 			priv->da9052->unregister_event_notifier(priv->da9052,
@@ -862,6 +868,7 @@ s32 da9052_pm_set_ldo(struct da9052_ts_priv *priv, u8 ldo_num, u8 flag)
 	return 0;
 }
 
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 static ssize_t da9052_tsi_config_power_supply(struct da9052_ts_priv *priv,
 						u8 state)
 {
@@ -891,6 +898,7 @@ static ssize_t da9052_tsi_config_power_supply(struct da9052_ts_priv *priv,
 
 	return 0;
 }
+#endif
 
 static ssize_t da9052_tsi_config_auto_mode(struct da9052_ts_priv *priv,
 						u8 state)
@@ -1140,8 +1148,10 @@ static void da9052_tsi_penup_event(struct da9052_ts_priv *priv)
 
 	ts->tsi_conf.auto_cont.tsi_cont_a.auto_tsi_en = RESET;
 
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 	if (da9052_tsi_config_power_supply(priv, ENABLE))
 		goto exit;
+#endif
 
 	ts->tsi_conf.ldo9_en = RESET;
 
@@ -1195,8 +1205,10 @@ void da9052_tsi_pen_down_handler(struct da9052_eh_nb *eh_data, u32 event)
 		goto fail;
 	}
 
+#if !defined(CONFIG_MACH_CCWMX53JS) && !defined(CONFIG_MACH_CCWMX53JS)
 	if (da9052_tsi_config_power_supply(priv, ENABLE))
 		goto fail;
+#endif
 
 	if (da9052_tsi_disable_irq(priv, TSI_PEN_DWN))
 		goto fail;
