@@ -559,6 +559,7 @@ void da9053_power_off(void)
 {
 #if defined(CONFIG_MODULE_CCXMX53)
 	struct da9052_ssc_msg msgs[5];
+	struct da9052_ssc_msg msg_test;
 	int ret;
 
 	if (!da9052_data)
@@ -586,6 +587,17 @@ void da9053_power_off(void)
 	ret = da9052_data->write_many(da9052_data, msgs, 5);
 	if (ret != 0)
 		printk(KERN_WARNING "DA9052: %s failure\n", __func__);
+
+	// Dummy read
+	msg_test.addr = DA9052_GPIO0809_REG;
+	msg_test.data = 0;
+	da9052_data->read(da9052_data, &msg_test);
+
+	// Do not unlock to disallow any other I2C access.
+
+	// A Dialog reported PMIC I2C bug needs to finish with an I2C read
+	// or the PMIC won't power up again in some cases.
+	while(1);
 
 	da9052_unlock(da9052_data);
 #else
