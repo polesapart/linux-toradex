@@ -101,8 +101,8 @@ static void mxc_wdt_enable(void *base)
 	val |= WCR_WDE_BIT;
 	__raw_writew(val, base + MXC_WDT_WCR);
 
-#ifdef CONFIG_MXC_DISABLE_WARM_RESET
-	__raw_writel(__raw_readl(IO_ADDRESS(SRC_BASE_ADDR) + 0x0) & ~0x1 ,
+#ifdef CONFIG_MXC_ENABLE_WARM_RESET
+	__raw_writel(__raw_readl(IO_ADDRESS(SRC_BASE_ADDR) + 0x0) | 0x1 ,
 			IO_ADDRESS(SRC_BASE_ADDR) + 0x0);
 #endif
 }

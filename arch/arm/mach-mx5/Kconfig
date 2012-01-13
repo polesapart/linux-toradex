@@ -275,13 +275,14 @@ config MXC_BLUETOOTH_RFKILL
        ---help---
 	Say Y to get the standard rfkill interface of Bluetooth
 
-config MXC_DISABLE_WARM_RESET
-        bool "Disable warm reset"
+config MXC_ENABLE_WARM_RESET
+        bool "Enable warm reset"
         default n
         help
-           This forces all reset sources to be cold resets. Select if you are
-           seeing reboot problems. The memory won't be refreshed so it won't be
-           available across resets.
+           This makes reset sources to be warm resets. Select if you need
+           memory persistency across reboots.
+
+           If not sure, say N.
 
 config CCXMX5X_PM_POWER_BUTTON
         bool "Enable power button for suspend/resume to RAM"
