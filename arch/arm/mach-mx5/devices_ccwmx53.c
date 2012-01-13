@@ -51,6 +51,7 @@
 #include <linux/smc911x.h>
 #include <linux/fec.h>
 #include <mach/mxc_iim.h>
+#include <mach/iomux-v3.h>
 
 #if defined(CONFIG_MTD) || defined(CONFIG_MTD_MODULE)
 #include <linux/mtd/mtd.h>
@@ -64,7 +65,6 @@
 #include "crm_regs.h"
 #include "devices.h"
 #include "displays/displays.h"
-
 
 extern void ccwmx53_gpio_spi_chipselect_active(int cspi_mode, int status,
 						    int chipselect);
@@ -534,6 +534,10 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	if (tpclk != 0)
 		var->pixclock = tpclk;
 
+	/* PPH, TODO, select video interface properly */
+	if (fbvmode && fbvmode->xres <= 1366)
+		gpio_video_active(0, PAD_CTL_DSE_LOW);
+
 	fb_dump_var(str, var);
 }
 
@@ -675,8 +679,7 @@ static int ccwmx53_hdmi_hw_init(struct ad9389_dev *ad9389)
 		gpio_request(AD9389_GPIO_IRQ, "ad9389_irq");
 		gpio_direction_input(AD9389_GPIO_IRQ);
 	}
-
-	gpio_video_active(pdata->dispif, 0);
+	gpio_video_active(pdata->dispif, PAD_CTL_DSE_HIGH);
 
 	return 0;
 }

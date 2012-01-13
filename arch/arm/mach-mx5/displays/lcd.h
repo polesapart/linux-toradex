@@ -15,6 +15,8 @@
 #if defined(CONFIG_MODULE_CCXMX51)
 #include "../iomux.h"
 #include "../mx51_pins.h"
+#elif defined(CONFIG_MODULE_CCXMX53)
+#include <mach/iomux-v3.h>
 #endif
 
 static void lcd_bl_enable(int enable, int vif)
@@ -43,9 +45,9 @@ static void lcd_init(int vif)
 	/* Initialize lcd enable gpio and video interface lines */
 	gpio_video_active(vif,
 #if defined(CONFIG_MODULE_CCXMX51)
-			 PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
+			  PAD_CTL_DRV_HIGH | PAD_CTL_SRE_FAST);
 #else
-			0);
+			  PAD_CTL_DSE_HIGH);
 #endif
 }
 
