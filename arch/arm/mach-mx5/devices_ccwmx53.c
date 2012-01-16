@@ -1097,12 +1097,14 @@ void ccwmx53_init_spidevices(void)
 void ccwmx53_init_spidevices(void) { }
 #endif
 
+#if (defined(CONFIG_SPI_MXC) || defined(CONFIG_SPI_MXC_MODULE))
 struct mxc_spi_master mxcspi1_data = {
 	.maxchipselect = 4,
 	.spi_version = 23,
 	.chipselect_active = ccwmx53_gpio_spi_chipselect_active,
 	.chipselect_inactive = ccwmx53_gpio_spi_chipselect_inactive,
 };
+#endif
 
 #ifdef CONFIG_MXC_IIM
 static void mxc_iim_enable_fuse(void)
