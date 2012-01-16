@@ -296,6 +296,35 @@ config CCXMX5X_PM_POWER_BUTTON
 endif
 
 menu "Serial Port Options"
+
+choice
+	prompt "Configure Early Serial Console"
+	default CONSOLE_UART1 if MODULE_CCXMX53
+	default CONSOLE_UART2 if MODULE_CCXMX51
+	depends on SERIAL_MXC
+
+config CONSOLE_UART1
+	bool "Early Serial Console on UART1"
+	depends on UART1_ENABLED
+
+config CONSOLE_UART2
+	bool "Early Serial Console on UART2"
+	depends on UART2_ENABLED
+
+config CONSOLE_UART3
+	bool "Early Serial Console on UART3"
+	depends on UART3_ENABLED
+
+config CONSOLE_UART4
+	bool "Early Serial Console on UART4"
+	depends on UART4_ENABLED
+
+config CONSOLE_UART5
+	bool "Early Serial Console on UART5"
+	depends on UART5_ENABLED
+
+endchoice
+
 config UART1_ENABLED
 	bool "Enable UART1"
 	default y

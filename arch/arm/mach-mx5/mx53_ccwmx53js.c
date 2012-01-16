@@ -343,7 +343,9 @@ static void __init mx53_ccwmx53js_timer_init(void)
 	mx53_clocks_init(32768, 24000000, 0, 0);
 
 	uart_clk = clk_get_sys("mxcintuart.0", NULL);
-	early_console_setup(MX53_BASE_ADDR(UART1_BASE_ADDR), uart_clk);
+
+	if (CONSOLE_UART_BASE_ADDR)
+		early_console_setup(MX53_BASE_ADDR(CONSOLE_UART_BASE_ADDR), uart_clk);
 }
 
 static struct sys_timer mxc_timer = {

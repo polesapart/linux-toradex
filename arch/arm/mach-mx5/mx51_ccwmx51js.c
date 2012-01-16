@@ -473,7 +473,9 @@ static void __init ccwmx51_timer_init(void)
 	mx51_clocks_init(32768, 24000000, 22579200, 24576000);
 
 	uart_clk = clk_get_sys("mxcintuart.0", NULL);
-	early_console_setup(UART2_BASE_ADDR, uart_clk);
+
+	if (CONSOLE_UART_BASE_ADDR)
+		early_console_setup(CONSOLE_UART_BASE_ADDR, uart_clk);
 }
 
 static struct sys_timer mxc_timer = {
