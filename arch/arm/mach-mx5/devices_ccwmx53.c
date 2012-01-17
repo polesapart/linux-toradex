@@ -537,6 +537,8 @@ static void mxc_videomode_to_var(struct ad9389_dev *ad9389, struct fb_var_screen
 	/* PPH, TODO, select video interface properly */
 	if (fbvmode && fbvmode->xres <= 1366)
 		gpio_video_active(0, PAD_CTL_DSE_LOW);
+	else
+		gpio_video_active(0, PAD_CTL_DSE_MED);
 
 	fb_dump_var(str, var);
 }
@@ -679,7 +681,7 @@ static int ccwmx53_hdmi_hw_init(struct ad9389_dev *ad9389)
 		gpio_request(AD9389_GPIO_IRQ, "ad9389_irq");
 		gpio_direction_input(AD9389_GPIO_IRQ);
 	}
-	gpio_video_active(pdata->dispif, PAD_CTL_DSE_HIGH);
+	gpio_video_active(pdata->dispif, PAD_CTL_DSE_MED);
 
 	return 0;
 }
