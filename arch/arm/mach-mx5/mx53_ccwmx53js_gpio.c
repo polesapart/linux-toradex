@@ -340,8 +340,8 @@ void gpio_video_active(int vif, u32 pad)
 
 #if defined(CONFIG_CCXMX5X_DISP0)
 	for (i = 0; i < (ARRAY_SIZE(ccwmx53_disp0_pads) - 1); i++) {
-		ccwmx53_disp0_pads[i] = ccwmx53_disp0_pads[i] & ~DSE_MASK |
-					((iomux_v3_cfg_t)pad << MUX_PAD_CTRL_SHIFT);
+		ccwmx53_disp0_pads[i] = ccwmx53_disp0_pads[i] & (~DSE_MASK |
+					((iomux_v3_cfg_t)pad << MUX_PAD_CTRL_SHIFT) );
 	}
 
 	mxc_iomux_v3_setup_multiple_pads(ccwmx53_disp0_pads,
