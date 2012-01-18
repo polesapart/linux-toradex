@@ -1540,7 +1540,7 @@ static int fim_sdio_register_port(struct device *dev, struct fim_sdio_t *port,
 						       NS921X_GPIO_INPUT,
 						       NS921X_GPIO_DONT_INVERT,
 						       gpios[cnt].func,
-						       NS921X_GPIO_DISABLE_PULLUP);
+						       NS921X_GPIO_ENABLE_PULLUP);
 		} else {
 			/* Free the already requested GPIOs */
 			printk_err("Couldn't request the GPIO %i\n", gpios[cnt].nr);
