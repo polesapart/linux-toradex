@@ -1541,7 +1541,7 @@ static int __init ldb_setup(char *options)
 	char *opt;
 
 	DBG(DBG_FCALL, "%s: ldb%s\n", __func__, options);
-	printk("\n%d: %p\n", __LINE__, options);
+
 	if (!strcmp(options, "=off")) {
 		g_enable_ldb = MXC_DISABLE;
 		return 1;
