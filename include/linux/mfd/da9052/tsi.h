@@ -76,10 +76,10 @@
 #define X_MSB_SHIFT	(2)
 #define Y_MSB_SHIFT	(2)
 #define Z_MSB_SHIFT	(2)
-#define X_LSB_MASK	(11 << X_LSB_SHIFT)
-#define Y_LSB_MASK	(11 << Y_LSB_SHIFT)
-#define Z_LSB_MASK	(11 << Z_LSB_SHIFT)
-#define PEN_DET_MASK	(11 << PEN_DET_SHIFT)
+#define X_LSB_MASK	(3 << X_LSB_SHIFT)
+#define Y_LSB_MASK	(3 << Y_LSB_SHIFT)
+#define Z_LSB_MASK	(3 << Z_LSB_SHIFT)
+#define PEN_DET_MASK	(3 << PEN_DET_SHIFT)
 
 #define TSI_FIFO_SIZE		16
 
