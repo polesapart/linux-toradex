@@ -216,26 +216,26 @@ static void __init fixup_mxc_board(struct machine_desc *desc, struct tag *tags,
 			fb_mem = 0;
 		}
 		mem_tag->u.mem.size = left_mem;
-#if defined(CONFIG_CCWMX5X_DISP0) && defined(CONFIG_CCWMX5X_DISP1)
-		fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
-#endif
 		/*reserve memory for gpu*/
 		if (!gpu_data.enable_mmu) {
-		gpu_device.resource[5].start =
+			gpu_device.resource[5].start =
 				mem_tag->u.mem.start + left_mem;
-		gpu_device.resource[5].end =
+			gpu_device.resource[5].end =
 				gpu_device.resource[5].start + gpu_mem - 1;
 		}
 #if defined(CONFIG_FB_MXC_SYNC_PANEL) || \
 	defined(CONFIG_FB_MXC_SYNC_PANEL_MODULE)
 		if (fb_mem) {
+#if defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1)
+			fb_mem = fb_mem / 2;	/* Divide the mem for between the displays */
+#endif
 			mxcfb_resources[0].start =
 				gpu_data.enable_mmu ?
 				mem_tag->u.mem.start + left_mem :
 				gpu_device.resource[5].end + 1;
 			mxcfb_resources[0].end =
 				mxcfb_resources[0].start + fb_mem - 1;
-#if defined(CONFIG_CCWMX5X_DISP1) && defined(CONFIG_CCWMX5X_DISP2)
+#if defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1)
 			mxcfb_resources[1].start =
 				mxcfb_resources[0].end + 1;
 			mxcfb_resources[1].end =

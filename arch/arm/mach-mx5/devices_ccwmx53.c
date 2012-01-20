@@ -720,12 +720,12 @@ int __init ccwmx5x_init_fb(void)
 {
 	struct ccwmx5x_lcd_pdata *panel;
 	char *p, *mstr;
-	int i;
+	int i, regfbdev;
 
 	plcd_platform_data[0].vif = -1;
 	plcd_platform_data[1].vif = -1;
 
-	for (i = 0; i < MAX_VIDEO_IF; i++) {
+	for (i = 0, regfbdev = 0; i < MAX_VIDEO_IF; i++) {
 #if !defined(CONFIG_CCXMX5X_DISP0)
 		if (i == 0)	continue;
 #endif
@@ -808,9 +808,9 @@ int __init ccwmx5x_init_fb(void)
 			mxc_register_device(&mxc_tve_device, &tve_data);
 		}
 		mxc_fb_devices[i].num_resources = 1;
-		mxc_fb_devices[i].resource = &mxcfb_resources[i];
+		mxc_fb_devices[i].resource = &mxcfb_resources[regfbdev];
 		mxc_register_device(&mxc_fb_devices[i], &mx53_fb_data[i]);
-
+		regfbdev++;
 	}
 
 	/* Register the LVDS bridge */
