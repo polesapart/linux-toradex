@@ -1436,6 +1436,7 @@ static int mt9v111_probe(struct i2c_client *client,
 	if( mt9v111_read_id(sensorid) != 0) {
 		printk(KERN_ERR"mt9v111_probe: No sensor found\n");
 		v4l2_int_device_unregister(&mt9v111_int_device[sensorid]);
+		mt9v111_data[sensorid].used = 0;
 		retval = -ENXIO;
 	}
 	else {
@@ -1464,8 +1465,10 @@ static int mt9v111_remove(struct i2c_client *client)
 	pr_debug("In mt9v111_remove\n");
 
 	for ( i=0 ; i < ARRAY_SIZE(mt9v111_int_device) ; i++ ) {
-		if( mt9v111_data[i].used )
+		if( mt9v111_data[i].used ){
 			v4l2_int_device_unregister(&mt9v111_int_device[i]);
+			mt9v111_data[i].used = 0;
+		}
 	}
 	return 0;
 }

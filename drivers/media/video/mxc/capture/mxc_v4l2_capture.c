@@ -2923,15 +2923,18 @@ static void __exit camera_exit(void)
 			pr_err("ERROR: v4l2 capture:camera open "
 				"-- setting ops to NULL\n");
 		} else {
-			pr_info("V4L2 freeing image input device\n");
-			v4l2_int_device_unregister(&mxc_v4l2_int_device[i]);
-			video_unregister_device(g_cam[i]->video_dev);
-			platform_driver_unregister(&mxc_v4l2_driver[i]);
-			platform_device_unregister(&mxc_v4l2_devices[i]);
+			if( mxc_v4l2_int_device[i].priv != NULL ){
+				pr_info("V4L2 freeing image input device\n");
+				v4l2_int_device_unregister(&mxc_v4l2_int_device[i]);
+				mxc_v4l2_int_device[i].priv = NULL;
+				video_unregister_device(g_cam[i]->video_dev);
+				platform_driver_unregister(&mxc_v4l2_driver[i]);
+				platform_device_unregister(&mxc_v4l2_devices[i]);
 
-			mxc_free_frame_buf(g_cam[i]);
-			kfree(g_cam[i]);
-			g_cam[i] = NULL;
+				mxc_free_frame_buf(g_cam[i]);
+				kfree(g_cam[i]);
+				g_cam[i] = NULL;
+			}
 		}
 	}
 }
