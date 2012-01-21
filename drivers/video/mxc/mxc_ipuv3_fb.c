@@ -1692,7 +1692,7 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 	struct mxc_fb_platform_data *plat_data = pdev->dev.platform_data;
 	int ret = 0;
 #ifdef CONFIG_MODULE_CCXMX5X
-	char *mstr;
+	char *mstr, vga = 0;
 #endif
 
 	/* Need dummy values until real panel is configured */
@@ -1714,10 +1714,14 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 
 	if (mxcfbi->fb_mode_str) {
 #ifdef CONFIG_MODULE_CCXMX5X
-		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL)
+		/* FIXME: we should move in future to use mxcfb_pre_setup
+		 * instead of this hack in the video driver */
+		if ((mstr = strstr(mxcfbi->fb_mode_str, "VGA@")) != NULL) {
 			mxcfbi->fb_mode_str = mstr + 4;
+			vga = 1;
+		}
 
-		/* Device specific adjustments */
+		// Device specific adjustments
 		mxcfb_adjust(mxcfbi);
 #endif
 		if (mxcfbi->ipu_di >= 0) {
@@ -1834,6 +1838,12 @@ static int mxcfb_setup(struct fb_info *fbi, struct platform_device *pdev)
 			/*added found mode to fbi modelist*/
 			fb_var_to_videomode(&m, &fbi->var);
 			fb_add_videomode(&m, &fbi->modelist);
+#ifdef CONFIG_MODULE_CCXMX5X
+			/* FIXME: move in to mxcfb_pre_setup instead of this hack */
+			if (vga) {
+				fbi->var.sync |= FB_SYNC_EXT | FB_SYNC_CLK_LAT_FALL;
+			}
+#endif
 		}
 	}
 

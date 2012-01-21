@@ -986,6 +986,10 @@ int __init ccwmx51_init_fb(void)
 #if !defined(CONFIG_CCXMX5X_DISP1)
 		if (i == 1)	continue;
 #endif
+
+		/* Set default pixel format, maybe overwritten later */
+		mx51_fb_data[i].interface_pix_fmt = i ? DISP1_PIX_FMT : DISP0_PIX_FMT;
+
 		if ((p = ccwmx51_get_video_cmdline_opt(i, "HDMI")) != NULL) {
 #if defined(CONFIG_VIDEO_AD9389) || defined(CONFIG_VIDEO_AD9389_MODULE)
 			pr_info("HDMI interface in DISP%d\n", i);
@@ -1011,11 +1015,10 @@ int __init ccwmx51_init_fb(void)
 				       &plcd_platform_data[i].fb_pdata,
 				       sizeof(struct mxc_fb_platform_data));
 				plcd_platform_data[i].vif = i;
-				if (!plcd_platform_data[i].fb_pdata.interface_pix_fmt)
-					plcd_platform_data[i].fb_pdata.interface_pix_fmt =
-						i ? DISP1_PIX_FMT : DISP0_PIX_FMT;
-				mx51_fb_data[i].interface_pix_fmt =
-					plcd_platform_data[i].fb_pdata.interface_pix_fmt;
+				if (plcd_platform_data[i].fb_pdata.interface_pix_fmt) {
+					mx51_fb_data[i].interface_pix_fmt =
+						plcd_platform_data[i].fb_pdata.interface_pix_fmt;
+				}
 				mxc_register_device(&lcd_pdev[i], (void *)&plcd_platform_data[i]);
 			}
 		} else if ((p = ccwmx51_get_video_cmdline_opt(i, "VGA")) != NULL) {
