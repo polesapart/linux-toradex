@@ -124,8 +124,17 @@ static u32 ccwmx51_get_cpu_freq(void)
 	u32 cpu_freq = 800000000;
 
 	switch (system_serial_low & 0xff) {
-	case 4:
-	case 5:	cpu_freq = 600000000;
+	case 0x04:
+	case 0x05:
+	case 0x0a:
+	case 0x0b:
+	case 0x0f:
+	case 0x10:
+	case 0x12:
+	case 0x15:
+	case 0x17:
+	case 0x19:
+		cpu_freq = 600000000;
 		num_cpu_wp = 2;
 		break;
 	}
