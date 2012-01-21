@@ -1608,11 +1608,20 @@ static int __init ldb_setup(char *options)
 				g_chan_bit_map[0] = LDB_BIT_MAP_SPWG;
 			else
 				g_chan_bit_map[0] = LDB_BIT_MAP_JEIDA;
+
+			if (g_chan_mode_opt == LDB_DUL_DI0 ||
+			    g_chan_mode_opt == LDB_SPL_DI0)
+				g_chan_bit_map[1] = g_chan_bit_map[0];
+
 		} else if (!strncmp(options, "ch1_map=", 8)) {
 			if (!strncmp(options + 8, "SPWG", 4))
 				g_chan_bit_map[1] = LDB_BIT_MAP_SPWG;
 			else
 				g_chan_bit_map[1] = LDB_BIT_MAP_JEIDA;
+
+			if (g_chan_mode_opt == LDB_DUL_DI1 ||
+			    g_chan_mode_opt == LDB_SPL_DI1)
+				g_chan_bit_map[0] = g_chan_bit_map[1];
 		}
 	}
 
