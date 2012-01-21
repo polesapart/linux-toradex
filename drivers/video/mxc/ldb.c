@@ -1575,7 +1575,6 @@ static int __init ldb_setup(char *options)
 		g_di0_used = true;
 		g_di1_used = true;
 	} else if (!strncmp(options, "dual", 4)) {
-	printk("\n%d: %p\n", __LINE__, options);
 		strsep(&options, ",");
 		if (!strncmp(options, "di=", 3)) {
 			if (simple_strtoul(options + 3, NULL, 0) == 0) {
