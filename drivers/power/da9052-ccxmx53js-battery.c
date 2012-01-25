@@ -557,13 +557,14 @@ static s32 monitoring_thread(void *data)
 
 	set_freezable();
 
+	set_current_state(TASK_INTERRUPTIBLE);
+	schedule_timeout(chg_device->monitoring_interval);
+
 	while (monitoring_thread_state == ACTIVE) {
 
 		/* Make this thread friendly to system suspend and resume */
 		try_to_freeze();
 
-		set_current_state(TASK_INTERRUPTIBLE);
-		schedule_timeout(chg_device->monitoring_interval);
 
 		da9052_charger_status_update(chg_device);
 
@@ -584,6 +585,9 @@ static s32 monitoring_thread(void *data)
 			}
 		} else
 			DA9052_DEBUG("Battery Measurement Fails = %d\n", ret);
+
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(chg_device->monitoring_interval);
 	}
 
 	complete_and_exit(&monitoring_thread_notifier, 0);
