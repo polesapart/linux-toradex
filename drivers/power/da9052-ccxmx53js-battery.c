@@ -562,6 +562,17 @@ static s32 monitoring_thread(void *data)
 
 	while (monitoring_thread_state == ACTIVE) {
 
+		if ( signal_pending(current) ){
+			siginfo_t info;
+			unsigned long signr;
+
+			signr = dequeue_signal_lock(current, &current->blocked, &info);
+			if( signr == SIGKILL ){
+				monitoring_thread_state = INACTIVE;
+				break;
+			}
+		}
+
 		/* Make this thread friendly to system suspend and resume */
 		try_to_freeze();
 
