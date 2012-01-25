@@ -1030,7 +1030,8 @@ static int __devinit busfreq_probe(struct platform_device *pdev)
 	/* for mx53 */
 	if (cpu_is_mx53()) {
 		/* set DDR type */
-		if (machine_is_mx53_evk() || machine_is_mx53_ard())
+		if (machine_is_mx53_evk() || machine_is_mx53_ard() ||
+		    machine_is_ccwmx53js() || machine_is_ccmx53js())
 			mx53_ddr_type = DDR_TYPE_DDR2;
 		else
 			mx53_ddr_type = DDR_TYPE_DDR3;
