@@ -224,9 +224,10 @@ WAIT_SR_ACK:
     PM_SET_HIGHZ_PAD IOMUXC_SW_PAD_CTL_GRP_B1DS
     PM_SET_HIGHZ_PAD IOMUXC_SW_PAD_CTL_GRP_B2DS
     PM_SET_HIGHZ_PAD IOMUXC_SW_PAD_CTL_GRP_B3DS
-	/* use DSE=1 for CKE pin,when DDR is in self-refresh */
-    ldr     r4, =1
-    PM_SET_HIGHZ_PAD IOMUXC_SW_PAD_CTL_GRP_CTLDS
+    nop
+    nop
+    nop
+
 mx5x_wfi:
     /*
      * PLL1 workaround as the following: For mx51 only.
