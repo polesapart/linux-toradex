@@ -1377,9 +1377,10 @@ static void sdhci_finish_worker(struct work_struct *work)
 	spin_unlock_irqrestore(&host->lock, flags);
 
 	/* Stop the clock when the req is done */
-	if (machine_is_ccwmx51js() || machine_is_ccwmx51()) {
+	if (machine_is_ccwmx51js() || machine_is_ccwmx51() ||
+	    machine_is_ccwmx53js() || machine_is_ccwmx53()) {
 		/**
-		 * On the ConnectCore Wi-i.MX51 this, disabling there clock
+		 * On the ConnectCore Wi-i.MX51/53, disabling there clock
 		 * causes that we lose interrupts on the wireless SDIO cards
 		 * For that reason, we dont disable the clock on this platform
 		 */
