@@ -486,10 +486,8 @@ static int verify_preview(cam_data *cam, struct v4l2_window *win)
 
 	do {
 		fbi = (struct fb_info *)registered_fb[i];
-		if (fbi == NULL) {
-			pr_err("ERROR: verify_preview frame buffer NULL.\n");
-			return -1;
-		}
+		if (fbi == NULL)
+			continue;
 
 		/* Which DI supports 2 layers? */
 		if (strncmp(fbi->fix.id, "DISP3 BG", 8) == 0) {
@@ -515,7 +513,12 @@ static int verify_preview(cam_data *cam, struct v4l2_window *win)
 			cam->overlay_fb = fbi;
 			break;
 		}
-	} while (++i < FB_MAX);
+	} while (++i < num_registered_fb);
+
+	if (fbi == NULL) {
+		pr_err("ERROR: verify_preview frame buffer NULL.\n");
+		return -1;
+	}
 
 	if (foregound_fb) {
 		width_bound = bg_fbi->var.xres;
