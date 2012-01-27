@@ -37,6 +37,7 @@
 static void __iomem *wdog_base;
 extern int dvfs_core_is_active;
 extern void stop_dvfs(void);
+extern void da9053_last_read(void);
 #define MX53_WDA_GPIO 9
 /*
  * Reset the system. It is called by machine_restart().
@@ -82,6 +83,10 @@ void arch_reset(char mode, const char *cmd)
 			clk_enable(clk);
 		wcr_enable = (1 << 2);
 	}
+
+#if defined(CONFIG_MODULE_CCXMX53)
+	da9053_last_read();
+#endif
 
 	/* Assert SRS signal */
 	__raw_writew(wcr_enable, wdog_base);
