@@ -746,8 +746,9 @@ int __init ccwmx5x_init_fb(void)
 			pr_info("HDMI selected in DISP%d, but driver unavailable\n", i);
 			continue;
 #endif
-		} else 	if ((p = ccwmx53_get_video_cmdline_opt(i, "LCD")) != NULL) {
-			pr_info("LCD interface in DISP%d", i);
+		} else 	if (((p = ccwmx53_get_video_cmdline_opt(i, "LCD")) != NULL) ||
+			    ((p = ccwmx53_get_video_cmdline_opt(i, "LVDS")) != NULL)) {
+			pr_info("LCD/LVDS interface in DISP%d", i);
 			if (*p++ != '@') {
 				pr_info("Panel not provided, video interface will be disabled\n");
 				continue;
