@@ -1308,7 +1308,7 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_request_iomux(MX51_PIN_USBH1_DATA0, IOMUX_CONFIG_GPIO);	/* CTS */
 		mxc_iomux_set_pad(MX51_PIN_USBH1_DATA0, SERIAL_PORT_PAD);
 		gpio_request(IOMUX_TO_GPIO(MX51_PIN_USBH1_DATA0), "rs485_uart2_dir");
-		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_USBH1_DATA0), !UART2_RS485_TXDIR_LVL));
+		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_USBH1_DATA0), !UART2_RS485_TXDIR_LVL);
 #endif
 #if defined(CONFIG_UART2_CTS_RTS_ENABLED)
 #if !defined(CONFIG_USB_EHCI_ARC_H1) && !defined(CONFIG_USB_EHCI_ARC_H1_MODULE)
@@ -1332,7 +1332,7 @@ void gpio_uart_active(int port, int no_irda)
 		mxc_request_iomux(MX51_PIN_KEY_COL5, IOMUX_CONFIG_GPIO);	/* CTS */
 		mxc_iomux_set_pad(MX51_PIN_KEY_COL5, SERIAL_PORT_PAD);
 		gpio_request(IOMUX_TO_GPIO(MX51_PIN_KEY_COL5), "rs485_uart3_dir");
-		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_KEY_COL5, !UART3_RS485_TXDIR_LVL));
+		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_KEY_COL5), !UART3_RS485_TXDIR_LVL);
 #endif
 #if defined(CONFIG_UART3_CTS_RTS_ENABLED)
 		mxc_request_iomux(MX51_PIN_KEY_COL5, IOMUX_CONFIG_ALT2);	/* CTS */
