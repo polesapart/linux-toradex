@@ -19,6 +19,8 @@ static struct da9052 *da9052_i2c;
 
 #define I2C_CONNECTED 0
 
+#define I2C_BUG_WORKAROUND
+
 static int da9052_i2c_is_connected(void)
 {
 	struct da9052_ssc_msg msg;
@@ -100,6 +102,49 @@ static int da9052_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef I2C_BUG_WORKAROUND
+#define I2C_DUMMY_REG	0xFF
+const unsigned char i2c_flush_data[] = {I2C_DUMMY_REG, 0xFF};
+
+#if 1	/* Enable safe register addresses checking */
+/* DLG TODO: Add read only registers here (they are not affected with write) */
+static inline int da9052_is_i2c_reg_safe(unsigned char reg)
+{
+	const char safe_table[256] = {
+		[DA9052_STATUSA_REG] = 1,
+		[DA9052_STATUSB_REG] = 1,
+		[DA9052_STATUSC_REG] = 1,
+		[DA9052_STATUSD_REG] = 1,
+		[DA9052_EVENTA_REG] = 1,
+		[DA9052_EVENTB_REG] = 1,
+		[DA9052_EVENTC_REG] = 1,
+		[DA9052_EVENTD_REG] = 1,
+		[DA9052_ADCRESL_REG] = 1,
+		[DA9052_ADCRESH_REG] = 1,
+		[DA9052_VDDRES_REG] = 1,
+		[DA9052_ICHGAV_REG] = 1,
+		[DA9052_TBATRES_REG] = 1,
+		[DA9052_ADCIN4RES_REG] = 1,
+		[DA9052_ADCIN5RES_REG] = 1,
+		[DA9052_ADCIN6RES_REG] = 1,
+		[DA9052_TJUNCRES_REG] = 1,
+		[DA9052_TSIXMSB_REG] = 1,
+		[DA9052_TSIYMSB_REG] = 1,
+		[DA9052_TSILSB_REG] = 1,
+		[DA9052_TSIZMSB_REG] = 1,
+		[I2C_DUMMY_REG] = 1,	/* Dummy reg must be a save reg */
+	};
+
+	return safe_table[reg];
+}
+#else
+static inline int da9052_is_i2c_reg_safe(unsigned char reg)
+{
+	return 0;
+}
+#endif
+#endif
+
 int da9052_i2c_write(struct da9052 *da9052, struct da9052_ssc_msg *msg)
 {
 	struct i2c_msg i2cmsg;
@@ -127,6 +172,25 @@ int da9052_i2c_write(struct da9052 *da9052, struct da9052_ssc_msg *msg)
 		return ret;
 	}
 
+#ifdef I2C_BUG_WORKAROUND
+	/* Test, whether register to be accessed needs to be flushed */
+	if (!da9052_is_i2c_reg_safe(msg->addr)) {
+		i2cmsg.addr = da9052->slave_addr;
+		i2cmsg.len = 2;
+		i2cmsg.flags = 0;		/* Write operation */
+		/* i2c_flush_data is only to read from */
+		i2cmsg.buf = (unsigned char *)i2c_flush_data;
+
+		/* Additional flush write */
+		ret = i2c_transfer(da9052->adapter, &i2cmsg, 1);
+		if (ret < 0) {
+			dev_info(&da9052->i2c_client->dev,\
+			"2 - %s:master_xfer Failed!!\n", __func__);
+			return ret;
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -135,7 +199,7 @@ int da9052_i2c_read(struct da9052 *da9052, struct da9052_ssc_msg *msg)
 
 	/*Get the da9052_i2c client details*/
 	unsigned char buf[2] = {0, 0};
-	struct i2c_msg i2cmsg[2];
+	struct i2c_msg i2cmsg[3];
 	int ret = 0;
 
 	/* Copy SSC Msg to local character buffer */
@@ -158,8 +222,28 @@ int da9052_i2c_read(struct da9052 *da9052, struct da9052_ssc_msg *msg)
 	/*To read the data on I2C set flag to I2C_M_RD */
 	i2cmsg[1].flags = I2C_M_RD;
 
-	/* Start the i2c transfer by calling host i2c driver function */
+	/* Standard read transfer */
 	ret = i2c_transfer(da9052->adapter, i2cmsg, 2);
+
+	if (ret < 0) {
+		dev_info(&da9052->i2c_client->dev,\
+		"2 - %s:master_xfer Failed!!\n", __func__);
+	}
+
+#ifdef I2C_BUG_WORKAROUND
+	/* Test, whether register to be accessed needs to be flushed */
+	if (!da9052_is_i2c_reg_safe(msg->addr)) {
+		i2cmsg[2].addr = da9052->slave_addr;
+		i2cmsg[2].len = 2;
+		i2cmsg[2].flags = 0;		/* Write operation */
+		/* i2c_flush_data is only to read from */
+		i2cmsg[2].buf = (unsigned char *)i2c_flush_data;
+
+		/* Read transfer with additional flush write */
+		ret = i2c_transfer(da9052->adapter, &i2cmsg[2], 1);
+	}
+#endif
+
 	if (ret < 0) {
 		dev_info(&da9052->i2c_client->dev,\
 		"2 - %s:master_xfer Failed!!\n", __func__);
@@ -249,6 +333,24 @@ int da9052_i2c_write_many(struct da9052 *da9052,
 		return ret;
 	}
 
+#ifdef I2C_BUG_WORKAROUND
+	/* Test, whether last register to be accessed needs to be flushed */
+	if (!da9052_is_i2c_reg_safe(sscmsg[msg_no-1].addr)) {
+		i2cmsg.addr  = da9052->slave_addr;
+		i2cmsg.len   = 2;
+		i2cmsg.flags = 0;	 /* Write operation */
+		/* i2c_flush_data is only to read from */
+		i2cmsg.buf   = (unsigned char *)i2c_flush_data;
+
+		ret = i2c_transfer(da9052->adapter, &i2cmsg, 1);
+		if (ret < 0) {
+			dev_info(&da9052->i2c_client->dev,
+				 "%s: i2c_transfer failed!!!\n", __func__);
+			return ret;
+		}
+	}
+#endif
+
 	return 0;
 }
 
@@ -327,6 +429,24 @@ int da9052_i2c_read_many(struct da9052 *da9052,
 		"2 - i2c_transfer function falied in [%s]!!!\n", __func__);
 		return ret;
 	}
+
+#ifdef I2C_BUG_WORKAROUND
+	/* Test, whether last register to be accessed needs to be flushed */
+	if (!da9052_is_i2c_reg_safe(sscmsg[msg_no-1].addr)) {
+		i2cmsg.addr  = da9052->slave_addr;
+		i2cmsg.len   = 2;
+		i2cmsg.flags = 0;	 /* Write operation */
+		/* i2c_flush_data is only to read from */
+		i2cmsg.buf   = (unsigned char *)i2c_flush_data;
+
+		ret = i2c_transfer(da9052->adapter, &i2cmsg, 1);
+		if (ret < 0) {
+			dev_info(&da9052->i2c_client->dev,
+				 "%s: i2c_transfer failed!!!\n", __func__);
+			return ret;
+		}
+	}
+#endif
 
 	/* Gather READ data */
 	for (cnt = 0; cnt < msg_no; cnt++)
