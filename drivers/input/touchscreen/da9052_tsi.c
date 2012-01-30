@@ -1104,6 +1104,17 @@ static ssize_t da9052_tsi_reg_proc_thread(void *ptr)
 
 	while (priv->tsi_reg_proc_thread.state == ACTIVE) {
 
+		if ( signal_pending(current) ){
+			siginfo_t info;
+			unsigned long signr;
+
+			signr = dequeue_signal_lock(current, &current->blocked, &info);
+			if( signr == SIGKILL ){
+				priv->tsi_reg_proc_thread.state = INACTIVE;
+				break;
+			}
+		}
+
 		try_to_freeze();
 
 		set_current_state(TASK_INTERRUPTIBLE);
