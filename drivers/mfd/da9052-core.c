@@ -555,16 +555,14 @@ void da9052_ssc_exit(struct da9052 *da9052)
 	return;
 }
 
-// A Dialog reported PMIC I2C bug needs to finish with an I2C read
-// or the PMIC won't power up again in some cases.
-void da9053_last_read( void)
+/* A reported bug in Dialog's PMIC I2C access needs to guarantee the last
+ * PMIC access is to a safe register. */
+int da9053_last_access(void)
 {
 	struct da9052_ssc_msg msg_test;
+	int ret = 0;
 
-	if (!da9052_data){
-		printk("Can't apply da9053 I2C workaround\n");
-		return;
-	}
+	BUG_ON( !da9052_data );
 
 	if( !mutex_is_locked(&da9052_data->ssc_lock) )
 		da9052_lock(da9052_data);
@@ -574,9 +572,13 @@ void da9053_last_read( void)
 	// Dummy read
 	msg_test.addr = DA9052_GPIO0809_REG;
 	msg_test.data = 0;
-	da9052_data->read(da9052_data, &msg_test);
+	ret = da9052_data->read(da9052_data, &msg_test);
+	if( ret < 0 ){
+		da9052_unlock(da9052_data);
+	}
 
 	// Do not unlock to disallow any other I2C access.
+	return ret;
 }
 
 void da9053_power_off(void)
@@ -610,8 +612,6 @@ void da9053_power_off(void)
 	ret = da9052_data->write_many(da9052_data, msgs, 5);
 	if (ret != 0)
 		printk(KERN_WARNING "DA9052: %s failure\n", __func__);
-
-	da9053_last_read();
 
 	// No more accesses
 	while(1);

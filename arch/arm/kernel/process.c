@@ -48,6 +48,7 @@ static const char *isa_modes[] = {
 };
 
 extern void setup_mm_for_reboot(char mode);
+extern int da9053_last_access(void);
 
 static volatile int hlt_counter;
 
@@ -84,6 +85,12 @@ __setup("hlt", hlt_setup);
 
 void arm_machine_restart(char mode, const char *cmd)
 {
+
+#if defined(CONFIG_MODULE_CCXMX53)
+		// Digi: Need to do this before disabling IRQs
+		da9053_last_access();
+#endif
+
 	/*
 	 * Clean and disable cache, and turn off interrupts
 	 */
