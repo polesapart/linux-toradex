@@ -96,6 +96,9 @@
 
 #define COULOMB_TO_UAH(c) (10000 * c / 36)
 
+static int chg_work_interval = 100;
+static int monitor_work_interval = HZ * 10;
+
 enum chg_setting {
        TRICKLE_CHG_EN,
        LOW_POWER_BOOT_ACK,
@@ -350,6 +353,7 @@ struct mc13892_dev_info {
 	int charger_online;
 	int charger_voltage_uV;
 	int accum_current_uAh;
+	int cal_capacity;
 
 	struct power_supply bat;
 	struct power_supply charger;
@@ -367,11 +371,132 @@ static enum power_supply_property mc13892_battery_props[] = {
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_STATUS,
+	POWER_SUPPLY_PROP_TECHNOLOGY,
+	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
+	POWER_SUPPLY_PROP_PRESENT,
 };
 
 static enum power_supply_property mc13892_charger_props[] = {
 	POWER_SUPPLY_PROP_ONLINE,
 };
+
+s32 mc13892_get_bat_level(struct mc13892_dev_info *di)
+{
+	u16 vbat = 0;
+	static int bat_capacity_old;
+	int retval;
+
+	retval = pmic_get_batt_voltage(&(di->voltage_raw));
+	if (retval == 0)
+		di->voltage_uV = di->voltage_raw * BAT_VOLTAGE_UNIT_UV;
+	else
+		pr_debug("Unable to update battery voltage measurement.\n");
+
+	vbat = di->voltage_uV/1000;
+
+	switch(di->battery_status){
+		case POWER_SUPPLY_STATUS_DISCHARGING:
+		case POWER_SUPPLY_STATUS_NOT_CHARGING:
+			if( vbat > VDISCHARGE_100 )
+				di->cal_capacity = 100;
+			else if(vbat > VDISCHARGE_95)
+				di->cal_capacity = 95;
+			else if(vbat > VDISCHARGE_90)
+				di->cal_capacity = 90;
+			else if(vbat > VDISCHARGE_85)
+				di->cal_capacity = 85;
+			else if(vbat > VDISCHARGE_80)
+				di->cal_capacity = 80;
+			else if(vbat > VDISCHARGE_75)
+				di->cal_capacity = 75;
+			else if(vbat > VDISCHARGE_65)
+				di->cal_capacity = 65;
+			else if(vbat > VDISCHARGE_55)
+				di->cal_capacity = 55;
+			else if(vbat > VDISCHARGE_50)
+				di->cal_capacity = 50;
+			else if(vbat > VDISCHARGE_45)
+				di->cal_capacity = 45;
+			else if(vbat > VDISCHARGE_40)
+				di->cal_capacity = 40;
+			else if(vbat > VDISCHARGE_35)
+				di->cal_capacity = 35;
+			else if(vbat > VDISCHARGE_25)
+				di->cal_capacity = 25;
+			else if(vbat > VDISCHARGE_20)
+				di->cal_capacity = 20;
+			else if(vbat > VDISCHARGE_15)
+				di->cal_capacity = 15;
+			else if(vbat > VDISCHARGE_10)
+				di->cal_capacity = 10;
+			else if(vbat > VDISCHARGE_5)
+				di->cal_capacity = 5;
+			else
+				di->cal_capacity = 2;
+			break;
+		case POWER_SUPPLY_STATUS_CHARGING:
+			if(vbat<VCHARGE_5)
+				di->cal_capacity = 5;
+			else if(vbat<VCHARGE_10)
+				di->cal_capacity = 10;
+			else if(vbat<VCHARGE_15)
+				di->cal_capacity = 15;
+			else if(vbat<VCHARGE_20)
+				di->cal_capacity = 20;
+			else if(vbat<VCHARGE_25)
+				di->cal_capacity = 25;
+			else if(vbat<VCHARGE_30)
+				di->cal_capacity = 30;
+			else if(vbat<VCHARGE_35)
+				di->cal_capacity = 35;
+			else if(vbat<VCHARGE_40)
+				di->cal_capacity = 40;
+			else if(vbat<VCHARGE_45)
+				di->cal_capacity = 45;
+			else if(vbat<VCHARGE_50)
+				di->cal_capacity = 50;
+			else if(vbat<VCHARGE_55)
+				di->cal_capacity = 55;
+			else if(vbat<VCHARGE_60)
+				di->cal_capacity = 60;
+			else if(vbat<VCHARGE_65)
+				di->cal_capacity = 65;
+			else if(vbat<VCHARGE_70)
+				di->cal_capacity = 70;
+			else if(vbat<VCHARGE_75)
+				di->cal_capacity = 75;
+			else if(vbat<VCHARGE_80)
+				di->cal_capacity = 80;
+			else if(vbat<VCHARGE_85)
+				di->cal_capacity = 85;
+			else if(vbat<VCHARGE_90)
+				di->cal_capacity = 90;
+			else if(vbat<VCHARGE_95)
+				di->cal_capacity = 95;
+			else
+				di->cal_capacity = 100;
+			break;
+		case POWER_SUPPLY_STATUS_FULL:
+			di->cal_capacity = 100;
+			break;
+		case POWER_SUPPLY_STATUS_UNKNOWN:
+			di->cal_capacity = 0;
+			break;
+		default:
+			break;
+	}
+
+	pr_debug("cal_capacity %d\n",di->cal_capacity);
+	if( bat_capacity_old != di->cal_capacity ){
+		if( di->charger_online )
+			power_supply_changed(&di->charger);
+		else
+			power_supply_changed(&di->bat);
+	}
+	bat_capacity_old = di->cal_capacity;
+	return 0;
+}
 
 static int pmic_get_chg_value(unsigned int *value)
 {
@@ -429,7 +554,7 @@ static void chg_thread(struct work_struct *work)
 	if (disable_chg_timer) {
 		disable_chg_timer = 0;
 		pmic_set_chg_current(main_charger_current);
-		queue_delayed_work(chg_wq, &chg_work, 100);
+		queue_delayed_work(chg_wq, &chg_work, chg_work_interval);
 		chg_wa_timer = 1;
 		return;
 	}
@@ -449,7 +574,7 @@ static void chg_thread(struct work_struct *work)
 				disable_chg_timer = 1;
 			}
 
-			queue_delayed_work(chg_wq, &chg_work, 100);
+			queue_delayed_work(chg_wq, &chg_work, chg_work_interval);
 			chg_wa_timer = 1;
 		}
 	}
@@ -473,11 +598,11 @@ static int mc13892_charger_update_status(struct mc13892_dev_info *di)
 
 			cancel_delayed_work(&di->monitor_work);
 			queue_delayed_work(di->monitor_wqueue,
-				&di->monitor_work, HZ / 10);
+				&di->monitor_work, monitor_work_interval);
 			if (online) {
 				pmic_start_coulomb_counter();
 				pmic_restart_charging();
-				queue_delayed_work(chg_wq, &chg_work, 100);
+				queue_delayed_work(chg_wq, &chg_work, chg_work_interval);
 				chg_wa_timer = 1;
 			} else {
 				cancel_delayed_work(&chg_work);
@@ -577,12 +702,14 @@ static void mc13892_battery_work(struct work_struct *work)
 	struct mc13892_dev_info *di = container_of(work,
 						     struct mc13892_dev_info,
 						     monitor_work.work);
-	const int interval = HZ * 60;
 
 	dev_dbg(di->dev, "%s\n", __func__);
 
 	mc13892_battery_update_status(di);
-	queue_delayed_work(di->monitor_wqueue, &di->monitor_work, interval);
+
+	mc13892_get_bat_level(di);
+
+	queue_delayed_work(di->monitor_wqueue, &di->monitor_work, monitor_work_interval);
 }
 
 static void charger_online_event_callback(void *para)
@@ -599,37 +726,58 @@ static int mc13892_battery_get_property(struct power_supply *psy,
 {
 	struct mc13892_dev_info *di = to_mc13892_dev_info(psy);
 	switch (psp) {
-	case POWER_SUPPLY_PROP_STATUS:
-		if (di->battery_status == POWER_SUPPLY_STATUS_UNKNOWN) {
-			mc13892_charger_update_status(di);
-			mc13892_battery_update_status(di);
-		}
-		val->intval = di->battery_status;
-		return 0;
-	default:
-		break;
+		case POWER_SUPPLY_PROP_STATUS:
+			if (di->battery_status == POWER_SUPPLY_STATUS_UNKNOWN) {
+				mc13892_charger_update_status(di);
+				mc13892_battery_update_status(di);
+			}
+			val->intval = di->battery_status;
+			return 0;
+		case POWER_SUPPLY_PROP_PRESENT:
+			val->intval = !di->charger_online;
+			return 0;
+		case POWER_SUPPLY_PROP_CAPACITY:
+			val->intval = di->cal_capacity;
+			return 0;
+		case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
+			if (di->cal_capacity < CAPACITY_LIMIT_LOW)
+				val->intval = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
+			else if (di->cal_capacity < CAPACITY_LIMIT_HIGH)
+				val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
+			else if (di->cal_capacity == CAPACITY_LIMIT_FULL)
+				val->intval = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
+			else if (di->cal_capacity > CAPACITY_LIMIT_HIGH)
+					val->intval = POWER_SUPPLY_CAPACITY_LEVEL_HIGH;
+			else
+				val->intval = POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+			return 0;
+		case POWER_SUPPLY_PROP_TECHNOLOGY:
+			val->intval = BATTERY_TYPE;
+			return 0;
+		default:
+			break;
 	}
 
 	mc13892_battery_read_status(di);
 
 	switch (psp) {
-	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = di->voltage_uV;
-		break;
-	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = di->current_uA;
-		break;
-	case POWER_SUPPLY_PROP_CHARGE_NOW:
-		val->intval = di->accum_current_uAh;
-		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
-		val->intval = max_voltage_design;
-		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
-		val->intval = min_voltage_design;
-		break;
-	default:
-		return -EINVAL;
+		case POWER_SUPPLY_PROP_VOLTAGE_NOW:
+			val->intval = di->voltage_uV;
+			break;
+		case POWER_SUPPLY_PROP_CURRENT_NOW:
+			val->intval = di->current_uA;
+			break;
+		case POWER_SUPPLY_PROP_CHARGE_NOW:
+			val->intval = di->accum_current_uAh;
+			break;
+		case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+			val->intval = max_voltage_design;
+			break;
+		case POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN:
+			val->intval = min_voltage_design;
+			break;
+		default:
+			return -EINVAL;
 	}
 
 	return 0;
@@ -653,7 +801,7 @@ static ssize_t chg_wa_enable_store(struct device *dev,
 			if (chg_wa_timer)
 				printk(KERN_INFO "Charger timer is already on\n");
 			else {
-				queue_delayed_work(chg_wq, &chg_work, 100);
+				queue_delayed_work(chg_wq, &chg_work, chg_work_interval);
 				chg_wa_timer = 1;
 				printk(KERN_INFO "Turned on the timer\n");
 			}
@@ -751,7 +899,8 @@ static int pmic_battery_probe(struct platform_device *pdev)
 		retval = -ESRCH;
 		goto workqueue_failed;
 	}
-	queue_delayed_work(di->monitor_wqueue, &di->monitor_work, HZ * 10);
+	queue_delayed_work(di->monitor_wqueue, &di->monitor_work,
+			monitor_work_interval);
 
 	di->dev	= &pdev->dev;
 	di->bat.name	= "mc13892_bat";

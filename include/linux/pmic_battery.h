@@ -414,6 +414,59 @@ PMIC_STATUS pmic_batt_event_subscribe(t_batt_event event, void *callback);
  */
 PMIC_STATUS pmic_batt_event_unsubscribe(t_batt_event event, void *callback);
 
+/* Battery characterization look up table @ 25 celsius for Li-Ion battery. */
+
+/* Battery discharge voltage level (mV) */
+#define VDISCHARGE_5       3320
+#define VDISCHARGE_10      3430
+#define VDISCHARGE_15      3510
+#define VDISCHARGE_20      3580
+#define VDISCHARGE_25      3610
+#define VDISCHARGE_30      3640
+#define VDISCHARGE_35      3670
+#define VDISCHARGE_40      3690
+#define VDISCHARGE_45      3720
+#define VDISCHARGE_50      3740
+#define VDISCHARGE_55      3760
+#define VDISCHARGE_60      3780
+#define VDISCHARGE_65      3800
+#define VDISCHARGE_70      3830
+#define VDISCHARGE_75      3860
+#define VDISCHARGE_80      3890
+#define VDISCHARGE_85      3920
+#define VDISCHARGE_90      3960
+#define VDISCHARGE_95      4010
+#define VDISCHARGE_100     4070
+
+
+/* Battery charge voltage level (mV) */
+#define VCHARGE_5          3320
+#define VCHARGE_10         3430
+#define VCHARGE_15         3510
+#define VCHARGE_20         3580
+#define VCHARGE_25         3610
+#define VCHARGE_30         3640
+#define VCHARGE_35         3670
+#define VCHARGE_40         3690
+#define VCHARGE_45         3720
+#define VCHARGE_50         3740
+#define VCHARGE_55         3760
+#define VCHARGE_60         3780
+#define VCHARGE_65         3800
+#define VCHARGE_70         3830
+#define VCHARGE_75         3860
+#define VCHARGE_80         3890
+#define VCHARGE_85         3920
+#define VCHARGE_90         3960
+#define VCHARGE_95         4010
+#define VCHARGE_100         4070
+
+#define CAPACITY_LIMIT_HIGH 85
+#define CAPACITY_LIMIT_LOW 25
+#define CAPACITY_LIMIT_FULL 100
+
+#define BATTERY_TYPE POWER_SUPPLY_TECHNOLOGY_LION
+
 #endif				/* __KERNEL__ */
 
 #endif				/* __ASM_ARCH_MXC_PMIC_BATTERY_H__ */
