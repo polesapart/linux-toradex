@@ -715,7 +715,8 @@ struct i2c_board_info ccwmx53_hdmi[] __initdata = {
 };
 #endif
 
-#define MAX_VIDEO_IF		2
+#define MAX_VIDEO_IF			2
+#define MAX_REGISTERED_VIDEO_IF		1
 int __init ccwmx5x_init_fb(void)
 {
 	struct ccwmx5x_lcd_pdata *panel;
@@ -725,7 +726,7 @@ int __init ccwmx5x_init_fb(void)
 	plcd_platform_data[0].vif = -1;
 	plcd_platform_data[1].vif = -1;
 
-	for (i = 0, regfbdev = 0; i < MAX_VIDEO_IF; i++) {
+	for (i = 0, regfbdev = 0; i < MAX_VIDEO_IF && regfbdev < MAX_REGISTERED_VIDEO_IF; i++) {
 #if !defined(CONFIG_CCXMX5X_DISP0)
 		if (i == 0)	continue;
 #endif
