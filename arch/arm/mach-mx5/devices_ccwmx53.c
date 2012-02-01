@@ -792,7 +792,9 @@ int __init ccwmx5x_init_fb(void)
 				} else {
 					/* Pass the video configuration as mode string */
 					pr_info("VGA: string %s", p);
-					if (!strcmp(p, "800x600")) {
+					if (!strcmp(p, "640x480")) {
+						strcpy(mx53_fb_data[i].mode_str, "VGA-VGA");
+					} else if (!strcmp(p, "800x600")) {
 						strcpy(mx53_fb_data[i].mode_str, "VGA-SVGA");
 					} else if (!strcmp(p, "1024x768")) {
 						strcpy(mx53_fb_data[i].mode_str, "VGA-XGA");

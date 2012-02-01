@@ -97,6 +97,7 @@
 #define TVOUT_FMT_VGA_XGA		11
 #define TVOUT_FMT_VGA_SXGA		12
 #define TVOUT_FMT_VGA_WSXGA		13
+#define TVOUT_FMT_VGA_VGA		14
 
 #define IPU_DISP_PORT 1
 
@@ -292,6 +293,15 @@ static struct fb_videomode video_modes_vga[] = {
 	0,
 	FB_VMODE_NONINTERLACED,
 	FB_MODE_IS_DETAILED,},
+	{
+	/* VGA 640x480-60 25M pixel clk output */
+	"VGA-VGA", 60, 640, 480, 39682,
+	48, 16,
+	33, 10,
+	96, 2,
+	0,
+	FB_VMODE_NONINTERLACED,
+	FB_MODE_IS_DETAILED,},
 };
 
 enum tvout_mode {
@@ -353,7 +363,8 @@ static inline int is_vga_mode(int mode)
 	return ((mode == TVOUT_FMT_VGA_SVGA)
 		|| (mode == TVOUT_FMT_VGA_XGA)
 		|| (mode == TVOUT_FMT_VGA_SXGA)
-		|| (mode == TVOUT_FMT_VGA_WSXGA));
+		|| (mode == TVOUT_FMT_VGA_WSXGA)
+		|| (mode == TVOUT_FMT_VGA_VGA));
 }
 
 static inline int valid_mode(int mode)
@@ -413,6 +424,9 @@ static int get_video_mode(struct fb_info *fbi, int *fmt)
 	} else if (fb_mode_is_equal(fbi->mode, &video_modes_vga[3])) {
 		*fmt = IPU_PIX_FMT_GBR24;
 		mode = TVOUT_FMT_VGA_WSXGA;
+	} else if (fb_mode_is_equal(fbi->mode, &video_modes_vga[4])) {
+		*fmt = IPU_PIX_FMT_GBR24;
+		mode = TVOUT_FMT_VGA_VGA;
 	} else {
 		*fmt = IPU_PIX_FMT_YUV444;
 		mode = TVOUT_FMT_OFF;
@@ -562,6 +576,11 @@ static int tve_setup(int mode)
 		parent_clock_rate = 588560000;
 		tve_clock_rate = 294280000;
 		di1_clock_rate = 147140000;
+		break;
+	case TVOUT_FMT_VGA_VGA:
+		parent_clock_rate = 201602741;
+		tve_clock_rate = 50400685;
+		di1_clock_rate = 25200342;
 		break;
 	}
 	if (enabled)
