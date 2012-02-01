@@ -149,6 +149,7 @@ struct ccwmx5x_lcd_pdata lcd_panel_list[] = {
 			.mode_str = "HSD101PFW2",
 			.mode = &hsd101pfw2,
 			.num_modes = 1,
+			.interface_pix_fmt = IPU_PIX_FMT_RGB666,
 		},
 		.init = &lcd_init,
 	}, {
