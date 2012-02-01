@@ -557,7 +557,7 @@ static int da9052_rtc_setalarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (ret)
 		return ret;
 
-	ret = da9052_rtc_enable_alarm(da9052, 1);
+	ret = da9052_rtc_enable_alarm(da9052, alrm->enabled);
 
 	return ret;
 }
