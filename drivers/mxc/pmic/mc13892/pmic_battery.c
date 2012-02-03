@@ -349,6 +349,7 @@ struct mc13892_dev_info {
 	unsigned short current_raw;
 	int current_uA;
 	int battery_status;
+	int battery_present;
 	int full_counter;
 	int charger_online;
 	int charger_voltage_uV;
@@ -387,13 +388,16 @@ s32 mc13892_get_bat_level(struct mc13892_dev_info *di)
 	static int bat_capacity_old;
 	int retval;
 
-	retval = pmic_get_batt_voltage(&(di->voltage_raw));
-	if (retval == 0)
-		di->voltage_uV = di->voltage_raw * BAT_VOLTAGE_UNIT_UV;
-	else
-		pr_debug("Unable to update battery voltage measurement.\n");
+	if( di->battery_status != POWER_SUPPLY_STATUS_UNKNOWN &&
+		di->battery_status != POWER_SUPPLY_STATUS_FULL) {
+		retval = pmic_get_batt_voltage(&(di->voltage_raw));
+		if (retval == 0)
+			di->voltage_uV = di->voltage_raw * BAT_VOLTAGE_UNIT_UV;
+		else
+			pr_debug("Unable to update battery voltage measurement.\n");
 
-	vbat = di->voltage_uV/1000;
+		vbat = di->voltage_uV/1000;
+	}
 
 	switch(di->battery_status){
 		case POWER_SUPPLY_STATUS_DISCHARGING:
@@ -580,6 +584,17 @@ static void chg_thread(struct work_struct *work)
 	}
 }
 
+static int mc13892_is_charger_online(struct mc13892_dev_info *di){
+	int ret;
+	unsigned int value;
+
+	ret = pmic_read_reg(REG_INT_SENSE0, &value, BITFMASK(BIT_CHG_DETS));
+	if (ret == 0){
+		di->charger_online = BITFEXT(value, BIT_CHG_DETS);
+	}
+	return di->charger_online;
+}
+
 static int mc13892_charger_update_status(struct mc13892_dev_info *di)
 {
 	int ret;
@@ -600,16 +615,19 @@ static int mc13892_charger_update_status(struct mc13892_dev_info *di)
 			queue_delayed_work(di->monitor_wqueue,
 				&di->monitor_work, monitor_work_interval);
 			if (online) {
-				pmic_start_coulomb_counter();
-				pmic_restart_charging();
+				if(di->battery_present){
+					pmic_start_coulomb_counter();
+					pmic_restart_charging();
+				}
 				queue_delayed_work(chg_wq, &chg_work, chg_work_interval);
 				chg_wa_timer = 1;
 			} else {
 				cancel_delayed_work(&chg_work);
 				chg_wa_timer = 0;
-				pmic_stop_coulomb_counter();
+				if(di->battery_present)
+					pmic_stop_coulomb_counter();
+			}
 		}
-	}
 	}
 
 	return ret;
@@ -636,6 +654,10 @@ static int mc13892_battery_read_status(struct mc13892_dev_info *di)
 {
 	int retval;
 	int coulomb;
+
+	if( !di->battery_present)
+		return -EINVAL;
+
 	retval = pmic_get_batt_voltage(&(di->voltage_raw));
 	if (retval == 0)
 		di->voltage_uV = di->voltage_raw * BAT_VOLTAGE_UNIT_UV;
@@ -660,33 +682,49 @@ static int mc13892_battery_read_status(struct mc13892_dev_info *di)
 static void mc13892_battery_update_status(struct mc13892_dev_info *di)
 {
 	unsigned int value;
-	int retval;
+	int ret;
 	int old_battery_status = di->battery_status;
 
 	if (di->battery_status == POWER_SUPPLY_STATUS_UNKNOWN)
 		di->full_counter = 0;
 
-	if (di->charger_online) {
-		retval = pmic_read_reg(REG_INT_SENSE0,
-					&value, BITFMASK(BIT_CHG_CURRS));
-
-		if (retval == 0) {
-			value = BITFEXT(value, BIT_CHG_CURRS);
-			if (value)
-				di->battery_status =
-					POWER_SUPPLY_STATUS_CHARGING;
-			else
-				di->battery_status =
-					POWER_SUPPLY_STATUS_NOT_CHARGING;
+	if ( mc13892_is_charger_online(di) ) {
+		if( (ret = pmic_get_chg_value(&value)) == 0 ) {
+			pr_debug("Charger current value %d\n",value);
+			if( value > CHG_CURRENT_THRESHOLD ){
+				di->battery_present = 1;
+				di->battery_status = POWER_SUPPLY_STATUS_CHARGING;
+				pr_debug("Present and charging, %d\n",di->cal_capacity);
 			}
+			else{
+				// Need to distinguish full battery from not present
+				if( di->cal_capacity >= 95 ){
+					di->battery_present = 1;
+					di->battery_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+					pr_debug("Present and NOT charging, %d\n",di->cal_capacity);
+				}
+				else{
+					di->battery_present = 0;
+					di->battery_status = POWER_SUPPLY_STATUS_UNKNOWN;
+					pr_debug("NOT Present and Unknown, %d\n",di->cal_capacity);
+				}
+			}
+		}
+		else{
+			di->battery_present = 0;
+			di->battery_status = POWER_SUPPLY_STATUS_UNKNOWN;
+			pr_debug("NOT Present and Unknown, %d\n",di->cal_capacity);
+		}
 
 		if (di->battery_status == POWER_SUPPLY_STATUS_NOT_CHARGING)
 			di->full_counter++;
 		else
 			di->full_counter = 0;
 	} else {
+		di->battery_present = 1;
 		di->battery_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		di->full_counter = 0;
+		pr_debug("Present and Discharging, %d\n",di->cal_capacity);
 	}
 
 	dev_dbg(di->bat.dev, "bat status: %d\n",
@@ -728,13 +766,13 @@ static int mc13892_battery_get_property(struct power_supply *psy,
 	switch (psp) {
 		case POWER_SUPPLY_PROP_STATUS:
 			if (di->battery_status == POWER_SUPPLY_STATUS_UNKNOWN) {
-				mc13892_charger_update_status(di);
 				mc13892_battery_update_status(di);
+				mc13892_charger_update_status(di);
 			}
 			val->intval = di->battery_status;
 			return 0;
 		case POWER_SUPPLY_PROP_PRESENT:
-			val->intval = !di->charger_online;
+				val->intval = di->battery_present;
 			return 0;
 		case POWER_SUPPLY_PROP_CAPACITY:
 			val->intval = di->cal_capacity;

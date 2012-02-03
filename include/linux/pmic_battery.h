@@ -467,6 +467,8 @@ PMIC_STATUS pmic_batt_event_unsubscribe(t_batt_event event, void *callback);
 
 #define BATTERY_TYPE POWER_SUPPLY_TECHNOLOGY_LION
 
+#define CHG_CURRENT_THRESHOLD 35
+
 #endif				/* __KERNEL__ */
 
 #endif				/* __ASM_ARCH_MXC_PMIC_BATTERY_H__ */
