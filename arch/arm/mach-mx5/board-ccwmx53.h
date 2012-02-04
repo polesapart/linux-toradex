@@ -15,6 +15,18 @@
 #include "board-ccwmx5x.h"
 #include "devices_ccwmx53.h"	/* MX53_GPIO(port,pin) */
 
+/* UARTs RS485 direction GPIOs */
+#define UART1_RS485_TXDIR_GPIO	MX53_GPIO(7, 4)
+#define UART1_RS485_TXDIR_LVL	0
+#define UART2_RS485_TXDIR_GPIO	MX53_GPIO(7, 2)
+#define UART2_RS485_TXDIR_LVL	0
+#define UART3_RS485_TXDIR_GPIO	MX53_GPIO(7, 7)
+#define UART3_RS485_TXDIR_LVL	0
+#define UART4_RS485_TXDIR_GPIO	-1
+#define UART4_RS485_TXDIR_LVL	0
+#define UART5_RS485_TXDIR_GPIO	-1
+#define UART5_RS485_TXDIR_LVL	0
+
 /* AD9389 interrupt */
 #define AD9389_GPIO_IRQ		MX53_GPIO(5,2)		/* GPIO_5_2 */
 #define AD9389_IRQ_PAD		MX53_PAD_EIM_A25__GPIO5_2
