@@ -449,6 +449,11 @@ static int add_da9052_devices(struct da9052 *da9052)
 	if (ret)
 		return ret;
 
+	ret = da9052_add_subdevice_pdata(da9052, "da9052-gpio",
+				pdata, sizeof(struct da9052_platform_data));
+	if (ret)
+		return ret;
+
 	return ret;
 }
 

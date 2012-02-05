@@ -249,9 +249,8 @@ static struct da9052_platform_data __initdata da9052_plat = {
 	.led_data = &da9052_gpio_leds,
 	.tsi_data = &da9052_tsi,
 	.bat_data = &da9052_bat,
-	/* .gpio_base = GPIO_BOARD_START, */
+	.gpio_base = GPIO_PMIC_START,
 };
-
 
 static struct i2c_board_info __initdata da9052_i2c_device = {
 	I2C_BOARD_INFO(DA9052_SSC_I2C_DEVICE_NAME, DA9052_I2C_ADDR >> 1),

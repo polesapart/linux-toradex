@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.35
-# Wed Jan 18 18:49:44 2012
+# Linux kernel version: 2.6.35.14
+# Sun Feb  5 14:05:52 2012
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1107,7 +1107,7 @@ CONFIG_GPIO_SYSFS=y
 #
 # MODULbus GPIO expanders:
 #
-# CONFIG_DA9052_GPIO_ENABLE is not set
+CONFIG_DA9052_GPIO_ENABLE=y
 # CONFIG_GENERIC_PWM is not set
 # CONFIG_W1 is not set
 # CONFIG_POWER_SUPPLY is not set
@@ -2138,6 +2138,7 @@ CONFIG_CRYPTO_RNG2=y
 CONFIG_CRYPTO_PCOMP=y
 CONFIG_CRYPTO_MANAGER=y
 CONFIG_CRYPTO_MANAGER2=y
+CONFIG_CRYPTO_MANAGER_TESTS=y
 # CONFIG_CRYPTO_GF128MUL is not set
 # CONFIG_CRYPTO_NULL is not set
 CONFIG_CRYPTO_WORKQUEUE=y

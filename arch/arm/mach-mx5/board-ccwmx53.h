@@ -70,6 +70,11 @@
 #define USER_KEY2_PAD		MX53_PAD_GPIO_11__GPIO4_1
 #define USER_KEY2_GPIO		MX53_GPIO(4, 1)	/* GPIO_4_1 */
 
+#define GPIO_PMIC_START		(7 * 32)
+#define WLAN_POWER_EN_GPIO	(GPIO_PMIC_START + 10)
+#define ETH0_RESET_GPIO		(GPIO_PMIC_START + 11)
+#define EXT_ETH_RESET_GPIO	(GPIO_PMIC_START + 12)
+
 /* Second touch settings */
 void ccwmx53_init_2nd_touch(void);
 void gpio_wireless_active(void);
