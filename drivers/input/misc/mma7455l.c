@@ -139,6 +139,8 @@ struct mma7455l_info {
 #define WRITE_BIT	(1 << 7)
 #define ADDR_SHIFT	1
 
+
+#if !defined(CONFIG_MODULE_CCXMX5X)
 /* Defaults to I2c access */
 static inline u_int8_t __reg_read(struct mma7455l_info *mma, u_int8_t reg)
 {
@@ -154,6 +156,37 @@ static inline u_int8_t __reg_read(struct mma7455l_info *mma, u_int8_t reg)
 		return ret;
 	return buf;
 }
+#else
+static inline u_int8_t __reg_read(struct mma7455l_info *mma, u_int8_t reg)
+{
+	unsigned char buf[2] = {0, 0};
+	struct i2c_msg i2cmsg[2];
+	int ret = 0;
+
+	buf[0] = reg;
+
+	/* Write the register to access */
+	i2cmsg[0].addr  =  mma->client->addr;
+	i2cmsg[0].len   = 2;
+	i2cmsg[0].buf   = &buf[0];
+	i2cmsg[0].flags = 0;
+
+	/* Read the data */
+	i2cmsg[1].addr  = mma->client->addr;
+	i2cmsg[1].len   = 1;
+	i2cmsg[1].buf   = &buf[1];
+	i2cmsg[1].flags = I2C_M_RD;
+
+	ret = i2c_transfer(mma->client->adapter, i2cmsg, 2);
+
+	if (ret < 0) {
+		dev_dbg(&mma->client->dev,"%s:master_xfer Failed!!\n", __func__);
+		return -EIO;
+	}
+
+	return buf[1];
+}
+#endif
 
 static inline int __reg_write(struct mma7455l_info *mma,
 				u_int8_t reg, u_int8_t val)
@@ -311,6 +344,10 @@ static ssize_t show_measure(struct device *dev,
 	x = reg_read(mma, MMA7455L_REG_XOUT8);
 	y = reg_read(mma, MMA7455L_REG_YOUT8);
 	z = reg_read(mma, MMA7455L_REG_ZOUT8);
+
+#if defined(CONFIG_MODULE_CCXMX5X)
+	msleep(10);
+#endif
 
 	set_mode(mma, old_Mode, old_gSelect);
 	return sprintf(buf, "%d %d %d\n", x, y, z);
