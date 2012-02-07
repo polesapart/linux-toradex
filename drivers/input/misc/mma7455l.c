@@ -198,7 +198,7 @@ static inline int __reg_write(struct mma7455l_info *mma,
 	data[1] = val;
 
 	if( i2c_master_send(mma->client, data, 2) < 0 ) {
-		dev_err(&mma->client->dev, "%s: write error\n", __func__);
+		dev_dbg(&mma->client->dev, "%s: write error\n", __func__);
 		return -EIO;
 	}
 	return 0;
