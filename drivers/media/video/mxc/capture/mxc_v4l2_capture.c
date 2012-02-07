@@ -486,8 +486,10 @@ static int verify_preview(cam_data *cam, struct v4l2_window *win)
 
 	do {
 		fbi = (struct fb_info *)registered_fb[i];
-		if (fbi == NULL)
-			continue;
+		if (fbi == NULL) {
+			pr_err("ERROR: verify_preview frame buffer NULL.\n");
+			return -1;
+		}
 
 		/* Which DI supports 2 layers? */
 		if (strncmp(fbi->fix.id, "DISP3 BG", 8) == 0) {
@@ -505,8 +507,14 @@ static int verify_preview(cam_data *cam, struct v4l2_window *win)
 		}
 
 		/* Found the frame buffer to preview on. */
-		if (strcmp(fbi->fix.id,
-			    mxc_capture_outputs[cam->output].name) == 0) {
+		/*
+		 * TODO: compare only first 8 characters to allow matching between 'DISP3 BG'
+		 * and 'DISP3 BG - DI1'. This is a workaround to allow VGA display work with
+		 * the camera (vantive #41837). Needs to be revisited once the dual display is
+		 * supported.
+		 */
+		if (strncmp(fbi->fix.id,
+			    mxc_capture_outputs[cam->output].name, 8) == 0) {
 			if (strcmp(fbi->fix.id, "DISP3 FG") == 0)
 				foregound_fb = true;
 
@@ -514,11 +522,6 @@ static int verify_preview(cam_data *cam, struct v4l2_window *win)
 			break;
 		}
 	} while (++i < num_registered_fb);
-
-	if (fbi == NULL) {
-		pr_err("ERROR: verify_preview frame buffer NULL.\n");
-		return -1;
-	}
 
 	if (foregound_fb) {
 		width_bound = bg_fbi->var.xres;
