@@ -793,6 +793,9 @@ static int ioctl_g_ifparm(struct v4l2_int_device *s, struct v4l2_ifparm *p)
 	p->u.bt656.clock_min = MT9V111_CLK_MIN;
 	p->u.bt656.clock_max = MT9V111_CLK_MAX;
 
+	p->u.bt656.nobt_vs_inv = 1; /* Vs polarity. 1 is active low. */
+	p->u.bt656.nobt_hs_inv = 0; /* Hs polarity. 0 is active high. */
+
 	return 0;
 }
 
