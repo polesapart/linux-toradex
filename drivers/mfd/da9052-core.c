@@ -575,7 +575,7 @@ int da9053_last_access(void)
 	BUG_ON( !mutex_is_locked(&da9052_data->ssc_lock) );
 
 	// Dummy read
-	msg_test.addr = DA9052_GPIO0809_REG;
+	msg_test.addr = DA9052_STATUSA_REG;
 	msg_test.data = 0;
 	ret = da9052_data->read(da9052_data, &msg_test);
 	if( ret < 0 ){
@@ -617,6 +617,8 @@ void da9053_power_off(void)
 	ret = da9052_data->write_many(da9052_data, msgs, 5);
 	if (ret != 0)
 		printk(KERN_WARNING "DA9052: %s failure\n", __func__);
+
+	da9053_last_access();
 
 	// No more accesses
 	while(1);
