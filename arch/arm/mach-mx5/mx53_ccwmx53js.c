@@ -72,7 +72,11 @@
 #include "board-ccwmx53.h"
 #include "linux/fsl_devices.h"
 
-extern void pm_i2c_init(u32 base_addr);
+#define TZIC_WAKEUP0_OFFSET	(0x0E00)
+#define TZIC_WAKEUP1_OFFSET	(0x0E04)
+#define TZIC_WAKEUP2_OFFSET	(0x0E08)
+#define TZIC_WAKEUP3_OFFSET	(0x0E0C)
+#define GPIO7_0_11_IRQ_BIT	(0x1<<11)
 
 /*!
  * @file mach-mx5/mx53_ccwmx53js.c
@@ -89,6 +93,9 @@ u8 ccwmx51_swap_bi = 1;
 
 extern int __init mx53_ccwmx53js_init_da9052(void);
 extern void gpio_dio_active(void);
+extern void pm_i2c_init(u32 base_addr);
+extern int ccxmx53_pm_da9053_mask_irqs(void);
+extern int ccxmx53_pm_da9053_unmask_irqs(void);
 
 static iomux_v3_cfg_t mx53_ccwmx53js_pads[] = {
 	/* I2C3, connected to the DA9053 and MMA7455  */
@@ -261,11 +268,20 @@ static void __init mx53_ccwmx53js_io_init(void)
 	gpio_dio_active();
 }
 
-static struct mxc_pm_platform_data ccwmx53_pm_data = {
-		.suspend_enter = NULL,
-		.suspend_exit = NULL,
-};
+static void ccxmx53_suspend_enter(void)
+{
+	ccxmx53_pm_da9053_mask_irqs();
+}
 
+static void ccxmx53_suspend_exit(void)
+{
+	ccxmx53_pm_da9053_unmask_irqs();
+}
+
+static struct mxc_pm_platform_data ccwmx53_pm_data = {
+	.suspend_enter = ccxmx53_suspend_enter,
+	.suspend_exit = ccxmx53_suspend_exit,
+};
 
 /*!
  * Board specific initialization.
