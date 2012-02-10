@@ -1318,7 +1318,7 @@ fec_restart(struct net_device *dev, int duplex)
 	/* Clear any outstanding interrupt. */
 	writel(0xffc00000, fep->hwp + FEC_IEVENT);
 
-#if !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS)
+#if !defined(CONFIG_MODULE_CCXMX5X)
 	/* Reset all multicast.	*/
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_GRP_HASH_TABLE_LOW);
@@ -1326,7 +1326,7 @@ fec_restart(struct net_device *dev, int duplex)
 	writel(0, fep->hwp + FEC_HASH_TABLE_HIGH);
 	writel(0, fep->hwp + FEC_HASH_TABLE_LOW);
 #endif
-#endif /* !defined(CONFIG_MACH_CCMX51JS) && !defined(CONFIG_MACH_CCWMX51JS) */
+#endif /* !defined(MODULE_CCXMX5X) */
 
 	/* Set maximum receive buffer size. */
 	writel(PKT_MAXBLR_SIZE, fep->hwp + FEC_R_BUFF_SIZE);
