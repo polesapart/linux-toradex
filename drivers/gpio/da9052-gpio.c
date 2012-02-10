@@ -49,6 +49,7 @@ static u8 create_gpio_config_value(u8 gpio_function, u8 gpio_type, u8 gpio_mode)
 
 static s32 write_default_gpio_values(struct da9052 *da9052)
 {
+#ifdef DA9052_GPIO_INIT_DEFAULTS
 	struct da9052_ssc_msg msg;
 	u8 created_val = 0;
 
@@ -402,6 +403,7 @@ static s32 write_default_gpio_values(struct da9052 *da9052)
 	}
 	da9052_unlock(da9052);
 #endif
+#endif /* DA9052_GPIO_INIT_DEFAULTS */
 	return 0;
 }
 
