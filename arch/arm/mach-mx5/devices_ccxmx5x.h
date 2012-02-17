@@ -28,4 +28,21 @@ extern int ccxmx5x_create_sysfs_entries(void);
 #include "board-ccwmx53.h"
 #endif
 
+/* I2C interrfaces configuration */
+#ifdef CONFIG_MXC_I2C1_FAST
+#define MXC_I2C1_BITRATE	400000
+#else
+#define MXC_I2C1_BITRATE	100000
+#endif
+#ifdef CONFIG_MXC_I2C2_FAST
+#define MXC_I2C2_BITRATE	400000
+#else
+#define MXC_I2C2_BITRATE	100000
+#endif
+#ifdef CONFIG_MXC_I2C3_FAST
+#define MXC_I2C3_BITRATE	400000
+#else
+#define MXC_I2C3_BITRATE	100000
+#endif
+
 #endif /* __DEVICES_CCXMX5X_H_ */

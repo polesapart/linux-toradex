@@ -564,6 +564,17 @@ config I2C_MX_SELECT1
 	depends on !MODULE_CCXMX5X
 	help
 	  Enable MX51/MX53 I2C1 module.
+choice
+	prompt "I2C1 speed"
+	default CONFIG_MXC_I2C1_FAST
+	depends on I2C_MXC || I2C_IMX
+
+config CONFIG_MXC_I2C1_STANDARD
+	bool "Standard (100 KHz)"
+
+config CONFIG_MXC_I2C1_FAST
+	bool "Fast (400 KHz)"
+endchoice
 
 config I2C_MX_SELECT2
 	bool "Enable I2C2 module"
@@ -572,12 +583,36 @@ config I2C_MX_SELECT2
 	help
 	  Enable MX51/MX53 I2C2 module.
 
+choice
+	prompt "I2C2 speed"
+	default CONFIG_MXC_I2C2_FAST
+	depends on I2C_MXC || I2C_IMX
+
+config CONFIG_MXC_I2C2_STANDARD
+	bool "Standard (100 KHz)"
+
+config CONFIG_MXC_I2C2_FAST
+	bool "Fast (400 KHz)"
+endchoice
+
 config I2C_MX_SELECT3
 	bool "Enable I2C3 module"
 	default n
 	depends on I2C_MXC || I2C_IMX
 	help
 	  Enable MX51/MX53 I2C3 module.
+
+choice
+	prompt "I2C3 speed"
+	default CONFIG_MXC_I2C3_FAST
+	depends on I2C_MXC || I2C_IMX
+
+config CONFIG_MXC_I2C3_STANDARD
+	bool "Standard (100 KHz)"
+
+config CONFIG_MXC_I2C3_FAST
+	bool "Fast (400 KHz)"
+endchoice
 
 endmenu
 

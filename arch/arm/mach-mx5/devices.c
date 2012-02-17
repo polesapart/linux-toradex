@@ -39,6 +39,9 @@
 #ifdef CONFIG_MODULE_CCXMX53
 #include "devices_ccwmx53.h"
 #endif
+#ifdef CONFIG_MODULE_CCXMX5X
+#include "devices_ccxmx5x.h"
+#endif
 #include "crm_regs.h"
 #include <linux/fec.h>
 
@@ -744,29 +747,29 @@ static struct resource mxci2c3_resources[] = {
 #if defined(CONFIG_I2C_MXC) || defined(CONFIG_I2C_MXC_MODULE)
 
 struct mxc_i2c_platform_data mxci2c1_data = {
-	.i2c_clk = 400000,
+	.i2c_clk = MXC_I2C1_BITRATE,
 };
 
 struct mxc_i2c_platform_data mxci2c2_data = {
-	.i2c_clk = 400000,
+	.i2c_clk = MXC_I2C2_BITRATE,
 };
 
 struct mxc_i2c_platform_data mxci2c3_data = {
-	.i2c_clk = 400000,
+	.i2c_clk = MXC_I2C3_BITRATE,
 };
 
 #elif defined(CONFIG_I2C_IMX) || defined(CONFIG_I2C_IMX_MODULE)
 
 struct imxi2c_platform_data mxci2c1_data = {
-	.bitrate = 100000,
+	.bitrate = MXC_I2C1_BITRATE,
 };
 
 struct imxi2c_platform_data mxci2c2_data = {
-	.bitrate = 100000,
+	.bitrate = MXC_I2C2_BITRATE,
 };
 
 struct imxi2c_platform_data mxci2c3_data = {
-	.bitrate = 100000,
+	.bitrate = MXC_I2C3_BITRATE,
 };
 #endif
 
