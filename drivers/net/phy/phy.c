@@ -351,6 +351,10 @@ int phy_mii_ioctl(struct phy_device *phydev,
 		}
 
 		phy_write(phydev, mii_data->reg_num, val);
+
+		//Digi: Give the PHY time to process. Avoids problems with PHY
+		// reset see #41629.
+		mdelay(10);
 		
 		if (mii_data->reg_num == MII_BMCR &&
 		    val & BMCR_RESET &&
