@@ -338,6 +338,7 @@ static void __init mxc_board_init(void)
 	ccwmx53_register_sdio(4);
 #endif
 	ccwmx53_register_nand();
+	ccxmx53_register_sata();
 	ccwmx53_register_fec();
 	ccwmx53_register_ext_eth();
 	ccwmx53_register_sgtl5000();

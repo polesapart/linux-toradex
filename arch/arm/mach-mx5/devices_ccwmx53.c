@@ -1235,6 +1235,17 @@ void ccwmx53_register_can(int interface)
 void ccwmx53_register_can(int interface) {}
 #endif /* CONFIG_CAN_FLEXCAN */
 
+#if defined(CONFIG_SATA_AHCI_PLATFORM)
+void ccxmx53_register_sata(void)
+{
+	/* SATA uses dedicated pins so, no special IOMUX configuration needed.
+	 * Just, register the device */
+	mxc_register_device(&ahci_fsl_device, &sata_data);
+}
+#else
+void ccxmx53_register_sata(void) {}
+#endif /* CONFIG_SATA_AHCI_PLATFORM */
+
 #ifdef CONFIG_CCWMX5X_FUSION_MULTITOUCH
 struct i2c_board_info ccwmx53_fusion_ts[] __initdata = {
 	{
