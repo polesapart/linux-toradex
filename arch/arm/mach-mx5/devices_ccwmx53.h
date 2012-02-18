@@ -43,6 +43,7 @@ void gpio_smsc911x_active(void);
 void gpio_sdhc_active(int interface);
 void gpio_fec_active(void);
 void gpio_can_active(int interface);
+void ccxmx53_user_led(int led, int val);
 
 /* framebuffer settings */
 #if defined(CONFIG_CCXMX5X_DISP0) && defined(CONFIG_CCXMX5X_DISP1)

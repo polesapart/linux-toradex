@@ -71,6 +71,34 @@ extern void ccwmx53_gpio_spi_chipselect_active(int cspi_mode, int status,
 extern void ccwmx53_gpio_spi_chipselect_inactive(int cspi_mode, int status,
 						      int chipselect);
 
+void ccxmx53_user_led(int led, int val)
+{
+#if defined(CONFIG_HAS_EARLY_USER_LEDS)
+	__iomem void *base;
+	u32 reg, mask;
+
+	if (led == 1) {
+		/* USER LED1 GPIO 5, 20 */
+		mask = 1 << 20;
+		base = ioremap(GPIO5_BASE_ADDR - MX53_OFFSET, SZ_4K);
+	} else if (led == 2) {
+		/* USER LED2 GPIO 7, 12 */
+		mask = 1 << 12;
+		base = ioremap(GPIO7_BASE_ADDR - MX53_OFFSET, SZ_4K);
+	} else
+		return;
+
+	reg = __raw_readl(base);
+	if (val)
+		reg |= mask;
+	else
+		reg &= ~mask;
+
+	__raw_writel(reg, base);
+	iounmap(base);
+#endif /* CONFIG_HAS_EARLY_USER_LEDS */
+}
+
 /* Only SD2 has connected WP and CD */
 #define ESDHC2_WP_GPIO MX53_GPIO(1,2)
 #define ESDHC2_CD_GPIO MX53_GPIO(1,4)
