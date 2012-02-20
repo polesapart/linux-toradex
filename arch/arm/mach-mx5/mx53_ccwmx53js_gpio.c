@@ -761,3 +761,17 @@ void gpio_dio_active(void)
 	mxc_iomux_v3_setup_multiple_pads(ccwmx53_dio_pads, ARRAY_SIZE(ccwmx53_dio_pads));
 }
 EXPORT_SYMBOL(gpio_dio_active);
+
+static iomux_v3_cfg_t ccwmx53_usb_pads[] = {
+	MX53_PAD_CSI0_DAT11__GPIO5_29,
+};
+
+void gpio_usb_active(void)
+{
+	mxc_iomux_v3_setup_multiple_pads(ccwmx53_usb_pads, ARRAY_SIZE(ccwmx53_usb_pads));
+
+	gpio_request(CCXMX53_USB_HUB_RESET, "usb-hub-reset");
+	gpio_direction_output(CCXMX53_USB_HUB_RESET, 0);
+}
+EXPORT_SYMBOL(gpio_usb_active);
+

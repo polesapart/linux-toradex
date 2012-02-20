@@ -72,6 +72,8 @@
 #define ETH0_RESET_GPIO		(GPIO_PMIC_START + 11)
 #define EXT_ETH_RESET_GPIO	(GPIO_PMIC_START + 12)
 
+#define CCXMX53_USB_HUB_RESET	MX53_GPIO(5,29) /* GPIO_5_29 */
+
 /* Second touch settings */
 void ccwmx53_init_2nd_touch(void);
 void gpio_wireless_active(void);

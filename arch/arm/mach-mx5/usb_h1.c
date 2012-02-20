@@ -24,6 +24,7 @@
 #include "usb.h"
 #include "iomux.h"
 #include "mx51_pins.h"
+#include "board-ccwmx53.h"
 static struct clk *usb_phy2_clk;
 static struct clk *usb_oh3_clk;
 static struct clk *usb_ahb_clk;
@@ -41,11 +42,13 @@ static void fsl_usb_recover_hcd(struct platform_device *pdev)
 static int gpio_usbh1_active(void)
 {
 	/* Set USBH1_STP to GPIO and toggle it */
-	mxc_request_iomux(MX51_PIN_USBH1_STP, IOMUX_CONFIG_GPIO |
-			  IOMUX_CONFIG_SION);
-	gpio_request(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), "usbh1_stp");
-	gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), 0);
-	gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), 1);
+	if( cpu_is_mx51() ) {
+		mxc_request_iomux(MX51_PIN_USBH1_STP, IOMUX_CONFIG_GPIO |
+				  IOMUX_CONFIG_SION);
+		gpio_request(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), "usbh1_stp");
+		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), 0);
+		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP), 1);
+	}
 
 	/* Signal only used on MX51-3DS for reset to PHY.*/
 	if (machine_is_mx51_3ds()) {
@@ -57,6 +60,13 @@ static int gpio_usbh1_active(void)
 		gpio_request(IOMUX_TO_GPIO(MX51_PIN_EIM_D17), "eim_d17");
 		gpio_direction_output(IOMUX_TO_GPIO(MX51_PIN_EIM_D17), 0);
 		gpio_set_value(IOMUX_TO_GPIO(MX51_PIN_EIM_D17), 1);
+	}
+
+	if( machine_is_ccwmx53js() || machine_is_ccmx53js() ){
+		/* USB HUB RESET - De-assert USB HUB RESET_N */
+		gpio_set_value(CCXMX53_USB_HUB_RESET, 0);
+		msleep(1);
+		gpio_set_value(CCXMX53_USB_HUB_RESET, 1);
 	}
 
 	msleep(100);
@@ -72,8 +82,14 @@ static void gpio_usbh1_inactive(void)
 		mxc_free_iomux(MX51_PIN_EIM_D17, IOMUX_CONFIG_GPIO);
 	}
 
-	mxc_free_iomux(MX51_PIN_USBH1_STP, IOMUX_CONFIG_GPIO);
-	gpio_free(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP));
+	if( cpu_is_mx51() ) {
+		mxc_free_iomux(MX51_PIN_USBH1_STP, IOMUX_CONFIG_GPIO);
+		gpio_free(IOMUX_TO_GPIO(MX51_PIN_USBH1_STP));
+	}
+
+	if( machine_is_ccwmx53js() || machine_is_ccmx53js() ){
+		gpio_free(CCXMX53_USB_HUB_RESET);
+	}
 }
 
 static void _wake_up_enable(struct fsl_usb2_platform_data *pdata, bool enable)
@@ -244,6 +260,10 @@ void __init mx5_usbh1_init(void)
 	if (cpu_is_mx51()) {
 		usbh1_config.phy_mode = FSL_USB2_PHY_ULPI;
 		usbh1_config.transceiver = "isp1504";
+		usbh1_config.gpio_usb_active = gpio_usbh1_active;
+		usbh1_config.gpio_usb_inactive = gpio_usbh1_inactive;
+	}
+	if( machine_is_ccwmx53js() || machine_is_ccmx53js() ){
 		usbh1_config.gpio_usb_active = gpio_usbh1_active;
 		usbh1_config.gpio_usb_inactive = gpio_usbh1_inactive;
 	}

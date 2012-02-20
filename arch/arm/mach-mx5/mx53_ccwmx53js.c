@@ -93,6 +93,7 @@ u8 ccwmx51_swap_bi = 1;
 
 extern int __init mx53_ccwmx53js_init_da9052(void);
 extern void gpio_dio_active(void);
+extern void gpio_usb_active(void);
 extern void pm_i2c_init(u32 base_addr);
 extern int ccxmx53_pm_da9053_mask_irqs(void);
 extern int ccxmx53_pm_da9053_unmask_irqs(void);
@@ -266,6 +267,7 @@ static void __init mx53_ccwmx53js_io_init(void)
 					 ARRAY_SIZE(ccwmx53js_keys_leds_pads));
 	gpio_wireless_active();
 	gpio_dio_active();
+	gpio_usb_active();
 }
 
 static void ccxmx53_suspend_enter(void)
