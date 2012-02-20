@@ -355,6 +355,8 @@ static const struct attribute_group fsl_sata_ahci_group = {
 	.attrs = fsl_sata_ahci_attr,
 };
 
+#define is_ccxmx53()		(machine_is_ccwmx53js() || machine_is_ccmx53js() || \
+				 machine_is_ccwmx53() || machine_is_ccmx53())
 /* HW Initialization, if return 1, initialization is failed. */
 static int sata_init(struct device *dev)
 {
@@ -402,8 +404,7 @@ static int sata_init(struct device *dev)
 	clk_put(clk);
 
 	writel(tmpdata, mmio + HOST_TIMER1MS);
-
-	if (machine_is_mx53_smd() || machine_is_mx53_loco()
+	if (machine_is_mx53_smd() || machine_is_mx53_loco() || is_ccxmx53()
 			|| board_is_mx53_ard_b()) {
 		/* FSL IMX AHCI SATA uses the internal usb phy1 clk */
 		sata_ref_clk = clk_get(NULL, "usb_phy1_clk");
@@ -487,14 +488,13 @@ static int sata_init(struct device *dev)
 		/* Release resources when there is no device on the port */
 		if ((readl(mmio + PORT_SATA_SR) & 0xF) == 0) {
 			ret = -ENODEV;
-			if (machine_is_mx53_smd() || machine_is_mx53_loco()
+			if (machine_is_mx53_smd() || machine_is_mx53_loco() || is_ccxmx53()
 				|| board_is_mx53_ard_b())
 				goto no_device;
 			else
 				goto release_mem;
 		}
 	}
-
 	/* Add the temperature monitor */
 	ret = sysfs_create_group(&dev->kobj, &fsl_sata_ahci_group);
 	if (ret)
@@ -519,7 +519,7 @@ put_sata_clk:
 static void sata_exit(struct device *dev)
 {
 	sysfs_remove_group(&dev->kobj, &fsl_sata_ahci_group);
-	if (machine_is_mx53_smd() || machine_is_mx53_loco()
+	if (machine_is_mx53_smd() || machine_is_mx53_loco() || is_ccxmx53()
 			|| board_is_mx53_ard_b()) {
 		/* FSL IMX AHCI SATA uses the internal usb phy1 clk */
 		clk_disable(sata_ref_clk);
