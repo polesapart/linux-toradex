@@ -167,7 +167,7 @@ static inline u_int8_t __reg_read(struct mma7455l_info *mma, u_int8_t reg)
 
 	/* Write the register to access */
 	i2cmsg[0].addr  =  mma->client->addr;
-	i2cmsg[0].len   = 2;
+	i2cmsg[0].len   = 1;
 	i2cmsg[0].buf   = &buf[0];
 	i2cmsg[0].flags = 0;
 
