@@ -262,8 +262,30 @@ unsigned int pmic_get_active_events(unsigned int *active_events)
 }
 EXPORT_SYMBOL(pmic_get_active_events);
 
+void pmic_get_enabled_events(unsigned int *enabled_events)
+{
+	enabled_events[0] = events_enabled0;
+	enabled_events[1] = events_enabled1;
+}
+EXPORT_SYMBOL(pmic_get_enabled_events);
+
 #define EVENT_MASK_0			0x387fff
 #define EVENT_MASK_1			0x1177ef
+
+int pmic_is_event_masked( unsigned int * event_mask , type_event event )
+{
+	unsigned int event_bit = 0;
+
+	if (event < EVENT_1HZI) {
+		event_bit = (1 << event);
+		return !(event_mask[0] & event_bit);
+	} else {
+		event -= 24;
+		event_bit = (1 << event);
+		return !(event_mask[1] & event_bit);
+	}
+}
+EXPORT_SYMBOL(pmic_is_event_masked);
 
 int pmic_event_unmask(type_event event)
 {

@@ -505,7 +505,8 @@ PMIC_STATUS pmic_get_sensors(t_sensor_bits *sensor_bits);
 
 void pmic_event_callback(type_event event);
 void pmic_event_list_init(void);
-
+void pmic_get_enabled_events(unsigned int *enabled_events);
+int pmic_is_event_masked( unsigned int * event_mask , type_event event );
 unsigned int pmic_get_active_events(unsigned int *active_events);
 int pmic_event_mask(type_event event);
 int pmic_event_unmask(type_event event);
