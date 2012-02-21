@@ -43,9 +43,6 @@
 static int mc13892_adc_major;
 static struct class *mc13892_adc_class;
 
-extern int ccxmx51_pm_mc13892_mask_irqs( void );
-extern int ccxmx51_pm_mc13892_unmask_irqs( void );
-
 /*
  * Maximun allowed variation in the three X/Y co-ordinates acquired from
  * touch-screen
@@ -257,7 +254,7 @@ static int pmic_adc_suspend(struct platform_device *pdev, pm_message_t state)
 	CHECK_ERROR(pmic_write_reg(REG_ADC3, DEF_ADC_3, PMIC_ALL_BITS));
 	CHECK_ERROR(pmic_write_reg(REG_ADC4, 0, PMIC_ALL_BITS));
 
-	ccxmx51_pm_mc13892_mask_irqs();
+	mc13892_suspend_mask_irqs();
 	return 0;
 };
 
@@ -274,7 +271,7 @@ static int pmic_adc_resume(struct platform_device *pdev)
 	adc_1_reg = ADC_WAIT_TSI_1 | (ADC_BIS * adc_ts);
 	CHECK_ERROR(pmic_write_reg(REG_ADC1, adc_1_reg, PMIC_ALL_BITS));
 
-	ccxmx51_pm_mc13892_unmask_irqs();
+	mc13892_resume_unmask_irqs();
 
 	while (swait > 0) {
 		swait--;

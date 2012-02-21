@@ -232,6 +232,9 @@ PMIC_STATUS pmic_write_reg(int reg, unsigned int reg_value,
 }
 
 #ifndef CONFIG_MXC_PMIC_MC34704
+
+static unsigned int irqmasks[2];
+
 unsigned int pmic_get_active_events(unsigned int *active_events)
 {
 	unsigned int count = 0;
@@ -352,6 +355,49 @@ int pmic_event_mask(type_event event)
 	return ret;
 }
 EXPORT_SYMBOL(pmic_event_mask);
+
+int mc13892_suspend_mask_irqs( void )
+{
+	int ev;
+
+	// Store current masks
+	pmic_get_enabled_events(irqmasks);
+
+	// Mask all events except power button and RTC
+	for( ev=0 ; ev < EVENT_NB ; ev++ ){
+		if( ev == EVENT_PWRONI || ev == EVENT_TODAI )
+			continue;
+		if( !pmic_is_event_masked(irqmasks,ev) )
+			pmic_event_mask(ev);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(mc13892_suspend_mask_irqs);
+
+int mc13892_resume_unmask_irqs( void )
+{
+	int ev;
+	unsigned int current_irqmasks[2];
+
+	// Fetch current event mask
+	pmic_get_enabled_events(current_irqmasks);
+
+	// For all events
+	for( ev=0 ; ev < EVENT_NB ; ev++ ){
+		if( pmic_is_event_masked(irqmasks,ev) ){
+			if( !pmic_is_event_masked(current_irqmasks,ev) ){
+				pmic_event_mask(ev);
+			}
+		}
+		else{
+			if( pmic_is_event_masked(current_irqmasks,ev) ){
+				pmic_event_unmask(ev);
+			}
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL(mc13892_resume_unmask_irqs);
 #endif
 
 EXPORT_SYMBOL(pmic_read_reg);

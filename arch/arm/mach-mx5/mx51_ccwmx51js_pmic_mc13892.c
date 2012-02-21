@@ -26,8 +26,6 @@
 #include <mach/irqs.h>
 #include "mx51_pins.h"
 
-static unsigned int irqmasks[2];
-
 /*
  * Convenience conversion.
  * Here atm, maybe there is somewhere better for this.
@@ -336,47 +334,6 @@ static void power_on_evt_handler(void)
 	}
 }
 #endif
-
-int ccxmx51_pm_mc13892_mask_irqs( void )
-{
-	int ev;
-
-	// Store current masks
-	pmic_get_enabled_events(irqmasks);
-
-	// Mask all events except power button and RTC
-	for( ev=0 ; ev < EVENT_NB ; ev++ ){
-		if( ev == EVENT_PWRONI || ev == EVENT_TODAI )
-			continue;
-		if( !pmic_is_event_masked(irqmasks,ev) )
-			pmic_event_mask(ev);
-	}
-	return 0;
-}
-
-int ccxmx51_pm_mc13892_unmask_irqs( void )
-{
-	int ev;
-	unsigned int current_irqmasks[2];
-
-	// Fetch current event mask
-	pmic_get_enabled_events(current_irqmasks);
-
-	// For all events
-	for( ev=0 ; ev < EVENT_NB ; ev++ ){
-		if( pmic_is_event_masked(irqmasks,ev) ){
-			if( !pmic_is_event_masked(current_irqmasks,ev) ){
-				pmic_event_mask(ev);
-			}
-		}
-		else{
-			if( pmic_is_event_masked(current_irqmasks,ev) ){
-				pmic_event_unmask(ev);
-			}
-		}
-	}
-	return 0;
-}
 
 static int mc13892_regulator_init(struct mc13892 *mc13892)
 {

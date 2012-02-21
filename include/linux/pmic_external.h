@@ -507,6 +507,8 @@ void pmic_event_callback(type_event event);
 void pmic_event_list_init(void);
 void pmic_get_enabled_events(unsigned int *enabled_events);
 int pmic_is_event_masked( unsigned int * event_mask , type_event event );
+int mc13892_suspend_mask_irqs( void );
+int mc13892_resume_unmask_irqs( void );
 unsigned int pmic_get_active_events(unsigned int *active_events);
 int pmic_event_mask(type_event event);
 int pmic_event_unmask(type_event event);
