@@ -218,11 +218,16 @@ static u_int8_t reg_read(struct mma7455l_info *mma, u_int8_t reg)
 static s16 __reg_read_10(struct mma7455l_info *mma, u8 reg1, u8 reg2)
 {
 	u8 v1, v2;
+	s16 ret;
 
 	v1 = __reg_read(mma, reg1);
 	v2 = __reg_read(mma, reg2);
 
-	return (v2 & 0x4) << 13 | (v2 & 0x3) << 8 | v1;
+	// ret is 11bits, 3 MSB from v2 and 8 LSB from v1.
+	ret = (((v2 & 0x7) << 8 | v1) & 0x7FF) << 5;
+	// Sign extension. Being ret signed, this will fill the MSBs with
+	// either 0s o 1s depending on whether bit10 is 0 or 1.
+	return (ret >>= 5);
 }
 
 static int reg_write(struct mma7455l_info *mma, u_int8_t reg, u_int8_t val)
