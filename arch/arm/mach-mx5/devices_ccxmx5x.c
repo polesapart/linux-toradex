@@ -46,7 +46,9 @@
 #include <mach/gpio.h>
 #include <mach/mmc.h>
 #include <mach/mxc_dvfs.h>
+#if defined(CONFIG_MODULE_CCXMX53)
 #include <mach/iomux-mx53.h>
+#endif
 
 #include "devices_ccxmx5x.h"
 

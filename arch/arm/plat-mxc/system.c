@@ -27,7 +27,9 @@
 #include <linux/delay.h>
 
 #include <asm/mach-types.h>
+#if defined(CONFIG_MODULE_CCXMX53)
 #include <mach/iomux-mx53.h>
+#endif
 #include <mach/hardware.h>
 #include <mach/common.h>
 #include <asm/proc-fns.h>
