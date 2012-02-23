@@ -337,5 +337,7 @@ void __init mx5_usb_dr_init(void)
 	platform_device_register(&mxc_usbdr_udc_device);
 	dr_wakeup_config.usb_pdata[2] = mxc_usbdr_udc_device.dev.platform_data;
 #endif
-	mxc_register_device(&mxc_usbdr_wakeup_device, &dr_wakeup_config);
+	if( dr_utmi_config.wake_up_enable )
+		mxc_register_device(&mxc_usbdr_wakeup_device, &dr_wakeup_config);
+
 }
