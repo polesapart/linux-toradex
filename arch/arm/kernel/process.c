@@ -86,7 +86,7 @@ __setup("hlt", hlt_setup);
 void arm_machine_restart(char mode, const char *cmd)
 {
 
-#if defined(CONFIG_MODULE_CCXMX53)
+#if defined(CONFIG_MODULE_CCXMX53) && defined(CONFIG_PMIC_DA9052)
 		// Digi: Need to do this before disabling IRQs
 		da9053_last_access();
 #endif
