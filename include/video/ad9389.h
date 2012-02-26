@@ -34,6 +34,7 @@ struct ad9389_dev {
 	struct mutex		irq_lock;
 	struct i2c_client	*client;
 	struct work_struct	work;
+	struct timer_list	timer;
 	struct i2c_client	*edid_ram;
 	struct fb_info		*fbi;
 	u8			*edid_data;
@@ -44,6 +45,7 @@ struct ad9389_pdata {
 	int		dispif;
 	enum hdmi_mode	mode;
 	void		*data;
+	unsigned int	debounce_ms;
 	unsigned char	edid_addr;
 
 	/* function callbacks */

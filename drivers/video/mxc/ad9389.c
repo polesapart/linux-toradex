@@ -334,9 +334,10 @@ static void ad9389_fb_init(struct fb_info *info)
 	static struct fb_var_screeninfo var;
 	int ret = 0;
 
-	dev_info(info->dev, "%s\n", __func__);
+	dev_dbg(info->dev, "%s\n", __func__);
 
 	if (!ad9389_disp_connected(client)) {
+		dev_dbg(info->dev, "%s, display disconnected\n", __func__);
 		ad9389_set_power_down(client, 1);
 		if(pdata->disp_disconnected)
 			pdata->disp_disconnected(ad9389);
@@ -346,7 +347,7 @@ static void ad9389_fb_init(struct fb_info *info)
 	if(pdata->disp_connected)
 		pdata->disp_connected(ad9389);
 
-	dev_info(info->dev, "%s, display connected\n", __func__);
+	dev_dbg(info->dev, "%s, display connected\n", __func__);
 	memset(&var, 0, sizeof(var));
 
 	/* Disable Power down and set mute to on */
@@ -366,7 +367,7 @@ static void ad9389_fb_init(struct fb_info *info)
 	ad9389_write_reg(client, 0xba, 0x60);
 	ad9389_write_reg(client, 0x47, 0x80);
 
-	mdelay(250);
+	mdelay(50);
 
 	ret = ad9389_read_edid(ad9389->client, ad9389->edid_data);
 	if (!ret) {
@@ -417,10 +418,25 @@ int ad9389_fb_event(struct notifier_block *nb, unsigned long val, void *v)
 	return 0;
 }
 
+static void ad9389_timer(unsigned long handle)
+{
+	struct ad9389_dev *ad9389 = (void *)handle;
+	struct i2c_client *client =  ad9389->client;
+
+	/* Just enable again the interrupt and stop the timer */
+	dev_dbg(&client->dev, "%s, enabling interrupts\n", __func__);
+
+	mutex_lock(&ad9389->irq_lock);
+	enable_irq(client->irq);
+	del_timer(&ad9389->timer);
+	mutex_unlock(&ad9389->irq_lock);
+}
+
 static void ad9389_work(struct work_struct *work)
 {
 	struct ad9389_dev *ad9389 = container_of(work, struct ad9389_dev, work);
 	struct i2c_client *client =  ad9389->client;
+	struct ad9389_pdata *pdata = client->dev.platform_data;
 	unsigned char irq_reg1;
 	unsigned char irq_reg2;
 
@@ -428,7 +444,9 @@ static void ad9389_work(struct work_struct *work)
 
 	mutex_lock(&ad9389->irq_lock);
 
-	/* Interrupts are disabled here... */
+	/* Disable interrupt */
+	disable_irq(client->irq);
+
 	irq_reg1 = ad9389_read_reg(client, 0x96);
 	irq_reg2 = ad9389_read_reg(client, 0x97);
 
@@ -456,9 +474,11 @@ static void ad9389_work(struct work_struct *work)
 		irq_reg2 = ad9389_read_reg(client, 0x97);
 	}
 
+	/* Fire debouncing timer */
+	mod_timer(&ad9389->timer, jiffies + msecs_to_jiffies(pdata->debounce_ms));
+
 	mutex_unlock(&ad9389->irq_lock);
 }
-
 
 static irqreturn_t ad9389_handler(int irq, void *dev_id)
 {
@@ -681,6 +701,8 @@ static int ad9389_probe(struct i2c_client *client,
 
 	mutex_unlock(&ad9389->irq_lock);
 
+	setup_timer(&ad9389->timer, ad9389_timer, (unsigned long)ad9389);
+
 	ad9389_fb_init(registered_fb[pdata->dispif]);
 
 	printk(KERN_INFO DRV_NAME ": device detected at address 0x%x, chip revision 0x%02x\n",
@@ -709,6 +731,7 @@ static int ad9389_remove(struct i2c_client *client)
 	struct ad9389_dev *ad9389 = i2c_get_clientdata(client);
 
 	free_irq(client->irq, ad9389);
+	del_timer_sync(&ad9389->timer);
 	flush_scheduled_work();
 	sysfs_remove_group(&client->dev.kobj, &ad9389_attr_group);
 	i2c_unregister_device(ad9389->edid_ram);
@@ -757,7 +780,7 @@ static int ad9389_resume(struct i2c_client *client)
 	ad9389_write_reg(client, 0xba, 0x60);
 	ad9389_write_reg(client, 0x47, 0x80);
 
-	mdelay(250);
+	mdelay(50);
 
 	ret = ad9389_read_edid(ad9389->client, ad9389->edid_data);
 	if (!ret) {

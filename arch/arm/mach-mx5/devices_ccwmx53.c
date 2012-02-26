@@ -732,6 +732,7 @@ static struct ad9389_pdata hdmi_pdata = {
 	.vmode_to_var		= &mxc_videomode_to_var,
 	.edid_addr		= (0x7e >> 1),
 	.dispif			= 0,
+	.debounce_ms		= 500,
 };
 
 struct i2c_board_info ccwmx53_hdmi[] __initdata = {
