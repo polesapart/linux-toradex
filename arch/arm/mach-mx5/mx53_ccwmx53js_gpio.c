@@ -148,7 +148,8 @@ EXPORT_SYMBOL(gpio_uart_active);
 EXPORT_SYMBOL(gpio_uart_inactive);
 
 
-#if defined(CONFIG_ESDHCI_MXC_SELECT1)
+#if defined(CONFIG_ESDHCI_MXC_SELECT1) || defined(CONFIG_MACH_CCWMX53JS) || \
+    defined(CONFIG_MACH_CCWMX53JS)
 static iomux_v3_cfg_t ccwmx53_mmc1_pads[] = {
 	MX53_PAD_SD1_CLK__ESDHC1_CLK,
 	MX53_PAD_SD1_CMD__ESDHC1_CMD,
@@ -226,7 +227,8 @@ static iomux_v3_cfg_t ccwmx53_mmc3_pads[] = {
 void gpio_sdhc_active(int interface)
 {
 	switch (interface) {
-#if defined(CONFIG_ESDHCI_MXC_SELECT1)
+#if defined(CONFIG_ESDHCI_MXC_SELECT1) || defined(CONFIG_MACH_CCWMX53JS) || \
+    defined(CONFIG_MACH_CCWMX53JS)
 	case 0:
 		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc1_pads,
 						 ARRAY_SIZE(ccwmx53_mmc1_pads));
@@ -253,7 +255,39 @@ void gpio_sdhc_active(int interface)
 	}
 }
 EXPORT_SYMBOL(gpio_sdhc_active);
-void gpio_sdhc_inactive(int module) {}
+
+#if defined(CONFIG_ESDHCI_MXC_SELECT1) || defined(CONFIG_MACH_CCWMX53JS) || \
+    defined(CONFIG_MACH_CCWMX53JS)
+static iomux_v3_cfg_t ccwmx53_mmc1_gpio_pads[] = {
+	MX53_PAD_SD1_DATA0__GPIO1_16,
+	MX53_PAD_SD1_CMD__GPIO1_18,
+	MX53_PAD_SD1_DATA0__GPIO1_16,
+#if defined(ESDHCI_MXC_SELECT1_8BIT_PORT) || defined(ESDHCI_MXC_SELECT1_4BIT_PORT)
+	MX53_PAD_SD1_DATA1__GPIO1_17,
+	MX53_PAD_SD1_DATA2__GPIO1_19,
+	MX53_PAD_SD1_DATA3__GPIO1_21,
+#endif /* (ESDHCI_MXC_SELECT1_8BIT_PORT) || (ESDHCI_MXC_SELECT1_4BIT_PORT) */
+#ifdef ESDHCI_MXC_SELECT1_8BIT_PORT
+	MX53_PAD_PATA_DATA8__GPIO2_8,
+	MX53_PAD_PATA_DATA9__GPIO2_9,
+	MX53_PAD_PATA_DATA10__GPIO2_10,
+	MX53_PAD_PATA_DATA11__GPIO2_11,
+#endif /* ESDHCI_MXC_SELECT1_8BIT_PORT */
+};
+#endif /* ESDHCI_MXC_SELECT1 */
+
+void gpio_sdhc_inactive(int interface)
+{
+	switch (interface) {
+#if defined(CONFIG_ESDHCI_MXC_SELECT1) || defined(CONFIG_MACH_CCWMX53JS) || \
+    defined(CONFIG_MACH_CCWMX53JS)
+	case 0:
+		mxc_iomux_v3_setup_multiple_pads(ccwmx53_mmc1_gpio_pads,
+						 ARRAY_SIZE(ccwmx53_mmc1_gpio_pads));
+		break;
+#endif /* CONFIG_ESDHCI_MXC_SELECT1 */
+	}
+}
 EXPORT_SYMBOL(gpio_sdhc_inactive);
 
 
