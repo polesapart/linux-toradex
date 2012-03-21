@@ -1110,10 +1110,7 @@ int32_t ipu_init_sync_panel(int disp, uint32_t pixel_clk,
 				rounded_pixel_clk = pixel_clk * 2;
 				while (rounded_pixel_clk < 150000000)
 					rounded_pixel_clk += pixel_clk * 2;
-				clk_set_rate(di_parent, rounded_pixel_clk);
-				rounded_pixel_clk =
-					clk_round_rate(g_di_clk[disp], pixel_clk);
-				clk_set_rate(g_di_clk[disp], rounded_pixel_clk);
+				clk_set_rate(g_di_clk[disp], pixel_clk);
 				clk_set_parent(g_pixel_clk[disp], g_di_clk[disp]);
 			}
 		}
