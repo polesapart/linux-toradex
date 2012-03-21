@@ -61,6 +61,7 @@ struct mxs_ts_info {
 	u16 x;
 	u16 y;
 	int sample_count;
+	int last_press;
 };
 
 static inline void enter_state_touch_detect(struct mxs_ts_info *info)
@@ -210,11 +211,18 @@ static void process_lradc(struct mxs_ts_info *info, u16 x, u16 y,
 				info->sample_count);
 		if (pressure) {
 			input_report_abs(info->idev, ABS_PRESSURE, pressure);
+			/* report the BTN_TOUCH */
+			if (pressure != info->last_press)
+				input_event(info->idev, EV_KEY,
+					    BTN_TOUCH, pressure);
+
 			enter_state_x_plane(info);
 			hw_lradc_set_delay_trigger_kick(
 					LRADC_DELAY_TRIGGER_TOUCHSCREEN, 1);
 		} else
 			enter_state_touch_detect(info);
+
+		info->last_press = pressure;
 		break;
 
 	default:
@@ -278,7 +286,8 @@ static int __devinit mxs_ts_probe(struct platform_device *pdev)
 	}
 
 	idev->name = "MXS touchscreen";
-	idev->evbit[0] = BIT(EV_ABS);
+	idev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
+	idev->keybit[BIT_WORD(BTN_TOUCH)] |= BIT_MASK(BTN_TOUCH);
 	input_set_abs_params(idev, ABS_X, 0, 0xFFF, 0, 0);
 	input_set_abs_params(idev, ABS_Y, 0, 0xFFF, 0, 0);
 	input_set_abs_params(idev, ABS_PRESSURE, 0, 1, 0, 0);
@@ -300,6 +309,7 @@ static int __devinit mxs_ts_probe(struct platform_device *pdev)
 	info->x_minus_mask = plat_data->x_minus_mask;
 	info->y_plus_mask = plat_data->y_plus_mask;
 	info->y_minus_mask = plat_data->y_minus_mask;
+	info->last_press = -1;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
