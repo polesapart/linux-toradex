@@ -249,11 +249,14 @@ struct _mmc_csd {
  * EXT_CSD fields
  */
 
+#define EXT_CSD_BOOT_CONFIG 	179	/* R/W */
 #define EXT_CSD_BUS_WIDTH	183	/* R/W */
 #define EXT_CSD_HS_TIMING	185	/* R/W */
 #define EXT_CSD_CARD_TYPE	196	/* RO */
 #define EXT_CSD_REV		192	/* RO */
 #define EXT_CSD_SEC_CNT		212	/* RO, 4 bytes */
+#define EXT_CSD_BOOT_SIZE_MULT	226	/* RO, 1 bytes */
+#define EXT_CSD_BOOT_INFO	228	/* RO, 1 bytes */
 
 /*
  * EXT_CSD field definitions
@@ -265,10 +268,15 @@ struct _mmc_csd {
 
 #define EXT_CSD_CARD_TYPE_26	(1<<0)	/* Card can run at 26MHz */
 #define EXT_CSD_CARD_TYPE_52	(1<<1)	/* Card can run at 52MHz */
+#define EXT_CSD_CARD_TYPE_DDR_52	(2<<1)	/* Card can run at DDR 52MHz */
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */
 #define EXT_CSD_BUS_WIDTH_8	2	/* Card is in 8 bit mode */
+#define EXT_CSD_BUS_WIDTH_4_DDR	5	/* Card is in 4 bit ddr mode */
+#define EXT_CSD_BUS_WIDTH_8_DDR	6	/* Card is in 8 bit ddr mode */
+
+#define EXT_CSD_BOOT_PARTITION_ACCESS_MASK      (0x3)
 
 /*
  * MMC_SWITCH access modes
