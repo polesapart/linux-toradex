@@ -38,6 +38,7 @@
 #include <mach/csi.h>
 #include <mach/iomap.h>
 #include <linux/nvhost.h>
+#include <linux/of_address.h>
 
 #include "dc_reg.h"
 #include "dc_priv.h"
@@ -3715,12 +3716,16 @@ static int _tegra_dc_dsi_init(struct tegra_dc *dc)
 	struct tegra_dc_dsi_data *dsi;
 	struct resource *res;
 	struct resource *base_res;
+	struct resource dsi_res;
 	void __iomem *base;
 	struct clk *dc_clk = NULL;
 	struct clk *dsi_clk = NULL;
 	struct clk *dsi_fixed_clk = NULL;
 	struct clk *dsi_lp_clk = NULL;
 	struct tegra_dsi_out *dsi_pdata;
+	struct device_node *np = dc->ndev->dev.of_node;
+	struct device_node *np_dsi =
+		of_find_compatible_node(NULL, NULL, "nvidia,tegra114-dsi");
 	int err = 0;
 	int dsi_enum = -1;
 
@@ -3742,18 +3747,34 @@ static int _tegra_dc_dsi_init(struct tegra_dc *dc)
 	tegra_dsi_instance[dsi_enum] = dsi;
 
 	if (dc->out->dsi->ganged_type) {
-		if (dsi_enum)
-			res = platform_get_resource_byname(dc->ndev,
-						IORESOURCE_MEM,
-						"ganged_dsib_regs");
-		else
-			res = platform_get_resource_byname(dc->ndev,
-						IORESOURCE_MEM,
-						"ganged_dsia_regs");
+		if (dsi_enum) {
+			if (np && np_dsi) {
+				of_address_to_resource(np_dsi, 1, &dsi_res);
+				res = &dsi_res;
+			} else {
+				res = platform_get_resource_byname(dc->ndev,
+							IORESOURCE_MEM,
+							"ganged_dsib_regs");
+			}
+		} else {
+			if (np && np_dsi) {
+				of_address_to_resource(np_dsi, 0, &dsi_res);
+				res = &dsi_res;
+			} else {
+				res = platform_get_resource_byname(dc->ndev,
+							IORESOURCE_MEM,
+							"ganged_dsia_regs");
+			}
+		}
 	} else {
-		res = platform_get_resource_byname(dc->ndev,
+		if (np && np_dsi) {
+			of_address_to_resource(np_dsi, 0, &dsi_res);
+			res = &dsi_res;
+		} else {
+			res = platform_get_resource_byname(dc->ndev,
 					IORESOURCE_MEM,
 					"dsi_regs");
+		}
 	}
 
 	if (!res) {

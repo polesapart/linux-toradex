@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -312,5 +312,8 @@ void tegra_dc_set_color_control(struct tegra_dc *dc);
 void tegra_dc_cmu_enable(struct tegra_dc *dc, bool cmu_enable);
 int tegra_dc_update_cmu(struct tegra_dc *dc, struct tegra_dc_cmu *cmu);
 #endif
+
+struct tegra_dc_platform_data
+	*of_dc_parse_platform_data(struct platform_device *ndev);
 
 #endif
