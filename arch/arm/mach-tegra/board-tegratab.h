@@ -114,6 +114,7 @@ int tegratab_pmon_init(void);
 int tegratab_soctherm_init(void);
 void tegratab_sysedp_init(void);
 void tegratab_sysedp_core_init(void);
+void tegratab_sysedp_psydepl_init(void);
 
 /* disable LP0 forcedly only on DVT A00: BT/WIFI LP0 issue */
 extern int pm_wake_lock(const char *buf);

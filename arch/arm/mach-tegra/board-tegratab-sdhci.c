@@ -55,6 +55,16 @@ static struct wl12xx_platform_data tegratab_wl12xx_wlan_data __initdata = {
 	.board_tcxo_clock = 1,
 	.set_power = tegratab_wifi_power,
 	.set_carddetect = tegratab_wifi_set_carddetect,
+#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+	/* set the wifi edp client information here */
+	.client_info    = {
+		.name       = "wifi_edp_client",
+		.states     = {1080, 0},
+		.num_states = ARRAY_SIZE(wifi_states),
+		.e0_index   = 0,
+		.priority   = EDP_MAX_PRIO,
+	},
+#endif
 };
 
 static struct resource sdhci_resource0[] = {

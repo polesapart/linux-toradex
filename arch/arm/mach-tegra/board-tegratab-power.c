@@ -33,6 +33,7 @@
 #include <linux/interrupt.h>
 #include <linux/regulator/userspace-consumer.h>
 #include <linux/edp.h>
+#include <linux/edpdev.h>
 #include <linux/platform_data/tegra_edp.h>
 
 #include <asm/mach-types.h>
@@ -979,6 +980,56 @@ void __init tegratab_sysedp_init(void)
 		return;
 
 	r = edp_set_governor(&tegratab_sysedp_manager, g);
+	WARN_ON(r);
+}
+
+static unsigned int tegratab_psydepl_states[] = {
+	18900, 18000, 17000, 16000, 15000, 14000, 13000, 12000,
+	11000, 10000,
+	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
+	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
+	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
+	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
+	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
+	1300, 1200, 1100, 1000,  900,  800,  700,  600,
+	 500,  400,  300,  200,  100,    0
+};
+
+static struct psy_depletion_ibat_lut tegratab_ibat_lut[] = {
+	{  60,    0 },
+	{  50, 4500 },
+	{   0, 4500 },
+	{ -10,    0 }
+};
+
+static struct psy_depletion_rbat_lut tegratab_rbat_lut[] = {
+	{ 0, 120000 }
+};
+
+static struct psy_depletion_platform_data tegratab_psydepl_pdata = {
+	.power_supply = "battery",
+	.states = tegratab_psydepl_states,
+	.num_states = ARRAY_SIZE(tegratab_psydepl_states),
+	.e0_index = 26, /* TBD */
+	.r_const = 40100,
+	.vsys_min = 3260000,
+	.vcharge = 4200000,
+	.ibat_nom = 4500,
+	.ibat_lut = tegratab_ibat_lut,
+	.rbat_lut = tegratab_rbat_lut
+};
+
+static struct platform_device tegratab_psydepl_device = {
+	.name = "psy_depletion",
+	.id = -1,
+	.dev = { .platform_data = &tegratab_psydepl_pdata }
+};
+
+void __init tegratab_sysedp_psydepl_init(void)
+{
+	int r;
+
+	r = platform_device_register(&tegratab_psydepl_device);
 	WARN_ON(r);
 }
 

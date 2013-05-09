@@ -811,6 +811,7 @@ static void __init tegra_tegratab_late_init(void)
 		pm_wake_lock("main");
 
 	tegratab_sysedp_core_init();
+	tegratab_sysedp_psydepl_init();
 }
 
 static void __init tegratab_ramconsole_reserve(unsigned long size)
