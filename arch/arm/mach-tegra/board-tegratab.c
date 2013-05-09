@@ -809,6 +809,8 @@ static void __init tegra_tegratab_late_init(void)
 	if ((board_info.board_id == BOARD_P1640) &&
 	(board_info.fab == BOARD_FAB_A00))
 		pm_wake_lock("main");
+
+	tegratab_sysedp_core_init();
 }
 
 static void __init tegratab_ramconsole_reserve(unsigned long size)
