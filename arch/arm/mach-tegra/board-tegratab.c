@@ -753,7 +753,8 @@ struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 static void __init tegra_tegratab_late_init(void)
 {
 	struct board_info board_info;
-	tegra_get_display_board_info(&board_info);
+
+	tegra_get_board_info(&board_info);
 
 	platform_device_register(&tegra_pinmux_device);
 	tegratab_pinmux_init();
@@ -788,6 +789,11 @@ static void __init tegra_tegratab_late_init(void)
 	tegratab_sensors_init();
 	tegratab_soctherm_init();
 	tegra_register_fuse();
+
+	/* disable LP0 forcedly only on DVT A00: BT/WIFI LP0 issue */
+	if ((board_info.board_id == BOARD_P1640) &&
+	(board_info.fab == BOARD_FAB_A00))
+		pm_wake_lock("main");
 }
 
 static void __init tegratab_ramconsole_reserve(unsigned long size)
