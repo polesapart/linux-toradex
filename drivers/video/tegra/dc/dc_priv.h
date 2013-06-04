@@ -250,6 +250,13 @@ static inline bool tegra_dc_is_powered(struct tegra_dc *dc)
 }
 #endif
 
+
+static inline void tegra_dc_hotplug_init(struct tegra_dc *dc)
+{
+	if (dc->out && dc->out->hotplug_init)
+		dc->out->hotplug_init(&dc->ndev->dev);
+}
+
 extern struct tegra_dc_out_ops tegra_dc_rgb_ops;
 extern struct tegra_dc_out_ops tegra_dc_hdmi_ops;
 extern struct tegra_dc_out_ops tegra_dc_dsi_ops;
