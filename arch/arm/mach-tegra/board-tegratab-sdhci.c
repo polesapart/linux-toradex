@@ -43,6 +43,12 @@
 #define TEGRATAB_WLAN_PWR	TEGRA_GPIO_PCC5
 #define TEGRATAB_WLAN_RST	TEGRA_GPIO_PX7
 #define TEGRATAB_WLAN_WOW	TEGRA_GPIO_PU5
+#if defined(CONFIG_WLCORE_EDP_SUPPORT)
+#define ON 1508 /* TODO: 808.236 mW on macallan. Need to check. */
+#define OFF 478 /* TODO: 0. Need to check DVT2. */
+static unsigned int wl_states[] = {ON, OFF};
+#endif
+
 static void (*wifi_status_cb)(int card_present, void *dev_id);
 static void *wifi_status_cb_devid;
 static int tegratab_wifi_status_register(void (*callback)(int , void *),
@@ -56,15 +62,16 @@ static struct wl12xx_platform_data tegratab_wl12xx_wlan_data __initdata = {
 	.board_tcxo_clock = 1,
 	.set_power = tegratab_wifi_power,
 	.set_carddetect = tegratab_wifi_set_carddetect,
-    /* TODO: Need to check. wl12xx doen't support EDP client now. */
-#if 0 /* defined(CONFIG_BCMDHD_EDP_SUPPORT) */
-	/* set the wifi edp client information here */
-	.client_info    = {
-		.name       = "wifi_edp_client",
-		.states     = {1509, 478},
-		.num_states = ARRAY_SIZE(wifi_states),
-		.e0_index   = 0,
-		.priority   = EDP_MAX_PRIO,
+#if defined(CONFIG_WLCORE_EDP_SUPPORT)
+	.edp_info = {
+		.client_info = {
+			.name = "wl_edp_client",
+			.states = wl_states,
+			.num_states = ARRAY_SIZE(wl_states),
+			.e0_index = 0,
+			.priority = EDP_MAX_PRIO,
+		},
+		.registered = false,
 	},
 #endif
 };
