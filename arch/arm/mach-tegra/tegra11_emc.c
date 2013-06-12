@@ -50,8 +50,8 @@ module_param(emc_enable, bool, 0644);
 
 u8 tegra_emc_bw_efficiency = 80;
 static struct emc_iso_usage tegra11_emc_iso_usage[] = {
-	{ BIT(EMC_USER_DC),			80 },
-	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	45 },
+	{ BIT(EMC_USER_DC),			50 },
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	35 },
 };
 
 #define PLL_C_DIRECT_FLOOR		333500000
