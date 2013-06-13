@@ -40,6 +40,7 @@
 #include <linux/slab.h>
 #include <linux/rtc.h>
 #include <linux/alarmtimer.h>
+#include <generated/mach-types.h>
 
 /* input current limit */
 static const unsigned int iinlim[] = {
@@ -191,7 +192,7 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 	int floor = 0;
 
 	/* Configure input voltage to 4.52 in case of NV charger */
-	if (bq2419x->in_current_limit == 2000)
+	if (machine_is_roth() && (bq2419x->in_current_limit == 2000))
 		val |= BQ2419x_NVCHARGER_INPUT_VOL_SEL;
 	else
 		val |= BQ2419x_DEFAULT_INPUT_VOL_SEL;
@@ -203,6 +204,10 @@ static int bq2419x_init(struct bq2419x_chip *bq2419x)
 		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed %d\n", ret);
 		return ret;
 	}
+
+	/* Set input current limit to 2A in case of DCP */
+	if (machine_is_tegratab() && (bq2419x->in_current_limit >= 1800))
+		bq2419x->in_current_limit = 2000;
 
 	/* Configure input current limit */
 	val = current_to_reg(iinlim, ARRAY_SIZE(iinlim),
@@ -228,8 +233,14 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	/* Configure Output Current Control to 2.25A*/
-	ret = regmap_write(bq2419x->regmap, BQ2419X_CHRG_CTRL_REG, 0x6c);
+	if (machine_is_tegratab())
+		/* Configure Output Current Control to 2.56A*/
+		ret = regmap_write(bq2419x->regmap,
+				BQ2419X_CHRG_CTRL_REG, 0x80);
+	else if (machine_is_roth())
+		/* Configure Output Current Control to 2.25A*/
+		ret = regmap_write(bq2419x->regmap,
+				BQ2419X_CHRG_CTRL_REG, 0x6c);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "CHRG_CTRL_REG write failed %d\n", ret);
 		return ret;
