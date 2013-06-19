@@ -178,6 +178,23 @@ scrub:
 	return ret;
 }
 
+static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
+					    int adc_chan, int val)
+{
+	int ret;
+
+	if (((val*1000) - adc->adc_info[adc_chan].offset) < 0) {
+		dev_err(adc->dev, "No Input Connected\n");
+		return 0;
+	}
+
+	if (!(adc->adc_info[adc_chan].is_correct_code))
+		ret  = ((val*1000) - adc->adc_info[adc_chan].offset) /
+						adc->adc_info[adc_chan].gain;
+
+	return ret;
+}
+
 static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 {
 	unsigned int adc_l;
@@ -225,33 +242,11 @@ static int palmas_gpadc_start_convertion(struct palmas_gpadc *adc, int adc_chan)
 	}
 
 	ret = ((adc_h & 0xF) << 8) | adc_l;
+	ret = palmas_gpadc_get_calibrated_code(adc, adc_chan, ret);
 
 scrub:
 	palmas_gpadc_enable(adc, adc_chan, false);
 	palmas_gpadc_start_mask_interrupt(adc, 1);
-	return ret;
-}
-
-static int palmas_gpadc_get_calibrated_code(struct palmas_gpadc *adc,
-						int adc_chan)
-{
-	int ret;
-
-	ret = palmas_gpadc_start_convertion(adc, adc_chan);
-	if (ret < 0) {
-		dev_err(adc->dev, "ADC start coversion failed\n");
-		return ret;
-	}
-
-	if (((ret*1000) - adc->adc_info[adc_chan].offset) < 0) {
-		dev_err(adc->dev, "No Input Connected\n");
-		return 0;
-	}
-
-	if (!(adc->adc_info[adc_chan].is_correct_code))
-		ret  = ((ret*1000) - adc->adc_info[adc_chan].offset) /
-						adc->adc_info[adc_chan].gain;
-
 	return ret;
 }
 
@@ -278,18 +273,6 @@ static int palmas_gpadc_read_raw(struct iio_dev *indio_dev,
 		*val = ret;
 		mutex_unlock(&indio_dev->mlock);
 		return IIO_VAL_INT;
-	case IIO_CHAN_INFO_CALIBSCALE:
-		mutex_lock(&indio_dev->mlock);
-		ret = palmas_gpadc_get_calibrated_code(adc, adc_chan);
-		if (ret < 0) {
-			dev_err(adc->dev, "get_corrected_code failed\n");
-			mutex_unlock(&indio_dev->mlock);
-			return ret;
-		}
-
-		*val = ret;
-		mutex_unlock(&indio_dev->mlock);
-		return IIO_VAL_INT;
 	}
 
 	return -EINVAL;
@@ -303,7 +286,7 @@ static const struct iio_info palmas_gpadc_iio_info = {
 #define PALMAS_ADC_CHAN_IIO(chan)				\
 {								\
 	.type = IIO_VOLTAGE,					\
-	.info_mask = 0 | IIO_CHAN_INFO_CALIBSCALE_SEPARATE_BIT,	\
+	.info_mask = 0,						\
 	.indexed = 1,						\
 	.channel = PALMAS_ADC_CH_##chan,			\
 	.datasheet_name = #chan,				\
