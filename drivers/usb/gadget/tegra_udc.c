@@ -51,6 +51,8 @@
 #include <mach/usb_phy.h>
 #include <mach/iomap.h>
 
+#include <generated/mach-types.h>
+
 #include "tegra_udc.h"
 
 
@@ -1455,6 +1457,18 @@ static int tegra_detect_cable_type(struct tegra_udc *udc)
 	if ((udc->connect_type != CONNECT_TYPE_SDP) &&
 		(udc->connect_type != CONNECT_TYPE_CDP))
 			tegra_usb_set_charging_current(udc);
+	else {
+		/* bc 1.2: we can draw 100mA in USB 2.0, and 150mA in USB 3.0
+		   before enumerated */
+		/* Due to T114 H/W bug, we can't meet bc 1.2 spec.
+		   Tegratab default INPUT CURRENT LIMIT is set to 500mA by H/W.
+		   So, Set 500mA in Tegratab.*/
+		if (!machine_is_tegratab())
+			udc->current_limit = 100;
+		else
+			udc->current_limit = 500;
+		tegra_usb_set_charging_current(udc);
+	}
 
 	return 0;
 }
