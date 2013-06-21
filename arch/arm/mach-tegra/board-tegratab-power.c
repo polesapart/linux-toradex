@@ -882,6 +882,10 @@ static struct soctherm_platform_data tegratab_soctherm_data = {
 
 int __init tegratab_soctherm_init(void)
 {
+	struct board_info board_info;
+
+	tegra_get_board_info(&board_info);
+
 	tegra_platform_edp_init(tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips,
 			6000); /* edp temperature margin */
@@ -889,6 +893,14 @@ int __init tegratab_soctherm_init(void)
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
 	tegra_add_vc_trips(tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
+
+	if (board_info.board_id != BOARD_E1569 &&
+			(board_info.board_id == BOARD_P1640 &&
+			board_info.fab != BOARD_FAB_A00)) {
+		tegra_add_cdev_trips(
+			tegratab_soctherm_data.therm[THERM_CPU].trips,
+			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
+	}
 
 	return tegra11_soctherm_init(&tegratab_soctherm_data);
 }
