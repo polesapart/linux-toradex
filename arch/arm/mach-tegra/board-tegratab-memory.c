@@ -4170,18 +4170,51 @@ static struct tegra11_emc_pdata p1640_mt41k128m16_125_pdata = {
 	.num_tables = ARRAY_SIZE(p1640_mt41k128m16_125_table),
 };
 
+#define TEGRA_EMC_TABLE_MAX_SIZE	16
+#define CHARGE_MIN_EMC_CLK_RATE_KHZ	102000
+
+static struct tegra11_emc_table charger_emc_table[TEGRA_EMC_TABLE_MAX_SIZE];
+
+static struct tegra11_emc_pdata charger_emc_pdata = {
+	.description = "charger_mode_emc_table",
+	.tables = charger_emc_table,
+};
+
 static struct tegra11_emc_pdata *tegratab_get_emc_data(void)
 {
 	struct board_info board_info;
+	struct tegra11_emc_pdata *pdata;
 
 	tegra_get_board_info(&board_info);
 
 	if (board_info.board_id == BOARD_E1569)
-		return &e1569_mt41k128m16_125_pdata;
+		pdata = &e1569_mt41k128m16_125_pdata;
 	else if (board_info.board_id == BOARD_P1640)
-		return &p1640_mt41k128m16_125_pdata;
+		pdata = &p1640_mt41k128m16_125_pdata;
 	else
 		return NULL;
+
+	if (!get_androidboot_mode_charger())
+		return pdata;
+	else {
+		int i;
+		int num = 0;
+		int emc_table_size =
+			min(pdata->num_tables, TEGRA_EMC_TABLE_MAX_SIZE);
+
+		for (i = 0; i < emc_table_size; i++) {
+			struct tegra11_emc_table *table = &pdata->tables[i];
+			unsigned long table_rate = table->rate;
+
+			if (table_rate < CHARGE_MIN_EMC_CLK_RATE_KHZ)
+				continue;
+
+			memcpy(&charger_emc_table[num++],
+				table, sizeof(struct tegra11_emc_table));
+		}
+		charger_emc_pdata.num_tables = num;
+		return &charger_emc_pdata;
+	}
 }
 
 int __init tegratab_emc_init(void)
