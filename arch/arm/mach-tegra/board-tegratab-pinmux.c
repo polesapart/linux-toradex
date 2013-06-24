@@ -205,10 +205,6 @@ static __initdata struct tegra_drive_pingroup_config tegratab_drive_pinmux[] = {
 	/* SDMMC4 */
 	SET_DRIVE_WITH_TYPE(GMA, ENABLE, DISABLE, DIV_1, 2, 2, FASTEST,
 								FASTEST, 1),
-	/* vol_up */
-	SET_DRIVE(AO1, DISABLE, ENABLE, DIV_1, 9, 14, SLOWEST, SLOWEST),
-	/* power_key and vol_down */
-	SET_DRIVE(AO2, DISABLE, ENABLE, DIV_1, 9, 14, SLOWEST, SLOWEST),
 };
 
 #include "board-tegratab-pinmux-t11x.h"
