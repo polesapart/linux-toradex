@@ -69,6 +69,8 @@ struct ov5693_info {
 	struct regmap *regmap;
 	struct regulator *ext_vcm_vdd;
 	struct ov5693_cal_data cal;
+	struct edp_client *edpc;
+	unsigned int edp_state;
 };
 
 struct ov5693_reg {
@@ -2636,6 +2638,44 @@ static int ov5693_power_on(struct ov5693_info *info)
 	return err;
 }
 
+static void ov5693_edp_lowest(struct ov5693_info *info)
+{
+	if (!info->edpc)
+		return;
+
+	info->edp_state = info->edpc->num_states - 1;
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
+	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
+		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
+		dev_err(&info->i2c_client->dev,
+			"UNABLE TO SET LOWEST EDP STATE!\n");
+	}
+}
+
+static int ov5693_edp_req(struct ov5693_info *info, unsigned new_state)
+{
+	unsigned approved;
+	int ret = 0;
+
+	if (!info->edpc)
+		return 0;
+
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
+	ret = edp_update_client_request(info->edpc, new_state, &approved);
+	if (ret) {
+		dev_err(&info->i2c_client->dev, "E state transition failed\n");
+		return ret;
+	}
+
+	if (approved > new_state) {
+		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
+		return -ENODEV;
+	}
+
+	info->edp_state = approved;
+	return 0;
+}
+
 static int ov5693_pm_wr(struct ov5693_info *info, int pwr)
 {
 	int err = 0;
@@ -2654,6 +2694,7 @@ static int ov5693_pm_wr(struct ov5693_info *info, int pwr)
 		err = ov5693_power_off(info);
 		info->mode_valid = false;
 		info->bin_en = 0;
+		ov5693_edp_lowest(info);
 		break;
 
 	case NVC_PWR_STDBY:
@@ -2757,6 +2798,16 @@ static int ov5693_mode_wr_full(struct ov5693_info *info, u32 mode_index)
 {
 	int err;
 
+
+	/* the state num is temporary assigned, should be updated later as
+	per-mode basis */
+	err = ov5693_edp_req(info, 0);
+	if (err) {
+		dev_err(&info->i2c_client->dev,
+			"%s: ERROR cannot set edp state! %d\n",	__func__, err);
+		return err;
+	}
+
 	ov5693_pm_dev_wr(info, NVC_PWR_ON);
 	ov5693_bin_wr(info, 0);
 	err = ov5693_i2c_wr_table(info, mode_table[mode_index]);
@@ -2770,6 +2821,7 @@ static int ov5693_mode_wr_full(struct ov5693_info *info, u32 mode_index)
 			"init error(mode=%d)!!!\n", mode_index);
 		info->mode_valid = false;
 	}
+
 	return err;
 }
 
@@ -3222,6 +3274,59 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	return pdata;
 }
 
+static void ov5693_edp_throttle(unsigned int new_state, void *priv_data)
+{
+	struct ov5693_info *info = priv_data;
+
+	ov5693_power_off(info);
+	info->mode_valid = false;
+	info->bin_en = 0;
+}
+
+static void ov5693_edp_register(struct ov5693_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states) {
+		dev_info(&info->i2c_client->dev,
+			"%s: NO edp states defined.\n", __func__);
+		return;
+	}
+
+	strncpy(edpc->name, "ov5693", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->private_data = info;
+	edpc->throttle = ov5693_edp_throttle;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(&info->i2c_client->dev,
+			"unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(&info->i2c_client->dev,
+			"unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	ov5693_edp_lowest(info);
+}
+
+
 static int ov5693_probe(
 	struct i2c_client *client,
 	const struct i2c_device_id *id)
@@ -3298,6 +3403,9 @@ static int ov5693_probe(
 		if (info->pdata->probe_clock)
 			info->pdata->probe_clock(0);
 	}
+
+	ov5693_edp_register(info);
+
 	if (info->pdata->dev_name != NULL)
 		strcpy(dname, info->pdata->dev_name);
 	else

@@ -19,6 +19,7 @@
 
 #include <media/nvc.h>
 #include <media/nvc_image.h>
+#include <linux/edp.h>
 
 #define OV5693_IOCTL_SET_MODE               _IOW('o', 1, struct ov5693_mode)
 #define OV5693_IOCTL_SET_FRAME_LENGTH       _IOW('o', 2, __u32)
@@ -111,6 +112,7 @@ struct ov5693_platform_data {
 	unsigned lens_view_angle_h; /* / _INT2FLOAT_DIVISOR */
 	unsigned lens_view_angle_v; /* / _INT2FLOAT_DIVISOR */
 	bool use_vcm_vdd;
+	struct edp_client edpc_config;
 	int (*probe_clock)(unsigned long);
 	int (*power_on)(struct ov5693_power_rail *);
 	int (*power_off)(struct ov5693_power_rail *);
