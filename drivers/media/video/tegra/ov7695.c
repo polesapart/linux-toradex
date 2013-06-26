@@ -184,6 +184,8 @@ struct ov7695_info {
 	u32				debug_i2c_offset;
 #endif
 	u8				i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
+	struct edp_client *edpc;
+	unsigned int edp_state;
 };
 
 struct ov7695_mode_desc {
@@ -574,6 +576,95 @@ static struct ov7695_mode_desc *ov7695_get_mode(
 	return mt;
 }
 
+static void ov7695_edp_lowest(struct ov7695_info *info)
+{
+	if (!info->edpc)
+		return;
+
+	info->edp_state = info->edpc->num_states - 1;
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, info->edp_state);
+	if (edp_update_client_request(info->edpc, info->edp_state, NULL)) {
+		dev_err(&info->i2c_client->dev, "THIS IS NOT LIKELY HAPPEN!\n");
+		dev_err(&info->i2c_client->dev,
+			"UNABLE TO SET LOWEST EDP STATE!\n");
+	}
+}
+
+static int ov7695_edp_req(struct ov7695_info *info, unsigned new_state)
+{
+	unsigned approved;
+	int ret = 0;
+
+	if (!info->edpc)
+		return 0;
+
+	dev_dbg(&info->i2c_client->dev, "%s %d\n", __func__, new_state);
+	ret = edp_update_client_request(info->edpc, new_state, &approved);
+	if (ret) {
+		dev_err(&info->i2c_client->dev, "E state transition failed\n");
+		return ret;
+	}
+
+	if (approved > new_state) {
+		dev_err(&info->i2c_client->dev, "EDP no enough current\n");
+		return -ENODEV;
+	}
+
+	info->edp_state = approved;
+	return 0;
+}
+
+static void ov7695_edp_throttle(unsigned int new_state, void *priv_data)
+{
+	struct ov7695_info *info = priv_data;
+
+	if (info->pdata && info->pdata->power_off)
+		info->pdata->power_off(&info->power);
+}
+
+static void ov7695_edp_register(struct ov7695_info *info)
+{
+	struct edp_manager *edp_manager;
+	struct edp_client *edpc = &info->pdata->edpc_config;
+	int ret;
+
+	info->edpc = NULL;
+	if (!edpc->num_states) {
+		dev_info(&info->i2c_client->dev,
+			"%s: NO edp states defined.\n", __func__);
+		return;
+	}
+
+	strncpy(edpc->name, "ov7695", EDP_NAME_LEN - 1);
+	edpc->name[EDP_NAME_LEN - 1] = 0;
+	edpc->private_data = info;
+	edpc->throttle = ov7695_edp_throttle;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %s, e0 = %d, p %d\n",
+		__func__, edpc->name, edpc->e0_index, edpc->priority);
+	for (ret = 0; ret < edpc->num_states; ret++)
+		dev_dbg(&info->i2c_client->dev, "e%d = %d mA",
+			ret - edpc->e0_index, edpc->states[ret]);
+
+	edp_manager = edp_get_manager("battery");
+	if (!edp_manager) {
+		dev_err(&info->i2c_client->dev,
+			"unable to get edp manager: battery\n");
+		return;
+	}
+
+	ret = edp_register_client(edp_manager, edpc);
+	if (ret) {
+		dev_err(&info->i2c_client->dev,
+			"unable to register edp client\n");
+		return;
+	}
+
+	info->edpc = edpc;
+	/* set to lowest state at init */
+	ov7695_edp_lowest(info);
+}
+
 static int ov7695_mode_info_init(struct ov7695_info *info)
 {
 	struct ov7695_mode_desc *md = mode_table;
@@ -603,6 +694,15 @@ static int ov7695_set_mode(struct ov7695_info *info,
 	dev_info(&info->i2c_client->dev,
 		"%s: xres %u yres %u\n", __func__, mode->xres, mode->yres);
 
+	/* the state num is temporary assigned, should be updated later as
+	per-mode basis */
+	err = ov7695_edp_req(info, 0);
+	if (err) {
+		dev_err(&info->i2c_client->dev,
+			"%s: ERROR cannot set edp state! %d\n",	__func__, err);
+		return err;
+	}
+
 	sensor_mode = ov7695_get_mode(info, mode);
 	if (sensor_mode == NULL) {
 		dev_err(&info->i2c_client->dev,
@@ -618,7 +718,7 @@ static int ov7695_set_mode(struct ov7695_info *info,
 
 	info->mode = sensor_mode->mode_tbl;
 
-	return 0;
+	return err;
 }
 
 static long ov7695_ioctl(struct file *file,
@@ -680,6 +780,8 @@ static int ov7695_probe(struct i2c_client *client,
 		return err;
 	}
 	ov7695_mode_info_init(info);
+
+	ov7695_edp_register(info);
 
 	memcpy(&info->miscdev_info,
 		&ov7695_device,

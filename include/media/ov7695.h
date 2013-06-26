@@ -210,6 +210,7 @@ struct ov7695_sensordata {
 };
 
 #ifdef __KERNEL__
+#include <linux/edp.h>
 struct ov7695_power_rail {
 	struct regulator *dvdd;
 	struct regulator *avdd;
@@ -217,6 +218,7 @@ struct ov7695_power_rail {
 };
 
 struct ov7695_platform_data {
+	struct edp_client edpc_config;
 	int (*power_on)(struct ov7695_power_rail *pw);
 	int (*power_off)(struct ov7695_power_rail *pw);
 };
