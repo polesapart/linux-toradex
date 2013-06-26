@@ -67,6 +67,7 @@ u8 tegra_emc_bw_efficiency = 80;
 static struct emc_iso_usage tegra11_ddr3_emc_iso_usage[] = {
 	{ BIT(EMC_USER_DC),			50},
 	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VI),	35},
+	{ BIT(EMC_USER_DC) | BIT(EMC_USER_VDE),	45},
 };
 
 static struct emc_iso_usage tegra11_lpddr3_emc_iso_usage[] = {
@@ -85,6 +86,10 @@ static struct emc_iso_usage tegra11_lpddr3_emc_iso_usage[] = {
 	{
 		BIT(EMC_USER_DC) | BIT(EMC_USER_3D),
 		50, iso_share_calc_t114_lpddr3_default
+	},
+	{
+		BIT(EMC_USER_DC) | BIT(EMC_USER_VDE),
+		45, iso_share_calc_t114_lpddr3_default
 	},
 };
 
