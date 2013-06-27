@@ -996,7 +996,7 @@ static unsigned int tegratab_psydepl_states[] = {
 };
 
 static struct psy_depletion_ibat_lut tegratab_ibat_lut[] = {
-	{  60,    0 },
+	{  60,  500 }, /* Temporary, due to psy_depletion client */
 	{  50, 4500 },
 	{   0, 4500 },
 	{ -10,    0 }

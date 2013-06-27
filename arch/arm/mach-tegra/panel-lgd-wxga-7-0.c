@@ -522,6 +522,8 @@ static struct platform_pwm_backlight_data dsi_lgd_wxga_7_0_bl_data = {
 	.dft_brightness	= 224,
 	.pwm_period_ns	= 1000000,
 	.notify		= dsi_lgd_wxga_7_0_bl_notify,
+	.edp_states = { 1711, 1390, 1057, 713, 360, 0},
+	.edp_brightness = {255, 204, 153, 101, 50, 0},
 	/* Only toggle backlight on fb blank notifications for disp1 */
 	.check_fb	= dsi_lgd_wxga_7_0_check_fb,
 	.pwm_gpio	= DSI_PANEL_BL_PWM,

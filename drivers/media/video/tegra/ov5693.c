@@ -90,6 +90,8 @@ static struct ov5693_platform_data ov5693_dflt_pdata = {
 	.dev_name	= "camera",
 };
 
+static unsigned ov5693_estates[] = { 420, 420, 420, 0 };
+
 /*
  * NOTE: static vs dynamic
  * If a member in the nvc_imager_static_nvc structure is not actually
@@ -3270,6 +3272,12 @@ static struct ov5693_platform_data *ov5693_parse_dt(struct i2c_client *client)
 	/* ov5693 power functions */
 	pdata->power_on = ov5693_platform_power_on;
 	pdata->power_off = ov5693_platform_power_off;
+
+	/* edp e-states */
+	pdata->edpc_config.states = ov5693_estates;
+	pdata->edpc_config.num_states = ARRAY_SIZE(ov5693_estates);
+	pdata->edpc_config.e0_index = ARRAY_SIZE(ov5693_estates) - 1;
+	pdata->edpc_config.priority = EDP_MAX_PRIO + 1;
 
 	return pdata;
 }

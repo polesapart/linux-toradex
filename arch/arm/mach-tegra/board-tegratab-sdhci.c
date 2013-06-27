@@ -30,6 +30,7 @@
 #include <mach/gpio-tegra.h>
 #include <mach/io_dpd.h>
 #include <linux/wl12xx.h>
+#include <linux/edp.h>
 
 #include "tegra-board-id.h"
 #include "gpio-names.h"
@@ -55,11 +56,12 @@ static struct wl12xx_platform_data tegratab_wl12xx_wlan_data __initdata = {
 	.board_tcxo_clock = 1,
 	.set_power = tegratab_wifi_power,
 	.set_carddetect = tegratab_wifi_set_carddetect,
-#if defined(CONFIG_BCMDHD_EDP_SUPPORT)
+    /* TODO: Need to check. wl12xx doen't support EDP client now. */
+#if 0 /* defined(CONFIG_BCMDHD_EDP_SUPPORT) */
 	/* set the wifi edp client information here */
 	.client_info    = {
 		.name       = "wifi_edp_client",
-		.states     = {1080, 0},
+		.states     = {1509, 478},
 		.num_states = ARRAY_SIZE(wifi_states),
 		.e0_index   = 0,
 		.priority   = EDP_MAX_PRIO,
@@ -155,7 +157,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.max_clk_limit = 156000000,
 	.uhs_mask = MMC_UHS_MASK_DDR50,
 	.edp_support = true,
-	.edp_states = {966, 0},
+	.edp_states = { 36, 0},
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -172,7 +174,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 	.edp_support = true,
-	.edp_states = {966, 0},
+	.edp_states = {466, 0},
 };
 
 static struct platform_device tegra_sdhci_device0 = {

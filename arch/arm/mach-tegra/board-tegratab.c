@@ -354,6 +354,8 @@ static struct tegra_asoc_platform_data tegratab_audio_pdata = {
 		.is_i2s_master	= 1,
 		.i2s_mode	= TEGRA_DAIFMT_DSP_A,
 	},
+	.edp_support = true,
+	.edp_states = {4760, 522, 0},
 };
 
 static struct platform_device tegratab_audio_device = {

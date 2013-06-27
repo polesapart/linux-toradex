@@ -238,18 +238,12 @@ static int tegratab_ov5693_power_off(struct ov5693_power_rail *pw)
 static struct nvc_gpio_pdata ov5693_gpio_pdata[] = {
 	{ OV5693_GPIO_TYPE_PWRDN, CAM1_POWER_DWN_GPIO, true, 0, },
 };
-static unsigned ov5693_estates[] = { 876, 656, 220, 0 };
+
 static struct ov5693_platform_data tegratab_ov5693_pdata = {
 	.num		= 5693,
 	.dev_name	= "camera",
 	.gpio_count	= ARRAY_SIZE(ov5693_gpio_pdata),
 	.gpio		= ov5693_gpio_pdata,
-	.edpc_config	= {
-		.states = ov5693_estates,
-		.num_states = ARRAY_SIZE(ov5693_estates),
-		.e0_index = ARRAY_SIZE(ov5693_estates) - 1,
-		.priority = EDP_MAX_PRIO + 1,
-	},
 	.power_on	= tegratab_ov5693_power_on,
 	.power_off	= tegratab_ov5693_power_off,
 };
@@ -394,7 +388,7 @@ static int tegratab_ov7695_power_off(struct ov7695_power_rail *pw)
 	return 0;
 }
 
-static unsigned ov7695_estates[] = { 220, 0 };
+static unsigned ov7695_estates[] = { 99, 0 };
 struct ov7695_platform_data tegratab_ov7695_pdata = {
 	.edpc_config	= {
 		.states = ov7695_estates,
