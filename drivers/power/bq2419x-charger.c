@@ -71,6 +71,7 @@ struct bq2419x_chip {
 	int				status;
 	int				rtc_alarm_time;
 	void				(*update_status)(int, int);
+	int				(*soc_check)(void);
 
 	struct regulator_dev		*chg_rdev;
 	struct regulator_desc		chg_reg_desc;
@@ -102,24 +103,26 @@ static int current_to_reg(const unsigned int *tbl,
 	return i > 0 ? i - 1 : -EINVAL;
 }
 
+static int bq2419x_charger_disable(struct bq2419x_chip *bq2419x)
+{
+	int ret;
+
+	ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
+			 BQ2419X_ENABLE_CHARGE_MASK,
+			 BQ2419X_DISABLE_CHARGE);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "register update failed, err %d\n", ret);
+	return ret;
+}
+
 static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
 	if (bq2419x->chg_enable) {
-		dev_info(bq2419x->dev, "Charging enabled\n");
-		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
-				 BQ2419X_ENABLE_CHARGE_MASK, 0);
-		if (ret < 0) {
-			dev_err(bq2419x->dev,
-				"register update failed, err %d\n", ret);
-			return ret;
-		}
-
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 			 BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
 	} else {
-		dev_info(bq2419x->dev, "Charging disabled\n");
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 				 BQ2419X_ENABLE_CHARGE_MASK,
 				 BQ2419X_DISABLE_CHARGE);
@@ -233,10 +236,20 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 {
 	int ret;
 
-	if (machine_is_tegratab())
+	if (machine_is_tegratab()) {
+		/* Not use termination, will check SOC*/
+		ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_TIME_CTRL_REG, 0x80, 0);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"TIME_CTRL_REG update failed %d\n", ret);
+			return ret;
+		}
+
 		/* Configure Output Current Control to 2.56A*/
 		ret = regmap_write(bq2419x->regmap,
 				BQ2419X_CHRG_CTRL_REG, 0x80);
+	}
 	else if (machine_is_roth())
 		/* Configure Output Current Control to 2.25A*/
 		ret = regmap_write(bq2419x->regmap,
@@ -422,15 +435,50 @@ static void bq2419x_work_thread(struct kthread_work *work)
 			struct bq2419x_chip, bq_wdt_work);
 	int ret;
 	int val = 0;
+	int soc = 0;
 
 	for (;;) {
 		if (bq2419x->stop_thread)
 			return;
 
+		if (bq2419x->soc_check != NULL) {
+			soc = bq2419x->soc_check();
+			if (soc >= 100) {
+				ret = regmap_read(bq2419x->regmap,
+						BQ2419X_SYS_STAT_REG, &val);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"SYS_STAT_REG read failed %d\n", ret);
+
+				if ((val & BQ2419x_CHRG_STATE_MASK) ==
+					BQ2419x_CHRG_STATE_POST_CHARGE) {
+
+					dev_info(bq2419x->dev,
+					"Full charged Charging Stop\n");
+
+					ret = bq2419x_charger_disable(bq2419x);
+					if (ret < 0)
+						dev_err(bq2419x->dev,
+						"Charger disable failed %d",
+						ret);
+					mdelay(100);
+				}
+			} else {
+				ret = bq2419x_charger_enable(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger enable failed %d", ret);
+			}
+		}
+
 		if (bq2419x->chg_restart_timeout) {
 			mutex_lock(&bq2419x->mutex);
 			bq2419x->chg_restart_timeout--;
 			if (!bq2419x->chg_restart_timeout) {
+				ret = bq2419x_charger_disable(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger disable failed %d", ret);
 				ret = bq2419x_charger_enable(bq2419x);
 				if (ret < 0)
 					dev_err(bq2419x->dev,
@@ -588,9 +636,6 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		bq2419x->chg_restart_timeout = bq2419x->chg_restart_time /
 						bq2419x->wdt_refresh_timeout;
 		dev_info(bq2419x->dev, "Charging completed\n");
-		bq2419x->status = 4;
-		if (bq2419x->update_status)
-			bq2419x->update_status(bq2419x->status, 0);
 	}
 
 	/*
@@ -806,6 +851,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 
 	if (pdata->bcharger_pdata) {
 		bq2419x->update_status	= pdata->bcharger_pdata->update_status;
+		bq2419x->soc_check	= pdata->bcharger_pdata->soc_check;
 		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
 		bq2419x->chg_restart_time =
