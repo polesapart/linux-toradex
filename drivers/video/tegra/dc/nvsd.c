@@ -1,7 +1,7 @@
 /*
  * drivers/video/tegra/dc/nvsd.c
  *
- * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2013, NVIDIA CORPORATION, All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -341,11 +341,13 @@ static bool nvsd_update_agg(struct tegra_dc_sd_settings *settings, int agg_val)
 	else if (agg_lvl == 0 && pri_lvl == 0)
 		return false;
 
-	if (pri_lvl >= 0 && pri_lvl < 4)
+	if (pri_lvl >= 0 && pri_lvl < NUM_AGG_PRI_LVLS) {
 		sd_agg_priorities->agg[pri_lvl] = agg_lvl;
+		sd_agg_priorities->dirty[pri_lvl] = true;
+	}
 
 	for (i = NUM_AGG_PRI_LVLS - 1; i >= 0; i--) {
-		if (sd_agg_priorities->agg[i])
+		if (sd_agg_priorities->dirty[i])
 			break;
 	}
 
