@@ -81,11 +81,14 @@ struct bq2419x_charger_platform_data tegratab_bq2419x_charger_pdata = {
 	.update_status = max17048_battery_status,
 	.battery_check = max17048_check_battery,
 	.soc_check = max17048_check_soc,
+	.vcell_check = max17048_check_vcell,
 	.max_charge_current_mA = 3000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = tegratab_bq2419x_batt_supply,
 	.num_consumer_supplies = ARRAY_SIZE(tegratab_bq2419x_batt_supply),
-	.wdt_timeout    = 40,
+	.wdt_timeout = 40,
+	.chg_restart_time = 1800,	/* 30 min */
+	.chg_complete_soc = 100,
 };
 
 #ifndef CONFIG_OF
