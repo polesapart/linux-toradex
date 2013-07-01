@@ -109,6 +109,7 @@ struct bq2419x_charger_platform_data {
 	void (*update_status)(int, int);
 	int (*battery_check)(void);
 	int (*soc_check)(void);
+	int (*vcell_check)(void);
 
 	int max_charge_volt_mV;
 	int max_charge_current_mA;
@@ -118,6 +119,7 @@ struct bq2419x_charger_platform_data {
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
+	int chg_complete_soc;
 };
 
 /*
