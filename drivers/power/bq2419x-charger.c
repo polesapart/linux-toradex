@@ -489,7 +489,9 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				}
 			}
 
-			if (chg_complete_check && vcell <= RECHARING_VOLTAGE) {
+			if (chg_complete_check &&
+				(vcell <= RECHARING_VOLTAGE ||
+				soc < bq2419x->chg_complete_soc)) {
 				dev_info(bq2419x->dev,
 					"Charging Restart by voltage.\n");
 				ret = bq2419x_charger_enable(bq2419x);
@@ -504,6 +506,9 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				if (ret < 0)
 					dev_err(bq2419x->dev,
 					"bq2419x init failed: %d\n", ret);
+				/* Set chg_restart_timeout to 0
+				   for preventing duplicate recharge */
+				bq2419x->chg_restart_timeout = 0;
 				chg_complete_check = 0;
 			}
 		}
