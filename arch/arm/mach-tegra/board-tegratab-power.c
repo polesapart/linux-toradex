@@ -1006,7 +1006,7 @@ static struct psy_depletion_ibat_lut tegratab_ibat_lut[] = {
 };
 
 static struct psy_depletion_rbat_lut tegratab_rbat_lut[] = {
-	{ 0, 120000 }
+	{ 0,  40000 }
 };
 
 static struct psy_depletion_platform_data tegratab_psydepl_pdata = {
@@ -1015,7 +1015,7 @@ static struct psy_depletion_platform_data tegratab_psydepl_pdata = {
 	.num_states = ARRAY_SIZE(tegratab_psydepl_states),
 	.e0_index = 26, /* TBD */
 	.r_const = 40100,
-	.vsys_min = 3260000,
+	.vsys_min = 3100000,
 	.vcharge = 4200000,
 	.ibat_nom = 4500,
 	.ibat_lut = tegratab_ibat_lut,
