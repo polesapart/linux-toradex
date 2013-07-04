@@ -825,7 +825,8 @@ int __init tegratab_sensors_init(void)
 
 	if (board_info.board_id == BOARD_E1569 ||
 			(board_info.board_id == BOARD_P1640 &&
-			board_info.fab == BOARD_FAB_A00)) {
+			(board_info.fab == BOARD_FAB_A00 ||
+			board_info.fab == BOARD_FAB_A01))) {
 		err = tegratab_nct1008_init();
 		if (err) {
 			pr_err("%s: nct1008 register failed.\n", __func__);
