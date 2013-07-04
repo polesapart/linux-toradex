@@ -628,11 +628,11 @@ int __init tegratab_palmas_regulator_init(void)
 		palmas_pdata.clk32k_init_data_size =
 				ARRAY_SIZE(tegratab_palmas_clk32k_idata);
 	}
-
-	if (get_androidboot_mode_charger())
+#ifdef CONFIG_ANDROID
+	if (get_androidboot_mode() == BOOTMODE_CHARGER)
 		palmas_pdata.long_press_delay =
 				PALMAS_LONG_PRESS_KEY_TIME_12SECONDS;
-
+#endif
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
 	return 0;
@@ -770,6 +770,13 @@ int __init tegratab_regulator_init(void)
 #ifndef CONFIG_OF
 	tegratab_max17048_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PQ5);
 	i2c_register_board_info(0, tegratab_max17048_boardinfo, 1);
+#endif
+#ifdef CONFIG_ANDROID
+	/* In factory mode boot case, charging until 70% */
+	if (get_androidboot_mode() == BOOTMODE_FACTORY) {
+		tegratab_bq2419x_charger_pdata.vcell_check = NULL;
+		tegratab_bq2419x_charger_pdata.chg_complete_soc = 70;
+	}
 #endif
 	/* Disable charger when adapter is power source. */
 	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)

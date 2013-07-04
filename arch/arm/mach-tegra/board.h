@@ -186,6 +186,14 @@ enum image_type {
 	rck_image,
 };
 
+#ifdef CONFIG_ANDROID
+enum androidboot_mode {
+	BOOTMODE_NORMAL = 0,
+	BOOTMODE_CHARGER,
+	BOOTMODE_FACTORY,
+};
+#endif
+
 void tegra_get_board_info(struct board_info *);
 void tegra_get_pmu_board_info(struct board_info *bi);
 void tegra_get_display_board_info(struct board_info *bi);
@@ -216,7 +224,7 @@ int tegra_soc_device_init(const char *machine);
 int get_pwr_i2c_clk_rate(void);
 int tegra_get_pmic_rst_reason(void);
 #ifdef CONFIG_ANDROID
-bool get_androidboot_mode_charger(void);
+int get_androidboot_mode(void);
 #endif
 extern void tegra_set_usb_vbus_internal_wake(bool enable);
 extern void tegra_set_usb_id_internal_wake(bool enable);

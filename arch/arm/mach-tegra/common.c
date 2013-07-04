@@ -1357,18 +1357,20 @@ static int __init tegra_pmic_rst_reason(char *id)
 __setup("pmic_rst_reason=", tegra_pmic_rst_reason);
 
 #ifdef CONFIG_ANDROID
-static bool androidboot_mode_charger;
+static int androidboot_mode;
 
-bool get_androidboot_mode_charger(void)
+int get_androidboot_mode(void)
 {
-	return androidboot_mode_charger;
+	return androidboot_mode;
 }
 static int __init tegra_androidboot_mode(char *options)
 {
-	if (!strcmp(options, "charger"))
-		androidboot_mode_charger = true;
+	if (!strcmp(options, "factory2"))
+		androidboot_mode = BOOTMODE_FACTORY;
+	else if (!strcmp(options, "charger"))
+		androidboot_mode = BOOTMODE_CHARGER;
 	else
-		androidboot_mode_charger = false;
+		androidboot_mode = BOOTMODE_NORMAL;
 	return 1;
 }
 __setup("androidboot.mode=", tegra_androidboot_mode);

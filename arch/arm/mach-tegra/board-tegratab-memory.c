@@ -4194,7 +4194,8 @@ static struct tegra11_emc_pdata *tegratab_get_emc_data(void)
 	else
 		return NULL;
 
-	if (!get_androidboot_mode_charger())
+#ifdef CONFIG_ANDROID
+	if (get_androidboot_mode() != BOOTMODE_CHARGER)
 		return pdata;
 	else {
 		int i;
@@ -4215,6 +4216,9 @@ static struct tegra11_emc_pdata *tegratab_get_emc_data(void)
 		charger_emc_pdata.num_tables = num;
 		return &charger_emc_pdata;
 	}
+#else
+	return pdata;
+#endif
 }
 
 int __init tegratab_emc_init(void)

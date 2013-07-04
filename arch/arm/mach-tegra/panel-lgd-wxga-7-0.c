@@ -549,7 +549,7 @@ static int  __init dsi_lgd_wxga_7_0_register_bl_dev(void)
 	int err = 0;
 
 #ifdef CONFIG_ANDROID
-	if (get_androidboot_mode_charger())
+	if (get_androidboot_mode() == BOOTMODE_CHARGER)
 		dsi_lgd_wxga_7_0_bl_data.dft_brightness = 60;
 #endif
 	err = platform_add_devices(dsi_lgd_wxga_7_0_bl_devices,
