@@ -91,6 +91,7 @@ struct bq2419x_chip {
 	int				chg_restart_timeout;
 	int				chg_restart_time;
 	int				chg_complete_soc;
+	bool				cut_pwr_chg_complete;
 	int				chg_enable;
 };
 
@@ -339,14 +340,6 @@ static int bq2419x_reset_wdt(struct bq2419x_chip *bq2419x, const char *from)
 
 	dev_info(bq2419x->dev, "%s() from %s()\n", __func__, from);
 
-	/* Clear EN_HIZ */
-	ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
-		goto scrub;
-	}
-
 	ret = regmap_read(bq2419x->regmap, BQ2419X_PWR_ON_REG, &reg01);
 	if (ret < 0) {
 		dev_err(bq2419x->dev, "PWR_ON_REG read failed: %d\n", ret);
@@ -432,6 +425,12 @@ static int bq2419x_watchdog_init(struct bq2419x_chip *bq2419x,
 			return ret;
 		}
 	}
+
+	/* Clear EN_HIZ */
+	ret = regmap_update_bits(bq2419x->regmap,
+		BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+	if (ret < 0)
+		dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
 
 	ret = bq2419x_reset_wdt(bq2419x, from);
 	if (ret < 0)
@@ -568,6 +567,20 @@ static void bq2419x_work_thread(struct kthread_work *work)
 
 			mutex_unlock(&bq2419x->mutex);
 		}
+
+		if (bq2419x->cut_pwr_chg_complete && chg_complete_check) {
+			/* Set EN_HIZ for cut charger power */
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ,
+				BQ2419X_EN_HIZ);
+		} else {
+			/* Clear EN_HIZ */
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+		}
+		if (ret < 0)
+			dev_err(bq2419x->dev,
+				"INPUT_SRC_REG update failed:%d\n", ret);
 
 		ret = bq2419x_reset_wdt(bq2419x, "THREAD");
 		if (ret < 0)
@@ -911,9 +924,11 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
 		bq2419x->chg_restart_time =
-					pdata->bcharger_pdata->chg_restart_time;
+				pdata->bcharger_pdata->chg_restart_time;
 		bq2419x->chg_complete_soc =
-					pdata->bcharger_pdata->chg_complete_soc;
+				pdata->bcharger_pdata->chg_complete_soc;
+		bq2419x->cut_pwr_chg_complete =
+				pdata->bcharger_pdata->cut_pwr_chg_complete;
 		bq2419x->chg_enable	= true;
 	}
 
@@ -1039,6 +1054,11 @@ static void bq2419x_shutdown(struct i2c_client *client)
 	if (alarm_time && (bq2419x->in_current_limit > 500)) {
 		dev_info(bq2419x->dev, "HighCurrent %dmA charger is connectd\n",
 			bq2419x->in_current_limit);
+		/* Clear EN_HIZ */
+		ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ, 0);
+		if (ret < 0)
+			dev_err(bq2419x->dev, "INPUT_SRC_REG update failed:%d\n", ret);
 		ret = bq2419x_reset_wdt(bq2419x, "shutdown");
 		if (ret < 0)
 			dev_err(bq2419x->dev,
