@@ -776,6 +776,8 @@ int __init tegratab_regulator_init(void)
 	if (get_androidboot_mode() == BOOTMODE_FACTORY) {
 		tegratab_bq2419x_charger_pdata.vcell_check = NULL;
 		tegratab_bq2419x_charger_pdata.chg_complete_soc = 70;
+		tegratab_bq2419x_charger_pdata.chg_restart_time = 0;
+		tegratab_bq2419x_charger_pdata.cut_pwr_chg_complete = true;
 	}
 #endif
 	/* Disable charger when adapter is power source. */
