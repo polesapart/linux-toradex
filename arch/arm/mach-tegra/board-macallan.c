@@ -336,6 +336,7 @@ static struct tegra_asoc_platform_data macallan_audio_pdata = {
 	.gpio_ldo1_en		= TEGRA_GPIO_LDO1_EN,
 	.edp_support		= true,
 	.edp_states		= {1100, 858, 0},
+	.edp_vol		= {0x0, 0x13, 0x27},
 	.gpio_codec1 = TEGRA_GPIO_CODEC1_EN,
 	.gpio_codec2 = TEGRA_GPIO_CODEC2_EN,
 	.gpio_codec3 = TEGRA_GPIO_CODEC3_EN,
