@@ -552,6 +552,9 @@ static int  __init dsi_lgd_wxga_7_0_register_bl_dev(void)
 	if (get_androidboot_mode() == BOOTMODE_CHARGER)
 		dsi_lgd_wxga_7_0_bl_data.dft_brightness = 60;
 #endif
+	if (machine_is_tegratab())
+		dsi_lgd_wxga_7_0_bl_data.disable_edp_throttle = true;
+
 	err = platform_add_devices(dsi_lgd_wxga_7_0_bl_devices,
 				ARRAY_SIZE(dsi_lgd_wxga_7_0_bl_devices));
 	if (err) {
