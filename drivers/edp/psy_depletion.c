@@ -23,7 +23,7 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 
-#define DEPL_INTERVAL	60000
+#define DEPL_INTERVAL	30000
 
 struct depl_driver {
 	struct edp_client client;
