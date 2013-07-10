@@ -37,6 +37,7 @@ struct pwm_bl_data {
 	unsigned int		period;
 	unsigned int		lth_brightness;
 	unsigned int		pwm_gpio;
+	bool disable_edp_throttle;
 	struct edp_client *tegra_pwm_bl_edp_client;
 	int *edp_brightness_states;
 	int			(*notify)(struct device *,
@@ -212,11 +213,20 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	pb->tegra_pwm_bl_edp_client->name[EDP_NAME_LEN - 1] = '\0';
 	pb->tegra_pwm_bl_edp_client->states = data->edp_states;
 	pb->tegra_pwm_bl_edp_client->num_states = TEGRA_PWM_BL_EDP_NUM_STATES;
-	pb->tegra_pwm_bl_edp_client->e0_index = TEGRA_PWM_BL_EDP_ZERO;
+	pb->disable_edp_throttle = data->disable_edp_throttle;
+	if (pb->disable_edp_throttle == true) {
+		pb->tegra_pwm_bl_edp_client->e0_index = TEGRA_PWM_BL_EDP_NEG_3;
+		pb->tegra_pwm_bl_edp_client->priority = EDP_MAX_PRIO + 1;
+		pb->tegra_pwm_bl_edp_client->throttle = NULL;
+		pb->tegra_pwm_bl_edp_client->notify_promotion = NULL;
+	} else {
+		pb->tegra_pwm_bl_edp_client->e0_index = TEGRA_PWM_BL_EDP_ZERO;
+		pb->tegra_pwm_bl_edp_client->priority = EDP_MAX_PRIO + 2;
+		pb->tegra_pwm_bl_edp_client->throttle = pwm_backlight_edpcb;
+		pb->tegra_pwm_bl_edp_client->notify_promotion =
+			pwm_backlight_edpcb;
+	}
 	pb->tegra_pwm_bl_edp_client->private_data = bl;
-	pb->tegra_pwm_bl_edp_client->priority = EDP_MAX_PRIO + 2;
-	pb->tegra_pwm_bl_edp_client->throttle = pwm_backlight_edpcb;
-	pb->tegra_pwm_bl_edp_client->notify_promotion = pwm_backlight_edpcb;
 
 	battery_manager = edp_get_manager("battery");
 	if (!battery_manager) {
@@ -227,9 +237,15 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		if (ret) {
 			dev_err(&pdev->dev, "unable to register edp client\n");
 		} else {
-			ret = edp_update_client_request(
-					pb->tegra_pwm_bl_edp_client,
+			if (pb->disable_edp_throttle == true) {
+				ret = edp_update_client_request(
+						pb->tegra_pwm_bl_edp_client,
 						TEGRA_PWM_BL_EDP_ZERO, NULL);
+			} else {
+				ret = edp_update_client_request(
+						pb->tegra_pwm_bl_edp_client,
+						TEGRA_PWM_BL_EDP_NEG_3, NULL);
+			}
 			if (ret) {
 				dev_err(&pdev->dev,
 					"unable to set E0 EDP state\n");

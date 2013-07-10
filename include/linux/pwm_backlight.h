@@ -38,6 +38,7 @@ struct platform_pwm_backlight_data {
 	unsigned int lth_brightness;
 	unsigned int pwm_period_ns;
 	unsigned int pwm_gpio;
+	bool disable_edp_throttle;
 	unsigned int edp_states[TEGRA_PWM_BL_EDP_NUM_STATES];
 	unsigned int edp_brightness[TEGRA_PWM_BL_EDP_NUM_STATES];
 	int (*init)(struct device *dev);
