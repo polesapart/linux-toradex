@@ -948,6 +948,7 @@ int __init tegratab_soctherm_init(void)
 			(board_info.board_id == BOARD_P1640 &&
 			(board_info.fab != BOARD_FAB_A00 &&
 			board_info.fab != BOARD_FAB_A01))) {
+
 		tegra_add_cdev_trips(
 			tegratab_soctherm_data.therm[THERM_CPU].trips,
 			&tegratab_soctherm_data.therm[THERM_CPU].num_trips);
@@ -958,7 +959,7 @@ int __init tegratab_soctherm_init(void)
 
 static struct edp_manager tegratab_sysedp_manager = {
 	.name = "battery",
-	.max = 18900
+	.max = 16800
 };
 
 void __init tegratab_sysedp_init(void)
@@ -985,15 +986,11 @@ void __init tegratab_sysedp_init(void)
 }
 
 static unsigned int tegratab_psydepl_states[] = {
-	18900, 18000, 17000, 16000, 15000, 14000, 13000, 12000,
-	11000, 10000,
-	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
-	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
-	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
-	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
-	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
-	1300, 1200, 1100, 1000,  900,  800,  700,  600,
-	 500,  400,  300,  200,  100,    0
+	16800, 16200, 15900, 15600, 15300, 15000, 14700, 14400, 14100, 13800,
+	13500, 13200, 12900, 12600, 12300, 12000, 11700, 11400, 11100, 10800,
+	10500, 10200,  9900,  9600,  9300,  9000,  8700,  8300,  7900,  7500,
+	 7100,  6700,  6300,  5900,  5500,  5100,  4700,  4300,  3900,  3500,
+	 3000,  2500,  2000,  1500,  1000,   500,     0
 };
 
 static struct psy_depletion_ibat_lut tegratab_ibat_lut[] = {
@@ -1004,16 +1001,21 @@ static struct psy_depletion_ibat_lut tegratab_ibat_lut[] = {
 };
 
 static struct psy_depletion_rbat_lut tegratab_rbat_lut[] = {
-	{ 0,  40000 }
+	{ 100,   60000 },
+	{  30,   60000 },
+	{  20,   80000 },
+	{  15,   90000 },
+	{  10,  120000 },
+	{   0,  120000 }
 };
 
 static struct psy_depletion_platform_data tegratab_psydepl_pdata = {
 	.power_supply = "battery",
 	.states = tegratab_psydepl_states,
 	.num_states = ARRAY_SIZE(tegratab_psydepl_states),
-	.e0_index = 26, /* TBD */
+	.e0_index = 45,
 	.r_const = 40100,
-	.vsys_min = 3100000,
+	.vsys_min = 3200000,
 	.vcharge = 4200000,
 	.ibat_nom = 4500,
 	.ibat_lut = tegratab_ibat_lut,
@@ -1035,12 +1037,15 @@ void __init tegratab_sysedp_psydepl_init(void)
 }
 
 static struct tegra_sysedp_corecap tegratab_sysedp_corecap[] = {
+	/*
 	{  1000, {  1000, 240, 204 }, {  1000, 240, 204 } },
 	{  2000, {  1000, 240, 204 }, {  1000, 240, 204 } },
 	{  3000, {  1000, 240, 204 }, {  1000, 240, 204 } },
 	{  4000, {  1000, 240, 204 }, {  1000, 240, 204 } },
 	{  5000, {  1000, 240, 204 }, {  1000, 240, 312 } },
 	{  6000, {  1679, 240, 312 }, {  1679, 240, 312 } },
+	*/
+	{  6100, {  1700, 240, 312 }, {  1700, 240, 312 } },
 	{  7000, {  1843, 240, 624 }, {  1975, 324, 408 } },
 	{  8000, {  2843, 240, 624 }, {  2306, 420, 624 } },
 	{  9000, {  3843, 240, 624 }, {  2606, 420, 792 } },
@@ -1051,17 +1056,19 @@ static struct tegra_sysedp_corecap tegratab_sysedp_corecap[] = {
 	{ 14000, {  8565, 240, 792 }, {  6277, 600, 792 } },
 	{ 15000, {  9565, 384, 792 }, {  7277, 600, 792 } },
 	{ 16000, { 10565, 468, 792 }, {  8277, 600, 792 } },
+	/*
 	{ 17000, { 11565, 468, 792 }, {  9277, 600, 792 } },
 	{ 18000, { 12565, 468, 792 }, { 10277, 600, 792 } },
 	{ 19000, { 13565, 468, 792 }, { 11277, 600, 792 } },
 	{ 20000, { 14565, 468, 792 }, { 12277, 600, 792 } },
 	{ 23000, { 14565, 600, 792 }, { 14565, 600, 792 } },
+	*/
 };
 
 static struct tegra_sysedp_platform_data tegratab_sysedp_platdata = {
 	.corecap = tegratab_sysedp_corecap,
 	.corecap_size = ARRAY_SIZE(tegratab_sysedp_corecap),
-	.init_req_watts = 20000
+	.init_req_watts = 15000
 };
 
 static struct platform_device tegratab_sysedp_device = {
