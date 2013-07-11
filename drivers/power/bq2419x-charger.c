@@ -658,6 +658,7 @@ static irqreturn_t bq2419x_irq(int irq, void *data)
 		dev_err(bq2419x->dev, "Charging Fault: "
 				"Input Fault (VBUS OVP or VBAT<VBUS<3.8V)\n");
 		chg_complete_check = 0;
+		bq2419x->chg_restart_timeout = 0;
 		break;
 	case BQ2419x_FAULT_CHRG_THERMAL:
 		dev_err(bq2419x->dev, "Charging Fault: Thermal shutdown\n");
