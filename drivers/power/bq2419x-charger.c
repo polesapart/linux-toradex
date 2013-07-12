@@ -42,6 +42,13 @@
 #include <linux/alarmtimer.h>
 #include <generated/mach-types.h>
 
+enum bq2419x_version {
+	BQ24190_IC = 0,
+	BQ24192_IC,
+	BQ24193_IC,
+	BQ24192i_IC,
+};
+
 /* input current limit */
 static const unsigned int iinlim[] = {
 	100, 150, 500, 900, 1200, 1500, 2000, 3000,
@@ -93,6 +100,7 @@ struct bq2419x_chip {
 	int				chg_complete_soc;
 	bool				cut_pwr_chg_complete;
 	int				chg_enable;
+	int				chip_version;
 };
 
 #define MAX_CHARING_VOLTAGE	4208
@@ -249,6 +257,43 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	int ret;
 
 	if (machine_is_tegratab()) {
+		if (bq2419x->chip_version == BQ24193_IC) {
+			/* InCharge Limit=4.1A to make JEITA_ISET=20% is 0.2C*/
+			ret = regmap_write(bq2419x->regmap,
+					BQ2419X_CHRG_CTRL_REG, 0xE0);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+				"CHRG_CTRL_REG write failed %d\n", ret);
+				return ret;
+			}
+			/* JEITA_ISET=20%*/
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_TIME_CTRL_REG, BQ2419X_JEITA_ISET_MASK,
+				BQ2419X_JEITA_ISET_20);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+				"TIME_CTRL_REG update failed %d\n", ret);
+				return ret;
+			}
+			/* JEITA_VSET=4.2V*/
+			ret = regmap_update_bits(bq2419x->regmap,
+				BQ2419X_MISC_OPER_REG, BQ2419X_JEITA_VSET_MASK,
+				BQ2419X_JEITA_VSET_4_20V);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+				"MISC_OPER_REG update failed %d\n", ret);
+				return ret;
+			}
+		} else {
+			/* Configure Output Current Control to 3.2A*/
+			ret = regmap_write(bq2419x->regmap,
+					BQ2419X_CHRG_CTRL_REG, 0xA8);
+			if (ret < 0) {
+				dev_err(bq2419x->dev,
+				"CHRG_CTRL_REG write failed %d\n", ret);
+				return ret;
+			}
+		}
 		/* Not use termination, will check SOC*/
 		ret = regmap_update_bits(bq2419x->regmap,
 			BQ2419X_TIME_CTRL_REG, 0x80, 0);
@@ -257,18 +302,15 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 			"TIME_CTRL_REG update failed %d\n", ret);
 			return ret;
 		}
-
-		/* Configure Output Current Control to 2.56A*/
-		ret = regmap_write(bq2419x->regmap,
-				BQ2419X_CHRG_CTRL_REG, 0x80);
-	}
-	else if (machine_is_roth())
+	} else if (machine_is_roth()) {
 		/* Configure Output Current Control to 2.25A*/
 		ret = regmap_write(bq2419x->regmap,
 				BQ2419X_CHRG_CTRL_REG, 0x6c);
-	if (ret < 0) {
-		dev_err(bq2419x->dev, "CHRG_CTRL_REG write failed %d\n", ret);
-		return ret;
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"CHRG_CTRL_REG write failed %d\n", ret);
+			return ret;
+		}
 	}
 
 	/*
@@ -852,12 +894,21 @@ static int bq2419x_show_chip_version(struct bq2419x_chip *bq2419x)
 		return ret;
 	}
 
-	if ((val & BQ24190_IC_VER) == BQ24190_IC_VER)
+	val &= BQ2419X_IC_VER_MASK;
+
+	if (val == BQ24190_IC_VER) {
+		bq2419x->chip_version = BQ24190_IC;
 		dev_info(bq2419x->dev, "chip type BQ24190 detected\n");
-	else if ((val & BQ24192_IC_VER) == BQ24192_IC_VER)
-		dev_info(bq2419x->dev, "chip type BQ2419X/3 detected\n");
-	else if ((val & BQ24192i_IC_VER) == BQ24192i_IC_VER)
+	} else if (val == BQ24192_IC_VER) {
+		bq2419x->chip_version = BQ24192_IC;
+		dev_info(bq2419x->dev, "chip type BQ24192 detected\n");
+	} else if (val == BQ24193_IC_VER) {
+		bq2419x->chip_version = BQ24193_IC;
+		dev_info(bq2419x->dev, "chip type BQ24193 detected\n");
+	} else if (val == BQ24192i_IC_VER) {
+		bq2419x->chip_version = BQ24192i_IC;
 		dev_info(bq2419x->dev, "chip type BQ2419Xi detected\n");
+	}
 	return 0;
 }
 
