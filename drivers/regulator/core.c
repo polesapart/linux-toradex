@@ -1092,6 +1092,7 @@ static int set_machine_constraints(struct regulator_dev *rdev,
 			rdev_err(rdev, "failed to enable\n");
 			goto out;
 		}
+		rdev->use_count = 1;
 	}
 
 	if (rdev->constraints->ramp_delay && ops->set_ramp_delay) {
