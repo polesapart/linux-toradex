@@ -1221,7 +1221,7 @@ static int akm_sysfs_create(struct akm_inf *inf)
 {
 	int err;
 
-	err = sysfs_create_group(&inf->i2c->dev.kobj, &akm_attr_group);
+	err = sysfs_create_group(&inf->idev->dev.kobj, &akm_attr_group);
 	return err;
 }
 
@@ -1340,7 +1340,6 @@ static int akm_remove(struct i2c_client *client)
 
 	inf = i2c_get_clientdata(client);
 	if (inf != NULL) {
-		sysfs_remove_group(&inf->i2c->dev.kobj, &akm_attr_group);
 		if (inf->idev) {
 			input_unregister_device(inf->idev);
 			input_free_device(inf->idev);
@@ -1435,10 +1434,6 @@ static int akm_probe(struct i2c_client *client,
 	else if (err)
 		goto akm_probe_err;
 
-	err = akm_sysfs_create(inf);
-	if (err)
-		goto akm_probe_err;
-
 	mutex_init(&inf->mutex_data);
 	err = akm_input_create(inf);
 	if (err)
@@ -1452,6 +1447,9 @@ static int akm_probe(struct i2c_client *client,
 	}
 
 	INIT_DELAYED_WORK(&inf->dw, akm_work);
+	err = akm_sysfs_create(inf);
+	if (err)
+		goto akm_probe_err;
 
 	return 0;
 
