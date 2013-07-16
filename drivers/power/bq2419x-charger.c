@@ -80,7 +80,7 @@ struct bq2419x_chip {
 	void				(*update_status)(int, int);
 	int				(*soc_check)(void);
 	int				(*vcell_check)(void);
-
+	s32				(*current_check)(void);
 	struct regulator_dev		*chg_rdev;
 	struct regulator_desc		chg_reg_desc;
 	struct regulator_init_data	chg_reg_init_data;
@@ -103,8 +103,9 @@ struct bq2419x_chip {
 	int				chip_version;
 };
 
-#define MAX_CHARING_VOLTAGE	4208
-#define RECHARING_VOLTAGE	4140
+#define MAX_CHARING_VOLTAGE		4202
+#define RECHARING_VOLTAGE		4140
+#define CHARING_COMPLETE_CURRENT	-256
 
 static int chg_complete_check;
 
@@ -489,6 +490,7 @@ static void bq2419x_work_thread(struct kthread_work *work)
 	int val = 0;
 	int soc = 0;
 	int vcell = MAX_CHARING_VOLTAGE;
+	s32 batt_current = CHARING_COMPLETE_CURRENT;
 
 	for (;;) {
 		if (bq2419x->stop_thread)
@@ -502,8 +504,12 @@ static void bq2419x_work_thread(struct kthread_work *work)
 			if (bq2419x->vcell_check != NULL)
 				vcell = bq2419x->vcell_check();
 
+			if (bq2419x->vcell_check != NULL)
+				batt_current = bq2419x->current_check();
+
 			if ((soc >= bq2419x->chg_complete_soc) &&
 				(vcell >= MAX_CHARING_VOLTAGE) &&
+				(batt_current >= CHARING_COMPLETE_CURRENT) &&
 				!chg_complete_check) {
 				ret = regmap_read(bq2419x->regmap,
 					BQ2419X_SYS_STAT_REG, &val);
@@ -973,6 +979,7 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 		bq2419x->update_status	= pdata->bcharger_pdata->update_status;
 		bq2419x->soc_check	= pdata->bcharger_pdata->soc_check;
 		bq2419x->vcell_check	= pdata->bcharger_pdata->vcell_check;
+		bq2419x->current_check	= pdata->bcharger_pdata->current_check;
 		bq2419x->rtc_alarm_time	= pdata->bcharger_pdata->rtc_alarm_time;
 		bq2419x->wdt_time_sec	= pdata->bcharger_pdata->wdt_timeout;
 		bq2419x->chg_restart_time =

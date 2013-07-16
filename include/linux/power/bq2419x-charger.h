@@ -120,6 +120,7 @@ struct bq2419x_charger_platform_data {
 	int (*battery_check)(void);
 	int (*soc_check)(void);
 	int (*vcell_check)(void);
+	s32 (*current_check)(void);
 
 	int max_charge_volt_mV;
 	int max_charge_current_mA;
