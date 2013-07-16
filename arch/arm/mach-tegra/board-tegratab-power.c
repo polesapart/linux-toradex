@@ -35,6 +35,7 @@
 #include <linux/edp.h>
 #include <linux/edpdev.h>
 #include <linux/platform_data/tegra_edp.h>
+#include <linux/platform_data/ina230.h>
 
 #include <asm/mach-types.h>
 #include <linux/power/sbs-battery.h>
@@ -82,6 +83,7 @@ struct bq2419x_charger_platform_data tegratab_bq2419x_charger_pdata = {
 	.battery_check = max17048_check_battery,
 	.soc_check = max17048_check_soc,
 	.vcell_check = max17048_check_vcell,
+	.current_check = ina230_get_current,
 	.max_charge_current_mA = 3000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = tegratab_bq2419x_batt_supply,
@@ -776,6 +778,7 @@ int __init tegratab_regulator_init(void)
 	/* In factory mode boot case, charging until 70% */
 	if (get_androidboot_mode() == BOOTMODE_FACTORY) {
 		tegratab_bq2419x_charger_pdata.vcell_check = NULL;
+		tegratab_bq2419x_charger_pdata.current_check = NULL;
 		tegratab_bq2419x_charger_pdata.chg_complete_soc = 70;
 		tegratab_bq2419x_charger_pdata.chg_restart_time = 0;
 		tegratab_bq2419x_charger_pdata.cut_pwr_chg_complete = true;
