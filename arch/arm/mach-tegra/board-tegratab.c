@@ -749,7 +749,8 @@ static void __init tegra_tegratab_early_init(void)
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
 	platform_device_register(&tegra_smmu_device);
 #endif
-	tegratab_sysedp_init();
+	/* We don't want to enable sys EDP for a while. */
+	/*tegratab_sysedp_init();*/
 }
 
 #ifdef CONFIG_USE_OF
