@@ -411,10 +411,10 @@ static struct iio_map palmas_adc_iio_maps[] = {
 static struct palmas_gpadc_platform_data palmas_adc_pdata = {
 	/* If ch3_dual_current is true, it will measure ch3 input signal with
 	 * ch3_current and the next current of ch3_current.
-	 * So this system will use 10uA and 400uA for ch3 measurement. */
+	 * So this system will use 400uA and 800uA for ch3 measurement. */
 	.ch3_current_uA = 400,	/* 0uA, 10uA, 400uA, 800uA */
 	.ch3_dual_current = true,
-	.extended_delay = false,
+	.extended_delay = true,
 	.iio_maps = palmas_adc_iio_maps,
 };
 
