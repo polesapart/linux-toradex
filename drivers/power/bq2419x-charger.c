@@ -137,6 +137,10 @@ static int bq2419x_charger_enable(struct bq2419x_chip *bq2419x)
 	int ret;
 
 	if (bq2419x->chg_enable) {
+		/* charging enabled reset flag and timeout*/
+		chg_complete_check = 0;
+		bq2419x->chg_restart_timeout = 0;
+
 		ret = regmap_update_bits(bq2419x->regmap, BQ2419X_PWR_ON_REG,
 			 BQ2419X_ENABLE_CHARGE_MASK, BQ2419X_ENABLE_CHARGE);
 	} else {
@@ -496,6 +500,61 @@ static void bq2419x_work_thread(struct kthread_work *work)
 		if (bq2419x->stop_thread)
 			return;
 
+		if (bq2419x->chg_restart_timeout) {
+			mutex_lock(&bq2419x->mutex);
+			bq2419x->chg_restart_timeout--;
+			if (!bq2419x->chg_restart_timeout) {
+				dev_info(bq2419x->dev,
+					"Charging Restart by timer.\n");
+				ret = bq2419x_charger_disable(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger disable failed %d", ret);
+				mdelay(100);
+				ret = bq2419x_charger_enable(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger enable failed %d", ret);
+				ret = bq2419x_charger_init(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"Charger init failed: %d\n", ret);
+				ret = bq2419x_init(bq2419x);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"bq2419x init failed: %d\n", ret);
+
+				ret = regmap_read(bq2419x->regmap,
+					BQ2419X_SYS_STAT_REG, &val);
+				if (ret < 0)
+					dev_err(bq2419x->dev,
+					"SYS_STAT_REG read failed %d\n", ret);
+				/*
+				* Update Charging status based on STAT register
+				*/
+				if ((val & BQ2419x_CHRG_STATE_MASK) ==
+					BQ2419x_CHRG_STATE_NOTCHARGING) {
+					bq2419x->status = 0;
+					if (bq2419x->update_status)
+						bq2419x->update_status
+							(bq2419x->status, 0);
+					bq2419x->chg_restart_timeout =
+						bq2419x->chg_restart_time /
+						bq2419x->wdt_refresh_timeout;
+				} else {
+					bq2419x->status = 1;
+					if (bq2419x->update_status)
+						bq2419x->update_status
+							(bq2419x->status, 0);
+				}
+			}
+
+			if (bq2419x->suspended)
+				bq2419x->chg_restart_timeout = 0;
+
+			mutex_unlock(&bq2419x->mutex);
+		}
+
 		if (bq2419x->chg_complete_soc) {
 
 			if (bq2419x->soc_check != NULL)
@@ -553,67 +612,7 @@ static void bq2419x_work_thread(struct kthread_work *work)
 				if (ret < 0)
 					dev_err(bq2419x->dev,
 					"bq2419x init failed: %d\n", ret);
-				/* Set chg_restart_timeout to 0
-				   for preventing duplicate recharge */
-				bq2419x->chg_restart_timeout = 0;
-				chg_complete_check = 0;
 			}
-		}
-
-		if (bq2419x->chg_restart_timeout) {
-			mutex_lock(&bq2419x->mutex);
-			bq2419x->chg_restart_timeout--;
-			if (!bq2419x->chg_restart_timeout) {
-				dev_info(bq2419x->dev,
-					"Charging Restart by timer.\n");
-				ret = bq2419x_charger_disable(bq2419x);
-				if (ret < 0)
-					dev_err(bq2419x->dev,
-					"Charger disable failed %d", ret);
-				mdelay(100);
-				ret = bq2419x_charger_enable(bq2419x);
-				if (ret < 0)
-					dev_err(bq2419x->dev,
-					"Charger enable failed %d", ret);
-				ret = bq2419x_charger_init(bq2419x);
-				if (ret < 0)
-					dev_err(bq2419x->dev,
-					"Charger init failed: %d\n", ret);
-				ret = bq2419x_init(bq2419x);
-				if (ret < 0)
-					dev_err(bq2419x->dev,
-					"bq2419x init failed: %d\n", ret);
-
-				ret = regmap_read(bq2419x->regmap,
-					BQ2419X_SYS_STAT_REG, &val);
-				if (ret < 0)
-					dev_err(bq2419x->dev,
-					"SYS_STAT_REG read failed %d\n", ret);
-				/*
-				* Update Charging status based on STAT register
-				*/
-				if ((val & BQ2419x_CHRG_STATE_MASK) ==
-					BQ2419x_CHRG_STATE_NOTCHARGING) {
-					bq2419x->status = 0;
-					if (bq2419x->update_status)
-						bq2419x->update_status
-							(bq2419x->status, 0);
-					bq2419x->chg_restart_timeout =
-						bq2419x->chg_restart_time /
-						bq2419x->wdt_refresh_timeout;
-				} else {
-					bq2419x->status = 1;
-					if (bq2419x->update_status)
-						bq2419x->update_status
-							(bq2419x->status, 0);
-				}
-				chg_complete_check = 0;
-			}
-
-			if (bq2419x->suspended)
-				bq2419x->chg_restart_timeout = 0;
-
-			mutex_unlock(&bq2419x->mutex);
 		}
 
 		if (bq2419x->cut_pwr_chg_complete && chg_complete_check) {
