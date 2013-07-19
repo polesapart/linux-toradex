@@ -47,6 +47,7 @@
 #include <linux/i2c/at24.h>
 #include <linux/of_platform.h>
 #include <linux/edp.h>
+#include <linux/pwm_backlight.h>
 
 #include <asm/hardware/gic.h>
 
@@ -83,8 +84,9 @@
 #include "tegra-board-id.h"
 
 #ifdef CONFIG_USE_OF
-struct tegra_dc_platform_data tegratab_dc0_platform_data;
-struct tegra_dc_platform_data tegratab_dc1_platform_data;
+struct tegra_dc_platform_data		tegratab_dc0_platform_data;
+struct tegra_dc_platform_data		tegratab_dc1_platform_data;
+struct platform_pwm_backlight_data	tegratab_pwm_bl_data;
 #endif
 
 #if defined CONFIG_TI_ST || defined CONFIG_TI_ST_MODULE
@@ -769,10 +771,20 @@ struct of_dev_auxdata tegratab_auxdata_lookup[] __initdata = {
 				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-tsec", TEGRA_TSEC_BASE, "tsec",
 				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM0_BASE, "tegra_pwm.0",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM1_BASE, "tegra_pwm.1",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM2_BASE, "tegra_pwm.2",
+				NULL),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwfm", TEGRA_PWFM3_BASE, "tegra_pwm.3",
+				NULL),
 	OF_DEV_AUXDATA("nvidia,tegra114-dc", TEGRA_DISPLAY_BASE, "tegradc.0",
 		&tegratab_dc0_platform_data),
 	OF_DEV_AUXDATA("nvidia,tegra114-dc", TEGRA_DISPLAY2_BASE, "tegradc.1",
 		&tegratab_dc1_platform_data),
+	OF_DEV_AUXDATA("nvidia,tegra114-pwm-bl", 0x0, "pwm-backlight",
+		&tegratab_pwm_bl_data),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c000, "tegra11-i2c.0",
 		&tegratab_i2c1_platform_data),
 	OF_DEV_AUXDATA("nvidia,tegra114-i2c", 0x7000c400, "tegra11-i2c.1",
@@ -855,6 +867,10 @@ static void __init tegra_tegratab_dt_init(void)
 #endif
 	tegratab_dc0_platform_data.of_data.fb_start = tegra_fb_start;
 	tegratab_dc1_platform_data.of_data.fb_start = tegra_fb2_start;
+
+	tegratab_pwm_bl_data.is_charged =
+		(get_androidboot_mode() == BOOTMODE_CHARGER) ?
+		true : false;
 
 	of_platform_populate(NULL, of_default_bus_match_table,
 		tegratab_auxdata_lookup, &platform_bus);
