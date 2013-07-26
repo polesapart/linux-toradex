@@ -24,6 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/max17048_battery.h>
 #include <linux/jiffies.h>
+#include <linux/wakelock.h>
 
 #define MAX17048_VCELL		0x02
 #define MAX17048_SOC		0x04
@@ -80,6 +81,7 @@ struct max17048_chip {
 	int lasttime_status;
 	int shutdown_complete;
 	struct mutex mutex;
+	struct wake_lock wake_lock;
 };
 struct max17048_chip *max17048_data;
 
@@ -554,6 +556,8 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		chip->capacity_level = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
 		power_supply_changed(&chip->battery);
 
+		wake_lock_timeout(&chip->wake_lock, HZ * 2);
+
 		/* Clear VL for prevent continuous irq */
 		valrt = mdata->valert & 0x00FF;
 		ret = max17048_write_word(client, MAX17048_VALRT,
@@ -571,6 +575,8 @@ static irqreturn_t max17048_irq(int id, void *dev)
 				"%s(): STATUS_HD, SOC: %d\n",
 				__func__, chip->soc);
 		power_supply_changed(&chip->battery);
+
+		wake_lock_timeout(&chip->wake_lock, HZ * 2);
 	}
 	if (val & MAX17048_STATUS_SC) {
 		max17048_get_vcell(client);
@@ -751,6 +757,8 @@ static int __devinit max17048_probe(struct i2c_client *client,
 
 	max17048_data = chip;
 	mutex_init(&chip->mutex);
+	wake_lock_init(&chip->wake_lock, WAKE_LOCK_SUSPEND,
+			"max17048-irq");
 	chip->shutdown_complete = 0;
 	i2c_set_clientdata(client, chip);
 
@@ -814,8 +822,8 @@ irq_reg_error:
 	cancel_delayed_work_sync(&chip->work);
 	power_supply_unregister(&chip->battery);
 error2:
+	wake_lock_destroy(&chip->wake_lock);
 	mutex_destroy(&chip->mutex);
-
 	return ret;
 }
 
@@ -827,6 +835,7 @@ static int __devexit max17048_remove(struct i2c_client *client)
 		free_irq(client->irq, chip);
 	power_supply_unregister(&chip->battery);
 	cancel_delayed_work_sync(&chip->work);
+	wake_lock_destroy(&chip->wake_lock);
 	mutex_destroy(&chip->mutex);
 
 	return 0;
