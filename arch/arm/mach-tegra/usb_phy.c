@@ -32,8 +32,6 @@
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/tegra_usb.h>
 #include <linux/usb/otg.h>
-#include <linux/workqueue.h>
-#include <asm/mach-types.h>
 
 #include <mach/iomap.h>
 #include <mach/gpio-tegra.h>
@@ -267,15 +265,6 @@ fail_pllu_reg:
 	return err;
 }
 
-static void disable_emc_work_func(struct work_struct *work)
-{
-	struct tegra_usb_phy *phy = container_of(work, struct tegra_usb_phy,
-						delayed_emc_off_work.work);
-
-	DBG("%s(%d)\n", __func__, __LINE__);
-	tegra_clk_disable_unprepare(phy->emc_clk);
-}
-
 void tegra_usb_phy_close(struct usb_phy *x)
 {
 	struct tegra_usb_phy *phy = get_tegra_phy(x);
@@ -368,8 +357,7 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 			phy->pdata->ops->post_phy_off();
 	}
 
-	if (!machine_is_tegratab())
-		tegra_clk_disable_unprepare(phy->emc_clk);
+	tegra_clk_disable_unprepare(phy->emc_clk);
 	tegra_clk_disable_unprepare(phy->sys_clk);
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
 		if (!phy->pdata->u_data.host.hot_plug &&
@@ -398,9 +386,6 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 	}
 
 	phy->phy_power_on = false;
-	if (machine_is_tegratab())
-		schedule_delayed_work(&phy->delayed_emc_off_work,
-				msecs_to_jiffies(3000));
 
 	return err;
 }
@@ -421,8 +406,6 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 		phy->vdd_reg_on = true;
 	}
 #endif
-	if (machine_is_tegratab())
-		flush_delayed_work_sync(&phy->delayed_emc_off_work);
 
 	/* In device mode clock is turned on by pmu irq handler
 	 * if pmu irq is not available clocks will not be turned off/on
@@ -800,9 +783,6 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 	phy->phy.init = tegra_usb_phy_init;
 	phy->phy.shutdown = tegra_usb_phy_close;
 	phy->phy.set_suspend = tegra_usb_phy_set_suspend;
-
-	if (machine_is_tegratab())
-		INIT_DELAYED_WORK(&phy->delayed_emc_off_work, disable_emc_work_func);
 
 	return phy;
 
