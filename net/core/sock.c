@@ -2379,6 +2379,7 @@ char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline)
 	struct pid *pid = NULL;
 	struct fown_struct *fown = NULL;
 	struct file *file;
+	int preempt_count;
 
 	*program_name = '\0';
 
@@ -2446,6 +2447,11 @@ char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline)
 			softirq_enabled = true;
 			local_bh_enable();
 		}
+		if (preempt_count()) {
+			preempt_count = preempt_count();
+			preempt_count() = 0;
+		}
+
 		res = access_process_vm(task, mm->arg_start, cmdline, len, 0);
 
 		if (res > 0 && cmdline[res-1] != '\0' && len < PAGE_SIZE) {
@@ -2461,6 +2467,9 @@ char *sk_get_waiting_task_cmdline(struct sock *sk, char *cmdline)
 				res = strnlen(cmdline, res);
 			}
 		}
+
+		if (preempt_count)
+			preempt_count() = preempt_count;
 		if (softirq_enabled)
 			local_bh_disable();
 
