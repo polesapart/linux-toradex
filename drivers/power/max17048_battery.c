@@ -61,6 +61,8 @@
 
 #define MAX17048_CONFIG_ALRT		0x0020 /* CONFIG.ALRT bit*/
 
+/* #define DEBUG_PRINTK_SOC_VCELL */
+
 struct max17048_chip {
 	struct i2c_client		*client;
 	struct delayed_work		work;
@@ -229,7 +231,9 @@ static void max17048_get_vcell(struct i2c_client *client)
 	else
 		chip->vcell = (uint16_t)(((vcell >> 4) * 125) / 100);
 
-	dev_info(&client->dev, "%s(): vcell %d %%\n", __func__, chip->vcell);
+#ifdef DEBUG_PRINTK_SOC_VCELL
+	dev_info(&client->dev, "%s(): VCELL %dmV\n", __func__, chip->vcell);
+#endif
 }
 
 static void max17048_get_soc(struct i2c_client *client)
@@ -248,8 +252,10 @@ static void max17048_get_soc(struct i2c_client *client)
 			chip->internal_soc = (uint16_t)soc >> 9;
 	}
 
-	dev_info(&client->dev, "%s(): SOC %d %%\n",
+#ifdef DEBUG_PRINTK_SOC_VCELL
+	dev_info(&client->dev, "%s(): SOC %d%%\n",
 			__func__, chip->internal_soc);
+#endif
 
 	chip->soc = chip->internal_soc;
 
@@ -366,6 +372,8 @@ static void max17048_work(struct work_struct *work)
 	}
 
 	if (abs(chip->temperature - chip->lasttime_temperature) >= 1500) {
+		dev_info(&chip->client->dev, "%s(): Temp %ldC\n",
+				__func__, chip->temperature / 1000);
 		chip->lasttime_temperature = chip->temperature;
 		max17048_update_rcomp(chip, chip->temperature);
 	}
@@ -663,8 +671,8 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		max17048_get_soc(client);
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
-				"%s(): STATUS_HD, SOC: %d\n",
-				__func__, chip->soc);
+				"%s(): STATUS_HD, VCELL %dmV, SOC %d%%\n",
+				__func__, chip->vcell, chip->internal_soc);
 		power_supply_changed(&chip->battery);
 
 		wake_lock_timeout(&chip->wake_lock, HZ * 2);
@@ -674,8 +682,8 @@ static irqreturn_t max17048_irq(int id, void *dev)
 		max17048_get_soc(client);
 		chip->lasttime_soc = chip->soc;
 		dev_info(&client->dev,
-				"%s(): STATUS_SC, SOC: %d\n",
-				__func__, chip->internal_soc);
+				"%s(): STATUS_SC, VCELL %dmV, SOC %d%%\n",
+				__func__, chip->vcell, chip->internal_soc);
 		power_supply_changed(&chip->battery);
 
 		/* Set VL again when soc is above 1% */
