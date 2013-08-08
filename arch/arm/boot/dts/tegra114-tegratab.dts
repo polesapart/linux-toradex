@@ -243,7 +243,7 @@
 						pll0 = <0x01003110>;
 						pll1 = <0x00301b00>;
 						pe-current = <0x00000000>;
-						drive-current = <0x25252525>;
+						drive-current = <0x21212121>;
 						peak-current = <0x03030303>;
 					};
 					tmds-cfg@2 {
@@ -251,7 +251,7 @@
 						pll0 = <0x01003310>;
 						pll1 = <0x00301b00>;
 						pe-current = <0x00000000>;
-						drive-current = <0x27272727>;
+						drive-current = <0x24242424>;
 						peak-current = <0x03030303>;
 					};
 					tmds-cfg@3 {
