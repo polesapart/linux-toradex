@@ -262,15 +262,16 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 	int ret;
 
 	if (machine_is_tegratab()) {
+		/* InCharge Limit=3.136A, Battery Spec is 3.2A */
+		ret = regmap_write(bq2419x->regmap,
+				BQ2419X_CHRG_CTRL_REG, 0xA4);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"CHRG_CTRL_REG write failed %d\n", ret);
+			return ret;
+		}
+
 		if (bq2419x->chip_version == BQ24193_IC) {
-			/* InCharge Limit=4.1A to make JEITA_ISET=20% is 0.2C*/
-			ret = regmap_write(bq2419x->regmap,
-					BQ2419X_CHRG_CTRL_REG, 0xE0);
-			if (ret < 0) {
-				dev_err(bq2419x->dev,
-				"CHRG_CTRL_REG write failed %d\n", ret);
-				return ret;
-			}
 			/* JEITA_ISET=20%*/
 			ret = regmap_update_bits(bq2419x->regmap,
 				BQ2419X_TIME_CTRL_REG, BQ2419X_JEITA_ISET_MASK,
@@ -287,15 +288,6 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 			if (ret < 0) {
 				dev_err(bq2419x->dev,
 				"MISC_OPER_REG update failed %d\n", ret);
-				return ret;
-			}
-		} else {
-			/* Configure Output Current Control to 3.2A*/
-			ret = regmap_write(bq2419x->regmap,
-					BQ2419X_CHRG_CTRL_REG, 0xA8);
-			if (ret < 0) {
-				dev_err(bq2419x->dev,
-				"CHRG_CTRL_REG write failed %d\n", ret);
 				return ret;
 			}
 		}
