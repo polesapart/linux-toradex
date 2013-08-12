@@ -262,10 +262,6 @@ static void max17048_get_soc(struct i2c_client *client)
 
 	chip->soc = chip->internal_soc;
 
-	/* temporary solution for prevent hangup in low SOC without EDP */
-	if (chip->soc == 1)
-		chip->soc = 0;
-
 	if (chip->internal_soc >= MAX17048_BATTERY_FULL) {
 		if (chip->status == POWER_SUPPLY_STATUS_CHARGING)
 			chip->status = POWER_SUPPLY_STATUS_FULL;
