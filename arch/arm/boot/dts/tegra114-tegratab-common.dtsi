@@ -829,7 +829,7 @@
 			reg = <0x36>;
 			interrupt-parent = <&gpio>;
 			interrupts = <133 0x04>;	/* gpio PQ5 */
-			alert-threshold = <2>;		/* 2% SOC */
+			alert-threshold = <1>;		/* 1% SOC */
 			one-percent-alerts = <1>;
 			valert-max = <5100>;		/* not use */
 			valert-min = <3240>;		/* 3.24V */
