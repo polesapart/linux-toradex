@@ -166,9 +166,6 @@ int tegra_dc_ext_set_cursor_image(struct tegra_dc_ext_user *user,
 	tegra_dc_io_start(dc);
 	tegra_dc_hold_dc_out(dc);
 
-	tegra_dc_writel(dc, WRITE_MUX_ACTIVE | READ_MUX_ACTIVE,
-			DC_CMD_STATE_ACCESS);
-
 	set_cursor_image_hw(dc, args, phys_addr);
 
 	tegra_dc_writel(dc, GENERAL_ACT_REQ << 8, DC_CMD_STATE_CONTROL);
@@ -221,9 +218,6 @@ int tegra_dc_ext_set_cursor(struct tegra_dc_ext_user *user,
 	mutex_lock(&dc->lock);
 	tegra_dc_io_start(dc);
 	tegra_dc_hold_dc_out(dc);
-
-	tegra_dc_writel(dc, WRITE_MUX_ACTIVE | READ_MUX_ACTIVE,
-			DC_CMD_STATE_ACCESS);
 
 	val = tegra_dc_readl(dc, DC_DISP_DISP_WIN_OPTIONS);
 	if (!!(val & CURSOR_ENABLE) != enable) {
@@ -279,9 +273,6 @@ int tegra_dc_ext_cursor_clip(struct tegra_dc_ext_user *user,
 	mutex_lock(&dc->lock);
 	tegra_dc_io_start(dc);
 	tegra_dc_hold_dc_out(dc);
-
-	tegra_dc_writel(dc, WRITE_MUX_ACTIVE | READ_MUX_ACTIVE,
-			DC_CMD_STATE_ACCESS);
 
 	reg_val = tegra_dc_readl(dc, DC_DISP_CURSOR_START_ADDR);
 	reg_val &= ~CURSOR_CLIP_SHIFT_BITS(3); /* Clear out the old value */
