@@ -776,16 +776,6 @@ int __init tegratab_regulator_init(void)
 	tegratab_max17048_boardinfo[0].irq = gpio_to_irq(TEGRA_GPIO_PQ5);
 	i2c_register_board_info(0, tegratab_max17048_boardinfo, 1);
 #endif
-#ifdef CONFIG_ANDROID
-	/* In factory mode boot case, charging until 70% */
-	if (get_androidboot_mode() == BOOTMODE_FACTORY) {
-		tegratab_bq2419x_charger_pdata.vcell_check = NULL;
-		tegratab_bq2419x_charger_pdata.current_check = NULL;
-		tegratab_bq2419x_charger_pdata.chg_complete_soc = 70;
-		tegratab_bq2419x_charger_pdata.chg_restart_time = 0;
-		tegratab_bq2419x_charger_pdata.cut_pwr_chg_complete = true;
-	}
-#endif
 	/* Disable charger when adapter is power source. */
 	if (get_power_supply_type() != POWER_SUPPLY_TYPE_BATTERY)
 		tegratab_bq2419x_pdata.bcharger_pdata = NULL;
