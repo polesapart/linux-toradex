@@ -668,6 +668,7 @@ static ssize_t store(struct kobject *kobj, struct attribute *attr,
 		goto no_policy;
 
 	policy = freqobj->cpu_policy;
+
 	policy = cpufreq_cpu_get(policy->cpu);
 	if (!policy)
 		goto no_policy;
@@ -814,6 +815,7 @@ static int cpufreq_add_dev_policy(unsigned int cpu,
 			spin_lock_irqsave(&cpufreq_driver_lock, flags);
 			cpumask_copy(managed_policy->cpus, policy->cpus);
 			per_cpu(cpufreq_cpu_data, cpu) = managed_policy;
+			cpu_sysnode[cpu].cpu_policy = managed_policy;
 			spin_unlock_irqrestore(&cpufreq_driver_lock, flags);
 
 			pr_debug("CPU already managed, adding link\n");
@@ -884,6 +886,7 @@ static int cpufreq_add_dev_interface(unsigned int cpu,
 		if (!cpu_online(j))
 			continue;
 		per_cpu(cpufreq_cpu_data, j) = policy;
+		cpu_sysnode[j].cpu_policy = policy;
 		per_cpu(cpufreq_policy_cpu, j) = policy->cpu;
 	}
 	spin_unlock_irqrestore(&cpufreq_driver_lock, flags);
@@ -1004,7 +1007,7 @@ static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 				     CPUFREQ_START, policy);
 
-	policy->kobj = &cpu_sysnode[cpu].cpu_kobj;
+	policy->kobj = &cpu_sysnode[policy->cpu].cpu_kobj;
 
 	ret = cpufreq_add_dev_policy(cpu, policy, dev);
 	if (ret) {
@@ -1030,8 +1033,10 @@ static int cpufreq_add_dev(struct device *dev, struct subsys_interface *sif)
 
 err_out_unregister:
 	spin_lock_irqsave(&cpufreq_driver_lock, flags);
-	for_each_cpu(j, policy->cpus)
+	for_each_cpu(j, policy->cpus) {
 		per_cpu(cpufreq_cpu_data, j) = NULL;
+		cpu_sysnode[j].cpu_policy = NULL;
+	}
 	spin_unlock_irqrestore(&cpufreq_driver_lock, flags);
 	kobject_put(policy->kobj);
 err_unlock_policy:
@@ -1088,7 +1093,6 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 		cpumask_clear_cpu(cpu, data->cpus);
 		spin_unlock_irqrestore(&cpufreq_driver_lock, flags);
 		kobj = &dev->kobj;
-		cpufreq_cpu_put(data);
 		unlock_policy_rwsem_write(cpu);
 		sysfs_remove_link(kobj, "cpufreq");
 		return 0;
@@ -1112,6 +1116,7 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			if (j == cpu)
 				continue;
 			per_cpu(cpufreq_cpu_data, j) = NULL;
+			cpu_sysnode[j].cpu_policy = NULL;
 		}
 	}
 
@@ -1131,7 +1136,6 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			unlock_policy_rwsem_write(cpu);
 			sysfs_remove_link(kobj, "cpufreq");
 			lock_policy_rwsem_write(cpu);
-			cpufreq_cpu_put(data);
 		}
 	}
 #else
