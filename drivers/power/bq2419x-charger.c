@@ -98,11 +98,11 @@ struct bq2419x_chip {
 	int				chg_restart_timeout;
 	int				chg_restart_time;
 	int				chg_complete_soc;
-	bool				cut_pwr_chg_complete;
 	int				chg_enable;
 	int				chip_version;
 };
 
+#define FULL_CHARGE_SOC			100
 #define MAX_CHARING_VOLTAGE		4202
 #define RECHARING_VOLTAGE		4140
 #define CHARING_COMPLETE_CURRENT	-256
@@ -291,14 +291,6 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 				return ret;
 			}
 		}
-		/* Not use termination, will check SOC*/
-		ret = regmap_update_bits(bq2419x->regmap,
-			BQ2419X_TIME_CTRL_REG, 0x80, 0);
-		if (ret < 0) {
-			dev_err(bq2419x->dev,
-			"TIME_CTRL_REG update failed %d\n", ret);
-			return ret;
-		}
 	} else if (machine_is_roth()) {
 		/* Configure Output Current Control to 2.25A*/
 		ret = regmap_write(bq2419x->regmap,
@@ -306,6 +298,17 @@ static int bq2419x_charger_init(struct bq2419x_chip *bq2419x)
 		if (ret < 0) {
 			dev_err(bq2419x->dev,
 			"CHRG_CTRL_REG write failed %d\n", ret);
+			return ret;
+		}
+	}
+
+	if (bq2419x->chg_complete_soc && bq2419x->soc_check) {
+		/* Not use termination, will check SOC*/
+		ret = regmap_update_bits(bq2419x->regmap,
+			BQ2419X_TIME_CTRL_REG, 0x80, 0);
+		if (ret < 0) {
+			dev_err(bq2419x->dev,
+			"TIME_CTRL_REG update failed %d\n", ret);
 			return ret;
 		}
 	}
@@ -333,10 +336,8 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 	bq_charger->status = 0;
 
 	ret = bq2419x_charger_enable(bq_charger);
-	if (ret < 0) {
-		dev_err(bq_charger->dev, "Charger enable failed %d", ret);
-		return ret;
-	}
+	if (ret < 0)
+		goto error;
 
 	ret = regmap_read(bq_charger->regmap, BQ2419X_SYS_STAT_REG, &val);
 	if (ret < 0)
@@ -344,7 +345,7 @@ static int bq2419x_set_charging_current(struct regulator_dev *rdev,
 				BQ2419X_SYS_STAT_REG);
 
 	if (max_uA == 0 && val != 0)
-		return ret;
+		return 0;
 
 	bq_charger->in_current_limit = max_uA/1000;
 	if ((val & BQ2419x_VBUS_STAT) == BQ2419x_VBUS_UNKNOWN) {
@@ -484,9 +485,9 @@ static void bq2419x_work_thread(struct kthread_work *work)
 			struct bq2419x_chip, bq_wdt_work);
 	int ret;
 	int val = 0;
-	int soc = 0;
-	int vcell = MAX_CHARING_VOLTAGE;
-	s32 batt_current = CHARING_COMPLETE_CURRENT;
+	int soc;
+	int vcell;
+	s32 batt_current;
 
 	for (;;) {
 		if (bq2419x->stop_thread)
@@ -547,16 +548,23 @@ static void bq2419x_work_thread(struct kthread_work *work)
 			mutex_unlock(&bq2419x->mutex);
 		}
 
-		if (bq2419x->chg_complete_soc) {
+		if (bq2419x->chg_complete_soc && bq2419x->soc_check) {
+			mutex_lock(&bq2419x->mutex);
+			soc = bq2419x->soc_check();
 
-			if (bq2419x->soc_check != NULL)
-				soc = bq2419x->soc_check();
-
-			if (bq2419x->vcell_check != NULL)
+			/* Check voltage when complete soc is 100% */
+			if ((bq2419x->chg_complete_soc >= FULL_CHARGE_SOC) &&
+				bq2419x->vcell_check)
 				vcell = bq2419x->vcell_check();
+			else
+				vcell = MAX_CHARING_VOLTAGE;
 
-			if (bq2419x->vcell_check != NULL)
+			/* Check current when complete soc is 100% */
+			if ((bq2419x->chg_complete_soc >= FULL_CHARGE_SOC) &&
+				bq2419x->current_check)
 				batt_current = bq2419x->current_check();
+			else
+				batt_current = CHARING_COMPLETE_CURRENT;
 
 			if ((soc >= bq2419x->chg_complete_soc) &&
 				(vcell >= MAX_CHARING_VOLTAGE) &&
@@ -605,9 +613,13 @@ static void bq2419x_work_thread(struct kthread_work *work)
 					dev_err(bq2419x->dev,
 					"bq2419x init failed: %d\n", ret);
 			}
+			mutex_unlock(&bq2419x->mutex);
 		}
 
-		if (bq2419x->cut_pwr_chg_complete && chg_complete_check) {
+		/* When chg_complete_soc < 100 and charging done,
+		   cut charger power */
+		if ((bq2419x->chg_complete_soc < FULL_CHARGE_SOC) &&
+			chg_complete_check) {
 			/* Set EN_HIZ for cut charger power */
 			ret = regmap_update_bits(bq2419x->regmap,
 				BQ2419X_INPUT_SRC_REG, BQ2419X_EN_HIZ,
@@ -938,12 +950,47 @@ static int bq2419x_wakealarm(struct bq2419x_chip *bq2419x, int time_sec)
 	return 0;
 }
 
+static s32 show_chg_complete_soc(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	return sprintf(buf, "%d\n", bq2419x->chg_complete_soc);
+}
+
+static s32 store_chg_complete_soc(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int soc;
+
+	if ((sscanf(buf, "%d", &soc) != 1) || soc < 60 || soc > 100)
+		return -EINVAL;
+
+	mutex_lock(&bq2419x->mutex);
+	/* forced check re-charging*/
+	chg_complete_check = 1;
+	bq2419x->chg_complete_soc = soc;
+	mutex_unlock(&bq2419x->mutex);
+
+	return count;
+}
+
+static struct device_attribute bq2419x_attrs[] = {
+	__ATTR(chg_complete_soc, S_IRUSR | S_IWUSR,
+		show_chg_complete_soc, store_chg_complete_soc),
+};
+
 static int __devinit bq2419x_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
 {
 	struct bq2419x_chip *bq2419x;
 	struct bq2419x_platform_data *pdata;
 	int ret = 0;
+	int i;
 
 	pdata = client->dev.platform_data;
 	if (!pdata) {
@@ -977,8 +1024,6 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 				pdata->bcharger_pdata->chg_restart_time;
 		bq2419x->chg_complete_soc =
 				pdata->bcharger_pdata->chg_complete_soc;
-		bq2419x->cut_pwr_chg_complete =
-				pdata->bcharger_pdata->cut_pwr_chg_complete;
 		bq2419x->chg_enable	= true;
 	}
 
@@ -1060,7 +1105,17 @@ static int __devinit bq2419x_probe(struct i2c_client *client,
 	if (ret < 0)
 		goto scrub_irq;
 
+	/* create sysfs node */
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++) {
+		ret = device_create_file(&client->dev, &bq2419x_attrs[i]);
+		if (ret)
+			goto scrub_file;
+	}
+
 	return 0;
+scrub_file:
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++)
+		device_remove_file(&client->dev, &bq2419x_attrs[i]);
 scrub_irq:
 	free_irq(bq2419x->irq, bq2419x);
 scrub_kthread:
@@ -1078,6 +1133,7 @@ scrub_chg_reg:
 static int __devexit bq2419x_remove(struct i2c_client *client)
 {
 	struct bq2419x_chip *bq2419x = i2c_get_clientdata(client);
+	int i;
 
 	free_irq(bq2419x->irq, bq2419x);
 	bq2419x->stop_thread = true;
@@ -1085,6 +1141,8 @@ static int __devexit bq2419x_remove(struct i2c_client *client)
 	kthread_stop(bq2419x->bq_kworker_task);
 	regulator_unregister(bq2419x->vbus_rdev);
 	regulator_unregister(bq2419x->chg_rdev);
+	for (i = 0; i < ARRAY_SIZE(bq2419x_attrs); i++)
+		device_remove_file(&client->dev, &bq2419x_attrs[i]);
 	mutex_destroy(&bq2419x->mutex);
 	return 0;
 }

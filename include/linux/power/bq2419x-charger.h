@@ -131,7 +131,6 @@ struct bq2419x_charger_platform_data {
 	struct regulator_consumer_supply *consumer_supplies;
 	int chg_restart_time;
 	int chg_complete_soc;
-	bool cut_pwr_chg_complete;
 };
 
 /*
