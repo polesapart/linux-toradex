@@ -269,6 +269,10 @@ static void read_source(struct quadd_event_source_interface *source,
 		record_data.cpu_mode = user_mode(regs) ?
 			QUADD_CPU_MODE_USER : QUADD_CPU_MODE_KERNEL;
 
+		/* For security reasons, hide IPs from the kernel space. */
+		if (record_data.cpu_mode == QUADD_CPU_MODE_KERNEL)
+			record_data.sample.ip = 0;
+
 		record_data.sample.callchain_nr = callchain_nr;
 
 		if (pid > 0) {
