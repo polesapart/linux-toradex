@@ -48,8 +48,10 @@ struct tegra_sysedp_platform_data {
 
 #ifdef CONFIG_EDP_FRAMEWORK
 void tegra_edp_notify_gpu_load(unsigned int load);
+void sysedp_lite_throttle(unsigned int power);
 #else
 static inline void tegra_edp_notify_gpu_load(unsigned int load) {}
+void sysedp_lite_throttle(unsigned int power) {}
 #endif
 
 #endif
