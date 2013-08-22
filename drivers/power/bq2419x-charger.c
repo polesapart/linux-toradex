@@ -980,7 +980,7 @@ static s32 store_chg_complete_soc(struct device *dev,
 }
 
 static struct device_attribute bq2419x_attrs[] = {
-	__ATTR(chg_complete_soc, S_IRUSR | S_IWUSR,
+	__ATTR(chg_complete_soc, S_IRUGO | S_IWUGO,
 		show_chg_complete_soc, store_chg_complete_soc),
 };
 
