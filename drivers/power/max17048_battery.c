@@ -206,7 +206,8 @@ static int max17048_get_property(struct power_supply *psy,
 		val->intval = chip->status;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = chip->vcell;
+		/* unit is uV */
+		val->intval = chip->vcell * 1000;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = chip->soc;
@@ -218,7 +219,8 @@ static int max17048_get_property(struct power_supply *psy,
 		val->intval = chip->capacity_level;
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
-		val->intval = max17048_get_ocv(chip);
+		/* unit is uV */
+		val->intval = max17048_get_ocv(chip) * 1000;
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		/* show 1 places of decimals, 681 means 68.1C */
