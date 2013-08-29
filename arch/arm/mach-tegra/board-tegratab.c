@@ -849,7 +849,6 @@ static void __init tegra_tegratab_late_init(void)
 	tegratab_bt_st();
 	tegratab_tegra_setup_st_host_wake();
 #endif
-	tegra_release_bootloader_fb();
 	tegratab_modem_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
@@ -914,6 +913,13 @@ static const char * const tegratab_dt_board_compat[] = {
 	"nvidia,tegratab",
 	NULL
 };
+
+static int __init tegratab_tegra_release_bootloader_fb(void)
+{
+	tegra_release_bootloader_fb();
+	return 0;
+}
+late_initcall(tegratab_tegra_release_bootloader_fb);
 
 MACHINE_START(TEGRATAB, "tegratab")
 	.atag_offset	= 0x100,
