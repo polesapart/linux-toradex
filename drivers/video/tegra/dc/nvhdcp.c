@@ -1071,9 +1071,9 @@ static int tegra_nvhdcp_off(struct tegra_nvhdcp *nvhdcp)
 {
 	bool plugged_at_start = nvhdcp_is_plugged(nvhdcp);
 
+	nvhdcp_set_plugged(nvhdcp, false);
 	mutex_lock(&nvhdcp->lock);
 	nvhdcp->state = STATE_OFF;
-	nvhdcp_set_plugged(nvhdcp, false);
 	mutex_unlock(&nvhdcp->lock);
 	wake_up_interruptible(&wq_worker);
 	flush_workqueue(nvhdcp->downstream_wq);
