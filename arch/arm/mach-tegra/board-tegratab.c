@@ -729,11 +729,15 @@ struct spi_board_info rm31080a_tegratab_spi_board[1] = {
 
 static int __init tegratab_touch_init(void)
 {
-#if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
-	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
 	struct board_info board_info;
 
+	if (get_androidboot_mode() == BOOTMODE_CHARGER)
+		return 0;
+
 	tegra_get_board_info(&board_info);
+
+#if defined(CONFIG_TOUCHSCREEN_MAXIM_STI) || \
+	defined(CONFIG_TOUCHSCREEN_MAXIM_STI_MODULE)
 	if (board_info.board_id == BOARD_P1640) {
 		if (board_info.fab == BOARD_FAB_A00)
 			maxim_sti_spi_board.platform_data = &maxim_sti_pdata;
