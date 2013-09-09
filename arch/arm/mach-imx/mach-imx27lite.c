@@ -25,6 +25,7 @@
 #include <mach/iomux-mx27.h>
 
 #include "devices-imx27.h"
+#include "cpu_op-mx27.h"
 
 static const int mx27lite_pins[] __initconst = {
 	/* UART1 */
@@ -63,6 +64,10 @@ static void __init mx27lite_init(void)
 		"imx27lite");
 	imx27_add_imx_uart0(&uart_pdata);
 	imx27_add_fec(NULL);
+
+#if defined(CONFIG_CPU_FREQ_IMX)
+	get_cpu_op = mx27_get_cpu_op;
+#endif
 }
 
 static void __init mx27lite_timer_init(void)
