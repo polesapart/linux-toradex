@@ -58,7 +58,7 @@ static struct rt5639_init_reg init_list[] = {
 	{RT5639_ADDA_CLK1	, 0x1114},/* 73[2] = 1'b */
 	{RT5639_MICBIAS		, 0x3030},/* 93[5:4] = 11'b */
 	{RT5639_CLS_D_OUT	, 0xa000},/* 8d[11] = 0'b */
-	{RT5639_CLS_D_OVCD	, 0x0334},/* 8c[8] = 1'b */
+	{RT5639_CLS_D_OVCD	, 0x0301},/* 8c[8] = 1'b */
 	{RT5639_PRIV_INDEX	, 0x001d},/* PR1d[8] = 1'b; */
 	{RT5639_PRIV_DATA	, 0x0347},
 	{RT5639_PRIV_INDEX	, 0x003d},/* PR3d[12] = 0'b; PR3d[9] = 1'b */
@@ -196,7 +196,7 @@ static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 	[RT5639_DMIC] = 0x1d00,
 	[RT5639_ASRC_3] = 0x0008,
 	[RT5639_HP_OVCD] = 0x0600,
-	[RT5639_CLS_D_OVCD] = 0x0228,
+	[RT5639_CLS_D_OVCD] = 0x0201, /*Init to 0.15A OVCD */
 	[RT5639_CLS_D_OUT] = 0xa800,
 	[RT5639_DEPOP_M1] = 0x0004,
 	[RT5639_DEPOP_M2] = 0x1100,
@@ -571,6 +571,7 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	return jack_type;
 }
 EXPORT_SYMBOL(rt5639_headset_detect);
+
 
 /**
  * rt5639_conn_mux_path - connect MUX widget path.
@@ -1406,6 +1407,7 @@ static int rt5639_mono_adcr_event(struct snd_soc_dapm_widget *w,
 static int rt5639_spk_event(struct snd_soc_dapm_widget *w,
 		struct snd_kcontrol *kcontrol, int event)
 {
+	int val;
 	struct snd_soc_codec *codec = w->codec;
 
 	switch (event) {
@@ -1419,9 +1421,17 @@ static int rt5639_spk_event(struct snd_soc_dapm_widget *w,
 			RT5639_CLSD_INT_REG1, 0xf000, 0xf000);
 		snd_soc_update_bits(codec, RT5639_SPK_VOL,
 			RT5639_L_MUTE | RT5639_R_MUTE, 0);
+
+		/* Make sure test mode is not enabled */
+		val = rt5639_index_read(codec, 0x001B);
+		if (val == 0x9200)
+			snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
+		else
+			snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0328);
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
+		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
 		snd_soc_update_bits(codec, RT5639_SPK_VOL,
 			RT5639_L_MUTE | RT5639_R_MUTE,
 			RT5639_L_MUTE | RT5639_R_MUTE);
@@ -2912,6 +2922,15 @@ static DEVICE_ATTR(codec_reg, 0644, rt5639_codec_show, rt5639_codec_store);
 static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
 {
+	int val;
+
+	/* Make sure test mode is not enabled */
+	val = rt5639_index_read(codec, 0x001B);
+	if (val == 0x9200)
+		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
+	else
+		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0328);
+
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		break;
@@ -2953,6 +2972,7 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 		snd_soc_write(codec, RT5639_PWR_MIXER, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_ANLG1, 0x0000);
 		snd_soc_write(codec, RT5639_PWR_ANLG2, 0x0000);
+		snd_soc_write(codec, RT5639_CLS_D_OVCD, 0x0301);
 		break;
 
 	default:
@@ -2967,6 +2987,12 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 {
 	struct rt5639_priv *rt5639 = snd_soc_codec_get_drvdata(codec);
 	int ret;
+#ifdef RTK_IOCTL
+#if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
+	struct rt56xx_ops *ioctl_ops;
+#endif
+#endif
+
 
 	pr_info("Codec driver version %s\n", VERSION);
 
@@ -3025,7 +3051,7 @@ static int rt5639_probe(struct snd_soc_codec *codec)
 
 #ifdef RTK_IOCTL
 #if defined(CONFIG_SND_HWDEP) || defined(CONFIG_SND_HWDEP_MODULE)
-	struct rt56xx_ops *ioctl_ops = rt56xx_get_ioctl_ops();
+	ioctl_ops = rt56xx_get_ioctl_ops();
 	ioctl_ops->index_write = rt5639_index_write;
 	ioctl_ops->index_read = rt5639_index_read;
 	ioctl_ops->index_update_bits = rt5639_index_update_bits;
@@ -3058,7 +3084,7 @@ static int rt5639_remove(struct snd_soc_codec *codec)
 }
 
 #ifdef CONFIG_PM
-static int rt5639_suspend(struct snd_soc_codec *codec, pm_message_t state)
+static int rt5639_suspend(struct snd_soc_codec *codec)
 {
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
@@ -3174,16 +3200,6 @@ static int __devexit rt5639_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
-static int rt5639_i2c_shutdown(struct i2c_client *client)
-{
-	struct rt5639_priv *rt5639 = i2c_get_clientdata(client);
-	struct snd_soc_codec *codec = rt5639->codec;
-
-	if (codec != NULL)
-		rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
-
-	return 0;
-}
 
 struct i2c_driver rt5639_i2c_driver = {
 	.driver = {
@@ -3192,7 +3208,6 @@ struct i2c_driver rt5639_i2c_driver = {
 	},
 	.probe = rt5639_i2c_probe,
 	.remove   = __devexit_p(rt5639_i2c_remove),
-	.shutdown = rt5639_i2c_shutdown,
 	.id_table = rt5639_i2c_id,
 };
 
