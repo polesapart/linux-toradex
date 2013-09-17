@@ -539,7 +539,7 @@ DEFINE_CLOCK(sdhc1_clk1,   0, PCCR0,  5, NULL, NULL, &ipg_clk);
 DEFINE_CLOCK(scc_clk,      0, PCCR0,  6, NULL, NULL, &ipg_clk);
 DEFINE_CLOCK(sahara2_clk,  0, PCCR0,  7, NULL, &sahara2_clk1, &ahb_clk);
 DEFINE_CLOCK(rtic_clk,     0, PCCR0,  8, NULL, &rtic_clk1, &ahb_clk);
-DEFINE_CLOCK(rtc_clk,      0, PCCR0,  9, NULL, NULL, &ipg_clk);
+DEFINE_CLOCK(rtc_clk,      0, PCCR0,  9, NULL, NULL, &ckil_clk);
 DEFINE_CLOCK(pwm_clk1,     0, PCCR0, 11, NULL, NULL, &ipg_clk);
 DEFINE_CLOCK(owire_clk,    0, PCCR0, 12, NULL, NULL, &ipg_clk);
 DEFINE_CLOCK(mstick_clk1,  0, PCCR0, 13, NULL, NULL, &ipg_clk);
