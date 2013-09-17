@@ -165,14 +165,20 @@ static struct mtd_partition mx27lite_nor_partitions[] = {
 	 .mask_flags = MTD_WRITEABLE
 	},
 	{
-	 .name = "nor.config",
-	 .size = 64 * 1024,
+	 .name = "nor.user",
+	 .size = 1664 * 1024,
 	 .offset = MTDPART_OFS_APPEND,
-	 .mask_flags = MTD_WRITEABLE
+	 .mask_flags = 0
 	},
 	{
-	 .name = "nor.extra",
-	 .size = MTDPART_SIZ_FULL,
+	 .name = "nor.env1",
+	 .size = 64 * 1024,
+	 .offset = MTDPART_OFS_APPEND,
+	 .mask_flags = 0
+	},
+	{
+	 .name = "nor.env2",
+	 .size = 64 * 1024,
 	 .offset = MTDPART_OFS_APPEND,
 	 .mask_flags = 0
 	},
@@ -221,9 +227,40 @@ static struct platform_device mxc_rtc_device = {
 	.resource = rtc_resources,
 };
 
+/* LEDs */
+static struct gpio_led gpio_leds[] = {
+	{
+		.name			= "gpio0",
+		.default_trigger	= "none",
+		.active_low		= 1,
+		.gpio			= GPIO_PORTC | 25,
+	},
+	{
+		.name			= "gpio1",
+		.default_trigger	= "none",
+		.active_low		= 1,
+		.gpio			= GPIO_PORTC | 26,
+	},
+};
+
+static struct gpio_led_platform_data gpio_led_info = {
+	.leds		= gpio_leds,
+	.num_leds	= ARRAY_SIZE(gpio_leds),
+};
+
+static struct platform_device leds_gpio = {
+	.name	= "leds-gpio",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &gpio_led_info,
+	},
+};
+
+
 static struct platform_device *platform_devices[] __initdata = {
 	&mx27lite_nor_mtd_device,
 	&mxc_rtc_device,
+	&leds_gpio,
 };
 
 /* I2C */
@@ -368,6 +405,10 @@ static void __init mx27lite_init(void)
 		"imx27lite");
 	mxc_gpio_mode(PD28_PF_CSPI1_SS0); /* MC13783 SPI CS */
 	mxc_gpio_mode(GPIO_PORTB | 29 | GPIO_GPIO | GPIO_IN); /* MC13783 IRQ */
+
+	/* LEDs */
+	mxc_gpio_mode(GPIO_PORTC | 25 | GPIO_GPIO | GPIO_OUT);
+	mxc_gpio_mode(GPIO_PORTC | 26 | GPIO_GPIO | GPIO_OUT);
 
 	imx27_add_imx_fb(&mx27lite_fb_data);
 	imx27_add_imx_uart0(&uart_pdata);
