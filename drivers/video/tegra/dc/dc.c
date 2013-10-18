@@ -2693,6 +2693,14 @@ static void tegra_dc_shutdown(struct platform_device *ndev)
 	if (!dc || !dc->enabled)
 		return;
 
+	/*
+	 * To have nvhdcp off
+	 * FIXME: destroy is more desirable
+	 */
+	if (dc->out->type == TEGRA_DC_OUT_HDMI &&
+		dc->out_ops && dc->out_ops->suspend)
+		dc->out_ops->suspend(dc);
+
 	tegra_dc_disable(dc);
 }
 
