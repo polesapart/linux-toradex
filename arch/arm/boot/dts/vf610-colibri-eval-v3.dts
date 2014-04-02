@@ -39,6 +39,16 @@
 	status = "okay";
 };
 
+&nfc {
+	nand-bus-width = <8>;
+	nand-ecc-mode = "hw";
+	nand-on-flash-bbt;
+	clock-frequency = <33000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_nfc_1>;
+	status = "okay";
+};
+
 &pwm0 {
 	status = "okay";
 };
