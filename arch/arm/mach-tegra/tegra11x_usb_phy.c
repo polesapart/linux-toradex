@@ -1639,11 +1639,7 @@ static void uhsic_phy_restore_end(struct tegra_usb_phy *phy)
 		phy->ctrlr_suspended = false;
 	}
 
-	if (irq_disabled) {
-		local_irq_restore(flags);
-		mdelay(25);
-		local_irq_save(flags);
-	} else
+	if (!irq_disabled)
 		mdelay(10);
 
 	pmc->pmc_ops->disable_pmc_bus_ctrl(pmc, 1);
