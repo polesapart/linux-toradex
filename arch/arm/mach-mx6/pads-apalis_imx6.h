@@ -621,4 +621,10 @@ static iomux_v3_cfg_t * MX6NAME(sd_pads)[] =
 	MX6NAME(sd4_100mhz),
 	MX6NAME(sd4_200mhz),
 };
+
+/* Apalis SPDIF */
+static iomux_v3_cfg_t MX6NAME(spdif_pads)[] = {
+	MX6Q_PAD_GPIO_16__SPDIF_IN1,
+	MX6Q_PAD_GPIO_17__SPDIF_OUT1,
+};
 #define FIRST_INCLUDE_DONE

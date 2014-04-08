@@ -1362,6 +1362,7 @@ static void mx6_snvs_poweroff(void)
 }
 
 static const struct imx_pcie_platform_data pcie_data  __initconst = {
+//PLX switch?
 	.pcie_pwr_en	= -EINVAL,
 	.pcie_rst	= -EINVAL,
 	.pcie_wake_up	= -EINVAL,
@@ -1388,6 +1389,35 @@ static void apalis_imx6_gpio_init(void)
 		}
 	}
 }
+
+static int spdif_clk_set_rate(struct clk *clk, unsigned long rate)
+{
+	unsigned long rate_actual;
+	rate_actual = clk_round_rate(clk, rate);
+	clk_set_rate(clk, rate_actual);
+	return 0;
+}
+
+static struct mxc_spdif_platform_data mxc_spdif_data = {
+	.spdif_tx		= 1,		/* enable tx */
+	.spdif_rx		= 1,		/* enable rx */
+	/*
+	 * spdif0_clk will be 454.7MHz divided by ccm dividers.
+	 *
+	 * 44.1KHz: 454.7MHz / 7 (ccm) / 23 (spdif) = 44,128 Hz ~ 0.06% error
+	 * 48KHz:   454.7MHz / 4 (ccm) / 37 (spdif) = 48,004 Hz ~ 0.01% error
+	 * 32KHz:   454.7MHz / 6 (ccm) / 37 (spdif) = 32,003 Hz ~ 0.01% error
+	 */
+	.spdif_clk_44100	= 1,    /* tx clk from spdif0_clk_root */
+	.spdif_clk_48000	= 1,    /* tx clk from spdif0_clk_root */
+	.spdif_div_44100	= 23,
+	.spdif_div_48000	= 37,
+	.spdif_div_32000	= 37,
+	.spdif_rx_clk		= 0,    /* rx clk from spdif stream */
+	.spdif_clk_set_rate	= spdif_clk_set_rate,
+	.spdif_clk		= NULL, /* spdif bus clk */
+};
+
 /*!
  * Board specific initialization.
  */
@@ -1412,6 +1442,8 @@ static void __init board_init(void)
 #if !defined(CSI0_CAMERA)
 	IOMUX_SETUP(csi0_gpio_pads);
 #endif
+	IOMUX_SETUP(spdif_pads);
+
 	/* setup MMC/SD pads with settings for slow clock */
 	plt_sd_pad_change(0, 400000);
 	plt_sd_pad_change(1, 400000);
@@ -1420,7 +1452,8 @@ static void __init board_init(void)
 	lcd_disable_pins();
 	vga_dac_enable_pins();
 
-	/* PCIe set switch reset, inital 0 */
+	/* PCIe set PLX switch reset, inital 0 */
+//does not take chip errata into account
 	gpio_request(GP_PEX_PERST, "PEX_PERST");
 	gpio_direction_output(GP_PEX_PERST, 0);
 	msleep(100); /* TODO Wait asynchronous */
@@ -1557,6 +1590,12 @@ static void __init board_init(void)
 
 	imx6q_add_hdmi_soc();
 	imx6q_add_hdmi_soc_dai();
+
+	mxc_spdif_data.spdif_core_clk = clk_get_sys("mxc_spdif.0", NULL);
+	clk_put(mxc_spdif_data.spdif_core_clk);
+	imx6q_add_spdif(&mxc_spdif_data);
+	imx6q_add_spdif_dai();
+	imx6q_add_spdif_audio_device();
 
 	ret = gpio_request_array(flexcan_gpios, ARRAY_SIZE(flexcan_gpios));
 	if (ret) {
