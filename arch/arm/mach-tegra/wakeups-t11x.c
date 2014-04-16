@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012-2014, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -49,7 +49,7 @@ static int tegra_gpio_wakes[] = {
 	TEGRA_GPIO_PC7,				/* wake8 */
 	TEGRA_GPIO_PS2,				/* wake9 */
 	-EINVAL,				/* wake10 */
-	TEGRA_GPIO_PW3,				/* wake11 */
+	-EINVAL,				/* wake11 */
 	TEGRA_GPIO_PW2,				/* wake12 */
 	-EINVAL,				/* wake13 */
 	TEGRA_GPIO_PDD3,			/* wake14 */
