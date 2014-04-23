@@ -46,6 +46,8 @@
 #define CURSOR_CLIP_SHIFT_BITS(win)	(win << 29)
 #define CURSOR_CLIP_GET_WINDOW(reg)	((reg >> 29) & 3)
 
+#define BLANK_ALL	(~0)
+
 #ifndef CONFIG_TEGRA_FPGA_PLATFORM
 #define ALL_UF_INT (WIN_A_UF_INT | WIN_B_UF_INT | WIN_C_UF_INT)
 #else

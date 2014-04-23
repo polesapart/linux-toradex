@@ -6,7 +6,7 @@
  * Author:
  *	Erik Gilling <konkers@google.com>
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2014 NVIDIA Corporation
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -31,6 +31,7 @@
 #define DC_N_WINDOWS		3
 #define DEFAULT_FPGA_FREQ_KHZ	160000
 
+#define TEGRA_DC_BLANK_ALL	(~0)
 
 /* DSI pixel data format */
 enum {
@@ -685,7 +686,7 @@ bool tegra_dc_hpd(struct tegra_dc *dc);
 
 void tegra_dc_get_fbvblank(struct tegra_dc *dc, struct fb_vblank *vblank);
 int tegra_dc_wait_for_vsync(struct tegra_dc *dc);
-void tegra_dc_blank(struct tegra_dc *dc);
+void tegra_dc_blank(struct tegra_dc *dc, unsigned windows);
 
 void tegra_dc_enable(struct tegra_dc *dc);
 void tegra_dc_disable(struct tegra_dc *dc);
