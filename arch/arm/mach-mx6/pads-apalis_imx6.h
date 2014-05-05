@@ -186,8 +186,6 @@ static iomux_v3_cfg_t MX6NAME(common_pads)[] = {
 	MX6PAD(NANDF_CS1__GPIO_6_14),		/* SD1_CD# */
 	MX6PAD(NANDF_CS3__GPIO_6_16),		/* TS_DIFF6- */
 
-	MX6PAD(GPIO_16__SPDIF_IN1),		/* SPDIF1_IN */
-	MX6PAD(GPIO_17__SPDIF_OUT1),		/* SPDIF1_OUT */
 	MX6PAD(GPIO_18__GPIO_7_13),		/* PWR_INT */
 
 	MX6PAD(DI0_PIN4__GPIO_4_20),		/* MMC1_CD# */
@@ -624,7 +622,7 @@ static iomux_v3_cfg_t * MX6NAME(sd_pads)[] =
 
 /* Apalis SPDIF */
 static iomux_v3_cfg_t MX6NAME(spdif_pads)[] = {
-	MX6Q_PAD_GPIO_16__SPDIF_IN1,
-	MX6Q_PAD_GPIO_17__SPDIF_OUT1,
+	MX6PAD(GPIO_16__SPDIF_IN1),
+	MX6PAD(GPIO_17__SPDIF_OUT1),
 };
 #define FIRST_INCLUDE_DONE
