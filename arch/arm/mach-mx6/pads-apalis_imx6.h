@@ -624,5 +624,6 @@ static iomux_v3_cfg_t * MX6NAME(sd_pads)[] =
 static iomux_v3_cfg_t MX6NAME(spdif_pads)[] = {
 	MX6PAD(GPIO_16__SPDIF_IN1),
 	MX6PAD(GPIO_17__SPDIF_OUT1),
+	0
 };
 #define FIRST_INCLUDE_DONE
