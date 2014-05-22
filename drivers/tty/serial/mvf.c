@@ -647,10 +647,10 @@ static void imx_shutdown(struct uart_port *port)
 
 	if (sport->enable_dma) {
 		/* We have to wait for the DMA to finish. */
-		if (sport->dma_tx_ch) {
+		if (sport->dma_tx_ch >= 0) {
 			mcf_edma_stop_transfer(sport->dma_tx_ch);
 			mcf_edma_free_channel(sport->dma_tx_ch, sport);
-			sport->dma_tx_ch = 0;
+			sport->dma_tx_ch = -1;
 		}
 	}
 
@@ -797,7 +797,7 @@ imx_set_termios(struct uart_port *port, struct ktermios *termios,
 	brfa = ((sport->port.uartclk - (16 * sbr * baud)) * 2)/baud;
 
 	bdh &= ~MXC_UARTBDH_SBR_MASK;
-	bdh |= (sbr >> 8) & 0x1F;
+	bdh |= (sbr >> 8) & MXC_UARTBDH_SBR_MASK;
 
 	cr4 &= ~MXC_UARTCR4_BRFA_MASK;
 	brfa &= MXC_UARTCR4_BRFA_MASK;
@@ -1259,6 +1259,7 @@ static int serial_imx_probe(struct platform_device *pdev)
 	if (pdata && (pdata->flags & IMXUART_EDMA))
 	{
 		sport->enable_dma = 1;
+		sport->dma_tx_ch = -1;
 		printk("IMX UART EDMA enabled\n");
 	}
 	if (pdata && (pdata->flags & IMXUART_FIFO))
