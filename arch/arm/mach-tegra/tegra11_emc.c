@@ -1617,7 +1617,7 @@ static u32 soc_to_dram_bit_swap(u32 soc_val, u32 dram_mask, u32 dram_shift)
 	int bit;
 	u32 dram_val = 0;
 
-	/* tegra clocks definitions use shifted mask always*/
+	/* tegra clocks definitions use shifted mask always */
 	if (!dram_to_soc_bit_map)
 		return soc_val & dram_mask;
 
