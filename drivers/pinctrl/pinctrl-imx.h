@@ -84,6 +84,7 @@ struct imx_pinctrl_soc_info {
 };
 
 #define SHARE_MUX_CONF_REG	0x1
+#define GPIO_CONTROL		0x2
 
 #define NO_MUX		0x0
 #define NO_PAD		0x0
