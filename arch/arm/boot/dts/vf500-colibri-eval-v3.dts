@@ -7,19 +7,11 @@
  * (at your option) any later version.
  */
 
-#include "vf610.dtsi"
-#include "vf-colibri.dtsi"
+/dts-v1/;
+#include "vf500-colibri.dtsi"
+#include "vf-colibri-eval-v3.dtsi"
 
 / {
-	model = "Toradex Colibri VF61 COM";
-	compatible = "toradex,vf610-colibri_vf61", "fsl,vf610";
-
-	memory {
-		reg = <0x80000000 0x10000000>;
-	};
-};
-
-&L2 {
-	arm,data-latency = <2 1 2>;
-	arm,tag-latency = <3 2 3>;
+	model = "Toradex Colibri VF50 on Colibri Evaluation Board";
+	compatible = "toradex,vf500-colibri_vf50-on-eval", "toradex,vf500-colibri_vf50", "fsl,vf500";
 };
