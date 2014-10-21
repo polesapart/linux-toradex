@@ -213,5 +213,17 @@
 				VF610_PAD_PTD3__UART2_CTS		0x21a1
 			>;
 		};
+
+		pinctrl_usbh1_ext: gpio_usb_vbus {
+			fsl,pins = <
+				VF610_PAD_PTD4__GPIO_83			0x22ed
+			>;
+		};
+
+		pinctrl_usbdev0_ext: gpio_usb_cdet {
+			fsl,pins = <
+				VF610_PAD_PTC29__GPIO_102		0x22ed
+			>;
+		};
 	};
 };
