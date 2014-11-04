@@ -464,11 +464,12 @@ static void lpuart_dma_rx_complete(void *arg)
 	async_tx_ack(sport->dma_rx_desc);
 
 	spin_lock_irqsave(&sport->port.lock, flags);
-
+printk("D\n");
 	sport->dma_rx_in_progress = 0;
 	lpuart_copy_rx_to_tty(sport, port, FSL_UART_RX_DMA_BUFFER_SIZE);
 	tty_flip_buffer_push(port);
 	lpuart_dma_rx(sport);
+	mod_timer(&sport->lpuart_timer, jiffies + sport->dma_rx_timeout);
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 }
@@ -481,6 +482,8 @@ static void lpuart_timer_func(unsigned long data)
 	unsigned long flags;
 	unsigned char temp;
 	int count;
+
+	printk("T\n");
 
 	del_timer(&sport->lpuart_timer);
 	dmaengine_pause(sport->dma_rx_chan);
@@ -506,9 +509,11 @@ static inline void lpuart_prepare_rx(struct lpuart_port *sport)
 	unsigned char temp;
 
 	spin_lock_irqsave(&sport->port.lock, flags);
+	if (timer_pending(&sport->lpuart_timer))
+		printk("pend, dma %d\n", sport->dma_rx_in_progress);
 
-	sport->lpuart_timer.expires = jiffies + sport->dma_rx_timeout;
-	add_timer(&sport->lpuart_timer);
+	//sport->lpuart_timer.expires = jiffies + sport->dma_rx_timeout;
+	mod_timer(&sport->lpuart_timer, jiffies + sport->dma_rx_timeout);
 
 	lpuart_dma_rx(sport);
 	temp = readb(sport->port.membase + UARTCR5);
@@ -775,7 +780,9 @@ static irqreturn_t lpuart_int(int irq, void *dev_id)
 		else
 			lpuart_txint(irq, dev_id);
 	}
-
+	sts = readb(sport->port.membase + UARTSFIFO);
+	if (sts & UARTSFIFO_RXOF)
+		printk("UARTx_SFIFO %02x\n", sts);
 	return IRQ_HANDLED;
 }
 
@@ -1101,6 +1108,11 @@ static int lpuart_startup(struct uart_port *port)
 	temp = readb(sport->port.membase + UARTCR2);
 	temp |= (UARTCR2_RIE | UARTCR2_TIE | UARTCR2_RE | UARTCR2_TE);
 	writeb(temp, sport->port.membase + UARTCR2);
+
+	temp = readb(sport->port.membase + UARTCFIFO);
+	temp |= UARTCFIFO_RXOFE;
+	writeb(temp, sport->port.membase + UARTCFIFO);
+
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 	return 0;
