@@ -465,7 +465,7 @@ static void lpuart_dma_rx_complete(void *arg)
 	mod_timer(&sport->lpuart_timer, jiffies + sport->dma_rx_timeout);
 
 	spin_lock_irqsave(&sport->port.lock, flags);
-
+printk("c\n");
 	sport->dma_rx_in_progress = 0;
 	lpuart_copy_rx_to_tty(sport, port, FSL_UART_RX_DMA_BUFFER_SIZE);
 	tty_flip_buffer_push(port);
@@ -483,6 +483,9 @@ static void lpuart_timer_func(unsigned long data)
 	unsigned char temp;
 	int count;
 
+	temp = readb(sport->port.membase + UARTSR1);
+//dev_info(sport->port.dev, "t\n");
+printk("t %02x\n", temp);
 	del_timer(&sport->lpuart_timer);
 	dmaengine_pause(sport->dma_rx_chan);
 	dmaengine_tx_status(sport->dma_rx_chan, sport->dma_rx_cookie, &state);
@@ -762,7 +765,40 @@ static irqreturn_t lpuart_int(int irq, void *dev_id)
 	sts = readb(sport->port.membase + UARTSR1);
 	crdma = readb(sport->port.membase + UARTCR5);
 
-	if (sts & UARTSR1_RDRF && !(crdma & UARTCR5_RDMAS)) {
+	if (sts & UARTSR1_OR) { // && crdma & UARTCR5_RDMAS) {
+		/*
+		 * This can happen when the next DMA descriptor was not setup
+		 * within the reception of a complete FIFO buffer. The buffer
+		 * overrun is set, but RDRF is not set (asserted by DMA due
+		 * to RDMAS?)
+		 *
+		 * In this situation, the DMA doesn't get another RDRF signal
+		 * too because the receiver stops the reception of new data
+		 * with the assertion of the OR signal. To solve this issue,
+		 * just read one byte from the FIFO and clear the FIFO status
+		 * bytes.
+		 */
+		printk("%d, OR, %02x, %02x\n", irq, sts, crdma);
+		if (crdma & UARTCR5_RDMAS)
+			lpuart_timer_func(sport);
+	
+//		writeb(crdma & ~UARTCR5_RDMAS, sport->port.membase + UARTCR5);
+		sport->port.icount.overrun++;
+		writeb(UARTCFIFO_RXFLUSH, sport->port.membase + UARTCFIFO);
+		writeb(UARTSFIFO_RXOF, sport->port.membase + UARTSFIFO);
+		readb(sport->port.membase + UARTDR);
+		writeb(UARTSFIFO_RXUF, sport->port.membase + UARTSFIFO);
+		//dev_info(sport->port.dev, "OR, sts\n", sts);
+		/* overrun condition, while using DMA reset */
+		
+		lpuart_prepare_rx(sport);
+		sts = readb(sport->port.membase + UARTSR1);
+		crdma = readb(sport->port.membase + UARTCR5);
+		return;
+		//printk("%d, OR, %02x, %02x\n", irq, sts, crdma);
+	}
+
+	if (sts & (UARTSR1_RDRF | UARTSR1_OR) && !(crdma & UARTCR5_RDMAS)) {
 		if (sport->lpuart_dma_rx_use)
 			lpuart_prepare_rx(sport);
 		else
@@ -1100,6 +1136,10 @@ static int lpuart_startup(struct uart_port *port)
 	temp = readb(sport->port.membase + UARTCR2);
 	temp |= (UARTCR2_RIE | UARTCR2_TIE | UARTCR2_RE | UARTCR2_TE);
 	writeb(temp, sport->port.membase + UARTCR2);
+
+	temp = readb(sport->port.membase + UARTCFIFO);
+	temp |= UARTCFIFO_RXOFE;
+	writeb(temp, sport->port.membase + UARTCFIFO);
 
 	spin_unlock_irqrestore(&sport->port.lock, flags);
 	return 0;
