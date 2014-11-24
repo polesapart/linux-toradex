@@ -68,6 +68,22 @@ static struct fb_videomode __devinitdata mvf_dcu_default_mode = {
 
 static struct fb_videomode __devinitdata mvf_dcu_mode_db[] = {
 	{
+		/* 320x240@60 (e.g. EDT 3.5" ET035080DH6) */
+		.name = 	"320x240",
+		.refresh = 	60,
+		.xres =		320,
+		.yres =		240,
+		.pixclock =	65000,
+		.left_margin = 	68,
+		.right_margin = 20,
+		.upper_margin = 18,
+		.lower_margin = 3,
+		.hsync_len = 	20,
+		.vsync_len = 	2,
+		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
+		.vmode = FB_VMODE_NONINTERLACED
+	},
+	{
 		.name		= "480x272",
 		.xres		= 480,
 		.yres		= 272,
