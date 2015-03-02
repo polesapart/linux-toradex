@@ -33,7 +33,7 @@
 #include <linux/slab.h>
 #include <linux/of_mtd.h>
 
-#define	DRV_NAME		"fsl_nfc"
+#define	DRV_NAME		"vf610_nfc"
 
 /* Register Offsets */
 #define NFC_FLASH_CMD1			0x3F00
@@ -70,6 +70,7 @@
 /* NFC ECC mode define */
 #define ECC_BYPASS			0
 #define ECC_45_BYTE			6
+#define ECC_60_BYTE			7
 
 /*** Register Mask and bit definitions */
 
@@ -155,15 +156,15 @@ struct fsl_nfc {
 };
 #define mtd_to_nfc(_mtd) container_of(_mtd, struct fsl_nfc, mtd)
 
-static u8 bbt_pattern[] = {'B', 'b', 't', '0' };
-static u8 mirror_pattern[] = {'1', 't', 'b', 'B' };
+static u8 bbt_pattern[] = {'B', 'b', 't' };
+static u8 mirror_pattern[] = {'t', 'b', 'B' };
 
 static struct nand_bbt_descr bbt_main_descr = {
 	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
 		   NAND_BBT_2BIT | NAND_BBT_VERSION,
-	.offs =	11,
-	.len = 4,
-	.veroffs = 15,
+	.offs =	0,
+	.len = 3,
+	.veroffs = 3,
 	.maxblocks = 4,
 	.pattern = bbt_pattern,
 };
@@ -171,13 +172,14 @@ static struct nand_bbt_descr bbt_main_descr = {
 static struct nand_bbt_descr bbt_mirror_descr = {
 	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE |
 		   NAND_BBT_2BIT | NAND_BBT_VERSION,
-	.offs =	11,
-	.len = 4,
-	.veroffs = 15,
+	.offs =	0,
+	.len = 3,
+	.veroffs = 3,
 	.maxblocks = 4,
 	.pattern = mirror_pattern,
 };
 
+#if 0
 static struct nand_ecclayout nfc_ecc45 = {
 	.eccbytes = 45,
 	.eccpos = {19, 20, 21, 22, 23,
@@ -189,6 +191,22 @@ static struct nand_ecclayout nfc_ecc45 = {
 	.oobfree = {
 		{.offset = 8,
 		 .length = 11} }
+};
+#endif
+
+static struct nand_ecclayout nfc_ecc60 = {
+	.eccbytes = 60,
+	.eccpos = { 4,  5,  6,  7,  8,  9, 10, 11,
+		   12, 13, 14, 15, 16, 17, 18, 19,
+		   20, 21, 22, 23, 24, 25, 26, 27,
+		   28, 29, 30, 31, 32, 33, 34, 35,
+		   36, 37, 38, 39, 40, 41, 42, 43,
+		   44, 45, 46, 47, 48, 49, 50, 51,
+		   52, 53, 54, 55, 56, 57, 58, 59,
+		   60, 61, 62, 63 },
+	.oobfree = {
+		{.offset = 2,
+		 .length = 2} }
 };
 
 static u32 nfc_read(struct mtd_info *mtd, uint reg)
@@ -608,10 +626,10 @@ static int nfc_init_controller(struct mtd_info *mtd, struct nfc_config *cfg, int
 	nfc_write(mtd, NFC_SECTOR_SIZE, page_sz);
 
 	if (cfg->hardware_ecc) {
-		/* set ECC mode to 45 bytes OOB with 24 bits correction */
+		/* set ECC mode to 60 bytes OOB with 32 bits correction */
 		nfc_set_field(mtd, NFC_FLASH_CONFIG,
 				CONFIG_ECC_MODE_MASK,
-				CONFIG_ECC_MODE_SHIFT, ECC_45_BYTE);
+				CONFIG_ECC_MODE_SHIFT, ECC_60_BYTE);
 
 		/* Enable ECC_STATUS */
 		nfc_set(mtd, NFC_FLASH_CONFIG, CONFIG_ECC_SRAM_REQ_BIT);
@@ -742,7 +760,7 @@ static int nfc_probe(struct platform_device *pdev)
 			goto error;
 		}
 
-		chip->ecc.layout = &nfc_ecc45;
+		chip->ecc.layout = &nfc_ecc60;
 
 		/* propagate ecc.layout to mtd_info */
 		mtd->ecclayout = chip->ecc.layout;
@@ -751,14 +769,14 @@ static int nfc_probe(struct platform_device *pdev)
 		chip->ecc.correct = nfc_correct_data;
 		chip->ecc.mode = NAND_ECC_HW;
 
-		chip->ecc.bytes = 45;
+		chip->ecc.bytes = 60;
 		chip->ecc.size = PAGE_2K;
-		chip->ecc.strength = 24;
+		chip->ecc.strength = 32;
 
-		/* set ECC mode to 45 bytes OOB with 24 bits correction */
+		/* set ECC mode to 60 bytes OOB with 32 bits correction */
 		nfc_set_field(mtd, NFC_FLASH_CONFIG,
 				CONFIG_ECC_MODE_MASK,
-				CONFIG_ECC_MODE_SHIFT, ECC_45_BYTE);
+				CONFIG_ECC_MODE_SHIFT, ECC_60_BYTE);
 	}
 
 	/* second phase scan */
