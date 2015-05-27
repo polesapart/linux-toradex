@@ -822,64 +822,28 @@ static unsigned int lpuart32_tx_empty(struct uart_port *port)
 
 static unsigned int lpuart_get_mctrl(struct uart_port *port)
 {
-	unsigned int temp = 0;
-	unsigned char reg;
-
-	reg = readb(port->membase + UARTMODEM);
-	if (reg & UARTMODEM_TXCTSE)
-		temp |= TIOCM_CTS;
-
-	if (reg & UARTMODEM_RXRTSE)
-		temp |= TIOCM_RTS;
-
-	return temp;
+	return TIOCM_DSR | TIOCM_CAR | TIOCM_CTS;
 }
 
 static unsigned int lpuart32_get_mctrl(struct uart_port *port)
 {
-	unsigned int temp = 0;
-	unsigned long reg;
-
-	reg = lpuart32_read(port->membase + UARTMODIR);
-	if (reg & UARTMODIR_TXCTSE)
-		temp |= TIOCM_CTS;
-
-	if (reg & UARTMODIR_RXRTSE)
-		temp |= TIOCM_RTS;
-
-	return temp;
+	return TIOCM_DSR | TIOCM_CAR | TIOCM_CTS;
 }
 
 static void lpuart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-	unsigned char temp;
-
-	temp = readb(port->membase + UARTMODEM) &
-			~(UARTMODEM_RXRTSE | UARTMODEM_TXCTSE);
-
-	if (mctrl & TIOCM_RTS)
-		temp |= UARTMODEM_RXRTSE;
-
-	if (mctrl & TIOCM_CTS)
-		temp |= UARTMODEM_TXCTSE;
-
-	writeb(temp, port->membase + UARTMODEM);
+    /*
+     * CTS/RTS can _only_ be handled
+     * automatically by the hardware.
+     */
 }
 
 static void lpuart32_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-	unsigned long temp;
-
-	temp = lpuart32_read(port->membase + UARTMODIR) &
-			~(UARTMODIR_RXRTSE | UARTMODIR_TXCTSE);
-
-	if (mctrl & TIOCM_RTS)
-		temp |= UARTMODIR_RXRTSE;
-
-	if (mctrl & TIOCM_CTS)
-		temp |= UARTMODIR_TXCTSE;
-
-	lpuart32_write(temp, port->membase + UARTMODIR);
+    /*
+     * CTS/RTS can _only_ be handled
+     * automatically by the hardware.
+     */
 }
 
 static void lpuart_break_ctl(struct uart_port *port, int break_state)
