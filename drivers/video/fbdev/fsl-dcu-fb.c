@@ -31,9 +31,9 @@
 #define DCU_MODE_RASTER_EN		(1 << 14)
 #define DCU_MODE_DCU_MODE(x)		(x)
 #define DCU_MODE_DCU_MODE_MASK		0x03
-#define DCU_MODE_OFF			0
+#define DCU_MODE_TEST			0
 #define DCU_MODE_NORMAL			1
-#define DCU_MODE_TEST			2
+#define DCU_MODE_OFF			2
 #define DCU_MODE_COLORBAR		3
 
 #define DCU_BGND			0x0014
@@ -333,6 +333,7 @@ static void enable_controller(struct fb_info *info)
 	unsigned int dcu_mode;
 
 	dcu_mode = readl(dcufb->reg_base + DCU_DCU_MODE);
+	dcu_mode &= ~DCU_MODE_DCU_MODE_MASK;
 	writel(dcu_mode | DCU_MODE_DCU_MODE(DCU_MODE_NORMAL),
 		dcufb->reg_base + DCU_DCU_MODE);
 }
@@ -341,8 +342,11 @@ static void disable_controller(struct fb_info *info)
 {
 	struct mfb_info *mfbi = info->par;
 	struct dcu_fb_data *dcufb = mfbi->parent;
+	unsigned int dcu_mode;
 
-	writel(DCU_MODE_DCU_MODE(DCU_MODE_OFF),
+	dcu_mode = readl(dcufb->reg_base + DCU_DCU_MODE);
+	dcu_mode &= ~DCU_MODE_DCU_MODE_MASK;
+	writel(dcu_mode | DCU_MODE_DCU_MODE(DCU_MODE_OFF),
 		dcufb->reg_base + DCU_DCU_MODE);
 }
 
