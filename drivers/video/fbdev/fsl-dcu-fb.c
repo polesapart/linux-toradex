@@ -740,24 +740,22 @@ static void reset_layers(struct dcu_fb_data *dcufb)
 static int fsl_dcu_open(struct fb_info *info, int user)
 {
 	struct mfb_info *mfbi = info->par;
-	struct dcu_fb_data *dcufb = mfbi->parent;
-	u32 int_mask = readl(dcufb->reg_base + DCU_INT_MASK);
-	int ret = 0;
+	int ret;
 
 	mfbi->index = info->node;
 
-	mfbi->count++;
-	if (mfbi->count == 1) {
-		fsl_dcu_check_var(&info->var, info);
+	if (mfbi->count == 0) {
+		ret = fsl_dcu_check_var(&info->var, info);
+		if (ret < 0)
+			return ret;
+
 		ret = fsl_dcu_set_par(info);
 		if (ret < 0)
-			mfbi->count--;
-		else
-			writel(int_mask & ~DCU_INT_MASK_UNDRUN,
-				dcufb->reg_base + DCU_INT_MASK);
+			return ret;
 	}
+	mfbi->count++;
 
-	return ret;
+	return 0;
 }
 
 static int fsl_dcu_release(struct fb_info *info, int user)
@@ -946,26 +944,6 @@ static void uninstall_framebuffer(struct fb_info *info)
 		fb_dealloc_cmap(&info->cmap);
 }
 
-static irqreturn_t fsl_dcu_irq(int irq, void *dev_id)
-{
-	struct dcu_fb_data *dcufb = dev_id;
-	unsigned int status = readl(dcufb->reg_base + DCU_INT_STATUS);
-	u32 dcu_mode;
-
-	if (status & DCU_INT_STATUS_UNDRUN) {
-		dcu_mode = readl(dcufb->reg_base + DCU_DCU_MODE);
-		dcu_mode &= ~DCU_MODE_DCU_MODE_MASK;
-		writel(dcu_mode | DCU_MODE_DCU_MODE(DCU_MODE_OFF),
-			dcufb->reg_base + DCU_DCU_MODE);
-		udelay(1);
-		writel(dcu_mode | DCU_MODE_DCU_MODE(DCU_MODE_NORMAL),
-			dcufb->reg_base + DCU_DCU_MODE);
-	}
-
-	writel(status, dcufb->reg_base + DCU_INT_STATUS);
-	return IRQ_HANDLED;
-}
-
 #ifdef CONFIG_PM_RUNTIME
 static int fsl_dcu_runtime_suspend(struct device *dev)
 {
@@ -1099,13 +1077,6 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ret = devm_request_irq(&pdev->dev, dcufb->irq, fsl_dcu_irq,
-			0, DRIVER_NAME, dcufb);
-	if (ret) {
-		dev_err(&pdev->dev, "could not request irq\n");
-		goto failed_ioremap;
-	}
-
 	/* Put TCON in bypass mode, so the input signals from DCU are passed
 	 * through TCON unchanged */
 	ret = bypass_tcon(pdev->dev.of_node);
@@ -1173,7 +1144,6 @@ failed_alloc_framebuffer:
 failed_getclock:
 failed_bypasstcon:
 	free_irq(dcufb->irq, dcufb);
-failed_ioremap:
 	return ret;
 }
 
