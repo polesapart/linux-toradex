@@ -11,6 +11,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/completion.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/fb.h>
@@ -68,9 +69,11 @@
 
 #define DCU_INT_STATUS			0x002C
 #define DCU_INT_STATUS_UNDRUN		(1 << 1)
+#define DCU_INT_STATUS_VSYNC		(1 << 0)
 
 #define DCU_INT_MASK			0x0030
 #define DCU_INT_MASK_UNDRUN		(1 << 1)
+#define DCU_INT_MASK_VSYNC		(1 << 0)
 
 #define DCU_DIV_RATIO			0x0054
 
@@ -146,6 +149,7 @@ struct dcu_fb_data {
 	struct fb_videomode native_mode;
 	u32 bits_per_pixel;
 	bool pixclockpol;
+	struct completion vsync_wait;
 };
 
 struct layer_display_offset {
@@ -681,6 +685,30 @@ static int fsl_dcu_blank(int blank_mode, struct fb_info *info)
 	return 0;
 }
 
+static int fsl_dcu_wait_for_vsync(struct dcu_fb_data *dcufb)
+{
+	unsigned long mask = readl(dcufb->reg_base + DCU_INT_MASK);
+	int ret;
+
+	/*
+	 * Clear current VSYNC status since that still contains the flag from
+	 * last VSYNC...
+	 */
+	writel(DCU_INT_STATUS_VSYNC, dcufb->reg_base + DCU_INT_STATUS);
+	writel(mask & ~DCU_INT_MASK_VSYNC, dcufb->reg_base + DCU_INT_MASK);
+
+	ret = wait_for_completion_timeout(&dcufb->vsync_wait, HZ / 2);
+
+	if (ret < 0)
+		return ret;
+	if (ret == 0) {
+		dev_warn(dcufb->dev, "wait_for_vsync timed out!\n");
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
 static int fsl_dcu_ioctl(struct fb_info *info, unsigned int cmd,
 		unsigned long arg)
 {
@@ -716,6 +744,8 @@ static int fsl_dcu_ioctl(struct fb_info *info, unsigned int cmd,
 		mfbi->alpha = alpha;
 		fsl_dcu_set_par(info);
 		break;
+	case FBIO_WAITFORVSYNC:
+		return fsl_dcu_wait_for_vsync(dcufb);
 	default:
 		dev_err(dcufb->dev, "unknown ioctl command (0x%08X)\n", cmd);
 		return -ENOIOCTLCMD;
@@ -948,6 +978,23 @@ static void uninstall_framebuffer(struct fb_info *info)
 		fb_dealloc_cmap(&info->cmap);
 }
 
+static irqreturn_t fsl_dcu_irq(int irq, void *dev_id)
+{
+	struct dcu_fb_data *dcufb = dev_id;
+	unsigned int mask = readl(dcufb->reg_base + DCU_INT_MASK);
+	unsigned int status = readl(dcufb->reg_base + DCU_INT_STATUS);
+
+	if (status & DCU_INT_STATUS_VSYNC) {
+		mask |= DCU_INT_MASK_VSYNC;
+		writel(mask, dcufb->reg_base + DCU_INT_MASK);
+		complete(&dcufb->vsync_wait);
+	}
+
+	writel(status, dcufb->reg_base + DCU_INT_STATUS);
+
+	return IRQ_HANDLED;
+}
+
 #ifdef CONFIG_PM_RUNTIME
 static int fsl_dcu_runtime_suspend(struct device *dev)
 {
@@ -1060,6 +1107,9 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 	if (!dcufb)
 		return -ENOMEM;
 
+	/* initialize the vsync wait queue */
+	init_completion(&dcufb->vsync_wait);
+
 	dcufb->dev = &pdev->dev;
 	dev_set_drvdata(&pdev->dev, dcufb);
 
@@ -1079,6 +1129,13 @@ static int fsl_dcu_probe(struct platform_device *pdev)
 	if (!dcufb->irq) {
 		dev_err(&pdev->dev, "could not get irq\n");
 		return -EINVAL;
+	}
+
+	ret = devm_request_irq(&pdev->dev, dcufb->irq, fsl_dcu_irq,
+				0, DRIVER_NAME, dcufb);
+	if (ret) {
+		dev_err(&pdev->dev, "could not request irq\n");
+		goto failed_ioremap;
 	}
 
 	/* Put TCON in bypass mode, so the input signals from DCU are passed
@@ -1148,6 +1205,7 @@ failed_alloc_framebuffer:
 failed_getclock:
 failed_bypasstcon:
 	free_irq(dcufb->irq, dcufb);
+failed_ioremap:
 	return ret;
 }
 
