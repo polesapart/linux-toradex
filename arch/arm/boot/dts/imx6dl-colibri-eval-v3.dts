@@ -82,12 +82,13 @@
 };
 
 &backlight {
-#if 0
-	/* PWM polarity: 1 is brightest */
+#if 0 /* PWM polarity: if 1 is brightest */
+#if 0 /* Fusion 7 needs 10kHz PWM frequency */
+	pwms = <&pwm3 0 100000>;
+#endif
 	brightness-levels = <0 4 8 16 32 64 128 255>;
 	default-brightness-level = <6>;
-#else
-	/* PWM plarity: 0 is brightest */
+#else /* PWM plarity: if 0 is brightest */
 	brightness-levels = <0 74 128 164 192 210 255>;
 	default-brightness-level = <1>;
 #endif
