@@ -431,6 +431,12 @@ void imx6_pm_set_ccm_base(void __iomem *base)
 	ccm_base = base;
 }
 
+void imx6_stop_mode_poweroff(void)
+{
+	imx6_set_lpm(STOP_POWER_OFF);
+	cpu_do_idle();
+}
+
 void __init imx6_pm_init(void)
 {
 	iram_paddr = MX6_SUSPEND_IRAM_ADDR;
@@ -450,4 +456,15 @@ void __init imx6_pm_init(void)
 		cpu_type = MXC_CPU_IMX6DL;
 	else
 		cpu_type = MXC_CPU_IMX6SL;
+
+#ifndef CONFIG_POWER_RESET_GPIO
+	/*
+	 * if no specific power off function in board file, power off system by
+	 * SNVS
+	 */
+	if (!pm_power_off)
+		if (of_machine_is_compatible("toradex,colibri_imx6dl"))
+			pm_power_off = imx6_stop_mode_poweroff;
+#endif
+
 }
