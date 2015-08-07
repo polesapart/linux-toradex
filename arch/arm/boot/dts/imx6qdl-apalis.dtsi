@@ -853,7 +853,7 @@
 	ext_ref = <1>;
 	mode = "spl1";
 	sec_ipu_id = <1>;
-	sec_disp_id = <1>;
+	sec_disp_id = <0>;
 	status = "okay";
 };
 
