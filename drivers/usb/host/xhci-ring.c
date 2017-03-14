@@ -846,13 +846,6 @@ void xhci_stop_endpoint_command_watchdog(unsigned long arg)
 	spin_lock_irqsave(&xhci->lock, flags);
 
 	ep->stop_cmds_pending--;
-	if (xhci->xhc_state & XHCI_STATE_DYING) {
-		xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
-				"Stop EP timer ran, but another timer marked "
-				"xHCI as DYING, exiting.");
-		spin_unlock_irqrestore(&xhci->lock, flags);
-		return;
-	}
 	if (!(ep->stop_cmds_pending == 0 && (ep->ep_state & EP_HALT_PENDING))) {
 		xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
 				"Stop EP timer ran, but no command pending, "
@@ -899,7 +892,7 @@ void xhci_stop_endpoint_command_watchdog(unsigned long arg)
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
 			"Calling usb_hc_died()");
-	usb_hc_died(xhci_to_hcd(xhci)->primary_hcd);
+	usb_hc_died(xhci_to_hcd(xhci));
 	xhci_dbg_trace(xhci, trace_xhci_dbg_cancel_urb,
 			"xHCI host controller is dead.");
 }
@@ -1264,41 +1257,54 @@ void xhci_handle_command_timeout(unsigned long data)
 	bool second_timeout = false;
 	xhci = (struct xhci_hcd *) data;
 
-	/* mark this command to be cancelled */
 	spin_lock_irqsave(&xhci->lock, flags);
-	if (xhci->current_cmd) {
-		if (xhci->current_cmd->status == COMP_CMD_ABORT)
-			second_timeout = true;
-		xhci->current_cmd->status = COMP_CMD_ABORT;
+
+	/*
+	 * If timeout work is pending, or current_cmd is NULL, it means we
+	 * raced with command completion. Command is handled so just return.
+	 */
+	if (!xhci->current_cmd || timer_pending(&xhci->cmd_timer)) {
+		spin_unlock_irqrestore(&xhci->lock, flags);
+		return;
 	}
+
+	/* mark this command to be cancelled */
+	if (xhci->current_cmd->status == COMP_CMD_ABORT)
+		second_timeout = true;
+	xhci->current_cmd->status = COMP_CMD_ABORT;
 
 	/* Make sure command ring is running before aborting it */
 	hw_ring_state = xhci_read_64(xhci, &xhci->op_regs->cmd_ring);
 	if ((xhci->cmd_ring_state & CMD_RING_STATE_RUNNING) &&
 	    (hw_ring_state & CMD_RING_RUNNING))  {
-		spin_unlock_irqrestore(&xhci->lock, flags);
 		xhci_dbg(xhci, "Command timeout\n");
 		ret = xhci_abort_cmd_ring(xhci);
 		if (unlikely(ret == -ESHUTDOWN)) {
 			xhci_err(xhci, "Abort command ring failed\n");
 			xhci_cleanup_command_queue(xhci);
+			spin_unlock_irqrestore(&xhci->lock, flags);
 			usb_hc_died(xhci_to_hcd(xhci)->primary_hcd);
 			xhci_dbg(xhci, "xHCI host controller is dead.\n");
+
+			return;
 		}
-		return;
+
+		goto time_out_completed;
 	}
 
 	/* command ring failed to restart, or host removed. Bail out */
 	if (second_timeout || xhci->xhc_state & XHCI_STATE_REMOVING) {
-		spin_unlock_irqrestore(&xhci->lock, flags);
 		xhci_dbg(xhci, "command timed out twice, ring start fail?\n");
 		xhci_cleanup_command_queue(xhci);
-		return;
+
+		goto time_out_completed;
 	}
 
 	/* command timeout on stopped ring, ring can't be aborted */
 	xhci_dbg(xhci, "Command timeout on stopped ring\n");
 	xhci_handle_stopped_cmd_ring(xhci, xhci->current_cmd);
+
+time_out_completed:
 	spin_unlock_irqrestore(&xhci->lock, flags);
 	return;
 }
@@ -1357,8 +1363,11 @@ static void handle_cmd_completion(struct xhci_hcd *xhci,
 	 */
 	if (cmd_comp_code == COMP_CMD_ABORT) {
 		xhci->cmd_ring_state = CMD_RING_STATE_STOPPED;
-		if (cmd->status == COMP_CMD_ABORT)
+		if (cmd->status == COMP_CMD_ABORT) {
+			if (xhci->current_cmd == cmd)
+				xhci->current_cmd = NULL;
 			goto event_handled;
+		}
 	}
 
 	cmd_type = TRB_FIELD_TO_TYPE(le32_to_cpu(cmd_trb->generic.field[3]));
@@ -1420,6 +1429,8 @@ static void handle_cmd_completion(struct xhci_hcd *xhci,
 		xhci->current_cmd = list_entry(cmd->cmd_list.next,
 					       struct xhci_command, cmd_list);
 		mod_timer(&xhci->cmd_timer, jiffies + XHCI_CMD_DEFAULT_TIMEOUT);
+	} else if (xhci->current_cmd == cmd) {
+		xhci->current_cmd = NULL;
 	}
 
 event_handled:
@@ -1601,7 +1612,8 @@ static void handle_port_status(struct xhci_hcd *xhci,
 			 */
 			bogus_port_status = true;
 			goto cleanup;
-		} else {
+		} else if (!test_bit(faked_port_index,
+				     &bus_state->resuming_ports)) {
 			xhci_dbg(xhci, "resume HS port %d\n", port_id);
 			bus_state->resume_done[faked_port_index] = jiffies +
 				msecs_to_jiffies(USB_RESUME_TIMEOUT);
