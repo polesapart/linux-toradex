@@ -828,12 +828,15 @@ static struct os_desc_attribute os_desc_b_vendor_code =
 static ssize_t os_desc_qw_sign_show(struct os_desc *os_desc, char *page)
 {
 	struct gadget_info *gi;
+	int res;
 
 	gi = to_gadget_info(os_desc->group.cg_item.ci_parent);
 
-	memcpy(page, gi->qw_sign, OS_STRING_QW_SIGN_LEN);
+	res = utf16s_to_utf8s((wchar_t *) gi->qw_sign, OS_STRING_QW_SIGN_LEN,
+			      UTF16_LITTLE_ENDIAN, page, PAGE_SIZE - 1);
+	page[res++] = '\n';
 
-	return OS_STRING_QW_SIGN_LEN;
+	return res;
 }
 
 static ssize_t os_desc_qw_sign_store(struct os_desc *os_desc, const char *page,
