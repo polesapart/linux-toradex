@@ -763,7 +763,7 @@ static ssize_t os_desc_use_show(struct os_desc *os_desc, char *page)
 
 	gi = to_gadget_info(os_desc->group.cg_item.ci_parent);
 
-	return sprintf(page, "%d", gi->use_os_desc);
+	return sprintf(page, "%d\n", gi->use_os_desc);
 }
 
 static ssize_t os_desc_use_store(struct os_desc *os_desc, const char *page,
@@ -797,7 +797,7 @@ static ssize_t os_desc_b_vendor_code_show(struct os_desc *os_desc, char *page)
 
 	gi = to_gadget_info(os_desc->group.cg_item.ci_parent);
 
-	return sprintf(page, "%d", gi->b_vendor_code);
+	return sprintf(page, "0x%02x\n", gi->b_vendor_code);
 }
 
 static ssize_t os_desc_b_vendor_code_store(struct os_desc *os_desc,
@@ -960,7 +960,7 @@ CONFIGFS_ATTR_OPS(usb_os_desc_ext_prop);
 static ssize_t ext_prop_type_show(struct usb_os_desc_ext_prop *ext_prop,
 				  char *page)
 {
-	return sprintf(page, "%d", ext_prop->type);
+	return sprintf(page, "%d\n", ext_prop->type);
 }
 
 static ssize_t ext_prop_type_store(struct usb_os_desc_ext_prop *ext_prop,
