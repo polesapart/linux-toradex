@@ -350,6 +350,14 @@
 				SC_P_SCU_GPIO0_06_LSIO_GPIO1_IO02               0x00000021
 			>;
 		};
+
+		pinctrl_wifi: wifigrp {
+			fsl,pins = <
+				SC_P_MIPI_CSI0_GPIO0_01_LSIO_GPIO1_IO28		0x06000021
+	/*			SC_P_SCU_GPIO0_07_SCU_DSC_RTC_CLOCK_OUTPUT_32K	0x06000021
+	*/			SC_P_MIPI_CSI0_MCLK_OUT_LSIO_GPIO1_IO24		0x06000021
+			>;
+		};
 	};
 };
 
@@ -459,7 +467,7 @@
 	#size-cells = <0>;
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_lpi2c1>;
+	pinctrl-0 = <&pinctrl_lpi2c1 &pinctrl_wifi>;
 	status = "okay";
 
 	/* SGTL5000 */
@@ -618,6 +626,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pciea>;
 	reset-gpio = <&gpio4 29 GPIO_ACTIVE_LOW>;
+	clkreq-gpio = <&gpio4 27 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
@@ -625,7 +634,8 @@
 	ext_osc = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_pcieb>;
-	reset-gpio = <&gpio5 0 GPIO_ACTIVE_LOW>;
+	reset-gpio = <&gpio5 0 GPIO_ACTIVE_HIGH>;
+	/*clkreq-gpio = <&gpio4 30 GPIO_ACTIVE_LOW>;*/
 	/*epdev_on-supply = <&epdev_on>;*/
 	status = "okay";
 };
