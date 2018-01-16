@@ -41,6 +41,12 @@
 #define OV5640_CHIP_ID_HIGH_BYTE	0x300A
 #define OV5640_CHIP_ID_LOW_BYTE		0x300B
 
+#define MIPI_CSI2_SENS_VC0_PAD_SOURCE	0
+#define MIPI_CSI2_SENS_VC1_PAD_SOURCE	1
+#define MIPI_CSI2_SENS_VC2_PAD_SOURCE	2
+#define MIPI_CSI2_SENS_VC3_PAD_SOURCE	3
+#define MIPI_CSI2_SENS_VCX_PADS_NUM		4
+
 enum ov5640_mode {
 	ov5640_mode_MIN = 0,
 	ov5640_mode_VGA_640_480 = 0,
@@ -93,6 +99,7 @@ struct ov5640_mode_info {
 
 struct ov5640 {
 	struct v4l2_subdev		subdev;
+	struct media_pad pads[MIPI_CSI2_SENS_VCX_PADS_NUM];
 	struct i2c_client *i2c_client;
 	struct v4l2_pix_format pix;
 	const struct ov5640_datafmt	*fmt;
@@ -1323,6 +1330,7 @@ static int ov5640_get_fmt(struct v4l2_subdev *sd,
 	struct ov5640 *sensor = to_ov5640(client);
 	const struct ov5640_datafmt *fmt = sensor->fmt;
 
+printk("ov5640_get_fmt, %p\n", fmt);
 	if (format->pad)
 		return -EINVAL;
 
@@ -1489,6 +1497,16 @@ static struct v4l2_subdev_ops ov5640_subdev_ops = {
 	.pad	= &ov5640_subdev_pad_ops,
 };
 
+static int ov5640_link_setup(struct media_entity *entity,
+			   const struct media_pad *local,
+			   const struct media_pad *remote, u32 flags)
+{
+	return 0;
+}
+
+static const struct media_entity_operations ov5640_sd_media_ops = {
+	.link_setup = ov5640_link_setup,
+};
 
 /*!
  * ov5640 I2C probe function
@@ -1501,6 +1519,7 @@ static int ov5640_probe(struct i2c_client *client,
 {
 	struct pinctrl *pinctrl;
 	struct device *dev = &client->dev;
+	struct v4l2_subdev *sd;
 	int retval;
 	u8 chip_id_high, chip_id_low;
 
@@ -1538,13 +1557,12 @@ static int ov5640_probe(struct i2c_client *client,
 
 	/* Set initial values for the sensor struct. */
 	memset(&ov5640_data, 0, sizeof(ov5640_data));
-	ov5640_data.sensor_clk = devm_clk_get(dev, "csi_mclk");
+	/*ov5640_data.sensor_clk = devm_clk_get(dev, "csi_mclk");
 	if (IS_ERR(ov5640_data.sensor_clk)) {
-		/* assuming clock enabled by default */
 		ov5640_data.sensor_clk = NULL;
 		dev_err(dev, "clock-frequency missing or invalid\n");
 		return PTR_ERR(ov5640_data.sensor_clk);
-	}
+	}*/
 
 	retval = of_property_read_u32(dev->of_node, "mclk",
 					&(ov5640_data.mclk));
@@ -1567,13 +1585,16 @@ static int ov5640_probe(struct i2c_client *client,
 		return retval;
 	}
 
-	clk_prepare_enable(ov5640_data.sensor_clk);
+	/*clk_prepare_enable(ov5640_data.sensor_clk);*/
 
 	ov5640_data.io_init = ov5640_reset;
 	ov5640_data.i2c_client = client;
 	ov5640_data.pix.pixelformat = V4L2_PIX_FMT_YUYV;
 	ov5640_data.pix.width = 640;
 	ov5640_data.pix.height = 480;
+
+	ov5640_data.fmt = ov5640_find_datafmt(MEDIA_BUS_FMT_YUYV8_2X8);
+
 	ov5640_data.streamcap.capability = V4L2_MODE_HIGHQUALITY |
 					   V4L2_CAP_TIMEPERFRAME;
 	ov5640_data.streamcap.capturemode = 0;
@@ -1589,13 +1610,13 @@ static int ov5640_probe(struct i2c_client *client,
 	retval = ov5640_read_reg(OV5640_CHIP_ID_HIGH_BYTE, &chip_id_high);
 	if (retval < 0 || chip_id_high != 0x56) {
 		pr_warning("camera ov5640_mipi is not found\n");
-		clk_disable_unprepare(ov5640_data.sensor_clk);
+	/*	clk_disable_unprepare(ov5640_data.sensor_clk);*/
 		return -ENODEV;
 	}
 	retval = ov5640_read_reg(OV5640_CHIP_ID_LOW_BYTE, &chip_id_low);
 	if (retval < 0 || chip_id_low != 0x40) {
 		pr_warning("camera ov5640_mipi is not found\n");
-		clk_disable_unprepare(ov5640_data.sensor_clk);
+	/*	clk_disable_unprepare(ov5640_data.sensor_clk);*/
 		return -ENODEV;
 	}
 
@@ -1607,7 +1628,21 @@ static int ov5640_probe(struct i2c_client *client,
 		return retval;
 	}
 
-	v4l2_i2c_subdev_init(&ov5640_data.subdev, client, &ov5640_subdev_ops);
+	sd = &ov5640_data.subdev;
+	v4l2_i2c_subdev_init(sd, client, &ov5640_subdev_ops);
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+
+	sd->entity.function = MEDIA_ENT_F_CAM_SENSOR;
+	ov5640_data.pads[MIPI_CSI2_SENS_VC0_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	ov5640_data.pads[MIPI_CSI2_SENS_VC1_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	ov5640_data.pads[MIPI_CSI2_SENS_VC2_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	ov5640_data.pads[MIPI_CSI2_SENS_VC3_PAD_SOURCE].flags = MEDIA_PAD_FL_SOURCE;
+	retval = media_entity_pads_init(&sd->entity, MIPI_CSI2_SENS_VCX_PADS_NUM,
+							ov5640_data.pads);
+	if (retval < 0)
+		return retval;
+
+	ov5640_data.subdev.entity.ops = &ov5640_sd_media_ops;
 
 	ov5640_data.subdev.grp_id = 678;
 	retval = v4l2_async_register_subdev(&ov5640_data.subdev);
