@@ -510,7 +510,7 @@
 		csi_id = <1>;
 		mclk = <24000000>;
 		mclk_source = <0>;
-		status = "disabled";
+		status = "okay";
 
 		port {
 			ov5640_ep: endpoint {
@@ -556,7 +556,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	virtual-channel;
-	status = "disabled";
+	status = "okay";
 
 	/* Camera 0 MIPI CSI-2 (CSIS1) */
 	port@1 {
