@@ -75,6 +75,7 @@ struct imx6_pcie {
 	struct clk		*pcie_phy;
 	struct clk		*pcie_per;
 	struct clk		*pcie;
+	struct clk		*pcie_ext;
 	struct clk		*pcie_ext_src;
 	struct regmap		*iomuxc_gpr;
 	enum imx6_pcie_variants variant;
@@ -658,11 +659,19 @@ static int imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 	if (imx6_pcie->ext_osc && (imx6_pcie->variant == IMX6QP))
 		clk_set_parent(imx6_pcie->pcie_bus,
 				imx6_pcie->pcie_ext_src);
+
 	ret = clk_prepare_enable(imx6_pcie->pcie_bus);
 	if (ret) {
 		dev_err(pp->dev, "unable to enable pcie_bus clock\n");
 		goto err_pcie_bus;
 	}
+
+	ret = clk_prepare_enable(imx6_pcie->pcie_ext);
+	if (ret) {
+		dev_err(pp->dev, "unable to enable pcie_ext clock\n");
+		goto err_pcie_bus;
+	}
+
 
 	ret = clk_prepare_enable(imx6_pcie->pcie_phy);
 	if (ret) {
@@ -2027,15 +2036,18 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 	if (of_property_read_u32(node, "ext_osc", &imx6_pcie->ext_osc) < 0)
 		imx6_pcie->ext_osc = 0;
 
-	if (imx6_pcie->ext_osc && (imx6_pcie->variant == IMX6QP)) {
+	if (imx6_pcie->ext_osc && (imx6_pcie->variant == IMX6QP ||
+				   imx6_pcie->variant == IMX8QM)) {
 		/* Change the pcie_bus clock to pcie external OSC */
-		imx6_pcie->pcie_bus = devm_clk_get(&pdev->dev, "pcie_ext");
-		if (IS_ERR(imx6_pcie->pcie_bus)) {
+		imx6_pcie->pcie_ext = devm_clk_get(&pdev->dev, "pcie_ext");
+		if (IS_ERR(imx6_pcie->pcie_ext)) {
 			dev_err(&pdev->dev,
-				"pcie_bus clock source missing or invalid\n");
-			return PTR_ERR(imx6_pcie->pcie_bus);
+				"pcie_ext clock source missing or invalid\n");
+			return PTR_ERR(imx6_pcie->pcie_ext);
 		}
+	}
 
+	if (imx6_pcie->ext_osc && (imx6_pcie->variant == IMX6QP)) {
 		imx6_pcie->pcie_ext_src = devm_clk_get(&pdev->dev,
 				"pcie_ext_src");
 		if (IS_ERR(imx6_pcie->pcie_ext_src)) {
