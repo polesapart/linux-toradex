@@ -190,7 +190,7 @@ static int mxc_md_create_links(struct mxc_md *mxc_md)
 		if (sensor == NULL || sensor->sd == NULL)
 			continue;
 
-		mipi_csi2 = mxc_md->mipi_csi2[sensor->id];
+		mipi_csi2 = mxc_md->mipi_csi2[sensor->id + 1];
 		if (mipi_csi2 ==  NULL)
 			continue;
 
