@@ -31,7 +31,6 @@
 #include "mxc-isi-core.h"
 #include "mxc-isi-hw.h"
 #include "mxc-media-dev.h"
-#include "max9286.h"
 
 struct mxc_isi_fmt mxc_isi_out_formats[] = {
 	{
@@ -669,11 +668,8 @@ static int mxc_isi_cap_try_fmt_mplane(struct file *file, void *fh,
 	return 0;
 }
 
-
-static struct media_pad *mxc_isi_get_remote_source_pad(struct mxc_isi_dev *mxc_isi)
+static struct media_pad *subdev_get_remote_source_pad(struct v4l2_subdev *subdev)
 {
-	struct mxc_isi_cap_dev *isi_cap = &mxc_isi->isi_cap;
-	struct v4l2_subdev *subdev = &isi_cap->sd;
 	struct media_pad *sink_pad, *source_pad;
 	int i;
 
@@ -692,10 +688,43 @@ static struct media_pad *mxc_isi_get_remote_source_pad(struct mxc_isi_dev *mxc_i
 		return source_pad;
 	}
 
-	if (i == subdev->entity.num_pads)
-		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote pad found!\n", __func__);
-
 	return NULL;
+}
+
+static struct v4l2_subdev *mxc_isi_get_sensor_subdev(struct v4l2_subdev *subdev)
+{
+	struct media_pad *source_pad;
+	struct v4l2_subdev *sd;
+
+	/* Firstly find mipi interface, so remote source for the isi */
+	source_pad = subdev_get_remote_source_pad(subdev);
+	if (source_pad == NULL) {
+		v4l2_err(subdev->v4l2_dev, "%s, No remote pad found!\n", __func__);
+		return NULL;
+	}
+
+	/* Get remote source pad subdev */
+	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	if (sd == NULL) {
+		v4l2_err(subdev->v4l2_dev, "Can't find subdev\n");
+		return NULL;
+	}
+
+	/* Then find the actual sensor which should be on the pad of mipi */
+	source_pad = subdev_get_remote_source_pad(sd);
+	if (source_pad == NULL) {
+		v4l2_err(subdev->v4l2_dev, "%s, No remote pad found!\n", __func__);
+		return NULL;
+	}
+
+	/* Get remote source pad subdev */
+	sd = media_entity_to_v4l2_subdev(source_pad->entity);
+	if (sd == NULL) {
+		v4l2_err(subdev->v4l2_dev, "Can't find subdev\n");
+		return NULL;
+	}
+
+	return sd;
 }
 
 /* Update input frame size and formate  */
@@ -708,7 +737,7 @@ static int mxc_isi_source_fmt_init(struct mxc_isi_dev *mxc_isi)
 	int ret;
 
 	/* Get remote source pad */
-	source_pad = mxc_isi_get_remote_source_pad(mxc_isi);
+	source_pad = subdev_get_remote_source_pad(&mxc_isi->isi_cap.sd);
 	if (source_pad == NULL) {
 		v4l2_err(mxc_isi->v4l2_dev, "%s, No remote pad found!\n", __func__);
 		return -EINVAL;
@@ -929,54 +958,37 @@ static int mxc_isi_cap_s_selection(struct file *file, void *fh,
 	return 0;
 }
 
-static struct v4l2_subdev *mxc_isi_get_subdev_by_name(struct v4l2_device *v4l2,
-			const char *name)
-{
-	struct v4l2_subdev *sd;
-	bool found = false;
-
-	list_for_each_entry(sd, &v4l2->subdevs, list) {
-		if (strstr(sd->name, name) != NULL) {
-			found = true;
-			break;
-		}
-	}
-
-	return (found) ? sd : NULL;
-}
-
 static int mxc_isi_cap_g_chip_ident(struct file *file, void *fb,
 			struct v4l2_dbg_chip_ident *chip)
 {
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
-	struct v4l2_device *v4l2_dev = mxc_isi->isi_cap.sd.v4l2_dev;
 	struct video_device *vdev = video_devdata(file);
-	struct sensor_data *max9286;
+	struct v4l2_dbg_chip_ident ci;
 	struct v4l2_subdev *sd;
 
-	sd = mxc_isi_get_subdev_by_name(v4l2_dev, "max9286_mipi");
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find sub device\n");
 		return -ENODEV;
 	}
 
-	max9286 = container_of(sd, struct sensor_data, subdev);
-	if (max9286->sensor_is_there & (0x1 << vdev->num))
-		sprintf(chip->match.name, "max9286_mipi%d\n", vdev->num);
-	else
-		return -ENODEV;
+	sprintf(chip->match.name, "%s-%d\n", sd->name, vdev->num);
 
-	return 0;
+	/* Just check if the callback of the sensor device returns success,
+	 * no need to actually identify the device since we're using the
+	 * pads to find it.
+	 */
+
+	return v4l2_subdev_call(sd, core, g_chip_ident, &ci);
 }
 
 static int mxc_isi_cap_g_parm(struct file *file, void *fh,
 			struct v4l2_streamparm *a)
 {
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
-	struct v4l2_device *v4l2_dev = mxc_isi->isi_cap.sd.v4l2_dev;
 	struct v4l2_subdev *sd;
 
-	sd = mxc_isi_get_subdev_by_name(v4l2_dev, "max9286_mipi");
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find subdev\n");
 		return -ENODEV;
@@ -988,10 +1000,9 @@ static int mxc_isi_cap_s_parm(struct file *file, void *fh,
 			struct v4l2_streamparm *a)
 {
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
-	struct v4l2_device *v4l2_dev = mxc_isi->isi_cap.sd.v4l2_dev;
 	struct v4l2_subdev *sd;
 
-	sd = mxc_isi_get_subdev_by_name(v4l2_dev, "max9286_mipi");
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find subdev\n");
 		return -ENODEV;
@@ -1003,7 +1014,6 @@ static int mxc_isi_cap_enum_framesizes(struct file *file, void *priv,
 					 struct v4l2_frmsizeenum *fsize)
 {
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
-	struct v4l2_device *v4l2_dev = mxc_isi->isi_cap.sd.v4l2_dev;
 	struct v4l2_subdev *sd;
 	struct mxc_isi_fmt *fmt;
 	struct v4l2_subdev_frame_size_enum fse = {
@@ -1017,7 +1027,7 @@ static int mxc_isi_cap_enum_framesizes(struct file *file, void *priv,
 		return -EINVAL;
 	fse.code = fmt->mbus_code;
 
-	sd = mxc_isi_get_subdev_by_name(v4l2_dev, "max9286_mipi");
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
 		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find subdev\n");
 		return -ENODEV;
@@ -1050,7 +1060,6 @@ static int mxc_isi_cap_enum_frameintervals(struct file *file, void *fh,
 					  struct v4l2_frmivalenum *interval)
 {
 	struct mxc_isi_dev *mxc_isi = video_drvdata(file);
-	struct v4l2_device *v4l2_dev = mxc_isi->isi_cap.sd.v4l2_dev;
 	struct v4l2_subdev *sd;
 	struct mxc_isi_fmt *fmt;
 	struct v4l2_subdev_frame_interval_enum fie = {
@@ -1066,9 +1075,9 @@ static int mxc_isi_cap_enum_frameintervals(struct file *file, void *fh,
 		return -EINVAL;
 	fie.code = fmt->mbus_code;
 
-	sd = mxc_isi_get_subdev_by_name(v4l2_dev, "max9286_mipi");
+	sd = mxc_isi_get_sensor_subdev(&mxc_isi->isi_cap.sd);
 	if (sd == NULL) {
-		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find subdev\n");
+		v4l2_err(&mxc_isi->isi_cap.sd, "Can't find sensor subdev\n");
 		return -ENODEV;
 	}
 
