@@ -627,6 +627,11 @@ const struct ubifs_lprops *ubifs_change_lp(struct ubifs_info *c,
 	if ((lprops->flags & LPROPS_TAKEN) && lprops->free == c->leb_size)
 		c->lst.taken_empty_lebs += 1;
 
+	if (lprops->free + lprops->dirty > c->leb_size) {
+		ubifs_warn(c, "lprops->free + lprops->dirty exceed LEB size: %i %i %i", lp->lnum, lprops->free, lprops->dirty);
+		dump_stack();
+	}
+
 	change_category(c, lprops);
 	c->idx_gc_cnt += idx_gc_cnt;
 	spin_unlock(&c->space_lock);

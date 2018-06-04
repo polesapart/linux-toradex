@@ -358,6 +358,7 @@ void ubifs_pack_pnode(struct ubifs_info *c, void *buf,
 	if (c->big_lpt)
 		pack_bits(&addr, &pos, pnode->num, c->pcnt_bits);
 	for (i = 0; i < UBIFS_LPT_FANOUT; i++) {
+		ubifs_assert(pnode->lprops[i].free + pnode->lprops[i].dirty <= c->leb_size);
 		pack_bits(&addr, &pos, pnode->lprops[i].free >> 3,
 			  c->space_bits);
 		pack_bits(&addr, &pos, pnode->lprops[i].dirty >> 3,
