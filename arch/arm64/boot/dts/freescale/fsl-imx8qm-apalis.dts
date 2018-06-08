@@ -956,11 +956,11 @@
 };
 
 &ldb2_phy {
-	status = "disabled";
+	status = "okay";
 };
 
 &ldb2 {
-	status = "disabled";
+	status = "okay";
 	fsl,dual-channel;
 
 	lvds-channel@0 {
