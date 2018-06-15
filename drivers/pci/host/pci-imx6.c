@@ -541,6 +541,12 @@ static int imx6_pcie_enable_ref_clk(struct imx6_pcie *imx6_pcie)
 			dev_err(dev, "unable to enable pcie_axi clock\n");
 			break;
 		}
+		ret = clk_prepare_enable(imx6_pcie->pcie_per);
+		if (ret) {
+			dev_err(dev, "unable to enable pcie_per clock\n");
+			clk_disable_unprepare(imx6_pcie->pcie_inbound_axi);
+			break;
+		}
 
 		break;
 	}
@@ -660,12 +666,10 @@ static int imx6_pcie_deassert_core_reset(struct imx6_pcie *imx6_pcie)
 		goto err_pcie_bus;
 	}
 
-	if (imx6_pcie->pcie_ext) {
-		ret = clk_prepare_enable(imx6_pcie->pcie_ext);
-		if (ret) {
-			dev_err(pp->dev, "unable to enable pcie_ext clock\n");
-			goto err_pcie_bus;
-		}
+	ret = clk_prepare_enable(imx6_pcie->pcie_ext);
+	if (ret) {
+		dev_err(pp->dev, "unable to enable pcie_ext clock\n");
+		goto err_pcie_bus;
 	}
 
 
@@ -1235,6 +1239,7 @@ static void pci_imx_clk_disable(struct device *dev)
 		break;
 	case IMX8QXP:
 	case IMX8QM:
+		clk_disable_unprepare(imx6_pcie->pcie_per);
 		clk_disable_unprepare(imx6_pcie->pcie_inbound_axi);
 		break;
 	}
@@ -2123,6 +2128,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 			dev_err(dev, "pcie_per clock source missing or invalid\n");
 			return PTR_ERR(imx6_pcie->pcie_per);
 		}
+
 		imx6_pcie->iomuxc_gpr =
 			 syscon_regmap_lookup_by_phandle(node, "hsio");
 		imx6_pcie->pcie_inbound_axi = devm_clk_get(&pdev->dev,
@@ -2132,12 +2138,6 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 				"pcie clock source missing or invalid\n");
 			return PTR_ERR(imx6_pcie->pcie_inbound_axi);
 		}
-
-		ret = clk_prepare_enable(imx6_pcie->pcie_per);
-		if (ret) {
-			dev_err(dev, "unable to enable pcie_per clock\n");
-			return ret;
-		}
 	} else {
 		imx6_pcie->iomuxc_gpr =
 		 syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
@@ -2145,8 +2145,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 
 	if (IS_ERR(imx6_pcie->iomuxc_gpr)) {
 		dev_err(dev, "unable to find iomuxc registers\n");
-		ret = PTR_ERR(imx6_pcie->iomuxc_gpr);
-		goto err_disable_pcie_per;
+		return PTR_ERR(imx6_pcie->iomuxc_gpr);
 	}
 
 	/* Grab PCIe PHY Tx Settings */
@@ -2193,18 +2192,18 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		/* add attributes for device */
 		ret = sysfs_create_group(&pdev->dev.kobj, &imx_pcie_attrgroup);
 		if (ret)
-			goto err_disable_pcie_per;
+			return -EINVAL;
 
 		ret = of_pci_get_host_bridge_resources(np, 0, 0xff, &res,
 						       &pp->io_base);
 		if (ret)
-			goto err_disable_pcie_per;
+			return ret;
 
 		ret = devm_request_pci_bus_resources(&pdev->dev, &res);
 		if (ret) {
 			dev_err(pp->dev, "missing ranges property\n");
 			pci_free_resource_list(&res);
-			goto err_disable_pcie_per;
+			return ret;
 		}
 
 		/* Get the I/O and memory ranges from DT */
@@ -2225,7 +2224,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		ret = imx6_pcie_host_init(pp);
 		if (ret) {
 			dev_info(dev, " fail to initialize pcie ep.\n");
-			goto err_disable_pcie_per;
+			return ret;
 		}
 
 		imx6_pcie_setup_ep(pp);
@@ -2262,7 +2261,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		if (!test_reg1) {
 			dev_err(dev, "pcie ep: can't alloc the test reg1.\n");
 			ret = PTR_ERR(test_reg1);
-			goto err_disable_pcie_per;
+			return ret;
 		}
 
 		test_reg2 = devm_kzalloc(&pdev->dev,
@@ -2270,7 +2269,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		if (!test_reg2) {
 			dev_err(dev, "pcie ep: can't alloc the test reg2.\n");
 			ret = PTR_ERR(test_reg1);
-			goto err_disable_pcie_per;
+			return ret;
 		}
 
 		/*
@@ -2285,7 +2284,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		if (!pcie_arb_base_addr) {
 			dev_err(dev, "error with ioremap in ep selftest\n");
 			ret = PTR_ERR(pcie_arb_base_addr);
-			goto err_disable_pcie_per;
+			return ret;
 		}
 
 		for (i = 0; i < test_region_size; i = i + 4) {
@@ -2338,7 +2337,7 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		imx_pcie_attrgroup.attrs = imx_pcie_rc_attrs;
 		ret = sysfs_create_group(&pdev->dev.kobj, &imx_pcie_attrgroup);
 		if (ret)
-			goto err_disable_pcie_per;
+			return -EINVAL;
 
 		ret = imx6_add_pcie_port(imx6_pcie, pdev);
 		if (ret < 0) {
@@ -2349,18 +2348,13 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 			} else {
 				dev_err(dev, "unable to add pcie port.\n");
 			}
-			goto err_disable_pcie_per;
+			return ret;
 		}
 		if (IS_ENABLED(CONFIG_RC_MODE_IN_EP_RC_SYS)
 				&& (imx6_pcie->hard_wired == 0))
 			imx_pcie_regions_setup(&pdev->dev);
 	}
-
 	return 0;
-
-err_disable_pcie_per:
-	clk_disable_unprepare(imx6_pcie->pcie_per);
-	return ret;
 }
 
 static void imx6_pcie_shutdown(struct platform_device *pdev)
@@ -2370,8 +2364,6 @@ static void imx6_pcie_shutdown(struct platform_device *pdev)
 	/* bring down link, so bootloader gets clean state in case of reboot */
 	if (imx6_pcie->variant == IMX6Q)
 		imx6_pcie_assert_core_reset(imx6_pcie);
-
-	clk_disable_unprepare(imx6_pcie->pcie_per);
 }
 
 static const struct of_device_id imx6_pcie_of_match[] = {
