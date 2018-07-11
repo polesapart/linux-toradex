@@ -699,8 +699,16 @@
 	/* eMMC */
 	sdhci@78000600 {
 		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
 		bus-width = <8>;
 		non-removable;
+
+		emmc: emmc@0 {
+			reg = <0>;
+			compatible = "mmc-card";
+			broken-hpi;
+		};
 	};
 
 	clocks {
