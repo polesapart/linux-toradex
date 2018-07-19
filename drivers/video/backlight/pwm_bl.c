@@ -284,30 +284,29 @@ static int pwm_backlight_parse_dt(struct device *dev,
 		ret = of_property_read_u32_array(node, "brightness-levels",
 						 data->levels,
 						 data->max_brightness);
-		if (ret < 0)
+		if (!ret)
 			return ret;
 
 		ret = of_property_read_u32(node, "default-brightness-level",
 					   &value);
-		if (ret < 0)
+		if (!ret)
 			return ret;
 
 		data->dft_brightness = value;
 
 		/*
 		 * This property is optional, if is set enables linear
-		 * interpolation between each of the values of brightness levels
-		 * and creates a new pre-computed table.
+		 * interpolation between each of the values of brightness
+		 * levels and creates a new pre-computed table.
 		 */
-		of_property_read_u32(node, "num-interpolated-steps",
-				     &num_steps);
-
-		/*
-		 * Make sure that there is at least two entries in the
-		 * brightness-levels table, otherwise we can't interpolate
-		 * between two points.
-		 */
-		if (num_steps) {
+		ret = of_property_read_u32(node, "num-interpolated-steps",
+					   &num_steps);
+		if (!ret || num_steps) {
+			/*
+			 * Make sure that there are at least two entries in
+			 * the brightness-levels table, otherwise we can't
+			 * interpolate between two points.
+			 */
 			if (data->max_brightness < 2) {
 				dev_err(dev, "can't interpolate\n");
 				return -EINVAL;
