@@ -24,14 +24,17 @@
 		vdd-pexa-supply = <&vdd2_reg>;
 		vdd-pexb-supply = <&vdd2_reg>;
 
+		/* Apalis type specific */
 		pci@1,0 {
 			nvidia,num-lanes = <4>;
 		};
 
+		/* Apalis PCIe */
 		pci@2,0 {
 			nvidia,num-lanes = <1>;
 		};
 
+		/* I210/I211 Gigabit Ethernet Controller (on-module) */
 		pci@3,0 {
 			nvidia,num-lanes = <1>;
 			pcie@0 {
