@@ -136,7 +136,7 @@
 	};
 
 	clocks {
-		clk16m: clk@1 {
+		clk16m: clock@1 {
 			compatible = "fixed-clock";
 			reg = <1>;
 			#clock-cells = <0>;
