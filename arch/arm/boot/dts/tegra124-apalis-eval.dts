@@ -109,7 +109,7 @@
 		clock-frequency = <400000>;
 
 		pcie-switch@58 {
-			compatible = "plx,pex8605";
+			compatible = "brcm,pex8605";
 			reg = <0x58>;
 		};
 
