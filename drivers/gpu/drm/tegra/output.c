@@ -133,7 +133,9 @@ int tegra_output_probe(struct tegra_output *output)
 	output->hpd_gpio = of_get_named_gpio_flags(output->of_node,
 						   "nvidia,hpd-gpio", 0,
 						   &output->hpd_gpio_flags);
-	if (gpio_is_valid(output->hpd_gpio)) {
+	if (output->hpd_gpio == -EPROBE_DEFER) {
+		return -EPROBE_DEFER;
+	} else if (gpio_is_valid(output->hpd_gpio)) {
 		unsigned long flags;
 
 		err = gpio_request_one(output->hpd_gpio, GPIOF_DIR_IN,
