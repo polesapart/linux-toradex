@@ -239,6 +239,13 @@ static int imx_pd_bind(struct device *dev, struct device *master, void *data)
 	if (ret && ret != -ENODEV)
 		return ret;
 
+	if (imxpd->bridge) {
+		const struct drm_bridge_timings *btimings = imxpd->bridge->timings;
+
+		if (btimings)
+			imxpd->bus_flags = btimings->bus_flags;
+	}
+
 	imxpd->dev = dev;
 
 	ret = imx_pd_register(drm, imxpd);
