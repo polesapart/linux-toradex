@@ -16,10 +16,14 @@ display_7_parallel_cap_touch.dts		-> Display with capacitive touch https://devel
 Touch controllers
 ----------------------------------------
 touch_cap_apalis_evb.dts			-> touch controller for capacitive touch displays
-
+touch_cap_colibri_imx6_evb.dts                  -> touch controller for capaccitive touch display compatible with colibri-imx6 and evaluation board
 =======================================
 
 touch_cap_apalis_evb.dts
 	-> Compatible with
 		- display_10.1_lvds_cap_touch.dts
 		- display_7_parallel_cap_touch.dts
+
+
+touch_cap_colibri_imx6_evb.dts
+	-> When applying this overlay device has to be powercycled
