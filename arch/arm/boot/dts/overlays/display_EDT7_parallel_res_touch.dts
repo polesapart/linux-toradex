@@ -2,7 +2,7 @@
 /plugin/;
 
 / {
-	compatible = "toradex,apalis_imx6q";
+	compatible = "toradex";
 	fragment@0 {
 		target-path = "/panel-dpi";
 		__overlay__ {
