@@ -16,14 +16,12 @@
 			};
 		};
 	};
-
 	fragment@1 {
 		target = <&pwm1>;
 		__overlay__ {
 			status = "disabled";
 		};
 	};
-
 	fragment@2 {
 		target = <&pwm4>;
 		__overlay__{
