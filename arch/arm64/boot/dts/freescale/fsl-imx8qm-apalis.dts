@@ -183,6 +183,24 @@
 			>;
 		};
 
+		pinctrl_lpspi0: lpspi0grp {
+			fsl,pins = <
+				SC_P_SPI0_SCK_DMA_SPI0_SCK		0x0600004c
+				SC_P_SPI0_SDO_DMA_SPI0_SDO		0x0600004c
+				SC_P_SPI0_SDI_DMA_SPI0_SDI		0x0600004c
+				SC_P_SPI0_CS0_LSIO_GPIO3_IO05		0x21
+			>;
+		};
+
+		pinctrl_lpspi2: lpspi2grp {
+			fsl,pins = <
+				SC_P_SPI2_SCK_DMA_SPI2_SCK		0x0600004c
+				SC_P_SPI2_SDO_DMA_SPI2_SDO		0x0600004c
+				SC_P_SPI2_SDI_DMA_SPI2_SDI		0x0600004c
+				SC_P_SPI2_CS0_LSIO_GPIO3_IO10		0x21
+			>;
+		};
+
 		pinctrl_mipi0_lpi2c0: mipi0_lpi2c0grp {
 			fsl,pins = <
 				SC_P_MIPI_DSI0_I2C0_SCL_MIPI_DSI0_I2C0_SCL	0xc600004c
@@ -998,6 +1016,38 @@
 				pixelclk-active = <0>;
 			};
 		};
+	};
+};
+
+&lpspi0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	fsl,spi-num-chipselects = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpspi0>;
+	cs-gpios = <&gpio3 5 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	spidev0: spidev0@0 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+	};
+};
+
+&lpspi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	fsl,spi-num-chipselects = <1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lpspi2>;
+	cs-gpios = <&gpio3 10 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	spidev2: spidev2@0 {
+		compatible = "spidev";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
 	};
 };
 
