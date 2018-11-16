@@ -29,6 +29,8 @@ static int dw_pcie_rd_own_conf(struct pcie_port *pp, int where, int size,
 		return pp->ops->rd_own_conf(pp, where, size, val);
 
 	pci = to_dw_pcie_from_pp(pp);
+	if (pci->dbi_length && where + size > pci->dbi_length)
+		return PCIBIOS_BAD_REGISTER_NUMBER;
 	return dw_pcie_read(pci->dbi_base + where, size, val);
 }
 
@@ -41,6 +43,8 @@ static int dw_pcie_wr_own_conf(struct pcie_port *pp, int where, int size,
 		return pp->ops->wr_own_conf(pp, where, size, val);
 
 	pci = to_dw_pcie_from_pp(pp);
+	if (pci->dbi_length && where + size > pci->dbi_length)
+		return PCIBIOS_BAD_REGISTER_NUMBER;
 	return dw_pcie_write(pci->dbi_base + where, size, val);
 }
 
