@@ -41,6 +41,7 @@ enum imx6_pcie_variants {
 
 struct imx6_pcie_drvdata {
 	enum imx6_pcie_variants variant;
+	int			dbi_length;
 };
 
 struct imx6_pcie {
@@ -779,6 +780,8 @@ static int imx6_pcie_probe(struct platform_device *pdev)
 		break;
 	}
 
+	pci->dbi_length = imx6_pcie->drvdata->dbi_length;
+
 	/* Grab GPR config register range */
 	imx6_pcie->iomuxc_gpr =
 		 syscon_regmap_lookup_by_compatible("fsl,imx6q-iomuxc-gpr");
@@ -839,7 +842,7 @@ static void imx6_pcie_shutdown(struct platform_device *pdev)
 }
 
 static const struct imx6_pcie_drvdata drvdata[] = {
-	[IMX6Q] = { .variant = IMX6Q },
+	[IMX6Q] = { .variant = IMX6Q, .dbi_length = 0x15c },
 	[IMX6SX] = { .variant = IMX6SX },
 	[IMX6QP] = { .variant = IMX6QP },
 	[IMX7D] = { .variant = IMX7D },
