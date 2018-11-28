@@ -27,6 +27,7 @@
 #include <linux/types.h>
 #include <linux/interrupt.h>
 #include <linux/reset.h>
+#include <asm/opcodes.h>
 
 #include "pcie-designware.h"
 
@@ -287,6 +288,59 @@ static int imx6q_pcie_abort_handler(unsigned long addr,
 		regs->uregs[reg] = -1;
 		regs->ARM_pc += 4;
 		return 0;
+	}
+
+	return 1;
+}
+
+static int imx6q_pcie_abort_handler_thumb2(unsigned long addr,
+		unsigned int fsr, struct pt_regs *regs)
+{
+	unsigned long pc = instruction_pointer(regs);
+	unsigned long instr;
+
+	if (user_mode(regs))
+		return 1;
+
+	instr = __mem_to_opcode_thumb32(*(unsigned long *)pc);
+
+	if (__opcode_is_thumb32(instr)) {
+		/* Load word/byte and halfword immediate offset */
+		if ((instr & 0xff100000UL) == 0xf8100000UL) {
+			int reg = (instr >> 12) & 0xf;
+			unsigned long val;
+
+			if ((instr & 0x00700000UL) == 0x00100000UL)
+				val = 0xff;
+			else if ((instr & 0x00700000UL) == 0x00300000UL)
+				val = 0xffff;
+			else
+				val = 0xffffffffUL;
+
+			regs->uregs[reg] = val;
+			regs->ARM_pc += 4;
+			return 0;
+		}
+	} else {
+		instr = __mem_to_opcode_thumb16(*(unsigned long *)pc);
+
+		/* Load word/byte and halfword immediate offset */
+		if (((instr & 0xe800) == 0x6800) ||
+		    ((instr & 0xf800) == 0x8800)) {
+			int reg = instr & 0x7;
+			unsigned long val;
+
+			if (instr & 0x1000)
+				val = 0xff;
+			else if (instr & 0x8000)
+				val = 0xffff;
+			else
+				val = 0xffffffffUL;
+
+			regs->uregs[reg] = val;
+			regs->ARM_pc += 2;
+			return 0;
+		}
 	}
 
 	return 1;
@@ -874,6 +928,8 @@ static struct platform_driver imx6_pcie_driver = {
 
 static int __init imx6_pcie_init(void)
 {
+	bool thumb2 = IS_ENABLED(CONFIG_THUMB2_KERNEL);
+
 	/*
 	 * Since probe() can be deferred we need to make sure that
 	 * hook_fault_code is not called after __init memory is freed
@@ -881,7 +937,8 @@ static int __init imx6_pcie_init(void)
 	 * we can install the handler here without risking it
 	 * accessing some uninitialized driver state.
 	 */
-	hook_fault_code(8, imx6q_pcie_abort_handler, SIGBUS, 0,
+	hook_fault_code(8, thumb2 ? imx6q_pcie_abort_handler_thumb2 :
+			imx6q_pcie_abort_handler, SIGBUS, 0,
 			"external abort on non-linefetch");
 
 	return platform_driver_register(&imx6_pcie_driver);
